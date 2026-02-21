@@ -1,0 +1,28 @@
+# CODEOWNERS - Define quién debe aprobar cambios en cada área
+# Documentación: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Los CODEOWNERS son notificados y deben aprobar PRs que toquen sus archivos.
+# Requiere branch protection activada en main (ver docs/SETUP-PROTECCION.md)
+
+# Por defecto, un profesor debe aprobar cualquier cambio
+* @gviollaz
+
+# Áreas específicas - los alumnos son owners de su código
+# pero un profe siempre debe dar review
+/software/robot-arquero/    @mariaviollaz
+/software/robot-delantero/  @mariaviollaz
+/software/vision/           @mariaviollaz
+/software/libraries/        @mariaviollaz
+/hardware/                  @mariaviollaz
+
+# Archivos críticos - solo profes pueden aprobar
+/README.md                  @gviollaz
+/CONTRIBUTING.md            @gviollaz
+/AI-INSTRUCTIONS.md         @gviollaz
+/.github/                   @gviollaz
+/competition/               @gviollaz
+
+# NOTA: Cuando se sumen el segundo profe y Elías, agregar sus usernames acá.
+# Ejemplo:
+# * @gviollaz @segundo-profe
+# /software/ @mariaviollaz @elias-username

@@ -2,6 +2,15 @@
 
 **Objetivo**: Que los 2 profes y los 2 alumnos trabajen de forma segura, con historial completo de cambios y sin posibilidad de perder trabajo.
 
+## Equipo
+
+| Usuario | Nombre | Rol | Permiso GitHub |
+|---------|--------|-----|----------------|
+| `@gviollaz` | Gustavo Viollaz | Profe/Admin | **Admin** |
+| `@enzzo19` | Enzo Juárez | Profe | **Maintain** |
+| `@mariaviollaz` | María Virginia Viollaz | Alumna | **Write** |
+| `@3liasCo` | Elías Cordero | Alumno | **Write** |
+
 ## Principios
 
 1. **Nadie hace push directo a `main`** — todo va por Pull Request
@@ -13,12 +22,15 @@
 
 Ir a: https://github.com/IITA-Proyectos/open-soccer-robocup-team2026/settings/access
 
-| Usuario | Rol | Permiso |
-|---------|-----|----------|
-| `gviollaz` | Profe/Admin | **Admin** (ya está como owner de la org) |
-| `mariaviollaz` | Alumna | **Write** |
-| _segundo profe_ | Profe | **Maintain** |
-| _Elías (cuando cree cuenta)_ | Alumno | **Write** |
+Click "Add people" para cada uno:
+
+| Usuario | Permiso |
+|---------|---------|
+| `enzzo19` | **Maintain** |
+| `mariaviollaz` | **Write** |
+| `3liasCo` | **Write** |
+
+(`gviollaz` ya es owner de la organización)
 
 **Permisos explicados:**
 - **Admin**: Control total (settings, protección de ramas, borrar repo)
@@ -34,7 +46,7 @@ Ir a: https://github.com/IITA-Proyectos/open-soccer-robocup-team2026/settings/br
 Configurar:
 
 | Setting | Valor | Por qué |
-|---------|-------|----------|
+|---------|-------|---------|
 | Branch name pattern | `main` | Protege la rama principal |
 | ✅ Require a pull request before merging | ON | Nadie hace push directo |
 | ✅ Require approvals | **1** | Al menos 1 profe aprueba |
@@ -57,30 +69,34 @@ Ir a: https://github.com/organizations/IITA-Proyectos/settings
 
 ## Flujo de trabajo diario
 
-### Para los alumnos (Virginia y Elías):
+### Para los alumnos (Virginia @mariaviollaz y Elías @3liasCo):
 
 ```bash
-# 1. Crear una rama para su trabajo
+# 1. Asegurarse de tener main actualizado
+git checkout main
+git pull origin main
+
+# 2. Crear una rama para su trabajo
 git checkout -b feature/mi-cambio
 
-# 2. Hacer sus cambios y commits
+# 3. Hacer sus cambios y commits
 git add .
 git commit -m "feat: descripción del cambio"
 
-# 3. Subir la rama
+# 4. Subir la rama
 git push origin feature/mi-cambio
 
-# 4. Crear Pull Request en GitHub
+# 5. Crear Pull Request en GitHub
 #    (GitHub les va a mostrar un botón "Compare & pull request")
 
-# 5. Esperar aprobación de un profe
+# 6. Esperar aprobación de un profe (Gustavo o Enzo)
 
-# 6. Después del merge, actualizar su main local
+# 7. Después del merge, actualizar su main local
 git checkout main
 git pull origin main
 ```
 
-### Para los profes (Gustavo y segundo profe):
+### Para los profes (Gustavo @gviollaz y Enzo @enzzo19):
 
 ```bash
 # Mismo flujo que los alumnos para sus propios cambios

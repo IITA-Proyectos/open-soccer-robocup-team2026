@@ -1,28 +1,35 @@
 # CODEOWNERS - Define quién debe aprobar cambios en cada área
 # Documentación: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 #
+# EQUIPO 2026:
+#   Profes:  @gviollaz (Gustavo Viollaz) | @enzzo19 (Enzo Juárez)
+#   Alumnos: @mariaviollaz (María Virginia Viollaz) | @3liasCo (Elías Cordero)
+#
 # Los CODEOWNERS son notificados y deben aprobar PRs que toquen sus archivos.
 # Requiere branch protection activada en main (ver docs/SETUP-PROTECCION.md)
 
-# Por defecto, un profesor debe aprobar cualquier cambio
-* @gviollaz
+# Por defecto, al menos un profesor debe aprobar cualquier cambio
+* @gviollaz @enzzo19
 
-# Áreas específicas - los alumnos son owners de su código
-# pero un profe siempre debe dar review
-/software/robot-arquero/    @mariaviollaz
-/software/robot-delantero/  @mariaviollaz
-/software/vision/           @mariaviollaz
-/software/libraries/        @mariaviollaz
-/hardware/                  @mariaviollaz
+# Áreas de los alumnos - ellos son owners pero un profe siempre revisa
+/software/robot-arquero/    @mariaviollaz @3liasCo @gviollaz @enzzo19
+/software/robot-delantero/  @mariaviollaz @3liasCo @gviollaz @enzzo19
+/software/vision/           @mariaviollaz @3liasCo @gviollaz @enzzo19
+/software/libraries/        @mariaviollaz @3liasCo @gviollaz @enzzo19
+/software/communication/    @mariaviollaz @3liasCo @gviollaz @enzzo19
+/hardware/                  @mariaviollaz @3liasCo @gviollaz @enzzo19
+
+# Testing - alumnos y profes
+/testing/                   @mariaviollaz @3liasCo @gviollaz @enzzo19
+
+# Investigación - todos pueden contribuir
+/research/                  @mariaviollaz @3liasCo @gviollaz @enzzo19
+/journal/                   @mariaviollaz @3liasCo @gviollaz @enzzo19
 
 # Archivos críticos - solo profes pueden aprobar
-/README.md                  @gviollaz
-/CONTRIBUTING.md            @gviollaz
-/AI-INSTRUCTIONS.md         @gviollaz
-/.github/                   @gviollaz
-/competition/               @gviollaz
-
-# NOTA: Cuando se sumen el segundo profe y Elías, agregar sus usernames acá.
-# Ejemplo:
-# * @gviollaz @segundo-profe
-# /software/ @mariaviollaz @elias-username
+/README.md                  @gviollaz @enzzo19
+/CONTRIBUTING.md            @gviollaz @enzzo19
+/AI-INSTRUCTIONS.md         @gviollaz @enzzo19
+/.github/                   @gviollaz @enzzo19
+/competition/               @gviollaz @enzzo19
+/docs/                      @gviollaz @enzzo19

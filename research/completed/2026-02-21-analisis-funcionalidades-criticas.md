@@ -1,0 +1,1 @@
+/home/claude/analisis-funcionalidades-criticas.md

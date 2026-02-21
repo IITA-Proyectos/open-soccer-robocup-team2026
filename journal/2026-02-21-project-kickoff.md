@@ -5,41 +5,68 @@ author: "Claude (Anthropic - Claude Opus 4.6)"
 ai-assisted: true
 ai-tool: "Claude (Anthropic)"
 status: final
-tags: [organizacion, kickoff]
+tags: [organizacion, kickoff, analisis]
 ---
 
 # Kickoff del proyecto - Temporada 2026
 
 ## Objetivo
 
-Crear la estructura organizativa del repositorio para la temporada 2026 de RoboCupJunior Soccer Open League.
+Crear la estructura organizativa del repositorio para la temporada 2026 de RoboCupJunior Soccer Open League, migrar el trabajo del equipo 2025 y realizar el primer análisis técnico.
 
 ## Trabajo realizado
 
-- Creación del repositorio `open-soccer-robocup-team2026`
-- Diseño de la estructura de carpetas separando:
-  - Journal de ingeniería (cronológico)
-  - Pipeline de investigación (backlog → in-progress → completed)
-  - Testing (protocolos + resultados)
-  - Hardware (electrónica, eléctrica, mecánica)
-  - Software (por robot + visión + comunicación + librerías)
-  - Competencia (reglas, cronograma)
-  - Legacy (preservación del trabajo 2025)
-- Definición de convenciones de atribución (humano, humano+IA, IA supervisada)
-- Creación de `AI-INSTRUCTIONS.md` para que cualquier IA pueda operar correctamente
-- Migración del código de la temporada 2025 como referencia histórica
+### Estructura y organización
+- Creación del repositorio `open-soccer-robocup-team2026` en cuenta personal
+- Fork a la organización IITA-Proyectos
+- Diseño de la estructura de carpetas:
+  - `journal/` — Diario de ingeniería (cronológico)
+  - `research/` — Pipeline de investigación (backlog → in-progress → completed)
+  - `testing/` — Protocolos + resultados
+  - `hardware/` — Electrónica, eléctrica, mecánica
+  - `software/` — Por robot + visión + comunicación + librerías
+  - `competition/` — Reglas, cronograma
+  - `legacy/` — Preservación del trabajo 2025
+- Creación de `CONTRIBUTING.md` con convenciones de atribución
+- Creación de `AI-INSTRUCTIONS.md` para que cualquier IA opere correctamente
+
+### Migración del legado 2025
+- Migración del código del arquero (base .ino)
+- Migración del código del delantero (máquina de estados)
+- Migración de la librería zirconLib (.h + .cpp)
+- Migración de scripts de visión OpenMV (coordenadas, calibración)
+- Migración de código de control (giro, seguidor de línea)
+- Documentación de archivos mecánicos (STL/GCode referenciados por link)
+- Índice completo de archivos misceláneos del repo original
+
+### Análisis técnico del código 2025
+- Revisión completa de todos los archivos de código
+- **6 bugs críticos/bloqueantes documentados**:
+  1. Delantero: anguloRadArco calcula con datos de pelota en vez de arco
+  2. Delantero: comparación de tiempo invertida en estado PATEANDO
+  3. Arquero: variable `potencia` nunca definida (no compila)
+  4. Arquero: readLine() llamado antes de InitializeZircon()
+  5. Arquero: código duplicado con 2 setup()/loop()
+  6. zirconLib: llave `}` extra al final
+- Lista priorizada de mejoras P0/P1/P2 para 2026
+
+### Planificación
+- Cronograma detallado semana a semana (Feb-Jun 2026) con checkboxes
+- 6 temas de research cargados en backlog (mejoras mecánicas, visión, electrónica, estrategia, UART)
+- 1 research completado (revisión de código 2025)
 
 ## Decisiones tomadas
 
-- **Separar journal de documentación**: El journal es cronológico (qué pasó cada día), la documentación de research es temática (qué se investigó sobre cada tema)
-- **Pipeline de research con estados**: backlog → in-progress → completed permite trackear qué está pendiente y qué ya se analizó
-- **Legacy como read-only**: El código 2025 se preserva intacto como referencia, el código nuevo va en software/
-- **Atribución obligatoria**: Todo commit indica quién (humano o IA) y cómo (solo, asistido, supervisado)
+- **Separar journal de research**: Journal es cronológico, research es temático con pipeline de estados
+- **Legacy como read-only**: Código 2025 preservado intacto, código nuevo en software/
+- **Atribución obligatoria**: Todo commit indica quién (humano o IA) y cómo
+- **Archivos binarios por referencia**: STL/GCode/PDF quedan en el repo 2025, solo se linkean
+- **Nomenclatura kebab-case**: Nunca más espacios en nombres de archivos
 
 ## Próximos pasos
 
-- Transferir el repo de gviollaz a la organización IITA-Proyectos
-- Completar datos del equipo 2026 en README.md
-- Definir cronograma en competition/timeline.md
-- Identificar temas prioritarios de investigación y agregarlos al backlog
-- Revisar el código legacy para identificar qué funciona y qué hay que mejorar
+- [ ] Completar datos del equipo 2026 en README.md (nombres de alumnos)
+- [ ] Inventario de hardware disponible del 2025
+- [ ] Probar robots 2025 en cancha para evaluar estado actual
+- [ ] Definir horarios de sesiones de trabajo
+- [ ] Empezar a trabajar los items P0 del backlog de mejoras

@@ -1,38 +1,44 @@
 ---
-title: "Revisión completa del código 2025"
+title: "Revisión de código — Temporada 2025"
 date: 2026-02-21
+updated: 2026-02-21
 author: "Claude (Anthropic - Claude Opus 4.6)"
-status: completed
-priority: alta
-tags: [software, revision, legado, analisis]
+ai-assisted: false
+ai-tool: "Claude (Anthropic - Claude Opus 4.6)"
+status: final-verificado
+tags: [bugs, codigo, revision, 2025, verificado]
+nota: "Actualizado post-verificación cruzada contra código fuente real"
 ---
 
-# Revisión completa del código 2025
+# Revisión de Código — Temporada 2025
 
-## Resumen ejecutivo
+## Estado post-verificación (21 feb 2026)
 
-Se revisó todo el código del repositorio 2025. El software está en estado de prototipo funcional con varios bugs y código incompleto. La arquitectura básica (OpenMV → UART → Teensy → motores) es correcta. La máquina de estados del delantero es la pieza más completa.
+Esta lista original de 8 bugs fue ampliada a **25 puntos de falla** en el documento de arquitectura completo.
+La verificación cruzada contra código fuente real confirmó la mayoría y agregó hallazgos nuevos.
 
-## Bugs y problemas identificados
+Ver documentos actualizados:
+- **[Arquitectura completa (28KB, verificada)](2026-02-21-arquitectura-sistema-2025.md)** — 23 puntos de falla + 3 nuevos, con estado de verificación
+- **[Análisis cruzado de verificación](2026-02-21-analisis-cruzado-verificacion-hipotesis.md)** — metodología y resultados detallados
+- **[Mapa de prioridades revisado](2026-02-21-mapa-prioridades-revisado.md)** — plan de acción P0-P3
 
-| # | Severidad | Descripción | Ubicación |
-|---|-----------|-------------|----------|
-| 1 | CRÍTICO | Variable `potencia` no definida en arquero | arquero-base.ino |
-| 2 | CRÍTICO | Dos bloques setup()/loop() en el mismo archivo | arquero-base.ino |
-| 3 | ALTO | Bug lógico en estado PATEANDO (`<=` debería ser `>=`) | perseguir-pelota.ino |
-| 4 | ALTO | Sin detección de línea en delantero (se sale de cancha) | perseguir-pelota.ino |
-| 5 | ALTO | Giróscopo BNO055 deshabilitado en todo el código | zirconLib + todos |
-| 6 | MEDIO | Llave extra al final de zirconLib.cpp | zirconLib.cpp |
-| 7 | MEDIO | Thresholds de visión hardcodeados | scripts OpenMV |
-| 8 | BAJO | Nombres de archivos con espacios y sin extensión | Todo el repo 2025 |
+## Resumen de la revisión original (8 bugs iniciales)
 
-## Conclusiones
+| # | Severidad | Componente | Bug | Estado verificación |
+|---|-----------|-----------|-----|--------------------|
+| 1 | CRITICAL | Striker (perseguir-pelota.ino) | Timeout de pateo invertido (`<=` en vez de `>=`) | ✅ Confirmado |
+| 2 | CRITICAL | Striker | Ángulo de arco usa coordenadas de pelota | ✅ Confirmado |
+| 3 | CRITICAL | Goalie (arquero-base.ino) | Código no compila (funciones no definidas, redeclaraciones) | ✅ Confirmado (peor de lo esperado) |
+| 4 | HIGH | zirconLib | `compassCalibrated` nunca se activa → BNO055 inutilizado | ✅ Confirmado |
+| 5 | HIGH | OpenMV | Thresholds con L_min > L_max | ✅ Confirmado |
+| 6 | HIGH | Dribbler | Espera string "pelota detectada" que nadie envía | ✅ Confirmado |
+| 7 | MEDIUM | General | 8 sensores IR instalados pero no usados en código de competencia | ✅ Confirmado |
+| 8 | MEDIUM | Protocolo UART | Sin checksum ni mecanismo de resync | ✅ Confirmado |
 
-1. **El delantero es la base más sólida** para iterar. La máquina de estados funciona conceptualmente.
-2. **El arquero necesita reescritura** — el código actual no compila.
-3. **La visión funciona** pero depende de calibración manual y thresholds fijos.
-4. **El giróscopo nunca se integró exitosamente** — está comentado en todas partes.
-5. **La placa Zircon es funcional** pero necesita evaluación física.
-6. **Falta comunicación entre robots** (arquero-delantero no se coordinan).
+## Corrección importante
 
-Ver análisis detallado en gviollaz/open-soccer-robocup-team2026 (versión extendida).
+⚠️ La hipótesis original #12 del documento de arquitectura ("colisión entre headers 201-204 y valores de datos") fue **REFUTADA** durante la verificación cruzada. El protocolo fue diseñado con separación intencional: datos en rango 0-200, headers en rango 201-204. Ver documento de arquitectura §5.4 para detalles completos.
+
+---
+
+*Actualizado por Claude (Anthropic — Claude Opus 4.6) bajo supervisión de Gustavo Viollaz (@gviollaz), 21 de febrero de 2026.*

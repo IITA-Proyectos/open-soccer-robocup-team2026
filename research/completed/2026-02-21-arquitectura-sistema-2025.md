@@ -1,11 +1,13 @@
 ---
 title: "Arquitectura del sistema de robots — Temporada 2025"
 date: 2026-02-21
+updated: 2026-02-21
 author: "Claude (Anthropic - Claude Opus 4.6)"
 ai-assisted: false
 ai-tool: "Claude (Anthropic - Claude Opus 4.6)"
-status: final
+status: final-verificado
 tags: [arquitectura, hardware, software, openmv, teensy, protocolo, sensores, analisis]
+nota: "Actualizado post-verificación cruzada contra código fuente real. Hipótesis #12 REFUTADA. Agregados hallazgos N1, N2, N3."
 ---
 
 # Arquitectura del Sistema de Robots — Temporada 2025
@@ -16,7 +18,10 @@ tags: [arquitectura, hardware, software, openmv, teensy, protocolo, sensores, an
 **Autor del análisis**: Claude (Anthropic — Claude Opus 4.6)
 **Supervisión**: Gustavo Viollaz (@gviollaz)
 **Fecha**: 21 de febrero de 2026
+**Última actualización**: 21 de febrero de 2026 — post-verificación cruzada contra código fuente
 **Fuentes**: Repositorios `IITA-Proyectos/RoboCupJunior-Soccer-Open-League-2025` y `IITA-Proyectos/open-soccer-robocup-team2026`
+
+> ⚠️ **Estado de verificación**: Este documento fue verificado línea por línea contra el código fuente real de ambos repositorios (2025 y 2026). Se corrigió la hipótesis #12 (REFUTADA) y se agregaron 3 hallazgos nuevos (N1, N2, N3). Ver [análisis cruzado completo](2026-02-21-analisis-cruzado-verificacion-hipotesis.md) para metodología y detalles.
 
 ---
 
@@ -26,9 +31,11 @@ El sistema 2025 consiste en dos robots (arquero y delantero) construidos sobre l
 
 El equipo ganó el campeonato nacional en diciembre 2025 con este sistema. Sin embargo, el análisis revela **problemas estructurales significativos** en software que deben resolverse antes de competir internacionalmente en Incheon (junio-julio 2026).
 
-### Hallazgos Críticos
+### Hallazgos
 
-Se identificaron **23 puntos de falla** categorizados en: bugs de software (8), deficiencias de diseño (7), vulnerabilidades de protocolo (5), y riesgos por cambios de reglas 2026 (3).
+Se identificaron **23 puntos de falla originales** + **3 hallazgos nuevos de verificación** categorizados en: bugs de software (8), deficiencias de diseño (7), vulnerabilidades de protocolo (5), riesgos por cambios de reglas 2026 (3), y hallazgos de verificación cruzada (3).
+
+De los 23 originales: **19 confirmados**, **3 parcialmente confirmados**, **1 refutado** (#12).
 
 ---
 
@@ -106,7 +113,7 @@ La placa Zircon es un PCB diseñado para RoboCup Junior que actúa como shield/c
 - **Mark1**: Usa esquema clásico DIR + DIR + PWM (3 pines por motor, 9 total). La dirección se fija con `digitalWrite` y la velocidad con `analogWrite` en el pin PWM.
 - **Naveen1**: Usa esquema H-Bridge directo con 2 pines PWM por motor (6 pines total). La velocidad y dirección se controlan ambas con `analogWrite` en los pines de dirección.
 
-**⚠️ Punto de falla #1**: La detección de versión depende de un pulldown en pin 32. Si el pin queda flotante o hay ruido, el robot podría inicializar con el pinout incorrecto, causando comportamiento errático de todos los motores.
+**⚠️ Punto de falla #1** *(parcialmente confirmado)*: La detección de versión usa `INPUT_PULLDOWN` (no pin puramente flotante). El pulldown interno de ~100kΩ del Teensy 4.1 mitiga significativamente el riesgo de ruido. Es razonablemente confiable si el pin está conectado a VCC (Naveen1) o abierto (Mark1). El riesgo existe pero es menor al indicado originalmente.
 
 **Sugerencia**: Agregar un `Serial.println(getZirconVersion())` obligatorio en el `setup()` de cada programa, y verificar visualmente antes de cada partido.
 
@@ -144,8 +151,6 @@ La librería expone `motor1(power, direction)`, `motor2(power, direction)`, `mot
 
 **⚠️ Punto de falla #4**: Solo 3 sensores de línea cubren un ángulo muy limitado. Los equipos de élite usan arrays de 16-32 sensores en anillo para cobertura de 360°. Con 3 sensores, el robot puede salirse de la cancha por los laterales sin detectar la línea.
 
-**Sugerencia**: Mínimo duplicar a 6 sensores (frente, atrás, izq, der, y dos diagonales). Idealmente un anillo de 12+ sensores.
-
 #### 3.4.2 Sensores de Pelota IR (x8 — Fotodiodos infrarrojos)
 
 - **Cantidad**: 8 fotodiodos distribuidos en anillo alrededor del robot
@@ -155,8 +160,6 @@ La librería expone `motor1(power, direction)`, `motor2(power, direction)`, `mot
 
 **⚠️ Punto de falla #5**: En el código actual del delantero (perseguir-pelota.ino), los sensores IR **no se usan**. Toda la detección de pelota viene exclusivamente de la cámara OpenMV. Esto significa que si la pelota está detrás del robot (fuera del campo de visión de la cámara), el delantero no la detecta. Los 8 sensores IR están instalados pero **desperdiciados** en el programa de competencia.
 
-**Sugerencia**: Implementar fusión sensorial: cámara como sensor primario cuando la pelota está en el campo de visión, IR como sensor de respaldo para detección de 360°.
-
 #### 3.4.3 Giroscopio: Adafruit BNO055
 
 - **Chip**: Bosch BNO055 — IMU de 9 ejes con fusión sensorial integrada
@@ -165,12 +168,9 @@ La librería expone `motor1(power, direction)`, `motor2(power, direction)`, `mot
 - **Función de lectura**: `readCompass()` en zirconLib (requiere `compassCalibrated = true`)
 - **Control proporcional**: `error = currentYaw - initialYaw`, con wrapping ±180° y `kp = 0.3`
 
-**⚠️ Punto de falla #6**: La variable `compassCalibrated` se inicializa como `false` y **nunca se establece como `true`** en `zirconLib.cpp`. La función `readCompass()` devuelve siempre 0 y imprime "Compass not calibrated!". Sin embargo, en `lateral_con_giróscopo`, el BNO055 se usa **directamente** sin pasar por `readCompass()`, accediendo al objeto `bno` directamente. Esto crea dos formas incompatibles de leer el giroscopio:
+**⚠️ Punto de falla #6** *(confirmado)*: La variable `compassCalibrated` se inicializa como `false` y **nunca se establece como `true`** en `zirconLib.cpp`. La función `readCompass()` devuelve siempre 0 y imprime "Compass not calibrated!". En `lateral_con_giróscopo`, el BNO055 se usa **directamente** sin pasar por `readCompass()`, accediendo al objeto `bno` directamente.
 
-1. `readCompass()` vía zirconLib → **nunca funciona** (falta calibración)
-2. `bno.getEvent()` directo → funciona pero **no usa la abstracción** de zirconLib
-
-**Sugerencia**: Corregir `InitializeZircon()` para que inicialice y calibre el BNO055, o eliminar la referencia de la librería y usar siempre acceso directo con un wrapper propio.
+**Hallazgo adicional de verificación**: En el archivo original "para que persiga la pelota" (2025), el BNO055 fue **DELIBERADAMENTE COMENTADO**. El equipo intentó control de heading pero lo desactivó antes de la competencia. El robot ganó el nacional SIN control de orientación.
 
 #### 3.4.4 Sensor Ultrasónico: HC-SR04 (solo arquero)
 
@@ -179,9 +179,7 @@ La librería expone `motor1(power, direction)`, `motor2(power, direction)`, `mot
 - **Función**: `medirDistancia()` → distancia en cm
 - **Uso**: Determinar proximidad al arco para el control de posición del arquero
 
-**⚠️ Punto de falla #7**: La función `pulseIn(ECHO, HIGH)` es **bloqueante** — detiene todo el programa hasta 1 segundo si no hay eco. En un robot que necesita reaccionar en milisegundos, esto puede causar "congelamiento" momentáneo. Además, `delayMicroseconds()` también es bloqueante.
-
-**Sugerencia**: Reemplazar con lectura no-bloqueante usando interrupciones o la librería NewPing.
+**⚠️ Punto de falla #7**: La función `pulseIn(ECHO, HIGH)` es **bloqueante** — detiene todo el programa hasta 1 segundo si no hay eco.
 
 ---
 
@@ -197,8 +195,6 @@ sensor.skip_frames(time=2000)            # Estabilización 2 seg
 sensor.set_auto_whitebal(False)          # Balance de blancos fijo
 ```
 
-La configuración es correcta para RoboCup. QVGA (320x240) es el estándar que equilibra resolución con velocidad de procesamiento. Desactivar auto white balance es esencial para que los thresholds de color sean estables.
-
 ### 4.2 Detección de Objetos por Color (Blob Detection)
 
 El sistema detecta hasta 3 objetos por color usando thresholds LAB:
@@ -210,50 +206,20 @@ El sistema detecta hasta 3 objetos por color usando thresholds LAB:
 | Arco amarillo | (0, 79, -22, -8, 46, 127) | enviar 2 arcos |
 | Arco azul | (31, 19, -36, 60, -61, 5) | enviar 2 arcos |
 
-**⚠️ Punto de falla #8**: Existen **dos sets diferentes de thresholds para la pelota naranja** en distintos archivos. Esto sugiere que los thresholds no están centralizados y se fueron modificando independientemente. Además, en el threshold `(76, 18, ...)`, el L_min (76) es **mayor** que L_max (18), lo que es físicamente imposible en LAB y causaría que `find_blobs()` no detecte nada o detecte todo incorrectamente.
-
-**⚠️ Punto de falla #9**: Los thresholds de arco azul `(31, 19, ...)` también tienen L_min > L_max. Esto es un **bug crítico** que probablemente significa que los valores están en un orden diferente al esperado, o que se copió/pegó incorrectamente.
-
-**Sugerencia**: Centralizar todos los thresholds en un archivo de configuración único (`config.py`). Usar la herramienta `Calibrar_Treshold.py` para recalibrar en cada sede de competencia. Validar programáticamente que L_min < L_max, A_min < A_max, B_min < B_max.
+**⚠️ Punto de falla #8-9** *(confirmado)*: En los thresholds `(76, 18, ...)` y `(31, 19, ...)`, L_min es **mayor** que L_max. OpenMV `find_blobs()` espera L_min < L_max. Valores invertidos rompen la detección de blobs.
 
 ### 4.3 Transformación Homográfica (Píxeles → Centímetros)
 
-El sistema convierte coordenadas de píxeles (u,v) a coordenadas físicas (x,y en cm) usando una **matriz de homografía 3x3**:
+El sistema convierte coordenadas de píxeles (u,v) a coordenadas físicas (x,y en cm) usando una **matriz de homografía 3x3**.
 
-```python
-def transformarcoordenadas(u, v):
-    H = [[...], [...], [...]]  # Matriz 3x3 calibrada
-    denominator = H[2][0]*u + H[2][1]*v + H[2][2]
-    x = (H[0][0]*u + H[0][1]*v + H[0][2]) / denominator
-    y = (H[1][0]*u + H[1][1]*v + H[1][2]) / denominator
-    return x, y
-```
-
-Seguido de corrección por altura de la cámara y radio de la pelota:
-
-```python
-X = x * (h - r) / h    # h = altura cámara, r = radio pelota
-Y = y * (h - r) / h
-```
-
-**⚠️ Punto de falla #10**: Existen **dos matrices de homografía diferentes** en el código:
-
-- Matriz en `calcula-coordenadas-pelota.py` con `h = 10 cm`
-- Matriz en `enviar cordenadas 2 arcos y pelota` con `h = 18.7 cm`
-
-Estas matrices son **completamente diferentes**, lo que indica que se calibraron para montajes de cámara diferentes. Si se usa la matriz incorrecta, las coordenadas calculadas serán erróneas.
-
-**Sugerencia**: Documentar exactamente el montaje mecánico de la cámara (altura, ángulo, lente) y recalibrar la homografía para el montaje definitivo 2026. Guardar la matriz junto con la documentación del setup físico.
+**⚠️ Punto de falla #10**: Existen **dos matrices de homografía diferentes** en el código — calibradas para montajes de cámara diferentes (h=10cm vs h=18.7cm).
 
 ### 4.4 Indicadores LED
 
 El código de visión más avanzado usa los LEDs integrados del OpenMV como indicadores:
-
 - **LED Rojo**: Pelota naranja detectada
 - **LED Verde**: Arco amarillo detectado
 - **LED Azul**: Arco azul detectado
-
-Esto es una buena práctica para debugging en campo.
 
 ---
 
@@ -268,7 +234,7 @@ Esto es una buena práctica para debugging en campo.
 | Baud rate | 19200 bps (versión final) / 115200 bps (versión anterior) |
 | Formato | 8N1 (8 bits, sin paridad, 1 stop bit) |
 
-**⚠️ Punto de falla #11**: Existen **dos baud rates diferentes** en el código. `enviar paq. de datos` usa 115200, mientras que `enviar cordenadas 2 arcos y pelota` y `perseguir-pelota.ino` usan 19200. Si el OpenMV y el Teensy no están en el mismo baud rate, la comunicación falla silenciosamente.
+**⚠️ Punto de falla #11** *(parcialmente confirmado)*: El par funcional principal usa el MISMO baud rate (19200 en ambos lados). Sin embargo, existen archivos alternativos/anteriores con 115200, lo que representa un riesgo de configuración si se carga la versión incorrecta.
 
 ### 5.2 Estructura de Paquetes
 
@@ -299,11 +265,26 @@ El protocolo evolucionó durante la temporada. Hay **tres versiones incompatible
 | Sentido | 0 o 1 | Directo | Directo |
 | Sin detección | — | 0 | Verificar `!= 0` |
 
-**⚠️ Punto de falla #12**: Los headers (201, 202, 203, 204) pueden colisionar con valores de datos legítimos. Si X×2 = 201, el Teensy interpretaría ese dato como un header, desincronizando el stream completo. No hay checksum, CRC, ni mecanismo de resincronización.
+### 5.4 Análisis de Separación Header/Dato
 
-**⚠️ Punto de falla #13**: El receptor del Teensy en `perseguir-pelota.ino` lee exactamente 6 bytes con `Serial1.available() >= 6`. Si la transmisión pierde un byte, el receptor se desincroniza permanentemente.
-
-**⚠️ Punto de falla #14**: En `codigo de movilidad con cámara y control`, el receptor usa una máquina de estados byte-a-byte. Si llegan headers consecutivos sin dato intermedio (pérdida de byte), la máquina salta un campo sin registrarlo. No hay timeout ni recovery.
+> **⚠️ CORRECCIÓN — Punto de falla #12 REFUTADO** (actualización post-verificación, 21 feb 2026)
+>
+> El análisis original afirmaba que los headers (201-204) podían colisionar con valores de datos legítimos. **Esto es INCORRECTO**. La verificación del código fuente real demuestra que el protocolo fue diseñado con separación intencional:
+>
+> ```python
+> # OpenMV — codificación de datos
+> byteXp = min(max(int(Xp * 2), 0), 200)   # Rango: 0–200
+> byteYp = min(max(int((Yp + 50) * 2), 0), 200)  # Rango: 0–200
+> # Headers: 201, 202, 203 → FUERA del rango de datos
+> ```
+>
+> Los datos se limitan explícitamente al rango 0–200 con `min(max(...), 200)`. Los headers (201, 202, 203, 204) están **fuera del rango de datos** por diseño. No hay posibilidad de colisión header/dato.
+>
+> **Problemas reales del protocolo que SÍ persisten:**
+> - #13: Sin checksum ni CRC → corrupción de datos no detectada
+> - #14: Lectura de bloque fijo (`Serial1.available() >= 6`) → desincronización permanente ante pérdida de byte
+> - Sin mecanismo de resincronización
+> - Sin timeout de protocolo
 
 **Sugerencia para protocolo 2026**:
 ```
@@ -317,11 +298,19 @@ Con byte de inicio fijo (0xFF), longitud, resolución de 16 bits, y checksum XOR
 
 ### 6.1 Programa del Arquero
 
-**Estrategia**: Oscilar lateralmente sobre la línea del arco, mantener orientación frontal con giroscopio, y usar sensores de línea para no entrar al arco ni salirse de la cancha.
+**⚠️ Punto de falla #15** *(confirmado — peor de lo esperado)*: El archivo original del arquero (6.7KB) tiene:
+- Variable `potencia` usada pero nunca declarada
+- Funciones `leerGiroscopio()`, `avanzarDerecha()`, `avanzarIzquierda()`, `corregirAngulo()` nunca definidas
+- Código ejecutable FUERA de funciones (después de que `loop()` cierra)
+- Variables `s1`, `s2`, `s3` declaradas DOS VECES (global y local)
+- `enum Direccion` declarado DOS VECES
+- DOS funciones `setup()` en el mismo archivo
+- Variables `verde_izq`, `verde_cen`, `verde_der` usadas pero nunca definidas
+- Error de sintaxis: `blanco_s1!` en lugar de `!blanco_s1`
 
-**⚠️ Punto de falla #15**: El código del arquero tiene **variables redeclaradas** (`int s1, s2, s3` aparece múltiples veces), **funciones no definidas** (`leerGiroscopio()`, `avanzarDerecha()`, `avanzarIzquierda()`, `corregirAngulo()`), y **secciones duplicadas** (hay dos bloques `void setup()` y dos bloques de declaración de variables). El archivo claramente es un **work-in-progress que no compila** tal cual.
+El archivo es claramente un work-in-progress con múltiples iteraciones mezcladas, NO un programa funcional.
 
-**⚠️ Punto de falla #16**: Los sensores de línea se leen en **la inicialización global** (`int s1 = readLine(1);`) en lugar de en el `loop()`. s1, s2, s3 se leen UNA sola vez al arrancar y nunca se actualizan.
+**⚠️ Punto de falla #16** *(confirmado — peor de lo documentado)*: Los sensores de línea se leen como `int s1 = readLine(1);` a nivel global. `readLine()` llama `analogRead(linepin)`, pero los pines se configuran en `InitializeZircon()` dentro de `setup()`. Las variables globales se inicializan ANTES de `setup()`, por lo que `readLine()` lee pines NO CONFIGURADOS. Los valores s1, s2, s3 son BASURA y nunca se actualizan.
 
 **⚠️ Punto de falla #17**: La función `Adelante()` usa variables `static` que la convierten en función de "una sola vez".
 
@@ -336,13 +325,13 @@ Con byte de inicio fijo (0xFF), longitud, resolución de 16 bits, y checksum XOR
 | CENTRANDO | Alinear arco y pelota | → PATEANDO si alineados |
 | PATEANDO_adelante | Full power 2 seg | → GIRANDO |
 
-**⚠️ Punto de falla #18**: En PATEANDO, la condición de timeout está **invertida**:
+**⚠️ Punto de falla #18** *(confirmado)*: En PATEANDO, la condición de timeout está **invertida**:
 ```c
 if(millis() - millis_inicio_estado <= 2000) {  // ← debería ser >=
 ```
 El `<=` hace que los motores se apaguen inmediatamente en el primer ciclo. El robot nunca patea realmente.
 
-**⚠️ Punto de falla #19**: El cálculo de ángulo del arco usa coordenadas de la pelota:
+**⚠️ Punto de falla #19** *(confirmado)*: El cálculo de ángulo del arco usa coordenadas de la pelota:
 ```c
 anguloRadArco = atan2(decodedYp, decodedXp);  // ← debería ser Ya, Xa
 ```
@@ -362,103 +351,152 @@ anguloRadArco = atan2(decodedYp, decodedXp);  // ← debería ser Ya, Xa
 | `motor1/2/3(power, dir)` | ✅ Funcional |
 | `getZirconVersion()` | ✅ Funcional |
 
-**⚠️ Punto de falla #21**: No hay funciones de movimiento de alto nivel. Cada programa debe saber qué combinación de motor1/motor2/motor3 produce cada movimiento.
-
-**Sugerencia**: Agregar `moveOmni(angle, speed, rotation)`, `moveForward(speed)`, `moveLateral(speed)`, `rotate(speed)`, `stop()`.
+**⚠️ Punto de falla #21**: No hay funciones de movimiento de alto nivel.
 
 ### 6.4 Código del Dribbler
 
-**⚠️ Punto de falla #22**: El dribbler espera un **string por Serial** ("pelota detectada") para activarse. En ninguna parte del código del Teensy ni del OpenMV se envía este string. El dribbler probablemente **nunca se activó automáticamente** en competencia.
+**⚠️ Punto de falla #22** *(confirmado)*: El dribbler espera un string "pelota detectada" por Serial que NINGÚN otro programa envía. Además:
+- Usa `Serial` (USB) en lugar de `Serial1` (UART desde OpenMV)
+- `readStringUntil()` bloqueante con 1 segundo de timeout
+- `delay(2000)` dentro del bloque detiene todo por 2 segundos
+
+El dribbler NUNCA se activó automáticamente durante la competencia.
 
 **⚠️ Punto de falla #23 — REGLAS 2026**: La zona de captura de pelota se reduce de 3.0 cm a **1.5 cm**. Hay que verificar que con el dribbler activo la pelota no penetre más de 1.5 cm.
 
 ---
 
-## 7. Código No Migrado del Repo 2025
+## 7. Hallazgos Nuevos de Verificación Cruzada
 
-| Archivo | Tamaño | Contenido |
-|---------|--------|-----------|
-| `avance lateral tiempo` | 4 KB | Movimiento lateral temporizado |
-| `codigo de movilidad con cámara y control` | 6 KB | Integración completa Teensy+OpenMV con máquina de estados |
-| `lateral_con_giróscopo` | 2.4 KB | Control proporcional con BNO055 |
-| `enviar paq. de datos` | 2.3 KB | OpenMV envío de 4 campos con headers 201-204 |
-| `ultimo dribbler` | 1 KB | Control de dribbler por Serial string |
-| `probar sensores de linea` | 1.9 KB | Test de sensores con movimiento reactivo |
-| `OpenMV/enviar cordenadas 2 arcos y pelota` | 6.7 KB | Versión más avanzada — pelota + 2 arcos con LEDs |
-| `OpenMV/enviar coordenadas pelota(con redondez)` | 3 KB | Filtrado por redondez del blob |
-| `OpenMV/Enviar paquete de datos solo pelota` | 4 KB | Versión intermedia |
-| `OpenMV/Calibrar_Treshold.py` | 7 KB | Herramienta de calibración interactiva |
-| `OpenMV/UART Teensy` | 1.6 KB | Test de comunicación UART |
-| Carpetas `OpenMV/H7/` y `OpenMV/H7 plus/` | — | Configuraciones para las dos versiones de cámara |
+> Los siguientes hallazgos fueron descubiertos durante la verificación cruzada contra código fuente real (21 feb 2026) y NO aparecían en el análisis original ni en el análisis de ChatGPT.
 
-**Recomendación**: Migrar todos estos archivos al repo 2026 bajo `legacy/2025-season/code/`.
+### 🆕 N1 — Conflicto Pin 0/RX1 en modo Naveen1 (SEVERIDAD: ALTA)
+
+En `zirconLib.cpp`, las variables `motor1pwm`, `motor2pwm`, `motor3pwm` se declaran como `int` globales (valor por defecto 0). En modo Naveen1, estas variables **nunca se asignan** porque Naveen1 usa solo 2 pines por motor, sin PWM separado.
+
+Sin embargo, `initializePins()` ejecuta:
+
+```cpp
+pinMode(motor1pwm, OUTPUT);  // motor1pwm = 0 → pinMode(0, OUTPUT)
+pinMode(motor2pwm, OUTPUT);  // motor2pwm = 0 → pinMode(0, OUTPUT)
+pinMode(motor3pwm, OUTPUT);  // motor3pwm = 0 → pinMode(0, OUTPUT)
+```
+
+**Pin 0 en Teensy 4.1 es RX1 (Serial1 receive)**. Configurar RX1 como OUTPUT podría romper la comunicación UART desde la cámara OpenMV.
+
+**Factor mitigante**: `Serial1.begin(19200)` se llama DESPUÉS de `InitializeZircon()`, lo que reconfigura el pin para UART. Funciona por accidente, pero es un bug latente que puede manifestarse si cambia el orden de inicialización.
+
+**Corrección recomendada**: En modo Naveen1, no llamar `pinMode()` sobre variables PWM no asignadas, o asignarles un pin dummy/no-conectado.
+
+### 🆕 N2 — Código migrado significativamente truncado (SEVERIDAD: MEDIA)
+
+Comparación entre archivos originales (repo 2025) y migrados (repo 2026):
+
+| Archivo | Original (2025) | Migrado (2026) | Diferencia |
+|---------|-----------------|----------------|------------|
+| Arquero | 6,656 bytes (completo) | 2,626 bytes (parcial) | Falta toda la lógica de oscilación |
+| calibrar-threshold.py | 7,087 bytes (herramienta completa) | 901 bytes (solo comentario) | Solo stub apuntando al repo original |
+| giro-y-avance-zircon.ino | ~4 KB (estimado) | 476 bytes (solo comentario) | Solo stub |
+| junta-control-y-movilidad.ino | ~6 KB (estimado) | 489 bytes (solo comentario) | Solo stub |
+
+**Archivos del repo 2025 COMPLETAMENTE AUSENTES en 2026**:
+- `codigo de movilidad con cámara y control` (6.1KB — la integración Teensy+OpenMV más completa)
+- `avance lateral tiempo` (4.1KB)
+- `lateral_con_giróscopo` (2.4KB — el único código funcional del BNO055)
+- `enviar paq. de datos` (2.3KB — protocolo V1)
+- `enviar cordenadas 2 arcos y pelota` (6.7KB — la versión más avanzada del OpenMV)
+- `enviar coordenadas pelota(con redondez)` (3.0KB)
+- `enviar coordenadas 1 arco y pelota` (5.1KB)
+- `Enviar paquete de datos solo pelota` (4.0KB)
+- `Calibrar_Treshold.py` (7.1KB — herramienta de calibración completa)
+- `UART Teensy` (1.6KB)
+- `probar sensores de linea` (1.9KB)
+- `ultimo dribbler` (1.0KB)
+- Carpetas: `ARQUERO/`, `DELANTERO/`, `Dribbler/`, `OpenMV/H7/`, `OpenMV/H7 plus/`
+- Archivos STL y diseños 3D
+
+**Acción requerida**: Migrar TODOS los archivos completos del repo 2025, sin stubs.
+
+### 🆕 N3 — Código de competencia probablemente NO está en el repositorio (SEVERIDAD: ALTA)
+
+Evidencia convergente de que el código que REALMENTE CORRIÓ en el campeonato nacional difiere del repositorio:
+
+1. El delantero nunca patea (bug #18 timeout invertido) — un equipo campeón no gana sin patear
+2. El ángulo del arco es inútil (bug #19) — el centrado no funciona sin ángulo correcto
+3. El arquero no compila — no puede haber corrido tal cual
+4. El BNO055 está comentado — el giroscopio estaba deshabilitado
+
+**Explicaciones posibles**:
+- a) El código del repo es versión de desarrollo, modificada manualmente antes de cargar a los robots sin commitear los cambios finales
+- b) Existían versiones locales en las computadoras del equipo que no se subieron
+- c) Los bugs del delantero se compensaron con hardware (dribbler manual, etc.) y la estrategia era más simple de lo que el código sugiere
+
+**Observación crítica**: El repositorio NO refleja con precisión lo que funcionó en competencia. El primer paso debería ser reconstruir la versión exacta que corrió en cada robot durante el nacional.
+
+**Acción requerida**: Sesión con María Virginia y Elías para reconstruir las versiones exactas de competencia.
 
 ---
 
-## 8. Resumen de Puntos de Falla
+## 8. Resumen de Puntos de Falla (Actualizado post-verificación)
 
 ### Críticos (impiden funcionamiento correcto)
 
-| # | Componente | Problema |
-|---|-----------|----------|
-| 6 | zirconLib | `compassCalibrated` siempre false — giroscopio inaccesible vía librería |
-| 8-9 | OpenMV | Thresholds con L_min > L_max — detección de color potencialmente rota |
-| 12-14 | Protocolo UART | Sin checksum, colisión header/dato, sin resync — datos corruptos sin detección |
-| 15-16 | Arquero | Código no compila, sensores leídos una vez |
-| 18 | Delantero | Condición de pateo invertida (≤ en vez de ≥) — robot nunca patea |
-| 19 | Delantero | Ángulo arco calcula con datos de pelota — variable inútil |
+| # | Estado | Componente | Problema |
+|---|--------|-----------|----------|
+| 6 | ✅ Confirmado | zirconLib | `compassCalibrated` siempre false — giroscopio inaccesible vía librería |
+| 8-9 | ✅ Confirmado | OpenMV | Thresholds con L_min > L_max — detección de color rota |
+| ~~12~~ | ❌ **REFUTADO** | ~~Protocolo UART~~ | ~~Colisión header/dato~~ → Headers 201-204 están fuera del rango de datos 0-200 por diseño |
+| 13-14 | ✅ Confirmado | Protocolo UART | Sin checksum, sin resync — datos corruptos sin detección |
+| 15-16 | ✅ Confirmado (peor) | Arquero | Código no compila, sensores leen pines no configurados |
+| 18 | ✅ Confirmado | Delantero | Condición de pateo invertida (≤ en vez de ≥) — robot nunca patea |
+| 19 | ✅ Confirmado | Delantero | Ángulo arco calcula con datos de pelota — variable inútil |
+| **N1** | 🆕 Nuevo | zirconLib | Pin 0/RX1 configurado como OUTPUT en modo Naveen1 → puede romper UART |
+| **N3** | 🆕 Nuevo | General | Código de competencia probablemente no está en el repositorio |
 
 ### Altos (degradan rendimiento significativamente)
 
-| # | Componente | Problema |
-|---|-----------|----------|
-| 2 | Motores | Sin función moveOmni() unificada — movimiento inconsistente |
-| 3 | Línea | Thresholds hardcodeados — falla con iluminación diferente |
-| 5 | Sensores IR | 8 sensores instalados pero no usados — sin detección 360° |
-| 7 | Ultrasónico | pulseIn() bloqueante — robot se congela momentáneamente |
-| 10-11 | OpenMV/UART | Dos homografías y dos baud rates — configuración incorrecta = datos basura |
-| 22 | Dribbler | Activación por string serial — nunca se activa automáticamente |
+| # | Estado | Componente | Problema |
+|---|--------|-----------|----------|
+| 2 | ✅ Confirmado | Motores | Sin función moveOmni() unificada |
+| 3 | ✅ Confirmado | Línea | Thresholds hardcodeados |
+| 5 | ✅ Confirmado | Sensores IR | 8 sensores instalados pero no usados |
+| 7 | ✅ Confirmado | Ultrasónico | pulseIn() bloqueante |
+| 11 | ⚠️ Parcial | OpenMV/UART | Par funcional sincronizado, pero archivos alternativos con baud diferente |
+| 22 | ✅ Confirmado | Dribbler | Activación por string serial que nadie envía |
+| **N2** | 🆕 Nuevo | Migración | Código migrado truncado, archivos críticos ausentes |
 
 ### Moderados (riesgos para 2026)
 
-| # | Componente | Problema |
-|---|-----------|----------|
-| 1 | Zircon | Detección versión por pin flotante |
-| 4 | Línea | Solo 3 sensores — robot puede salir por laterales |
-| 17 | Arquero | Función Adelante() con variables static |
-| 20 | Delantero | avanzarAlFrente() no es realmente adelante |
-| 21 | zirconLib | No hay funciones de movimiento de alto nivel |
-| 23 | Dribbler | Zona de captura 3→1.5 cm en reglas 2026 |
+| # | Estado | Componente | Problema |
+|---|--------|-----------|----------|
+| 1 | ⚠️ Parcial | Zircon | Detección versión por pulldown (mitigado vs flotante puro) |
+| 4 | ✅ Confirmado | Línea | Solo 3 sensores |
+| 17 | ✅ Confirmado | Arquero | Función Adelante() con variables static |
+| 20 | ✅ Confirmado | Delantero | avanzarAlFrente() no es realmente adelante |
+| 21 | ✅ Confirmado | zirconLib | No hay funciones de movimiento de alto nivel |
+| 23 | ✅ Confirmado | Dribbler | Zona de captura 3→1.5 cm en reglas 2026 |
 
 ---
 
-## 9. Recomendaciones para 2026
+## 9. Métricas de Fiabilidad del Análisis
 
-### 9.1 Prioridad Inmediata (Febrero-Marzo)
+| Métrica | Resultado |
+|---------|----------|
+| Hipótesis verificadas correctas | 19/23 (83%) |
+| Hipótesis parcialmente confirmadas | 3/23 (13%) |
+| Hipótesis refutadas | 1/23 (4%) — #12 colisión header/dato |
+| Hallazgos nuevos descubiertos | 3 (N1, N2, N3) |
+| Total de problemas documentados | 25 (22 confirmados + 3 nuevos) |
 
-1. Migrar TODOS los archivos del repo 2025 al directorio legacy
-2. Rediseñar protocolo UART con start byte, longitud, checksum, y timeout
-3. Corregir zirconLib: arreglar BNO055, agregar funciones de movimiento omnidireccional
-4. Centralizar configuración: un archivo `config.h`/`config.py` con todos los thresholds y constantes
-5. Verificar dribbler cumple 1.5 cm de zona de captura
+Ver documento completo de verificación: [análisis cruzado](2026-02-21-analisis-cruzado-verificacion-hipotesis.md)
 
-### 9.2 Prioridad Media (Marzo-Abril)
+---
 
-6. Implementar fusión sensorial: cámara + sensores IR para detección 360°
-7. Ampliar sensores de línea: mínimo 6, idealmente 12+ en anillo
-8. Reemplazar pulseIn() con lectura ultrasónica no-bloqueante
-9. Unificar programas: un solo binario con selección de rol por botón/switch
-10. Implementar Communication Module (obligatorio para internacional)
+## 10. Recomendaciones para 2026 (Revisadas post-verificación)
 
-### 9.3 Prioridad para Internacional (Abril-Junio)
+Ver **[Mapa de Prioridades Revisado](2026-02-21-mapa-prioridades-revisado.md)** para el plan de acción completo con 4 niveles de prioridad (P0-P3).
 
-11. Calibración automatizada de thresholds in-situ
-12. Recalibrar homografía para montaje definitivo de cámara
-13. Preparar documentación RoboCup: BOM con precios, poster A1, video, portfolio
-14. Testing extensivo del protocolo bajo condiciones adversas
-15. Evaluar OpenMV H7 vs H7 Plus para procesamiento de visión más pesado
-
-### 9.4 Arquitectura de Software Propuesta para 2026
+### Arquitectura de Software Propuesta para 2026
 
 ```
 ┌─────────── Nuevo stack de software propuesto ───────────┐
@@ -485,12 +523,12 @@ anguloRadArco = atan2(decodedYp, decodedXp);  // ← debería ser Ya, Xa
 
 ---
 
-## 10. Inventario de Sensores del Sistema
+## 11. Inventario de Sensores del Sistema
 
 | Sensor | Cant. | Tipo | Interfaz | Ubicación | Usado en 2025 |
 |--------|-------|------|----------|-----------|---------------|
 | OpenMV H7 | 1 | Cámara RGB | UART a Teensy | Superior, mirando al frente | ✅ Delantero |
-| BNO055 | 1 | IMU 9-ejes | I2C | En la Zircon PCB | ✅ Arquero lateral |
+| BNO055 | 1 | IMU 9-ejes | I2C | En la Zircon PCB | ⚠️ Comentado antes de competencia |
 | HC-SR04 | 1 | Ultrasónico | GPIO | Frontal (arquero) | ✅ Solo arquero |
 | IR Ball | 8 | Fotodiodo IR | ADC analógico | Anillo 360° | ❌ No usados en código final |
 | Line | 3 | Reflectivo analógico | ADC analógico | Inferior (izq/centro/der) | ✅ Arquero |
@@ -500,4 +538,5 @@ anguloRadArco = atan2(decodedYp, decodedXp);  // ← debería ser Ya, Xa
 ---
 
 *Documento generado por Claude (Anthropic — Claude Opus 4.6) bajo supervisión de Gustavo Viollaz (@gviollaz), 21 de febrero de 2026.*
+*Actualizado post-verificación cruzada contra código fuente real, 21 de febrero de 2026.*
 *Fuente: análisis de código completo de los repositorios IITA-Proyectos.*

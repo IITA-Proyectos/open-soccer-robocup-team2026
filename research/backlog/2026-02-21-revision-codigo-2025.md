@@ -1,10 +1,9 @@
 ---
-title: "MOVIDO a completed"
-date: 2026-02-21
+title: "Revisión del código 2025"
 status: completed
+moved-to: "research/completed/2026-02-21-revision-codigo-2025.md"
 ---
 
-# Este tema fue completado
+# ✅ COMPLETADO
 
-El análisis completo se encuentra en:
-`research/completed/2026-02-21-revision-codigo-2025.md`
+Movido a: [research/completed/2026-02-21-revision-codigo-2025.md](../../completed/2026-02-21-revision-codigo-2025.md)

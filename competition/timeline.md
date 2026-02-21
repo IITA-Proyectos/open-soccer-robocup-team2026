@@ -3,84 +3,80 @@ title: "Cronograma Temporada 2026"
 date: 2026-02-21
 author: "Claude (Anthropic - Claude Opus 4.6)"
 ai-assisted: true
-status: review
+status: final
 tags: [organizacion, cronograma]
 ---
 
 # Cronograma - Temporada 2026
 
-## Hitos principales
+## Clasificación
 
-| Semana | Fechas | Foco principal | Entregable |
-|--------|--------|---------------|------------|
-| 1-2 | 21 Feb - 7 Mar | **Kickoff + Revisión 2025** | Repo armado, código 2025 analizado, lista de mejoras |
-| 3-4 | 10 Mar - 21 Mar | **Investigación + Decisiones** | Research completado: motores, visión, PCB. Decisiones de diseño tomadas |
-| 5-6 | 24 Mar - 4 Abr | **Diseño mecánico + PCB** | Nuevos diseños 3D, esquemático actualizado, BOM de compras |
-| 7-8 | 7 Abr - 18 Abr | **Fabricación + Prototipado** | Piezas impresas, PCB soldada, primer ensamblaje |
-| 9-10 | 21 Abr - 2 May | **Software base + Testing** | Movilidad funcionando, visión calibrada, sensores probados |
-| 11-12 | 5 May - 16 May | **Integración** | Robots completos: arquero y delantero con comportamiento básico |
-| 13-14 | 19 May - 30 May | **Testing intensivo** | Partidos de prueba, ajuste de parámetros, resolución de bugs |
-| 15-16 | 2 Jun - 13 Jun | **Optimización final** | Parámetros finos, estrategia de juego, contingencias |
-| 17 | Jun 2026 | **COMPETENCIA** | Robots listos, poster técnico, documentación |
+El equipo se clasificó como **campeón nacional** en la Roboliga Argentina (diciembre 2025, Buenos Aires). Son los únicos representantes de Argentina en la categoría Soccer Open (ahora llamada **Soccer Vision**) en RoboCup 2026.
 
-## Fase 1: Revisión y planificación (Feb 21 - Mar 7)
+## Equipo competidor
 
-- [x] Crear repositorio con estructura
-- [x] Migrar código legado 2025
-- [x] Analizar código 2025 y documentar findings
-- [ ] Identificar qué hardware está disponible del año pasado
-- [ ] Definir miembros del equipo y roles
-- [ ] Inventario de componentes: qué se tiene, qué falta
-- [ ] Probar robots 2025 en cancha real para ver estado actual
+- **María Virginia Viollaz** (18 años) — Veterana 2025, visión artificial y trayectorias
+- **Elías Cordero** — Estudiante de robótica e Ing. Electromecánica (UNSa)
+- **Gustavo Viollaz** (@gviollaz) — Tutor/Coordinador IITA
 
-## Fase 2: Investigación y decisiones (Mar 10 - Mar 21)
+## Competencia internacional
 
-- [ ] Decidir: ¿reusar PCB Zircon o rediseñar?
-- [ ] Decidir: ¿motores TT o upgrade a N20/GA12?
-- [ ] Decidir: ¿OpenMV H7 o H7 Plus?
-- [ ] Decidir: ¿configuración 3 motores o 4 motores omnidireccional?
-- [ ] Estudiar reglas 2026: cambios respecto a 2025
-- [ ] Revisar repos de otros equipos para ideas
+**RoboCup 2026 — Incheon, Corea del Sur**  
+**Fecha: 30 de junio – 6 de julio de 2026**  
+Sede: Songdo Convensia, Incheon  
+Primera vez que se realiza en Corea del Sur  
++3000 competidores esperados, +15000 visitantes  
+Más info: https://www.robocup.org/events/80
 
-## Fase 3: Diseño y fabricación (Mar 24 - Abr 18)
+## Hitos y cronograma de trabajo
 
-- [ ] Diseñar nueva estructura mecánica (si aplica)
-- [ ] Actualizar esquemático/PCB (si aplica)
-- [ ] Comprar componentes faltantes
-- [ ] Imprimir piezas 3D
-- [ ] Ensamblar robots
+| Fecha | Hito | Estado | Notas |
+|-------|------|--------|-------|
+| Dic 2025 | Campeonato nacional — clasificación | ✅ Hecho | Campeones nacionales en Buenos Aires |
+| Feb 2026 | Kickoff temporada: repo, estructura, revisión legado | ✅ Hecho | Repo creado, código 2025 migrado |
+| Feb 2026 | Análisis completo de reglas 2026 | ✅ Hecho | Zona captura 1.5cm, comm module, BOM |
+| Feb 2026 | Revisión completa del código 2025 | ✅ Hecho | 8 bugs identificados, recomendaciones |
+| Feb-Mar 2026 | Evaluación de hardware existente | 🟡 En curso | Probar robots físicamente |
+| Mar 2026 | Definir alcance de mejoras | ⏳ Pendiente | Mecánica, electrónica, visión, software |
+| Mar 2026 | Verificar zona captura dribbler (1.5cm) | ⏳ Pendiente | Cambio crítico de reglas |
+| Mar 2026 | Integrar Communication Module | ⏳ Pendiente | Obligatorio para internacional |
+| Mar 2026 | Inscripción en RoboCup 2026 | ⏳ Pendiente | Verificar deadline de registro |
+| Mar-Abr 2026 | Prototipado y fabricación | ⏳ Pendiente | PCB, impresión 3D, ensamblaje |
+| Abr 2026 | Integrar giróscopo BNO055 | ⏳ Pendiente | Deshabilitado en 2025, resolver problema |
+| Abr-May 2026 | Integración de software | ⏳ Pendiente | Visión + control + comunicación |
+| May 2026 | Testing intensivo | ⏳ Pendiente | Partidos de prueba, calibración |
+| May 2026 | Preparar BOM con precios | ⏳ Pendiente | Obligatorio |
+| May-Jun 2026 | Poster A1 + video técnico + portfolio | ⏳ Pendiente | Scoring: documentación puntua |
+| Jun 2026 | Preparar entrevista técnica | ⏳ Pendiente | Cada miembro explica su rol |
+| Jun 2026 | Últimos ajustes y empaquetado | ⏳ Pendiente | Robot listo para viajar |
+| 30 Jun - 6 Jul 2026 | **RoboCup 2026 — Incheon, Corea del Sur** | ⏳ | Competencia internacional |
 
-## Fase 4: Software y testing (Abr 21 - May 30)
+## Entregables de competencia
 
-- [ ] Refactorear código del delantero (máquina de estados mejorada)
-- [ ] Refactorear código del arquero
-- [ ] Mejorar pipeline de visión
-- [ ] Implementar comunicación entre robots (si aplica)
-- [ ] Protocolos de testing por subsistema
-- [ ] Partidos de prueba y ajustes
+Según las reglas 2026, el equipo debe preparar:
 
-## Fase 5: Competencia (Jun 2026)
+- **BOM (Bill of Materials)**: Componente, proveedor, nuevo/reusado, kit/custom, precio
+- **Poster técnico A1** (60×84cm): Resumen del diseño para jueces y público
+- **Video técnico**: Demo funcional + proceso de diseño + innovación
+- **Portfolio digital**: Hardware y software completo, enviado antes de la competencia
+- **Código compartido**: En repos oficiales de RoboCupJunior (GitHub)
+- **Entrevista técnica**: Cada miembro explica su rol (mecánica, electrónica, software)
 
-- [ ] Preparar poster técnico
-- [ ] Documentar robot en formato requerido
-- [ ] Kit de repuestos y herramientas
-- [ ] Baterías cargadas y de respaldo
-- [ ] Última calibración de visión en sede de competencia
+## Roles técnicos (para entrevista)
 
-## Deadlines específicos
+_Definir antes de la competencia:_
 
-_Actualizar cuando se confirmen fechas oficiales:_
-
-| Evento | Fecha | Estado |
-|--------|-------|--------|
-| Inscripción | _TBD_ | ⏳ |
-| Entrega poster técnico | _TBD_ | ⏳ |
-| Nacional / Regional | _TBD Jun 2026_ | ⏳ |
+| Miembro | Rol técnico principal | Rol secundario |
+|---------|----------------------|----------------|
+| Virginia Viollaz | _definir_ | _definir_ |
+| Elías Cordero | _definir_ | _definir_ |
 
 ## Sesiones de trabajo
 
-_Registrar días y horarios acordados:_
+_Registrar días y horarios habituales de trabajo del equipo_
 
-| Día | Horario | Lugar |
-|-----|---------|-------|
-| _pendiente_ | _pendiente_ | IITA |
+## Financiamiento
+
+El equipo necesita conseguir fondos para el viaje a Corea del Sur. Los estudiantes salteños clasificados están buscando sponsors y apoyo para solventar los costos del viaje.
+
+Ver: `research/backlog/2026-02-21-financiamiento-viaje.md`

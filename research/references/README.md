@@ -1,18 +1,30 @@
-# Referencias externas
-
-Proyectos, repositorios, papers y recursos de otros equipos o investigadores que son útiles para nuestro proyecto.
+# Proyectos y recursos de referencia
 
 ## Equipos de referencia
 
-_Agregar links a repos/documentación de equipos que compitan en RoboCupJunior Soccer Open_
+### ducc (Singapore, Hwa Chong Robotics Club)
+- **Repo**: https://github.com/8076ducc/robocup-2025
+- Equipo de 6 miembros, Soccer Open y Lightweight
+- Código y documentación completa publicada
 
-## Papers y artículos
+## Recursos oficiales de RoboCupJunior
 
-- Balogh, Richard & Obdržálek, David. (2019). *Using Finite State Machines in Introductory Robotics: Methods and Applications for Teaching and Learning.* 10.1007/978-3-319-97085-1_9.
+- **TDPs 2025**: https://github.com/robocup-junior/rcj-soccer-tdp-2025
+- **Awesome RCJ Soccer**: https://github.com/robocup-junior/awesome-rcj-soccer
+- **Communication Module**: https://github.com/robocup-junior/soccer-communication-module
+- **Pelota IR 2026**: https://github.com/robocup-junior/ir-golf-ball
+- **Simulador Webots**: https://github.com/robocup-junior/rcj-soccersim
+- **Robot Soccer Kit**: https://github.com/robot-soccer-kit
 
-## Repositorios útiles
+## Material de estudio
 
-- [awesome-rcj-soccer](https://github.com/robocup-junior/awesome-rcj-soccer) — Recopilación de recursos
-- [robot-soccer-kit](https://github.com/robot-soccer-kit) — Kit open source de robótica de fútbol
-- [Recursos IITA](https://github.com/IITA-Proyectos/resources-robotics-and-machine-vision-resources) — Visión y robótica
-- [Ejercicios de matemáticas](https://mateslibres.com/) — Práctica de cálculo
+- **Scoring**: https://robocup-junior.github.io/soccer-rules/master/scoring.html
+- **Campo**: https://robocup-junior.github.io/soccer-rules/master/field_specification.html
+- **Pelota**: https://robocup-junior.github.io/soccer-rules/master/ball_specification.html
+- **SuperTeam**: https://robocup-junior.github.io/soccer-rules/master/superteam_rules.html
+
+## TODO
+
+- [ ] Leer TDPs 2025 de equipos Soccer Vision
+- [ ] Analizar repo de ducc
+- [ ] Estudiar simulador Webots

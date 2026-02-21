@@ -1,7 +1,9 @@
 # IITA - Open Soccer RoboCup Team 2026
 
 > RoboCupJunior Soccer Open League — Temporada 2026  
-> Equipo del [Instituto de Informática y Tecnología Aplicada (IITA)](https://github.com/IITA-Proyectos), Salta, Argentina
+> Equipo del [Instituto de Informática y Tecnología Aplicada (IITA)](https://github.com/IITA-Proyectos), Salta, Argentina  
+> **Campeones nacionales RoboCupJunior Soccer — Diciembre 2025, Buenos Aires**  
+> **Clasificados para RoboCup 2026 — Incheon, Corea del Sur — 30 Jun - 6 Jul 2026**
 
 ## Sobre este repositorio
 
@@ -41,11 +43,13 @@ open-soccer-robocup-team2026/
 
 ## Equipo 2026
 
-| Rol | GitHub | Notas |
+| Rol | Nombre | Notas |
 |-----|--------|-------|
-| Alumno veterano (2025) | _pendiente_ | Experiencia de temporada anterior |
-| Alumno nuevo | _pendiente_ | Primera temporada |
-| Tutor/Coordinador | @gviollaz | Coordinación IITA |
+| Competidora - Soccer Open | María Virginia Viollaz | Veterana temporada 2025, 18 años. Experiencia en visión artificial y trayectorias |
+| Competidor - Soccer Open | Elías Cordero | Estudiante de robótica e Ing. Electromecánica (UNSa) |
+| Tutor/Coordinador | Gustavo Viollaz (@gviollaz) | Coordinación IITA |
+
+Clasificados como **campeones nacionales** en la Roboliga Argentina (diciembre 2025, Buenos Aires).
 
 ## Cómo contribuir
 
@@ -57,17 +61,20 @@ Si sos una IA trabajando en este repositorio, leé **[AI-INSTRUCTIONS.md](AI-INS
 
 ## Enlaces importantes
 
-- Reglas RoboCupJunior Soccer: https://robocup-junior.github.io/soccer-rules/master/rules.html
-- Reglas generales: https://junior.robocup.org/robocupjunior-general-rules/
+- **Reglas Soccer 2026 (DRAFT)**: https://robocup-junior.github.io/soccer-rules/2026-soccer-draft-rules/rules.html
+- Reglas Soccer (versión estable): https://robocup-junior.github.io/soccer-rules/master/rules.html
+- Reglas generales RoboCupJunior: https://junior.robocup.org/robocupjunior-general-rules/
 - Especificaciones del campo: https://robocup-junior.github.io/soccer-rules/master/field_specification.html
+- **Pelota IR nueva 2026 (42mm, open source)**: https://github.com/robocup-junior/ir-golf-ball
 - Foro RoboCupJunior: https://junior.forum.robocup.org/
 - Discord RoboCupJunior: https://robocup-junior.github.io/soccer-rules/discord/
 - Awesome RCJ Soccer: https://github.com/robocup-junior/awesome-rcj-soccer
 - Robot Soccer Kit (open source): https://github.com/robot-soccer-kit
 - Recursos IITA - Robótica y Visión: https://github.com/IITA-Proyectos/resources-robotics-and-machine-vision-resources
-- Tutoriales Roboliga Argentina: https://www.virtual.roboliga.ar/1_16_f-tbol.html
+- Roboliga Virtual Argentina: https://virtual.roboliga.ar/
 - Reglas nacionales Argentina: https://docs.google.com/document/d/10VgMxnmTzKQiAOIgHjWHb9KzwLUDc66N0ZvooTC_tL8/edit?tab=t.0
 - Repo Temporada 2025: https://github.com/IITA-Proyectos/RoboCupJunior-Soccer-Open-League-2025
+- **RoboCup 2026 Incheon**: https://www.robocup.org/events/80
 
 ---
 

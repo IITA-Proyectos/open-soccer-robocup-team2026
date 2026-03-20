@@ -18,116 +18,107 @@ status: active
 
 ---
 
-## Prioridad 1 — Test del sensor BNO055 (PROBAR PRIMERO)
+## Prioridad 1 — Tests de sensores y primitivas (PROBAR PRIMERO)
 
-### [TEST] BNO055 en modo IMUPLUS — test standalone
+### [TEST 1] BNO055 en modo IMUPLUS — test standalone
 - **Archivo**: `shared/test-bno055-imuplus.ino`
-- **Qué es**: Programa pequeño que SOLO testea el giróscopo. No mueve motores.
-- **Qué cambió**: Usa `OPERATION_MODE_IMUPLUS` (sin magnetómetro) + init mejorado con espera de calibración + promedio de lecturas.
+- **Qué es**: Programa que SOLO testea el giróscopo. No mueve motores.
 - **Cómo probar**:
-  1. Subir a cualquiera de los dos robots
-  2. Abrir Serial Monitor a 19200 baud
-  3. **NO MOVER** el robot durante 5 segundos (calibración)
-  4. Esperar mensaje "LISTO!"
-  5. Girar el robot 90° a la derecha → debe mostrar ~-90°
-  6. Girar 90° a la izquierda → debe mostrar ~+90°
-  7. Volver al frente → debe volver a ~0°
-  8. **Test de drift**: dejar 5 minutos quieto y anotar cuánto se desvía
-  9. **Test con motores**: encender motores (otro programa) y ver si el heading salta
+  1. Subir a cualquiera de los robots, Serial Monitor 19200 baud
+  2. **NO MOVER** 5 segundos (calibración)
+  3. Girar 90° derecha → ~-90° | Girar 90° izquierda → ~+90°
+  4. **Test drift**: 5 min quieto, anotar desviación
 - **Resultado**: ⬜ Pendiente
-- **Observaciones**: _(completar después de probar)_
+- **Observaciones**: _(completar)_
+
+### [TEST 2] Movimiento omnidireccional con PD heading
+- **Archivo**: `shared/test-movimiento-omnidireccional.ino`
+- **Referencia**: `docs/internal/cinematica-omnidireccional-movimientos.md`
+- **Qué es**: Test interactivo de la función `moverRobot(velocidad, dirección, headingObjetivo)` que combina traslación omnidireccional + control PD de heading con giróscopo. 9 tests secuenciales controlados por botón.
+- **Qué prueba** (3 seg cada test, avanzar con botón 1):
+  1. Quieto mirando al frente (heading 0) → no debe moverse
+  2. Avanzar recto mirando al frente → debe ir DERECHO (PD corrige)
+  3. Retroceder mirando al frente → atrás sin girar
+  4. Lateral DERECHA mirando al frente → cangrejo a la derecha
+  5. Lateral IZQUIERDA mirando al frente → cangrejo a la izquierda
+  6. Diagonal adelante-derecha → 45° sin girar
+  7. Solo girar a heading 90° → gira y para en 90°
+  8. Solo girar a heading -90° → gira al otro lado
+  9. Orbitar (lateral + heading fijo) → simula orbitar pelota
+- **Qué calibrar si no funciona bien**:
+  - `Kp_heading` (2.0): subir si corrige lento, bajar si oscila
+  - `Kd_heading` (0.05): subir si oscila mucho
+  - `L_ROTACION` (0.6): bajar si gira demasiado y no traslada
+  - `SIGNO_M1/M2/M3`: cambiar a -1 si un motor va al revés
+- **Resultado**: ⬜ Pendiente
+- **Observaciones**: _(completar, anotar valores calibrados)_
 
 ---
 
-## Prioridad 2 — Programas con TODOS los fixes combinados
-
-La idea es aplicar TODOS los fixes juntos en una copia del programa de cada robot. Son cambios independientes entre sí, así que si algo falla, se puede aislar cuál fue.
+## Prioridad 2 — Fixes combinados en programas existentes
 
 ### [DELANTERO] Init BNO055 + fix UART + fix rampa de pateo
-- **Cambios a aplicar** (en este orden):
-  1. `shared/cambios-bno055-init.md` — Cambio 1 (IMUPLUS + init mejorado) + Cambio 3 (eliminar START_BYTE)
-  2. `shared/cambios-uart-sincronizacion.md` — Cambio 1 (lectura UART robusta con while-peek)
-  3. `shared/cambios-rampa-pateo.md` — Reset de velocidadActualPateo en transiciones de pateo
-- **Qué cambió en resumen**:
-  - Giróscopo en IMUPLUS (sin magnetómetro interferido por motores)
-  - Init con espera de calibración + promedio de 10 lecturas
-  - UART busca header descartando basura (no se desincroniza)
-  - Valida los 3 headers (201+202+203) antes de decodificar
-  - Rampa de pateo funciona en CADA patada (no solo la primera)
+- **Cambios a aplicar** (en orden):
+  1. `shared/cambios-bno055-init.md` — Cambio 1 + Cambio 3
+  2. `shared/cambios-uart-sincronizacion.md` — Cambio 1
+  3. `shared/cambios-rampa-pateo.md` — Reset de velocidadActualPateo
 - **Cómo probar**:
-  1. Aplicar los 3 documentos de cambios a una COPIA del definitivo-delantero
-  2. Subir al robot delantero
-  3. Serial Monitor: verificar mensajes de calibración BNO055
-  4. **Test giróscopo**: encender apuntando a distintas direcciones, verificar que funciona
-  5. **Test UART**: con pelota visible, verificar detección estable (LED no parpadea)
-  6. **Test pateo**: hacer patear 3 veces seguidas, verificar que las 3 tienen rampa
-  7. **Test completo**: dejar jugar 2-3 minutos y observar comportamiento general
+  1. Aplicar a COPIA del definitivo-delantero, subir al robot
+  2. Verificar calibración BNO055 por Serial Monitor
+  3. Test giróscopo: encender apuntando a distintas direcciones
+  4. Test UART: detección estable de pelota (LED no parpadea)
+  5. Test pateo: 3 patadas seguidas, verificar rampa en cada una
+  6. Test completo: jugar 2-3 minutos
 - **Resultado**: ⬜ Pendiente
-- **Observaciones**: _(completar después de probar)_
-
----
+- **Observaciones**: _(completar)_
 
 ### [ARQUERO] Init BNO055 + fix currentYaw + fix UART
-- **Cambios a aplicar** (en este orden):
-  1. `shared/cambios-bno055-init.md` — Cambio 1 + Cambio 2 (currentYaw→error) + Cambio 3
-  2. `shared/cambios-uart-sincronizacion.md` — Cambio 1 (lectura UART robusta)
-- **Qué cambió en resumen**:
-  - Todo lo del giróscopo (IMUPLUS + init + calibración)
-  - Fix currentYaw: todas las comparaciones usan `error` normalizado
-  - UART robusto con while-peek
+- **Cambios a aplicar** (en orden):
+  1. `shared/cambios-bno055-init.md` — Cambio 1 + Cambio 2 + Cambio 3
+  2. `shared/cambios-uart-sincronizacion.md` — Cambio 1
 - **Cómo probar**:
-  1. Aplicar los 2 documentos de cambios a una COPIA del definitivo-arquero
-  2. Subir al robot arquero
-  3. **Test orientación**: encender apuntando a DISTINTA dirección que el norte (varias)
-  4. **Test centrando**: verificar que el orbitado y decisiones de pateo funcionan
-  5. **Test UART**: detección estable de pelota y arcos
-  6. **Test completo**: dejar oscilar 2-3 minutos y observar comportamiento
+  1. Aplicar a COPIA del definitivo-arquero, subir al robot
+  2. Encender apuntando a DISTINTA dirección que el norte
+  3. Test centrando/orbitado y decisiones de pateo
+  4. Test UART: detección estable
+  5. Test completo: oscilar 2-3 minutos
 - **Resultado**: ⬜ Pendiente
-- **Observaciones**: _(completar después de probar)_
+- **Observaciones**: _(completar)_
 
 ---
 
-## Prioridad 3 — Cambios en OpenMV
+## Prioridad 3 — OpenMV
 
 ### [VISION] Clampeo de coordenadas + quitar print()
-- **Cambios**: Ver `shared/cambios-uart-sincronizacion.md` — Cambio 2 + Cambio 3
-- **Qué cambió**:
-  - Coordenadas clampeadas a 1-200 para que nunca coincidan con headers (201/202/203)
-  - `print("Enviando:", packet)` comentado (reduce FPS innecesariamente)
-- **Cómo probar**:
-  1. Subir el programa modificado a la OpenMV
-  2. Verificar que los LEDs de la OpenMV siguen indicando detección
-  3. En el IDE de OpenMV: verificar que el FPS sube (debería ser más fluido)
-  4. Probar en combinación con el robot: ¿detección estable?
+- **Cambios**: `shared/cambios-uart-sincronizacion.md` — Cambio 2 + Cambio 3
+- **Cómo probar**: Subir a OpenMV, verificar LEDs, FPS, detección estable con robot
 - **Resultado**: ⬜ Pendiente
-- **Observaciones**: _(completar después de probar)_
 
 ---
 
-## Prioridad 4 — Evaluación de librería alternativa (OPCIONAL)
+## Prioridad 4 — Evaluaciones opcionales
 
 ### [EVALUACIÓN] Librería BohleBots_BNO055
 - **Documento**: `shared/evaluar-bohlebots-bno055.md`
-- **Qué es**: Librería de un equipo alemán de RoboCup Junior, optimizada para competencia.
-- **Riesgo**: Alto (requiere cambiar muchas líneas de código)
-- **Recomendación**: Solo evaluar si todo lo anterior funciona y sobra tiempo.
+- **Recomendación**: Solo si sobra tiempo.
 - **Resultado**: ⬜ Pendiente
-- **Observaciones**: _(completar después de probar)_
 
 ---
 
-## Orden de prueba recomendado (viernes 28/3)
+## Orden de prueba (viernes 28/3)
 
 ```
-1°  Test standalone BNO055       (10 min)  → ¿funciona IMUPLUS?
-2°  Delantero con todos los fixes (20 min)  → gyro + UART + rampa
-3°  OpenMV con clampeo           (10 min)  → coordenadas seguras + FPS
-4°  Arquero con todos los fixes   (20 min)  → gyro + currentYaw + UART
-5°  (Opcional) BohleBots          (30 min)  → solo si sobra tiempo
+1°  Test BNO055 standalone        (10 min)  → ¿funciona IMUPLUS?
+2°  Test movimiento omnidirec.    (20 min)  → calibrar Kp/Kd/L/signos
+3°  Delantero con 3 fixes         (20 min)  → gyro + UART + rampa
+4°  OpenMV con clampeo            (10 min)  → coordenadas seguras
+5°  Arquero con 2 fixes           (20 min)  → gyro + currentYaw + UART
+6°  (Opcional) BohleBots          (30 min)  → librería alternativa
 ```
 
-**Regla**: Si el test standalone BNO055 falla, NO seguir con 2-4.
-**Regla**: Si la detección parpadea, probar primero el fix de OpenMV (clampeo) antes de culpar al Teensy.
+**Regla**: Si TEST 1 falla → resolver antes de todo.
+**Regla**: Si TEST 2 oscila mucho → ajustar Kp/Kd antes de seguir.
+**Regla**: Los valores calibrados en TEST 2 se usan después en los fixes.
 
 ---
 
@@ -135,14 +126,16 @@ La idea es aplicar TODOS los fixes juntos en una copia del programa de cada robo
 
 | Documento | Descripción |
 |-----------|-------------|
-| `shared/cambios-bno055-init.md` | Parches exactos para init del giróscopo |
-| `shared/cambios-uart-sincronizacion.md` | Parches exactos para protocolo UART |
-| `shared/cambios-rampa-pateo.md` | Parches exactos para fix de rampa |
-| `shared/evaluar-bohlebots-bno055.md` | Evaluación de librería alternativa |
-| `shared/test-bno055-imuplus.ino` | Programa de test standalone |
-| `docs/internal/giroscopo-bno055-analisis-tecnico.md` | Análisis completo del BNO055 |
-| `docs/internal/analisis-definitivo-delantero.md` | Análisis del programa del delantero |
-| `docs/internal/analisis-definitivo-arquero.md` | Análisis del programa del arquero |
+| `shared/test-bno055-imuplus.ino` | Test standalone BNO055 |
+| `shared/test-movimiento-omnidireccional.ino` | Test 9 movimientos con PD heading |
+| `shared/cambios-bno055-init.md` | Parches init giróscopo |
+| `shared/cambios-uart-sincronizacion.md` | Parches protocolo UART |
+| `shared/cambios-rampa-pateo.md` | Parches rampa de pateo |
+| `shared/evaluar-bohlebots-bno055.md` | Evaluación librería BohleBots |
+| `docs/internal/cinematica-omnidireccional-movimientos.md` | Modelo cinemático completo |
+| `docs/internal/giroscopo-bno055-analisis-tecnico.md` | Análisis BNO055 |
+| `docs/internal/analisis-definitivo-delantero.md` | Análisis delantero |
+| `docs/internal/analisis-definitivo-arquero.md` | Análisis arquero |
 
 ---
 

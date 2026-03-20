@@ -9,3 +9,4 @@ Ver el código del arquero 2025 en `legacy/2025-season/code/arquero/` como refer
 ## Arquitectura
 
 _Documentar la arquitectura de software del arquero: main loop, estados, comunicación con cámara, etc._
+#hola prueba 

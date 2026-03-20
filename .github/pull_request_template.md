@@ -1,27 +1,53 @@
-## ¿Qué cambia este PR?
+# Pull Request
 
-_Describí brevemente qué estás cambiando y por qué._
+## Resumen
+<!-- Qué cambia y por qué. -->
 
-## Tipo de cambio
+## Issue relacionada
+- Closes: #
 
-- [ ] 🐛 Bug fix
-- [ ] ✨ Nueva funcionalidad
-- [ ] 📝 Documentación
-- [ ] 🔧 Configuración/herramientas
-- [ ] 🧪 Testing
-- [ ] 🔬 Investigación
+## Cambios principales
+- [ ] Software (firmware/código)
+- [ ] Hardware (electrónica/mecánica)
+- [ ] Documentación
+- [ ] Testing
+- [ ] Investigación
+- [ ] Configuración/herramientas
 
-## ¿Qué probaste?
+## Robot afectado
+- [ ] Arquero
+- [ ] Delantero
+- [ ] Ambos
+- [ ] N/A
 
-_¿Cómo verificaste que funciona? ¿En qué hardware/software probaste?_
+## Evidencia / pruebas
+<!-- Adjuntar logs, fotos, videos, mediciones, capturas de pantalla, etc. -->
+- Test realizado:
+  - [ ] en robot real
+  - [ ] en simulación / banco de pruebas
+  - [ ] revisión visual / compilación
+- Resultado:
+
+## Impacto en hardware (si aplica)
+- Componentes afectados:
+- Riesgos / seguridad:
+
+## Documentación
+- [ ] Actualicé `docs/` si era necesario
+- [ ] (L2) Si es doc oficial, versión en `docs/official/es/` lista
+
+## Uso de IA (obligatorio si aplica)
+- Herramienta:
+- Para qué se usó:
+- Qué se verificó/hizo humano:
+
+## Fuentes / terceros (si aplica)
+- Links a reglas, datasheets, repos, papers, etc.
 
 ## Checklist
-
-- [ ] Mi código sigue las convenciones de CONTRIBUTING.md
-- [ ] Agregué comentarios en partes difíciles del código
-- [ ] Actualicé la documentación si era necesario
-- [ ] Probé los cambios en el robot físico (si aplica)
-
-## Notas adicionales
-
-_¿Algo que el reviewer deba saber?_
+- [ ] Compila / corre
+- [ ] Pasa pruebas relevantes
+- [ ] Sigue convenciones de CONTRIBUTING.md
+- [ ] No incluye secretos/credenciales
+- [ ] Respeta licencias y cita fuentes
+- [ ] Listo para review

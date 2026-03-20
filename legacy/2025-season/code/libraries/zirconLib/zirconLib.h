@@ -1,9 +1,3 @@
-// =============================================================================
-// LEGACY - Temporada 2025 - Librería Zircon (header)
-// Fuente: https://github.com/IITA-Proyectos/RoboCupJunior-Soccer-Open-League-2025
-// Archivo original: /Librerias/zirconLib/zirconLib.h
-// =============================================================================
-
 #pragma once
 #include <Arduino.h>
 #include <Adafruit_BNO055.h>

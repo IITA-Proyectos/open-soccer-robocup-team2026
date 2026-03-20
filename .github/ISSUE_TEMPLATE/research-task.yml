@@ -1,0 +1,49 @@
+name: Investigación
+description: Tarea de investigación o análisis técnico
+title: "[RESEARCH] "
+labels: ["type/research", "status/needs-triage"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Pregunta de investigación
+      description: ¿Qué necesitamos averiguar?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: subsystem
+    attributes:
+      label: Subsistema
+      options:
+        - teensy/firmware
+        - openmv/vision
+        - control/movimiento
+        - comunicacion-uart
+        - sensores
+        - electronica
+        - mecanica
+        - estrategia
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: deliverable
+    attributes:
+      label: Entregable esperado
+      description: ¿Qué debe producir esta investigación?
+      placeholder: |
+        - Documento en research/completed/
+        - Comparativa con datos
+        - Prototipo de código
+    validations:
+      required: true
+
+  - type: textarea
+    id: sources
+    attributes:
+      label: Fuentes iniciales / referencias
+      description: Links a papers, TDPs, repos, datasheets, etc.
+    validations:
+      required: false

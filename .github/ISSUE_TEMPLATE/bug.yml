@@ -1,0 +1,77 @@
+name: Bug report (software)
+description: Reportar un bug reproducible (software)
+title: "[BUG] "
+labels: ["type/bug", "status/needs-triage"]
+body:
+  - type: dropdown
+    id: subsystem
+    attributes:
+      label: Subsistema
+      options:
+        - teensy/firmware
+        - openmv/vision
+        - control/movimiento
+        - comunicacion-uart
+        - sensores
+        - zirconlib
+        - docs
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: ¿Qué pasa?
+      description: Describe el comportamiento actual.
+      placeholder: "Cuando..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducir
+      description: Lista pasos claros y repetibles.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Resultado esperado
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidencia (logs, fotos, videos)
+      description: Pega logs o agrega links/archivos.
+      render: bash
+    validations:
+      required: false
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versiones / commit
+      description: Indicar tag, commit SHA, versión firmware.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: Definition of Done (para cerrar este bug)
+      options:
+        - label: Está reproducido y documentado
+          required: false
+        - label: Hay hipótesis de causa raíz (root cause)
+          required: false
+        - label: Hay fix + prueba que evita regresión
+          required: false

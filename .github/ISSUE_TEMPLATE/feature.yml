@@ -1,0 +1,68 @@
+name: Feature request
+description: Proponer una mejora o nueva funcionalidad
+title: "[FEATURE] "
+labels: ["type/feature", "status/needs-triage"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Objetivo
+      description: ¿Qué queremos lograr?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: subsystem
+    attributes:
+      label: Subsistema
+      options:
+        - teensy/firmware
+        - openmv/vision
+        - control/movimiento
+        - comunicacion-uart
+        - sensores
+        - zirconlib
+        - electronica
+        - mecanica
+        - docs
+        - other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: robot
+    attributes:
+      label: Robot
+      options:
+        - arquero
+        - delantero
+        - ambos
+        - n/a
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptación (Definition of Done)
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notas / ideas / referencias
+      description: Links a reglas, datasheets, papers, etc.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: ai
+    attributes:
+      label: IA / fuentes
+      options:
+        - label: Si se usa IA o fuentes externas, se incluirán referencias.
+          required: false

@@ -1,0 +1,70 @@
+name: Bug de hardware
+description: Reportar un problema de hardware (electrónica, mecánica, eléctrica)
+title: "[HW-BUG] "
+labels: ["type/bug", "subsystem/hardware", "status/needs-triage"]
+body:
+  - type: dropdown
+    id: hw_area
+    attributes:
+      label: Área de hardware
+      options:
+        - electrónica/PCB Zircon
+        - motores/drivers
+        - sensores IR
+        - sensores línea
+        - ultrasonido
+        - BNO055/giróscopo
+        - OpenMV/cámara
+        - mecánica/chasis
+        - alimentación/batería
+        - cableado
+        - other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: robot
+    attributes:
+      label: Robot afectado
+      options:
+        - arquero
+        - delantero
+        - ambos
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: ¿Qué pasa?
+      description: Describe el problema observado.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidencia (fotos, videos, mediciones)
+      description: Adjuntar fotos, videos, lecturas de multímetro, etc.
+    validations:
+      required: false
+
+  - type: textarea
+    id: safety
+    attributes:
+      label: Riesgos / seguridad
+      description: ¿Hay riesgo de daño a componentes o personas?
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: Definition of Done
+      options:
+        - label: Problema identificado y documentado
+          required: false
+        - label: Solución implementada y probada
+          required: false
+        - label: No hay regresión en otros subsistemas
+          required: false

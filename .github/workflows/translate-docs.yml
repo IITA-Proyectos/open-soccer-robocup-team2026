@@ -1,0 +1,54 @@
+name: Auto Translate Official Docs (ES -> EN)
+
+on:
+  push:
+    paths:
+      - 'docs/official/es/**'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: translate-docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openai
+
+      - name: Translate docs (ES -> EN)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python scripts/translate_docs.py
+
+      - name: Create Pull Request with translations
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "docs(en): auto-translation from docs/official/es"
+          title: "docs(en): auto-translation update"
+          body: |
+            Automated translation from `docs/official/es` to `docs/official/en`.
+            - Source of truth: `docs/official/es/`
+            - `docs/official/en/` is AUTO-GENERATED (do not edit manually)
+            - Review required for L2 (international competition docs)
+          branch: bot/translate-docs
+          base: main
+          labels: |
+            type/docs

@@ -1,0 +1,62 @@
+name: Protocolo de testing
+description: Definir y ejecutar una prueba en el robot
+title: "[TEST] "
+labels: ["type/test", "status/needs-triage"]
+body:
+  - type: dropdown
+    id: robot
+    attributes:
+      label: Robot
+      options:
+        - arquero
+        - delantero
+        - ambos
+    validations:
+      required: true
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objetivo de la prueba
+      description: ¿Qué queremos verificar?
+    validations:
+      required: true
+
+  - type: textarea
+    id: protocol
+    attributes:
+      label: Protocolo (pasos)
+      placeholder: |
+        1. Configurar ...
+        2. Colocar robot en ...
+        3. Ejecutar ...
+        4. Medir ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Resultado esperado / criterio de éxito
+    validations:
+      required: true
+
+  - type: textarea
+    id: results
+    attributes:
+      label: Resultados (completar después de ejecutar)
+      description: Adjuntar datos, fotos, videos.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: Definition of Done
+      options:
+        - label: Prueba ejecutada
+          required: false
+        - label: Resultados documentados en testing/results/
+          required: false
+        - label: Conclusiones registradas
+          required: false

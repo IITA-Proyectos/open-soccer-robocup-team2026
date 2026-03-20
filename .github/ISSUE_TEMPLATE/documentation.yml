@@ -1,0 +1,37 @@
+name: Documentación
+description: Crear o actualizar documentación
+title: "[DOCS] "
+labels: ["type/docs"]
+body:
+  - type: dropdown
+    id: doc_type
+    attributes:
+      label: Tipo de documento
+      options:
+        - docs/official (TDP, poster, entregables)
+        - docs/internal (análisis, decisiones técnicas)
+        - journal (bitácora)
+        - README / CONTRIBUTING
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripción
+      description: ¿Qué documento hay que crear/actualizar y por qué?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: Definition of Done
+      options:
+        - label: Documento creado/actualizado en docs/
+          required: false
+        - label: Frontmatter YAML completo (title, date, status, ai-assisted)
+          required: false
+        - label: Si es official, versión en docs/official/es/ lista
+          required: false

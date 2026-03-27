@@ -1,24 +1,30 @@
 // =============================================================================
-// TEST: Movimiento lateral con CINEMÁTICA OMNIDIRECCIONAL 3 RUEDAS 120°
+// TEST: Ajuste MANUAL de velocidades para movimiento lateral
 // Archivo: staging/shared/test-motores-lateral-simple.ino
 // 
 // PROPÓSITO: 
-//   - Movimiento lateral usando cinemática correcta de 3 ruedas a 120°
-//   - Los 3 motores trabajan simultáneamente con diferentes potencias
-//   - SIN giróscopo, SIN PID - solo para probar la cinemática
-//
-// CINEMÁTICA:
-//   Para robot con ruedas a 30°, 150°, 270° (configuración estándar):
-//   - Movimiento DERECHA: M1=-0.5, M2=-0.5, M3=+1.0
-//   - Movimiento IZQUIERDA: M1=+0.5, M2=+0.5, M3=-1.0
+//   - Encontrar el balance correcto de velocidades para cada motor
+//   - Ajustar cada motor individualmente hasta que vaya recto
+//   - Una vez encontrado el balance, anotar los valores
 //
 // CONTROL por Serial:
 //   'p' = PARAR
 //   'r' = REANUDAR
-//   '1'-'9' = Cambiar velocidad (1=50 ... 9=250)
-//   'a' = Probar configuración A (30°, 150°, 270°)
-//   'b' = Probar configuración B (90°, 210°, 330°)
-//   'c' = Probar configuración C (0°, 120°, 240°)
+//   'd' = Solo DERECHA (sin loop)
+//   'i' = Solo IZQUIERDA (sin loop)
+//   'l' = LOOP derecha/izquierda
+//
+//   AJUSTAR VELOCIDADES (mientras está en movimiento):
+//   'q/a' = M1 +10/-10
+//   'w/s' = M2 +10/-10
+//   'e/d' = M3 +10/-10
+//
+//   INVERTIR DIRECCION DE MOTOR:
+//   'z' = Invertir M1
+//   'x' = Invertir M2
+//   'c' = Invertir M3
+//
+//   '0' = Reset a valores por defecto
 //
 // ROBOT 2 (delantero)
 // =============================================================================
@@ -44,61 +50,34 @@
 // CONFIGURACIÓN
 // =============================================================================
 const long BAUD_RATE = 19200;
-int VELOCIDAD = 100;
 const unsigned long TIEMPO_MOVIMIENTO = 3000;
 const unsigned long TIEMPO_PAUSA = 500;
 
 // =============================================================================
-// ÁNGULOS DE LAS RUEDAS (en grados)
-// Ajustar según la geometría real del robot
+// VELOCIDADES AJUSTABLES POR MOTOR
+// Estos son los valores que hay que encontrar experimentalmente
 // =============================================================================
-// Configuración A: Rueda frontal arriba, dos ruedas atrás
-float ANGULO_M1 = 30.0;   // Motor 1: frente-derecha
-float ANGULO_M2 = 150.0;  // Motor 2: frente-izquierda  
-float ANGULO_M3 = 270.0;  // Motor 3: atrás (abajo)
+int velM1 = 50;    // Velocidad Motor 1
+int velM2 = 50;    // Velocidad Motor 2
+int velM3 = 100;   // Velocidad Motor 3
 
-// Factores calculados (se actualizan con calcularFactores())
-float factorM1_lateral = 0;
-float factorM2_lateral = 0;
-float factorM3_lateral = 0;
+// Direcciones (1 o -1) - para invertir si un motor gira al revés
+int dirM1_base = -1;  // Para derecha, M1 va hacia atrás (-1)
+int dirM2_base = -1;  // Para derecha, M2 va hacia atrás (-1)
+int dirM3_base = 1;   // Para derecha, M3 va hacia adelante (1)
 
 // =============================================================================
 // VARIABLES
 // =============================================================================
-bool enMovimiento = true;
-bool yendoDerecha = true;
+enum Modo { PARADO, DERECHA, IZQUIERDA, LOOP_DER, LOOP_IZQ, LOOP_PAUSA };
+Modo modoActual = PARADO;
 unsigned long tiempoInicio = 0;
-bool enPausa = false;
-
-// =============================================================================
-// FUNCIONES MATEMÁTICAS
-// =============================================================================
-float gradosARadianes(float grados) {
-  return grados * PI / 180.0;
-}
-
-// Calcula los factores de velocidad para cada motor basado en los ángulos
-void calcularFactores() {
-  // Para movimiento lateral (Vx=1, Vy=0, omega=0):
-  // V_rueda = -sin(theta) * Vx
-  factorM1_lateral = -sin(gradosARadianes(ANGULO_M1));
-  factorM2_lateral = -sin(gradosARadianes(ANGULO_M2));
-  factorM3_lateral = -sin(gradosARadianes(ANGULO_M3));
-  
-  // Normalizar para que el máximo sea 1.0
-  float maxFactor = max(abs(factorM1_lateral), max(abs(factorM2_lateral), abs(factorM3_lateral)));
-  if (maxFactor > 0) {
-    factorM1_lateral /= maxFactor;
-    factorM2_lateral /= maxFactor;
-    factorM3_lateral /= maxFactor;
-  }
-}
 
 // =============================================================================
 // FUNCIONES DE MOTORES
 // =============================================================================
 void motor1(int vel, int dir) {
-  vel = constrain(vel, 0, 255);
+  vel = constrain(abs(vel), 0, 255);
   analogWrite(PWM1, vel);
   if (dir > 0) {
     digitalWrite(INA1, 1);
@@ -113,7 +92,7 @@ void motor1(int vel, int dir) {
 }
 
 void motor2(int vel, int dir) {
-  vel = constrain(vel, 0, 255);
+  vel = constrain(abs(vel), 0, 255);
   analogWrite(PWM2, vel);
   if (dir > 0) {
     digitalWrite(INA2, 0);
@@ -128,7 +107,7 @@ void motor2(int vel, int dir) {
 }
 
 void motor3(int vel, int dir) {
-  vel = constrain(vel, 0, 255);
+  vel = constrain(abs(vel), 0, 255);
   analogWrite(PWM3, vel);
   if (dir > 0) {
     digitalWrite(INA3, 1);
@@ -149,74 +128,62 @@ void parar() {
 }
 
 // =============================================================================
-// MOVIMIENTO LATERAL CON CINEMÁTICA
+// MOVIMIENTO
 // =============================================================================
-void moverLateral(int direccion) {
-  // direccion: 1 = derecha, -1 = izquierda
-  
-  // Calcular velocidades usando los factores de cinemática
-  float velM1 = factorM1_lateral * direccion * VELOCIDAD;
-  float velM2 = factorM2_lateral * direccion * VELOCIDAD;
-  float velM3 = factorM3_lateral * direccion * VELOCIDAD;
-  
-  // Aplicar a los motores
-  int dirM1 = (velM1 >= 0) ? 1 : -1;
-  int dirM2 = (velM2 >= 0) ? 1 : -1;
-  int dirM3 = (velM3 >= 0) ? 1 : -1;
-  
-  motor1((int)abs(velM1), dirM1);
-  motor2((int)abs(velM2), dirM2);
-  motor3((int)abs(velM3), dirM3);
+void moverDerecha() {
+  motor1(velM1, dirM1_base);
+  motor2(velM2, dirM2_base);
+  motor3(velM3, dirM3_base);
+}
+
+void moverIzquierda() {
+  // Izquierda = direcciones invertidas
+  motor1(velM1, -dirM1_base);
+  motor2(velM2, -dirM2_base);
+  motor3(velM3, -dirM3_base);
 }
 
 // =============================================================================
-// CONFIGURACIONES PREDEFINIDAS
+// IMPRIMIR ESTADO
 // =============================================================================
-void configuracionA() {
-  // Configuración A: 30°, 150°, 270°
-  // Rueda frontal-derecha, frontal-izquierda, trasera
-  ANGULO_M1 = 30.0;
-  ANGULO_M2 = 150.0;
-  ANGULO_M3 = 270.0;
-  calcularFactores();
-  imprimirConfiguracion();
+void imprimirConfig() {
+  Serial.println("\n========== CONFIGURACION ACTUAL ==========");
+  Serial.println("Velocidades para DERECHA:");
+  Serial.print("  M1: vel="); Serial.print(velM1);
+  Serial.print(" dir="); Serial.println(dirM1_base);
+  Serial.print("  M2: vel="); Serial.print(velM2);
+  Serial.print(" dir="); Serial.println(dirM2_base);
+  Serial.print("  M3: vel="); Serial.print(velM3);
+  Serial.print(" dir="); Serial.println(dirM3_base);
+  Serial.println("==========================================");
+  Serial.println("Ajustes: q/a=M1  w/s=M2  e/d=M3 (+10/-10)");
+  Serial.println("Invertir: z=M1  x=M2  c=M3");
+  Serial.println("==========================================\n");
 }
 
-void configuracionB() {
-  // Configuración B: 90°, 210°, 330°
-  // Rueda frontal, trasera-izquierda, trasera-derecha
-  ANGULO_M1 = 90.0;
-  ANGULO_M2 = 210.0;
-  ANGULO_M3 = 330.0;
-  calcularFactores();
-  imprimirConfiguracion();
-}
-
-void configuracionC() {
-  // Configuración C: 0°, 120°, 240°
-  // Rueda derecha, trasera-izquierda, trasera-derecha
-  ANGULO_M1 = 0.0;
-  ANGULO_M2 = 120.0;
-  ANGULO_M3 = 240.0;
-  calcularFactores();
-  imprimirConfiguracion();
-}
-
-void imprimirConfiguracion() {
-  Serial.println("\n--- CONFIGURACION CINEMATICA ---");
-  Serial.print("Angulos: M1="); Serial.print(ANGULO_M1, 0);
-  Serial.print("° M2="); Serial.print(ANGULO_M2, 0);
-  Serial.print("° M3="); Serial.print(ANGULO_M3, 0);
-  Serial.println("°");
+void imprimirEstado() {
+  const char* modoStr;
+  switch(modoActual) {
+    case PARADO: modoStr = "PARADO"; break;
+    case DERECHA: modoStr = "DERECHA"; break;
+    case IZQUIERDA: modoStr = "IZQUIERDA"; break;
+    case LOOP_DER: modoStr = "LOOP-DER"; break;
+    case LOOP_IZQ: modoStr = "LOOP-IZQ"; break;
+    case LOOP_PAUSA: modoStr = "LOOP-PAUSA"; break;
+    default: modoStr = "???";
+  }
   
-  Serial.println("Factores para movimiento DERECHA:");
-  Serial.print("  M1: "); Serial.print(factorM1_lateral, 3);
-  Serial.print(" -> vel="); Serial.println((int)(factorM1_lateral * VELOCIDAD));
-  Serial.print("  M2: "); Serial.print(factorM2_lateral, 3);
-  Serial.print(" -> vel="); Serial.println((int)(factorM2_lateral * VELOCIDAD));
-  Serial.print("  M3: "); Serial.print(factorM3_lateral, 3);
-  Serial.print(" -> vel="); Serial.println((int)(factorM3_lateral * VELOCIDAD));
-  Serial.println("--------------------------------\n");
+  Serial.print("["); Serial.print(modoStr); Serial.print("] ");
+  Serial.print("M1="); Serial.print(velM1 * dirM1_base);
+  Serial.print(" M2="); Serial.print(velM2 * dirM2_base);
+  Serial.print(" M3="); Serial.print(velM3 * dirM3_base);
+  
+  if (modoActual != PARADO && modoActual != LOOP_PAUSA) {
+    Serial.print(" | t="); 
+    Serial.print((millis() - tiempoInicio) / 1000.0, 1);
+    Serial.print("s");
+  }
+  Serial.println();
 }
 
 // =============================================================================
@@ -228,17 +195,27 @@ void setup() {
   
   Serial.println("\n\n");
   Serial.println("****************************************************");
-  Serial.println("*  TEST CINEMATICA OMNIDIRECCIONAL 3 RUEDAS 120°   *");
-  Serial.println("*  Los 3 motores trabajan simultaneamente          *");
+  Serial.println("*  TEST AJUSTE MANUAL - MOVIMIENTO LATERAL         *");
+  Serial.println("*  Ajustar velocidades hasta que vaya RECTO        *");
   Serial.println("****************************************************");
   Serial.println();
-  Serial.println("COMANDOS por Serial:");
+  Serial.println("COMANDOS:");
   Serial.println("  'p' = PARAR");
-  Serial.println("  'r' = REANUDAR");
-  Serial.println("  '1'-'9' = Velocidad (1=50 ... 9=250)");
-  Serial.println("  'a' = Config A: 30°, 150°, 270°");
-  Serial.println("  'b' = Config B: 90°, 210°, 330°");
-  Serial.println("  'c' = Config C: 0°, 120°, 240°");
+  Serial.println("  'd' = DERECHA continuo");
+  Serial.println("  'i' = IZQUIERDA continuo");
+  Serial.println("  'l' = LOOP (der 3s, izq 3s)");
+  Serial.println();
+  Serial.println("AJUSTES (en movimiento):");
+  Serial.println("  'q'/'a' = M1 +10/-10");
+  Serial.println("  'w'/'s' = M2 +10/-10");
+  Serial.println("  'e'/'f' = M3 +10/-10");
+  Serial.println();
+  Serial.println("INVERTIR MOTOR:");
+  Serial.println("  'z' = Invertir M1");
+  Serial.println("  'x' = Invertir M2");
+  Serial.println("  'c' = Invertir M3");
+  Serial.println();
+  Serial.println("  '0' = Reset valores por defecto");
   Serial.println();
   
   // Configurar pines
@@ -257,16 +234,9 @@ void setup() {
   pinMode(PWM3, OUTPUT);
   
   parar();
+  imprimirConfig();
   
-  // Calcular factores iniciales
-  calcularFactores();
-  imprimirConfiguracion();
-  
-  Serial.println(">>> INICIANDO EN 2 SEGUNDOS <<<");
-  delay(2000);
-  
-  tiempoInicio = millis();
-  Serial.println(">>> DERECHA <<<");
+  Serial.println(">>> Listo. Enviar 'd' para DERECHA, 'i' para IZQUIERDA <<<\n");
 }
 
 // =============================================================================
@@ -277,88 +247,147 @@ void loop() {
   if (Serial.available()) {
     char c = Serial.read();
     
+    // Comandos de movimiento
     if (c == 'p' || c == 'P') {
-      enMovimiento = false;
+      modoActual = PARADO;
       parar();
       Serial.println("\n*** PARADO ***");
+      imprimirConfig();
     }
-    else if (c == 'r' || c == 'R') {
-      enMovimiento = true;
+    else if (c == 'd' || c == 'D') {
+      modoActual = DERECHA;
       tiempoInicio = millis();
-      Serial.println("\n*** REANUDANDO ***");
+      Serial.println("\n>>> DERECHA continuo <<<");
     }
-    else if (c >= '1' && c <= '9') {
-      VELOCIDAD = 50 + (c - '1') * 25;
-      Serial.print("Velocidad: ");
-      Serial.println(VELOCIDAD);
-      imprimirConfiguracion();
+    else if (c == 'i' || c == 'I') {
+      modoActual = IZQUIERDA;
+      tiempoInicio = millis();
+      Serial.println("\n>>> IZQUIERDA continuo <<<");
+    }
+    else if (c == 'l' || c == 'L') {
+      modoActual = LOOP_DER;
+      tiempoInicio = millis();
+      Serial.println("\n>>> LOOP iniciado (DERECHA) <<<");
+    }
+    
+    // Ajustes de velocidad
+    else if (c == 'q' || c == 'Q') {
+      velM1 = constrain(velM1 + 10, 0, 255);
+      Serial.print("M1 = "); Serial.println(velM1);
     }
     else if (c == 'a' || c == 'A') {
-      configuracionA();
+      velM1 = constrain(velM1 - 10, 0, 255);
+      Serial.print("M1 = "); Serial.println(velM1);
     }
-    else if (c == 'b' || c == 'B') {
-      configuracionB();
+    else if (c == 'w' || c == 'W') {
+      velM2 = constrain(velM2 + 10, 0, 255);
+      Serial.print("M2 = "); Serial.println(velM2);
+    }
+    else if (c == 's' || c == 'S') {
+      velM2 = constrain(velM2 - 10, 0, 255);
+      Serial.print("M2 = "); Serial.println(velM2);
+    }
+    else if (c == 'e' || c == 'E') {
+      velM3 = constrain(velM3 + 10, 0, 255);
+      Serial.print("M3 = "); Serial.println(velM3);
+    }
+    else if (c == 'f' || c == 'F') {
+      velM3 = constrain(velM3 - 10, 0, 255);
+      Serial.print("M3 = "); Serial.println(velM3);
+    }
+    
+    // Invertir direcciones
+    else if (c == 'z' || c == 'Z') {
+      dirM1_base = -dirM1_base;
+      Serial.print("M1 direccion invertida = "); Serial.println(dirM1_base);
+    }
+    else if (c == 'x' || c == 'X') {
+      dirM2_base = -dirM2_base;
+      Serial.print("M2 direccion invertida = "); Serial.println(dirM2_base);
     }
     else if (c == 'c' || c == 'C') {
-      configuracionC();
+      dirM3_base = -dirM3_base;
+      Serial.print("M3 direccion invertida = "); Serial.println(dirM3_base);
+    }
+    
+    // Reset
+    else if (c == '0') {
+      velM1 = 50;
+      velM2 = 50;
+      velM3 = 100;
+      dirM1_base = -1;
+      dirM2_base = -1;
+      dirM3_base = 1;
+      Serial.println("\n*** RESET a valores por defecto ***");
+      imprimirConfig();
     }
   }
   
-  // Si está parado, no hacer nada
-  if (!enMovimiento) {
-    digitalWrite(LED_BUILTIN, (millis() / 500) % 2);
-    return;
-  }
-  
+  // Ejecutar según modo
   unsigned long tiempoTranscurrido = millis() - tiempoInicio;
   
-  // Estado: en pausa
-  if (enPausa) {
-    parar();
-    digitalWrite(LED_BUILTIN, (millis() / 100) % 2);
-    
-    if (tiempoTranscurrido >= TIEMPO_PAUSA) {
-      enPausa = false;
-      yendoDerecha = !yendoDerecha;
-      tiempoInicio = millis();
+  switch(modoActual) {
+    case PARADO:
+      parar();
+      digitalWrite(LED_BUILTIN, (millis() / 500) % 2);
+      break;
       
-      if (yendoDerecha) {
-        Serial.println("\n>>> DERECHA <<<");
-      } else {
-        Serial.println("\n>>> IZQUIERDA <<<");
+    case DERECHA:
+      moverDerecha();
+      digitalWrite(LED_BUILTIN, HIGH);
+      break;
+      
+    case IZQUIERDA:
+      moverIzquierda();
+      digitalWrite(LED_BUILTIN, LOW);
+      break;
+      
+    case LOOP_DER:
+      moverDerecha();
+      digitalWrite(LED_BUILTIN, HIGH);
+      if (tiempoTranscurrido >= TIEMPO_MOVIMIENTO) {
+        parar();
+        modoActual = LOOP_PAUSA;
+        tiempoInicio = millis();
+        Serial.println("  -> pausa");
       }
-    }
-    return;
+      break;
+      
+    case LOOP_IZQ:
+      moverIzquierda();
+      digitalWrite(LED_BUILTIN, LOW);
+      if (tiempoTranscurrido >= TIEMPO_MOVIMIENTO) {
+        parar();
+        modoActual = LOOP_PAUSA;
+        tiempoInicio = millis();
+        Serial.println("  -> pausa");
+      }
+      break;
+      
+    case LOOP_PAUSA:
+      parar();
+      digitalWrite(LED_BUILTIN, (millis() / 100) % 2);
+      if (tiempoTranscurrido >= TIEMPO_PAUSA) {
+        // Alternar dirección
+        static bool proximaDerecha = false;
+        proximaDerecha = !proximaDerecha;
+        
+        if (proximaDerecha) {
+          modoActual = LOOP_DER;
+          Serial.println("\n>>> DERECHA <<<");
+        } else {
+          modoActual = LOOP_IZQ;
+          Serial.println("\n>>> IZQUIERDA <<<");
+        }
+        tiempoInicio = millis();
+      }
+      break;
   }
   
-  // Estado: en movimiento
-  int direccion = yendoDerecha ? 1 : -1;
-  moverLateral(direccion);
-  digitalWrite(LED_BUILTIN, yendoDerecha ? HIGH : LOW);
-  
-  // Mostrar estado cada 500ms
+  // Mostrar estado cada 500ms (solo si está en movimiento)
   static unsigned long ultimoPrint = 0;
-  if (millis() - ultimoPrint > 500) {
-    int velM1 = (int)(factorM1_lateral * direccion * VELOCIDAD);
-    int velM2 = (int)(factorM2_lateral * direccion * VELOCIDAD);
-    int velM3 = (int)(factorM3_lateral * direccion * VELOCIDAD);
-    
-    Serial.print("  ");
-    Serial.print(yendoDerecha ? "[DER]" : "[IZQ]");
-    Serial.print(" M1="); Serial.print(velM1);
-    Serial.print(" M2="); Serial.print(velM2);
-    Serial.print(" M3="); Serial.print(velM3);
-    Serial.print(" | t="); Serial.print(tiempoTranscurrido / 1000.0, 1);
-    Serial.println("s");
-    
+  if (modoActual != PARADO && millis() - ultimoPrint > 500) {
+    imprimirEstado();
     ultimoPrint = millis();
-  }
-  
-  // Verificar si terminó el tiempo
-  if (tiempoTranscurrido >= TIEMPO_MOVIMIENTO) {
-    parar();
-    enPausa = true;
-    tiempoInicio = millis();
-    Serial.println("  -> pausa");
   }
 }

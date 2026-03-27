@@ -9,6 +9,10 @@
 //   4. Observar si va recto o gira
 //   5. Volver al paso 1 y ajustar valores hasta que vaya recto
 //
+// CINEMÁTICA 3 RUEDAS OMNIDIRECCIONAL:
+//   Para movimiento lateral, los motores delanteros giran en direcciones
+//   OPUESTAS entre sí, y el trasero empuja lateralmente.
+//
 // ROBOT 2 (delantero)
 // =============================================================================
 
@@ -34,17 +38,17 @@
 // =============================================================================
 
 // VELOCIDADES (0 a 255)
-// Si el robot gira hacia la DERECHA: aumentar VEL_M1 o VEL_M2
-// Si el robot gira hacia la IZQUIERDA: disminuir VEL_M1 o VEL_M2
-int VEL_M1 = 50;     // Velocidad Motor 1 (probar: 40, 50, 60, 70...)
-int VEL_M2 = 50;     // Velocidad Motor 2 (probar: 40, 50, 60, 70...)
-int VEL_M3 = 100;    // Velocidad Motor 3 (probar: 80, 100, 120...)
+// Si el robot gira, ajustar estas velocidades hasta que vaya recto
+int VEL_M1 = 50;     // Velocidad Motor 1 (frontal)
+int VEL_M2 = 50;     // Velocidad Motor 2 (frontal)
+int VEL_M3 = 100;    // Velocidad Motor 3 (trasero - rueda lateral)
 
-// DIRECCIONES para ir a la DERECHA (1 = adelante, -1 = atrás)
-// Si un motor gira para el lado equivocado, cambiar el signo
-int DIR_M1 = -1;     // Motor 1: -1 = hacia atrás
-int DIR_M2 = -1;     // Motor 2: -1 = hacia atrás
-int DIR_M3 = 1;      // Motor 3: 1 = hacia adelante
+// DIRECCIONES para ir a la DERECHA
+// M1 y M2 giran en direcciones OPUESTAS (así funciona omnidireccional)
+// Si un motor gira al revés de lo esperado, cambiar su signo
+int DIR_M1 = 1;      // Motor 1: adelante (+1)
+int DIR_M2 = -1;     // Motor 2: atrás (-1)  ← OPUESTO a M1
+int DIR_M3 = 1;      // Motor 3: hacia derecha (+1)
 
 // TIEMPO de movimiento en cada dirección (milisegundos)
 unsigned long TIEMPO_MOVIMIENTO = 3000;  // 3 segundos
@@ -146,6 +150,9 @@ void setup() {
   Serial.print("  DIR_M2 = "); Serial.println(DIR_M2);
   Serial.print("  DIR_M3 = "); Serial.println(DIR_M3);
   Serial.println();
+  Serial.println("Para DERECHA: M1=adelante, M2=atras, M3=derecha");
+  Serial.println("Para IZQUIERDA: se invierten todas las direcciones");
+  Serial.println();
   
   // Configurar pines
   pinMode(LED_BUILTIN, OUTPUT);
@@ -210,11 +217,12 @@ void loop() {
   // Mostrar estado cada 500ms
   static unsigned long ultimoPrint = 0;
   if (millis() - ultimoPrint > 500) {
+    int d = yendoDerecha ? 1 : -1;
     Serial.print("  ");
     Serial.print(yendoDerecha ? "[DER]" : "[IZQ]");
-    Serial.print(" M1="); Serial.print(VEL_M1 * DIR_M1 * (yendoDerecha ? 1 : -1));
-    Serial.print(" M2="); Serial.print(VEL_M2 * DIR_M2 * (yendoDerecha ? 1 : -1));
-    Serial.print(" M3="); Serial.print(VEL_M3 * DIR_M3 * (yendoDerecha ? 1 : -1));
+    Serial.print(" M1="); Serial.print(VEL_M1 * DIR_M1 * d);
+    Serial.print(" M2="); Serial.print(VEL_M2 * DIR_M2 * d);
+    Serial.print(" M3="); Serial.print(VEL_M3 * DIR_M3 * d);
     Serial.print(" | t="); Serial.print(tiempoTranscurrido / 1000.0, 1);
     Serial.println("s");
     ultimoPrint = millis();

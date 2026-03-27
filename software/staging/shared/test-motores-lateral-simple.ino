@@ -1,20 +1,26 @@
 // =============================================================================
-// TEST: Movimiento lateral SIMPLE - SOLO MOTORES
+// TEST: Movimiento lateral con CINEMÁTICA OMNIDIRECCIONAL 3 RUEDAS 120°
 // Archivo: staging/shared/test-motores-lateral-simple.ino
 // 
 // PROPÓSITO: 
-//   - Probar SOLO el movimiento lateral con los motores
-//   - SIN giróscopo, SIN PID, SIN nada más
-//   - Loop automático: derecha 3 seg, izquierda 3 seg
-//   - Para encontrar la combinación correcta de motores
+//   - Movimiento lateral usando cinemática correcta de 3 ruedas a 120°
+//   - Los 3 motores trabajan simultáneamente con diferentes potencias
+//   - SIN giróscopo, SIN PID - solo para probar la cinemática
 //
-// CONTROL:
-//   - Arranca automáticamente al encender
-//   - Enviar 'p' por Serial para PARAR
-//   - Enviar 'r' por Serial para REANUDAR
-//   - Enviar '1' a '9' por Serial para cambiar velocidad (1=50, 9=250)
+// CINEMÁTICA:
+//   Para robot con ruedas a 30°, 150°, 270° (configuración estándar):
+//   - Movimiento DERECHA: M1=-0.5, M2=-0.5, M3=+1.0
+//   - Movimiento IZQUIERDA: M1=+0.5, M2=+0.5, M3=-1.0
 //
-// ROBOT 2 (delantero) - Pines según definitivo-delantero
+// CONTROL por Serial:
+//   'p' = PARAR
+//   'r' = REANUDAR
+//   '1'-'9' = Cambiar velocidad (1=50 ... 9=250)
+//   'a' = Probar configuración A (30°, 150°, 270°)
+//   'b' = Probar configuración B (90°, 210°, 330°)
+//   'c' = Probar configuración C (0°, 120°, 240°)
+//
+// ROBOT 2 (delantero)
 // =============================================================================
 
 #include <Arduino.h>
@@ -38,9 +44,23 @@
 // CONFIGURACIÓN
 // =============================================================================
 const long BAUD_RATE = 19200;
-int VELOCIDAD = 100;  // Velocidad base (ajustable por Serial)
-const unsigned long TIEMPO_MOVIMIENTO = 3000;  // 3 segundos
-const unsigned long TIEMPO_PAUSA = 500;  // 0.5 segundos entre cambios
+int VELOCIDAD = 100;
+const unsigned long TIEMPO_MOVIMIENTO = 3000;
+const unsigned long TIEMPO_PAUSA = 500;
+
+// =============================================================================
+// ÁNGULOS DE LAS RUEDAS (en grados)
+// Ajustar según la geometría real del robot
+// =============================================================================
+// Configuración A: Rueda frontal arriba, dos ruedas atrás
+float ANGULO_M1 = 30.0;   // Motor 1: frente-derecha
+float ANGULO_M2 = 150.0;  // Motor 2: frente-izquierda  
+float ANGULO_M3 = 270.0;  // Motor 3: atrás (abajo)
+
+// Factores calculados (se actualizan con calcularFactores())
+float factorM1_lateral = 0;
+float factorM2_lateral = 0;
+float factorM3_lateral = 0;
 
 // =============================================================================
 // VARIABLES
@@ -51,11 +71,34 @@ unsigned long tiempoInicio = 0;
 bool enPausa = false;
 
 // =============================================================================
+// FUNCIONES MATEMÁTICAS
+// =============================================================================
+float gradosARadianes(float grados) {
+  return grados * PI / 180.0;
+}
+
+// Calcula los factores de velocidad para cada motor basado en los ángulos
+void calcularFactores() {
+  // Para movimiento lateral (Vx=1, Vy=0, omega=0):
+  // V_rueda = -sin(theta) * Vx
+  factorM1_lateral = -sin(gradosARadianes(ANGULO_M1));
+  factorM2_lateral = -sin(gradosARadianes(ANGULO_M2));
+  factorM3_lateral = -sin(gradosARadianes(ANGULO_M3));
+  
+  // Normalizar para que el máximo sea 1.0
+  float maxFactor = max(abs(factorM1_lateral), max(abs(factorM2_lateral), abs(factorM3_lateral)));
+  if (maxFactor > 0) {
+    factorM1_lateral /= maxFactor;
+    factorM2_lateral /= maxFactor;
+    factorM3_lateral /= maxFactor;
+  }
+}
+
+// =============================================================================
 // FUNCIONES DE MOTORES
 // =============================================================================
-
-// Motor 1: adelante = INA1=1, INB1=0
 void motor1(int vel, int dir) {
+  vel = constrain(vel, 0, 255);
   analogWrite(PWM1, vel);
   if (dir > 0) {
     digitalWrite(INA1, 1);
@@ -69,8 +112,8 @@ void motor1(int vel, int dir) {
   }
 }
 
-// Motor 2: adelante = INA2=0, INB2=1
 void motor2(int vel, int dir) {
+  vel = constrain(vel, 0, 255);
   analogWrite(PWM2, vel);
   if (dir > 0) {
     digitalWrite(INA2, 0);
@@ -84,8 +127,8 @@ void motor2(int vel, int dir) {
   }
 }
 
-// Motor 3: derecha = INA3=1, INB3=0
 void motor3(int vel, int dir) {
+  vel = constrain(vel, 0, 255);
   analogWrite(PWM3, vel);
   if (dir > 0) {
     digitalWrite(INA3, 1);
@@ -106,30 +149,74 @@ void parar() {
 }
 
 // =============================================================================
-// MOVIMIENTO LATERAL
-// Probá diferentes combinaciones hasta encontrar la correcta
+// MOVIMIENTO LATERAL CON CINEMÁTICA
 // =============================================================================
-
-void moverDerecha() {
-  // OPCIÓN A: Solo Motor 3
-  motor3(VELOCIDAD, 1);  // M3 hacia derecha
-  motor1(0, 0);
-  motor2(0, 0);
+void moverLateral(int direccion) {
+  // direccion: 1 = derecha, -1 = izquierda
   
-  // OPCIÓN B: Si necesita compensación, descomentar:
-  // motor1(VELOCIDAD/2, -1);  // M1 hacia atrás
-  // motor2(VELOCIDAD/2, -1);  // M2 hacia atrás
+  // Calcular velocidades usando los factores de cinemática
+  float velM1 = factorM1_lateral * direccion * VELOCIDAD;
+  float velM2 = factorM2_lateral * direccion * VELOCIDAD;
+  float velM3 = factorM3_lateral * direccion * VELOCIDAD;
+  
+  // Aplicar a los motores
+  int dirM1 = (velM1 >= 0) ? 1 : -1;
+  int dirM2 = (velM2 >= 0) ? 1 : -1;
+  int dirM3 = (velM3 >= 0) ? 1 : -1;
+  
+  motor1((int)abs(velM1), dirM1);
+  motor2((int)abs(velM2), dirM2);
+  motor3((int)abs(velM3), dirM3);
 }
 
-void moverIzquierda() {
-  // OPCIÓN A: Solo Motor 3
-  motor3(VELOCIDAD, -1);  // M3 hacia izquierda
-  motor1(0, 0);
-  motor2(0, 0);
+// =============================================================================
+// CONFIGURACIONES PREDEFINIDAS
+// =============================================================================
+void configuracionA() {
+  // Configuración A: 30°, 150°, 270°
+  // Rueda frontal-derecha, frontal-izquierda, trasera
+  ANGULO_M1 = 30.0;
+  ANGULO_M2 = 150.0;
+  ANGULO_M3 = 270.0;
+  calcularFactores();
+  imprimirConfiguracion();
+}
+
+void configuracionB() {
+  // Configuración B: 90°, 210°, 330°
+  // Rueda frontal, trasera-izquierda, trasera-derecha
+  ANGULO_M1 = 90.0;
+  ANGULO_M2 = 210.0;
+  ANGULO_M3 = 330.0;
+  calcularFactores();
+  imprimirConfiguracion();
+}
+
+void configuracionC() {
+  // Configuración C: 0°, 120°, 240°
+  // Rueda derecha, trasera-izquierda, trasera-derecha
+  ANGULO_M1 = 0.0;
+  ANGULO_M2 = 120.0;
+  ANGULO_M3 = 240.0;
+  calcularFactores();
+  imprimirConfiguracion();
+}
+
+void imprimirConfiguracion() {
+  Serial.println("\n--- CONFIGURACION CINEMATICA ---");
+  Serial.print("Angulos: M1="); Serial.print(ANGULO_M1, 0);
+  Serial.print("° M2="); Serial.print(ANGULO_M2, 0);
+  Serial.print("° M3="); Serial.print(ANGULO_M3, 0);
+  Serial.println("°");
   
-  // OPCIÓN B: Si necesita compensación, descomentar:
-  // motor1(VELOCIDAD/2, 1);  // M1 hacia adelante
-  // motor2(VELOCIDAD/2, 1);  // M2 hacia adelante
+  Serial.println("Factores para movimiento DERECHA:");
+  Serial.print("  M1: "); Serial.print(factorM1_lateral, 3);
+  Serial.print(" -> vel="); Serial.println((int)(factorM1_lateral * VELOCIDAD));
+  Serial.print("  M2: "); Serial.print(factorM2_lateral, 3);
+  Serial.print(" -> vel="); Serial.println((int)(factorM2_lateral * VELOCIDAD));
+  Serial.print("  M3: "); Serial.print(factorM3_lateral, 3);
+  Serial.print(" -> vel="); Serial.println((int)(factorM3_lateral * VELOCIDAD));
+  Serial.println("--------------------------------\n");
 }
 
 // =============================================================================
@@ -141,17 +228,17 @@ void setup() {
   
   Serial.println("\n\n");
   Serial.println("****************************************************");
-  Serial.println("*  TEST MOTORES LATERAL - SIMPLE                   *");
-  Serial.println("*  SIN giroscopo, SIN PID                          *");
+  Serial.println("*  TEST CINEMATICA OMNIDIRECCIONAL 3 RUEDAS 120°   *");
+  Serial.println("*  Los 3 motores trabajan simultaneamente          *");
   Serial.println("****************************************************");
   Serial.println();
   Serial.println("COMANDOS por Serial:");
   Serial.println("  'p' = PARAR");
   Serial.println("  'r' = REANUDAR");
-  Serial.println("  '1'-'9' = Cambiar velocidad (1=50 ... 9=250)");
-  Serial.println();
-  Serial.print("Velocidad actual: ");
-  Serial.println(VELOCIDAD);
+  Serial.println("  '1'-'9' = Velocidad (1=50 ... 9=250)");
+  Serial.println("  'a' = Config A: 30°, 150°, 270°");
+  Serial.println("  'b' = Config B: 90°, 210°, 330°");
+  Serial.println("  'c' = Config C: 0°, 120°, 240°");
   Serial.println();
   
   // Configurar pines
@@ -170,6 +257,10 @@ void setup() {
   pinMode(PWM3, OUTPUT);
   
   parar();
+  
+  // Calcular factores iniciales
+  calcularFactores();
+  imprimirConfiguracion();
   
   Serial.println(">>> INICIANDO EN 2 SEGUNDOS <<<");
   delay(2000);
@@ -190,7 +281,6 @@ void loop() {
       enMovimiento = false;
       parar();
       Serial.println("\n*** PARADO ***");
-      Serial.println("Enviar 'r' para reanudar");
     }
     else if (c == 'r' || c == 'R') {
       enMovimiento = true;
@@ -198,28 +288,38 @@ void loop() {
       Serial.println("\n*** REANUDANDO ***");
     }
     else if (c >= '1' && c <= '9') {
-      VELOCIDAD = 50 + (c - '1') * 25;  // 1=50, 2=75, 3=100, ..., 9=250
+      VELOCIDAD = 50 + (c - '1') * 25;
       Serial.print("Velocidad: ");
       Serial.println(VELOCIDAD);
+      imprimirConfiguracion();
+    }
+    else if (c == 'a' || c == 'A') {
+      configuracionA();
+    }
+    else if (c == 'b' || c == 'B') {
+      configuracionB();
+    }
+    else if (c == 'c' || c == 'C') {
+      configuracionC();
     }
   }
   
   // Si está parado, no hacer nada
   if (!enMovimiento) {
-    digitalWrite(LED_BUILTIN, (millis() / 500) % 2);  // Parpadeo lento
+    digitalWrite(LED_BUILTIN, (millis() / 500) % 2);
     return;
   }
   
   unsigned long tiempoTranscurrido = millis() - tiempoInicio;
   
-  // Estado: en pausa entre movimientos
+  // Estado: en pausa
   if (enPausa) {
     parar();
-    digitalWrite(LED_BUILTIN, (millis() / 100) % 2);  // Parpadeo rápido
+    digitalWrite(LED_BUILTIN, (millis() / 100) % 2);
     
     if (tiempoTranscurrido >= TIEMPO_PAUSA) {
       enPausa = false;
-      yendoDerecha = !yendoDerecha;  // Cambiar dirección
+      yendoDerecha = !yendoDerecha;
       tiempoInicio = millis();
       
       if (yendoDerecha) {
@@ -232,28 +332,29 @@ void loop() {
   }
   
   // Estado: en movimiento
-  if (yendoDerecha) {
-    moverDerecha();
-    digitalWrite(LED_BUILTIN, HIGH);
-  } else {
-    moverIzquierda();
-    digitalWrite(LED_BUILTIN, LOW);
-  }
+  int direccion = yendoDerecha ? 1 : -1;
+  moverLateral(direccion);
+  digitalWrite(LED_BUILTIN, yendoDerecha ? HIGH : LOW);
   
   // Mostrar estado cada 500ms
   static unsigned long ultimoPrint = 0;
   if (millis() - ultimoPrint > 500) {
+    int velM1 = (int)(factorM1_lateral * direccion * VELOCIDAD);
+    int velM2 = (int)(factorM2_lateral * direccion * VELOCIDAD);
+    int velM3 = (int)(factorM3_lateral * direccion * VELOCIDAD);
+    
     Serial.print("  ");
     Serial.print(yendoDerecha ? "[DER]" : "[IZQ]");
-    Serial.print(" vel=");
-    Serial.print(VELOCIDAD);
-    Serial.print(" t=");
-    Serial.print(tiempoTranscurrido / 1000.0, 1);
+    Serial.print(" M1="); Serial.print(velM1);
+    Serial.print(" M2="); Serial.print(velM2);
+    Serial.print(" M3="); Serial.print(velM3);
+    Serial.print(" | t="); Serial.print(tiempoTranscurrido / 1000.0, 1);
     Serial.println("s");
+    
     ultimoPrint = millis();
   }
   
-  // Verificar si terminó el tiempo de movimiento
+  // Verificar si terminó el tiempo
   if (tiempoTranscurrido >= TIEMPO_MOVIMIENTO) {
     parar();
     enPausa = true;

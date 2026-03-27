@@ -42,8 +42,8 @@
 // =============================================================================
 
 // VELOCIDADES BASE (0 a 255)
-int VEL_M1 = 60;     // Velocidad Motor 1 (frontal)
-int VEL_M2 = 60;     // Velocidad Motor 2 (frontal)
+int VEL_M1 = 55;     // Velocidad Motor 1 (frontal)
+int VEL_M2 = 55;     // Velocidad Motor 2 (frontal)
 int VEL_M3 = 100;    // Velocidad Motor 3 (trasero - rueda lateral)
 
 // DIRECCIONES para ir a la DERECHA
@@ -53,9 +53,9 @@ int DIR_M2 = 1;     // Motor 2: atrás (-1)  ← OPUESTO a M1
 int DIR_M3 = 1;      // Motor 3: hacia derecha (+1)
 
 // PARÁMETROS PID (ajustar si oscila o no corrige suficiente)
-float Kp = 0;      // Proporcional - respuesta al error actual
-float Ki = 0.0;     // Integral - corrige error acumulado
-float Kd = 0;      // Derivativo - suaviza la respuesta
+float Kp = 3.0;      // Proporcional - respuesta al error actual
+float Ki = 0.05;     // Integral - corrige error acumulado
+float Kd = 0.5;      // Derivativo - suaviza la respuesta
 
 // TIEMPO de movimiento
 unsigned long TIEMPO_MOVIMIENTO = 3000;  // 3 segundos cada dirección

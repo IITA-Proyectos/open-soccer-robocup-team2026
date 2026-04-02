@@ -7,20 +7,25 @@
 //   - Giróscopo BNO055 para mantener orientación
 //   - Control PID para corregir desviaciones en los 3 MOTORES
 //
+// CAMBIOS v4 (2026-03-27, Claude bajo supervisión María):
+//   - NUEVO: Anticipación de frenado DINÁMICA proporcional a VEL_M3
+//     (si bajás VEL_M3, la anticipación baja sola)
+//   - NUEVO: Auto-calibración con giroscopio: después de cada frenado, mide
+//     la desviación del heading y ajusta la anticipación automáticamente
+//   - NUEVO: Comandos Serial para ajustar en tiempo real:
+//       '+' sube anticipación base 10ms
+//       '-' baja anticipación base 10ms
+//       'c' activa/desactiva auto-calibración
+//       'v' muestra valores actuales
+//
+// CAMBIOS v3 (2026-03-27, Claude bajo supervisión María):
+//   - FIX: M3 frenaba tarde por mayor inercia, pre-frenado con anticipación
+//
 // CAMBIOS v2 (2026-03-27, Claude bajo supervisión Gustavo):
 //   - FIX: PID se calculaba 2 veces por loop (corrompía derivada)
 //   - FIX: constrain(0,255) mataba rueda en vez de invertir dirección
 //   - FIX: M3 no participaba en corrección de heading (ahora los 3 corrigen)
-//   - NUEVO: saturación proporcional (mantiene dirección correcta)
-//   - NUEVO: FACTOR_ROTACION para ajustar peso del PID vs movimiento lateral
-//   - NUEVO: serial muestra velocidades individuales de cada motor
-//   Valores calibrados por María (VEL, DIR) se mantienen sin cambio.
-//
-// CINEMÁTICA:
-//   Velocidad total de cada motor = componente LATERAL + componente ROTACIÓN
-//   - Lateral: lo que hace que el robot se desplace (calibrado por María)
-//   - Rotación: lo que corrige el heading (PID, los 3 motores participan)
-//   Si algún motor supera 255, se escalan TODOS proporcionalmente.
+//   - NUEVO: saturación proporcional, FACTOR_ROTACION, debug serial
 //
 // ROBOT 2 (delantero)
 // Referencia: docs/internal/lecciones-pid-movimiento-lateral.md
@@ -61,21 +66,40 @@ int DIR_M2 = 1;      // Motor 2 (opuesto a M1 por hardware invertido)
 int DIR_M3 = 1;      // Motor 3
 
 // SIGNOS DE ROTACIÓN para corrección de heading
-// Derivados de girar() del definitivo: antihorario = M1 dir-1, M2 dir+1, M3 dir-1
-// → Para rotación HORARIA (corrección positiva): M1=+1, M2=-1, M3=+1
-// Si el robot corrige para el lado EQUIVOCADO, invertir LOS TRES signos.
 int ROT_M1 = 1;
 int ROT_M2 = -1;
 int ROT_M3 = 1;
 
-// PARÁMETROS PID (ajustar si oscila o no corrige suficiente)
-float Kp = 3.0;      // Proporcional - respuesta al error actual
-float Ki = 0.05;     // Integral - corrige error acumulado
-float Kd = 0.5;      // Derivativo - suaviza la respuesta
+// PARÁMETROS PID
+float Kp = 3.0;
+float Ki = 0.05;
+float Kd = 0.5;
 
-// FACTOR_ROTACION: peso de la corrección de heading (0.0 = sin corrección, 1.0 = máxima)
-// Empezar en 0.5 y subir si no corrige suficiente, bajar si oscila.
+// FACTOR_ROTACION: peso de la corrección de heading
 float FACTOR_ROTACION = 0.5;
+
+// =====================================================================
+// COMPENSACIÓN DE FRENADO M3 (v4 — DINÁMICO)
+// =====================================================================
+// BASE_ANTICIPACION_MS: anticipación en ms calibrada para VEL_M3 = 100.
+//   La anticipación REAL se calcula automáticamente:
+//     anticipacionReal = BASE_ANTICIPACION_MS * VEL_M3 / 100
+//   Así si bajás VEL_M3 a 60, la anticipación baja proporcionalmente.
+//
+// Ajustar con Serial: '+' sube 10ms, '-' baja 10ms
+// O cambiar este valor directamente en el código.
+float BASE_ANTICIPACION_MS = 60.0;  // ms (calibrado para VEL_M3=100)
+
+// AUTO-CALIBRACIÓN CON GIROSCOPIO:
+//   Después de cada frenado, el robot mide cuánto se desvió el heading.
+//   Si se desvió más de UMBRAL_DRIFT grados, ajusta BASE_ANTICIPACION_MS
+//   automáticamente en PASO_AUTOCAL ms.
+//   Activar/desactivar con 'c' en Serial.
+bool autoCalActivada = true;
+float UMBRAL_DRIFT = 1.5;     // grados: debajo de esto se considera "ok"
+float PASO_AUTOCAL = 5.0;     // ms que ajusta en cada auto-calibración
+float MAX_ANTICIPACION = 300;  // límite máximo de seguridad
+float MIN_ANTICIPACION = 0;    // límite mínimo
 
 // TIEMPO de movimiento
 unsigned long TIEMPO_MOVIMIENTO = 3000;  // 3 segundos cada dirección
@@ -99,7 +123,7 @@ float errorAnterior = 0;
 float integral = 0;
 unsigned long tiempoAnteriorPID = 0;
 
-// Variables de debug (para evitar llamar PID dos veces por loop)
+// Variables de debug
 float ultimoHeading = 0;
 float ultimaCorreccion = 0;
 float debugM1 = 0, debugM2 = 0, debugM3 = 0;
@@ -107,7 +131,72 @@ float debugM1 = 0, debugM2 = 0, debugM3 = 0;
 // Variables de estado
 bool yendoDerecha = true;
 bool enPausa = false;
+bool m3Frenado = false;
 unsigned long tiempoInicio = 0;
+
+// v4: Variables de auto-calibración
+float headingAlFrenar = 0;       // heading en el instante que se paran todos los motores
+bool headingAlFrenarCapturado = false;
+float anticipacionReal = 0;      // valor calculado dinámicamente
+
+// =============================================================================
+// FUNCIÓN: calcularAnticipacionReal()
+// Escala la anticipación base proporcionalmente a VEL_M3
+// =============================================================================
+float calcularAnticipacionReal() {
+  return BASE_ANTICIPACION_MS * (float)VEL_M3 / 100.0;
+}
+
+// =============================================================================
+// FUNCIÓN: procesarComandoSerial()
+// Comandos: '+' sube, '-' baja, 'c' toggle autocal, 'v' muestra valores
+// =============================================================================
+void procesarComandoSerial() {
+  while (Serial.available()) {
+    char c = Serial.read();
+    switch (c) {
+      case '+':
+      case 'a':
+        BASE_ANTICIPACION_MS += 10;
+        if (BASE_ANTICIPACION_MS > MAX_ANTICIPACION) BASE_ANTICIPACION_MS = MAX_ANTICIPACION;
+        anticipacionReal = calcularAnticipacionReal();
+        Serial.print("  >> BASE_ANTICIPACION = ");
+        Serial.print(BASE_ANTICIPACION_MS, 0);
+        Serial.print("ms -> real = ");
+        Serial.print(anticipacionReal, 0);
+        Serial.println("ms");
+        break;
+
+      case '-':
+      case 'z':
+        BASE_ANTICIPACION_MS -= 10;
+        if (BASE_ANTICIPACION_MS < MIN_ANTICIPACION) BASE_ANTICIPACION_MS = MIN_ANTICIPACION;
+        anticipacionReal = calcularAnticipacionReal();
+        Serial.print("  >> BASE_ANTICIPACION = ");
+        Serial.print(BASE_ANTICIPACION_MS, 0);
+        Serial.print("ms -> real = ");
+        Serial.print(anticipacionReal, 0);
+        Serial.println("ms");
+        break;
+
+      case 'c':
+        autoCalActivada = !autoCalActivada;
+        Serial.print("  >> Auto-calibración: ");
+        Serial.println(autoCalActivada ? "ACTIVADA" : "DESACTIVADA");
+        break;
+
+      case 'v':
+        Serial.println("\n  === VALORES ACTUALES ===");
+        Serial.print("  VEL_M3 = "); Serial.println(VEL_M3);
+        Serial.print("  BASE_ANTICIPACION_MS = "); Serial.print(BASE_ANTICIPACION_MS, 0); Serial.println("ms");
+        Serial.print("  anticipacionReal = "); Serial.print(anticipacionReal, 0); Serial.println("ms");
+        Serial.print("  autoCalActivada = "); Serial.println(autoCalActivada ? "SI" : "NO");
+        Serial.print("  UMBRAL_DRIFT = "); Serial.print(UMBRAL_DRIFT, 1); Serial.println("°");
+        Serial.println("  =======================\n");
+        break;
+    }
+  }
+}
 
 // =============================================================================
 // FUNCIÓN: inicializarGyro()
@@ -207,26 +296,21 @@ void resetPID() {
 
 // =============================================================================
 // FUNCIÓN: calcularCorreccionPID()
-// IMPORTANTE: llamar UNA SOLA VEZ por ciclo de loop(). Si se necesita el
-// valor para debug, usar la variable ultimaCorreccion.
 // =============================================================================
 float calcularCorreccionPID(float headingActual) {
-  float error = 0 - headingActual;  // Queremos mantener heading = 0
+  float error = 0 - headingActual;
 
   unsigned long ahora = millis();
   float dt = (ahora - tiempoAnteriorPID) / 1000.0;
   if (dt <= 0) dt = 0.01;
   tiempoAnteriorPID = ahora;
 
-  // Proporcional
   float P = Kp * error;
 
-  // Integral
   integral += error * dt;
   integral = constrain(integral, -INTEGRAL_MAX, INTEGRAL_MAX);
   float I = Ki * integral;
 
-  // Derivativo
   float derivada = (error - errorAnterior) / dt;
   float D = Kd * derivada;
   errorAnterior = error;
@@ -292,28 +376,21 @@ void parar() {
 }
 
 // =============================================================================
-// FUNCIÓN: moverLateral() — CORREGIDA v2
-//
-// Cada motor recibe: velocidad_lateral + velocidad_rotacion
-//   - Lateral: desplaza el robot (DIR * VEL * direccion)
-//   - Rotación: corrige heading (ROT * correccion * FACTOR_ROTACION)
-// Si algún motor supera 255, se escalan TODOS proporcionalmente.
-// El signo del total determina la dirección del motor (no se clampea a 0).
+// FUNCIÓN: moverLateral() — v4
 // =============================================================================
-void moverLateral(int direccion) {
+void moverLateral(int direccion, bool frenarM3) {
   float heading = leerHeading();
   float correccion = calcularCorreccionPID(heading);
 
-  // Guardar para debug (NUNCA llamar calcularCorreccionPID de nuevo este ciclo)
   ultimoHeading = heading;
   ultimaCorreccion = correccion;
 
-  // 1. Componente LATERAL (base, calibrada por María)
+  // 1. Componente LATERAL
   float lat_M1 = (float)(DIR_M1 * VEL_M1 * direccion);
   float lat_M2 = (float)(DIR_M2 * VEL_M2 * direccion);
   float lat_M3 = (float)(DIR_M3 * VEL_M3 * direccion);
 
-  // 2. Componente ROTACIÓN del PID (los 3 motores participan)
+  // 2. Componente ROTACIÓN del PID
   float rot_M1 = ROT_M1 * correccion * FACTOR_ROTACION;
   float rot_M2 = ROT_M2 * correccion * FACTOR_ROTACION;
   float rot_M3 = ROT_M3 * correccion * FACTOR_ROTACION;
@@ -323,9 +400,12 @@ void moverLateral(int direccion) {
   float total_M2 = lat_M2 + rot_M2;
   float total_M3 = lat_M3 + rot_M3;
 
-  // 4. Saturación PROPORCIONAL (mantiene dirección correcta)
-  //    En vez de clampear cada motor a [0,255] (que mata ruedas),
-  //    si alguno supera 255, escalamos TODOS para que el más grande sea 255.
+  // v4: Si estamos en fase de pre-frenado, M3 se apaga
+  if (frenarM3) {
+    total_M3 = 0;
+  }
+
+  // 4. Saturación PROPORCIONAL
   float maxM = max(abs(total_M1), max(abs(total_M2), abs(total_M3)));
   if (maxM > 255) {
     float escala = 255.0 / maxM;
@@ -334,12 +414,11 @@ void moverLateral(int direccion) {
     total_M3 *= escala;
   }
 
-  // Guardar para debug
   debugM1 = total_M1;
   debugM2 = total_M2;
   debugM3 = total_M3;
 
-  // 5. Aplicar a motores (el signo del total determina la dirección)
+  // 5. Aplicar a motores
   int d1 = (total_M1 > 0) ? 1 : ((total_M1 < 0) ? -1 : 0);
   int d2 = (total_M2 > 0) ? 1 : ((total_M2 < 0) ? -1 : 0);
   int d3 = (total_M3 > 0) ? 1 : ((total_M3 < 0) ? -1 : 0);
@@ -347,6 +426,81 @@ void moverLateral(int direccion) {
   motor1((int)abs(total_M1), d1);
   motor2((int)abs(total_M2), d2);
   motor3((int)abs(total_M3), d3);
+}
+
+// =============================================================================
+// FUNCIÓN: autoCalibrarFrenado() — v4
+//
+// Se llama al INICIO de la pausa (justo después de frenar).
+// Espera 100ms para que la inercia termine, mide el heading final,
+// y compara con el heading capturado al momento de frenar.
+// Si la diferencia supera UMBRAL_DRIFT, ajusta BASE_ANTICIPACION_MS.
+//
+// LÓGICA:
+//   drift > 0 y iba a la derecha → M3 siguió empujando → subir anticipación
+//   drift < 0 y iba a la derecha → M3 frenó de más → bajar anticipación
+//   (invertido cuando va a la izquierda)
+// =============================================================================
+void autoCalibrarFrenado(bool ibaDerecha) {
+  if (!autoCalActivada || !bnoOK) return;
+
+  // Esperar a que se disipen las vibraciones/inercia residual
+  delay(100);
+
+  float headingFinal = leerHeading();
+  float drift = headingFinal - headingAlFrenar;
+
+  Serial.print("  [AUTOCAL] H_freno=");
+  Serial.print(headingAlFrenar, 1);
+  Serial.print("° H_final=");
+  Serial.print(headingFinal, 1);
+  Serial.print("° drift=");
+  Serial.print(drift, 1);
+  Serial.print("°");
+
+  if (abs(drift) < UMBRAL_DRIFT) {
+    Serial.println(" -> OK (dentro de umbral)");
+    return;
+  }
+
+  // Determinar si M3 frenó tarde o temprano.
+  // M3 es la rueda trasera que produce el movimiento lateral principal.
+  // Si el heading se desvió en la dirección del movimiento, M3 siguió empujando
+  // (frenó tarde) → necesitamos MÁS anticipación.
+  // Si se desvió al revés, M3 frenó antes de tiempo → MENOS anticipación.
+  //
+  // Como el drift del heading depende de la geometría del robot y la dirección,
+  // usamos el signo absoluto del drift: si es grande, ajustamos.
+  // El signo del ajuste se determina comparando la dirección de movimiento
+  // con la dirección del drift.
+
+  float ajuste = PASO_AUTOCAL;
+
+  // drift positivo + derecha = M3 empujó de más = necesita más anticipación
+  // drift negativo + derecha = M3 frenó de más = necesita menos anticipación
+  // (invertido para izquierda)
+  bool m3FrenoTarde;
+  if (ibaDerecha) {
+    m3FrenoTarde = (drift > 0);  // heading se fue en dir. de movimiento
+  } else {
+    m3FrenoTarde = (drift < 0);  // invertido para izquierda
+  }
+
+  if (m3FrenoTarde) {
+    BASE_ANTICIPACION_MS += ajuste;
+    if (BASE_ANTICIPACION_MS > MAX_ANTICIPACION) BASE_ANTICIPACION_MS = MAX_ANTICIPACION;
+    Serial.print(" -> M3 tarde, SUBIENDO a ");
+  } else {
+    BASE_ANTICIPACION_MS -= ajuste;
+    if (BASE_ANTICIPACION_MS < MIN_ANTICIPACION) BASE_ANTICIPACION_MS = MIN_ANTICIPACION;
+    Serial.print(" -> M3 temprano, BAJANDO a ");
+  }
+
+  anticipacionReal = calcularAnticipacionReal();
+  Serial.print(BASE_ANTICIPACION_MS, 0);
+  Serial.print("ms (real=");
+  Serial.print(anticipacionReal, 0);
+  Serial.println("ms)");
 }
 
 // =============================================================================
@@ -358,25 +512,32 @@ void setup() {
 
   Serial.println("\n\n");
   Serial.println("****************************************************");
-  Serial.println("*  TEST LATERAL CON GIROSCOPO Y PID  (v2)          *");
-  Serial.println("*  Cinemática omnidireccional 3 ruedas             *");
-  Serial.println("*  Corrección PID en los 3 motores                 *");
+  Serial.println("*  TEST LATERAL CON GIROSCOPO Y PID  (v4)          *");
+  Serial.println("*  Compensación DINÁMICA de inercia M3             *");
+  Serial.println("*  Auto-calibración con giroscopio                 *");
   Serial.println("****************************************************");
   Serial.println();
-  Serial.println("VALORES ACTUALES:");
+  Serial.println("COMANDOS SERIAL:");
+  Serial.println("  '+' o 'a' = subir anticipación 10ms");
+  Serial.println("  '-' o 'z' = bajar anticipación 10ms");
+  Serial.println("  'c'       = activar/desactivar auto-calibración");
+  Serial.println("  'v'       = ver valores actuales");
+  Serial.println();
+  Serial.println("VALORES INICIALES:");
   Serial.print("  VEL_M1="); Serial.print(VEL_M1);
   Serial.print("  VEL_M2="); Serial.print(VEL_M2);
   Serial.print("  VEL_M3="); Serial.println(VEL_M3);
-  Serial.print("  DIR_M1="); Serial.print(DIR_M1);
-  Serial.print("  DIR_M2="); Serial.print(DIR_M2);
-  Serial.print("  DIR_M3="); Serial.println(DIR_M3);
-  Serial.print("  ROT_M1="); Serial.print(ROT_M1);
-  Serial.print("  ROT_M2="); Serial.print(ROT_M2);
-  Serial.print("  ROT_M3="); Serial.println(ROT_M3);
   Serial.print("  Kp="); Serial.print(Kp);
   Serial.print("  Ki="); Serial.print(Ki);
   Serial.print("  Kd="); Serial.println(Kd);
   Serial.print("  FACTOR_ROTACION="); Serial.println(FACTOR_ROTACION);
+  Serial.print("  BASE_ANTICIPACION_MS="); Serial.print(BASE_ANTICIPACION_MS, 0); Serial.println("ms");
+
+  // Calcular anticipación real inicial
+  anticipacionReal = calcularAnticipacionReal();
+  Serial.print("  anticipacionReal="); Serial.print(anticipacionReal, 0);
+  Serial.println("ms (=BASE * VEL_M3/100)");
+  Serial.print("  autoCalibración="); Serial.println(autoCalActivada ? "ACTIVADA" : "DESACTIVADA");
   Serial.println();
 
   // Configurar pines
@@ -402,7 +563,7 @@ void setup() {
 
   if (!bnoOK) {
     Serial.println("\n*** ERROR: Giróscopo no inicializado ***");
-    Serial.println("El robot se moverá SIN corrección PID");
+    Serial.println("El robot se moverá SIN corrección PID ni auto-calibración");
   }
 
   Serial.println("\n>>> INICIANDO EN 2 SEGUNDOS <<<");
@@ -412,6 +573,8 @@ void setup() {
   tiempoInicio = millis();
   yendoDerecha = true;
   enPausa = false;
+  m3Frenado = false;
+  headingAlFrenarCapturado = false;
   Serial.println("\n>>> DERECHA <<<");
 }
 
@@ -421,6 +584,9 @@ void setup() {
 void loop() {
   unsigned long tiempoTranscurrido = millis() - tiempoInicio;
 
+  // Siempre procesar comandos serial
+  procesarComandoSerial();
+
   // Estado: PAUSA entre movimientos
   if (enPausa) {
     parar();
@@ -429,7 +595,13 @@ void loop() {
     if (tiempoTranscurrido >= TIEMPO_PAUSA) {
       enPausa = false;
       yendoDerecha = !yendoDerecha;
-      resetPID();  // Resetear PID al cambiar de dirección
+      m3Frenado = false;
+      headingAlFrenarCapturado = false;
+
+      // Recalcular anticipación (por si cambió VEL_M3 o BASE)
+      anticipacionReal = calcularAnticipacionReal();
+
+      resetPID();
       tiempoInicio = millis();
 
       if (yendoDerecha) {
@@ -437,18 +609,31 @@ void loop() {
       } else {
         Serial.println("\n>>> IZQUIERDA <<<");
       }
+      Serial.print("  (anticipación M3 = ");
+      Serial.print(anticipacionReal, 0);
+      Serial.println("ms)");
     }
     return;
   }
 
   // Estado: EN MOVIMIENTO
   int direccion = yendoDerecha ? 1 : -1;
-  moverLateral(direccion);
+
+  // v4: Anticipación dinámica
+  bool debeFrenarM3 = (tiempoTranscurrido >= TIEMPO_MOVIMIENTO - (unsigned long)anticipacionReal);
+
+  // Log una sola vez cuando M3 empieza a frenar
+  if (debeFrenarM3 && !m3Frenado) {
+    m3Frenado = true;
+    Serial.print("  -> M3 frena (anticipación=");
+    Serial.print(anticipacionReal, 0);
+    Serial.println("ms)");
+  }
+
+  moverLateral(direccion, debeFrenarM3);
   digitalWrite(LED_BUILTIN, yendoDerecha ? HIGH : LOW);
 
-  // Mostrar estado cada 200ms
-  // IMPORTANTE: usar ultimoHeading y ultimaCorreccion (calculados en moverLateral)
-  // NUNCA llamar calcularCorreccionPID() de nuevo acá (corrompe la derivada)
+  // Debug cada 200ms
   static unsigned long ultimoPrint = 0;
   if (millis() - ultimoPrint > 200) {
     Serial.print("  ");
@@ -464,6 +649,7 @@ void loop() {
     Serial.print((int)debugM2);
     Serial.print(" M3:");
     Serial.print((int)debugM3);
+    if (debeFrenarM3) Serial.print(" [FRENO]");
     Serial.print(" | t=");
     Serial.print(tiempoTranscurrido / 1000.0, 1);
     Serial.println("s");
@@ -473,9 +659,20 @@ void loop() {
 
   // Verificar si terminó el tiempo de movimiento
   if (tiempoTranscurrido >= TIEMPO_MOVIMIENTO) {
+    // v4: Capturar heading justo al momento de frenar TODO
+    if (!headingAlFrenarCapturado) {
+      headingAlFrenar = leerHeading();
+      headingAlFrenarCapturado = true;
+    }
+
     parar();
     enPausa = true;
     tiempoInicio = millis();
     Serial.println("  -> pausa");
+
+    // v4: Auto-calibrar basándose en la desviación post-frenado
+    autoCalibrarFrenado(yendoDerecha);
+
+    m3Frenado = false;
   }
 }

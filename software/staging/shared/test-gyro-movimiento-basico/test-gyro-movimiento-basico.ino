@@ -47,7 +47,7 @@
 // CONFIGURACIÓN DE MOVIMIENTO
 // =============================================================================
 const long BAUD_RATE = 19200;
-const int VELOCIDAD_BASE = 100;
+const int VELOCIDAD_BASE = 150;// 100 en prueva 
 const unsigned long TIEMPO_MOVIMIENTO = 5000;  // 5 segundos cada dirección
 const unsigned long PAUSA_ENTRE_MOVIMIENTOS = 500;  // Pausa de 0.5 seg entre cambios
 
@@ -55,10 +55,10 @@ const unsigned long PAUSA_ENTRE_MOVIMIENTOS = 500;  // Pausa de 0.5 seg entre ca
 // CONFIGURACIÓN DEL CONTROL PID
 // =============================================================================
 float Kp = 3.0;
-float Ki = 0.05;
-float Kd = 0.5;
+float Ki = 0.08;
+float Kd = 0.8;
 
-const float MAX_CORRECCION = 80;
+const float MAX_CORRECCION = 80;// en pruebas 80
 const float INTEGRAL_MAX = 50;
 
 // =============================================================================

@@ -1,6 +1,6 @@
 ---
 title: "Staging — Pendiente de prueba en robots"
-date: 2026-03-20
+date: 2026-04-02
 status: active
 ---
 
@@ -10,18 +10,18 @@ status: active
 >
 > **Flujo completo**: ver `docs/internal/flujo-de-trabajo-software.md`
 
-Última actualización: 2026-03-20
+Última actualización: 2026-04-02
 
 ---
 
-## Próxima sesión de prueba: viernes 28 de marzo 2026
+## Próxima sesión de prueba: pendiente
 
 ---
 
 ## Prioridad 1 — Tests de sensores y primitivas (PROBAR PRIMERO)
 
 ### [TEST 1] BNO055 en modo IMUPLUS — test standalone
-- **Archivo**: `shared/test-bno055-imuplus.ino`
+- **Archivo**: `shared/test-bno055-imuplus/test-bno055-imuplus.ino`
 - **Qué es**: Programa que SOLO testea el giróscopo. No mueve motores.
 - **Cómo probar**:
   1. Subir a cualquiera de los robots, Serial Monitor 19200 baud
@@ -32,7 +32,7 @@ status: active
 - **Observaciones**: _(completar)_
 
 ### [TEST 2] Movimiento omnidireccional con PD heading
-- **Archivo**: `shared/test-movimiento-omnidireccional.ino`
+- **Archivo**: `shared/test-movimiento-omnidireccional/test-movimiento-omnidireccional.ino`
 - **Referencia**: `docs/internal/cinematica-omnidireccional-movimientos.md`
 - **Qué es**: Test interactivo de la función `moverRobot(velocidad, dirección, headingObjetivo)` que combina traslación omnidireccional + control PD de heading con giróscopo. 9 tests secuenciales controlados por botón.
 - **Qué prueba** (3 seg cada test, avanzar con botón 1):
@@ -52,6 +52,22 @@ status: active
   - `SIGNO_M1/M2/M3`: cambiar a -1 si un motor va al revés
 - **Resultado**: ⬜ Pendiente
 - **Observaciones**: _(completar, anotar valores calibrados)_
+
+### [TEST 3] 4 movimientos combinados (adelante/atrás/derecha/izquierda)
+- **Archivo**: `shared/test-4-movimientos/test-4-movimientos.ino`
+- **Qué es**: Combina el test básico (adelante/atrás) con el lateral (derecha/izquierda) en un solo programa. Loop infinito de 3 segundos por dirección.
+- **Origen**: Unión directa de `test-gyro-movimiento-basico.ino` + `test-motores-lateral-simple.ino` v4 sin cambiar valores (solo tiempo a 3s).
+- **Cómo probar**:
+  1. Subir al ROBOT 2 (delantero), Serial Monitor 19200 baud
+  2. **NO MOVER** durante calibración (~5 seg)
+  3. Presionar botón → test heading (verificar girando manualmente)
+  4. Presionar botón → inicia loop: ADELANTE 3s → ATRÁS 3s → DERECHA 3s → IZQUIERDA 3s → repetir
+  5. Verificar que mantiene línea recta en las 4 direcciones
+  6. Verificar que heading se mantiene cerca de 0° en todo momento
+  7. Comandos Serial: `+`/`-` ajustar anticipación frenado M3, `c` toggle auto-cal, `v` ver valores
+- **PID**: Cambia automáticamente entre básico (Kp=3 Ki=0.08 Kd=0.8) para adelante/atrás y lateral (Kp=3 Ki=0.05 Kd=0.5) para derecha/izquierda.
+- **Resultado**: ⬜ Pendiente
+- **Observaciones**: _(completar)_
 
 ---
 
@@ -105,29 +121,15 @@ status: active
 
 ---
 
-## Orden de prueba (viernes 28/3)
-
-```
-1°  Test BNO055 standalone        (10 min)  → ¿funciona IMUPLUS?
-2°  Test movimiento omnidirec.    (20 min)  → calibrar Kp/Kd/L/signos
-3°  Delantero con 3 fixes         (20 min)  → gyro + UART + rampa
-4°  OpenMV con clampeo            (10 min)  → coordenadas seguras
-5°  Arquero con 2 fixes           (20 min)  → gyro + currentYaw + UART
-6°  (Opcional) BohleBots          (30 min)  → librería alternativa
-```
-
-**Regla**: Si TEST 1 falla → resolver antes de todo.
-**Regla**: Si TEST 2 oscila mucho → ajustar Kp/Kd antes de seguir.
-**Regla**: Los valores calibrados en TEST 2 se usan después en los fixes.
-
----
-
 ## Documentos de referencia
 
 | Documento | Descripción |
 |-----------|-------------|
-| `shared/test-bno055-imuplus.ino` | Test standalone BNO055 |
-| `shared/test-movimiento-omnidireccional.ino` | Test 9 movimientos con PD heading |
+| `shared/test-bno055-imuplus/` | Test standalone BNO055 |
+| `shared/test-movimiento-omnidireccional/` | Test 9 movimientos con PD heading |
+| `shared/test-gyro-movimiento-basico/` | Test adelante/atrás con PID |
+| `shared/test-motores-lateral-simple/` | Test lateral con PID v4 |
+| `shared/test-4-movimientos/` | **NUEVO** — Test 4 movimientos combinados |
 | `shared/cambios-bno055-init.md` | Parches init giróscopo |
 | `shared/cambios-uart-sincronizacion.md` | Parches protocolo UART |
 | `shared/cambios-rampa-pateo.md` | Parches rampa de pateo |

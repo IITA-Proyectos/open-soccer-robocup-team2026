@@ -1,4 +1,4 @@
-// config_zircon.h — Constantes del firmware del Zircon (motor server)
+// config_central.h — Constantes del firmware del Zircon (motor server)
 //
 // El Zircon Rev v15 con Teensy 4.1 ejecuta el firmware "motor server":
 //   - Recibe MotorCommand por Serial1 desde la placa TOP.

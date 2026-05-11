@@ -12,7 +12,6 @@
 
 #include "strategy.h"
 #include "world_model.h"
-#include "comm_arbiter.h"
 
 #include <Arduino.h>
 #include <cmath>

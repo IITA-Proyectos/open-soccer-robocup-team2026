@@ -1,5 +1,5 @@
 #include "motors_zircon.h"
-#include "config_zircon.h"
+#include "config_central.h"
 #include "kinematics.h"
 #include <Arduino.h>
 
@@ -7,7 +7,7 @@ namespace iitasoccer {
 
 namespace {
 
-// Pinout indexado por motor — los `constexpr int PIN_*` de config_zircon.h se
+// Pinout indexado por motor — los `constexpr int PIN_*` de config_central.h se
 // agrupan acá para usar índice [0..2] en lugar de hardcodear el motor.
 struct MotorPins { int ina; int inb; int pwm; };
 const MotorPins MOTOR_PINS[3] = {
@@ -68,7 +68,7 @@ void motors_apply_command(const MotorCommand& cmd) {
     }
 
     // TODO kicker: activar solenoide cuando cmd.kicker_fire == 1 (solo en ROBOT2)
-    // Requiere pin del solenoide en config_zircon.h — confirmar con Enzo.
+    // Requiere pin del solenoide en config_central.h — confirmar con Enzo.
 }
 
 void motors_stop() {

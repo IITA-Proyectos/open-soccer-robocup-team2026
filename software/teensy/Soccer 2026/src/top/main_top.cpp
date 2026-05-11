@@ -1,21 +1,20 @@
-// main_top.cpp — Loop principal de la placa TOP (Teensy 4.0 master).
+// main_top.cpp — Firmware del cerebro sensorial (Teensy 4.0 sobre placa TOP).
 //
-// Orquesta TODOS los subsistemas:
-//   • sensores: IMU dual, ToF + HC-SR04, cámaras OpenMV ×2
-//   • comm: DOWN (slave sensores), COMM (árbitros + partner), Zircon (motores)
-//   • lógica: world_model + strategy → MotorCommand
+// Responsabilidad: percibir el mundo y entregar un WORLD_SNAPSHOT al CENTRAL.
+// TOP NO toma decisiones tácticas ni controla motores — sólo percibe + fusiona.
 //
-// Frecuencias:
-//   • main loop:          ~100-200 Hz (un tick es muy rápido)
-//   • sensors_imu_tick:   100 Hz (10 ms)
-//   • sensors_tof_tick:   ~30 Hz (30 ms — los ToF I2C son lentos)
-//   • strategy_tick:      100 Hz
-//   • motors_send_command: 100 Hz
-//   • cameras / comm RX:  every loop, no bloquea
+// Inputs:
+//   • 2 cámaras OpenMV (Serial3 + Serial5)
+//   • 2 BNO055 IMU (I2C Wire + Wire1 remap 24/25)
+//   • 4 ToF + 1 HC-SR04 (I2C dual + GPIO)
+//   • Odometría OTOS desde ABAJO (Serial1)
+//   • Comm árbitros + partner ESP-NOW (Serial4 → placa COMM)
+//
+// Outputs:
+//   • WORLD_SNAPSHOT a CENTRAL (Serial2) a 100 Hz.
 //
 // Build:
 //   pio run -e top
-//   pio run -e top -t upload
 
 #include <Arduino.h>
 
@@ -23,11 +22,10 @@
 #include "sensors_imu.h"
 #include "sensors_tof.h"
 #include "cameras.h"
-#include "comm_down.h"
-#include "comm_arbiter.h"
-#include "motors.h"
-#include "world_model.h"
-#include "strategy.h"
+#include "comm_down.h"      // recibe odometría OTOS desde ABAJO
+#include "comm_arbiter.h"   // bridge a placa COMM
+#include "comm_central.h"   // envía snapshot al CENTRAL
+#include "types.h"
 
 using namespace iitasoccer;
 
@@ -35,23 +33,47 @@ namespace {
 
 elapsedMillis g_since_imu_tick;
 elapsedMillis g_since_tof_tick;
-elapsedMillis g_since_strategy_tick;
-elapsedMillis g_since_motors_send;
-elapsedMillis g_since_debug_print;
+elapsedMillis g_since_snapshot;
+elapsedMillis g_since_debug;
 
 uint32_t g_loop_count = 0;
 
-void apply_role_from_dipswitch() {
-    pinMode(PIN_ROLE_DIPSWITCH, INPUT_PULLUP);
-    delay(10);
-    const int v = digitalRead(PIN_ROLE_DIPSWITCH);
-    if (v == LOW) {
-        strategy_set_role(RobotRole::GOALKEEPER);
-        Serial.println("[TOP] Role: GOALKEEPER (dipswitch LOW)");
-    } else {
-        strategy_set_role(RobotRole::ATTACKER);
-        Serial.println("[TOP] Role: ATTACKER (dipswitch HIGH)");
-    }
+// Construye el WorldSnapshot a partir de todas las fuentes percibidas.
+WorldSnapshot build_snapshot() {
+    WorldSnapshot s{};
+
+    // Pose propia — por ahora solo heading del IMU dual. Pose absoluta (x, y)
+    // requiere fusión cámaras + OTOS — pendiente Nivel 2 / EKF.
+    s.my_x_mm = 0;
+    s.my_y_mm = 0;
+    s.my_heading_centideg = static_cast<int16_t>(sensors_imu_get_heading_deg() * 100.0f);
+    s.my_pose_confidence = (sensors_imu_left_ready() || sensors_imu_right_ready()) ? 60 : 0;
+
+    // Pelota — provendrá de cameras_tick() cuando se integre el parser.
+    s.ball_visible = 0;
+    s.ball_x_mm = 0;
+    s.ball_y_mm = 0;
+    s.ball_confidence = 0;
+
+    // Arcos — idem.
+    s.goal_opp_visible = 0;
+    s.goal_own_visible = 0;
+    s.goal_opp_angle_centideg = 0;
+    s.goal_opp_distance_mm = 0;
+
+    // Obstáculo más cercano (de ToFs + HC-SR04).
+    s.min_obstacle_mm = sensors_tof_get_min_distance_mm();
+
+    // Comando árbitro y flags.
+    s.referee_cmd = static_cast<uint8_t>(comm_arbiter_get_last_command());
+    uint8_t flags = 0;
+    if (comm_arbiter_is_match_running())    flags |= (1 << 3);
+    if (comm_arbiter_partner_is_fresh())    flags |= (1 << 1);
+    // bit 0 (in_own_penalty_area) requiere pose absoluta — Nivel 2.
+    // bit 2 (partner_sees_ball) requiere parseo del partner snapshot — futuro.
+    s.flags = flags;
+
+    return s;
 }
 
 }  // namespace
@@ -62,45 +84,28 @@ void setup() {
 
     Serial.begin(115200);
     delay(100);
-    Serial.println("\n========================================");
+    Serial.println("\n=========================================");
     Serial.println("  IITA Soccer Open — TOP firmware");
-    Serial.println("  Roboliga 2026, Incheon target");
-    Serial.println("========================================\n");
+    Serial.println("  Cerebro sensorial (Teensy 4.0)");
+    Serial.println("=========================================");
 
-    apply_role_from_dipswitch();
-
-    // Inicializar subsistemas en orden.
-    Serial.println("[TOP] Init IMU dual...");
     sensors_imu_init();
-
-    Serial.println("[TOP] Init ToF + HC-SR04...");
     sensors_tof_init();
-
-    Serial.println("[TOP] Init UART desde DOWN...");
-    comm_down_init();
-
-    Serial.println("[TOP] Init UART hacia Zircon...");
-    motors_init();
-
-    Serial.println("[TOP] Init UART hacia COMM...");
-    comm_arbiter_init();
-
-    Serial.println("[TOP] Init world_model + strategy...");
-    world_model_init();
-    strategy_init();
+    comm_down_init();    // Serial1 ← odometría desde ABAJO
+    comm_arbiter_init(); // Serial4 ↔ placa COMM
+    comm_central_init(); // Serial2 → snapshot a CENTRAL
 
     digitalWrite(PIN_LED_STATUS, HIGH);
-    Serial.println("[TOP] Setup completo. Esperando match start del COMM.");
+    Serial.println("[TOP] cerebro sensorial listo, enviando snapshots a CENTRAL");
 }
 
 void loop() {
     g_loop_count++;
 
-    // === RX: drenar todas las UARTs (no bloquea) ===
-    comm_down_tick();
-    comm_arbiter_tick();
-    motors_tick_rx();
-    // cameras_tick();  // TODO: integrar parser de cameras.h cuando esté conectado a Serial3/Serial5
+    // === RX: drenar UARTs (no bloquea) ===
+    comm_down_tick();      // odometría OTOS desde ABAJO
+    comm_arbiter_tick();   // comm con placa COMM (árbitros + partner)
+    comm_central_tick();   // comandos desde CENTRAL (reset, calib)
 
     // === Sensores periódicos ===
     if (g_since_imu_tick >= IMU_TICK_INTERVAL_MS) {
@@ -112,36 +117,25 @@ void loop() {
         sensors_tof_tick();
     }
 
-    // === Estrategia + motores ===
-    if (g_since_strategy_tick >= STRATEGY_TICK_INTERVAL_MS) {
-        g_since_strategy_tick = 0;
-        world_model_update();
-        const MotorCommand cmd = strategy_tick();
-
-        // Enviar comando al Zircon (a 100 Hz).
-        if (g_since_motors_send >= MOTORS_SEND_INTERVAL_MS) {
-            g_since_motors_send = 0;
-            motors_send_command(cmd.vx_mm_s, cmd.vy_mm_s,
-                                cmd.omega_centideg_s, cmd.kicker_fire != 0);
-        }
+    // === Snapshot → CENTRAL ===
+    if (g_since_snapshot >= 10) {  // 100 Hz
+        g_since_snapshot = 0;
+        WorldSnapshot snap = build_snapshot();
+        comm_central_send_snapshot(snap);
     }
 
-    // === Debug print cada 500 ms ===
-    if (g_since_debug_print >= 500) {
-        g_since_debug_print = 0;
+    // === Debug ===
+    if (g_since_debug >= 500) {
+        g_since_debug = 0;
         Serial.print("[TOP] loop=");
         Serial.print(g_loop_count);
-        Serial.print(" role=");
-        Serial.print(strategy_get_role() == RobotRole::ATTACKER ? "ATK" : "GK");
-        Serial.print(" state=");
-        Serial.print(strategy_get_state_name());
-        Serial.print(" match=");
-        Serial.print(world_model_match_running() ? "RUN" : "STOP");
         Serial.print(" hdg=");
-        Serial.print(world_model_get_my_heading_deg(), 1);
-        Serial.print(" down_line_fresh=");
-        Serial.print(comm_down_is_line_fresh() ? "Y" : "N");
-        Serial.print(" zircon_fresh=");
-        Serial.println(motors_zircon_is_fresh() ? "Y" : "N");
+        Serial.print(sensors_imu_get_heading_deg(), 1);
+        Serial.print(" imu_L=");
+        Serial.print(sensors_imu_left_ready() ? "Y" : "N");
+        Serial.print(" imu_R=");
+        Serial.print(sensors_imu_right_ready() ? "Y" : "N");
+        Serial.print(" min_obst=");
+        Serial.println(sensors_tof_get_min_distance_mm());
     }
 }

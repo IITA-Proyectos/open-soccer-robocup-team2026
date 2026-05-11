@@ -9,7 +9,7 @@
 
 namespace iitasoccer {
 
-// Inicializa los pines de motor según la macro ROBOT1/ROBOT2 (config_zircon.h).
+// Inicializa los pines de motor según la macro ROBOT1/ROBOT2 (config_central.h).
 void motors_init();
 
 // Aplica un MotorCommand del protocolo (vx, vy, omega + kicker_fire).

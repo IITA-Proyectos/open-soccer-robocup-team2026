@@ -1,5 +1,5 @@
 #include "imu_zircon.h"
-#include "config_zircon.h"
+#include "config_central.h"
 
 #include <Arduino.h>
 #include <Wire.h>

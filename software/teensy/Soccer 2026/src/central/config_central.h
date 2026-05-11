@@ -89,6 +89,22 @@ constexpr int   UART_TOP_TX     = 1;  // Serial1 TX1
 constexpr uint32_t COMMAND_TIMEOUT_MS = 200;
 
 // ============================================================
+// Kicker (solenoide) — solo ROBOT2 (delantero)
+// ============================================================
+// El solenoide se dispara con un pulso GPIO HIGH durante KICKER_PULSE_MS.
+// Después del pulso hay un cooldown KICKER_COOLDOWN_MS antes de poder volver a
+// disparar — protege al solenoide de recargas seguidas que lo queman.
+//
+// ⚠️ PIN_KICKER_SOL es placeholder — confirmar con Enzo qué GPIO del Zircon
+// está cableado al MOSFET del solenoide. Mientras tanto usamos el pin 23
+// (libre en ambos robots según mapa-pines-teensy del 2026-03-20).
+#if defined(ROBOT2)
+    constexpr int PIN_KICKER_SOL = 23;   // ⚠️ A CONFIRMAR ENZO (TASK-NUEVA)
+    constexpr uint32_t KICKER_PULSE_MS    = 80;    // duración del pulso al MOSFET
+    constexpr uint32_t KICKER_COOLDOWN_MS = 1500;  // tiempo mínimo entre disparos
+#endif
+
+// ============================================================
 // LED de estado
 // ============================================================
 constexpr int PIN_LED_STATUS = 13;  // LED_BUILTIN del Teensy 4.1

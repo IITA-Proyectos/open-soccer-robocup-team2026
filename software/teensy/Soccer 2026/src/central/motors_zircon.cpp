@@ -77,6 +77,18 @@ void motors_stop() {
     }
 }
 
+void motors_brake() {
+    // Freno activo: INA = INB = 1 con PWM = 0 → corto interno en el H-bridge.
+    // Detiene el motor más rápido que motors_stop() pero genera corriente
+    // de freno alta — solo usar para emergencias.
+    for (int i = 0; i < 3; ++i) {
+        const MotorPins& p = MOTOR_PINS[i];
+        digitalWrite(p.ina, HIGH);
+        digitalWrite(p.inb, HIGH);
+        analogWrite(p.pwm, 0);
+    }
+}
+
 void motors_set_one(int motor_idx, int pwm_signed) {
     apply_pwm_to_motor(motor_idx, pwm_signed);
 }

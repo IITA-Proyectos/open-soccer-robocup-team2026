@@ -16,8 +16,15 @@ void motors_init();
 // El kicker se ignora si el robot es arquero (sin kicker físico — futuro).
 void motors_apply_command(const MotorCommand& cmd);
 
-// Frena los 3 motores (PWM = 0, INA/INB = 0). Llamar desde el watchdog.
+// Frena los 3 motores en modo libre (PWM = 0, INA/INB = 0).
+// Motor queda libre — frena por fricción mecánica + back-EMF mínimo.
+// Usar para estado default / watchdog (no urgente).
 void motors_stop();
+
+// Freno activo (PWM = 0, INA = INB = 1 → corto en H-bridge).
+// El motor frena más rápido que motors_stop() pero estresa los drivers.
+// Usar SOLO en EMERGENCY_LINE u otra emergencia real.
+void motors_brake();
 
 // Aplica PWM individual signed a un motor (0, 1, 2). Util para debug.
 //   pwm positivo → adelante (INA=1, INB=0)

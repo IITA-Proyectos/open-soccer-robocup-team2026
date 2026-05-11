@@ -88,16 +88,31 @@ void loop() {
     comm_top_tick();    // aplica WorldSnapshot al world_model
     comm_down_tick();   // aplica LineStatus al world_model
 
+    // === EMERGENCY_LINE — bypass de FSM ===
+    // Si ABAJO reporta línea inminente Y los datos son frescos, frenar AHORA.
+    // Latencia objetivo: <15 ms desde detección en DOWN hasta freno activo.
+    // Se chequea cada iteración del loop (no espera al tick de 100 Hz de strategy).
+    if (world_model_imminent_exit() && world_model_line_is_fresh()) {
+        motors_brake();  // freno activo (corto en H-bridge), no solo PWM=0.
+        // Encender LED fijo como alerta visual.
+        digitalWrite(PIN_LED_STATUS, HIGH);
+        // No salimos del loop — seguimos drenando UARTs para detectar el reset
+        // (cuando imminent_exit baja, recuperamos control en el próximo tick).
+        return;
+    }
+
     // === Strategy + motores ===
     if (g_since_strategy_tick >= 10) {  // 100 Hz
         g_since_strategy_tick = 0;
 
         if (!world_model_snapshot_is_fresh()) {
-            // ARRIBA caído → modo seguro.
+            // ARRIBA caído > 500 ms → SAFE_NO_TOP. Parar motores, parpadear LED.
             motors_stop();
+            digitalWrite(PIN_LED_STATUS, (millis() / 200) % 2);
         } else {
             MotorCommand cmd = strategy_tick();
             motors_apply_command(cmd);
+            digitalWrite(PIN_LED_STATUS, HIGH);  // OK
         }
     }
 

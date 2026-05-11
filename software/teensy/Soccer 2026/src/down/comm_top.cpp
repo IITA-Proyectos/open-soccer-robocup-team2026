@@ -1,0 +1,111 @@
+#include "comm_top.h"
+#include "config_down.h"
+#include "line_ring.h"
+#include "otos.h"
+#include "proto.h"
+#include "types.h"
+
+#include <Arduino.h>
+#include <string.h>
+
+namespace iitasoccer {
+
+namespace {
+
+FrameDecoder g_decoder;
+uint32_t g_frames_received = 0;
+uint32_t g_frames_sent = 0;
+uint8_t  g_send_seq = 0;
+
+void handle_frame(const Frame& f) {
+    switch (f.type) {
+        case MsgType::TOP_RESET_OTOS:
+            otos_reset();
+            break;
+        case MsgType::TOP_CALIB_LINE:
+            // El primer byte del payload indica qué calibrar:
+            //   0 = carpet, 1 = white.
+            if (f.payload_len >= 1) {
+                if (f.payload[0] == 0) line_ring_calibrate_carpet();
+                else if (f.payload[0] == 1) line_ring_calibrate_white();
+            }
+            break;
+        default:
+            // Frames no relevantes para DOWN — ignorar silenciosamente.
+            break;
+    }
+}
+
+template <typename T>
+void send_typed(MsgType type, const T& payload) {
+    Frame f{};
+    f.type = type;
+    f.seq = g_send_seq++;
+    f.payload_len = sizeof(T);
+    memcpy(f.payload, &payload, sizeof(T));
+
+    uint8_t buf[PROTO_MAX_FRAME];
+    size_t n = proto_encode(f, buf, sizeof(buf));
+    if (n > 0) {
+        Serial5.write(buf, n);
+        g_frames_sent++;
+    }
+}
+
+}  // namespace
+
+void comm_top_init() {
+    Serial5.begin(UART_TOP_BAUD);
+}
+
+int comm_top_tick() {
+    int processed = 0;
+    while (Serial5.available() > 0) {
+        const uint8_t b = static_cast<uint8_t>(Serial5.read());
+        if (g_decoder.feed(b)) {
+            handle_frame(g_decoder.get_frame());
+            g_frames_received++;
+            processed++;
+        }
+    }
+    return processed;
+}
+
+void comm_top_send_status() {
+    // LINE_STATUS — ángulo de línea + profundidad + flag salida inminente.
+    LineStatus ls{};
+    ls.angle_centideg = static_cast<int16_t>(line_ring_get_angle_deg() * 100.0f);
+    // depth_mm: por ahora usamos "cantidad de sensores en blanco" como proxy
+    // de profundidad (cada sensor representa un slot angular ~11.25°).
+    // Cuando tengamos calibración geométrica del anillo, mapear a mm reales.
+    ls.depth_mm = line_ring_get_depth();
+    ls.imminent_exit_flag = line_ring_get_imminent_exit() ? 1 : 0;
+    send_typed(MsgType::DOWN_LINE_STATUS, ls);
+
+    // OTOS POSE — pose central del robot (fusión de los 2 OTOS, o el único disponible).
+    Pose2D pose{};
+    pose.x_mm = static_cast<int16_t>(otos_get_x_mm());
+    pose.y_mm = static_cast<int16_t>(otos_get_y_mm());
+    pose.heading_centideg = static_cast<int16_t>(otos_get_heading_deg() * 100.0f);
+    pose.confidence = (otos_is_left_ready() && otos_is_right_ready()) ? 100
+                    : (otos_is_left_ready() || otos_is_right_ready()) ? 60
+                    : 0;
+    send_typed(MsgType::DOWN_OTOS_POSE, pose);
+
+    // OTOS VEL — velocidades + slip_estimate (DOWN-specific).
+    Velocity2D vel{};
+    vel.vx_mm_s = static_cast<int16_t>(otos_get_vx_mm_s());
+    vel.vy_mm_s = static_cast<int16_t>(otos_get_vy_mm_s());
+    // omega: el getter da rad/s; Velocity2D usa centideg/s. Convertimos.
+    vel.omega_centideg_s = static_cast<int16_t>(
+        otos_get_omega_rad_s() * (18000.0f / 3.14159265f));
+    vel.slip_estimate = static_cast<uint8_t>(
+        otos_get_slip_estimate() > 255.0f ? 255 : otos_get_slip_estimate());
+    send_typed(MsgType::DOWN_OTOS_VEL, vel);
+}
+
+uint32_t comm_top_get_frames_received() { return g_frames_received; }
+uint32_t comm_top_get_frames_sent()     { return g_frames_sent; }
+uint32_t comm_top_get_crc_errors()      { return g_decoder.crc_errors(); }
+
+}  // namespace iitasoccer

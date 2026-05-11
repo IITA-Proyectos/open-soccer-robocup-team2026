@@ -27,10 +27,15 @@ struct Pose2D {
 } __attribute__((packed));
 
 // Velocidades del robot.
+// `slip_estimate` es específico del OTOS dual de la placa DOWN:
+//   estima la magnitud del slip entre los 2 OTOS (mm/s observados de diferencia
+//   más allá de lo esperable por la rotación). Útil para detectar patinazo al
+//   patear / chocar. 0 = sin slip; valores altos (>50) son anomalías.
 struct Velocity2D {
     int16_t vx_mm_s;              // velocidad lineal X (mm/s)
     int16_t vy_mm_s;              // velocidad lineal Y (mm/s)
     int16_t omega_centideg_s;     // velocidad angular (centideg/s)
+    uint8_t slip_estimate;        // 0-255 (DOWN OTOS dual; 0 si N/A)
 } __attribute__((packed));
 
 // Estado del anillo de 32 sensores de línea (computado por DOWN).

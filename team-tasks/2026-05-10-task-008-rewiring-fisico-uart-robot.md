@@ -60,9 +60,29 @@ El TOP es el hub central. El Zircon ya no habla con la cámara directo — solo 
    - Después agregar UART hacia DOWN, COMM, cámaras una por una.
 7. **Documentar el cableado final** con foto en `hardware/electrical/photos/2026-05-10-cableado-uart/` y diagrama en `hardware/electrical/cableado-uart-robot-2026.md`.
 
+## Pregunta abierta crítica para el firmware
+
+**¿Qué pines del Teensy 4.0 TOP van a los terminales RX_OUT y TX_OUT del conector U1?**
+
+El schematic del TOP muestra el conector U1 ("PINES MODULO") con 6 terminales:
+OUT1, OUT2, RX_OUT, TX_OUT, USB_D+, USB_D-. Pero no etiqueta cuál es el net del
+Teensy que va a RX_OUT / TX_OUT.
+
+El firmware actual (`src/top/motors.cpp`) asume que es **Serial2** del Teensy 4.0
+(pines 7 RX2 / 8 TX2 según docs PJRC). Si esto es incorrecto, hay que cambiar el
+`Serial2` por el que sea (Serial7 está disponible en pines 28/29 — alternativa).
+
+**Cómo confirmarlo:**
+- Opción A: abrir el PCB JSON del 04-20 en EasyEDA (cuando esté disponible vía TASK-009) y
+  ver a qué pads físicos del Teensy van RX_OUT y TX_OUT del U1.
+- Opción B: medir continuidad con multímetro en la placa fabricada.
+
+Actualizar `src/top/config_top.h` y `src/top/motors.cpp` si Serial2 no es el correcto.
+
 ## Criterio de cierre
 
 - [ ] Cable OpenMV1 ↔ TOP U8 funcional (la cámara comunica al TOP).
+- [ ] **Confirmado qué Serial del Teensy 4.0 TOP va al conector U1 (Zircon).**
 - [ ] Cable OpenMV2 ↔ TOP U9 funcional (si hay 2da cámara).
 - [ ] Cable DOWN ↔ TOP U16 funcional (TOP recibe frames del protocolo nuevo desde DOWN).
 - [ ] Cable COMM ↔ TOP U15 funcional (TOP comunica con módulo árbitros).

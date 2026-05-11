@@ -22,9 +22,10 @@
 #include "sensors_imu.h"
 #include "sensors_tof.h"
 #include "cameras.h"
-#include "comm_down.h"      // recibe odometría OTOS desde ABAJO
-#include "comm_arbiter.h"   // bridge a placa COMM
-#include "comm_central.h"   // envía snapshot al CENTRAL
+#include "cameras_runtime.h"   // drena Serial3+Serial5, fusiona front+back
+#include "comm_down.h"         // recibe odometría OTOS desde ABAJO
+#include "comm_arbiter.h"      // bridge a placa COMM
+#include "comm_central.h"      // envía snapshot al CENTRAL
 #include "types.h"
 
 using namespace iitasoccer;
@@ -49,17 +50,22 @@ WorldSnapshot build_snapshot() {
     s.my_heading_centideg = static_cast<int16_t>(sensors_imu_get_heading_deg() * 100.0f);
     s.my_pose_confidence = (sensors_imu_left_ready() || sensors_imu_right_ready()) ? 60 : 0;
 
-    // Pelota — provendrá de cameras_tick() cuando se integre el parser.
-    s.ball_visible = 0;
-    s.ball_x_mm = 0;
-    s.ball_y_mm = 0;
-    s.ball_confidence = 0;
+    // Pelota — fusión front+back desde cameras_runtime (sección 7.2 de
+    // FIRMWARE-PLACA-ARRIBA.md). Coords relativas al robot en mm.
+    s.ball_visible    = cameras_ball_visible() ? 1 : 0;
+    s.ball_x_mm       = cameras_get_ball_x_mm();
+    s.ball_y_mm       = cameras_get_ball_y_mm();
+    s.ball_confidence = cameras_get_ball_confidence();
 
-    // Arcos — idem.
-    s.goal_opp_visible = 0;
-    s.goal_own_visible = 0;
-    s.goal_opp_angle_centideg = 0;
-    s.goal_opp_distance_mm = 0;
+    // Arcos — mapping de colores → opp/own.
+    // TODO: este mapping (yellow=opp, blue=own) está hardcoded. La polaridad
+    // real depende del lado de cancha asignado por árbitro al inicio del
+    // partido. Cuando se integre el comando del árbitro (referee_cmd) con
+    // mensaje "play side", revisar y posiblemente invertir. Pendiente Enzo.
+    s.goal_opp_visible        = cameras_goal_yellow_visible() ? 1 : 0;
+    s.goal_opp_angle_centideg = cameras_get_goal_yellow_angle_centideg();
+    s.goal_opp_distance_mm    = cameras_get_goal_yellow_distance_mm();
+    s.goal_own_visible        = cameras_goal_blue_visible() ? 1 : 0;
 
     // Obstáculo más cercano (de ToFs + HC-SR04).
     s.min_obstacle_mm = sensors_tof_get_min_distance_mm();
@@ -91,6 +97,7 @@ void setup() {
 
     sensors_imu_init();
     sensors_tof_init();
+    cameras_init();      // Serial3 + Serial5 ← OpenMV front + back
     comm_down_init();    // Serial1 ← odometría desde ABAJO
     comm_arbiter_init(); // Serial4 ↔ placa COMM
     comm_central_init(); // Serial2 → snapshot a CENTRAL
@@ -106,6 +113,7 @@ void loop() {
     comm_down_tick();      // odometría OTOS desde ABAJO
     comm_arbiter_tick();   // comm con placa COMM (árbitros + partner)
     comm_central_tick();   // comandos desde CENTRAL (reset, calib)
+    cameras_tick();        // OpenMV front (Serial3) + back (Serial5)
 
     // === Sensores periódicos ===
     if (g_since_imu_tick >= IMU_TICK_INTERVAL_MS) {
@@ -136,6 +144,26 @@ void loop() {
         Serial.print(" imu_R=");
         Serial.print(sensors_imu_right_ready() ? "Y" : "N");
         Serial.print(" min_obst=");
-        Serial.println(sensors_tof_get_min_distance_mm());
+        Serial.print(sensors_tof_get_min_distance_mm());
+        Serial.print(" cam_F/B=");
+        Serial.print(cameras_front_alive() ? "Y" : "N");
+        Serial.print("/");
+        Serial.print(cameras_back_alive() ? "Y" : "N");
+        Serial.print(" ball=");
+        if (cameras_ball_visible()) {
+            Serial.print("(");
+            Serial.print(cameras_get_ball_x_mm());
+            Serial.print(",");
+            Serial.print(cameras_get_ball_y_mm());
+            Serial.print(")");
+        } else {
+            Serial.print("--");
+        }
+        Serial.print(" pkts_F/B=");
+        Serial.print(cameras_packets_front());
+        Serial.print("/");
+        Serial.print(cameras_packets_back());
+        Serial.print(" resync=");
+        Serial.println(cameras_resyncs_total());
     }
 }

@@ -52,6 +52,12 @@ open-soccer-robocup-team2026/
 
 Clasificados como **campeones nacionales** en la Roboliga Argentina (diciembre 2025, Buenos Aires).
 
+## Arquitectura
+
+El robot 2026 usa una **arquitectura distribuida de 3 placas** especializadas (CENTRAL Teensy 4.1 + ARRIBA Teensy 4.0 + ABAJO Teensy 4.0), conectadas por UART.
+
+📐 **[Documento de arquitectura completo (lectura recomendada): `docs/ARQUITECTURA-3-PLACAS-2026.md`](docs/ARQUITECTURA-3-PLACAS-2026.md)** — qué hace cada placa, cómo se comunican, decisiones de diseño justificadas.
+
 ## Cómo contribuir
 
 Leer **[CONTRIBUTING.md](CONTRIBUTING.md)** antes de hacer cualquier cambio. Incluye reglas de atribución, uso de IA, y formato de commits.

@@ -41,9 +41,18 @@ struct Velocity2D {
 // Estado del anillo de 32 sensores de línea (computado por DOWN).
 struct LineStatus {
     int16_t angle_centideg;       // ángulo de la línea (0 = frente, ±18000)
-    uint8_t depth_mm;             // qué tan dentro de la línea (mm)
+    uint8_t depth_mm;             // qué tan dentro de la línea (mm, o # sensores)
     uint8_t imminent_exit_flag;   // 0 o 1: ≥ N sensores en blanco simultáneo
+    uint8_t flags;                // bit 0 = lifted (robot en aire — ignorar datos)
+                                  // bit 1 = mux_X_dead (algún mux roto)
+                                  // bit 2 = calibration_invalid
+                                  // bits 3-7 = reservados
 } __attribute__((packed));
+
+// Bit masks para LineStatus.flags
+constexpr uint8_t LINE_FLAG_LIFTED              = 0x01;
+constexpr uint8_t LINE_FLAG_MUX_DEAD            = 0x02;
+constexpr uint8_t LINE_FLAG_CALIBRATION_INVALID = 0x04;
 
 // Comando de motor desde TOP al Zircon (motor server).
 struct MotorCommand {

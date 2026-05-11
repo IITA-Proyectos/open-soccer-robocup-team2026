@@ -61,6 +61,9 @@ void comm_central_send_line_urgent() {
     // Cuando tengamos calibración geométrica del anillo, mapear a mm reales.
     ls.depth_mm = line_ring_get_depth();
     ls.imminent_exit_flag = line_ring_get_imminent_exit() ? 1 : 0;
+    // Flags: bit 0 = lifted (robot en aire — CENTRAL debe ignorar datos de línea).
+    ls.flags = 0;
+    if (line_ring_is_lifted()) ls.flags |= LINE_FLAG_LIFTED;
 
     Frame f{};
     f.type = MsgType::LINE_URGENT;

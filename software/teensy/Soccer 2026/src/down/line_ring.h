@@ -29,6 +29,7 @@ void line_ring_tick();                  // muestrea los NUM_LINE_SENSORS sensore
 float    line_ring_get_angle_deg();     // ángulo de la línea más fuerte detectada
 uint8_t  line_ring_get_depth();         // cuántos sensores en blanco simultáneamente
 bool     line_ring_get_imminent_exit(); // depth ≥ umbral
+bool     line_ring_is_lifted();         // true si robot está en aire (datos no confiables)
 
 // Acceso a lecturas crudas y calibración.
 uint16_t line_ring_get_raw(uint8_t sensor_idx);    // 0..NUM_LINE_SENSORS-1

@@ -1,22 +1,35 @@
+// line_ring.cpp — Lectura hardware del anillo de sensores y aplicación de filtros.
+//
+// El hardware (lectura de los 32 sensores via muxes) vive acá. La lógica de
+// procesamiento (filtros temporal/espacial/hysteresis/lifted, cálculo de ángulo)
+// vive en src/shared/line_filters.{h,cpp} — funciones puras testeables en host.
+// Ver test/test_line_filters/ para tests unitarios de la lógica.
+
 #include "line_ring.h"
+#include "line_filters.h"
+
 #include <Arduino.h>
-#include <cmath>
 
 namespace iitasoccer {
 
 namespace {
 
-// Lecturas crudas más recientes (uint16_t para soportar 10-12 bit ADC).
-uint16_t g_raw[NUM_LINE_SENSORS] = {0};
+// === Buffers de lectura ===
+uint16_t g_raw[NUM_LINE_SENSORS] = {0};            // lectura cruda del ADC
+uint16_t g_raw_filtered[NUM_LINE_SENSORS] = {0};   // post filtro temporal
 
-// Umbrales por sensor (uno por sensor — ajustable con calibración).
+// === Calibración por sensor ===
 uint16_t g_threshold[NUM_LINE_SENSORS];
-
-// Promedio en carpet y en blanco (capturado por calibrate_*).
 uint16_t g_carpet_avg[NUM_LINE_SENSORS];
 uint16_t g_white_avg[NUM_LINE_SENSORS];
 
-// Outputs procesados.
+// === Estado de los filtros ===
+FilterBuffer g_temporal_bufs[NUM_LINE_SENSORS];
+bool g_sensor_white[NUM_LINE_SENSORS] = {false};           // post temporal+hysteresis
+bool g_sensor_white_validated[NUM_LINE_SENSORS] = {false}; // post spatial
+LiftedDetector g_lifted_state = {};
+
+// === Outputs procesados ===
 float   g_angle_deg = 0.0f;
 uint8_t g_depth = 0;
 bool    g_imminent_exit = false;
@@ -24,16 +37,32 @@ bool    g_imminent_exit = false;
 uint32_t g_tick_count = 0;
 uint32_t g_last_tick_us = 0;
 
-constexpr float DEG_PER_SENSOR = 360.0f / static_cast<float>(NUM_LINE_SENSORS);
-constexpr uint8_t IMMINENT_EXIT_DEPTH = 3;  // si >= 3 sensores ven blanco simultáneamente
+constexpr uint8_t IMMINENT_EXIT_DEPTH = 3;
 
-// Seteo los pines A, B, C para seleccionar el canal i (0..7) en TODOS los muxes
-// simultáneamente. Los 4 muxes leen su canal i en paralelo, luego nosotros leemos
-// O1..O4 (las 4 entradas analógicas correspondientes).
 void select_mux_channel(uint8_t ch) {
     digitalWrite(PIN_MUX_SEL_A, (ch & 0x01) ? HIGH : LOW);
     digitalWrite(PIN_MUX_SEL_B, (ch & 0x02) ? HIGH : LOW);
     digitalWrite(PIN_MUX_SEL_C, (ch & 0x04) ? HIGH : LOW);
+}
+
+void sample_all_sensors_hardware() {
+    for (uint8_t ch = 0; ch < NUM_SENSORS_PER_MUX; ++ch) {
+        select_mux_channel(ch);
+        delayMicroseconds(5);  // settle time CD4051
+        for (int m = 0; m < DOWN_NUM_MUXES_CONNECTED; ++m) {
+            const uint8_t idx = m * NUM_SENSORS_PER_MUX + ch;
+            g_raw[idx] = static_cast<uint16_t>(analogRead(PIN_MUX_OUT[m]));
+        }
+    }
+}
+
+void reset_filter_state() {
+    for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
+        g_temporal_bufs[i] = FilterBuffer{};
+        g_sensor_white[i] = false;
+        g_sensor_white_validated[i] = false;
+    }
+    g_lifted_state = LiftedDetector{};
 }
 
 }  // namespace
@@ -43,69 +72,66 @@ void line_ring_init() {
     pinMode(PIN_MUX_SEL_B, OUTPUT);
     pinMode(PIN_MUX_SEL_C, OUTPUT);
 
-    // Habilitar todos los muxes conectados (INH activo bajo).
     for (int m = 0; m < DOWN_NUM_MUXES_CONNECTED; ++m) {
         pinMode(PIN_MUX_INH[m], OUTPUT);
-        digitalWrite(PIN_MUX_INH[m], LOW);  // 0 = habilitado
+        digitalWrite(PIN_MUX_INH[m], LOW);  // 0 = mux habilitado
     }
 
-    // Inicializar umbrales con default. Después se ajustan vía calibración.
+    // Calibración default: a la espera de calibración real con carpet/white.
     for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
         g_threshold[i] = LINE_DEFAULT_THRESHOLD;
-        g_carpet_avg[i] = 0;
-        g_white_avg[i] = 1023;
+        g_carpet_avg[i] = 200;     // estimación carpet verde
+        g_white_avg[i]  = 800;     // estimación blanco
     }
+    reset_filter_state();
 
-    analogReadResolution(10);  // 10-bit (0-1023) — Teensy 4.0 soporta hasta 12-bit
+    analogReadResolution(10);  // 10-bit (0-1023). Teensy 4.0 soporta hasta 12-bit.
 }
 
 void line_ring_tick() {
     const uint32_t t_start = micros();
 
-    // Iteramos los 8 canales del mux.
-    for (uint8_t ch = 0; ch < NUM_SENSORS_PER_MUX; ++ch) {
-        select_mux_channel(ch);
-        // Settle time del CD4051 ~ 2-3 µs a 5V; con 3.3V puede ser más.
-        delayMicroseconds(5);
+    // 1. Lectura hardware: 32 sensores via muxes.
+    sample_all_sensors_hardware();
 
-        // Leemos las salidas de los muxes habilitados. La indexación es:
-        //   sensor index = mux_idx * NUM_SENSORS_PER_MUX + ch
-        for (int m = 0; m < DOWN_NUM_MUXES_CONNECTED; ++m) {
-            uint8_t idx = m * NUM_SENSORS_PER_MUX + ch;
-            g_raw[idx] = static_cast<uint16_t>(analogRead(PIN_MUX_OUT[m]));
-        }
-    }
-
-    // Compute ángulo + profundidad.
-    float sum_x = 0.0f;
-    float sum_y = 0.0f;
-    uint8_t depth = 0;
-
+    // 2. Filtro temporal (moving average) por sensor.
     for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
-        if (g_raw[i] >= g_threshold[i]) {
-            depth++;
-            const float theta_rad = i * DEG_PER_SENSOR * (M_PI / 180.0f);
-            sum_x += std::cos(theta_rad);
-            sum_y += std::sin(theta_rad);
-        }
+        g_raw_filtered[i] = lf_temporal_update(g_temporal_bufs[i], g_raw[i]);
     }
 
-    g_depth = depth;
-    g_imminent_exit = (depth >= IMMINENT_EXIT_DEPTH);
-
-    if (depth > 0) {
-        g_angle_deg = std::atan2(sum_y, sum_x) * (180.0f / M_PI);
-    } else {
-        g_angle_deg = 0.0f;  // sin línea detectada
+    // 3. Hysteresis por sensor (anti-flicker en el umbral).
+    for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
+        g_sensor_white[i] = lf_hysteresis_on_white(
+            g_raw_filtered[i], g_threshold[i], g_sensor_white[i]);
     }
+
+    // 4. Filtro espacial (cada sensor blanco requiere un vecino blanco).
+    lf_spatial_filter(g_sensor_white, g_sensor_white_validated, NUM_LINE_SENSORS);
+
+    // 5. Detección de robot levantado.
+    lf_lifted_update(g_lifted_state, millis(),
+                     g_raw_filtered, g_carpet_avg, NUM_LINE_SENSORS);
+
+    // 6. Centroide angular sobre sensores validados.
+    AngleResult result = lf_compute_centroid_angle(
+        g_sensor_white_validated, g_raw_filtered,
+        g_threshold, g_white_avg, NUM_LINE_SENSORS);
+
+    g_depth = static_cast<uint8_t>(result.depth);
+    g_angle_deg = result.valid ? result.angle_deg : 0.0f;
+
+    // imminent_exit: depth alto Y robot NO está levantado (sino son datos basura).
+    g_imminent_exit = (g_depth >= IMMINENT_EXIT_DEPTH) && !g_lifted_state.is_lifted;
 
     g_last_tick_us = micros() - t_start;
     g_tick_count++;
 }
 
-float   line_ring_get_angle_deg()    { return g_angle_deg; }
-uint8_t line_ring_get_depth()        { return g_depth; }
-bool    line_ring_get_imminent_exit(){ return g_imminent_exit; }
+// === Accesores ===
+float    line_ring_get_angle_deg()      { return g_angle_deg; }
+uint8_t  line_ring_get_depth()          { return g_depth; }
+bool     line_ring_get_imminent_exit()  { return g_imminent_exit; }
+bool     line_ring_is_lifted()          { return g_lifted_state.is_lifted; }
 
 uint16_t line_ring_get_raw(uint8_t sensor_idx) {
     if (sensor_idx >= NUM_LINE_SENSORS) return 0;
@@ -114,43 +140,46 @@ uint16_t line_ring_get_raw(uint8_t sensor_idx) {
 
 bool line_ring_get_white(uint8_t sensor_idx) {
     if (sensor_idx >= NUM_LINE_SENSORS) return false;
-    return g_raw[sensor_idx] >= g_threshold[sensor_idx];
+    return g_sensor_white_validated[sensor_idx];
 }
 
+// === Calibración ===
+// Las dos funciones siguientes capturan promedios con el robot en posición
+// conocida (sobre carpet o sobre línea blanca). Solo deben llamarse en modo
+// admin — bloquean el loop ~320 ms.
+
 void line_ring_calibrate_carpet() {
-    // Promedio de 32 muestras por sensor.
     uint32_t accum[NUM_LINE_SENSORS] = {0};
     constexpr int N_SAMPLES = 32;
     for (int s = 0; s < N_SAMPLES; ++s) {
-        line_ring_tick();
-        for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
-            accum[i] += g_raw[i];
-        }
+        sample_all_sensors_hardware();
+        for (int i = 0; i < NUM_LINE_SENSORS; ++i) accum[i] += g_raw[i];
         delay(10);
     }
     for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
         g_carpet_avg[i] = static_cast<uint16_t>(accum[i] / N_SAMPLES);
         g_threshold[i] = static_cast<uint16_t>((g_carpet_avg[i] + g_white_avg[i]) / 2);
     }
+    // Reset buffers de filtros — los datos antiguos ya no representan la nueva calibración.
+    reset_filter_state();
 }
 
 void line_ring_calibrate_white() {
     uint32_t accum[NUM_LINE_SENSORS] = {0};
     constexpr int N_SAMPLES = 32;
     for (int s = 0; s < N_SAMPLES; ++s) {
-        line_ring_tick();
-        for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
-            accum[i] += g_raw[i];
-        }
+        sample_all_sensors_hardware();
+        for (int i = 0; i < NUM_LINE_SENSORS; ++i) accum[i] += g_raw[i];
         delay(10);
     }
     for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
         g_white_avg[i] = static_cast<uint16_t>(accum[i] / N_SAMPLES);
         g_threshold[i] = static_cast<uint16_t>((g_carpet_avg[i] + g_white_avg[i]) / 2);
     }
+    reset_filter_state();
 }
 
-uint32_t line_ring_get_tick_count()  { return g_tick_count; }
-uint32_t line_ring_get_last_tick_us(){ return g_last_tick_us; }
+uint32_t line_ring_get_tick_count()   { return g_tick_count; }
+uint32_t line_ring_get_last_tick_us() { return g_last_tick_us; }
 
 }  // namespace iitasoccer

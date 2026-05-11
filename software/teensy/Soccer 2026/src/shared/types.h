@@ -69,4 +69,47 @@ struct BallObservation {
     uint8_t visible;              // 0 o 1
 } __attribute__((packed));
 
+// WorldSnapshot — payload que la placa ARRIBA envía al CENTRAL a 100 Hz.
+//
+// Es el "single source of truth" para la FSM/strategy del CENTRAL: contiene
+// todo lo que ARRIBA percibió en este tick (pose propia fusionada, pelota,
+// arcos, partner, comando árbitro, flags útiles).
+//
+// CENTRAL NO fusiona — recibe este snapshot y decide. La fusión sensorial
+// (IMU + OTOS + cámaras + ToF) corre en ARRIBA.
+//
+// Tamaño: 24 bytes. Cabe holgado en payload máximo de proto (32 bytes).
+struct WorldSnapshot {
+    // Pose propia fusionada en cancha
+    int16_t my_x_mm;
+    int16_t my_y_mm;
+    int16_t my_heading_centideg;
+    uint8_t my_pose_confidence;     // 0-100
+
+    // Pelota detectada (relativa al robot)
+    int16_t ball_x_mm;
+    int16_t ball_y_mm;
+    uint8_t ball_visible;           // 0/1
+    uint8_t ball_confidence;        // 0-100
+
+    // Arco rival (ángulo + distancia estimada)
+    int16_t goal_opp_angle_centideg;
+    int16_t goal_opp_distance_mm;
+    uint8_t goal_opp_visible;
+    uint8_t goal_own_visible;
+
+    // Obstáculo más cercano (min de ToFs + HC-SR04)
+    uint16_t min_obstacle_mm;
+
+    // Comando árbitro vigente
+    uint8_t referee_cmd;            // 0=stop, 1=start, 2=halftime, 3=reset
+
+    // Flags útiles para strategy
+    uint8_t flags;                  // bit 0 = in_own_penalty_area
+                                    // bit 1 = partner_alive
+                                    // bit 2 = partner_sees_ball
+                                    // bit 3 = match_running
+                                    // bits 4-7 = reservados
+} __attribute__((packed));
+
 }  // namespace iitasoccer

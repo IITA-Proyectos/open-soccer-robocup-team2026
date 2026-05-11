@@ -19,10 +19,10 @@ uint8_t  g_send_seq = 0;
 
 void handle_frame(const Frame& f) {
     switch (f.type) {
-        case MsgType::TOP_RESET_OTOS:
+        case MsgType::CENTRAL_RESET_OTOS:
             otos_reset();
             break;
-        case MsgType::TOP_CALIB_LINE:
+        case MsgType::CENTRAL_CALIB_LINE:
             // El primer byte del payload indica qué calibrar:
             //   0 = carpet, 1 = white.
             if (f.payload_len >= 1) {
@@ -72,15 +72,10 @@ int comm_top_tick() {
 }
 
 void comm_top_send_status() {
-    // LINE_STATUS — ángulo de línea + profundidad + flag salida inminente.
-    LineStatus ls{};
-    ls.angle_centideg = static_cast<int16_t>(line_ring_get_angle_deg() * 100.0f);
-    // depth_mm: por ahora usamos "cantidad de sensores en blanco" como proxy
-    // de profundidad (cada sensor representa un slot angular ~11.25°).
-    // Cuando tengamos calibración geométrica del anillo, mapear a mm reales.
-    ls.depth_mm = line_ring_get_depth();
-    ls.imminent_exit_flag = line_ring_get_imminent_exit() ? 1 : 0;
-    send_typed(MsgType::DOWN_LINE_STATUS, ls);
+    // NOTA: en la arquitectura nueva, LineStatus YA NO se envía a ARRIBA.
+    // ARRIBA solo necesita la odometría OTOS para fusión sensorial.
+    // La línea (LINE_URGENT) viaja por el bus de emergencia DOWN → CENTRAL
+    // (ver src/down/comm_central.{h,cpp}).
 
     // OTOS POSE — pose central del robot (fusión de los 2 OTOS, o el único disponible).
     Pose2D pose{};

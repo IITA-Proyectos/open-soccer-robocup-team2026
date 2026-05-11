@@ -39,7 +39,11 @@ void send_empty(MsgType type) {
 void handle_frame(const Frame& f) {
     g_frames_received++;
     switch (f.type) {
-        case MsgType::DOWN_LINE_STATUS:
+        // En la arquitectura nueva, LINE_URGENT (antes DOWN_LINE_STATUS) NO
+        // viene a ARRIBA — viaja por bus de emergencia directo DOWN → CENTRAL.
+        // Lo procesamos acá solo si llegó por error (no romper si por ahora
+        // DOWN sigue mandándolo en la transición).
+        case MsgType::LINE_URGENT:
             if (f.payload_len == sizeof(LineStatus)) {
                 memcpy(&g_line, f.payload, sizeof(LineStatus));
                 g_line_last_rx_ms = millis();
@@ -83,7 +87,7 @@ int comm_down_tick() {
 
 void comm_down_send_reset_otos() {
     Frame f{};
-    f.type = MsgType::TOP_RESET_OTOS;
+    f.type = MsgType::CENTRAL_RESET_OTOS;
     f.seq = g_send_seq++;
     f.payload_len = 1;
     f.payload[0] = 1;
@@ -94,7 +98,7 @@ void comm_down_send_reset_otos() {
 
 void comm_down_send_calib_line(bool white) {
     Frame f{};
-    f.type = MsgType::TOP_CALIB_LINE;
+    f.type = MsgType::CENTRAL_CALIB_LINE;
     f.seq = g_send_seq++;
     f.payload_len = 1;
     f.payload[0] = white ? 1 : 0;

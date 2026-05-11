@@ -30,33 +30,48 @@ namespace iitasoccer {
 constexpr uint8_t PROTO_START = 0xAA;
 constexpr uint8_t PROTO_END   = 0x55;
 
-// Tipos de mensaje (alocados por subsistema)
+// Tipos de mensaje (alocados por subsistema según arquitectura "STAR centric
+// con bus de emergencia" — ver docs/ARQUITECTURA-3-PLACAS-2026.md).
 enum class MsgType : uint8_t {
-    // DOWN → TOP (100Hz)
-    DOWN_LINE_STATUS  = 0x10,  // LineStatus
-    DOWN_OTOS_POSE    = 0x11,  // Pose2D
-    DOWN_OTOS_VEL     = 0x12,  // Velocity2D
+    // DOWN → ARRIBA (100 Hz)  — odometría OTOS para fusión sensorial
+    DOWN_OTOS_POSE      = 0x11,  // Pose2D
+    DOWN_OTOS_VEL       = 0x12,  // Velocity2D (con slip_estimate)
 
-    // TOP → DOWN (baja frecuencia)
-    TOP_RESET_OTOS    = 0x20,  // uint8 flag
-    TOP_CALIB_LINE    = 0x21,  // uint16 threshold
+    // DOWN → CENTRAL (100-200 Hz)  — bus de emergencia, línea pura
+    LINE_URGENT         = 0x10,  // LineStatus — measurement crudo (sin output PID)
 
-    // TOP → Zircon (motores)
-    MOTOR_COMMAND     = 0x50,  // MotorCommand (100Hz)
-    MOTOR_STATUS_REQ  = 0x51,  // empty
-    ZIRCON_STATUS     = 0x52,  // ZirconStatus
+    // CENTRAL → DOWN (eventos)
+    CENTRAL_RESET_OTOS  = 0x20,  // uint8 flag
+    CENTRAL_CALIB_LINE  = 0x21,  // uint8: 0=carpet, 1=white
 
-    // TOP ↔ COMM (placa árbitros + inter-robot)
-    COMM_REFEREE_CMD  = 0x30,  // uint8 cmd: 0=stop, 1=start, 2=halftime
-    COMM_STATUS_REQ   = 0x31,  // empty
-    TOP_STATUS_REPLY  = 0x32,  // estado + batería + errores
-    COMM_PARTNER_DATA = 0x40,  // datos recibidos del partner (via ESP-NOW)
-    TOP_PARTNER_DATA  = 0x41,  // datos a mandar al partner
+    // ARRIBA → CENTRAL (100 Hz)  — world snapshot completo
+    WORLD_SNAPSHOT      = 0x60,  // WorldSnapshot (pose, ball, goals, refcmd, partner)
+
+    // CENTRAL → ARRIBA (eventos)
+    CENTRAL_RESET_TOP   = 0x61,  // reset world model / recalibrar cámaras
+    CENTRAL_TOP_CMD     = 0x62,  // comandos administrativos genéricos
+
+    // ARRIBA ↔ COMM (placa árbitros + inter-robot ESP-NOW)
+    COMM_REFEREE_CMD    = 0x30,  // uint8: 0=stop, 1=start, 2=halftime, 3=reset
+    COMM_STATUS_REQ     = 0x31,  // empty (COMM pide status)
+    TOP_STATUS_REPLY    = 0x32,  // estado + batería + errores
+    COMM_PARTNER_DATA   = 0x40,  // snapshot recibido del partner via ESP-NOW
+    TOP_PARTNER_DATA    = 0x41,  // mi snapshot a enviar al partner
+
+    // (LEGACY — no usar en firmware nuevo) ARRIBA → Zircon como motor server
+    MOTOR_COMMAND       = 0x50,
+    MOTOR_STATUS_REQ    = 0x51,
+    ZIRCON_STATUS       = 0x52,
 
     // Reservado para tests / debug
-    DEBUG_ECHO        = 0xFE,
-    DEBUG_PING        = 0xFF,
+    DEBUG_ECHO          = 0xFE,
+    DEBUG_PING          = 0xFF,
 };
+
+// Alias retrocompatibles para no romper código existente — irán deprecando.
+constexpr MsgType DOWN_LINE_STATUS = MsgType::LINE_URGENT;
+constexpr MsgType TOP_RESET_OTOS   = MsgType::CENTRAL_RESET_OTOS;
+constexpr MsgType TOP_CALIB_LINE   = MsgType::CENTRAL_CALIB_LINE;
 
 constexpr size_t PROTO_MAX_PAYLOAD     = 32;
 constexpr size_t PROTO_FRAME_OVERHEAD  = 7;   // START + LEN + TYPE + SEQ + CRC(2) + END

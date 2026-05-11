@@ -26,7 +26,7 @@ Decodificación de los schematics del 2026-04-12 (`hardware/electronics/pcb_desi
 |-------|-----------|---------------|------------------|
 | **TOP** (Roboliga2026 TOP) | Teensy 4.0 (U14) | Master | Estrategia, fusión sensorial, comunicación con árbitros, cámaras, IMU dual, ToF, ultrasonido |
 | **DOWN** (Roboliga 2026 Futbol) | Teensy 4.0 (U7) | Slave sensores piso | Anillo de 32 sensores de línea (LEDs activos), 2× SparkFun OTOS (tracking óptico de posición) |
-| **COMM** (no en repo) | ESP32 (asumido) | Comm árbitros + ESP-NOW | Display QR + start/stop + inter-robot |
+| **COMM** | **ESP32-C6-MINI-1-N4** (RISC-V) | Comm árbitros oficial RCJ + ESP-NOW inter-robot | Display OLED por header + LIS3DHTR shake-to-start + 2 botones + level shifter TXS0102 |
 | **MOTORES** (no en repo, ¿Zircon sigue?) | ¿Teensy 4.1 o externo? | Drivers H-bridge para 3 omni | A confirmar con coach |
 
 ---
@@ -255,6 +255,32 @@ Serial4.begin(230400);
 > **No 100% confirmado todavía.** La inferencia es por "única explicación consistente con el PCB ruteado". La confirmación final requiere:
 > - Abrir el proyecto en EasyEDA y ver a qué pad físico del footprint del Teensy 4.0 (`COMM-TH_34P-L35.6-W17.8-P2.54_C9900133251`) está atado cada net. Pad 18/19 = pines 16/17 lógicos; pad 26/27 = pines 24/25.
 > - O verificar con multímetro: continuidad entre el net visible en la placa y el pin físico del módulo Teensy.
+
+## PLACA COMM — confirmada en BOM 04-20 (commit `343c420` de Enzo)
+
+### Componentes (`hardware/electronics/gerber_file/Placas/Comm/BOM_Board1_PCB1_2026-04-20.xlsx`)
+
+| Designador | Componente | Función |
+|-----------|-----------|---------|
+| **U1** | **ESP32-C6-MINI-1-N4** (Espressif) | MCU principal — WiFi 6 / BLE 5.0 / Thread / Zigbee. **NO es ESP32 clásico (Xtensa) — es C6 (RISC-V)**, lo que afecta compatibilidad del firmware oficial RCJ. Ver TASK-010. |
+| U2 | UA78M33CDCYR (TI) | Regulador lineal 3.3V |
+| U3 | 2541WV-06P | Header 6P — probable conector hacia OLED |
+| U4, U5 | 2541WV-04P | 2 conectores UART 4P (UART hacia TOP + spare) |
+| U6 | TXS0102DCUR (TI) | Level shifter I2C 2 canales 1.65–5.5V — para hablar con OLED 5V desde C6 3.3V |
+| U7 | **LIS3DHTR** (ST) | Acelerómetro triaxial I2C — "shake to start" del módulo árbitros |
+| CONNECT, PROG | TS-1088-AR02016 | 2 push-button switches |
+| C1, C9 | 330nF | Decoupling |
+| C2-C7, C11 | 100nF | Decoupling |
+| C10 | 100µF | Capacitor de bulk |
+| R1-R5 | 10 kΩ | Pull-ups (I2C + boot strap) |
+| R6, R7 | 1 kΩ | (otras) |
+
+### Notas
+
+- **OLED display: no en el BOM** — es un módulo separado que se conecta por el header U3. Probable módulo SSD1306 0.96" estándar (5V o 3.3V).
+- **Firmware oficial RCJ**: el repo `robocup-junior/soccer-communication-module` está hecho para ESP32 clásico. ESP32-C6 requiere port (cambio de target SDK, GPIO remapping, posiblemente API). Ver `team-tasks/2026-05-10-task-010-*`.
+
+---
 
 ## Preguntas que siguen abiertas
 

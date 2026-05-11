@@ -241,6 +241,27 @@ Todos los mensajes usan el frame estándar definido en `src/shared/proto.h` con 
 |---------|---------|------------|-----------|
 | `WORLD_SNAPSHOT` | ARRIBA → CENTRAL | 100 Hz | Pose propia (x, y, heading, confianza), pelota (x, y, visible), arcos (ángulo, distancia), obstáculo mínimo, datos partner, comando árbitro, flag área chica |
 | `LINE_URGENT` | ABAJO → CENTRAL | 100-200 Hz | Ángulo línea (centideg), profundidad signed (mm), flag `imminent_exit`. CENTRAL deriva el error de su PID lateral arquero a partir de la profundidad. |
+
+### Asignación física de UARTs en cada placa
+
+**Placa ABAJO (Teensy 4.0)** — 2 UARTs cableados según PCB 04-12 (verificado):
+- **Serial1** (pines 0/1 del Teensy 4.0) — conector U11 → bus de emergencia hacia CENTRAL.
+- **Serial5** (pines 21/20 del Teensy 4.0) — conector U10 "COMUNICATION" → odometría hacia ARRIBA.
+
+Los otros 5 UARTs del Teensy 4.0 (Serial2, 3, 4, 6, 7) no están cableados en la placa DOWN. Suficiente para los 2 streams necesarios.
+
+**Placa ARRIBA (Teensy 4.0)** — 4 UARTs cableados según PCB 04-12 (verificado):
+- **Serial1** (pines 0/1) — conector U16 "UART_COMM_IN" → recibe odometría desde ABAJO.
+- **Serial3** (pines 15/14) — conector U8 "UART-CAMERA1" → cámara 1.
+- **Serial4** (pines 16/17) — conector U15 "UART_COMM_OUT" → placa COMM (árbitros + ESP-NOW).
+- **Serial5** (pines 21/20) — conector U9 "UART-CAMERA2" → cámara 2.
+
+Quedan libres: Serial2 (pines 7/8) — disponible para `WORLD_SNAPSHOT` hacia CENTRAL.
+
+**Placa CENTRAL (Teensy 4.1, Zircon Rev v15)** — capacidad para 8 UARTs hardware:
+- Serial1 → recibe del ARRIBA (`WORLD_SNAPSHOT`).
+- Serial2 → recibe del ABAJO (`LINE_URGENT`).
+- Pines de motores ya cableados (no comparten con UARTs).
 | `DOWN_ODOM` | ABAJO → ARRIBA | 100 Hz | Pose odométrica OTOS (x, y, heading), velocidad, slip |
 | `MOTOR_COMMAND_*` | (interno CENTRAL) | 100 Hz | No UART — CENTRAL aplica directo |
 | `RESET_OTOS` | CENTRAL → ABAJO | en eventos | Reset de pose odométrica |

@@ -45,9 +45,10 @@ open-soccer-robocup-team2026/
 
 | Rol | Nombre | Notas |
 |-----|--------|-------|
-| Competidora - Soccer Open | María Virginia Viollaz | Veterana temporada 2025, 18 años. Experiencia en visión artificial y trayectorias |
+| Director del proyecto | Gustavo Viollaz (@gviollaz) | Coordinación IITA, dirección estratégica multi-temporada (Incheon 2026 → Nacional Nov 2026 → Mundial 2027) |
+| Coach / Tutor | Enzo Juarez (@enzzo195) | Diseño de PCBs (placas Base, Top, Comm 2026), revisión técnica y mentoreo del equipo |
+| Competidora - Soccer Open | María Virginia Viollaz (@mariaviollaz) | Veterana temporada 2025, 18 años. Experiencia en visión artificial y trayectorias. Coach del equipo 2027 |
 | Competidor - Soccer Open | Elías Cordero | Estudiante de robótica e Ing. Electromecánica (UNSa) |
-| Tutor/Coordinador | Gustavo Viollaz (@gviollaz) | Coordinación IITA |
 
 Clasificados como **campeones nacionales** en la Roboliga Argentina (diciembre 2025, Buenos Aires).
 
@@ -80,4 +81,3 @@ Si sos una IA trabajando en este repositorio, leé **[AI-INSTRUCTIONS.md](AI-INS
 
 *Repositorio mantenido por IITA — Instituto de Informática y Tecnología Aplicada, Salta, Argentina*
 
-#hola 

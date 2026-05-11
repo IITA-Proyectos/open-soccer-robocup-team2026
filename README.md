@@ -58,6 +58,11 @@ El robot 2026 usa una **arquitectura distribuida de 3 placas** especializadas (C
 
 📐 **[Documento de arquitectura completo (lectura recomendada): `docs/ARQUITECTURA-3-PLACAS-2026.md`](docs/ARQUITECTURA-3-PLACAS-2026.md)** — qué hace cada placa, cómo se comunican, decisiones de diseño justificadas.
 
+**Especificación funcional del firmware por placa** (`docs/firmware/`):
+- [`FIRMWARE-PLACA-ABAJO.md`](docs/firmware/FIRMWARE-PLACA-ABAJO.md) — sensor de piso (32 sensores de luz + 2 OTOS odométricos)
+- _(pendiente)_ `FIRMWARE-PLACA-ARRIBA.md` — cerebro sensorial (cámaras + IMU + ToF + comm árbitros)
+- _(pendiente)_ `FIRMWARE-PLACA-CENTRAL.md` — master del robot (FSM + PIDs + motores)
+
 ## Cómo contribuir
 
 Leer **[CONTRIBUTING.md](CONTRIBUTING.md)** antes de hacer cualquier cambio. Incluye reglas de atribución, uso de IA, y formato de commits.

@@ -27,7 +27,7 @@ El robot 2026 distribuye su inteligencia en **3 placas especializadas** conectad
 ├────────────────────────┤         ├────────────────────────┤         ├────────────────────────┤
 │ • 2 cámaras OpenMV     │         │ • FSM principal        │         │ • 32 sensores luz      │
 │ • 2 IMU BNO055         │         │ • Motores 3-omni + PID │         │ • 2 OTOS odométricos   │
-│ • 4 ToF + 1 ultrasonido│         │ • Kicker / dribbler    │         │ • PID local arquero    │
+│ • 4 ToF + 1 ultrasonido│         │ • Kicker / dribbler    │         │ • Measurement línea    │
 │ • Comm árbitros RCJ    │         │ • Coordinación partner │         │ • Detección bordes     │
 │ • Fusión sensor → pose │         │ • Watchdog global      │         │                        │
 │   (x, y, heading, ball)│         │                        │         │                        │
@@ -39,8 +39,8 @@ El robot 2026 distribuye su inteligencia en **3 placas especializadas** conectad
 
 **Las 3 placas son especialistas, ninguna es generalista**:
 - **ARRIBA** percibe el mundo (cámaras + IMU + ToF + comm árbitros) y entrega un *world snapshot* pre-procesado.
-- **CENTRAL** decide qué hacer (FSM táctica) y mueve los motores. Es el master del robot.
-- **ABAJO** detecta línea y posición odométrica con sensores que miran al suelo, y ejecuta el PID lateral local del arquero.
+- **CENTRAL** decide qué hacer (FSM táctica), corre todos los lazos de control (PIDs) y mueve los motores. Es el master del robot.
+- **ABAJO** es un sensor puro: detecta línea + odometría y entrega measurements al CENTRAL, sin lógica de control.
 
 Esta separación permite que cada MCU corra a < 30% de CPU y deja margen para mejoras futuras (Kalman, partner coordination, estrategia avanzada) sin saturar ningún procesador.
 
@@ -72,7 +72,8 @@ Cinco principios de diseño justifican la elección:
 | Responsabilidad | Detalle |
 |-----------------|---------|
 | Máquina de estados táctica | FSM principal (delantero / arquero según dipswitch). Estados: SEARCH, APPROACH, POSITION, PUSH, GOALKEEPER_PATROL, INTERCEPT, KICK, LINE_AVOID. |
-| Control de motores | Cinemática inversa omni-3 + PID de heading. Aplica PWM directo a los 3 H-bridges del Zircon. |
+| Control de motores | Cinemática inversa omni-3. Aplica PWM directo a los 3 H-bridges del Zircon. |
+| Lazos de control (PIDs) | **Todos los PIDs del robot corren acá**: PID de heading (consume IMU desde ARRIBA), PID lateral del arquero (consume measurement de línea desde ABAJO, solo en modo arquero), PID de approach a la pelota. Un único lugar con todas las ganancias tuneables. |
 | Watchdog global | Si ARRIBA timeout 500 ms → modo seguro (parar motores, parpadear LED). Si ABAJO timeout 500 ms → estrategia ciega (sin información de línea). |
 | Coordinación táctica | Aplica reglas de partner (recibe partner data desde ARRIBA via comm árbitros) y decide quién va a la pelota. |
 | Kicker y dribbler | Activa solenoide kicker cuando la pelota está alineada con el arco rival (solo delantero). |
@@ -88,21 +89,21 @@ Cinco principios de diseño justifican la elección:
 ### Inputs
 
 - **UART desde ARRIBA**: `WORLD_SNAPSHOT` cada 10 ms con pose propia (x, y, heading), pelota (x, y, visible), arcos, obstáculos, comando del árbitro, datos del partner.
-- **UART desde ABAJO** (canal de emergencia): `LINE_URGENT` cada 5-10 ms con ángulo de línea, profundidad, flag `imminent_exit`, y sugerencia de PID lateral del arquero.
+- **UART desde ABAJO** (canal de emergencia): `LINE_URGENT` cada 5-10 ms con measurement de línea (ángulo + profundidad signed) + flag `imminent_exit`. Sin lógica de control — sólo medición física cruda.
 
 ### Outputs
 
 - **PWM a los 3 motores omni** (directo, sin UART).
 - **GPIO al solenoide kicker** y dribbler PWM (solo delantero).
 - **UART hacia ARRIBA**: comandos como recalibrar cámaras, resetear pose.
-- **UART hacia ABAJO**: comandos como activar PID lateral arquero, calibrar umbrales de línea.
+- **UART hacia ABAJO**: comandos administrativos (calibrar umbrales de línea, reset OTOS). ABAJO no necesita conocer el modo del robot — sólo reporta lo que ve.
 
 ### Carga estimada
 
 | Tarea | CPU |
 |-------|-----|
 | FSM 100 Hz | 5% |
-| Motor PID 100 Hz | 8% |
+| Cinemática inversa + PIDs (heading + lateral arquero + approach) | 10% |
 | Decode UART × 2 streams 100 Hz | 5% |
 | **Total** | **~20%** |
 
@@ -178,35 +179,36 @@ Margen amplio para integrar EKF de pose o filtros Kalman de pelota en 2027.
 | Odometría óptica | 2 sensores SparkFun OTOS montados a cada costado del robot (uno a la izquierda, uno a la derecha del centro). Lectura I2C en 2 buses separados (Wire + Wire1). |
 | Análisis diferencial OTOS | Detecta slip lateral comparando velocidad de los dos OTOS. Si difieren mucho en X, hay patinazo (típicamente al patear o chocar). Reporta `slip_estimate` al CENTRAL como dato de calidad. |
 | Pose odométrica local | Fusiona los 2 OTOS en una pose central (x, y, heading) que ARRIBA usa para su fusión sensorial completa. |
-| PID lateral del arquero | Cuando CENTRAL le indica "modo arquero activo", ABAJO ejecuta un PID que mantiene al robot pisando la línea de fondo a un offset configurable. Output: `suggested_vx_mm_s` que viaja al CENTRAL como parte del paquete de emergencia. |
+| Reporte de measurement | Entrega al CENTRAL la medición física cruda de la línea (ángulo + profundidad signed, en mm). Si el robot está pisando blanco, profundidad > 0; si está afuera del blanco, profundidad = 0. Es la *measurement* del control PID lateral — el PID en sí corre en CENTRAL. |
 
 ### Lo que NO hace
 
-- No controla motores directamente. Sólo sugiere comandos al CENTRAL.
+- No controla motores.
+- No ejecuta lazos de control (PIDs). Es un sensor puro — entrega *measurements*, no *outputs*.
 - No procesa imagen.
 - No toma decisiones tácticas.
+- No conoce el modo del robot (delantero / arquero / match running). CENTRAL decide qué measurement usar según contexto.
 - No conoce la pose absoluta del robot en la cancha (eso lo calcula ARRIBA con cámaras).
 
 ### Inputs
 
 - 32 sensores ALS-PT19 via 4 muxes CD4051 (analógico).
 - 2 SparkFun OTOS (I2C dual).
-- CENTRAL (UART) — comandos administrativos: activar PID arquero, calibrar línea, resetear OTOS.
+- CENTRAL (UART) — comandos administrativos: calibrar línea, resetear OTOS.
 
 ### Outputs
 
 - **ARRIBA (UART)**: odometría OTOS para que ARRIBA pueda fusionar con sus sensores.
-- **CENTRAL (UART, canal de emergencia)**: `LINE_URGENT` 100-200 Hz con ángulo línea, profundidad, flag `imminent_exit`, sugerencia PID arquero.
+- **CENTRAL (UART, canal de emergencia)**: `LINE_URGENT` 100-200 Hz con ángulo línea, profundidad signed (mm), flag `imminent_exit`. CENTRAL usa la profundidad como measurement de su PID lateral cuando está en modo arquero.
 
 ### Carga estimada
 
 | Tarea | CPU |
 |-------|-----|
 | 1 kHz lectura 32 sensores via mux | 15% |
-| 100 Hz OTOS dual + fusión | 5% |
-| PID lateral (cuando activo) | 2% |
+| 100 Hz OTOS dual + fusión odométrica | 5% |
 | 2 UARTs send | 2% |
-| **Total** | **~25%** |
+| **Total** | **~22%** |
 
 Suficiente margen para subir el polling a 2 kHz si hace falta más resolución temporal en la detección de línea.
 
@@ -224,7 +226,7 @@ Suficiente margen para subir el polling a 2 kHz si hace falta más resolución t
                           │
                         ABAJO  ──UART 100-200 Hz───►  CENTRAL
                                   bus de emergencia
-                              línea + imminent_exit + PID arquero
+                          measurement línea + imminent_exit
 ```
 
 ARRIBA habla con CENTRAL (snapshot completo) y con COMM (árbitros).
@@ -238,11 +240,11 @@ Todos los mensajes usan el frame estándar definido en `src/shared/proto.h` con 
 | Mensaje | Sentido | Frecuencia | Contenido |
 |---------|---------|------------|-----------|
 | `WORLD_SNAPSHOT` | ARRIBA → CENTRAL | 100 Hz | Pose propia (x, y, heading, confianza), pelota (x, y, visible), arcos (ángulo, distancia), obstáculo mínimo, datos partner, comando árbitro, flag área chica |
-| `LINE_URGENT` | ABAJO → CENTRAL | 100-200 Hz | Ángulo línea, profundidad, flag `imminent_exit`, sugerencia PID arquero |
+| `LINE_URGENT` | ABAJO → CENTRAL | 100-200 Hz | Ángulo línea (centideg), profundidad signed (mm), flag `imminent_exit`. CENTRAL deriva el error de su PID lateral arquero a partir de la profundidad. |
 | `DOWN_ODOM` | ABAJO → ARRIBA | 100 Hz | Pose odométrica OTOS (x, y, heading), velocidad, slip |
 | `MOTOR_COMMAND_*` | (interno CENTRAL) | 100 Hz | No UART — CENTRAL aplica directo |
-| `SET_DOWN_MODE` | CENTRAL → ABAJO | en eventos | Activa/desactiva PID arquero |
 | `RESET_OTOS` | CENTRAL → ABAJO | en eventos | Reset de pose odométrica |
+| `CALIB_LINE` | CENTRAL → ABAJO | en eventos | Calibrar umbrales de línea (carpet/blanco) |
 | `CALIB_CAMERAS` | CENTRAL → ARRIBA | en eventos | Recalibrar visión |
 
 ### Latencias objetivo
@@ -259,7 +261,7 @@ Todos los mensajes usan el frame estándar definido en `src/shared/proto.h` con 
 - CENTRAL espera `WORLD_SNAPSHOT` cada 10 ms. Si no llega en 500 ms → modo seguro (motores detenidos).
 - CENTRAL espera `LINE_URGENT` cada 10 ms. Si no llega en 500 ms → estrategia ciega de línea (asume no estar en el borde).
 - ARRIBA espera `DOWN_ODOM` cada 10 ms. Si no llega en 500 ms → fusión sin odometría (degradación a sólo cámaras + IMU).
-- CENTRAL aplica un timeout de 200 ms al PID arquero — si ABAJO deja de mandar sugerencias, vuelve a control manual.
+- CENTRAL aplica un timeout de 200 ms al PID lateral arquero — si ABAJO deja de mandar measurements de línea, CENTRAL congela el output del PID y degrada a estrategia ciega.
 
 ---
 
@@ -297,11 +299,18 @@ A 1 m/s, un robot recorre 1 mm cada milisegundo. Si la única ruta de "voy a sal
 
 El bus directo ABAJO → CENTRAL deja esa cadena en un solo hop UART (~10 ms) y le da al CENTRAL margen para frenar dentro de los primeros 15 mm post-detección.
 
-### ¿Por qué el PID del arquero corre en ABAJO y no en CENTRAL?
+### ¿Por qué todos los PIDs corren en CENTRAL y no en las placas slaves?
 
-ABAJO ve la línea con resolución de 32 sensores (11.25° angular cada uno). Si ese dato viaja al CENTRAL y vuelve como comando lateral, se introduce latencia de ida y vuelta (~20 ms). Si el PID corre localmente en ABAJO con el sensor "en su mismo MCU", la respuesta es de ~5 ms.
+El cálculo PID en sí es trivial (~1 µs por tick). El cuello de botella de latencia es el UART entre placas (~700 µs para enviar 16 bytes a 230400 baud), que se atraviesa con o sin PID local. Pasar el `error` por UART o pasar el `output_PID` cuesta lo mismo en términos de tiempo.
 
-La sugerencia que ABAJO envía al CENTRAL no es un PWM de motor directo (rompería el modelo "CENTRAL maneja motores"), sino un valor `suggested_vx_mm_s` que CENTRAL aplica si está en modo arquero. Esto mantiene CENTRAL como master pero respeta la latencia mínima.
+Entonces no hay ventaja de latencia en distribuir PIDs, y sí hay desventajas claras al hacerlo:
+
+- **Estado distribuido**: cada PID acumula estado (integral, error previo). Si ese estado vive en tres placas distintas, debuggear "por qué el robot oscila" implica conectarse a tres MCUs distintos.
+- **Ganancias dispersas**: tunear Kp/Ki/Kd implica reflashear la placa donde corre el PID. Si todos viven en CENTRAL, una sola compilación.
+- **Combinar PIDs es trivial en CENTRAL**: el PID de heading y el PID lateral del arquero se pueden sumar y aplicar a la misma cinemática inversa omni-3. Si están en placas distintas, sincronizarlos es complicado.
+- **ABAJO como sensor puro es testeable**: sin estado de control, ABAJO se puede testear con datos sintéticos sin simular el robot completo.
+
+Por eso ABAJO entrega *measurements* (profundidad signed en mm, ángulo de línea) y CENTRAL calcula `error = setpoint - measurement` y aplica el PID. Lo mismo aplica al PID de heading (BNO055 en ARRIBA entrega `heading_deg`, CENTRAL aplica el PID) y a cualquier otro lazo de control futuro.
 
 ### ¿Por qué la fusión sensorial corre en ARRIBA y no en CENTRAL?
 
@@ -327,7 +336,7 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 | Nivel | Capacidad | Estado |
 |-------|-----------|--------|
 | 1 (Incheon mínimo) | CENTRAL + cámara frontal + IMU + 3 sensores de línea (sin placa ABAJO) + comm árbitros | Mantiene capacidad del 2025 |
-| 2 (Incheon ideal) | Nivel 1 + 1 OTOS + 32 sensores de línea via ABAJO + PID arquero | Si ABAJO está lista |
+| 2 (Incheon ideal) | Nivel 1 + 1 OTOS + 32 sensores de línea via ABAJO + PID lateral arquero (corriendo en CENTRAL con measurement de ABAJO) | Si ABAJO está lista |
 | 3 (Incheon + ) | Nivel 2 + 2 cámaras + 2 IMU + 4 ToF via ARRIBA + fusión sensorial | Si ARRIBA está lista |
 | 4 (Roboliga Nov) | Nivel 3 + EKF pose + Kalman pelota + coordinación partner via ESP-NOW | Post-Incheon |
 | 5 (Mundial 2027) | Nivel 4 + estrategia avanzada (orbit, behind-the-ball, set plays) | Virginia como coach |

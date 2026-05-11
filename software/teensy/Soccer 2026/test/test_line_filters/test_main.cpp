@@ -266,7 +266,7 @@ void test_lifted_debounce_anti_glitch(void) {
     for (int i = 0; i < N; ++i) filtered[i] = 300;
     lf_lifted_update(state, 60, filtered, carpet, N);
     TEST_ASSERT_FALSE(state.is_lifted);
-    TEST_ASSERT_EQUAL_UINT32(0, state.candidate_since_ms);
+    TEST_ASSERT_FALSE(state.candidate_active);
 }
 
 void test_lifted_recovers_when_back_on_floor(void) {

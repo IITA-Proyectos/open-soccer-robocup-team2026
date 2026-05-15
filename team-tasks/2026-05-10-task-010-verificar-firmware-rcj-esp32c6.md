@@ -2,10 +2,12 @@
 id: TASK-010
 title: "Verificar si el firmware oficial RCJ Communication Module es compatible con ESP32-C6 (vs ESP32 clásico)"
 date_created: 2026-05-10
+date_closed: 2026-05-15
 assigned: [virginia, elias]
 priority: P0
-status: pending
+status: done
 estimated_hours: 4
+actual_hours: 1
 blocks: [TASK-006 (cargar firmware RCJ), homologación Incheon]
 tags: [firmware, esp32, comm-board, rcj-official]
 depends_on: [TASK-006]
@@ -67,15 +69,50 @@ Según hallazgo, decidir:
 
 ## Criterio de cierre
 
-- [ ] Investigación documentada en `research/in-progress/2026-05-XX-firmware-rcj-c6-compat.md`.
-- [ ] Compilación experimental ejecutada, errores documentados.
-- [ ] Decisión tomada (Plan A/B/C/D) con justificación en journal.
-- [ ] Si Plan C o D: estimación de tiempo realista y nuevo task creado para implementación.
+- [x] Investigación documentada en `journal/2026-05-15-firmware-comm-c6-flash-procedure.md`.
+- [x] Compilación experimental NO requerida — el firmware oficial ya es nativo C6.
+- [x] Decisión tomada: **Plan A** (cargar firmware oficial sin modificar).
+- [x] TASK-006 actualizado a P0 con el procedure descubierto.
 
 ## Notas / decisiones
 
-_(actualizar cuando se ejecute)_
+### 2026-05-15 — TASK cerrada como done (resuelto sin trabajo de portabilidad)
+
+**Resolución**: la premisa de esta TASK era incorrecta. La tabla "ESP32 clásico vs
+C6" del cuerpo arriba asumía que el firmware oficial **estaba diseñado para ESP32
+clásico**. Eso ya no es cierto desde el 2024-03-29.
+
+**Evidencia**:
+
+1. **Foro oficial RCJ** (mensaje #5 del thread `documentation-communication-module/3269`,
+   29-mar-2024):
+   > "there will be a few modifications like using ESP32 C6"
+
+   El staff del módulo de comunicación confirma migración a ESP32-C6 desde marzo
+   2024. Las revisiones de placa subsiguientes ya son nativas C6.
+
+2. **Firmware actual del repo oficial** (verificado 2026-05-15):
+   `firmware/RCj_comm_module/definitions.h` tiene un comentario `//ESP-C5` (típica
+   confusión C5/C6 — el chip es C6 según BOM, gerbers y foro), y los pines GPIO
+   asignados (2, 3, 7, 8, 9, 10) son consistentes con el mapping del C6.
+
+3. **Estructura del firmware**: Arduino IDE puro (no PlatformIO, no ESP-IDF). El
+   `.ino` compila contra Arduino-ESP32 core ≥3.0 con board `ESP32C6 Dev Module`
+   directamente — sin port manual.
+
+4. **Versión actual del firmware**: v0.91 (`FW_VERSION_MAJOR=0`, `FW_VERSION_MINOR=91`).
+
+**Conclusión**: NO hace falta portar, NO hace falta evaluar Plan B/C/D. Plan A
+(cargar tal cual) es viable y es lo que TASK-006 ahora ejecuta.
+
+**Lo que SÍ quedó pendiente y se movió a TASK-006**: el procedure correcto de
+flash (la placa no tiene RESET físico, hay que hacer unplug+BOOT+replug). Eso es
+un tema operativo de "cómo entrar al bootloader del C6 sin reset físico", no de
+compatibilidad de firmware.
 
 ## Cambios de estado
 
 - 2026-05-10: creado por Claude tras descubrir ESP32-C6 en el BOM Comm 04-20.
+- 2026-05-15: **cerrada como done**. Premisa incorrecta — el firmware oficial ya
+  es nativo C6 desde 2024-03-29. Tiempo real de investigación: 1 h (vs 4 h
+  estimadas). TASK-006 absorbe el procedure operativo de flash.

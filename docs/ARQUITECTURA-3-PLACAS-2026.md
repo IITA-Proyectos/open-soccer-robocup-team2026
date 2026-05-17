@@ -364,6 +364,68 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 
 ---
 
+## Mapa de flujo de datos (referencia rápida para onboarding)
+
+> **Para quien llega nuevo al repo (relevo 2027):** este es el mapa único de
+> "qué viaja por dónde". Los valores salen de `config_{top,down,central}.h` y
+> `types.h` al 2026-05-15. Lo marcado ⚠️ NO está confirmado en hardware —
+> tiene TASK abierta. No asumir que está resuelto.
+
+```
+   OpenMV cam1 ──Serial3 19200──┐
+   OpenMV cam2 ──Serial5 19200──┤
+   Placa COMM  ──Serial4 115200─┤        ┌── Serial1 230400 ──► CENTRAL
+   (árbitros)                   ▼        │   WORLD_SNAPSHOT 100 Hz (24 B)
+                          ┌───────────────┐
+       DOWN ─Serial1─────►│  PLACA ARRIBA │── Serial2 ⚠️ ──► CENTRAL
+       odometría OTOS     │  (Teensy 4.0) │   (pin/baud SIN CONFIRMAR)
+       100 Hz             └───────────────┘
+                          ┌───────────────┐
+                          │  PLACA CENTRAL│── PWM directo ──► 3 motores omni
+                          │  (Teensy 4.1) │── GPIO ─────────► kicker (ROBOT2)
+                          │  FSM + PIDs   │
+                          └───────────────┘
+                                  ▲
+            Serial2 (CENTRAL) ◄───┘  LINE_URGENT ~100 Hz
+            bus de EMERGENCIA        LineStatus (ángulo+profundidad+imminent)
+                                  ▲
+                          ┌───────────────┐
+                          │  PLACA ABAJO  │  línea muestreada 1 kHz,
+                          │  (Teensy 4.0) │  enviada a 100 Hz
+                          └───────────────┘
+                DOWN ─Serial5 230400─► ARRIBA  (odometría OTOS 100 Hz)
+```
+
+### Tabla de enlaces UART
+
+| Enlace | Pines (config) | Baud | Mensaje | Struct | Freq | Confirmado |
+|--------|----------------|------|---------|--------|------|------------|
+| ARRIBA → CENTRAL | CEN Serial1 RX0/TX1 | 230400 | `WORLD_SNAPSHOT` | `WorldSnapshot` (24 B) | 100 Hz | ⚠️ pin/baud de TOP Serial2 sin confirmar (TASK-008) |
+| ABAJO → CENTRAL | CEN Serial2 | ⚠️ s/d | `LINE_URGENT` | `LineStatus` | ~100 Hz | ⚠️ baud no es constante en config_central.h |
+| ABAJO → ARRIBA | DOWN Serial5 RX20/TX21 → TOP Serial1 | 230400 | odometría OTOS | pose/vel | 100 Hz | parcial (TASK-008 rewiring) |
+| cam1 → ARRIBA | TOP Serial3 RX15/TX14 | 19200 | blobs pelota/arco | proto viejo 9 B | ~30 Hz | OK |
+| cam2 → ARRIBA | TOP Serial5 RX21/TX20 | 19200 | blobs pelota/arco | proto viejo 9 B | ~30 Hz | OK |
+| COMM ↔ ARRIBA | TOP Serial4 RX16/TX17 | 115200 | start/stop/partner | RCJ proto | evento | ⚠️ firmware COMM pendiente (TASK-006) |
+| CENTRAL → motores | GPIO directo (no UART) | — | PWM + INA/INB | `MotorCommand` interno | 100 Hz | OK |
+
+### Gaps de flujo de datos sin cerrar (NO asumir resueltos)
+
+1. **TOP Serial2 → CENTRAL**: `config_top.h` lo marca textual "NO CONFIRMADO
+   — falta validar con Enzo a qué pines del Teensy 4.0 van RX_OUT/TX_OUT del
+   conector U1". Bloquea el enlace principal ARRIBA→CENTRAL. → **TASK-008**.
+2. **Baud DOWN↔CENTRAL**: el bus de emergencia (lo más crítico para no
+   salirse de cancha) no tiene constante de baud en `config_central.h`.
+   Verificar que ambos extremos coincidan antes de integrar.
+3. **DOWN físico**: PCB 04-12 solo tiene ruteados 1 mux + 1 OTOS. Si la placa
+   que llegó es esa, odometría/línea van degradadas. → **TASK-001 / TASK-009**.
+4. **Frecuencia LINE_URGENT**: la línea se *muestrea* a 1 kHz en DOWN
+   (`LINE_TICK_INTERVAL_US=1000`) pero se *envía* a 100 Hz
+   (`COMM_SEND_INTERVAL_MS=10`). El brake de emergencia <15 ms lo garantiza el
+   chequeo en `main_central.cpp` cada loop, no la frecuencia de envío
+   (ver §12 de `FIRMWARE-PLACA-CENTRAL.md`).
+
+---
+
 ## Referencias técnicas
 
 - Diseño del firmware (interfaz módulo por módulo): `research/in-progress/2026-05-10-diseno-firmware-3-placas.md`

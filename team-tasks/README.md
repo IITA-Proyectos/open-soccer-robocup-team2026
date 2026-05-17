@@ -46,6 +46,7 @@ Sistema de tareas asignadas a miembros del equipo para Incheon 2026.
 | [TASK-009](2026-05-10-task-009-pcb-json-04-20.md) | Subir PCB JSON + Schematic JSON del 2026-04-20 | Enzo | P0 | pending |
 | [TASK-010](2026-05-10-task-010-verificar-firmware-rcj-esp32c6.md) | Verificar compat firmware oficial RCJ con ESP32-C6 | Virginia + Elías | P0 | **done** ✅ |
 | [TASK-011](2026-05-15-task-011-confirmar-pin-kicker-solenoide-zircon.md) | Confirmar PIN_KICKER_SOL del solenoide en Zircon (ROBOT2) | Enzo | P1 | pending |
+| [TASK-012](2026-05-15-task-012-activar-libs-otos-tof.md) | Activar libs reales OTOS (DOWN) + ToF (TOP) — salir de stub | Enzo + Elías | P0 | pending |
 
 ## Convenciones de archivo
 

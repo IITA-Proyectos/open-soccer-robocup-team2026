@@ -119,33 +119,81 @@ sincronización documentada en el header de `strategy_transitions.h`.
 
 ## Temas a analizar (próximos pasos priorizados)
 
-### Conectar strategy.cpp → strategy_transitions
+### Conectar strategy.cpp → strategy_transitions  (DISEÑO LISTO)
 
 **Categoría:** control · **Robot:** ambos · **Prioridad:** P1
 
-**Qué.** Reemplazar el árbol inline de `attacker_tick`/`goalkeeper_tick` por
-llamadas a las funciones puras ya testeadas. La FSM pasa a ser: "calcular
-acción del estado (velocidades/PID) + llamar a decide_transition".
+**Por qué no se hizo ya.** Cambiar el cerebro es cambio de código del robot →
+regla 1 no-negociable del CLAUDE.md exige test en hardware real. En esta
+sesión no hubo red para correr la suite (`platform native` no baja) ni
+hardware. Conectar a ciegas viola el frame. Queda el diseño masticado para
+ejecutar apenas haya red+hardware.
 
-**Risk-no-fix.** Los 35 tests protegen una réplica, no el código real. Un bug
-introducido directo en strategy.cpp no lo atrapa ningún test.
-**Risk-fix.** Se toca el cerebro que hoy anda. Mitigable: los tests actuales
-son la red — si la conexión cambia comportamiento, los tests de behind_ball +
-caracterización lo exponen. ~2-3 h + test de regresión en hardware.
-**Plan de prueba en hardware real.** Robot delantero en cancha: secuencia
-WAIT_START→(árbitro start)→KICKOFF→SEARCH→ver pelota→POSITION→APPROACH→kick.
-Criterio: misma secuencia de estados observada por el debug serial ANTES y
-DESPUÉS de la conexión (grabar `strategy_get_state_name()` por 60 s en ambas
-versiones, deben coincidir).
+**Trampa de diseño detectada.** La FSM actual es **Moore**: ejecuta la acción
+del estado en el que está (post-transiciones globales) y la transición
+per-estado decide el PRÓXIMO tick. Si se conecta ingenuamente "decido todo y
+actúo sobre el estado final", se vuelve **Mealy** → la acción del estado nuevo
+arranca 1 tick (10 ms a 100 Hz) antes. Parece nimio pero cambia la secuencia
+observable y rompería el criterio de regresión. **La conexión DEBE preservar
+el orden Moore.**
 
-### Specs desincronizadas + diagrama de arquitectura
+**Diseño concreto (preserva comportamiento exacto):**
 
-**Prioridad:** P1 (relevo 2027) · ~3 h. Actualizar `FIRMWARE-PLACA-CENTRAL.md`
-con Nivel 2 real; diagrama de flujo de datos entre las 3 placas.
+1. En `strategy_transitions.{h,cpp}`: separar `atk_decide_transition` en dos
+   funciones componibles (refactor del módulo NUEVO — sin riesgo, no lo usa
+   nadie aún): `atk_apply_global(phase, prev_match, w)` y
+   `atk_apply_perstate(phase, w, t)`. Mantener `atk_decide_transition` =
+   `apply_perstate(apply_global(...))` para que los 35 tests sigan válidos
+   sin cambios. Idem GK.
+2. En `strategy.cpp::attacker_tick()`, reestructurar a 4 pasos explícitos:
+   - (a) construir `AtkWorldView w` desde `world_model_*()` + `millis()`.
+   - (b) `g_atk_state = atk_apply_global(g_atk_state, g_match_was_running, w)`
+     + setear `g_kickoff_started_ms` si entró a KICKOFF (idéntico a hoy).
+   - (c) ejecutar la ACCIÓN del estado actual = el `switch` actual PERO
+     borrando solo las llamadas `transition_atk(...)` de adentro (conservando
+     los early-return cmd-vacío de POSITION/APPROACH sin pelota).
+   - (d) `g_atk_state = atk_apply_perstate(g_atk_state, w, tuning)` con reset
+     de PID si cambió; aplicar `d.kicker_fire` a `cmd`.
+3. Idem `goalkeeper_tick()` (sin paso KICKOFF).
+4. `transition_atk/gk` (reset PID) se invoca solo cuando (b) o (d) cambian de
+   fase — misma semántica que hoy.
 
-### OTOS + ToF stubs
+**Risk-no-fix.** Los 35 tests protegen una réplica, no el binario. Un bug
+metido directo en strategy.cpp no lo atrapa nadie hasta la cancha.
+**Risk-fix.** Se toca el cerebro. Mitigado por: (1) diseño que preserva Moore,
+(2) los ~130 tests como red, (3) test de regresión serial obligatorio abajo.
+~3 h código + 1 h test hardware.
 
-**Prioridad:** P0 · necesita hardware. Batch DOWN-B (OTOS) ya en backlog.
+**Plan de prueba en hardware real (obligatorio antes de mergear).**
+1. Setup: robot delantero (ROBOT2), cancha, árbitro/COMM simulado o botón
+   start manual, pelota naranja, arco visible.
+2. Instrumentar: loguear `strategy_get_state_name()` + `cmd.kicker_fire` por
+   Serial a 50 Hz.
+3. Grabar 60 s de secuencia ANTES de la conexión (binario actual):
+   WAIT_START→start→KICKOFF→SEARCH→ver pelota→POSITION/APPROACH→kick→...
+4. Aplicar la conexión, recompilar, grabar 60 s con el MISMO guion físico.
+5. **Criterio de aceptación**: la secuencia de estados y los instantes de
+   `kicker_fire` coinciden entre ambas grabaciones (tolerancia ±1 tick por
+   jitter de sensores). Cualquier divergencia = la conexión cambió
+   comportamiento → no mergear, depurar.
+6. Regresión vecinos: confirmar que EMERGENCY_LINE (brake <15 ms en
+   `main_central.cpp`) sigue disparando — pisar línea a mano, ver brake.
+
+### Specs desincronizadas + diagrama de arquitectura  ✅ HECHO 2026-05-15
+
+`FIRMWARE-PLACA-CENTRAL.md` §8 sincronizada con la FSM Nivel 2 real (KICKOFF,
+POSITION por ángulo, kicker en APPROACH, GK_CLEAR con histéresis, LINE_AVOID
+como estado; aclarado qué es Nivel 1/2/3). `ARQUITECTURA-3-PLACAS-2026.md`:
+agregado "Mapa de flujo de datos" (tabla de enlaces UART + diagrama + gaps sin
+confirmar enlazando TASK-001/008/009) para onboarding del relevo 2027.
+
+### OTOS + ToF stubs  → TASK-012 creada
+
+**Prioridad:** P0 · necesita hardware + decisión modelo ToF (Q4). Bug latente
+de velocity en `otos.cpp` corregido en esta sesión (las velocidades se
+asignan ahora en la fusión + bloque comentado; sigue en 0 hasta descomentar
+→ binario actual idéntico). Procedimiento exacto de activación (lib_deps,
+qué descomentar, plan de prueba hardware) en `TASK-012`.
 
 ## Pendientes
 

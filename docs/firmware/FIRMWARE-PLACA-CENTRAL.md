@@ -423,108 +423,174 @@ void strategy_transition_to(State new_state) {
 
 ## 8. CAPA ALTA — Estrategia táctica (FSM)
 
-### 8.1 FSM del DELANTERO (ATTACKER)
+> ### ⚙️ Estado de implementación (actualizado 2026-05-15, commit `b10c66d` + `c7affd5`)
+>
+> Esta sección originalmente describía un diseño *objetivo* con pose absoluta
+> (Nivel 3). El **código real** en `src/central/strategy.cpp` implementa los
+> **Niveles 1 + 2** con coordenadas RELATIVAS al robot (sin EKF de pose
+> absoluta todavía). Las §8.1 y §8.2 abajo describen **lo que el código hace
+> hoy**. El diseño con pose absoluta (orbit suave, OPP_GOAL_X/Y) queda como
+> Nivel 3 — ver §8.4/8.5 con su nota.
+>
+> | Nivel | Qué | Estado |
+> |-------|-----|--------|
+> | **1** | ATK: WAIT_START/SEARCH/APPROACH. GK: WAIT_START/PATROL/INTERCEPT. | ✅ implementado |
+> | **2** | ATK: + KICKOFF (set play inicial) + POSITION (behind-the-ball relativo) + kicker en APPROACH. GK: + CLEAR con histéresis. LINE_AVOID como estado explícito. | ✅ implementado |
+> | **3+** | Pose absoluta (EKF), orbit suave continuo, set plays KICKOFF_OWN/ADV, coordinación partner, modelo del rival. | ⏳ futuro |
+>
+> **Caracterización testeable**: el árbol de transiciones está replicado fiel
+> en `src/shared/strategy_transitions.{h,cpp}` con **35 tests host-native**
+> (`test/test_strategy_transitions/`). ⚠️ Límite honesto: `strategy.cpp`
+> todavía NO llama a ese módulo — es una red de caracterización, no prueba el
+> binario línea-por-línea. Conectarlo es tema-a-analizar P1 (ver
+> `journal/2026-05-15-analisis-firmware-y-fsm-testeable.md`).
+
+### 8.1 FSM del DELANTERO (ATTACKER) — Nivel 1+2 implementado
 
 ```
               ┌──────────────────────┐
-              │  ATK_WAIT_START      │  match_running == false
-              │  motores stop         │
-              └──────────┬────────────┘
-                         │ START
+              │  ATK_WAIT_START      │  match_running == false → motores stop
+              └──────────┬───────────┘
+                         │ flanco STOP→RUN (match arranca)
+                         ▼
+              ┌──────────────────────┐
+              │  ATK_KICKOFF         │  boost recto al frente
+              │  vy=500, 250 ms      │  (set play de saque)
+              └──────────┬───────────┘
+                         │ timer 250 ms vencido
                          ▼
               ┌──────────────────────┐
               │  ATK_SEARCH          │  recorre cancha, gira lento
               │  vy=200, omega=60°/s │
-              └──────────┬────────────┘
+              └──────────┬───────────┘
+                         │ ball_visible
+                ┌────────┴─────────┐
+   pelota NO    │                  │  pelota alineada con arco
+   alineada o   ▼                  ▼  (o sin arco visible)
+   sin arco  ┌─────────────┐   ┌──────────────────────┐
+             │ ATK_POSITION│   │  ATK_APPROACH        │
+             │ behind-the- │──▶│  va a la pelota +    │
+             │ ball: target│   │  si alineado+cerca:  │
+             │ detrás de   │◀──│  cmd.kicker_fire=1   │
+             │ la pelota   │   │  (histéresis ±10°)   │
+             └─────────────┘   └──────────┬───────────┘
+                                          │ ball_lost / dist<1mm
+                                          ▼
+                                   → vuelve a SEARCH
+
+   Transición global prioritaria (cualquier estado), en este orden:
+     1. match_running == false              → ATK_WAIT_START
+     2. imminent_exit && line_fresh         → ATK_LINE_AVOID
+     3. flanco STOP→RUN                     → ATK_KICKOFF
+   ATK_LINE_AVOID: retrocede opuesto a la línea; vuelve a SEARCH cuando
+   !imminent_exit. (El brake activo lo hace main_central.cpp ANTES de la FSM
+   — ver §12; LINE_AVOID es el comportamiento de recuperación post-brake.)
+   snapshot stale > 500 ms → motores stop + SAFE_NO_TOP (fuera de la FSM).
+```
+
+**Transiciones reales** (en `strategy.cpp`, espejadas en
+`strategy_transitions.cpp`). Clave: el split SEARCH→POSITION/APPROACH es por
+**ÁNGULO** (pelota alineada con la línea robot→arco), NO por distancia:
+
+| Transición | Condición real |
+|------------|----------------|
+| WAIT_START → KICKOFF | flanco STOP→RUN de `match_running` |
+| KICKOFF → SEARCH | `now - kickoff_start ≥ 250 ms` |
+| SEARCH → APPROACH | `ball_visible` y (`!goal_visible` **o** pelota dentro de ±30° de la línea al arco) |
+| SEARCH → POSITION | `ball_visible` y `goal_visible` y pelota fuera de ±30° |
+| POSITION → APPROACH | llegó al target detrás de la pelota (`<80 mm`) **y** alineada; o se perdió el arco |
+| POSITION → SEARCH | `!ball_visible` |
+| APPROACH → POSITION | `goal_visible` y pelota fuera de ±40° (histéresis +10°) |
+| APPROACH → SEARCH | `!ball_visible` o `ball_dist < 1 mm` |
+| APPROACH: `cmd.kicker_fire=1` | `goal_visible` y alineada y `ball_dist ≤ 80 mm` y `|ángulo_arco| ≤ 12°` |
+| cualquiera → WAIT_START | `!match_running` |
+| cualquiera → LINE_AVOID | `imminent_exit && line_fresh` |
+
+> **Diferencia vs diseño original**: no hay estado `PUSH_KICK` separado — el
+> disparo del kicker es una salida dentro de `APPROACH`. El split a `POSITION`
+> es por ángulo (`ball_is_in_attack_line`), no por la distancia `<250 mm` del
+> diseño viejo. Constantes de tuning en `strategy.cpp` líneas ~76-83.
+
+### 8.2 FSM del ARQUERO (GOALKEEPER) — Nivel 1+2 implementado
+
+```
+              ┌──────────────────────┐
+              │  GK_WAIT_START       │  match_running == false
+              └──────────┬───────────┘
+                         │ match_running == true
+                         ▼
+              ┌──────────────────────┐
+              │  GK_PATROL           │  pid_lateral activo (pisa línea)
+              │  oscilación lateral  │  + busca pelota
+              └──────────┬───────────┘
                          │ ball_visible
                          ▼
               ┌──────────────────────┐
-              │  ATK_APPROACH        │  va hacia la pelota
-              │  vx,vy = ball_dir·V  │
-              └──────────┬────────────┘
-                         │ ball_dist < 250 mm
+              │  GK_INTERCEPT        │  vx = ball_x · Kp + pid_lateral
+              │  alinear con ball.x  │
+              └──────────┬───────────┘
+                         │ ball_dist < 250 mm (GK_CLEAR_TRIGGER)
                          ▼
               ┌──────────────────────┐
-              │  ATK_POSITION        │  behind-the-ball:
-              │  orbit/centrado      │  ponerse del lado opuesto al arco rival
-              └──────────┬────────────┘
-                         │ aligned_with_goal + ball_close
-                         ▼
-              ┌──────────────────────┐
-              │  ATK_PUSH_KICK       │  empujar pelota al arco
-              │  if kicker_ready:    │  activar kicker
-              │     fire_kicker()    │
-              └──────────┬────────────┘
-                         │ ball_lost o post-kicker_delay
-                         ▼
-                  → vuelve a SEARCH
+              │  GK_CLEAR            │  va DERECHO a la pelota, 500 mm/s
+              │  empuja por inercia  │  (ROBOT1 no tiene kicker físico)
+              └──────────┬───────────┘
+              dist>400 mm │ (histéresis GK_CLEAR_RELEASE)  o  !ball_visible
+                          ▼
+              → INTERCEPT (si se alejó) / PATROL (si perdió la pelota)
 
-   Cualquier estado:
-     • imminent_exit       → motores brake + state = SEARCH al volver
-     • match_running=false → ATK_WAIT_START
-     • snapshot stale > 500ms → motores stop + SAFE_NO_TOP
+   Transición global prioritaria (igual que ATK, sin KICKOFF):
+     1. match_running == false        → GK_WAIT_START
+     2. imminent_exit && line_fresh   → GK_LINE_AVOID  (→ PATROL al despejarse)
 ```
 
-**Transiciones** (condiciones medibles, en `world_model_*()`):
+**Transiciones reales** (`strategy.cpp`, espejadas en `strategy_transitions.cpp`):
 
-| Transición | Condición |
-|------------|-----------|
-| WAIT_START → SEARCH | `match_running == true` y referee START |
-| SEARCH → APPROACH | `ball_visible == true` y `ball_confidence > 50` |
-| APPROACH → POSITION | `ball_distance_mm < 250` |
-| APPROACH → SEARCH | `ball_age_ms > 500` (perdimos la pelota) |
-| POSITION → PUSH_KICK | `aligned_with_goal && ball_distance < 100` |
-| POSITION → APPROACH | `ball_distance_mm > 300` (se alejó la pelota) |
-| PUSH_KICK → SEARCH | kicker disparó (delay 1 s) o `ball_age > 200 ms` |
+| Transición | Condición real |
+|------------|----------------|
+| WAIT_START → PATROL | `match_running` |
+| PATROL → INTERCEPT | `ball_visible` |
+| INTERCEPT → CLEAR | `ball_dist < 250 mm` (gana sobre `!ball_visible`) |
+| INTERCEPT → PATROL | `ball_dist ≥ 250 mm` y `!ball_visible` |
+| CLEAR → PATROL | `!ball_visible` (gana sobre el chequeo de release) |
+| CLEAR → INTERCEPT | `ball_visible` y `ball_dist > 400 mm` (histéresis) |
+| cualquiera → LINE_AVOID | `imminent_exit && line_fresh`; vuelve a PATROL |
 
-### 8.2 FSM del ARQUERO (GOALKEEPER)
+**Nota**: `GK_PATROL` aprovecha el PID lateral arquero (§7.2); el measurement
+viene de ABAJO por el bus de emergencia, respuesta lateral muy fluida. La
+histéresis 250/400 mm en INTERCEPT↔CLEAR evita el ping-pong de estado cuando
+la pelota queda al borde del umbral.
 
-```
-              ┌──────────────────────┐
-              │  GK_WAIT_START        │
-              └──────────┬────────────┘
-                         │ START
-                         ▼
-              ┌──────────────────────┐
-              │  GK_PATROL           │  pid_lateral activo
-              │  oscilación lateral   │  pisar línea de fondo
-              │  buscando pelota      │
-              └──────────┬────────────┘
-                         │ ball_visible
-                         ▼
-              ┌──────────────────────┐
-              │  GK_INTERCEPT        │  moverse lateral para
-              │  alinear con pelota   │  alinearse con ball.x
-              └──────────┬────────────┘
-                         │ ball_distance < 200
-                         ▼
-              ┌──────────────────────┐
-              │  GK_CLEAR            │  patear / despejar fuerte
-              │                       │
-              └──────────┬────────────┘
-                         │ ball_lost o post-kick
-                         ▼
-                  → vuelve a PATROL
+### 8.3 Comportamientos adicionales (Nivel 3+, NO implementados)
 
-   Cualquier estado:
-     • ball aproximándose rápido     → GK_RUSH (futuro: anticipar)
-     • imminent_exit → motores brake
-     • partner_alive && partner_sees_ball cerca de arco → coordinar
-```
-
-**Nota**: el modo `GK_PATROL` aprovecha el PID lateral arquero corriendo en CENTRAL (§7.2). El measurement viene de ABAJO por el bus de emergencia a 200 Hz, así que la respuesta lateral es muy fluida.
-
-### 8.3 Comportamientos adicionales (Nivel 3+)
+> Nota: el `ATK_KICKOFF` simple (boost recto al detectar el flanco STOP→RUN)
+> **YA está implementado** en Nivel 2 — ver §8.1. Lo de abajo es la versión
+> avanzada con pose absoluta y coordinación, todavía futura.
 
 | Estado adicional | Cuándo | Comportamiento |
 |------------------|--------|----------------|
 | `ATK_DEFEND` | Si partner es GK y nuestro arco está siendo atacado | Volver a defender, complementar al partner |
 | `ATK_SUPPORT_KICK` | Si partner está pateando | Acompañar para rebote |
 | `GK_RUSH` | Pelota se acerca rápido al arco | Salir del arco a interceptar |
-| `KICKOFF_OWN` | Tras gol en contra o inicio | Posición fija + patear |
-| `KICKOFF_ADV` | Tras gol a favor o inicio adversario | Posición defensiva |
+| `KICKOFF_OWN` | Tras gol en contra o inicio | Posición fija + patear (requiere pose absoluta) |
+| `KICKOFF_ADV` | Tras gol a favor o inicio adversario | Posición defensiva (requiere pose absoluta) |
 
 ### 8.4 Behind-the-ball (técnica clave de ataque)
+
+> **⚠️ Implementado en versión RELATIVA (Nivel 2), no la de abajo.** El código
+> real es `compute_behind_ball_target()` en `src/shared/behind_ball.cpp`
+> (16 tests en `test/test_behind_ball/`). Usa coords **relativas al robot** +
+> ángulo al arco (`goal_angle_deg`), porque NO hay pose absoluta todavía:
+>
+> ```cpp
+> // behind_ball.cpp (real, Nivel 2): target relativo, gap 120 mm
+> target_x = ball_x_mm - gap_mm * sin(goal_angle_rad);
+> target_y = ball_y_mm - gap_mm * cos(goal_angle_rad);
+> ```
+>
+> El pseudocódigo de abajo (con `OPP_GOAL_X/Y`, `my_x/y_mm`) es la versión
+> **Nivel 3** para cuando exista el EKF de pose absoluta. Conservado como
+> referencia de destino, no es lo que corre.
 
 El robot delantero NO debe simplemente correr hacia la pelota — debe **ubicarse del lado opuesto al arco rival**, para que cuando empuje la pelota, vaya hacia el arco rival.
 
@@ -551,6 +617,12 @@ void compute_behind_ball_target(WorldModel& wm, float& target_x, float& target_y
 Si el robot está **del lado equivocado** (entre la pelota y el arco rival), debe **orbitar** la pelota sin tocarla.
 
 ### 8.5 Orbit (rodear la pelota sin tocarla)
+
+> **⚠️ NO implementado como orbit suave continuo.** En Nivel 2, el estado
+> `POSITION` persigue el *target detrás de la pelota* recalculado cada tick
+> (decisión documentada en `behind_ball.h`): más simple y robusto que el orbit
+> tangencial de abajo, y no necesita pose absoluta. El `orbit_ball()` con
+> `my_x/y_mm` es Nivel 3 (requiere EKF). Conservado como referencia de destino.
 
 ```cpp
 void orbit_ball(WorldModel& wm, bool clockwise, MotorCommand& cmd) {

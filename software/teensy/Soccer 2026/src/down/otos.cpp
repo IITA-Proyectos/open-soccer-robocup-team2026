@@ -39,6 +39,14 @@ uint32_t g_tick_count = 0;
 float g_left_x = 0.0f,  g_left_y = 0.0f,  g_left_h = 0.0f;
 float g_right_x = 0.0f, g_right_y = 0.0f, g_right_h = 0.0f;
 
+// Última velocidad de cada OTOS. Mientras la lib SparkFun esté comentada,
+// quedan en 0 → los getters de velocidad retornan 0 (igual que antes).
+// Cuando se descomente TODO_OTOS_LIB, el bloque de otos_tick las llena y la
+// fusión de abajo computa g_vx/g_vy/g_omega. Esto cierra el bug latente:
+// antes g_vx/g_vy/g_omega NUNCA se asignaban ni con la lib activa.
+float g_left_vx = 0.0f,  g_left_vy = 0.0f,  g_left_w = 0.0f;
+float g_right_vx = 0.0f, g_right_vy = 0.0f, g_right_w = 0.0f;
+
 }  // namespace
 
 bool otos_init() {
@@ -78,6 +86,9 @@ void otos_tick() {
     // if (g_right_ready) { g_otos_right.getPose(pr); g_otos_right.getVelocity(vr); }
     // g_left_x = pl.x * 25.4f; g_left_y = pl.y * 25.4f; g_left_h = pl.h * 180.0f / M_PI;
     // g_right_x = pr.x * 25.4f; g_right_y = pr.y * 25.4f; g_right_h = pr.h * 180.0f / M_PI;
+    // // Velocity (cierra el bug latente — antes g_vx/g_vy/g_omega quedaban en 0):
+    // g_left_vx  = vl.x * 25.4f; g_left_vy  = vl.y * 25.4f; g_left_w  = vl.h;
+    // g_right_vx = vr.x * 25.4f; g_right_vy = vr.y * 25.4f; g_right_w = vr.h;
     // TODO_OTOS_LIB_END
 
     // === Fusión ===
@@ -91,6 +102,12 @@ void otos_tick() {
         const float dy = g_right_y - g_left_y;
         g_heading_deg = std::atan2(dy, OTOS_SEPARATION_MM) * (180.0f / M_PI);
 
+        // Velocidad del centro = promedio de los 2 (0 mientras la lib esté
+        // comentada → comportamiento actual idéntico).
+        g_vx = (g_left_vx + g_right_vx) * 0.5f;
+        g_vy = (g_left_vy + g_right_vy) * 0.5f;
+        g_omega = (g_left_w + g_right_w) * 0.5f;
+
         // Slip estimate: diferencia X esperada por la rotación es
         // |omega| * radio_a_otos. Si la diferencia X observada es mayor, hay slip.
         // Para una estimación simple sin omega instantáneo: usar diff_x / dt como
@@ -98,9 +115,11 @@ void otos_tick() {
         g_slip = std::abs(g_right_x - g_left_x);
     } else if (g_left_ready) {
         g_x_mm = g_left_x; g_y_mm = g_left_y; g_heading_deg = g_left_h;
+        g_vx = g_left_vx; g_vy = g_left_vy; g_omega = g_left_w;
         g_slip = 0.0f;
     } else if (g_right_ready) {
         g_x_mm = g_right_x; g_y_mm = g_right_y; g_heading_deg = g_right_h;
+        g_vx = g_right_vx; g_vy = g_right_vy; g_omega = g_right_w;
         g_slip = 0.0f;
     } else {
         // Ningún OTOS — degradación: pose no se actualiza.

@@ -13,6 +13,18 @@ tipo: troubleshooting
 related-tasks: [TASK-006, TASK-010]
 ---
 
+> **⚠️ ENTRADA PARCIALMENTE SUPERADA (2026-05-17).** La premisa central de esta
+> entrada es **incorrecta**: se basó solo en el branch `master` del repo
+> oficial, que compila para **ESP32-C5**, NO para el C6 de nuestra placa.
+> Existe un branch dedicado **`esp32-c6`** con OTRO pinout (SDA=6, SCL=7,
+> BTN=18, BTN2=9, OUT1=20, OUT2=19) y método de flash oficial distinto.
+> El pin map, el nombre BLE (`RCJ-soccer_module` → `RCJs-m_<MAC>`) y el
+> procedure de esta entrada **no se deben usar**. Corrección completa:
+> `journal/2026-05-17-analisis-3-placas-y-correccion-firmware-c6.md` y
+> `hardware/electronics/comm-board/2026-05-17-procedimiento-flash-firmware-c6.md`.
+> Esta entrada se conserva intacta como registro histórico (no se borra
+> patrimonio del equipo) — pero **no es la fuente de verdad**.
+
 # Firmware oficial RCJ en placa COMM (ESP32-C6) — procedure de flash descubierto
 
 ## Contexto

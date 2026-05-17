@@ -116,3 +116,12 @@ compatibilidad de firmware.
 - 2026-05-15: **cerrada como done**. Premisa incorrecta — el firmware oficial ya
   es nativo C6 desde 2024-03-29. Tiempo real de investigación: 1 h (vs 4 h
   estimadas). TASK-006 absorbe el procedure operativo de flash.
+- 2026-05-17: **matiz importante (decisión SE MANTIENE, evidencia corregida).**
+  El veredicto sigue siendo correcto: NO hace falta portar, Plan A es viable.
+  PERO el soporte C6 **no** está en `master` (master compila para **C5**; el
+  comentario `//ESP-C5` NO era typo). El C6 nativo está en un **branch
+  dedicado `esp32-c6`** (commit `ffb4e3c`). El pin map que esta TASK pasó a
+  TASK-006 era el de C5 y estaba equivocado. Corrección y pin map C6 correcto
+  en `journal/2026-05-17-analisis-3-placas-y-correccion-firmware-c6.md` y
+  `hardware/electronics/comm-board/`. La TASK queda `done` (la decisión
+  Plan A no cambia); la corrección operativa vive en TASK-006.

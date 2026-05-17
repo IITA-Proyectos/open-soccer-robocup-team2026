@@ -2,7 +2,7 @@
 id: TASK-006
 title: "Cargar firmware oficial RCJ en la placa COMM"
 date_created: 2026-05-10
-date_updated: 2026-05-15
+date_updated: 2026-05-17
 assigned: [mariaviollaz, elias]
 priority: P0
 status: pending
@@ -12,6 +12,23 @@ tags: [firmware, comm-board, rcj, arbitros, esp32, esp32c6]
 ---
 
 # TASK-006 — Cargar firmware oficial RCJ en placa COMM
+
+> **⚠️ CORRECCIÓN 2026-05-17 — LEER ANTES DE EJECUTAR.**
+> El "Procedure descubierto 2026-05-15" de abajo y el pinout en "Notas /
+> decisiones" están **EQUIVOCADOS**: se basaron en el branch `master` (que
+> compila para **ESP32-C5**, no el C6 de nuestra placa). El firmware correcto
+> está en el branch **`esp32-c6`** (commit `ffb4e3c`), core Arduino-ESP32
+> **exactamente 3.2.2**, pin map C6 (SDA=6, SCL=7, BTN=18, BTN2=9, OUT1=20,
+> OUT2=19), nombre BLE **`RCJs-m_<MAC>`**, y método de flash oficial =
+> cablear USB a los pines del header (no hay USB-C en la placa).
+>
+> **Fuente de verdad (seguir ESTO, no las secciones viejas):**
+> - Procedimiento: [`hardware/electronics/comm-board/2026-05-17-procedimiento-flash-firmware-c6.md`](../hardware/electronics/comm-board/2026-05-17-procedimiento-flash-firmware-c6.md)
+> - Componentes/pinout: [`hardware/electronics/comm-board/2026-05-17-placa-comm-componentes-y-circuito.md`](../hardware/electronics/comm-board/2026-05-17-placa-comm-componentes-y-circuito.md)
+> - Análisis: `journal/2026-05-17-analisis-3-placas-y-correccion-firmware-c6.md`
+>
+> Las secciones originales se conservan abajo como registro histórico (no se
+> borra patrimonio del equipo) pero **no se deben usar como guía**.
 
 ## Resumen
 
@@ -130,11 +147,16 @@ Adjuntar foto de la placa, output completo de esptool, qué chip USB se enumera.
 
 ## Criterio de cierre
 
-- [ ] Firmware oficial RCJ v0.91 cargado en placa COMM con el procedure descubierto.
-- [ ] Display OLED muestra pantalla inicial.
-- [ ] Botón CONNECT (GPIO10) responde con `ble_disconnect()` al hold 5s.
-- [ ] Bluetooth `RCJ-soccer_module` aparece visible desde un celular.
-- [ ] OUTPUT1/OUTPUT2 cambian con start/stop desde la app móvil del repo.
+> Criterio de cierre **corregido 2026-05-17** (pines/branch/BLE actualizados):
+
+- [ ] Firmware oficial v0.91 del branch **`esp32-c6`** (commit `ffb4e3c`)
+      cargado siguiendo el procedimiento de `hardware/electronics/comm-board/`.
+- [ ] Display OLED (en I²C `U4`) muestra logo RC + `v 0.91` + QR de la MAC.
+- [ ] Botón CONNECT (**GPIO18**) responde con `ble_disconnect()` al hold 5 s.
+- [ ] Bluetooth **`RCJs-m_<MAC>`** (prefijo `RCJs-m_`) visible desde un celular.
+- [ ] OUTPUT1 (**GPIO20**, pin `U3_1`) / OUTPUT2 (**GPIO19**, `U3_2`) miden
+      3.3 V con PLAY y 0 V con STOP desde la app de árbitro.
+- [ ] Serial Monitor @115200 imprime `PLAY`/`STOP` en runtime.
 - [ ] Journal entry actualizado con resultados de los tests.
 
 ## Notas / decisiones
@@ -169,3 +191,11 @@ investigación completa, links a foro RCJ, repo oficial y diagnóstico paso a pa
 - 2026-05-15: actualizado — prio P1 → P0 (era bloqueante por motivo equivocado en
   TASK-010 ahora cerrada); procedure de flash descubierto; verificación E2E
   ajustada de Serial Monitor a display+BLE.
+- 2026-05-17: **corregido** — la investigación del 2026-05-15 solo miró el
+  branch `master` (C5). Se descubrió el branch `esp32-c6` (commit `ffb4e3c`)
+  con pin map distinto (SDA=6/SCL=7/BTN=18/BTN2=9/OUT1=20/OUT2=19), core
+  Arduino-ESP32 fijado en 3.2.2, nombre BLE `RCJs-m_<MAC>`, y método de flash
+  oficial (cablear USB al header). Pin map/branch/procedure viejos marcados
+  como históricos. Fuente de verdad movida a
+  `hardware/electronics/comm-board/`. Análisis completo en journal 2026-05-17.
+  Status sigue `pending` (falta ejecutar el flasheo con el procedure correcto).

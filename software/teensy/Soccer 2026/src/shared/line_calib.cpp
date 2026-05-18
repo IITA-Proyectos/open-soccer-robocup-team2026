@@ -7,7 +7,8 @@ void lc_set_static(SensorCalib& c, uint16_t carpet, uint16_t white){
 }
 void lc_adapt_carpet(SensorCalib& c, uint16_t filtered, bool on_line, float alpha){
     if(on_line) return;
-    if(alpha<=0.0f) return; if(alpha>1.0f) alpha=1.0f;
+    if(alpha<=0.0f) return;
+    if(alpha>1.0f) alpha=1.0f;
     float nc = (1.0f-alpha)*(float)c.carpet + alpha*(float)filtered;
     c.carpet = (uint16_t)lroundf(nc);
     c.threshold = mid(c.carpet, c.white);

@@ -31,11 +31,18 @@ void test_suspect_when_margin_too_small(void){
     TEST_ASSERT_FALSE(lc_is_suspect(ok,1,100));
 }
 
+void test_adapt_alpha_gt1_clamps_to_1(void){
+    SensorCalib c{}; lc_set_static(c, 200, 800);
+    lc_adapt_carpet(c, 260, false, 2.0f);  // alpha clamped a 1 → un paso a 260
+    TEST_ASSERT_EQUAL_UINT16(260, c.carpet);
+}
+
 int main(int, char**){
     UNITY_BEGIN();
     RUN_TEST(test_static_threshold_is_midpoint);
     RUN_TEST(test_adapt_carpet_moves_toward_reading_when_off_line);
     RUN_TEST(test_adapt_does_not_drift_when_on_line);
     RUN_TEST(test_suspect_when_margin_too_small);
+    RUN_TEST(test_adapt_alpha_gt1_clamps_to_1);
     return UNITY_END();
 }

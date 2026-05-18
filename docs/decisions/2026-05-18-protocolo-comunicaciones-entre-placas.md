@@ -16,6 +16,17 @@ related: [docs/ARQUITECTURA-3-PLACAS-2026.md, software/teensy/Soccer 2026/src/sh
 
 # Comunicaciones entre placas — análisis profundo + diseño objetivo
 
+> ⚠️ **VERIFICACIÓN INDEPENDIENTE 2026-05-18 — LEER ANTES DE EJECUTAR.**
+> Una validación adversarial encontró fallas críticas en el PLAN DE ACCIÓN de
+> este documento (no en el diagnóstico, que es correcto). En particular:
+> **NO bajar el timeout de motores a 150 ms** (§3.4/§5) hasta sacar el `pulseIn`/
+> I2C bloqueante del loop de TOP y medir su período real — hacerlo antes mete
+> paradas de motor espurias en partido. **Eliminar `Serial.clear()`** (§3.5).
+> Falta histéresis (flapping), OR-latch del `imminent_exit`, distinguir
+> stream/comando, `static_assert(sizeof)`. Ejecutar con el **orden corregido**
+> de `docs/decisions/2026-05-18-verificacion-protocolo-comunicaciones.md`, NO
+> con el §5 de abajo. Este documento se conserva como base conceptual.
+>
 > Análisis anclado en el **código real** (`software/teensy/Soccer 2026/src/`), no en
 > los docs de spec. Donde el código y la spec se contradicen, manda el código y se
 > marca la contradicción. Requisitos del coach: **100% confiable, heartbeat,

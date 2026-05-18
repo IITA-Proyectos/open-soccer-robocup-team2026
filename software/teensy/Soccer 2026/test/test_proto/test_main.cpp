@@ -48,7 +48,7 @@ static Frame make_frame(MsgType type, uint8_t seq, const uint8_t* payload, uint8
 
 void test_encode_then_decode_recovers_frame(void) {
     uint8_t payload[] = {0x01, 0x02, 0x03, 0x04};
-    Frame in = make_frame(MsgType::DOWN_LINE_STATUS, 42, payload, 4);
+    Frame in = make_frame(DOWN_LINE_STATUS, 42, payload, 4);
 
     uint8_t buf[PROTO_MAX_FRAME];
     size_t n = proto_encode(in, buf, sizeof(buf));
@@ -128,7 +128,7 @@ void test_decoder_skips_garbage_before_valid_frame(void) {
 
 void test_decoder_rejects_corrupted_crc(void) {
     uint8_t payload[] = {0xAB, 0xCD};
-    Frame in = make_frame(MsgType::DOWN_LINE_STATUS, 10, payload, 2);
+    Frame in = make_frame(DOWN_LINE_STATUS, 10, payload, 2);
 
     uint8_t buf[PROTO_MAX_FRAME];
     size_t n = proto_encode(in, buf, sizeof(buf));

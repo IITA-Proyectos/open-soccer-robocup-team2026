@@ -23,7 +23,6 @@ struct DownModel {
     bool           was_white[DM_MAX_SENSORS];
     SurfaceMonitor surface;
     LineTracker    tracker;
-    uint8_t        seq_sample;
 };
 LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
                         const uint16_t* raw, int n, uint32_t now_ms);

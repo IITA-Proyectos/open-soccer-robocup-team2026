@@ -44,10 +44,30 @@ void test_lifted_sets_invalid_and_flag(void){
     TEST_ASSERT_TRUE(s.event_flags & EV_LIFTED);
 }
 
+void test_calib_suspect_sets_invalid_and_flag(void){
+    DownModel m{}; DownModelCfg cfg; mkcfg(cfg);
+    // margen blanco-carpet = 50 < calib_min_margin=120 => suspect
+    for(int i=0;i<8;++i) lc_set_static(m.calib[i],500,550);
+    uint16_t raw[8]={505,508,502,501,499,503,506,504};
+    LineStatusV2 s = dm_update(m,cfg,raw,8,1000);
+    TEST_ASSERT_EQUAL_UINT8(0, s.data_valid);
+    TEST_ASSERT_TRUE(s.event_flags & EV_CALIB_SUSPECT);
+}
+
+void test_n_over_max_is_clamped(void){
+    DownModel m{}; DownModelCfg cfg; mkcfg(cfg);
+    for(int i=0;i<DM_MAX_SENSORS;++i) lc_set_static(m.calib[i],200,800);
+    uint16_t raw[DM_MAX_SENSORS]; for(int i=0;i<DM_MAX_SENSORS;++i) raw[i]=200;
+    LineStatusV2 s = dm_update(m,cfg,raw,64,1000);   // n=64 > 32 => clamp
+    TEST_ASSERT_TRUE(s.sensors_on_line <= DM_MAX_SENSORS);
+}
+
 int main(int, char**){
     UNITY_BEGIN();
     RUN_TEST(test_no_line_carpet_valid);
     RUN_TEST(test_line_front_sets_fields);
     RUN_TEST(test_lifted_sets_invalid_and_flag);
+    RUN_TEST(test_calib_suspect_sets_invalid_and_flag);
+    RUN_TEST(test_n_over_max_is_clamped);
     return UNITY_END();
 }

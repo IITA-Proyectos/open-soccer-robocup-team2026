@@ -48,6 +48,19 @@ Sistema de tareas asignadas a miembros del equipo para Incheon 2026.
 | [TASK-011](2026-05-15-task-011-confirmar-pin-kicker-solenoide-zircon.md) | Confirmar PIN_KICKER_SOL del solenoide en Zircon (ROBOT2) | Enzo | P1 | pending |
 | [TASK-012](2026-05-15-task-012-activar-libs-otos-tof.md) | Activar libs reales OTOS (DOWN) + ToF (TOP) — salir de stub | Enzo + Elías | P0 | pending |
 | [TASK-013](2026-05-17-task-013-recuperar-bom-placa-top.md) | Recuperar BOM + P&P + serigrafía de la placa TOP | Enzo | P1 | pending |
+| [TASK-014](2026-05-18-task-014-loop-top-no-bloqueante-medir-periodo.md) | Loop de TOP no-bloqueante + medir período real (fundacional) | Virginia + Elías | **P0** | pending |
+| [TASK-015](2026-05-18-task-015-crc-fin-trama-enlace-camara.md) | CRC + fin de trama en enlace de cámara OpenMV→TOP | Virginia | **P0** | pending |
+| [TASK-016](2026-05-18-task-016-failsafe-borde-orlatch-precedencia.md) | Fail-safe de borde: OR-latch + precedencia ante LOST conjunto | Virginia + Elías | **P0** | pending |
+| [TASK-017](2026-05-18-task-017-heartbeat-histeresis-seq.md) | Heartbeat + máquina OK/STALE/LOST con histéresis + SEQ | Virginia + Elías | P1 | pending |
+| [TASK-018](2026-05-18-task-018-cota-drain-sin-serialclear.md) | Cotar drenado RX + NO introducir Serial.clear() | Virginia | P1 | pending |
+| [TASK-019](2026-05-18-task-019-robustez-arranque-debug-handlers.md) | Robustez de arranque (guard last_ms>0 ×3, gate debug, handlers) | Virginia | P1 | pending |
+| [TASK-020](2026-05-18-task-020-refactor-link-staticassert-config.md) | Refactor a módulo Link único + static_assert + config | Virginia + Enzo | P2 | pending |
+
+> **Nota 2026-05-18:** TASK-014..020 abiertas tras la verificación independiente
+> del protocolo de comms. **Orden de ejecución:** TASK-014 es fundacional
+> (bloquea a TASK-017 y al rediseño de ventanas). P0 = 014/015/016. NO bajar el
+> timeout de motores a 150 ms hasta cerrar TASK-014. Diseño definitivo:
+> `docs/decisions/2026-05-18-diseno-comunicaciones-robusto-definitivo.md`.
 
 > **Nota 2026-05-17:** TASK-006 corregida — el firmware correcto es el branch
 > `esp32-c6` (no `master`/C5). Pin map y procedimiento nuevos en

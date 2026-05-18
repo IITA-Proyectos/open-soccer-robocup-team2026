@@ -70,6 +70,26 @@ void test_not_corner_single_cluster(void){
     TEST_ASSERT_FALSE(g.corner);
 }
 
+void test_corner_wraparound_clusters(void){
+    // idx7(-45°) e idx0(0°) son contiguos vía wrap => cluster medio ~-22.5°; idx2(90°) => otro cluster.
+    // Separación entre clusters: |90 - (-22.5)| = 112.5° ∈ [55,125] => corner TRUE.
+    // Valida que el walk modular une correctamente el wrap del anillo.
+    bool w[8]={true,false,true,false,false,false,false,true}; // idx0, idx2, idx7
+    float a[8]; for(int i=0;i<8;++i)a[i]=lg_sensor_angle_deg(i,8);
+    GeomResult g = lg_compute(w, a, 8);
+    TEST_ASSERT_TRUE(g.corner);
+}
+
+void test_three_equidistant_clusters_not_corner(void){
+    // idx0(0°), idx3(135°), idx5(-135°): 3 clusters aislados.
+    // Par idx3/idx5: |135-(-135)|=270 => shortest=90° ∈ [55,125] => corner TRUE.
+    // Documenta que 3 clusters con un par a ~90° sí activan corner.
+    bool w[8]={true,false,false,true,false,true,false,false};
+    float a[8]; for(int i=0;i<8;++i)a[i]=lg_sensor_angle_deg(i,8);
+    GeomResult g = lg_compute(w, a, 8);
+    TEST_ASSERT_TRUE(g.corner);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_sensor_angle_front_is_zero);
@@ -80,5 +100,7 @@ int main(int, char**) {
     RUN_TEST(test_line_two_sensor_symmetric_centroid);
     RUN_TEST(test_corner_two_perpendicular_clusters);
     RUN_TEST(test_not_corner_single_cluster);
+    RUN_TEST(test_corner_wraparound_clusters);
+    RUN_TEST(test_three_equidistant_clusters_not_corner);
     return UNITY_END();
 }

@@ -29,7 +29,7 @@ GeomResult lg_compute(const bool* white, const float* ang, int n){
     // Cluster = corrida de sensores blancos contiguos (anillo cerrado).
     {
         int first=-1; for(int i=0;i<n;++i){ if(!white[i]){first=i;break;} }
-        int clusters=0; double cmean[8]; int cn=0; // hasta 8 clusters
+        double cmean[8]; int cn=0; // hasta 8 clusters
         if(first<0){ /* todos blancos: una sola superficie, no corner */ }
         else {
             bool inrun=false; double sxx=0,syy=0;
@@ -37,13 +37,15 @@ GeomResult lg_compute(const bool* white, const float* ang, int n){
                 if(white[i]){ if(!inrun){inrun=true;sxx=0;syy=0;}
                     double r=ang[i]*M_PI/180.0; sxx+=cos(r); syy+=sin(r); }
                 else if(inrun){ inrun=false; if(cn<8){
-                    cmean[cn++]=atan2(syy,sxx)*180.0/M_PI; clusters++; } }
+                    cmean[cn++]=atan2(syy,sxx)*180.0/M_PI; } }
             }
-            if(inrun && cn<8){ cmean[cn++]=atan2(syy,sxx)*180.0/M_PI; clusters++; }
+            if(inrun && cn<8){ cmean[cn++]=atan2(syy,sxx)*180.0/M_PI; }
         }
-        if(clusters>=2){
+        if(cn>=2){
             for(int i=0;i<cn && !g.corner;++i) for(int j=i+1;j<cn;++j){
                 double d=fabs(cmean[i]-cmean[j]); if(d>180.0)d=360.0-d;
+                // Tolerancia 90°±35°: 8 sensores → ~22.5°/cluster, worst-case ~45° total.
+                // Si hay falsos negativos en campo real, ampliar a [45.0,135.0].
                 if(d>=55.0 && d<=125.0){ g.corner=true; break; }
             }
         }

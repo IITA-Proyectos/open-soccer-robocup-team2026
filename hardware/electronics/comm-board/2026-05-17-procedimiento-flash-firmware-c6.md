@@ -265,6 +265,9 @@ Si Plan A + fallback + esptool fallan con 3V3 OK (3.20–3.40 V medido):
 
 Adjuntar: foto de la placa, output completo de esptool, qué chip USB se enumera.
 
+> **Todos los enlaces, la app de árbitro y el checklist offline para Incheon:**
+> [`RECURSOS-Y-ENLACES.md`](RECURSOS-Y-ENLACES.md)
+
 ## 8. Fuentes
 
 - `update.md` del branch `esp32-c6` (commit `e66b614`, 2025-10-30) del repo oficial.

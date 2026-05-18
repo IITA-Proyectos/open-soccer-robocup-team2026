@@ -10,7 +10,7 @@ tags: [comunicacion, electronica, decision, protocolo, seguridad, ambos]
 robot: ambos
 area: comunicacion
 tipo: decision
-related-tasks: [TASK-014, TASK-015, TASK-016, TASK-017, TASK-018, TASK-019, TASK-020]
+related-tasks: [TASK-014, TASK-015, TASK-016, TASK-017, TASK-018, TASK-019, TASK-020, TASK-021]
 related: [docs/decisions/2026-05-18-protocolo-comunicaciones-entre-placas.md, docs/decisions/2026-05-18-verificacion-protocolo-comunicaciones.md]
 ---
 
@@ -44,7 +44,8 @@ OBSERVABLE y ESTABLE**, nunca a uno peligroso ni oscilante.
 | **2. Framing** | Integridad de cada frame | `proto.h`: `0xAA\|LEN\|TYPE\|SEQ\|PAYLOAD\|CRC16\|0x55`, resync byte-a-byte. **En TODOS los enlaces, incl. cámara** | TASK-015 |
 | **3. Enlace** | Saber si el peer está vivo y reaccionar estable | Heartbeat explícito + FSM OK/STALE/LOST **con histéresis** | TASK-017 |
 | **4. Aplicación** | Tratar cada mensaje según su naturaleza | **Taxonomía STREAM/EVENTO/COMANDO** | TASK-016, TASK-018 |
-| **5. Sistema** | Estado seguro global, arranque, observabilidad | Estado inicial LOST, guard `last_ms>0`, watchdog, contadores | TASK-019 |
+| **5. Sistema** | Estado seguro global, arranque, observabilidad | Estado inicial LOST, guard `last_ms>0`, contadores | TASK-019 |
+| **6. Recuperación activa** | Recuperar una placa caída/colgada | Escalera WDT → reset por comando → reset por HW | TASK-021 |
 
 Cada capa asume que la de abajo puede fallar y degrada seguro. Ninguna capa
 confía ciegamente en la anterior.
@@ -134,6 +135,52 @@ Contadores `crc_errors/resync/frames/seq_gap` por enlace, expuestos por
 LED/telemetría **gateada por flag de competición** (sin stalls de `Serial.print`
 en partido).
 
+## 5.bis Capa 6 — Recuperación activa (escalera de reset)
+
+> El heartbeat (capa 3) **detecta** que un emisor cayó; esta capa lo **recupera**.
+> Principio: *el mecanismo que recupera una placa colgada NO puede depender de
+> que esa placa esté sana.* Por eso es una **escalera** de 3 niveles, no un solo
+> mecanismo. La idea del peer-reset por comando es la Capa 2 (no la primaria).
+
+**Estado físico de los canales inversos (verificado en código):** TOP↔DOWN y
+CENTRAL↔DOWN ya tienen canal inverso (comandos `RESET_OTOS`/`CALIB_LINE`).
+TOP↔CENTRAL inverso está anticipado pero NO implementado (`CENTRAL_RESET_TOP=0x61`
+en `proto.h:51`, sin uso). Cámara OpenMV→TOP es realmente unidireccional. **Hoy
+no hay watchdog de hardware en ninguna placa** (solo timeout software de cámara).
+
+### Nivel 1 — Autocuración: watchdog de hardware (WDT) por MCU — **PRIMARIO**
+Cada MCU (TOP, CENTRAL, DOWN; y el WDT propio de la OpenMV) habilita su WDT y lo
+"patea" en cada loop sano. Si el loop se cuelga > `WDT_MS`, la placa **se
+auto-resetea sola**, sin depender de ningún peer. Cubre el **peor caso** (cuelgue
+/ crash) y es **lo único que puede recuperar a CENTRAL** (nadie está por encima
+del master). Es el faltante de mayor valor. `WDT_MS` > período de loop peor caso
+medido en TASK-014.
+
+### Nivel 2 — Reset por comando del peer — **SECUNDARIO, best-effort**
+El receptor, tras `T_LOST` + ventana de gracia, envía un `*_RESET_*` (COMANDO,
+ver taxonomía §3) por el canal inverso. Implementar `CENTRAL_RESET_TOP=0x61`.
+**Solo recupera al emisor vivo-pero-trabado-lógicamente** (loop corre, dejó de
+producir datos); NO recupera un cuelgue duro (ahí el emisor tampoco lee su RX).
+Nunca puede ser el único mecanismo.
+
+### Nivel 3 — Línea de reset por hardware — **el más fuerte peer-driven (opcional)**
+GPIO del supervisor al pin RESET del emisor (open-drain, con debounce/latch).
+Funciona aunque el MCU esté **totalmente muerto**. Recomendado para CENTRAL→TOP,
+CENTRAL→DOWN y **cámaras** (TOP→RST de la OpenMV, único camino ya que no hay
+canal de datos inverso). Cuesta 1 wire + GPIO; riesgo: reset espurio → exige
+debounce/latch.
+
+### Convergencia (anti-tormenta de resets) — obligatorio en todos los niveles
+- Backoff + **máximo N intentos**.
+- Tras pedir/ejecutar un reset, el receptor entra en estado `RESETTING` y
+  **espera el tiempo de boot conocido del emisor** (ej. DOWN calibra ~320 ms +
+  init OTOS) antes de reevaluar. No reintenta durante el boot legítimo.
+- Si tras N resets no se recupera → **estado seguro global** (motores stop +
+  señalización) y se deja de martillar. Nunca un loop de reset.
+- Quién supervisa a quién: CENTRAL supervisa TOP y DOWN; TOP supervisa cámaras;
+  **CENTRAL solo se recupera por su propio WDT** (Nivel 1, no negociable).
+- Todo contado y observable (resets pedidos/ejecutados, gateado).
+
 ## 6. Especificación por enlace (valores tras TASK-014)
 
 | Enlace | Clase de dato | Heartbeat | T_OK / T_LOST | Acción LOST |
@@ -158,8 +205,14 @@ TASK-014 (P0, fundacional: loop no-bloqueante + medición)
    ├─► TASK-017 (P1: heartbeat+histéresis+SEQ)   ← depende de 014
    ├─► TASK-018 (P1: cota drain, sin Serial.clear)
    ├─► TASK-019 (P1: robustez arranque/debug/handlers)
+   ├─► TASK-021 (P1: WDT por placa + reset por comando + reset HW)  ← WDT primero
    └─► TASK-020 (P2: refactor Link + static_assert + config)  ← después de P0/P1
 ```
+
+> **TASK-021 — orden interno:** Nivel 1 (WDT por placa) es lo primero y de mayor
+> valor (única forma de recuperar a CENTRAL). Nivel 2 (reset por comando) y
+> Nivel 3 (reset por HW) son refuerzos posteriores. NO depende de TASK-014 para
+> el WDT, pero `WDT_MS` se fija con el período medido en TASK-014.
 
 **Regla dura:** NO bajar el timeout de motores ni fijar ventanas hasta cerrar
 TASK-014. Hacerlo antes mete paradas espurias en partido (peor que el problema).
@@ -168,7 +221,7 @@ TASK-014. Hacerlo antes mete paradas espurias en partido (peor que el problema).
 
 Se adopta este diseño en capas, fail-safe-by-default, con taxonomía de mensajes
 y FSM con histéresis, como **arquitectura objetivo de comunicaciones del robot**.
-Se ejecuta vía TASK-014..020 en el orden de §7, cada una con su plan de prueba
+Se ejecuta vía TASK-014..021 en el orden de §7, cada una con su plan de prueba
 en hardware real (inyección de stall + ruido EMI de motores + medición de loop,
 NO solo desconexión de cables).
 

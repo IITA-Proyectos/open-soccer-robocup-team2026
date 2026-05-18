@@ -55,6 +55,7 @@ Sistema de tareas asignadas a miembros del equipo para Incheon 2026.
 | [TASK-018](2026-05-18-task-018-cota-drain-sin-serialclear.md) | Cotar drenado RX + NO introducir Serial.clear() | Virginia | P1 | pending |
 | [TASK-019](2026-05-18-task-019-robustez-arranque-debug-handlers.md) | Robustez de arranque (guard last_ms>0 ×3, gate debug, handlers) | Virginia | P1 | pending |
 | [TASK-020](2026-05-18-task-020-refactor-link-staticassert-config.md) | Refactor a módulo Link único + static_assert + config | Virginia + Enzo | P2 | pending |
+| [TASK-021](2026-05-18-task-021-recuperacion-activa-wdt-reset.md) | Recuperación activa: WDT por placa + reset por comando + reset HW | Virginia + Elías | P1 | pending |
 
 > **Nota 2026-05-18:** TASK-014..020 abiertas tras la verificación independiente
 > del protocolo de comms. **Orden de ejecución:** TASK-014 es fundacional

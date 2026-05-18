@@ -15,6 +15,7 @@
 
 #pragma once
 #include <stdint.h>
+#include <climits>  // INT16_MIN
 
 namespace iitasoccer {
 
@@ -120,5 +121,34 @@ struct WorldSnapshot {
                                     // bit 3 = match_running
                                     // bits 4-7 = reservados
 } __attribute__((packed));
+
+// Contrato DOWN→CENTRAL v2 — ver docs/firmware/CONTRATO-DATOS-DOWN.md
+struct LineStatusV2 {
+    uint8_t  schema_version;          // = LSV2_SCHEMA
+    uint8_t  data_valid;              // 0/1 (compuerta maestra)
+    int16_t  line_angle_centideg;     // N/A = LSV2_NA_I16
+    int16_t  escape_angle_centideg;   // N/A = LSV2_NA_I16
+    uint16_t penetration_mm;          // N/A = LSV2_NA_U16
+    int16_t  cross_track_mm;          // N/A = LSV2_NA_I16
+    uint8_t  line_present;            // 0/1 (con histéresis)
+    uint8_t  sensors_on_line;         // 0..32
+    uint8_t  event_flags;             // EV_* OR-eados
+    uint8_t  quality;                 // 0..100
+    uint8_t  sample_age_ms;           // 0..255
+    uint8_t  reserved;                // = 0
+} __attribute__((packed));
+static_assert(sizeof(LineStatusV2) == 16, "LineStatusV2 debe ser 16 bytes (contrato)");
+
+constexpr uint8_t  LSV2_SCHEMA = 2;
+constexpr int16_t  LSV2_NA_I16 = INT16_MIN;   // -32768
+constexpr uint16_t LSV2_NA_U16 = 0xFFFF;
+
+constexpr uint8_t EV_IMMINENT_EXIT     = 0x01;
+constexpr uint8_t EV_CORNER            = 0x02;
+constexpr uint8_t EV_LINE_END          = 0x04;
+constexpr uint8_t EV_LIFTED            = 0x08;
+constexpr uint8_t EV_CALIB_SUSPECT     = 0x10;
+constexpr uint8_t EV_MUX_DEAD          = 0x20;
+constexpr uint8_t EV_DEGRADED_GEOMETRY = 0x40;
 
 }  // namespace iitasoccer

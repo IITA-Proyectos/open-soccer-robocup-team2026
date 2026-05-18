@@ -41,6 +41,7 @@ void handle_frame(const Frame& f) {
                 if (f.payload[0] == 0) line_ring_calibrate_carpet();
                 else if (f.payload[0] == 1) line_ring_calibrate_white();
             }
+            g_dm_init = false;  // recalibrar: forzar reload de calib en el proximo send
             break;
         default:
             // Comandos no esperados se ignoran.
@@ -87,6 +88,11 @@ void comm_central_send_line_urgent() {
 
     // Procesar con DownModel → LineStatusV2.
     LineStatusV2 s = dm_update(g_dm, g_dmcfg, raw, NUM_LINE_SENSORS, millis());
+
+    // Edad real de la muestra física (raw del line_ring) para que CENTRAL
+    // detecte enlace/datos stale (contrato §3.5). Clamp a 0..255 ms.
+    uint32_t age_ms = (micros() - line_ring_get_last_tick_us()) / 1000u;
+    s.sample_age_ms = (age_ms > 255u) ? 255u : (uint8_t)age_ms;
 
     // Serializar y enviar.
     uint8_t buf[PROTO_MAX_FRAME];

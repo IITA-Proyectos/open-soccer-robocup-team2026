@@ -7,7 +7,7 @@ bool sm_update(SurfaceMonitor& s, const uint16_t* f, const uint16_t* c, int n,
     bool cand = (below >= min_s);
     if(cand){
         if(!s.cand){ s.cand=true; s.cand_since_ms=now; }
-        return (now - s.cand_since_ms) >= debounce;
+        return (now - s.cand_since_ms) >= debounce;  // resta unsigned: wrap-safe
     }
     s.cand=false;
     return false;

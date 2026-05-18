@@ -56,6 +56,9 @@ Sistema de tareas asignadas a miembros del equipo para Incheon 2026.
 | [TASK-019](2026-05-18-task-019-robustez-arranque-debug-handlers.md) | Robustez de arranque (guard last_ms>0 ×3, gate debug, handlers) | Virginia | P1 | pending |
 | [TASK-020](2026-05-18-task-020-refactor-link-staticassert-config.md) | Refactor a módulo Link único + static_assert + config | Virginia + Enzo | P2 | pending |
 | [TASK-021](2026-05-18-task-021-recuperacion-activa-wdt-reset.md) | Recuperación activa: WDT por placa + reset por comando + reset HW | Virginia + Elías | P1 | pending |
+| [TASK-022](2026-05-18-task-022-camara-operativa.md) | Cámara operativa: sentinel, crash, exposición fija, calib mm+LAB, 1 script/cámara | Virginia | **P0** | pending |
+| [TASK-023](2026-05-18-task-023-build-tooling-ci.md) | Build/tooling: doc compilar+flashear, CI, pinear platform, lib_deps | Virginia + Enzo | **P0** | pending |
+| [TASK-024](2026-05-18-task-024-arranque-rol-polaridad-arco.md) | Arranque: leer rol, polaridad de arco, fallback START | Virginia + Elías | **P0** | pending |
 
 > **Nota 2026-05-18:** TASK-014..020 abiertas tras la verificación independiente
 > del protocolo de comms. **Orden de ejecución:** TASK-014 es fundacional

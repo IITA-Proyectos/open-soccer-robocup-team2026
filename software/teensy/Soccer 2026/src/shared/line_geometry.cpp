@@ -2,13 +2,14 @@
 #include <cmath>
 namespace iitasoccer {
 static int16_t to_cd(float deg){
-    while(deg>180.0f)deg-=360.0f; while(deg<=-180.0f)deg+=360.0f;
+    while (deg > 180.0f)   deg -= 360.0f;
+    while (deg <= -180.0f) deg += 360.0f;
     return (int16_t)lroundf(deg*100.0f);
 }
 float lg_sensor_angle_deg(int i, int n){
     if(n<=0)return 0.0f;
     float d = (360.0f*(float)i)/(float)n;     // 0=frente, sentido horario
-    while(d>180.0f)d-=360.0f;
+    while (d > 180.0f) d -= 360.0f;
     return d;
 }
 GeomResult lg_compute(const bool* white, const float* ang, int n){

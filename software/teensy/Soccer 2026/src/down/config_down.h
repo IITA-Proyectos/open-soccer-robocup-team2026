@@ -22,6 +22,7 @@
 
 #pragma once
 #include <stdint.h>
+#include <Arduino.h>   // A0..A6 (macros de pin del core Teensy) usados abajo
 
 namespace iitasoccer {
 

@@ -55,6 +55,21 @@ void test_line_two_sensor_symmetric_centroid(void) {
     TEST_ASSERT_TRUE(abs((int)g.escape_angle_centideg) > 17000);
 }
 
+void test_corner_two_perpendicular_clusters(void){
+    // Anillo 8 sensores. Blanco en frente (idx0, 0°) y derecha (idx2, 90°).
+    bool w[8]={true,false,true,false,false,false,false,false};
+    float a[8]; for(int i=0;i<8;++i)a[i]=lg_sensor_angle_deg(i,8);
+    GeomResult g = lg_compute(w, a, 8);
+    TEST_ASSERT_TRUE(g.corner);
+}
+
+void test_not_corner_single_cluster(void){
+    bool w[8]={true,true,false,false,false,false,false,false}; // 0° y 45° contiguos
+    float a[8]; for(int i=0;i<8;++i)a[i]=lg_sensor_angle_deg(i,8);
+    GeomResult g = lg_compute(w, a, 8);
+    TEST_ASSERT_FALSE(g.corner);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_sensor_angle_front_is_zero);
@@ -63,5 +78,7 @@ int main(int, char**) {
     RUN_TEST(test_line_centroid_front);
     RUN_TEST(test_line_centroid_right_side);
     RUN_TEST(test_line_two_sensor_symmetric_centroid);
+    RUN_TEST(test_corner_two_perpendicular_clusters);
+    RUN_TEST(test_not_corner_single_cluster);
     return UNITY_END();
 }

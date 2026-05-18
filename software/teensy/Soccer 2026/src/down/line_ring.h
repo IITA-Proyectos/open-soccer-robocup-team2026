@@ -37,6 +37,10 @@ bool     line_ring_get_white(uint8_t sensor_idx);  // true si sensor i ve blanco
 void     line_ring_calibrate_carpet();             // bloquea ~500 ms tomando muestras
 void     line_ring_calibrate_white();              // idem
 
+// Calibración por sensor — solo lectura, no modifica el muestreo.
+uint16_t line_ring_get_carpet_avg(uint8_t sensor_idx); // 0..NUM_LINE_SENSORS-1
+uint16_t line_ring_get_white_avg(uint8_t sensor_idx);  // 0..NUM_LINE_SENSORS-1
+
 // Diagnóstico:
 uint32_t line_ring_get_tick_count();
 uint32_t line_ring_get_last_tick_us();

@@ -179,6 +179,16 @@ void line_ring_calibrate_white() {
     reset_filter_state();
 }
 
+uint16_t line_ring_get_carpet_avg(uint8_t sensor_idx) {
+    if (sensor_idx >= NUM_LINE_SENSORS) return 0;
+    return g_carpet_avg[sensor_idx];
+}
+
+uint16_t line_ring_get_white_avg(uint8_t sensor_idx) {
+    if (sensor_idx >= NUM_LINE_SENSORS) return 0;
+    return g_white_avg[sensor_idx];
+}
+
 uint32_t line_ring_get_tick_count()   { return g_tick_count; }
 uint32_t line_ring_get_last_tick_us() { return g_last_tick_us; }
 

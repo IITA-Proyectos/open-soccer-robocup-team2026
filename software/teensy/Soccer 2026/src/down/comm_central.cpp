@@ -4,6 +4,8 @@
 #include "otos.h"
 #include "proto.h"
 #include "types.h"
+#include "down_model.h"
+#include "down_encode.h"
 
 #include <Arduino.h>
 #include <string.h>
@@ -16,6 +18,18 @@ FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
 uint32_t g_frames_sent = 0;
 uint8_t  g_send_seq = 0;
+
+DownModel g_dm;
+DownModelCfg g_dmcfg = {
+    /* imminent_depth        */ 6,
+    /* adapt_alpha           */ 0.02f,
+    /* calib_min_margin      */ 120,
+    /* lifted_debounce_ms    */ 100,
+    /* lifted_min_sensors    */ (NUM_LINE_SENSORS * 7) / 8,
+    /* lifted_delta_below    */ 80,
+    /* line_end_min_track_ms */ 200
+};
+bool g_dm_init = false;
 
 void handle_frame(const Frame& f) {
     switch (f.type) {
@@ -55,26 +69,30 @@ int comm_central_tick() {
 }
 
 void comm_central_send_line_urgent() {
-    LineStatus ls{};
-    ls.angle_centideg = static_cast<int16_t>(line_ring_get_angle_deg() * 100.0f);
-    // depth_mm: cantidad de sensores en blanco como proxy de profundidad.
-    // Cuando tengamos calibración geométrica del anillo, mapear a mm reales.
-    ls.depth_mm = line_ring_get_depth();
-    ls.imminent_exit_flag = line_ring_get_imminent_exit() ? 1 : 0;
-    // Flags: bit 0 = lifted (robot en aire — CENTRAL debe ignorar datos de línea).
-    ls.flags = 0;
-    if (line_ring_is_lifted()) ls.flags |= LINE_FLAG_LIFTED;
+    // Inicialización lazy: cargar calibración por sensor desde line_ring la primera vez.
+    if (!g_dm_init) {
+        for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
+            lc_set_static(g_dm.calib[i],
+                          line_ring_get_carpet_avg(static_cast<uint8_t>(i)),
+                          line_ring_get_white_avg(static_cast<uint8_t>(i)));
+        }
+        g_dm_init = true;
+    }
 
-    Frame f{};
-    f.type = MsgType::LINE_URGENT;
-    f.seq = g_send_seq++;
-    f.payload_len = sizeof(LineStatus);
-    memcpy(f.payload, &ls, sizeof(LineStatus));
+    // Leer valores crudos del anillo de sensores.
+    uint16_t raw[DM_MAX_SENSORS];
+    for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
+        raw[i] = line_ring_get_raw(static_cast<uint8_t>(i));
+    }
 
+    // Procesar con DownModel → LineStatusV2.
+    LineStatusV2 s = dm_update(g_dm, g_dmcfg, raw, NUM_LINE_SENSORS, millis());
+
+    // Serializar y enviar.
     uint8_t buf[PROTO_MAX_FRAME];
-    size_t n = proto_encode(f, buf, sizeof(buf));
-    if (n > 0) {
-        Serial1.write(buf, n);
+    size_t nb = down_encode_line(s, g_send_seq++, buf, sizeof(buf));
+    if (nb > 0) {
+        Serial1.write(buf, nb);
         g_frames_sent++;
     }
 }

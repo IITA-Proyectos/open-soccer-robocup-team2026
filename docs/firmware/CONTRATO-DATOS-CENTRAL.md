@@ -10,7 +10,7 @@ tags: [comunicacion, firmware, protocolo, contrato, central-board, ambos]
 robot: ambos
 area: comunicacion
 tipo: protocolo
-contract-schema: 1
+contract-schema: 2
 related:
   - software/teensy/Soccer 2026/src/shared/proto.h
   - software/teensy/Soccer 2026/src/shared/types.h
@@ -148,8 +148,8 @@ El transporte de TODOS los enlaces es **idéntico al definido en
 `comm_top_tick()` (`comm_top.cpp:33-43`), decodificado con `FrameDecoder`,
 entregado a `world_model_apply_snapshot()` (`comm_top.cpp:22-24`).
 
-**Payload:** `struct WorldSnapshot` de `types.h:92-123`. 24 bytes.
-`static_assert` NO presente en el código actual (GAP-001).
+**Payload:** `struct WorldSnapshot` de `types.h:92-123`. 27 bytes (WorldSnapshot schema v2: +ball_vx/vy).
+`static_assert(sizeof(WorldSnapshot)==27)` presente en el código (RESUELTO 2026-05-18, commit 2a9064e).
 
 #### 2.1.1 Layout exacto de `WorldSnapshot` (`types.h:92-123`)
 
@@ -163,16 +163,17 @@ entregado a `world_model_apply_snapshot()` (`comm_top.cpp:22-24`).
 | 9 | `ball_y_mm` | i16 | mm | −32767..+32767 | Posición Y de la pelota relativa al robot. |
 | 11 | `ball_visible` | u8 | — | 0 / 1 | 1 = pelota detectada por cámara(s). |
 | 12 | `ball_confidence` | u8 | — | 0..100 | Confianza en la detección (0 = inválida). |
-| 13 | `goal_opp_angle_centideg` | i16 | centideg | −18000..+18000 | Ángulo al arco rival relativo al frente del robot. |
-| 15 | `goal_opp_distance_mm` | i16 | mm | 0..32767 | Distancia estimada al arco rival. |
-| 17 | `goal_opp_visible` | u8 | — | 0 / 1 | 1 = arco rival visible. |
-| 18 | `goal_own_visible` | u8 | — | 0 / 1 | 1 = arco propio visible. |
-| 19 | `min_obstacle_mm` | u16 | mm | 0..65535 | Obstáculo más cercano (ToF + HC-SR04). **Stub — siempre alto** (GAP-003). |
-| 21 | `referee_cmd` | u8 | — | 0=stop,1=start,2=halftime,3=reset | Comando árbitro vigente. |
-| 22 | `flags` | u8 | bitfield | ver abajo | Flags tácticos. |
-| 23 | `(padding)` | u8 | — | 0 | Rellena a 24 bytes. |
+| 13 | `ball_vx_mm_s` | i16 | mm/s | −32767..+32767; **0 = N/A** | Velocidad de la pelota eje X en marco robot (mm/s). TOP la llena en su plan; hasta entonces 0. CENTRAL la usa para clasificar trayectoria (dejar circular / interceptar / desviar). |
+| 15 | `ball_vy_mm_s` | i16 | mm/s | −32767..+32767; **0 = N/A** | Velocidad de la pelota eje Y en marco robot (mm/s). Mismo criterio que `ball_vx_mm_s`; el par `(0,0)` significa N/A. |
+| 17 | `goal_opp_angle_centideg` | i16 | centideg | −18000..+18000 | Ángulo al arco rival relativo al frente del robot. |
+| 19 | `goal_opp_distance_mm` | i16 | mm | 0..32767 | Distancia estimada al arco rival. |
+| 21 | `goal_opp_visible` | u8 | — | 0 / 1 | 1 = arco rival visible. |
+| 22 | `goal_own_visible` | u8 | — | 0 / 1 | 1 = arco propio visible. |
+| 23 | `min_obstacle_mm` | u16 | mm | 0..65535 | Obstáculo más cercano (ToF + HC-SR04). **Stub — siempre alto** (GAP-003). |
+| 25 | `referee_cmd` | u8 | — | 0=stop,1=start,2=halftime,3=reset | Comando árbitro vigente. |
+| 26 | `flags` | u8 | bitfield | ver abajo | Flags tácticos. |
 
-`sizeof(WorldSnapshot) == 24`. `static_assert` ausente (GAP-001).
+`sizeof(WorldSnapshot) == 27` (schema v2, +ball_vx/vy). `static_assert(sizeof==27)` presente (RESUELTO 2026-05-18, commit 2a9064e: GAP-001 cerrado).
 
 #### 2.1.2 `flags` de `WorldSnapshot` (`types.h:118-122`)
 
@@ -456,17 +457,24 @@ Fuente: `config_central.h:24-35` (ROBOT1) y `:37-47` (ROBOT2).
    `ball_confidence`. Si TOP manda `ball_visible=1, ball_confidence=0`, CENTRAL
    lo trata como válido. Ver GAP-008.
 
-5. `goal_opp_visible = 0` → CENTRAL no usa `goal_opp_angle/distance`. La FSM
+5. `ball_vx_mm_s / ball_vy_mm_s` = velocidad de la pelota en marco robot (mm/s);
+   el par `(0, 0)` significa N/A (TOP la llena en su plan de Nivel 2; hasta
+   entonces ambos valen 0). CENTRAL los usa para clasificar la trayectoria de
+   la pelota: dejar circular (si la pelota se aleja sola del arco propio),
+   interceptar (si la trayectoria apunta al arco propio) o desviar (pelota
+   cruzando el campo). Si ambos son 0, CENTRAL opera solo con posición.
+
+6. `goal_opp_visible = 0` → CENTRAL no usa `goal_opp_angle/distance`. La FSM
    delantero degrada a APPROACH directo en lugar de POSITION+kick
    (`strategy.cpp:202-204`).
 
-6. `my_pose_confidence` actualmente no se usa en ninguna decisión de CENTRAL
+7. `my_pose_confidence` actualmente no se usa en ninguna decisión de CENTRAL
    (`world_model.cpp` no expone este campo). La pose `(my_x_mm, my_y_mm)` está
    hardcodeada a 0 en TOP (GAP-002); CENTRAL la lee pero la FSM no la usa para
    decisiones tácticas. No hay riesgo de crash, pero tampoco hay localización
    real.
 
-7. `referee_cmd` relevante: `0x01` (start) → `match_running` flag viene ya
+8. `referee_cmd` relevante: `0x01` (start) → `match_running` flag viene ya
    procesado en TOP dentro del byte `flags`. CENTRAL no parsea `referee_cmd`
    directamente — usa el flag `match_running` derivado. Ver
    `world_model.cpp:66`.
@@ -651,7 +659,7 @@ línea → puede salir de cancha. Ver GAP-009.
 
 | ID | Severidad | Descripción | Archivo:línea | Qué hace falta |
 |---|---|---|---|---|
-| GAP-001 | P1 | `static_assert(sizeof(WorldSnapshot)==24)` ausente | `world_model.cpp` y `comm_top.cpp` | Agregar `static_assert` en el header o en `comm_top.cpp` |
+| GAP-001 | ~~P1~~ **RESUELTO** | `static_assert(sizeof(WorldSnapshot)==27)` — **RESUELTO 2026-05-18, commit 2a9064e**: `static_assert(sizeof==27)` agregado; WorldSnapshot bumpeado a v2 (27 B, +ball_vx/vy). | `types.h` | — |
 | GAP-002 | P0 | `my_x_mm` y `my_y_mm` hardcodeados a 0 en TOP; CENTRAL los lee pero no tiene localización real | TOP (no en CENTRAL) | OTOS real en DOWN + fusión en TOP (TASK-012) |
 | GAP-003 | P1 | `min_obstacle_mm` siempre alto (ToF stub en TOP); CENTRAL no evita obstáculos | TOP (no en CENTRAL) | ToF real (TASK-012) |
 | GAP-004 | P1 | `config_central.h` describe el modelo "motor server" (LEGACY); confunde al lector | `config_central.h:1-14` | Reescribir el comentario del archivo para reflejar el rol master actual |
@@ -802,7 +810,7 @@ MotorCommand: {vx≈intercept+pid_blend, vy=0, omega=0, kicker=0}
 
 | Dir | TYPE | Nombre | Payload | Clase | Frecuencia | Estado impl. |
 |---|---|---|---|---|---|---|
-| TOP → CENTRAL | `0x60` | `WORLD_SNAPSHOT` | `WorldSnapshot` (24 B) | STREAM | 100 Hz | Implementado (`comm_top.cpp`) |
+| TOP → CENTRAL | `0x60` | `WORLD_SNAPSHOT` | `WorldSnapshot` (27 B, schema v2) | STREAM | 100 Hz | Implementado (`comm_top.cpp`) |
 | DOWN → CENTRAL | `0x10` | `LINE_URGENT` | `LineStatus` v1 (5 B) / objetivo v2 (16 B) | EVENTO+STREAM | 200 Hz | Implementado v1 (`comm_down.cpp`) |
 | CENTRAL → DOWN | `0x20` | `CENTRAL_RESET_OTOS` | `uint8` (1 B) | COMANDO | Evento | Implementado (sin llamador) |
 | CENTRAL → DOWN | `0x21` | `CENTRAL_CALIB_LINE` | `uint8` (1 B, 0/1/2) | COMANDO | Evento | Implementado (sin llamador) |
@@ -814,7 +822,7 @@ MotorCommand: {vx≈intercept+pid_blend, vy=0, omega=0, kicker=0}
 
 ## 9. Versionado del contrato
 
-- `contract-schema: 1` en este documento.
+- `contract-schema: 2` en este documento (WorldSnapshot schema v2: +ball_vx/vy, 27 B, 2026-05-18).
 - Cambios de layout de `WorldSnapshot` o de mensajes emitidos por CENTRAL
   incrementan `contract-schema` y se versionan este documento y el código.
 - La migración a `LineStatusV2` (schema 2 en DOWN) requiere actualización

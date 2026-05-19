@@ -10,7 +10,7 @@ tags: [comunicacion, firmware, protocolo, contrato, top-board, ambos]
 robot: ambos
 area: comunicacion
 tipo: protocolo
-contract-schema: 1
+contract-schema: 2
 related: [software/teensy/Soccer 2026/src/shared/proto.h, software/teensy/Soccer 2026/src/shared/types.h, software/teensy/Soccer 2026/src/top/main_top.cpp, docs/firmware/CONTRATO-DATOS-DOWN.md, docs/decisions/2026-05-18-diseno-comunicaciones-robusto-definitivo.md]
 ---
 
@@ -98,7 +98,7 @@ primero). El CRC viaja big-endian. No confundir.
 
 | Dir | TYPE hex | Nombre enum | Payload | Frec | Propósito |
 |-----|----------|-------------|---------|------|-----------|
-| TOP → CENTRAL | `0x60` | `WORLD_SNAPSHOT` | `WorldSnapshot` (23 B) | 100 Hz | Snapshot completo del mundo percibido (§3) |
+| TOP → CENTRAL | `0x60` | `WORLD_SNAPSHOT` | `WorldSnapshot` (27 B, schema v2) | 100 Hz | Snapshot completo del mundo percibido (§3) |
 | TOP ← CENTRAL | `0x61` | `CENTRAL_RESET_TOP` | `uint8` (0 B usado) | evento | Reset del world model / recalibrar cámaras — **recibido pero no procesado** (`comm_central.cpp:19-23`) |
 | TOP ← CENTRAL | `0x62` | `CENTRAL_TOP_CMD` | genérico | evento | Comandos admin — **no implementado** |
 | TOP → COMM | `0x32` | `TOP_STATUS_REPLY` | `StatusReply` (5 B) | pedido | Responde a `COMM_STATUS_REQ` con rol, errores, batería (§4) |
@@ -125,7 +125,7 @@ primero). El CRC viaja big-endian. No confundir.
 
 ---
 
-## 3. `WORLD_SNAPSHOT` — TOP → CENTRAL (TYPE `0x60`), 23 bytes
+## 3. `WORLD_SNAPSHOT` — TOP → CENTRAL (TYPE `0x60`), 27 bytes (schema v2)
 
 ### 3.1 Definición del struct (`src/shared/types.h:92-123`)
 
@@ -139,19 +139,22 @@ struct WorldSnapshot {
     int16_t ball_y_mm;                // off 9
     uint8_t ball_visible;             // off 11
     uint8_t ball_confidence;          // off 12
-    int16_t goal_opp_angle_centideg;  // off 13
-    int16_t goal_opp_distance_mm;     // off 15
-    uint8_t goal_opp_visible;         // off 17
-    uint8_t goal_own_visible;         // off 18
-    uint16_t min_obstacle_mm;         // off 19
-    uint8_t referee_cmd;              // off 21
-    uint8_t flags;                    // off 22
+    int16_t ball_vx_mm_s;             // off 13  ← schema v2 (2026-05-18)
+    int16_t ball_vy_mm_s;             // off 15  ← schema v2 (2026-05-18)
+    int16_t goal_opp_angle_centideg;  // off 17
+    int16_t goal_opp_distance_mm;     // off 19
+    uint8_t goal_opp_visible;         // off 21
+    uint8_t goal_own_visible;         // off 22
+    uint16_t min_obstacle_mm;         // off 23
+    uint8_t referee_cmd;              // off 25
+    uint8_t flags;                    // off 26
 } __attribute__((packed));
-// sizeof(WorldSnapshot) == 23 bytes
+// sizeof(WorldSnapshot) == 27 bytes
+static_assert(sizeof(WorldSnapshot) == 27);  // presente en el código (commit 2a9064e)
 ```
 
-`static_assert(sizeof(WorldSnapshot)==23)` **no existe en el código actual**
-(gap: debe agregarse para proteger el contrato).
+`static_assert(sizeof(WorldSnapshot)==27)` **presente en el código** (RESUELTO 2026-05-18,
+commit 2a9064e: GAP-001 / G-TOP-12 cerrado).
 
 ### 3.2 Layout exacto byte-a-byte (offsets, little-endian)
 
@@ -165,16 +168,18 @@ struct WorldSnapshot {
 | 9 | `ball_y_mm` | i16 | mm | id. | **REAL** pero escala sin calibrar | Posición Y de la pelota relativa al robot. |
 | 11 | `ball_visible` | u8 | — | 0 / 1 | **REAL** — fusión dual front+back (`cameras_runtime.cpp:127`) | 1 = al menos una cámara viva detectó la pelota. |
 | 12 | `ball_confidence` | u8 | — | 0..100 | **REAL** — ponderado por consenso dual (`cameras_fusion.cpp`) | Calidad de la detección de la pelota. 100 = ambas cámaras concuerdan. |
-| 13 | `goal_opp_angle_centideg` | i16 | centideg | −18000..+18000 | **REAL** pero escala sin calibrar | Ángulo del arco rival respecto al frente del robot. Convención: atan2(x_mm, y_mm), 0° = frente, +90° = izquierda. |
-| 15 | `goal_opp_distance_mm` | i16 | mm | 0..32767 | **REAL** pero escala sin calibrar | Distancia estimada al arco rival. Precision baja hasta calibrar `CAMERA_UNIT_TO_MM`. |
-| 17 | `goal_opp_visible` | u8 | — | 0 / 1 | **REAL**; polaridad **HARDCODEADA** `yellow=opp` (`main_top.cpp:65`) | 1 = el arco rival está visible. Polaridad incorrecta en ~50% de partidos hasta leer el comando de árbitro. |
-| 18 | `goal_own_visible` | u8 | — | 0 / 1 | **REAL**; polaridad **HARDCODEADA** `blue=own` (`main_top.cpp:69`) | 1 = el arco propio está visible. Mismo problema de polaridad. |
-| 19 | `min_obstacle_mm` | u16 | mm | 0..65534; **65535 (`0xFFFF`) = sin lectura** | **PARCIAL** — los 4 ToF I2C son STUB (siempre `0xFFFF`); solo HC-SR04 activo pero bloqueante (`sensors_tof.cpp:23-35`) | Distancia al obstáculo más cercano. Sin los ToF, cubre solo sector frontal con HC-SR04. |
-| 21 | `referee_cmd` | u8 | — | 0=STOP, 1=START, 2=HALFTIME, 3=RESET, 0xFF=UNKNOWN | **REAL** — llega vía COMM (`comm_arbiter.cpp:39-43`) | Último comando del árbitro. Arranca en `UNKNOWN=0xFF`. |
-| 22 | `flags` | u8 | bitfield | ver §3.3 | **PARCIAL** — solo bits 1 y 3 se ponen (`main_top.cpp:76-80`) | Flags útiles para strategy (ver tabla §3.3). |
+| 13 | `ball_vx_mm_s` | i16 | mm/s | −32767..+32767; **`(0,0)` = N/A** | **STUB — siempre 0** (TOP lo llena en Nivel 2) | Velocidad de la pelota eje X en marco robot (mm/s). `0,0` = N/A. CENTRAL la usa para clasificar trayectoria (dejar circular / interceptar / desviar). |
+| 15 | `ball_vy_mm_s` | i16 | mm/s | id. | **STUB — siempre 0** (TOP lo llena en Nivel 2) | Velocidad de la pelota eje Y en marco robot (mm/s). El par `(ball_vx_mm_s, ball_vy_mm_s) = (0,0)` indica N/A. |
+| 17 | `goal_opp_angle_centideg` | i16 | centideg | −18000..+18000 | **REAL** pero escala sin calibrar | Ángulo del arco rival respecto al frente del robot. Convención: atan2(x_mm, y_mm), 0° = frente, +90° = izquierda. |
+| 19 | `goal_opp_distance_mm` | i16 | mm | 0..32767 | **REAL** pero escala sin calibrar | Distancia estimada al arco rival. Precision baja hasta calibrar `CAMERA_UNIT_TO_MM`. |
+| 21 | `goal_opp_visible` | u8 | — | 0 / 1 | **REAL**; polaridad **HARDCODEADA** `yellow=opp` (`main_top.cpp:65`) | 1 = el arco rival está visible. Polaridad incorrecta en ~50% de partidos hasta leer el comando de árbitro. |
+| 22 | `goal_own_visible` | u8 | — | 0 / 1 | **REAL**; polaridad **HARDCODEADA** `blue=own` (`main_top.cpp:69`) | 1 = el arco propio está visible. Mismo problema de polaridad. |
+| 23 | `min_obstacle_mm` | u16 | mm | 0..65534; **65535 (`0xFFFF`) = sin lectura** | **PARCIAL** — los 4 ToF I2C son STUB (siempre `0xFFFF`); solo HC-SR04 activo pero bloqueante (`sensors_tof.cpp:23-35`) | Distancia al obstáculo más cercano. Sin los ToF, cubre solo sector frontal con HC-SR04. |
+| 25 | `referee_cmd` | u8 | — | 0=STOP, 1=START, 2=HALFTIME, 3=RESET, 0xFF=UNKNOWN | **REAL** — llega vía COMM (`comm_arbiter.cpp:39-43`) | Último comando del árbitro. Arranca en `UNKNOWN=0xFF`. |
+| 26 | `flags` | u8 | bitfield | ver §3.3 | **PARCIAL** — solo bits 1 y 3 se ponen (`main_top.cpp:76-80`) | Flags útiles para strategy (ver tabla §3.3). |
 
-`sizeof(WorldSnapshot) == 23` bytes (calculado de `types.h:92-123` con `__attribute__((packed))`).
-Frame completo TOP→CENTRAL: 23 + 7 overhead = **30 bytes**.
+`sizeof(WorldSnapshot) == 27` bytes (schema v2, +ball_vx/vy, `__attribute__((packed))`).
+Frame completo TOP→CENTRAL: 27 + 7 overhead = **34 bytes**.
 
 ### 3.3 `flags` (bitfield, offset 22)
 
@@ -218,34 +223,36 @@ Frame completo TOP→CENTRAL: 23 + 7 overhead = **30 bytes**.
 
 ### 3.6 Ejemplo byte-a-byte (frame completo)
 
-Escenario: heading=+45.00°, pelota visible a (+120, +200) mm, arco opp
-visible a +15.00° y ~300 mm, arco own no visible, min_obstacle=0xFFFF (sin
-ToF), referee_cmd=1 (START), flags=0x0A (partner_alive + match_running).
+Escenario: heading=+45.00°, pelota visible a (+120, +200) mm, velocidad pelota
+(0, 0) = N/A (stub), arco opp visible a +15.00° y ~300 mm, arco own no visible,
+min_obstacle=0xFFFF (sin ToF), referee_cmd=1 (START), flags=0x0A (partner_alive + match_running).
 
 ```
-my_x_mm=0         → 00 00
-my_y_mm=0         → 00 00
-my_heading=4500   → 94 11  (LE: 0x1194 = 4500 = +45.00°)
-my_pose_conf=60   → 3C
-ball_x_mm=120     → 78 00  (LE: 0x0078 = 120)
-ball_y_mm=200     → C8 00  (LE: 0x00C8 = 200)
-ball_visible=1    → 01
-ball_conf=85      → 55
-goal_opp_angle=1500→ DC 05 (LE: 0x05DC = 1500 = +15.00°)
-goal_opp_dist=300 → 2C 01  (LE: 0x012C = 300)
-goal_opp_vis=1    → 01
-goal_own_vis=0    → 00
-min_obstacle=65535→ FF FF  (sentinel sin ToF)
-referee_cmd=1     → 01
-flags=0x0A        → 0A
+my_x_mm=0            → 00 00
+my_y_mm=0            → 00 00
+my_heading=4500      → 94 11  (LE: 0x1194 = 4500 = +45.00°)
+my_pose_conf=60      → 3C
+ball_x_mm=120        → 78 00  (LE: 0x0078 = 120)
+ball_y_mm=200        → C8 00  (LE: 0x00C8 = 200)
+ball_visible=1       → 01
+ball_conf=85         → 55
+ball_vx_mm_s=0       → 00 00  (N/A, stub)           ← schema v2
+ball_vy_mm_s=0       → 00 00  (N/A, stub)           ← schema v2
+goal_opp_angle=1500  → DC 05  (LE: 0x05DC = 1500 = +15.00°)
+goal_opp_dist=300    → 2C 01  (LE: 0x012C = 300)
+goal_opp_vis=1       → 01
+goal_own_vis=0       → 00
+min_obstacle=65535   → FF FF  (sentinel sin ToF)
+referee_cmd=1        → 01
+flags=0x0A           → 0A
 
-Payload completo (23 bytes):
-00 00 00 00 94 11 3C 78 00 C8 00 01 55 DC 05 2C 01 01 00 FF FF 01 0A
+Payload completo (27 bytes):
+00 00 00 00 94 11 3C 78 00 C8 00 01 55 00 00 00 00 DC 05 2C 01 01 00 FF FF 01 0A
 
 Frame completo (= 0xAA LEN TYPE SEQ PAYLOAD CRC16 0x55):
-AA 17 60 XX 00 00 00 00 94 11 3C 78 00 C8 00 01 55 DC 05 2C 01 01 00 FF FF 01 0A [CRC_H] [CRC_L] 55
+AA 1B 60 XX 00 00 00 00 94 11 3C 78 00 C8 00 01 55 00 00 00 00 DC 05 2C 01 01 00 FF FF 01 0A [CRC_H] [CRC_L] 55
 ```
-(LEN=0x17=23; TYPE=0x60; SEQ=XX=depende del contador en curso; CRC calculado
+(LEN=0x1B=27; TYPE=0x60; SEQ=XX=depende del contador en curso; CRC calculado
 sobre `LEN+TYPE+SEQ+PAYLOAD`. El receptor debe calcularlo para validar; no se
 provee valor numérico aquí porque SEQ varía.)
 
@@ -346,6 +353,7 @@ del robot son los dos ceros.
 |-------|--------------|---------------------|
 | `my_heading_centideg` | ALTA si `my_pose_confidence > 0` | Usar si `my_pose_confidence != 0` |
 | `ball_visible`, `ball_x_mm/y_mm` | MEDIA | Usar; escala sin calibrar (factor ~10×); decisiones de approach OK, distancias exactas NO |
+| `ball_vx_mm_s`, `ball_vy_mm_s` | STUB (siempre 0 hoy) | `(0,0)` = N/A; cuando TOP los llene (Nivel 2), CENTRAL los usa para clasificar trayectoria (dejar circular / interceptar / desviar). Si ambos son 0, operar solo con posición. |
 | `ball_confidence` | MEDIA | Ponderar acciones según valor |
 | `goal_opp_angle_centideg` | MEDIA | Usar para dirección de tiro; distancia NO confiable |
 | `goal_opp_visible`, `goal_own_visible` | MEDIA PERO polaridad incorrecta | Solo confiable luego de implementar lectura de `referee_cmd` para corrección de polaridad (TASK-024) |
@@ -375,11 +383,11 @@ frontal (~60°).
 
 ### 6.4 Versionado del contrato
 
-No existe campo `schema_version` en `WorldSnapshot` v1 (a diferencia de
+No existe campo `schema_version` en `WorldSnapshot` en el struct mismo (a diferencia de
 `LineStatusV2`). Si se requiere versionado (cambio de layout), se recomienda
 ocupar uno de los bits reservados de `flags` (bits 4-7) o incrementar
 `contract-schema` en este documento y anunciar cambio de layout a CENTRAL.
-**Hoy `contract-schema: 1` = este layout.**
+**`contract-schema: 2` = este layout (WorldSnapshot schema v2, 27 B, +ball_vx/vy, 2026-05-18).**
 
 ---
 
@@ -453,7 +461,7 @@ loop() (no tiene period fijo — corre tan rápido como puede):
 | G-TOP-09 | **4 ToF I2C completamente stub** | `sensors_tof.cpp:51-67` | `min_obstacle_mm=0xFFFF` siempre → sin evasión de robots | Elegir lib según modelo (VL53L7CX vs VL53L5CX), enumeración I2C, TASK-012 | 1-2 días |
 | G-TOP-10 | **`TOP_PARTNER_DATA` no se envía en el loop** | `main_top.cpp` (ausencia) | Partner nunca recibe datos propios vía ESP-NOW → coordinación inter-robot nula | Llamar `comm_arbiter_send_partner()` en el loop con datos del snapshot | 1h |
 | G-TOP-11 | **`COMM_STATUS_REQ` no se responde automáticamente** | `comm_arbiter.cpp:44-48` | COMM display/OLED no puede mostrar estado del robot | Callback o response inline al recibir el request | 2h |
-| G-TOP-12 | **`static_assert(sizeof(WorldSnapshot)==23)` ausente** | `types.h` (ausente) | Cambio accidental de tamaño no detecta hasta runtime → protocolo silenciosamente roto | Una línea | 5 min |
+| ~~G-TOP-12~~ | ~~**`static_assert(sizeof(WorldSnapshot)==23)` ausente**~~ **RESUELTO 2026-05-18, commit 2a9064e**: `static_assert(sizeof(WorldSnapshot)==27)` agregado; WorldSnapshot bumpeado a schema v2 (27 B, +ball_vx/vy). | `types.h` | — | — | — |
 | G-TOP-13 | **`CENTRAL_RESET_TOP` recibido pero no procesado** | `comm_central.cpp:19-23` | CENTRAL no puede recuperar TOP por comando (Nivel 2 de la escalera de reset) | Definir y ejecutar acción de reset del world model | 2h |
 
 ### P2 — Capitalizable a 2027
@@ -477,7 +485,7 @@ loop() (no tiene period fijo — corre tan rápido como puede):
 - Agregar guard `last_ms == 0` en todos los `is_*_fresh()`.
 - Convertir HC-SR04 a no-bloqueante.
 - Gatear `Serial.print` debug con flag de competición.
-- Agregar `static_assert(sizeof(WorldSnapshot)==23)`.
+- ~~Agregar `static_assert(sizeof(WorldSnapshot)==23)`~~ — **RESUELTO** (commit 2a9064e: `static_assert(sizeof==27)` presente, schema v2).
 - Confirmar mapeo físico de Serial2→CENTRAL con osciloscopio.
 - Calibrar `CAMERA_UNIT_TO_MM` contra cancha real.
 

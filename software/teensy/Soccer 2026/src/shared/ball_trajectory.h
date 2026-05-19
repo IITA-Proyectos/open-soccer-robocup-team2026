@@ -8,7 +8,7 @@ struct BallTrajIn {
     int16_t goal_opp_angle_centideg;
     int16_t goal_own_angle_centideg;
     int16_t ball_speed_min_mm_s;
-    int16_t toward_tol_centideg;
+    int16_t toward_tol_centideg;       // debe ser > 0; 0 deshabilita la clasificacion de arcos
     int16_t ball_dist_mm;
     int16_t reach_mm;
 };

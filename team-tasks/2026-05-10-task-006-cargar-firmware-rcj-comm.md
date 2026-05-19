@@ -30,6 +30,14 @@ tags: [firmware, comm-board, rcj, arbitros, esp32, esp32c6]
 > Las secciones originales se conservan abajo como registro histórico (no se
 > borra patrimonio del equipo) pero **no se deben usar como guía**.
 
+> **📁 Repo oficial YA está clonado localmente (2026-05-19)** en
+> `C:\Users\violl\iitasoccer\_official_fw\` (al lado de este repo), branch
+> `esp32-c6` ya checkout-eado en el commit correcto `ffb4e3c`.
+> **NO hace falta `git clone` ni cambiar de branch.** Solo abrir Arduino IDE
+> en:
+> `C:\Users\violl\iitasoccer\_official_fw\firmware\RCj_comm_module\RCj_comm_module.ino`
+> y seguir los pasos del procedimiento del 2026-05-17 (link arriba).
+
 ## Resumen
 
 La placa COMM (copia 100% del módulo oficial RCJ con ESP32 + OLED + acelerómetro + 2 botones) necesita firmware. Bajar el firmware oficial de RoboCupJunior, compilarlo y cargarlo. Verificar funcionamiento básico (display QR, botones, conexión WiFi a árbitros).

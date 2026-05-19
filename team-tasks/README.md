@@ -59,6 +59,7 @@ Sistema de tareas asignadas a miembros del equipo para Incheon 2026.
 | [TASK-022](2026-05-18-task-022-camara-operativa.md) | Cámara operativa: sentinel, crash, exposición fija, calib mm+LAB, 1 script/cámara | Virginia | **P0** | pending |
 | [TASK-023](2026-05-18-task-023-build-tooling-ci.md) | Build/tooling: doc compilar+flashear, CI, pinear platform, lib_deps | Virginia + Enzo | **P0** | pending |
 | [TASK-024](2026-05-18-task-024-arranque-rol-polaridad-arco.md) | Arranque: leer rol, polaridad de arco, fallback START | Virginia + Elías | **P0** | pending |
+| [TASK-025](2026-05-18-task-025-avast-bloquea-platformio-ssl.md) | Avast (SSL MITM) bloquea PlatformIO — excepción por máquina | Gustavo + Virginia + Elías | P1 | pending |
 
 > **Nota 2026-05-18:** TASK-014..020 abiertas tras la verificación independiente
 > del protocolo de comms. **Orden de ejecución:** TASK-014 es fundacional

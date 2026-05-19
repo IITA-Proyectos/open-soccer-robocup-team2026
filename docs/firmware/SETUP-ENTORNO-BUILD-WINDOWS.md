@@ -21,6 +21,22 @@ related-tasks: [TASK-023]
 > internet** en una terminal normal, esa caché queda poblada y después Claude
 > puede compilar/testear **offline** desde su sesión.
 
+> **⚠️ Actualización 2026-05-18 — la causa raíz NO es "falta de red".**
+> Diagnóstico confirmado: en estas máquinas SÍ hay red (git y WebFetch
+> funcionan). PlatformIO falla con `HTTPClientError` porque **Avast hace
+> MITM/SSL-scanning** y reemplaza los certificados HTTPS por los suyos, que no
+> tienen endpoint de revocación comprobable → la pila TLS de Windows
+> (schannel, que PlatformIO 6.1.x usa vía `truststore`) corta el handshake
+> con `CRYPT_E_NO_REVOCATION_CHECK`. Prueba: `curl …` falla error 35;
+> `curl --ssl-no-revoke …` → HTTP 200.
+>
+> **Fix mejor que el cache offline** (este doc sigue siendo útil para
+> cachear, pero con la excepción de Avast PlatformIO funciona CON red, sin
+> depender de pre-cachear todo): agregar `*platformio.org*` a las excepciones
+> de Avast. **Procedimiento completo en `team-tasks/TASK-025`.** Sin esto,
+> apenas se necesite una lib NO cacheada (p.ej. al activar OTOS/ToF de
+> TASK-023), el cache offline no alcanza.
+
 Hay dos objetivos:
 - **Mínimo:** que se pueda verificar que los 3 programas Teensy **compilan**
   (`pio run -e down/-e top/-e central_robot1`). Solo necesita PlatformIO +
@@ -127,7 +143,7 @@ Decile a Claude: *"entorno listo"*. Claude correrá desde su sesión:
 
 | Síntoma | Causa | Fix |
 |---|---|---|
-| `HTTPClientError` / "upgrading PlatformIO" | PlatformIO intenta auto-update sin red | Paso 1 (settings) ya lo desactiva; si persiste, correr una vez con internet |
+| `HTTPClientError` al instalar/resolver libs o plataformas | **Avast MITM SSL** (no es falta de red) — ver callout arriba | Paso 1 mitiga (menos llamadas al registry); **fix real: excepción Avast, TASK-025**. Si persiste, pre-cachear con internet |
 | `g++: command not found` en `test_native` | MinGW no en PATH o terminal vieja | Paso 2.4: terminal NUEVA tras editar PATH |
 | `pio run -e down` falla con lib OTOS/ToF | `lib_deps` sin resolver (TASK-023) | No bloquea Plan 1; reportar error textual |
 | Descargas lentísimas | Primera vez baja toolchain ARM (~grande) | Es una sola vez; queda cacheado |

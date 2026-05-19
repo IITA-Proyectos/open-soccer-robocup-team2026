@@ -42,6 +42,24 @@ void test_gk_intercept_when_ball_seen(void){
     TEST_ASSERT_EQUAL_INT(SC_GK_INTERCEPT, o.state);
 }
 
+void test_field_defend_precedes_drive_when_both_trigger(void){
+    StrategyCore sc{}; sc_init(sc, ROLE_FIELD);
+    ScOut o = sc_tick(sc, w(true,true,0,-420), 0);   // y<=-400 ⇒ DEFEND antes que DRIVE
+    TEST_ASSERT_EQUAL_INT(SC_FP_DEFEND, o.state);
+}
+
+void test_field_drive_when_close_and_not_behind(void){
+    StrategyCore sc{}; sc_init(sc, ROLE_FIELD);
+    ScOut o = sc_tick(sc, w(true,true,0,100), 0);     // dist=100<=150, y>-400 ⇒ DRIVE
+    TEST_ASSERT_EQUAL_INT(SC_FP_DRIVE, o.state);
+}
+
+void test_gk_clear_when_ball_very_close(void){
+    StrategyCore sc{}; sc_init(sc, ROLE_GOALKEEPER);
+    ScOut o = sc_tick(sc, w(true,true,0,100), 0);     // dist=100<=150 ⇒ GK_CLEAR
+    TEST_ASSERT_EQUAL_INT(SC_GK_CLEAR, o.state);
+}
+
 int main(int, char**){
     UNITY_BEGIN();
     RUN_TEST(test_wait_until_match_runs);
@@ -50,5 +68,8 @@ int main(int, char**){
     RUN_TEST(test_field_defend_when_ball_behind);
     RUN_TEST(test_gk_wait_then_patrol);
     RUN_TEST(test_gk_intercept_when_ball_seen);
+    RUN_TEST(test_field_defend_precedes_drive_when_both_trigger);
+    RUN_TEST(test_field_drive_when_close_and_not_behind);
+    RUN_TEST(test_gk_clear_when_ball_very_close);
     return UNITY_END();
 }

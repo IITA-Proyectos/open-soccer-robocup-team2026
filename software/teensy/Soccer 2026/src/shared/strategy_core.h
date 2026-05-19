@@ -20,5 +20,6 @@ void  sc_init(StrategyCore& sc, ScRole role);
 ScOut sc_tick(StrategyCore& sc, const ScWorld& w, uint32_t now_ms);
 constexpr float SC_DEFEND_BEHIND_MM   = 400.0f;
 constexpr float SC_DRIVE_CLOSE_MM     = 150.0f;
+constexpr float SC_GK_CLEAR_MM        = 150.0f;
 constexpr float SC_GK_INTERCEPT_MM    = 600.0f;
 }  // namespace iitasoccer

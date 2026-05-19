@@ -17,7 +17,7 @@ static ScState gk_tick(StrategyCore& /*sc*/, const ScWorld& w){
     if (!w.match_running) return SC_GK_WAIT;
     if (!w.ball_visible)  return SC_GK_PATROL;
     float dist = sqrtf(w.ball_x_mm*w.ball_x_mm + w.ball_y_mm*w.ball_y_mm);
-    if (dist <= 150.0f) return SC_GK_CLEAR;
+    if (dist <= SC_GK_CLEAR_MM) return SC_GK_CLEAR;
     if (dist <= SC_GK_INTERCEPT_MM) return SC_GK_INTERCEPT;
     return SC_GK_PATROL;
 }

@@ -366,6 +366,14 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 
 ## Mapa de flujo de datos (referencia rápida para onboarding)
 
+> **⚠️ ACTUALIZACIÓN 2026-05-19.** Este mapa fue armado el 2026-05-15 sobre
+> WorldSnapshot **v1 = 24 bytes**. El contrato vigente desde 2026-05-18 es
+> **v2 = 27 bytes** (+`ball_vx_mm_s` +`ball_vy_mm_s`), con `static_assert` en
+> `types.h`. La tabla de abajo sigue siendo correcta en pines/baud/frecuencia,
+> pero **el tamaño del struct WorldSnapshot dejó de ser 24 B**. Para el
+> contrato byte-a-byte canónico ver **`docs/firmware/CONTRATO-DATOS-CENTRAL.md`**.
+> El resto de la información del mapa (UARTs, gaps sin confirmar) sigue válido.
+
 > **Para quien llega nuevo al repo (relevo 2027):** este es el mapa único de
 > "qué viaja por dónde". Los valores salen de `config_{top,down,central}.h` y
 > `types.h` al 2026-05-15. Lo marcado ⚠️ NO está confirmado en hardware —

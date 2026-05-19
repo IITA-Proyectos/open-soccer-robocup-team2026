@@ -8,6 +8,17 @@ tags: [firmware, placa-abajo, down-board, sensor-piso, otos, line-ring, especifi
 
 # Firmware Placa ABAJO — Especificación funcional completa
 
+> **⚠️ PARCIALMENTE SUPERADO (2026-05-19).** Este doc describe el algoritmo
+> `line_ring` (mayo 2026-05-11) que sigue VIVO en `src/down/main_down.cpp` para
+> la lectura cruda a 1 kHz. **PERO** desde 2026-05-18 existe en paralelo otra
+> cadena (`down_model + line_geometry + line_tracker + line_calib +
+> surface_monitor + down_encode`) que la usa `src/down/comm_central.cpp` para
+> armar `LineStatusV2`. Hay **deuda viva** (dos caminos paralelos en DOWN, no
+> resuelta antes de Incheon). Para el contrato real de datos que va al CENTRAL
+> ver **`docs/firmware/CONTRATO-DATOS-DOWN.md`** y el índice
+> **`docs/FUENTES-DE-VERDAD.md`**. Este doc se conserva intacto como referencia
+> del algoritmo `line_ring`.
+
 > Documento de referencia del firmware que corre en la placa base (Teensy 4.0) del
 > robot 2026. Define qué hace el programa, cómo lo hace, qué envía, cada cuánto,
 > cómo detecta errores y cómo se comporta ante fallas.

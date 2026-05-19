@@ -13,6 +13,16 @@ tipo: decision
 related: [docs/firmware/CONTRATO-DATOS-CENTRAL.md, docs/firmware/CONTRATO-DATOS-TOP.md, docs/decisions/2026-05-18-diseno-comunicaciones-robusto-definitivo.md, docs/superpowers/plans/2026-05-18-down-line-sensing-core.md]
 ---
 
+> **⚠️ MÓDULO ARCHIVADO (2026-05-19).** Esta spec describe `strategy_core`, una
+> FSM unificada arquero+jugador alternativa que **nunca fue integrada** a
+> `main_central.cpp` (que sigue llamando a `strategy.cpp`, la FSM con estados
+> SEARCH/POSITION/APPROACH/KICKOFF/LINE_AVOID + PATROL/INTERCEPT/CLEAR/
+> LINE_AVOID). El módulo + sus tests fueron movidos a
+> `software/teensy/Soccer 2026/_archive/` el 2026-05-19. La spec se conserva
+> como **referencia aspiracional** útil para un eventual refactor post-Incheon.
+> Para la FSM que realmente corre ver `docs/firmware/FIRMWARE-PLACA-CENTRAL.md
+> §8` y la tabla de fuentes en `docs/FUENTES-DE-VERDAD.md`.
+
 # CENTRAL strategy core — diseño aprobado
 
 > Aprobado por Gustavo (2026-05-18). Mismo patrón que DOWN: lógica pura

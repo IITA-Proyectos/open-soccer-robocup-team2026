@@ -68,15 +68,25 @@ En `.claude/skills/` — 8 skills organizadas:
 - **`skills/` (raíz del repo)** — playbooks técnicos del dominio soccer (estrategia, visión, motion). Markdown sin frontmatter Claude. **NO son skills auto-invocables.** Son knowledge base. El nombre es legacy del repo; no renombrar por ahora.
 - **`.claude/skills/`** — skills Claude reales con frontmatter, auto-invocables.
 
+## Protocolo de sesión (obligatorio — agregado 2026-05-19)
+
+Antes de hacer CUALQUIER cosa en este repo:
+
+1. **`git pull`** — el repo tiene múltiples sesiones Claude + el equipo trabajando. Asumir base vieja genera divergencias y duplicación (pasó el 2026-05-18 con 39 commits divergidos).
+2. **Leer [`docs/ESTADO-ACTUAL.md`](docs/ESTADO-ACTUAL.md)** — qué módulos son VIVOS, qué tasks bloquean, qué deudas hay.
+3. **Leer [`docs/FUENTES-DE-VERDAD.md`](docs/FUENTES-DE-VERDAD.md)** — qué doc/módulo es canónico para cada tema. Si vas a editar un doc, confirmá que es el canónico (no uno superado).
+4. **Si vas a crear un doc nuevo o superar uno existente** → actualizar `FUENTES-DE-VERDAD.md` y/o `ESTADO-ACTUAL.md` **en el mismo commit**. Sin esa actualización, la sesión no es válida.
+
 ## Reglas no negociables
 
-1. **Testing en hardware real** para todo cambio de código del robot.
+1. **Testing en hardware real** para todo cambio de código del robot. **Esta regla NO la puede cumplir Claude.** Solo el equipo humano que tiene la placa puede cerrar una TASK de hardware como `done`. Claude planifica, documenta, programa firmware host-testeable — pero **NO marca TASKs de hardware como `done`** ni asume que algo funciona porque "compila" o "los tests pasan host-native".
 2. **Atribución correcta** en commits (ver `AI-INSTRUCTIONS.md`).
-3. **No tocar `legacy/`** — código histórico de referencia.
-4. **Journal vivo** — toda sesión de trabajo deja entrada en `journal/YYYY-MM-DD-*.md`.
+3. **No tocar `legacy/`** ni `software/teensy/Soccer 2026/_archive/` — código histórico/archivado de referencia.
+4. **Journal vivo** — toda sesión de trabajo deja entrada en `journal/YYYY-MM-DD-*.md`. Si el journal repite lo que dice otro journal previo: **detener la sesión**, probablemente estás duplicando trabajo de otra sesión Claude (síndrome "coach-fábrica" del 2026-05-18).
 5. **Research pipeline activo** — temas pendientes a `research/backlog/`, en análisis a `research/in-progress/`, conclusiones a `research/completed/`.
-6. **Tareas del equipo a `team-tasks/`** — cualquier acción que requiere humano (medir hardware, soldar, fabricar, decidir) se documenta como archivo en `team-tasks/YYYY-MM-DD-task-NNN-*.md` con asignado, prioridad y criterio de cierre. Ver [`team-tasks/README.md`](team-tasks/README.md).
+6. **Tareas del equipo a `team-tasks/`** — cualquier acción que requiere humano (medir hardware, soldar, fabricar, decidir) se documenta como archivo en `team-tasks/YYYY-MM-DD-task-NNN-*.md` con asignado, prioridad y criterio de cierre. Ver [`team-tasks/README.md`](team-tasks/README.md). **No crear TASK nueva sin verificar que no exista una similar** (`grep -i tema team-tasks/`).
 7. **DRC + ERC obligatorios antes de mandar a fabricar PCB** — la placa DOWN llegó con 10 nets sin rutear porque este paso se saltó. No repetir. Ver `team-tasks/TASK-002`.
+8. **Moratoria temporal de fábrica de papel (agregado 2026-05-19)** — hasta que el robot se encienda al menos UNA vez con COMM flasheado + DOWN reportando línea por UART real, NO se generan specs nuevas ni planes nuevos ni decisions nuevas. Una sesión Claude por semana, alcance único: desbloquear hardware. Esto sale al confirmar el primer hardware-up en el journal.
 
 ## Otras sesiones / no contaminar
 

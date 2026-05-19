@@ -61,6 +61,15 @@ Sistema de tareas asignadas a miembros del equipo para Incheon 2026.
 | [TASK-024](2026-05-18-task-024-arranque-rol-polaridad-arco.md) | Arranque: leer rol, polaridad de arco, fallback START | Virginia + Elías | **P0** | pending |
 | [TASK-025](2026-05-18-task-025-avast-bloquea-platformio-ssl.md) | Avast (SSL MITM) bloquea PlatformIO — excepción por máquina | Gustavo + Virginia + Elías | P1 | pending |
 
+> **Nota 2026-05-19 (cleanup quirúrgico):** análisis crítico determinó que el
+> 100% del trabajo desde 2026-05-10 fue generado por sesiones Claude
+> descoordinadas (69 commits, 49 docs, 25 tasks) sin que el equipo humano
+> ejecutara ninguna TASK de hardware. **Moratoria de nuevos docs/specs/plans
+> hasta primer hardware-up** (CLAUDE.md regla 8). Foco inmediato del equipo
+> humano: TASK-001/002/006/011/022/025 (las P0 que requieren placa en mano).
+> Ver índice canónico de fuentes en `docs/FUENTES-DE-VERDAD.md` y estado vivo
+> en `docs/ESTADO-ACTUAL.md`.
+
 > **Nota 2026-05-18:** TASK-014..020 abiertas tras la verificación independiente
 > del protocolo de comms. **Orden de ejecución:** TASK-014 es fundacional
 > (bloquea a TASK-017 y al rediseño de ventanas). P0 = 014/015/016. NO bajar el

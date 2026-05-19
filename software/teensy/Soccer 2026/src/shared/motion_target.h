@@ -7,12 +7,12 @@ struct MotionIn {
     int16_t      escape_angle_centideg;
     float        ball_x_mm;
     float        ball_y_mm;
-    int16_t      max_speed_mm_s;
+    int16_t      max_speed_mm_s;  // debe ser >= 0
 };
 struct MotionCmd {
     int16_t vx_mm_s;
     int16_t vy_mm_s;
-    int16_t omega_centideg_s;
+    int16_t omega_centideg_s;   // placeholder: 0 (rotacion la maneja la capa superior / Plan 2)
     uint8_t kicker;
 };
 MotionCmd mt_compute(const MotionIn& in);

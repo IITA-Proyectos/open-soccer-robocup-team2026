@@ -17,6 +17,7 @@ MotionCmd mt_compute(const MotionIn& in){
     } else if (in.intent == MI_KICK){
         c.kicker = 1;
     }
+    // MI_STOP / MI_HOLD: c queda en cero (placeholder; HOLD == STOP hasta Plan 2).
     return c;
 }
 }  // namespace iitasoccer

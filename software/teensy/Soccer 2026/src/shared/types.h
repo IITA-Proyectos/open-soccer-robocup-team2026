@@ -88,7 +88,7 @@ struct BallObservation {
 // CENTRAL NO fusiona — recibe este snapshot y decide. La fusión sensorial
 // (IMU + OTOS + cámaras + ToF) corre en ARRIBA.
 //
-// Tamaño: 24 bytes. Cabe holgado en payload máximo de proto (32 bytes).
+// Tamaño: 27 bytes (contrato v2: +ball_vx/vy). Cabe en proto (32).
 struct WorldSnapshot {
     // Pose propia fusionada en cancha
     int16_t my_x_mm;
@@ -101,6 +101,8 @@ struct WorldSnapshot {
     int16_t ball_y_mm;
     uint8_t ball_visible;           // 0/1
     uint8_t ball_confidence;        // 0-100
+    int16_t ball_vx_mm_s;           // velocidad pelota X (mm/s, marco robot); 0 si N/A
+    int16_t ball_vy_mm_s;           // velocidad pelota Y (mm/s, marco robot); 0 si N/A
 
     // Arco rival (ángulo + distancia estimada)
     int16_t goal_opp_angle_centideg;
@@ -121,6 +123,7 @@ struct WorldSnapshot {
                                     // bit 3 = match_running
                                     // bits 4-7 = reservados
 } __attribute__((packed));
+static_assert(sizeof(WorldSnapshot) == 27, "WorldSnapshot contrato v2 = 27 bytes");
 
 // Contrato DOWN→CENTRAL v2 — ver docs/firmware/CONTRATO-DATOS-DOWN.md
 struct LineStatusV2 {

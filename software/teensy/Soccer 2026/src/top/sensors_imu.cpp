@@ -32,7 +32,9 @@ constexpr int      HEADING_SAMPLES    = 10;
 
 bool init_one_bno(Adafruit_BNO055& bno) {
     const uint32_t start = millis();
-    while (!bno.begin(Adafruit_BNO055::OPERATION_MODE_IMUPLUS)) {
+    // OPERATION_MODE_IMUPLUS es enum global de adafruit_bno055_opmode_t,
+    // NO member estático de la clase (fix de build 2026-05-19).
+    while (!bno.begin(OPERATION_MODE_IMUPLUS)) {
         if (millis() - start > INIT_TIMEOUT_MS) return false;
         delay(100);
     }

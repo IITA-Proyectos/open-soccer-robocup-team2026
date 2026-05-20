@@ -46,7 +46,9 @@ bool imu_init() {
     const uint32_t start = millis();
 
     // Paso 1: Detectar sensor con timeout (NO while(1) — degradación elegante).
-    while (!g_bno.begin(Adafruit_BNO055::OPERATION_MODE_IMUPLUS)) {
+    // OPERATION_MODE_IMUPLUS es enum global de adafruit_bno055_opmode_t,
+    // NO member estático de la clase (fix de build 2026-05-19).
+    while (!g_bno.begin(OPERATION_MODE_IMUPLUS)) {
         if (millis() - start > BNO055_INIT_TIMEOUT_MS) {
             g_ready = false;
             return false;

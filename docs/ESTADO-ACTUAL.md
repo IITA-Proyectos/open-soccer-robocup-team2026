@@ -83,7 +83,7 @@ tipo: indice-operacional
 ## Bloqueantes Incheon (los 3 que importan)
 
 1. **COMM no flasheada** → robot no homologa (no recibe START/STOP árbitro). TASK-006.
-2. **DOWN PCB con nets faltantes** → sensor de línea no funciona → robot sale de cancha sin advertir. TASK-001.
+2. **DOWN — pinout Teensy↔mux NO confirmado** (descubierto 2026-05-19): `config_down.h` tiene los pines como "tentativos"; el diag_down corrió con esos números inventados y reportó "16 sensores muertos" — falsa alarma. Enzo confirmó que físicamente andan los 32. **Bloqueante real**: hasta que Enzo pase el mapeo correcto (**TASK-026**) ningún test del anillo es válido. Ver postmortem `journal/2026-05-19-diagnostico-down-fallido-config-tentativo.md`.
 3. **Cámaras sin recalibrar para iluminación Incheon** → no ve la pelota. TASK-022.
 
 ## Regla operativa (CLAUDE.md actualizado 2026-05-19)

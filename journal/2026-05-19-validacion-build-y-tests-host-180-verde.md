@@ -104,10 +104,39 @@ test_native    test_strategy_transitions  PASSED  35 tests / 4.2s
    equipo humano. Estos 180 tests son la red de seguridad PURA, no la
    validación de cancha.
 
+## Replicado por el equipo humano (2026-05-19, más tarde)
+
+**Hito:** Gustavo corrió los tests **él mismo**, en su PowerShell — primera
+vez que un integrante humano ejecuta el proceso de testing por su cuenta (no
+una sesión Claude). Comando usado:
+
+```powershell
+& "C:\Users\violl\.platformio\penv\Scripts\pio.exe" test -e test_native -f "test_down_*" -f test_line_filters
+```
+
+Resultado: **53 test cases: 53 succeeded in 00:01:21** — las 7 suites de la
+placa DOWN (`test_down_calib/encode/geometry/model/surface/tracker` +
+`test_line_filters`) en verde.
+
+Observaciones de la corrida:
+- Primera suite (`test_down_calib`) tardó 51 s porque PlatformIO bajó Unity
+  del registry (`Installing throwtheswitch/Unity` → `Unity@2.6.1 installed`)
+  y compiló. `test_down_encode` 25 s. Las otras 5 suites: ~1 s cada una.
+- Confirma lo documentado: con la excepción Avast aplicada, PlatformIO baja
+  Unity sin problema; el vendoring de `lib/` cubre los firmwares pero Unity
+  igual viene del registry (límite conocido — ver `lib/README.md`).
+- El warning "Obsolete PIO Core v6.1.18" es cosmético — hay dos PIO Core
+  instalados; no afecta el resultado. Limpiable opcionalmente (no urgente).
+
+Significado: el setup de testing **funciona en la máquina del equipo**, no
+solo en la sesión Claude. El equipo ya puede correr la red de regresión por
+su cuenta antes de cualquier cambio.
+
 ## Estado al cierre
 
 - Firmware compila ✅ (4/4 placas Teensy).
-- Tests host-native pasan ✅ (180/180).
+- Tests host-native pasan ✅ (180/180 — y los 53 de DOWN replicados por el
+  equipo en su propia máquina).
 - Repo en estado **"ready to flash"** para Virginia/Elías.
 - Bloqueantes restantes son **TODOS hardware** (TASK-001/002/006/011/022).
 - Moratoria sigue vigente hasta primer hardware-up confirmado.

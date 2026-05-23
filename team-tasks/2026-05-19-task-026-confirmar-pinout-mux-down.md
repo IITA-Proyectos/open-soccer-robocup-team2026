@@ -14,15 +14,15 @@ tags: [hardware, pcb, down-board, mux, pinout, bloqueante]
 
 ## Resumen
 
-`src/down/config_down.h` tiene los pines del Teensy 4.0 conectados a los 4
-muxes CD4051 marcados como **"tentativos"** desde hace semanas. El firmware
-los está usando como si fueran ciertos. El 2026-05-19, el diagnóstico
-automatizado de sensores (`scripts/diag_capture.py` + `diag_down`) reportó
-**16 sensores muertos + bug de mux**, cuando en realidad Enzo confirmó que
-los 32 sensores físicos andan. La causa fue mi config tentativo, no el
-hardware.
+`src/down/config_down.h` tenía los pines del Teensy 4.0 a los 4 muxes
+CD4051 marcados como **"tentativos"**. El diagnóstico fallido del 2026-05-19
+expuso el problema. **Update 2026-05-19 tarde**: el mapeo completo fue
+extraído automáticamente del schematic EasyEDA JSON y documentado en
+`hardware/electronics/2026-05-19-pinout-down-extraido-schematic.md`.
 
-**Sin este dato confirmado, ningún test del anillo de línea es válido.**
+La TASK pasa de "definir el mapeo" a **"validar el mapeo extraído"** con
+Enzo + Virginia/Elías antes de actualizar el firmware. Sin esa validación
+no se hace el cambio en `config_down.h` ni `line_ring.cpp`.
 
 ## Contexto
 
@@ -48,48 +48,57 @@ Los docs del PCB del 17-may también admiten que el dato falta:
 Ver journal `2026-05-19-diagnostico-down-fallido-config-tentativo.md` para
 el postmortem completo.
 
-## Lo que necesitamos
+## Lo que necesitamos validar
 
-Una **tabla confirmada** (mirando el schematic o midiendo con multímetro
-sobre la placa real):
+Tabla **ya extraída** del schematic (no eran "compartidas" — cada mux tiene
+sus 3 SEL propios; INH atados a GND). Ver doc completo
+`hardware/electronics/2026-05-19-pinout-down-extraido-schematic.md`.
+Resumen del mapeo a validar:
 
-| Función | Pin del Teensy 4.0 (a completar) |
+| Función | Pin Arduino (extraído del SCH) |
 |---|---|
-| Línea de selección A del mux (compartida 4 muxes) | ? |
-| Línea de selección B del mux (compartida) | ? |
-| Línea de selección C del mux (compartida) | ? |
-| INH del mux #1 (U1) | ? |
-| INH del mux #2 (U2) | ? |
-| INH del mux #3 (U3) | ? |
-| INH del mux #4 (U4) | ? |
-| Output O del mux #1 (entrada analógica) | ? |
-| Output O del mux #2 | ? |
-| Output O del mux #3 | ? |
-| Output O del mux #4 | ? |
+| U1.A / U1.B / U1.C | 13 / 2 / 3 |
+| U1.COM (ADC) | A0 (=14) |
+| U2.A / U2.B / U2.C | 4 / 5 / 6 |
+| U2.COM (ADC) | A1 (=15) |
+| U3.A / U3.B / U3.C | 7 / 8 / 9 |
+| U3.COM (ADC) | A8 (=22) |
+| U4.A / U4.B / U4.C | 10 / 11 / 12 |
+| U4.COM (ADC) | A9 (=23) |
+| Todos los INH (U1-U4 pin 6) | atados a GND directo (no se controlan) |
+| OTOS U5 (Wire I²C0) | SDA=18, SCL=19 |
+| OTOS U6 (Wire1 I²C1) | SDA=17, SCL=16 |
+| UART hacia TOP (Serial5) | RX=21, TX=20 |
 
-Y opcionalmente: cuál de las 2 posiciones OTOS (U5/U6) está poblada y en qué
-bus I²C (Wire/Wire1/Wire2) cae.
+Y queda pendiente confirmar:
+- Si ambos OTOS (U5 y U6) están poblados físicamente.
+- Orden FÍSICO de los 32 sensores en el anillo (para interpretar dirección).
+- Para qué se usa el conector U11 (Serial1 + señal E1).
 
-## Pasos concretos
+## Pasos concretos para VALIDAR (no para descubrir — ya está extraído)
 
-### Opción A — Leer del schematic en EasyEDA (más rápido)
+### Por Enzo — verificación rápida del schematic
 
-1. Abrir el proyecto en EasyEDA / KiCad
-   (`hardware/electronics/pcb_design/down_board/`).
-2. Localizar U1 (CD4051BM). Click en cada pad (A=pin 11, B=pin 10, C=pin 9,
-   INH=pin 6, COM=pin 3 del CD4051).
-3. Trazar cada net hasta el pad correspondiente del Teensy U7.
-4. Anotar el número de pin lógico del Teensy 4.0 (no el número de pad físico
-   del módulo).
-5. Repetir para U2, U3, U4.
+1. Abrir el doc `hardware/electronics/2026-05-19-pinout-down-extraido-schematic.md`.
+2. Cotejar con el schematic en EasyEDA: 3–5 nets representativas elegidas al
+   azar (ej. E5, O3, SDA2).
+3. ✅ Confirmar OR ❌ corregir si hay error.
+4. Confirmar también: a) ambos OTOS U5/U6 poblados, b) uso del conector U11,
+   c) orden físico de los 32 sensores en el anillo (foto con números si es
+   posible).
 
-### Opción B — Multímetro en continuidad (si EasyEDA no está accesible)
+### Por Virginia/Elías — verificación con multímetro en banco (15 min)
 
-1. Identificar los pads del Teensy 4.0 en la cara Top de la placa.
-2. Probar continuidad pin del Teensy ↔ pad 11 (A) de U1. Cuando suena, ese
-   pin es PIN_MUX_SEL_A.
-3. Repetir para B (pad 10), C (pad 9), INH (pad 6), COM (pad 3) de los 4
-   muxes.
+1. Multímetro en modo continuidad.
+2. Verificar 3 nets críticas (las que el firmware más usa):
+   - Pin Arduino 13 (= header pin 14, SCK) ↔ pin 11 de CD4051 U1 → debería
+     pitar (E1 / U1.A).
+   - Pin Arduino A0 (= header pin 13) ↔ pin 3 de CD4051 U1 → debería pitar
+     (O1 / U1.COM).
+   - Pin Arduino 4 (= header pin 28, BCLK2) ↔ pin 11 de CD4051 U2 → debería
+     pitar (E4 / U2.A).
+3. Si los 3 pitan → mapeo confirmado para esos. Si alguno no pita → revisar
+   ese específico contra el schematic.
 
 ## Criterio de cierre
 

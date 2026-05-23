@@ -72,8 +72,16 @@ Resumen del mapeo a validar:
 
 Y queda pendiente confirmar:
 - Si ambos OTOS (U5 y U6) están poblados físicamente.
-- Orden FÍSICO de los 32 sensores en el anillo (para interpretar dirección).
+- **Orientación del montaje** del PCB respecto al chasis (¿+Y del PCB =
+  adelante del robot?). El doc asume esto basado en simetría F1-F8 frontal,
+  pero hay que confirmarlo con Enzo cuando se monte. Si está rotado, se
+  rota la LUT `SENSOR_POS[]` con una matriz trivial.
 - Para qué se usa el conector U11 (Serial1 + señal E1).
+
+**Update 2026-05-23**: las posiciones físicas (x, y) en mm de los 32 sensores
+F1–F32 ya fueron extraídas del **PCB layout JSON** (no solo el schematic).
+Ver §5b del doc `2026-05-19-pinout-down-extraido-schematic.md`. Ya no necesitamos
+foto con números — la geometría completa está documentada.
 
 ## Pasos concretos para VALIDAR (no para descubrir — ya está extraído)
 
@@ -84,8 +92,10 @@ Y queda pendiente confirmar:
    azar (ej. E5, O3, SDA2).
 3. ✅ Confirmar OR ❌ corregir si hay error.
 4. Confirmar también: a) ambos OTOS U5/U6 poblados, b) uso del conector U11,
-   c) orden físico de los 32 sensores en el anillo (foto con números si es
-   posible).
+   c) **orientación del montaje** del PCB en el chasis (asunción documentada:
+   +Y del PCB = adelante del robot, lado del logo IITA del silkscreen apunta
+   hacia adelante). Si el montaje es distinto, anotar la rotación (90°/180°/
+   270°) y/o offset (dx, dy) en mm.
 
 ### Por Virginia/Elías — verificación con multímetro en banco (15 min)
 

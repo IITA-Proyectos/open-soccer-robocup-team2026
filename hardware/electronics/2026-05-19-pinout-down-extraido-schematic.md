@@ -212,12 +212,138 @@ static const uint8_t CH_LUT[8] = { 3, 0, 1, 2, 5, 7, 6, 4 };
 ✅ Mapeo extraído del schematic. El **patrón de scrambling es idéntico para los
 4 muxes** — buena señal de consistencia interna del PCB.
 
-> ❓ **Lo que NO sabemos todavía**: la **posición FÍSICA en el anillo** de cada
-> sensor S1–S32 (¿S1 está al frente del robot, atrás, izquierda?). Eso requiere
-> revisar el layout del PCB (Pick&Place) o que Enzo lo confirme con foto/marca.
-> El firmware puede leerlos en orden S1→S32 sin saber la posición física; el
-> mapping físico se necesita solo para interpretar "dirección de salida de
-> cancha". Pendiente §11.
+> 📌 **Nota terminológica importante**: en el SCH los nets entre fototransistor
+> y mux se llaman `S1..S32`, pero los **designators de los fototransistores**
+> (lo que está silkscreeneado en el PCB) son `F1..F32`. La correspondencia es
+> **1:1 perfecta**: `F1↔S1`, `F2↔S2`, ..., `F32↔S32` (verificado parsando los
+> pins de cada ALSPT19 contra el net que les llega). En el código y este doc
+> usamos `S` como número lógico del sensor y `F` cuando hay que referenciar el
+> componente físico en el PCB.
+
+## 5b. Posiciones FÍSICAS de los 32 sensores en el PCB
+
+Extraídas del PCB layout JSON (componente `LIB~` con designator `F1..F32`).
+Convertidas a milímetros con la escala EasyEDA (1 unidad = 10 mil = 0.254 mm)
+y trasladadas al **centro del bounding box del PCB** como origen.
+
+### Sistema de referencia
+
+- **(0, 0) = centro del PCB DOWN** (bbox center, x=929.6mm y=751.21mm en coords
+  EasyEDA crudas — irrelevante para uso firmware).
+- **+X = derecha del PCB** según viewport de EasyEDA (silkscreen TOP visto desde
+  el componente side).
+- **+Y = arriba del PCB** según viewport de EasyEDA (Y flipeada respecto a la
+  convención EasyEDA donde Y crece hacia abajo en pantalla).
+- **Asunción de montaje** (a validar con Enzo): el PCB DOWN se monta centrado
+  bajo el robot ⇒ centro del PCB = centro del robot. Si el montaje no es
+  centrado, hay que aplicar un offset (típicamente pocos mm).
+- **Asunción de orientación** (consistente con simetría observada, a validar):
+  **+Y del PCB = adelante del robot**, **+X = derecha**. Razón: F1–F8
+  (anillo externo frontal, 8 sensores en arco simétrico) están todos en
+  Y≈+75…+82 mm con X de –36 a +36 mm — patrón típico de "anillo frontal denso"
+  que mira hacia adelante. Si Enzo confirma que el "logo IITA" del silkscreen
+  TOP queda mirando hacia adelante del robot, esta asunción se valida.
+
+### Tabla completa: S1–S32 con (mux, canal, pin Arduino) + posición XY
+
+| Sensor | F# | Mux | Canal | COM_Arduino | X (mm) | Y (mm) | R (mm) | θ (deg) |
+|--------|----|-----|-------|-------------|--------|--------|--------|---------|
+| S1  | F1  | U1 | 3 | A0 | −36.28 | +82.04 | 89.70 | +113.9 |
+| S2  | F2  | U1 | 0 | A0 | −30.57 | +75.06 | 81.05 | +112.2 |
+| S3  | F3  | U1 | 1 | A0 | −20.28 | +74.17 | 76.89 | +105.3 |
+| S4  | F4  | U1 | 2 | A0 | −10.12 | +74.17 | 74.86 |  +97.8 |
+| S5  | F5  | U1 | 5 | A0 | +10.20 | +74.17 | 74.87 |  +82.2 |
+| S6  | F6  | U1 | 7 | A0 | +20.36 | +74.17 | 76.91 |  +74.7 |
+| S7  | F7  | U1 | 6 | A0 | +30.52 | +75.18 | 81.14 |  +67.9 |
+| S8  | F8  | U1 | 4 | A0 | +36.49 | +82.04 | 89.79 |  +66.0 |
+| S9  | F9  | U2 | 3 | A1 | −86.32 | +12.19 | 87.18 | +172.0 |
+| S10 | F10 | U2 | 0 | A1 | −86.32 |  −0.51 | 86.32 | −179.7 |
+| S11 | F11 | U2 | 1 | A1 | −84.92 | −13.21 | 85.94 | −171.2 |
+| S12 | F12 | U2 | 2 | A1 | −81.24 | −26.04 | 85.31 | −162.2 |
+| S13 | F13 | U2 | 5 | A1 | −67.65 | −50.04 | 84.15 | −143.5 |
+| S14 | F14 | U2 | 7 | A1 | −60.03 | −60.20 | 85.02 | −134.9 |
+| S15 | F15 | U2 | 6 | A1 | −48.98 | −69.09 | 84.69 | −125.3 |
+| S16 | F16 | U2 | 4 | A1 | −36.28 | −76.71 | 84.86 | −115.3 |
+| S17 | F17 | U3 | 3 | A8 | +36.36 | −76.71 | 84.89 |  −64.6 |
+| S18 | F18 | U3 | 0 | A8 | +49.31 | −69.09 | 84.88 |  −54.5 |
+| S19 | F19 | U3 | 1 | A8 | +60.87 | −60.20 | 85.61 |  −44.7 |
+| S20 | F20 | U3 | 2 | A8 | +69.63 | −50.04 | 85.75 |  −35.7 |
+| S21 | F21 | U3 | 5 | A8 | +82.21 | −25.91 | 86.20 |  −17.5 |
+| S22 | F22 | U3 | 7 | A8 | +85.64 | −13.21 | 86.65 |   −8.8 |
+| S23 | F23 | U3 | 6 | A8 | +87.29 |  −0.51 | 87.29 |   −0.3 |
+| S24 | F24 | U3 | 4 | A8 | +86.40 | +12.06 | 87.24 |   +7.9 |
+| S25 | F25 | U4 | 3 | A9 | −22.82 | +50.93 | 55.81 | +114.1 |
+| S26 | F26 | U4 | 0 | A9 | −12.66 | +50.93 | 52.48 | +104.0 |
+| S27 | F27 | U4 | 1 | A9 | +12.74 | +51.05 | 52.62 |  +76.0 |
+| S28 | F28 | U4 | 2 | A9 | +22.90 | +50.93 | 55.84 |  +65.8 |
+| S29 | F29 | U4 | 5 | A9 | +34.55 |  −9.51 | 35.83 |  −15.4 |
+| S30 | F30 | U4 | 7 | A9 | +34.55 | −19.67 | 39.76 |  −29.7 |
+| S31 | F31 | U4 | 6 | A9 | −33.25 |  −9.51 | 34.58 | −164.0 |
+| S32 | F32 | U4 | 4 | A9 | −33.25 | −19.80 | 38.70 | −149.2 |
+
+Convención angular: θ = atan2(Y, X) en grados. 0° = +X (derecha), 90° = +Y
+(adelante), 180°/−180° = −X (izquierda), −90° = −Y (atrás).
+
+### Diagrama ASCII del layout (vista desde arriba del PCB)
+
+```
+                         FRENTE del robot (+Y)
+                                  ↑
+                 F1 F2 F3 F4   F5 F6 F7 F8        ← anillo externo frontal (R≈80mm)
+                          F25 F26 F27 F28          ← anillo interno frontal  (R≈55mm)
+        F9                                                F24
+        F10                                               F23
+        F11        F31           F29                      F22         ← muy externos
+        F12          F32         F30                      F21              (R≈85mm)
+        F13                                               F20
+        F14                                               F19
+        F15                                               F18
+   ← F16                                                  F17 →
+                                  ↓
+                          ATRÁS del robot (−Y)
+
+   IZQ del robot (−X) ←                              → DER del robot (+X)
+```
+
+(Las posiciones son aproximadas — la tabla numérica de arriba es la fuente.)
+
+### Agrupación por mux y por anillo
+
+| Anillo | Sensores | Mux | Radio promedio | Posición |
+|---|---|---|---|---|
+| **Externo frontal** (8) | S1–S8 | U1 | ≈80 mm | Y ≈ +75…+82, X ∈ [−36, +36] |
+| **Externo izquierdo + tras-izq** (8) | S9–S16 | U2 | ≈85 mm | X ∈ [−86, −36], Y ∈ [+12, −77] |
+| **Externo derecho + tras-der** (8) | S17–S24 | U3 | ≈86 mm | X ∈ [+36, +87], Y ∈ [−77, +12] |
+| **Interno frontal** (4) | S25–S28 | U4 ch 3,0,1,2 | ≈54 mm | Y ≈ +51, X ∈ [−23, +23] |
+| **Interno trasero** (4) | S29–S32 | U4 ch 5,7,6,4 | ≈37 mm | Y ∈ [−10, −20], X ≈ ±34 |
+
+Observaciones útiles para el algoritmo de detección de línea:
+- El anillo externo (S1–S24, 24 sensores) cubre TODO el perímetro a R ≈ 80–87 mm.
+- Pero hay un **gap atrás central**: ningún sensor a 270° (atrás). Los más
+  traseros son F16 (X=−36, Y=−77) y F17 (X=+36, Y=−77), separados ≈72 mm en X.
+- El anillo interno (8 sensores, S25–S32) está sólo en frente (Y > +50) y centro
+  (Y ≈ −15). **No hay anillo interno lateral** — el lateral solo está cubierto
+  por R≈85 mm.
+
+### LUT inversa para firmware (sensor → posición)
+
+```cpp
+// Para algoritmos de geometria de linea (centroide, dirección): convertir
+// el índice del sensor (0..31) a posición (x, y) en mm desde el centro del robot.
+struct SensorPos { float x_mm; float y_mm; };
+
+static const SensorPos SENSOR_POS[32] = {
+    {-36.28f, +82.04f}, {-30.57f, +75.06f}, {-20.28f, +74.17f}, {-10.12f, +74.17f},  // S1-S4
+    {+10.20f, +74.17f}, {+20.36f, +74.17f}, {+30.52f, +75.18f}, {+36.49f, +82.04f},  // S5-S8
+    {-86.32f, +12.19f}, {-86.32f,  -0.51f}, {-84.92f, -13.21f}, {-81.24f, -26.04f},  // S9-S12
+    {-67.65f, -50.04f}, {-60.03f, -60.20f}, {-48.98f, -69.09f}, {-36.28f, -76.71f},  // S13-S16
+    {+36.36f, -76.71f}, {+49.31f, -69.09f}, {+60.87f, -60.20f}, {+69.63f, -50.04f},  // S17-S20
+    {+82.21f, -25.91f}, {+85.64f, -13.21f}, {+87.29f,  -0.51f}, {+86.40f, +12.06f},  // S21-S24
+    {-22.82f, +50.93f}, {-12.66f, +50.93f}, {+12.74f, +51.05f}, {+22.90f, +50.93f},  // S25-S28
+    {+34.55f,  -9.51f}, {+34.55f, -19.67f}, {-33.25f,  -9.51f}, {-33.25f, -19.80f},  // S29-S32
+};
+// Indexar como SENSOR_POS[sensor_idx_0_based] donde 0 = S1, 31 = S32.
+```
 
 ## 6. SparkFun OTOS (U5, U6) — tracking óptico
 
@@ -332,17 +458,25 @@ analogReadResolution(10);
    nets representativas (ej. pin 13 del Teensy ↔ pin 11 del CD4051 U1; pin
    A0 del Teensy ↔ pin 3 del CD4051 U1).
 3. **Virginia/Elías**: confirmar que **ambos OTOS están poblados** (U5 y U6).
+4. **Enzo o quien monte el PCB en el chasis**: confirmar la **orientación
+   física** del PCB DOWN respecto al robot. La asunción del doc es **+Y del
+   PCB (lado del logo IITA del silkscreen) = adelante del robot**, **+X =
+   derecha**. La asunción se desprende de la simetría de F1–F8 + F25–F28
+   (todos en Y+ alto, X simétrico → "anillo frontal denso"), pero el montaje
+   final puede haber rotado la placa. Si rotada 90° o 180°, hay que rotar la
+   LUT `SENSOR_POS[]` en consecuencia (multiplicar por una matriz de rotación
+   trivial).
 
-**P1 — necesario para interpretar datos correctamente:**
+**P1 — útiles para interpretar datos:**
 
-4. **Enzo**: pasar el orden FÍSICO de los 32 sensores en el anillo (¿qué
-   posición angular ocupa cada Sn? — p.ej., una foto con números o una tabla
-   "S1 = frente 0°, S2 = 11.25°, ...").
 5. **Enzo**: confirmar para qué se usa el conector U11 (Serial1 + E1).
+6. **Enzo**: confirmar que el centro del PCB ≈ centro del robot (offset de
+   montaje < ~5 mm). Si no, anotar el offset (dx, dy) en mm para sumarlo a
+   `SENSOR_POS[]` en firmware.
 
 **P2 — útil pero no bloqueante:**
 
-6. **Virginia/Elías con multímetro**: medir voltajes de salida de U8/U9
+7. **Virginia/Elías con multímetro**: medir voltajes de salida de U8/U9
    (los 2 reguladores buck) — confirmar 5 V y 3.3 V según expectativa.
 
 ## 12. Plan de validación rápida en banco (15 minutos)
@@ -360,11 +494,24 @@ Una vez actualizado el firmware con el pinout de este doc:
 
 ## 13. Reproducibilidad — cómo se generó este doc
 
-- **Schematic fuente**: `hardware/electronics/pcb_design/down_board/SCH_Roboliga_2026_Futbol_2026-04-12.json` (290 KB, EasyEDA v6.5.40).
-- **Método**: parser Python del JSON + union-find sobre los wires (`W~`) para
-  reconstruir conectividad eléctrica entre pines de componentes y netlabels
-  (`F~`).
-- **Cruce**: pinout oficial PJRC Teensy 4.0 (<https://www.pjrc.com/teensy/pinout.html>).
+- **Fuentes** (dos JSONs de EasyEDA, ambos del proyecto de Enzo de Apr-12):
+  - Schematic: `hardware/electronics/pcb_design/down_board/SCH_Roboliga_2026_Futbol_2026-04-12.json` (290 KB) — usado para todo §3–§10 (pinout, mux wiring, nets).
+  - PCB Layout: `hardware/electronics/pcb_design/down_board/PCB_PCB_Roboliga_2026_Futbol_2026-04-12.json` (1.6 MB) — usado para §5b (posiciones físicas de F1–F32, BBox, conversión EasyEDA→mm).
+- **Método (SCH)**: parser Python + union-find sobre los wires (`W~`) y
+  junctions (`J~`) para reconstruir conectividad eléctrica entre pines de
+  componentes (`LIB~...P~`) y netlabels (`F~`).
+- **Método (PCB)**: parser Python que itera `LIB~x~y~...` y extrae el designator
+  desde el sub-shape `TEXT~P~...` (campo P = package designator visible). Las
+  coords se convierten con la escala EasyEDA `1 unidad = 10 mil = 0.254 mm` y se
+  trasladan al centro del BBox.
+- **Cruce SCH↔PCB**: las nets `S1..S32` del SCH se mappean 1:1 a los designators
+  `F1..F32` del PCB (verificado pin por pin con union-find sobre el SCH:
+  `F1.pin2 → S1`, ..., `F32.pin2 → S32`).
+- **Cruce con pinout Teensy**: pinout oficial PJRC Teensy 4.0
+  (<https://www.pjrc.com/teensy/pinout.html>).
+- **Script reusable**: `software/teensy/Soccer 2026/scripts/extract_pinout_from_schematic.py`
+  (acepta `--json` y `--pcb-json`, default a los paths de arriba). Re-ejecutarlo
+  regenera la tabla unificada si el PCB cambia.
 - **Sesión**: Claude Code Opus 4.7 (1M context), 2026-05-19, requested by Gustavo Viollaz.
 
 ---

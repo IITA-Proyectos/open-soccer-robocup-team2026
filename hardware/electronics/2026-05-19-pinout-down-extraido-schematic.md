@@ -39,7 +39,7 @@ validacion-pendiente: [Enzo (diseñador PCB), Virginia/Elías (medición con mul
 | Sensores de luz | **32 × ALS-PT19** (F1–F32) + 32 LED activos (LED1–LED32) |
 | Multiplexación | **4 × CD4051BM** (U1–U4), 8 canales cada uno = 32 sensores |
 | Tracking óptico | **2 × SparkFun OTOS** (U5/U6) en buses I²C separados |
-| Conectores aux | U10 (UART hacia placa TOP) + U11 (UART secundario) |
+| Conexiones de datos | **2 UARTs** (U10→TOP vía Serial5, U11→CENTRAL vía Serial1) + **2 I²C** (Wire→OTOS U5, Wire1→OTOS U6) |
 | Alimentación | XP1 Dean (LiPo 7.4 V) → 2× MP1584-EN reguladores buck |
 | Schematic fuente | `pcb_design/down_board/SCH_Roboliga_2026_Futbol_2026-04-12.json` |
 
@@ -73,8 +73,8 @@ shape). El "Pin Arduino" es el número usado en código `digitalWrite(N)` /
 | 3 | 3.3V | — | (sin net) | 3V3 salida del regulador interno (no usado) | ✅ |
 | 4 | A9 | **23** | **O4** | ADC entrada — output del mux U4 (sensores S25–S32) | ✅ |
 | 5 | A8 | **22** | **O3** | ADC entrada — output del mux U3 (sensores S17–S24) | ✅ |
-| 6 | A7 | **21** | **RX5** | UART RX hacia placa TOP (U10) | ✅ |
-| 7 | A6 | **20** | **TX5** | UART TX hacia placa TOP (U10) | ✅ |
+| 6 | A7 | **21** | **RX5** | UART RX desde placa **TOP** (conector U10, Serial5) — recibe comandos | ✅ |
+| 7 | A6 | **20** | **TX5** | UART TX hacia placa **TOP** (conector U10, Serial5) — envía LINE_STATUS + OTOS_POSE + OTOS_VEL | ✅ |
 | 8 | A5 | **19** | **SCL1** | I²C SCL del OTOS U5 (= `Wire` en Arduino) | ✅ |
 | 9 | A4 | **18** | **SDA1** | I²C SDA del OTOS U5 (= `Wire` en Arduino) | ✅ |
 | 10 | A3 | **17** | **SDA2** | I²C SDA del OTOS U6 (= `Wire1` en Arduino) | ✅ |
@@ -98,23 +98,27 @@ shape). El "Pin Arduino" es el número usado en código `digitalWrite(N)` /
 | 28 | BCLK2 | **4** | **E4** | Selector A del mux U2 | ✅ |
 | 29 | LRCLK2 | **3** | **E3** | Selector C del mux U1 | ✅ |
 | 30 | OUT2 | **2** | **E2** | Selector B del mux U1 | ✅ |
-| 31 | TX1 | **1** | **TX1** | UART TX al conector U11 + señal E1 (uso a confirmar) | ⚠️ |
-| 32 | RX1 | **0** | **RX1** | UART RX al conector U11 | ⚠️ |
+| 31 | TX1 | **1** | **TX1** | UART TX hacia placa **CENTRAL** (conector U11, Serial1) — bus de emergencia LINE_URGENT | ✅ |
+| 32 | RX1 | **0** | **RX1** | UART RX desde placa **CENTRAL** (conector U11, Serial1) — recibe comandos administrativos | ✅ |
 | 33 | GND | — | GND | Masa | ✅ |
 | 34 | NC | — | (sin conexión) | No conectado | ✅ |
 
 ### Resumen de pines Arduino usados (los que importan al firmware)
 
-| Función | Pines Arduino |
-|---|---|
-| Selectores de muxes (12) | 13, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 |
-| Outputs analógicos de muxes (4) | A0 (14), A1 (15), A8 (22), A9 (23) |
-| I²C OTOS #1 (Wire) | SDA=18, SCL=19 |
-| I²C OTOS #2 (Wire1) | SDA=17, SCL=16 |
-| UART hacia TOP (Serial5) | RX=21, TX=20 |
-| UART aux U11 (Serial1) | RX=0, TX=1 |
+| Función | Pines Arduino | Conector PCB |
+|---|---|---|
+| Selectores de muxes (12 pines) | 13, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 | — (directo a CD4051 U1–U4) |
+| Outputs analógicos de muxes (4) | A0 (14), A1 (15), A8 (22), A9 (23) | — (directo a COM de U1/U2/U3/U4) |
+| **I²C → OTOS U5** (`Wire`, I²C0) | SDA=18, SCL=19 | (directo al chip U5 SparkFun) |
+| **I²C → OTOS U6** (`Wire1`, I²C1) | SDA=17, SCL=16 | (directo al chip U6 SparkFun) |
+| **UART → placa TOP** (`Serial5`) | RX=21, TX=20 | **U10** ("COMUNICATION") |
+| **UART → placa CENTRAL** (`Serial1`) | RX=0, TX=1 | **U11** (bus de emergencia) |
 
-**Pines Arduino LIBRES en la placa DOWN (no usados):** del 1 al 13 ya están todos usados (selectores + UART aux + A0/A1 vía pin 13 *espera, A0=14, A1=15 son otros pines*). Reviso: pines 0–12 todos asignados (12 selectores + Serial1). Pines 13 (SCK) + 14 (A0) + 15 (A1) + 16/17 (Wire1) + 18/19 (Wire) + 20/21 (Serial5) + 22 (A8) + 23 (A9) = 24 pines en uso. Quedan **libres**: pin 24, 25, 26, 27, 28, 29, 30, 31, 32, 33 (10 pines digitales para expansión futura).
+**Pines Arduino LIBRES en la placa DOWN (no usados):** los 24 pines en uso
+son 0–13 (Serial1 + 12 selectores) y 14–23 (A0/A1/A8/A9 + Wire1 + Wire +
+Serial5). Quedan **libres** para expansión futura: pines digitales 24, 25,
+26, 27, 28, 29, 30, 31, 32, 33 (10 pines), de los cuales **24/25 = Wire2**
+(I²C2) y los demás digitales/PWM sin uso aún.
 
 ## 4. Los 4 CD4051BM (U1, U2, U3, U4) — pinout y conexión
 
@@ -347,29 +351,137 @@ static const SensorPos SENSOR_POS[32] = {
 
 ## 6. SparkFun OTOS (U5, U6) — tracking óptico
 
-| OTOS | Bus I²C | SDA Teensy | SCL Teensy | Arduino API | Dirección I²C |
-|---|---|---|---|---|---|
-| **U5** | I²C #1 | pin 18 (A4) | pin 19 (A5) | `Wire` | `0x17` (default SparkFun) ⚠️ |
-| **U6** | I²C #2 | pin 17 (A3) | pin 16 (A2) | `Wire1` | `0x17` ⚠️ |
+**Cada OTOS usa SU PROPIO bus I²C** del Teensy 4.0. Esto es necesario porque
+ambos chips tienen la **misma dirección I²C 0x17** de fábrica (la dirección NO
+es seleccionable por strap-pin en este módulo SparkFun). Si los pusiéramos
+en el mismo bus, habría colisión.
 
-**Pines del header del OTOS** (4 pines del módulo SparkFun: GND, +3V3, SDA, SCL — los pines IO9/IO10 del OTOS están en el header pero **no se usan** según el schematic).
+| OTOS | Bus físico del Teensy | API Arduino | Pin Arduino SDA | Pin Arduino SCL | Pin header Teensy | Dirección I²C |
+|---|---|---|---|---|---|---|
+| **U5** | I²C **0** | `Wire`  | **18** | **19** | header 9 (SDA) + header 8 (SCL) | **0x17** ✅ default SparkFun |
+| **U6** | I²C **1** | `Wire1` | **17** | **16** | header 10 (SDA) + header 11 (SCL) | **0x17** ✅ default SparkFun |
 
-> **Nota Arduino**: el schematic los llama "SDA1/SCL1" y "SDA2/SCL2", pero en
-> Arduino Teensy 4.0 esos pines corresponden a `Wire` (I²C0) y `Wire1` (I²C1)
-> respectivamente. Atención con la confusión de nombres (NO es Wire1/Wire2).
+**Inicialización (firmware):**
+```cpp
+#include <Wire.h>
+Wire.begin();           // I²C0 → habilita SDA=18, SCL=19 → U5
+Wire1.begin();          // I²C1 → habilita SDA=17, SCL=16 → U6
+// Cuando se active la lib SparkFun:
+//   g_otos_u5.begin(Wire);   g_otos_u5.calibrateImu();
+//   g_otos_u6.begin(Wire1);  g_otos_u6.calibrateImu();
+```
+
+**Pines del header de cada OTOS** (4 pines del módulo SparkFun): GND, +3V3,
+SDA, SCL. Los pines IO9/IO10 del módulo están en el header pero **no se usan**
+según el schematic (quedan flotantes).
+
+> **Notas sobre nomenclatura I²C** (causa de confusión frecuente):
+>
+> - El **schematic** llama a las nets `SDA1/SCL1` (= bus del U5) y `SDA2/SCL2`
+>   (= bus del U6). Estos "1" y "2" son sólo etiquetas del schematic — NO se
+>   corresponden con `Wire1/Wire2` de Arduino.
+> - En **Arduino Teensy 4.0**: el bus por defecto es `Wire` (sin número, = I²C0,
+>   pines 18/19). El segundo bus es `Wire1` (= I²C1, pines 17/16). El tercer
+>   bus `Wire2` (= I²C2, pines 24/25) NO se usa en esta placa.
+> - El código `src/down/otos.cpp` línea 53–54 hace `Wire.begin()` + `Wire1.begin()`
+>   — eso es **CORRECTO** y compatible con el pinout extraído.
+> - El comentario línea 18–19 del mismo archivo dice "`I2C2 (Wire2)`" — eso es
+>   **un typo del firmware actual**, hay que corregirlo a `I2C1 (Wire1)` cuando
+>   se actualice config_down.h.
+
+### Verificación I²C en banco (cuando se quiera testear OTOS)
+
+Una vez activada la lib SparkFun y flasheado:
+
+```cpp
+Wire.begin();
+Wire.beginTransmission(0x17);
+if (Wire.endTransmission() == 0) Serial.println("OTOS U5 OK");
+
+Wire1.begin();
+Wire1.beginTransmission(0x17);
+if (Wire1.endTransmission() == 0) Serial.println("OTOS U6 OK");
+```
 
 ❓ **Pendiente confirmar**: ¿están **ambos OTOS poblados** físicamente, o U6 es
 spare? Si solo U5 está soldado → `DOWN_NUM_OTOS_CONNECTED=1`. Si los 2 →
 `=2`. Verificable visualmente sobre la placa.
 
-## 7. UARTs
+## 7. UARTs — la placa DOWN se comunica con DOS placas distintas
 
-| Serial | Pines Teensy | Conector | Propósito |
-|---|---|---|---|
-| **Serial5** | RX5=21, TX5=20 | U10 ("COMUNICATION") | UART hacia placa TOP (envía LineStatusV2 + odometría OTOS) ✅ |
-| **Serial1** | RX1=0, TX1=1 | U11 (4 pines) + señal E1 | ❓ propósito a confirmar — ¿debug? ¿otra placa? |
+La placa DOWN tiene **dos canales UART separados**, uno por destino. Esto
+soporta la arquitectura del repo: la mayoría del tráfico va por **TOP**
+(maestro de cámaras + status @ 100 Hz), y un **bus de emergencia separado**
+hacia el **CENTRAL** garantiza latencia < 15 ms para la señal de línea (que
+dispara el fail-safe de borde en el cerebro). Confirmado en el código:
+`src/down/comm_top.{h,cpp}` (Serial5→TOP) y `src/down/comm_central.{h,cpp}`
+(Serial1→CENTRAL).
 
-Baud rate típico para placas Teensy: **230400** (config actual). ✅
+### 7.1 UART hacia placa TOP (canal principal)
+
+| Atributo | Valor | Confianza |
+|---|---|---|
+| Puerto Arduino | **`Serial5`** | ✅ |
+| Pin Arduino RX (recibe de TOP) | **21** | ✅ |
+| Pin Arduino TX (envía a TOP) | **20** | ✅ |
+| Pin header Teensy 4.0 | header 6 (RX) + header 7 (TX) | ✅ |
+| Net del schematic | `RX5` / `TX5` | ✅ |
+| Conector físico en el PCB | **U10** ("COMUNICATION") | ✅ |
+| Placa destino | **TOP** (Teensy 4.0 master) | ✅ confirmado en `down/comm_top.h:4` |
+| Tráfico DOWN→TOP | LINE_STATUS + OTOS_POSE + OTOS_VEL @ **100 Hz** | ✅ |
+| Tráfico TOP→DOWN | Comandos administrativos (reset OTOS, calibrar línea) | ✅ |
+| Baud | **230400** (constante `UART_TOP_BAUD` en `config_down.h:80`) | ✅ |
+
+### 7.2 UART hacia placa CENTRAL (bus de emergencia)
+
+| Atributo | Valor | Confianza |
+|---|---|---|
+| Puerto Arduino | **`Serial1`** | ✅ |
+| Pin Arduino RX (recibe de CENTRAL) | **0** | ✅ |
+| Pin Arduino TX (envía a CENTRAL) | **1** | ✅ |
+| Pin header Teensy 4.0 | header 32 (RX) + header 31 (TX) | ✅ |
+| Net del schematic | `RX1` / `TX1` | ✅ |
+| Conector físico en el PCB | **U11** (4 pines) | ✅ |
+| Placa destino | **CENTRAL** (Teensy 4.1 cerebro/motores) | ✅ confirmado en `down/comm_central.h:10-11` y `central/comm_down.h:3` |
+| Tráfico DOWN→CENTRAL | LINE_URGENT (medición cruda: ángulo + profundidad signed) @ **100–200 Hz** | ✅ |
+| Tráfico CENTRAL→DOWN | Comandos administrativos (calibrar línea, reset OTOS) | ✅ |
+| Baud | **230400** (usa mismo `UART_TOP_BAUD`, ver `down/comm_central.cpp:56`) | ✅ |
+| Latencia objetivo | **< 15 ms** desde detección de blanco en sensor hasta PWM en motor | 🎯 |
+
+> **¿Por qué dos UARTs en vez de uno solo a TOP?** Decisión arquitectónica del
+> repo (ver `docs/decisions/2026-05-18-diseno-comunicaciones-robusto-definitivo.md`):
+> el bus de emergencia DOWN→CENTRAL es directo para no agregar la latencia del
+> TOP en el camino crítico de fail-safe de borde. El TOP recibe el mismo
+> LINE_STATUS por su propio canal (Serial5) para mantener el WorldSnapshot
+> consistente, pero la reacción rápida del cerebro corre por el bus de
+> emergencia.
+
+### 7.3 Resumen visual
+
+```
+                       ┌──────────────────┐
+                       │   placa TOP      │  (Teensy 4.0, master)
+                       │  cámaras + IMU   │
+                       └────────▲─────────┘
+                                │ Serial5
+                                │ pines 21/20
+                                │ conector U10
+                                │ 230400 baud
+                                │ frames: LINE_STATUS + OTOS_POSE + OTOS_VEL @ 100 Hz
+       ┌────────────────────────┴─────────────────────────┐
+       │                placa DOWN (Teensy 4.0, U7)         │
+       │   32 sensores luz + 2 OTOS                         │
+       └────────────────────────┬─────────────────────────┘
+                                │ Serial1
+                                │ pines 0/1
+                                │ conector U11
+                                │ 230400 baud
+                                │ frames: LINE_URGENT @ 100–200 Hz (lat <15ms)
+                       ┌────────▼─────────┐
+                       │  placa CENTRAL   │  (Teensy 4.1, cerebro)
+                       │  motores + FSM   │
+                       └──────────────────┘
+```
 
 ## 8. Alimentación
 
@@ -382,15 +494,24 @@ Baud rate típico para placas Teensy: **230400** (config actual). ✅
 | **+3.3V net** | Alimenta CD4051 (VDD pin 16), OTOS (+3V3) | Confirmado por schematic ✅ |
 | **+5V net** | Alimenta Teensy VIN (pin 1 del header) | Confirmado ✅ |
 
-## 9. Conector de control aux U11
+## 9. Conector U11 — UART hacia CENTRAL (bus de emergencia)
 
-El schematic muestra U11 (header 4 pines) conectado a Serial1 (RX1/TX1) +
-una señal extra "E1". ❓ Propósito no documentado. Posibles usos:
-- Debug serial.
-- UART hacia otra placa (¿COMM ESP32-C6? ¿Display externo?).
-- Provisión para módulo futuro.
+Header de 4 pines en el PCB. Confirmado por el código en
+`src/down/comm_central.{h,cpp}`:
+- Pines de señal del conector: **RX1** (pin Arduino 0) + **TX1** (pin Arduino 1)
+  del Teensy 4.0, vía Serial1.
+- **Placa al otro lado del cable**: **CENTRAL** (Teensy 4.1).
+- Función: transporta frames `LINE_URGENT` desde DOWN a CENTRAL @ 100–200 Hz,
+  con latencia objetivo < 15 ms para alimentar el fail-safe de borde del cerebro.
+- En el sentido inverso (CENTRAL→DOWN), CENTRAL manda comandos administrativos
+  (calibrar línea, reset OTOS).
 
-Pendiente preguntar a Enzo.
+La señal "E1" que aparece en el schematic en U11 es la net del **selector A
+del mux U1** (= pin Arduino 13 / pin header 14 SCK). Pasa cerca del conector
+por routing del PCB pero **no es parte del cableado del conector** — sólo
+forma parte del bus de selección del mux. Se aclara para evitar confusión.
+
+Ver §7.2 para la spec completa de este UART.
 
 ## 10. Cambios necesarios en el firmware
 
@@ -415,6 +536,22 @@ constexpr int PIN_MUX_OUT[4] = { A0, A1, A8, A9 };
 
 // Mapeo channel del mux → sensor lógico (orden de scrambling de Enzo)
 constexpr uint8_t MUX_CH_FOR_SENSOR[8] = { 3, 0, 1, 2, 5, 7, 6, 4 };
+
+// === I²C — OTOS (ambos chips, dirección 0x17 default SparkFun) ===
+// Cada OTOS en SU PROPIO bus porque comparten dirección de fábrica.
+constexpr uint8_t OTOS_I2C_ADDR = 0x17;     // mismo para U5 y U6
+// U5 → Wire  (I²C0): SDA=18, SCL=19  (default Teensy 4.0 → no se setea)
+// U6 → Wire1 (I²C1): SDA=17, SCL=16  (default Teensy 4.0 → no se setea)
+// (En código: simplemente `Wire.begin()` y `Wire1.begin()` — pines ya correctos.)
+
+// === UARTs — dos canales separados a dos placas distintas ===
+// Canal principal a TOP (Serial5 → conector U10):
+constexpr long UART_TOP_BAUD     = 230400;
+// Pines (info — Arduino los infiere de Serial5): RX=21, TX=20
+
+// Bus de emergencia a CENTRAL (Serial1 → conector U11):
+constexpr long UART_CENTRAL_BAUD = 230400;
+// Pines (info — Arduino los infiere de Serial1): RX=0, TX=1
 ```
 
 ### `line_ring.cpp` — reescribir `sample_all_sensors_hardware()`
@@ -469,10 +606,12 @@ analogReadResolution(10);
 
 **P1 — útiles para interpretar datos:**
 
-5. **Enzo**: confirmar para qué se usa el conector U11 (Serial1 + E1).
-6. **Enzo**: confirmar que el centro del PCB ≈ centro del robot (offset de
+5. **Enzo**: confirmar que el centro del PCB ≈ centro del robot (offset de
    montaje < ~5 mm). Si no, anotar el offset (dx, dy) en mm para sumarlo a
    `SENSOR_POS[]` en firmware.
+
+   *(El uso del conector U11 ya se confirmó por el código: Serial1 → CENTRAL,
+   bus de emergencia LINE_URGENT. Ver §7.2.)*
 
 **P2 — útil pero no bloqueante:**
 

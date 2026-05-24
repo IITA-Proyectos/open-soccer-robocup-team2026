@@ -8,7 +8,7 @@
 >
 > Vendoreadas el 2026-05-19, código fuente **podado** (sin `examples/`,
 > `examples_processing/`, `docs/` — solo lo que el compilador necesita).
-> Total: ~475 KB.
+> Total: ~1.2 MB (incluye VL53L7CX vendoreada 2026-05-24 con firmware blob ~595 KB).
 
 ## Contenido
 
@@ -18,6 +18,7 @@
 | `Adafruit_BNO055/` | Driver IMU BNO055 | `top`, `central_robot1`, `central_robot2` | adafruit/Adafruit BNO055 1.6.x |
 | `Adafruit_BusIO/` | I2C/SPI helper (dep. de BNO055) | idem | adafruit/Adafruit BusIO |
 | `Adafruit_Unified_Sensor/` | Interfaz de sensor (dep. de BNO055) | idem | adafruit/Adafruit Unified Sensor |
+| `STM32duino_VL53L7CX/` | Driver ToF multizona VL53L7CX | `diag_top_tof` (futuro `top` cuando se integre) | stm32duino/VL53L7CX |
 
 ## Cómo funciona
 

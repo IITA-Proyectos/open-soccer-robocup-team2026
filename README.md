@@ -63,6 +63,28 @@ El robot 2026 usa una **arquitectura distribuida de 3 placas** especializadas (C
 - [`FIRMWARE-PLACA-ARRIBA.md`](docs/firmware/FIRMWARE-PLACA-ARRIBA.md) — cerebro sensorial (2 cámaras + 2 IMU + 4 ToF multizona + comm árbitros + partner ESP-NOW)
 - [`FIRMWARE-PLACA-CENTRAL.md`](docs/firmware/FIRMWARE-PLACA-CENTRAL.md) — cerebro decisor + ejecutor (FSM táctica + 3 PIDs + cinemática inversa omni-3 + motores + encoders opcionales)
 
+## 📦 Packs autocontenidos por subsistema
+
+Para **programar, calibrar o diagnosticar** un subsistema específico del robot,
+hay un **pack autocontenido** en `hardware/electronics/<subsistema>-pack/`
+con TODO lo necesario en un solo lugar (docs + snapshot del firmware vivo +
+tests + ground-truth):
+
+| Pack | Para qué |
+|---|---|
+| 📦 [`hardware/electronics/down-board-pack/`](hardware/electronics/down-board-pack/) | Placa **DOWN** (32 sensores de línea + 2 OTOS) |
+| 📦 [`hardware/electronics/central-board-pack/`](hardware/electronics/central-board-pack/) | Placa **CENTRAL** (Zircon, FSM + motores + PIDs) |
+| 📦 [`hardware/electronics/top-board-pack/`](hardware/electronics/top-board-pack/) | Placa **TOP** (master de cámaras + IMU + ToF) |
+| 📦 [`hardware/electronics/cameraFront-pack/`](hardware/electronics/cameraFront-pack/) | Cámara **OpenMV frontal** |
+| 📦 [`hardware/electronics/cameraBack-pack/`](hardware/electronics/cameraBack-pack/) | Cámara **OpenMV trasera** |
+
+👉 **Punto de entrada**: [`hardware/electronics/PACKS-INDEX.md`](hardware/electronics/PACKS-INDEX.md) — índice maestro con "qué pack abrir para qué tarea".
+
+Cada pack tiene su propio `README.md` con un **índice "pregunta → doc"**. Si
+vas a tocar un subsistema, abrir el pack antes que cualquier otro doc del
+repo. Los packs son snapshots del 2026-05-24 — si contradicen al código vivo
+en `software/teensy/Soccer 2026/src/...`, **gana el código vivo**.
+
 ## Cómo contribuir
 
 Leer **[CONTRIBUTING.md](CONTRIBUTING.md)** antes de hacer cualquier cambio. Incluye reglas de atribución, uso de IA, y formato de commits.

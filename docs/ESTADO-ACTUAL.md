@@ -13,6 +13,21 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+## 📦 Para programar un subsistema: usar los packs
+
+Hay 5 packs autocontenidos en `hardware/electronics/` (uno por subsistema
+programable). Cada uno tiene TODO en un solo lugar: docs curados + snapshot
+del firmware vivo + tests + ground-truth.
+
+Punto de entrada: **[`hardware/electronics/PACKS-INDEX.md`](../hardware/electronics/PACKS-INDEX.md)**.
+
+Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
+`cameraFront-pack/`, `cameraBack-pack/`. Cada uno tiene `README.md` con
+"índice pregunta → doc".
+
+> Los packs son snapshot del 2026-05-24. Si contradicen al código vivo del
+> repo (`software/teensy/.../src/`), **gana el código vivo**.
+
 ## Calendario crítico
 
 - **Incheon 2026** — 30-jun a 6-jul (≈42 días).

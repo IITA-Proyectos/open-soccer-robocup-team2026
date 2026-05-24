@@ -1,24 +1,21 @@
 // config_down.h — Pinout y constantes del firmware de la placa DOWN
 // (placa base con 32 sensores de luz + 2 SparkFun OTOS, Teensy 4.0 U7)
 //
-// El pinout se infiere del schematic 04-12 (PCB_PCB_Roboliga_2026_Futbol_2026-04-12.json).
-// 7 de los pads del Teensy 4.0 en la placa DOWN son entradas analógicas (A0-A6) y
-// se usan para las salidas O1-O4 de los CD4051. Las señales E1-E12 controlan A/B/C
-// de los muxes y los INH (enable) individuales.
+// Pinout EXTRAÍDO del schematic 04-12 (PCB_PCB_Roboliga_2026_Futbol_2026-04-12.json)
+// y VALIDADO EMPÍRICAMENTE 2026-05-24 con la placa física en el banco — los 4 muxes
+// leen los 32 sensores correctamente, verdict 0 muertos. Ver:
+//   - hardware/electronics/down-board-pack/01-pinout-y-posiciones.md (doc canónico)
+//   - journal/2026-05-24-hardware-up-down-anillo-linea.md (hardware-up con datos)
 //
-// ⚠️ HARDWARE STATUS (auditoria PCB 04-12, 2026-05-10):
-//   En el PCB ruteado solo aparecen tracks para: O4, SDA2, SCL2, RX5, TX5, RX1, TX1.
-//   FALTAN tracks para: O1, O2, O3, SDA1, SCL1, E1, E6, E7, E11.
-//   Eso significa que SI las placas físicas que llegaron son del 04-12, solo el
-//   mux U4 (8 sensores) y uno de los dos OTOS funcionan. Ver TASK-001 / TASK-009.
+// Hallazgo importante: cada CD4051 tiene SUS PROPIOS 3 pines de selección A/B/C
+// (NO compartidos como decía un doc viejo). Total: 12 pines SEL + 4 pines ADC.
+// Los pines INH están atados a GND físico en el PCB — el firmware NO los controla.
 //
-//   Para soportar ambas situaciones (placa actual con bug o placa fixeada),
-//   usamos los siguientes flags de compilación:
-//     -DDOWN_NUM_MUXES_CONNECTED=1  → modo degradado, solo mux U4 (8 sensores).
-//     -DDOWN_NUM_MUXES_CONNECTED=4  → modo full, los 4 muxes (32 sensores).
-//     -DDOWN_NUM_OTOS_CONNECTED=1   → solo el OTOS de SDA2/SCL2.
-//     -DDOWN_NUM_OTOS_CONNECTED=2   → ambos OTOS (placa fixeada).
-//   Defaults conservadores: 1 mux + 1 OTOS (lo que funciona seguro hoy).
+// Flags de compilación (defaults conservadores para evitar lecturas al aire):
+//   -DDOWN_NUM_MUXES_CONNECTED=1  → solo mux U4 (8 sensores, placa degradada).
+//   -DDOWN_NUM_MUXES_CONNECTED=4  → modo full, los 4 muxes (32 sensores). [validado]
+//   -DDOWN_NUM_OTOS_CONNECTED=1   → solo el OTOS U5 (Wire).
+//   -DDOWN_NUM_OTOS_CONNECTED=2   → ambos OTOS (U5 + U6).
 
 #pragma once
 #include <stdint.h>
@@ -47,19 +44,30 @@ constexpr int NUM_OTOS            = DOWN_NUM_OTOS_CONNECTED;
 // ============================================================
 
 // Entradas analógicas de los 4 muxes (O1..O4 del schematic).
-// Solo O4 está ruteado en el PCB 04-12 confirmado. Los demás son tentativos.
-constexpr int PIN_MUX_OUT[4] = { A0, A1, A2, A3 };
+// Pines correctos según schematic: A0/A1/A8/A9 (NO A2/A3 — esos van a SCL2/SDA2 del OTOS U6).
+// Validado empíricamente 2026-05-24: con A2/A3 los muxes U3+U4 leían 1023 sólido (ADC flotante
+// con pull-ups I²C). Con A8/A9 → ver test plan al final del archivo.
+constexpr int PIN_MUX_OUT[4] = { A0, A1, A8, A9 };
 
-// Líneas de selección compartidas A, B, C entre los 4 muxes.
-// Mapeo tentativo (a confirmar): E10=C, E11=B, E12=A según el schematic.
-// Asignaciones específicas del Teensy: pendiente Q3-similar para DOWN.
-constexpr int PIN_MUX_SEL_A = 2;
-constexpr int PIN_MUX_SEL_B = 3;
-constexpr int PIN_MUX_SEL_C = 4;
+// Selectores A/B/C de cada mux — NO compartidos. 3 pines por mux × 4 muxes = 12 pines.
+// Pines correctos según schematic 2026-04-12 (extract_pinout_from_schematic.py).
+// Validado empíricamente 2026-05-24: con SEL compartidos {2,3,4} los 8 canales de U3+U4
+// daban todos el mismo valor (solo 1 de cada 8 sensores se leía). Con SEL por mux,
+// los 8 canales rotan correctamente.
+constexpr int PIN_MUX_A[4] = { 13, 4, 7, 10 };  // SEL_A de U1, U2, U3, U4
+constexpr int PIN_MUX_B[4] = {  2, 5, 8, 11 };  // SEL_B de U1, U2, U3, U4
+constexpr int PIN_MUX_C[4] = {  3, 6, 9, 12 };  // SEL_C de U1, U2, U3, U4
 
-// Líneas de habilitación individuales por mux (INH activo bajo).
-// E5, E6, E7, E8 del schematic.
-constexpr int PIN_MUX_INH[4] = { 5, 6, 7, 8 };
+// Mapeo canal_del_mux → sensor_lógico (scrambling de Enzo, mismo patrón los 4 muxes).
+// Para leer el sensor i (i=0..7) del mux m: ch = MUX_CH_FOR_SENSOR[i].
+constexpr uint8_t MUX_CH_FOR_SENSOR[8] = { 3, 0, 1, 2, 5, 7, 6, 4 };
+
+// INH (Enable) de los 4 muxes está atado a GND fijo en el PCB — el firmware NO
+// lo controla. Por eso se eliminó el array PIN_MUX_INH[] anterior.
+
+// ⚠️ PIN_LED_STATUS = 13 colisiona físicamente con PIN_MUX_A[0]. Es así en el PCB
+// (Enzo compartió ambas funciones en el mismo pin). El LED parpadea con SEL_A de
+// U1 — inevitable, no afecta la lectura del ADC.
 
 // ============================================================
 // SparkFun OTOS (I2C dual)

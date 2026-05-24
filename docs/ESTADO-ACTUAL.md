@@ -95,11 +95,18 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - TASK-023 (Virginia/Enzo): build/tooling CI
 - TASK-024 (Virginia/Elías): arranque rol/polaridad arco
 
-## Bloqueantes Incheon (los 3 que importan)
+## Bloqueantes Incheon (los 2 que importan)
 
 1. **COMM no flasheada** → robot no homologa (no recibe START/STOP árbitro). TASK-006.
-2. **DOWN — pinout Teensy↔mux NO confirmado** (descubierto 2026-05-19): `config_down.h` tiene los pines como "tentativos"; el diag_down corrió con esos números inventados y reportó "16 sensores muertos" — falsa alarma. Enzo confirmó que físicamente andan los 32. **Bloqueante real**: hasta que Enzo pase el mapeo correcto (**TASK-026**) ningún test del anillo es válido. Ver postmortem `journal/2026-05-19-diagnostico-down-fallido-config-tentativo.md`.
-3. **Cámaras sin recalibrar para iluminación Incheon** → no ve la pelota. TASK-022.
+2. **Cámaras sin recalibrar para iluminación Incheon** → no ve la pelota. TASK-022.
+
+### Resuelto 2026-05-24
+- ~~**DOWN — pinout Teensy↔mux NO confirmado**~~ → **VALIDADO EMPÍRICAMENTE.**
+  Gustavo + Claude (ejecución directa) aplicaron el mapeo del doc canónico
+  (`hardware/electronics/down-board-pack/01-pinout-y-posiciones.md`) al
+  firmware (config_down.h + line_ring.cpp). Verdict del diag_capture: 0
+  muertos, los 32 sensores responden. TASK-026 bajó de P0 a P2. Ver
+  `journal/2026-05-24-hardware-up-down-anillo-linea.md`.
 
 ## Regla operativa (CLAUDE.md actualizado 2026-05-19)
 

@@ -39,18 +39,21 @@ uint32_t g_last_tick_us = 0;
 
 constexpr uint8_t IMMINENT_EXIT_DEPTH = 3;
 
-void select_mux_channel(uint8_t ch) {
-    digitalWrite(PIN_MUX_SEL_A, (ch & 0x01) ? HIGH : LOW);
-    digitalWrite(PIN_MUX_SEL_B, (ch & 0x02) ? HIGH : LOW);
-    digitalWrite(PIN_MUX_SEL_C, (ch & 0x04) ? HIGH : LOW);
-}
-
 void sample_all_sensors_hardware() {
-    for (uint8_t ch = 0; ch < NUM_SENSORS_PER_MUX; ++ch) {
-        select_mux_channel(ch);
+    // Para cada uno de los 8 sensores lógicos por mux, calcular el canal real
+    // del CD4051 según el scrambling de Enzo (MUX_CH_FOR_SENSOR), setear los
+    // selectores de los 4 muxes simultáneamente (12 pines = 4 muxes × A/B/C),
+    // esperar a que el mux asiente, y leer los 4 ADC en una sola pasada.
+    for (uint8_t i = 0; i < NUM_SENSORS_PER_MUX; ++i) {
+        const uint8_t ch = MUX_CH_FOR_SENSOR[i];
+        for (int m = 0; m < DOWN_NUM_MUXES_CONNECTED; ++m) {
+            digitalWrite(PIN_MUX_A[m], (ch & 0x01) ? HIGH : LOW);
+            digitalWrite(PIN_MUX_B[m], (ch & 0x02) ? HIGH : LOW);
+            digitalWrite(PIN_MUX_C[m], (ch & 0x04) ? HIGH : LOW);
+        }
         delayMicroseconds(5);  // settle time CD4051
         for (int m = 0; m < DOWN_NUM_MUXES_CONNECTED; ++m) {
-            const uint8_t idx = m * NUM_SENSORS_PER_MUX + ch;
+            const uint8_t idx = m * NUM_SENSORS_PER_MUX + i;
             g_raw[idx] = static_cast<uint16_t>(analogRead(PIN_MUX_OUT[m]));
         }
     }
@@ -68,14 +71,13 @@ void reset_filter_state() {
 }  // namespace
 
 void line_ring_init() {
-    pinMode(PIN_MUX_SEL_A, OUTPUT);
-    pinMode(PIN_MUX_SEL_B, OUTPUT);
-    pinMode(PIN_MUX_SEL_C, OUTPUT);
-
+    // 12 pines de selección (A/B/C por cada mux, no compartidos).
     for (int m = 0; m < DOWN_NUM_MUXES_CONNECTED; ++m) {
-        pinMode(PIN_MUX_INH[m], OUTPUT);
-        digitalWrite(PIN_MUX_INH[m], LOW);  // 0 = mux habilitado
+        pinMode(PIN_MUX_A[m], OUTPUT);
+        pinMode(PIN_MUX_B[m], OUTPUT);
+        pinMode(PIN_MUX_C[m], OUTPUT);
     }
+    // INH atado a GND físico en el PCB — no se controla por firmware.
 
     // Calibración default: a la espera de calibración real con carpet/white.
     for (int i = 0; i < NUM_LINE_SENSORS; ++i) {

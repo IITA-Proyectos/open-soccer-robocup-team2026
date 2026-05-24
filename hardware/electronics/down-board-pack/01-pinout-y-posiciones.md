@@ -5,23 +5,27 @@ author: "Claude (Anthropic - Claude Opus 4.7 1M)"
 requested-by: "Gustavo Viollaz (@gviollaz)"
 ai-assisted: true
 ai-tool: "Claude Code (Opus 4.7 1M, Anthropic)"
-status: borrador-para-validar
-tags: [electronica, down-board, pinout, mux, cd4051, teensy-4.0, fuente-de-verdad, validacion-pendiente]
+status: validado-empiricamente-2026-05-24
+tags: [electronica, down-board, pinout, mux, cd4051, teensy-4.0, fuente-de-verdad]
 robot: ambos
 area: electronica
 tipo: referencia
 fuente: SCH_Roboliga_2026_Futbol_2026-04-12.json (schematic EasyEDA)
-validacion-pendiente: [Enzo (diseñador PCB), Virginia/Elías (medición con multímetro en banco)]
+validacion: "Empírica 2026-05-24 (Gustavo + Claude en banco): verdict diag 0 muertos, 32 sensores responden. Validación con multímetro (TASK-026) pendiente como red de seguridad, no bloqueante."
 ---
 
 # Pinout COMPLETO de la placa DOWN (Roboliga 2026 Futbol)
 
-> **Status: BORRADOR a validar (2026-05-19).** Este documento es la propuesta
-> de fuente de verdad para el pinout de la placa DOWN. Está extraído
-> automáticamente del schematic EasyEDA
+> **Status: VALIDADO EMPÍRICAMENTE (2026-05-24).** Este documento fue extraído
+> automáticamente del schematic EasyEDA y validado en banco con la placa física:
+> el firmware actualizado con este mapeo lee los 32 sensores correctamente
+> (verdict del diag_capture = 0 muertos). Ver `journal/2026-05-24-hardware-up-down-anillo-linea.md`.
+> El cierre formal con multímetro de Enzo (TASK-026 sección §11) sigue siendo
+> deseable como red de seguridad pero **ya no bloquea** el uso de este pinout.
+>
+> Extracción original (2026-05-19): parsing del JSON
 > (`hardware/electronics/pcb_design/down_board/SCH_Roboliga_2026_Futbol_2026-04-12.json`)
-> mediante parsing del JSON + union-find sobre las wires + cruce con el pinout
-> oficial PJRC del Teensy 4.0.
+> + union-find sobre las wires + cruce con el pinout oficial PJRC del Teensy 4.0.
 >
 > Reemplaza el contenido equivalente de
 > `hardware/electronics/mapa-pines-placas-nuevas.md` (sección DOWN) cuya

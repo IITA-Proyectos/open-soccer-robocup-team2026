@@ -3,12 +3,23 @@ id: TASK-026
 title: "Confirmar mapeo físico de pines del PCB DOWN: Teensy ↔ CD4051 (muxes)"
 date_created: 2026-05-19
 assigned: [enzzo195]
-priority: P0
-status: pending
+priority: P2
+status: validated-empirically
 estimated_hours: 1
-blocks: [hardware-up DOWN, todos los tests con sensores reales, line_ring funcional]
-tags: [hardware, pcb, down-board, mux, pinout, bloqueante]
+blocks: []
+tags: [hardware, pcb, down-board, mux, pinout]
 ---
+
+> **Update 2026-05-24** — VALIDADA EMPÍRICAMENTE en banco con la placa física.
+> Gustavo + Claude (sesión ejecución directa) aplicaron el mapeo del doc
+> `01-pinout-y-posiciones.md` al firmware (config_down.h + line_ring.cpp) y
+> corrieron el verdict del diag_capture: **0 muertos / 9 OK / 22 SOSPECHOSO**
+> (los SOSPECHOSO responden bien, solo no llegan al umbral 300 del script
+> calibrado para cancha real). Ver journal `2026-05-24-hardware-up-down-anillo-linea.md`.
+>
+> **Ya NO bloquea el hardware-up de DOWN.** Baja de P0 a P2. El cierre formal
+> (multímetro de Enzo en 2-3 nets representativas, §"Por Virginia/Elías" de
+> abajo) sigue siendo deseable como red de seguridad pero no urgente.
 
 # TASK-026 — Confirmar pinout Teensy ↔ CD4051 en placa DOWN
 
@@ -131,3 +142,7 @@ _(actualizar cuando se ejecute)_
 - 2026-05-19: creada tras detectar que el diagnóstico de sensores fallaba
   por config tentativa. Enzo confirmó verbalmente que los 32 sensores
   físicos andan; necesitamos formalizar el mapeo para que el firmware lo use.
+- 2026-05-24: validated-empirically. Mapeo del doc canónico aplicado al
+  firmware (commit con journal del mismo día). Verdict del diag: 0 muertos,
+  los 32 sensores responden. P0→P2. Falta solo el cierre formal con
+  multímetro (no bloqueante).

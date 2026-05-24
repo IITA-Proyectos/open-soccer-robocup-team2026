@@ -15,6 +15,23 @@ Abrir Claude (o cualquier asistente de código) **en la raíz del repo**:
 C:\Users\violl\iitasoccer\open-soccer-robocup-team2026
 ```
 
+> ⚠️ **CONFIRMAR PATH EXACTO**: en la máquina de Gustavo puede haber más
+> de un clone del repo (por ejemplo `C:\Users\violl\futbol2026\...` además
+> del de arriba). **El clone canónico es el de `iitasoccer/`**. Si abrís
+> Claude en otro clone, va a ver una versión vieja sin los packs (porque
+> los `git push` van a GitHub pero NO se replican automáticamente entre
+> clones locales).
+>
+> **Antes de empezar, en la terminal verificá** que estás en el clone
+> correcto y al día:
+> ```bash
+> pwd                                  # debe ser /c/Users/violl/iitasoccer/open-soccer-robocup-team2026
+> git status                           # debe decir: On branch main, up to date with origin/main
+> ls hardware/electronics/down-board-pack/README.md   # debe existir
+> ```
+> Si la carpeta `down-board-pack/` NO existe → estás en el clone
+> equivocado o no hiciste `git pull origin main`.
+
 > ⚠️ **No abrir Claude dentro de la carpeta del pack** (`hardware/electronics/down-board-pack/`).
 > Razón: el código que se va a **modificar** vive en `software/teensy/Soccer 2026/src/down/`,
 > NO dentro del pack. El pack es solo un snapshot curado para entender el

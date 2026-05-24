@@ -18,15 +18,39 @@
 // operación. Creado 2026-05-19 para el hardware-up de la placa DOWN.
 
 #include <Arduino.h>
+#include <Wire.h>
 #include "config_down.h"
 #include "line_ring.h"
 #include "otos.h"
 
 using namespace iitasoccer;
 
+// I²C scanner — recorre todos los addresses 7-bit (1..127) en un bus dado y
+// reporta los que responden con ACK. Útil para diagnosticar OTOS y otros chips
+// I²C antes de cualquier inicialización específica de driver.
+static void scan_i2c_bus(TwoWire& bus, const char* bus_name) {
+    Serial.print("[i2c-scan] ");
+    Serial.print(bus_name);
+    Serial.print(": ");
+    int found = 0;
+    for (uint8_t addr = 1; addr < 128; ++addr) {
+        bus.beginTransmission(addr);
+        if (bus.endTransmission() == 0) {
+            if (found > 0) Serial.print(", ");
+            Serial.print("0x");
+            if (addr < 16) Serial.print('0');
+            Serial.print(addr, HEX);
+            ++found;
+        }
+    }
+    if (found == 0) Serial.print("(sin dispositivos — bus vacio o sin pull-ups o sin power 3V3)");
+    Serial.println();
+}
+
 namespace {
 elapsedMillis g_since_print;
 elapsedMicros g_since_line_tick;
+elapsedMillis g_since_i2c_scan;
 }  // namespace
 
 void setup() {
@@ -49,15 +73,22 @@ void setup() {
     line_ring_init();
     Serial.println("[diag] line_ring init OK");
 
+    // I²C scan ANTES de otos_init: dice qué dispositivos hay físicamente en
+    // cada bus. Si los buses dan vacío en ambos, problema de hardware (power
+    // 3V3 caído, pull-ups SDA/SCL ausentes, o chips desoldados).
+    Wire.begin();
+    Wire1.begin();
+    delay(50);  // dejar que los buses se estabilicen
+    scan_i2c_bus(Wire,  "Wire  (I2C0, SDA=18 SCL=19, OTOS U5)");
+    scan_i2c_bus(Wire1, "Wire1 (I2C1, SDA=17 SCL=16, OTOS U6)");
+    Serial.println();
+
     const bool otos_ok = otos_init();
     Serial.print("[diag] OTOS init: L=");
     Serial.print(otos_is_left_ready() ? "OK" : "--");
     Serial.print(" R=");
     Serial.print(otos_is_right_ready() ? "OK" : "--");
     Serial.println(otos_ok ? "" : "  (ninguno responde)");
-    Serial.println("[diag] OJO: OTOS esta en modo STUB (lib SparkFun sin");
-    Serial.println("       integrar, TASK-012). Va a reportar valores 0");
-    Serial.println("       aunque el chip este. Los sensores de LUZ son reales.");
     Serial.println();
 
     Serial.println("[diag] Calibrando carpet... NO mover la placa (~0.5 s)");
@@ -77,6 +108,13 @@ void loop() {
     }
     if (NUM_OTOS >= 1) {
         otos_tick();
+    }
+
+    // I²C scan cada 5 segundos — útil para diagnóstico en vivo.
+    if (g_since_i2c_scan >= 5000) {
+        g_since_i2c_scan = 0;
+        scan_i2c_bus(Wire,  "Wire  (I2C0, OTOS U5)");
+        scan_i2c_bus(Wire1, "Wire1 (I2C1, OTOS U6)");
     }
 
     // Volcar el estado por Serial cada 300 ms.
@@ -106,7 +144,7 @@ void loop() {
         Serial.print("  levantada=");
         Serial.println(line_ring_is_lifted() ? "SI" : "no");
 
-        // --- OTOS (stub — ver aviso del setup) ---
+        // --- OTOS (pose fusionada + estado de los 2 chips) ---
         Serial.print("    OTOS: x=");
         Serial.print(otos_get_x_mm(), 1);
         Serial.print(" y=");

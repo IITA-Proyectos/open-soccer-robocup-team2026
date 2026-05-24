@@ -4,25 +4,23 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <cmath>
+#include <SparkFun_Qwiic_OTOS_Arduino_Library.h>
 
 // ============================================================================
-// La librería oficial de SparkFun es "SparkFun_Qwiic_OTOS_Arduino_Library".
-// Hasta confirmar instalación en platformio.ini, dejamos un stub que reporta
-// "no disponible" y todos los datos retornan 0. Cuando la lib esté instalada,
-// reemplazar el bloque ENTRE las marcas TODO_OTOS_LIB.
+// SparkFun Qwiic OTOS lib activada 2026-05-24 (TASK-012).
+// API: getPosition/getVelocity con sfe_otos_pose2d_t {x, y, h}.
+// Unidades seteadas en init: linear=meters, angular=degrees. Convertidos a
+// mm y rad/s en otos_tick() para mantener el contrato del resto del firmware.
+// Bus físico: U5 → Wire (I²C0, SDA=18 SCL=19); U6 → Wire1 (I²C1, SDA=17 SCL=16).
+// (Antes este comentario decía "Wire2 / I2C2" — typo viejo corregido 2026-05-24.)
 // ============================================================================
-
-// TODO_OTOS_LIB_BEGIN
-//
-// #include <SparkFun_Qwiic_OTOS_Arduino_Library.h>
-// static QwiicOTOS g_otos_left;   // I2C0 (Wire)
-// static QwiicOTOS g_otos_right;  // I2C2 (Wire2)
-//
-// TODO_OTOS_LIB_END
 
 namespace iitasoccer {
 
 namespace {
+
+QwiicOTOS g_otos_left;   // U5 → Wire  (I²C0)
+QwiicOTOS g_otos_right;  // U6 → Wire1 (I²C1)
 
 bool  g_left_ready = false;
 bool  g_right_ready = false;
@@ -39,11 +37,7 @@ uint32_t g_tick_count = 0;
 float g_left_x = 0.0f,  g_left_y = 0.0f,  g_left_h = 0.0f;
 float g_right_x = 0.0f, g_right_y = 0.0f, g_right_h = 0.0f;
 
-// Última velocidad de cada OTOS. Mientras la lib SparkFun esté comentada,
-// quedan en 0 → los getters de velocidad retornan 0 (igual que antes).
-// Cuando se descomente TODO_OTOS_LIB, el bloque de otos_tick las llena y la
-// fusión de abajo computa g_vx/g_vy/g_omega. Esto cierra el bug latente:
-// antes g_vx/g_vy/g_omega NUNCA se asignaban ni con la lib activa.
+// Última velocidad de cada OTOS.
 float g_left_vx = 0.0f,  g_left_vy = 0.0f,  g_left_w = 0.0f;
 float g_right_vx = 0.0f, g_right_vy = 0.0f, g_right_w = 0.0f;
 
@@ -53,25 +47,30 @@ bool otos_init() {
     Wire.begin();
     Wire1.begin();
 
-    // STUB: hasta que SparkFun OTOS lib esté instalada, asumir que respondieron.
-    // Reemplazar por las llamadas reales a la lib SparkFun cuando esté instalada.
-    g_left_ready = (NUM_OTOS >= 1);
-    g_right_ready = (NUM_OTOS >= 2);
+    g_left_ready = false;
+    g_right_ready = false;
 
-    // TODO_OTOS_LIB_BEGIN
-    // if (NUM_OTOS >= 1) {
-    //     g_otos_left.begin(Wire);
-    //     g_otos_left.calibrateImu();
-    //     g_otos_left.resetTracking();
-    //     g_left_ready = g_otos_left.isConnected();
-    // }
-    // if (NUM_OTOS >= 2) {
-    //     g_otos_right.begin(Wire1);
-    //     g_otos_right.calibrateImu();
-    //     g_otos_right.resetTracking();
-    //     g_right_ready = g_otos_right.isConnected();
-    // }
-    // TODO_OTOS_LIB_END
+    // QwiicOTOS::begin() retorna bool: true si respondió I²C, false si no.
+    // Si responde: seteamos unidades a m + deg, calibramos IMU (~0.5 s bloqueante
+    // con default numSamples=255), y reseteamos tracking a (0, 0, 0).
+    if (NUM_OTOS >= 1) {
+        g_left_ready = g_otos_left.begin(Wire);
+        if (g_left_ready) {
+            g_otos_left.setLinearUnit(kSfeOtosLinearUnitMeters);
+            g_otos_left.setAngularUnit(kSfeOtosAngularUnitDegrees);
+            g_otos_left.calibrateImu();
+            g_otos_left.resetTracking();
+        }
+    }
+    if (NUM_OTOS >= 2) {
+        g_right_ready = g_otos_right.begin(Wire1);
+        if (g_right_ready) {
+            g_otos_right.setLinearUnit(kSfeOtosLinearUnitMeters);
+            g_otos_right.setAngularUnit(kSfeOtosAngularUnitDegrees);
+            g_otos_right.calibrateImu();
+            g_otos_right.resetTracking();
+        }
+    }
 
     return g_left_ready || g_right_ready;
 }
@@ -79,39 +78,27 @@ bool otos_init() {
 void otos_tick() {
     g_tick_count++;
 
-    // TODO_OTOS_LIB_BEGIN
-    // sfe_otos_pose2d_t pl{}, pr{};
-    // sfe_otos_velocity2d_t vl{}, vr{};
-    // if (g_left_ready)  { g_otos_left.getPose(pl);  g_otos_left.getVelocity(vl); }
-    // if (g_right_ready) { g_otos_right.getPose(pr); g_otos_right.getVelocity(vr); }
-    // g_left_x = pl.x * 25.4f; g_left_y = pl.y * 25.4f; g_left_h = pl.h * 180.0f / M_PI;
-    // g_right_x = pr.x * 25.4f; g_right_y = pr.y * 25.4f; g_right_h = pr.h * 180.0f / M_PI;
-    // // Velocity (cierra el bug latente — antes g_vx/g_vy/g_omega quedaban en 0):
-    // g_left_vx  = vl.x * 25.4f; g_left_vy  = vl.y * 25.4f; g_left_w  = vl.h;
-    // g_right_vx = vr.x * 25.4f; g_right_vy = vr.y * 25.4f; g_right_w = vr.h;
-    // TODO_OTOS_LIB_END
+    // Lectura I²C de los 2 OTOS. sfe_otos_pose2d_t = {float x, y, h}.
+    // Position en metros (m), Velocity en m/s, Heading en grados, ω en deg/s
+    // (porque seteamos linear=meters + angular=degrees en otos_init).
+    sfe_otos_pose2d_t pl{}, pr{}, vl{}, vr{};
+    if (g_left_ready)  { g_otos_left.getPosition(pl);  g_otos_left.getVelocity(vl); }
+    if (g_right_ready) { g_otos_right.getPosition(pr); g_otos_right.getVelocity(vr); }
+    // Conversión al contrato del firmware (mm, deg, rad/s):
+    g_left_x  = pl.x * 1000.0f;  g_left_y  = pl.y * 1000.0f;  g_left_h  = pl.h;
+    g_right_x = pr.x * 1000.0f;  g_right_y = pr.y * 1000.0f;  g_right_h = pr.h;
+    g_left_vx  = vl.x * 1000.0f; g_left_vy  = vl.y * 1000.0f; g_left_w  = vl.h * (M_PI / 180.0f);
+    g_right_vx = vr.x * 1000.0f; g_right_vy = vr.y * 1000.0f; g_right_w = vr.h * (M_PI / 180.0f);
 
     // === Fusión ===
     if (g_left_ready && g_right_ready) {
-        // Pose del centro = promedio de los 2.
         g_x_mm = (g_left_x + g_right_x) * 0.5f;
         g_y_mm = (g_left_y + g_right_y) * 0.5f;
-
-        // Heading inferido de la diferencia Y entre OTOS izq y der separados por
-        // OTOS_SEPARATION_MM (configurable).
         const float dy = g_right_y - g_left_y;
         g_heading_deg = std::atan2(dy, OTOS_SEPARATION_MM) * (180.0f / M_PI);
-
-        // Velocidad del centro = promedio de los 2 (0 mientras la lib esté
-        // comentada → comportamiento actual idéntico).
         g_vx = (g_left_vx + g_right_vx) * 0.5f;
         g_vy = (g_left_vy + g_right_vy) * 0.5f;
         g_omega = (g_left_w + g_right_w) * 0.5f;
-
-        // Slip estimate: diferencia X esperada por la rotación es
-        // |omega| * radio_a_otos. Si la diferencia X observada es mayor, hay slip.
-        // Para una estimación simple sin omega instantáneo: usar diff_x / dt como
-        // proxy en el firmware más completo. Por ahora, slip = |diff_x|.
         g_slip = std::abs(g_right_x - g_left_x);
     } else if (g_left_ready) {
         g_x_mm = g_left_x; g_y_mm = g_left_y; g_heading_deg = g_left_h;
@@ -122,7 +109,6 @@ void otos_tick() {
         g_vx = g_right_vx; g_vy = g_right_vy; g_omega = g_right_w;
         g_slip = 0.0f;
     } else {
-        // Ningún OTOS — degradación: pose no se actualiza.
         g_slip = 0.0f;
     }
 }
@@ -138,10 +124,8 @@ float otos_get_slip_estimate()  { return g_slip; }
 void otos_reset() {
     g_x_mm = g_y_mm = g_heading_deg = 0.0f;
     g_vx = g_vy = g_omega = g_slip = 0.0f;
-    // TODO_OTOS_LIB_BEGIN
-    // if (g_left_ready)  g_otos_left.resetTracking();
-    // if (g_right_ready) g_otos_right.resetTracking();
-    // TODO_OTOS_LIB_END
+    if (g_left_ready)  g_otos_left.resetTracking();
+    if (g_right_ready) g_otos_right.resetTracking();
 }
 
 bool     otos_is_left_ready()   { return g_left_ready; }

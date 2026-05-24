@@ -3,13 +3,32 @@ id: TASK-012
 title: "Activar libs reales de OTOS (DOWN) y ToF (TOP) — salir de modo stub"
 date_created: 2026-05-15
 assigned: [enzzo195, elias]
-priority: P0
-status: pending
-estimated_hours: 6
+priority: P1
+status: partial-otos-done-tof-pending
+estimated_hours: 4
 blocks: [pose absoluta / EKF Nivel 3, deteccion de obstaculos real]
 blocked_by: [decision modelo ToF (Q4), red para bajar libs PlatformIO]
-tags: [firmware, down, top, otos, tof, hardware, stub]
+tags: [firmware, down, top, otos, tof, hardware]
 ---
+
+> **Update 2026-05-24** — **Parte A (OTOS) COMPLETADA**.
+> - Lib `sparkfun/SparkFun Qwiic OTOS Arduino Library` agregada a
+>   `platformio.ini` envs [env:down] y [env:diag_down].
+> - `src/down/otos.cpp` reescrito contra API real (`getPosition` no
+>   `getPose`, mismo tipo `sfe_otos_pose2d_t` para position y velocity,
+>   `setLinearUnit(Meters)` + `setAngularUnit(Degrees)`).
+> - Compilación OK, flash OK, los 2 chips OTOS (U5 y U6) responden I²C
+>   en 0x17 y reportan pose cambiante con movimiento real.
+> - Hallazgo crítico: **requiere power cycle completo** al primer
+>   arranque (ver TASK-028). Sin eso los OTOS no encienden.
+> - Validación cuantitativa pendiente (TASK-029, P1): sobre hoja A4 el
+>   tracking es errático por falta de textura microscópica; necesita
+>   cancha verde o alfombra.
+>
+> **Parte B (ToF) sigue pendiente** — bloqueada por decisión de hardware
+> Q4 (qué modelo de ToF se compra: VL53L7CX vs VL53L5CX vs VL53L1X).
+>
+> Por eso TASK baja de P0 a P1 (OTOS desbloqueado, ToF sigue importante).
 
 # TASK-012 — Activar libs OTOS + ToF (salir de stub)
 

@@ -108,6 +108,15 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
   muertos, los 32 sensores responden. TASK-026 bajó de P0 a P2. Ver
   `journal/2026-05-24-hardware-up-down-anillo-linea.md`.
 
+- ~~**DOWN OTOS — lib SparkFun en stub**~~ → **LIB ACTIVADA + OTOS RESPONDEN**.
+  Misma sesión 2026-05-24. `src/down/otos.cpp` reescrito con API real
+  (`getPosition`, no `getPose`; mismo tipo para position y velocity).
+  Ambos chips U5 y U6 responden I²C en 0x17, pose se actualiza con
+  movimiento. TASK-012 bajó de P0 a P1 (queda parte ToF en stub).
+  Validación cuantitativa pendiente: TASK-029. **Regla nueva descubierta**:
+  hardware-up requiere power cycle completo (TASK-028). Ver
+  `journal/2026-05-24-otos-lib-activada-y-power-cycle-bug.md`.
+
 ## Regla operativa (CLAUDE.md actualizado 2026-05-19)
 
 - Claude **planifica, documenta y programa firmware host-testeable**.

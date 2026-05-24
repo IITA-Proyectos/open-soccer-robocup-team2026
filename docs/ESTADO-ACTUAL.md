@@ -117,17 +117,24 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
   hardware-up requiere power cycle completo (TASK-028). Ver
   `journal/2026-05-24-otos-lib-activada-y-power-cycle-bug.md`.
 
-### 🏁 HITO 2026-05-24 — Subsistema DOWN/BOTTOM operacional en banco
+### 🏁 HITO 2026-05-24 — Subsistema DOWN/BOTTOM operacional en banco + OTOS validado cuantitativamente
 La placa DOWN (también llamada "BOTTOM") pasó tests de banco con éxito:
-anillo de 32 sensores leyendo + 2 OTOS reportando pose. Quedan 2 cosas
-postergadas conscientemente por el usuario:
-- **TASK-030**: sacar lámina protectora de los OTOS (cuando haya tapa de
-  protección del robot). Posible causa adicional del tracking errático
-  de TASK-029.
+anillo de 32 sensores leyendo + 2 OTOS reportando pose con precisión
+cuantitativa validada (280.4 mm sobre 300 mm reales = 6.5% error, pasa
+tolerancia 8% de TASK-029).
+
+**Cerradas hoy:**
+- ✅ **TASK-030**: lámina protectora sacada (en la misma sesión, sin
+  esperar tapa).
+- ✅ **TASK-029**: validación cuantitativa OTOS confirmada sobre cartón
+  corrugado (300 mm reales → 280 mm reportados).
+
+**Sigue pendiente:**
 - **TASK-031**: verificar comunicación UART real DOWN→TOP (Serial5) y
   DOWN→CENTRAL (Serial1). Requiere las otras placas disponibles.
 
-Ver journal `journal/2026-05-24-down-board-passing-tests-cierre.md`.
+Ver journal `journal/2026-05-24-down-board-passing-tests-cierre.md`
+(con sección "Test final post-lámina" agregada al final).
 
 ## Regla operativa (CLAUDE.md actualizado 2026-05-19)
 

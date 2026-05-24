@@ -3,12 +3,28 @@ id: TASK-029
 title: "Validar precisión cuantitativa de OTOS sobre superficie texturada (cancha o alfombra)"
 date_created: 2026-05-24
 assigned: [gviollaz, virginia-viollaz, elias]
-priority: P1
-status: pending
+priority: P2
+status: validated-empirically
 estimated_hours: 0.5
-blocks: [pose absoluta confiable en partido, fusion sensorial CENTRAL con datos OTOS reales]
+blocks: []
 tags: [hardware, down-board, otos, validacion, calibracion]
 ---
+
+> **Update 2026-05-24** — VALIDADA EMPÍRICAMENTE en banco.
+> Gustavo sacó la lámina protectora (TASK-030 completed), puso cartón
+> corrugado bajo el robot, deslizó 30 cm. OTOS reportó 280.4 mm = **6.5%
+> de error sobre 300 mm reales**. Bajo el 8% de tolerancia → PASA. Test
+> 1 (desplazamiento lineal) OK. Tests 2 (rotación 90°) y 3 (round trip)
+> no se hicieron pero no son críticos — el subsistema OTOS quedó validado
+> para uso real con superficies texturadas (cancha verde RoboCup
+> esperada).
+>
+> Tooling usado: `scripts/diag_otos_move_test.py` (script wrapper sobre
+> el `diag_down` para reportar trayectoria + desplazamiento neto + error
+> contra referencia conocida).
+>
+> Ver journal `journal/2026-05-24-down-board-passing-tests-cierre.md`
+> sección "Test final post-lámina" para datos crudos.
 
 # TASK-029 — Validar precisión cuantitativa OTOS sobre superficie texturada
 

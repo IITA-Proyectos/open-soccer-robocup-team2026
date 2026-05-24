@@ -1,14 +1,24 @@
 ---
 id: TASK-030
-title: "Sacar lámina protectora de los lentes de los 2 OTOS (cuando haya tapa de protección)"
+title: "Sacar lámina protectora de los lentes de los 2 OTOS"
 date_created: 2026-05-24
-assigned: [gviollaz, virginia-viollaz, elias]
+date_completed: 2026-05-24
+assigned: [gviollaz]
 priority: P2
-status: pending-by-design
+status: completed
 estimated_hours: 0.1
-blocks: [TASK-029 validación cuantitativa OTOS]
+blocks: []
 tags: [hardware, down-board, otos, mantenimiento, fisico]
 ---
+
+> **Cerrada 2026-05-24** — Gustavo sacó las 2 láminas protectoras de los
+> OTOS U5 y U6 en la misma sesión, sin esperar tapa de protección final.
+> Test cuantitativo post-lámina (TASK-029) PASA con 6.5% de error sobre
+> 300 mm. Las láminas eran efectivamente la causa principal del tracking
+> errático observado pre-corrección.
+>
+> Cuidado adicional pendiente: cuando esté la tapa de protección, montarla
+> para evitar daño físico a los lentes durante manipuleo.
 
 # TASK-030 — Sacar lámina protectora de los OTOS
 

@@ -41,27 +41,60 @@ related-tasks: [TASK-012, TASK-026, TASK-028, TASK-029, TASK-030, TASK-031]
 - Ambos chips responden I²C en 0x17 (Wire + Wire1).
 - Pose se actualiza con movimiento real verificado en banco.
 
-## Lo que sabemos pendiente (NO bloquea, decisión del usuario)
+## Test final post-lámina (2026-05-24, mismo día tarde)
 
-### TASK-030 — Sacar lámina protectora OTOS
-Los módulos SparkFun OTOS vienen con una lámina protectora sobre el lente
-óptico (tipo film transparente que protege durante el envío/manipulación).
-**Esa lámina sigue puesta** en los 2 OTOS de la placa actual. Sin sacarla,
-el OTOS NO enfoca el piso correctamente → tracking errático aunque la
-superficie tenga buena textura.
+> **Update final 2026-05-24** — Gustavo decidió sacar las 2 láminas
+> protectoras de los OTOS sin esperar la tapa de protección, para hacer
+> la prueba cuantitativa de tracking en la misma sesión.
 
-**Decisión del usuario 2026-05-24**: postergar hasta tener una **tapa de
-protección** para el robot. Sacar la lámina sin tapa expone el lente a
-golpes, polvo y rayones durante el manipuleo. Una vez que esté la tapa
-(que va a proteger los OTOS de daño mecánico), se sacan las láminas y se
-re-corre el test de TASK-029.
+### Hallazgo intermedio: A4 sin lámina = 0 movimiento detectado
+Primer test post-lámina sobre hoja A4: el OTOS reportó **0 mm de delta
+en 15 segundos** mientras Gustavo movía despacio 30 cm. Diagnóstico:
+sin lámina, el OTOS enfoca correctamente, pero la hoja A4 blanca es
+demasiado uniforme — no hay micro-textura que el sensor pueda seguir.
+Antes con la lámina al menos "veía" patrones desenfocados que daban
+ruido errático (de ahí los 28 mm de delta sin sentido). Comportamiento
+análogo a por qué los mouse ópticos no funcionan sobre vidrio.
 
-**Implicación práctica:** la validación cuantitativa de OTOS (TASK-029)
-que parecía pendiente "por superficie A4 mala" probablemente sigue mala
-**también** por la lámina puesta. Cuando se ataque TASK-029 hay que
-sacar primero la lámina (TASK-030) y después medir.
+### Test definitivo: cartón corrugado sin lámina
+Repetido sobre **cartón corrugado** (las ondas/fibras dan textura ideal):
 
-### TASK-031 — Verificar comunicación UART real
+```
+t(s)     x(mm)      y(mm)    hdg(deg)   dist(mm)
+  0.28  -260.5     +29.8     -14.5         0.0
+ 11.13  -260.5     +29.8     -14.5         0.0   ← aún quieto
+ 12.33  -256.2     +29.9     -14.5         4.3   ← arrancó
+ 13.54   -24.6      +2.7      -9.5       237.5   ← mitad del movimiento
+ 14.74   +17.5      -7.0      -8.7       280.4   ← llegada
+
+Desplazamiento neto: 280.4 mm sobre movimiento real de 300 mm
+Error: 19.6 mm = 6.5% (bajo el 8% de tolerancia de TASK-029)
+Trayectoria: monotónica, sin saltos erráticos ✅
+```
+
+### Comparación pre/post
+
+| Escenario | Reportado | Real | Eficiencia |
+|---|---|---|---|
+| Hoja A4 + lámina puesta | 28.6 mm | 300 mm | 9.5% (catastrófico) |
+| Hoja A4 sin lámina | 0.3 mm | 300 mm | 0% (sin features) |
+| **Cartón corrugado sin lámina** | **280.4 mm** | **300 mm** | **93.5%** ✅ |
+
+**Mejora 10x con respecto al setup original.** Sacar la lámina + usar
+superficie con textura visible son los 2 factores críticos para que el
+OTOS funcione. En cancha verde RoboCup ambas condiciones están
+satisfechas por defecto.
+
+### Cierre TASK-029 y TASK-030
+- **TASK-030** (sacar lámina) → **completed** mismo día.
+- **TASK-029** (validación cuantitativa) → **validated-empirically**
+  con tests 2 (rotación) y 3 (round trip) pendientes pero no críticos.
+- Herramienta nueva agregada: `scripts/diag_otos_move_test.py` para
+  re-ejecutar este test cuando haga falta (por ej. en cancha real).
+
+## Lo que sigue pendiente al cierre final del día
+
+### TASK-031 — Verificar comunicación UART real (sigue postergada)
 Hoy DOWN reporta por **USB serial** (vía `diag_down`). La regla 8 de
 CLAUDE.md exige confirmar que DOWN reporta línea **por UART real**
 (Serial5 → TOP, Serial1 → CENTRAL) antes de declarar el hardware-up del

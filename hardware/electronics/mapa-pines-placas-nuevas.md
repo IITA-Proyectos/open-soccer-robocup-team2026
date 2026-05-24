@@ -14,9 +14,22 @@ tipo: referencia
 
 # Mapa de pines — Placas TOP y DOWN del robot 2026
 
-Decodificación de los schematics del 2026-04-12 (`hardware/electronics/pcb_design/`). Las dos placas usan **Teensy 4.0** (no 4.1 como el Zircon Rev v15).
+> **🚨 DOCUMENTO SUPERADO (2026-05-19, ampliado 2026-05-24).** Este doc fue un
+> borrador inicial inferido visualmente. Contiene **información incorrecta**
+> sobre el pinout de los muxes del DOWN (afirmaba que A/B/C están "compartidas
+> entre los 4 muxes" — eso es **falso**). Fue superado por la extracción
+> automática del schematic JSON + validación empírica en banco. Las fuentes
+> correctas hoy son:
+>
+> - **Pinout DOWN canónico:** [`down-board-pack/01-pinout-y-posiciones.md`](down-board-pack/01-pinout-y-posiciones.md)
+>   (validado empíricamente 2026-05-24, 0 sensores muertos).
+> - **Pinout TOP canónico:** [`top-board-pack/01-pinout-y-hardware.md`](top-board-pack/01-pinout-y-hardware.md).
+> - **Hardware-up DOWN:** [`journal/2026-05-24-hardware-up-down-anillo-linea.md`](../../journal/2026-05-24-hardware-up-down-anillo-linea.md).
+>
+> Este archivo se conserva como historia. **NO usar como referencia para escribir
+> firmware** — lo correcto vive en los packs.
 
-> **Status: borrador inicial inferido desde schematic visual.** Confirmar contra fabricación real antes de comprometer firmware.
+Decodificación de los schematics del 2026-04-12 (`hardware/electronics/pcb_design/`). Las dos placas usan **Teensy 4.0** (no 4.1 como el Zircon Rev v15).
 
 ---
 
@@ -126,12 +139,12 @@ Decodificación de los schematics del 2026-04-12 (`hardware/electronics/pcb_desi
 
 **Concepto:** sensor de línea reflectivo activo. Cada par (LED + ALS-PT19) ilumina el suelo y mide el reflejo. Carpet verde refleja poco, línea blanca refleja mucho. Distribuidos en anillo en la base del robot.
 
-**Multiplexación 32 → 4 entradas analógicas:**
+**Multiplexación 32 → 4 entradas analógicas** (CORREGIDO 2026-05-24, ver banner al inicio del doc):
 - 4× CD4051BM, cada uno con 8 canales analógicos.
 - Cada mux toma 8 sensores → 1 salida (`O1`, `O2`, `O3`, `O4`).
-- Las salidas O1-O4 van a 4 pines analógicos del Teensy 4.0.
-- Líneas de control A, B, C (3 bits) **compartidas entre los 4 muxes** → todos los muxes seleccionan el mismo canal en paralelo.
-- Líneas `INH` (enable) de cada mux conectadas a pines independientes (E5-E8) → permite habilitar muxes por separado si fuera necesario.
+- Las salidas O1-O4 van a 4 pines analógicos del Teensy 4.0: **A0, A1, A8, A9** (NO A2/A3 — esos son SCL2/SDA2 del OTOS U6).
+- Líneas de control A/B/C (3 bits): **cada mux tiene SUS PROPIOS 3 pines = 12 pines SEL en total** (NO compartidos). Fuente: schematic extraído + validación empírica banco. Ver `down-board-pack/01-pinout-y-posiciones.md` §4 para la tabla por pin.
+- Líneas `INH` (enable) de cada mux: **atadas a GND físico en el PCB**, el firmware NO las controla.
 
 **Estimación de timing:**
 - 8 canales × ~5µs por lectura analógica = **~40µs para leer los 32 sensores en paralelo** usando 4 ADCs del Teensy 4.0 (que tiene 2 ADCs simultáneos).

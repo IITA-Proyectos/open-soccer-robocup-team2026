@@ -1,32 +1,41 @@
 # `.captures/` — datos crudos del `scripts/diag_capture.py`
 
-> ⚠️ **Los datos del 2026-05-19 son INVÁLIDOS.** El firmware `diag_down` que
-> los generó usaba el `config_down.h` con pinout **tentativo, no confirmado**
-> contra el PCB real → el código toggleaba pines del Teensy que probablemente
-> no controlan los muxes reales. Los valores 1023 saturados en S16–S31 son
-> lecturas de pines al aire, no de sensores muertos.
+> **🟢 Datos del 2026-05-24 son VÁLIDOS** (carpet.json / blanco.json / negro.json).
+> Generados durante el hardware-up del anillo de línea, con el firmware
+> `diag_down` corregido (pinout validado empíricamente). Verdict del test:
+> 0 sensores muertos, 9 OK, 22 SOSPECHOSO (los SOSPECHOSO responden bien
+> físicamente, solo no llegan al umbral 300 del script calibrado para cancha
+> real RoboCup).
 >
-> Enzo confirmó que físicamente los 32 sensores andan. El bug es del firmware
-> (config), no del hardware.
+> ⚠️ **Los valores absolutos NO son representativos de cancha real**: el
+> test se hizo sobre una **mesa con vidrio** (superficie reflectante). En
+> cancha verde RoboCup los valores absolutos van a ser menores y el rango
+> blanco-negro probablemente más limpio. Hay que recalibrar umbrales una
+> vez que se monte el robot en cancha real.
 >
-> Mantener estos archivos como evidencia (postmortem) hasta que se complete
-> **TASK-026** (confirmar pinout real). Cuando se actualice `config_down.h`
-> con los pines correctos, **borrar las capturas viejas** y volver a correr
-> el test masivo.
+> Ver `journal/2026-05-24-hardware-up-down-anillo-linea.md` para análisis
+> completo + datos de las 4 iteraciones (pre-batería, post-batería con
+> firmware viejo, post-Fix #1, post-Fix #2).
 
-## Cómo regenerar (post TASK-026)
+## Cómo regenerar (cualquier sesión)
 
 ```powershell
 cd "C:\Users\violl\iitasoccer\open-soccer-robocup-team2026\software\teensy\Soccer 2026"
-& "C:\Users\violl\.platformio\penv\Scripts\python.exe" scripts\diag_capture.py --port COM10 --label carpet --duration 2
-# ... poner hoja blanca ...
-& "C:\Users\violl\.platformio\penv\Scripts\python.exe" scripts\diag_capture.py --port COM10 --label blanco --duration 2
-# ... poner algo oscuro ...
-& "C:\Users\violl\.platformio\penv\Scripts\python.exe" scripts\diag_capture.py --port COM10 --label negro  --duration 2
-& "C:\Users\violl\.platformio\penv\Scripts\python.exe" scripts\diag_capture.py --verdict
+# Compilar + flashear el diag (apretar el botón de la Teensy cuando aparezca el loader):
+& "C:\Users\violl\AppData\Roaming\Python\Python314\Scripts\pio.exe" run -e diag_down -t upload
+
+# Las 3 capturas (con el Serial Monitor CERRADO):
+python scripts\diag_capture.py --port COM10 --label carpet --duration 2   # robot sobre superficie ambiente
+python scripts\diag_capture.py --port COM10 --label blanco --duration 2   # sobre cartulina blanca
+python scripts\diag_capture.py --port COM10 --label negro  --duration 2   # sobre fondo negro o al aire
+
+# Veredicto automático:
+python scripts\diag_capture.py --verdict
 ```
 
 ## Referencias
 
-- Postmortem: `journal/2026-05-19-diagnostico-down-fallido-config-tentativo.md`
-- TASK bloqueante: `team-tasks/2026-05-19-task-026-confirmar-pinout-mux-down.md`
+- Hardware-up validado: `journal/2026-05-24-hardware-up-down-anillo-linea.md`
+- Pinout canónico: `hardware/electronics/down-board-pack/01-pinout-y-posiciones.md`
+- Postmortem original (caso cerrado): `journal/2026-05-19-diagnostico-down-fallido-config-tentativo.md`
+- TASK seguimiento: `team-tasks/2026-05-19-task-026-confirmar-pinout-mux-down.md` (validated-empirically, P2)

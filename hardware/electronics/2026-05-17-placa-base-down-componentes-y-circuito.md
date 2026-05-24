@@ -14,6 +14,20 @@ tipo: referencia
 
 # Placa BASE / DOWN (Roboliga 2026 Futbol) — Componentes y circuito
 
+> **🟡 PARCIALMENTE SUPERADO (2026-05-24).** Las secciones sobre BOM, plato
+> estructural, voltajes pendientes y bloques de circuito siguen vigentes.
+> **PERO** los "Open items #4 y #5" (estado de los LEDs y mapeo Teensy↔mux)
+> fueron resueltos por la extracción del schematic JSON el 2026-05-19 y la
+> validación empírica del 2026-05-24:
+>
+> - LEDs del anillo: alimentados del rail de la batería vía reguladores
+>   MP1584. **Always-on** cuando la batería está conectada (no gateados por
+>   pin del Teensy).
+> - Pinout Teensy↔mux: cada CD4051 tiene sus 3 SEL propios (12 pines totales,
+>   NO compartidos). ADCs en A0/A1/A8/A9. INH a GND físico. Ver doc canónico
+>   [`down-board-pack/01-pinout-y-posiciones.md`](down-board-pack/01-pinout-y-posiciones.md).
+> - Validación: [`journal/2026-05-24-hardware-up-down-anillo-linea.md`](../../journal/2026-05-24-hardware-up-down-anillo-linea.md).
+
 > **Fuente:** `Base-20260517T175213Z-3-001.zip` (entregado 2026-04-20):
 > `BOM_Roboliga_2026_Futbol_2026-04-20.csv`,
 > `PickAndPlace_PCB_Roboliga_2026_Futbol_2026-04-20.csv`, gerbers.
@@ -59,8 +73,9 @@ sensórica de movimiento es el OTOS. El cerebro es el Teensy 4.0.
   `U8/U9` MP1584 buck ×2 (2 rails, p.ej. lógica 5 V y rail de sensores/3.3 V).
   `C1–C6` 100 nF desacople. (Set-points de los trimpots de U8/U9: medir en
   hardware — no documentado.)
-- **B — MCU (Top):** `U7` Teensy 4.0. Lee los COM de los 4 muxes por ADC,
-  maneja líneas de selección S0/S1/S2 compartidas, I²C al OTOS.
+- **B — MCU (Top):** `U7` Teensy 4.0. Lee los COM de los 4 muxes por ADC
+  (A0/A1/A8/A9), maneja 12 líneas de selección A/B/C (3 propios por mux, NO
+  compartidos), I²C al OTOS en 2 buses (Wire + Wire1). INH atado a GND.
 - **C — Anillo de 32 sensores ópticos (Bottom, 142/148 placements):** 32 pares
   LED+fototransistor distribuidos en anillo al perímetro (coordenadas P&P
   trazan un arco), 4× CD4051 (cada mux cubre un sector de ~8 sensores).
@@ -71,11 +86,20 @@ sensórica de movimiento es el OTOS. El cerebro es el Teensy 4.0.
 
 ## 4. Open items (no fabricar evidencia — medir/confirmar)
 
-1. Voltajes de salida de `U8/U9` MP1584 — medir trimpots reales.
-2. Pinout de `U10/U11` (I²C vs UART vs power) — leer del schematic / render.
-3. ¿Ambas posiciones OTOS (`U5` y `U6`) pobladas, o una es spare?
-4. ¿El anillo de LEDs es always-on o gateado por un pin del Teensy?
-5. Qué ADC del Teensy lee cada mux COM y cómo se comparten S0/S1/S2 — schematic.
+1. Voltajes de salida de `U8/U9` MP1584 — medir trimpots reales. **(pendiente)**
+2. Pinout de `U10/U11` — ✅ RESUELTO 2026-05-19. U10 = UART hacia TOP (Serial5,
+   pines 20/21). U11 = UART hacia CENTRAL (Serial1, pines 0/1). Ver
+   `down-board-pack/01-pinout-y-posiciones.md` §7.
+3. ¿Ambas posiciones OTOS (`U5` y `U6`) pobladas, o una es spare? **(pendiente
+   confirmación visual + TASK-012 para activar lib SparkFun)**
+4. ¿El anillo de LEDs es always-on o gateado por un pin del Teensy? **✅
+   RESUELTO 2026-05-24**: always-on (depende solo de la batería conectada,
+   no de pin del Teensy). Validado en banco al conectar batería: los sensores
+   pasaron de leer solo luz ambiente a responder normalmente.
+5. ADCs por mux + control SEL — **✅ RESUELTO 2026-05-19 + validado
+   empíricamente 2026-05-24**: O1/O2/O3/O4 = A0/A1/A8/A9. Cada mux tiene
+   sus PROPIOS A/B/C (12 pines SEL, NO compartidos). INH a GND fijo.
+   Ver `down-board-pack/01-pinout-y-posiciones.md` §3-§5.
 
 > La serigrafía no se puede extraer del gerber (trazo vectorial, no ASCII). Los
 > rótulos/pinouts impresos solo se leen con visor de gerber o el proyecto

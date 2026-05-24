@@ -173,7 +173,7 @@ Margen amplio para integrar EKF de pose o filtros Kalman de pelota en 2027.
 
 | Responsabilidad | Detalle |
 |-----------------|---------|
-| Anillo de sensores de línea | 32 sensores ALS-PT19 con LEDs activos pareados, multiplexados via 4 chips CD4051 (selección A/B/C compartida, 4 salidas analógicas en paralelo). Lectura completa de los 32 sensores en ~80 µs. |
+| Anillo de sensores de línea | 32 sensores ALS-PT19 con LEDs activos pareados, multiplexados via 4 chips CD4051 (cada mux con sus propios A/B/C = 12 pines SEL, 4 salidas analógicas a A0/A1/A8/A9 en paralelo, INH a GND). Lectura completa de los 32 sensores en ~80 µs. Ver `hardware/electronics/down-board-pack/01-pinout-y-posiciones.md`. |
 | Cálculo del ángulo de línea | Algoritmo de centroide angular: cada sensor i está en posición física θ_i = i × 11.25°. Los sensores que ven blanco contribuyen un vector unitario en su ángulo. La línea detectada = atan2 de la suma. |
 | Detección de "salida inminente" | Si N sensores adyacentes ven blanco simultáneamente, flag `imminent_exit` enviado por bus directo al CENTRAL para frenar en < 15 ms. |
 | Odometría óptica | 2 sensores SparkFun OTOS montados a cada costado del robot (uno a la izquierda, uno a la derecha del centro). Lectura I2C en 2 buses separados (Wire + Wire1). |

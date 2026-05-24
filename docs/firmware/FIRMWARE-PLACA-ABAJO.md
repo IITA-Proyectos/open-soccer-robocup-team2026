@@ -8,16 +8,23 @@ tags: [firmware, placa-abajo, down-board, sensor-piso, otos, line-ring, especifi
 
 # Firmware Placa ABAJO — Especificación funcional completa
 
-> **⚠️ PARCIALMENTE SUPERADO (2026-05-19).** Este doc describe el algoritmo
-> `line_ring` (mayo 2026-05-11) que sigue VIVO en `src/down/main_down.cpp` para
-> la lectura cruda a 1 kHz. **PERO** desde 2026-05-18 existe en paralelo otra
-> cadena (`down_model + line_geometry + line_tracker + line_calib +
-> surface_monitor + down_encode`) que la usa `src/down/comm_central.cpp` para
-> armar `LineStatusV2`. Hay **deuda viva** (dos caminos paralelos en DOWN, no
-> resuelta antes de Incheon). Para el contrato real de datos que va al CENTRAL
-> ver **`docs/firmware/CONTRATO-DATOS-DOWN.md`** y el índice
-> **`docs/FUENTES-DE-VERDAD.md`**. Este doc se conserva intacto como referencia
-> del algoritmo `line_ring`.
+> **⚠️ PARCIALMENTE SUPERADO (2026-05-19, ampliado 2026-05-24).** Este doc
+> describe el algoritmo `line_ring` (mayo 2026-05-11) que sigue VIVO en
+> `src/down/main_down.cpp` para la lectura cruda a 1 kHz. **PERO**:
+>
+> 1. Desde 2026-05-18 existe en paralelo otra cadena (`down_model +
+>    line_geometry + line_tracker + line_calib + surface_monitor +
+>    down_encode`) que la usa `src/down/comm_central.cpp` para armar
+>    `LineStatusV2`. Para el contrato real de datos al CENTRAL ver
+>    **`docs/firmware/CONTRATO-DATOS-DOWN.md`** y el índice
+>    **`docs/FUENTES-DE-VERDAD.md`**.
+>
+> 2. **🚨 Las menciones de pinout de muxes en este doc fueron ACTUALIZADAS
+>    el 2026-05-24** con los valores reales validados empíricamente. La
+>    arquitectura correcta es **A/B/C propios por mux (12 pines SEL en
+>    total)**, NO compartidos. INH atados a GND fijo en el PCB. Fuente
+>    canónica de pinout: `hardware/electronics/down-board-pack/01-pinout-y-posiciones.md`.
+>    Validación: `journal/2026-05-24-hardware-up-down-anillo-linea.md`.
 
 > Documento de referencia del firmware que corre en la placa base (Teensy 4.0) del
 > robot 2026. Define qué hace el programa, cómo lo hace, qué envía, cada cuánto,
@@ -66,7 +73,7 @@ La placa ABAJO no necesita conocer el rol del robot (arquero/delantero) ni el es
 |-----------|----------|----------|------|
 | MCU Teensy 4.0 | 1 | — | Cortex-M7 a 600 MHz, 1 MB RAM, 2 MB flash |
 | Sensores ALS-PT19 (fotodiodo + LED activo) | 32 | Vía 4 muxes CD4051 | Reflectivo activo, no pasivo |
-| Multiplexores CD4051BM (8:1 analógico) | 4 | A/B/C compartidos, salidas O1..O4 | Settle time ~3 µs típico |
+| Multiplexores CD4051BM (8:1 analógico) | 4 | A/B/C propios por mux (12 pines SEL totales), INH a GND físico, salidas O1..O4 | Settle time ~3 µs típico |
 | Resistencias de pull-up de sensor | 32 × 10 kΩ | Por sensor | |
 | Resistencias limitadoras de LED | 32 × 330 Ω | Por sensor | |
 | SparkFun OTOS | 2 | I2C dual (Wire bus 0 + Wire1 bus 1) | Montados a izquierda y derecha del centro |
@@ -76,12 +83,15 @@ La placa ABAJO no necesita conocer el rol del robot (arquero/delantero) ni el es
 | Reguladores MP1584-EN | 2 | 7.4V → 5V y 7.4V → 3.3V | |
 | LED de estado | 1 | LED_BUILTIN (pin 13) | Para indicar estado al humano |
 
-**Pinout asignado en `src/down/config_down.h`** (tentativo según schematic 04-12, a confirmar con multímetro):
+**Pinout en `src/down/config_down.h`** (extraído del schematic 04-12 y validado empíricamente 2026-05-24):
 
-- `PIN_MUX_SEL_A`, `PIN_MUX_SEL_B`, `PIN_MUX_SEL_C` — 3 pines digitales compartidos por los 4 muxes para seleccionar canal 0-7.
-- `PIN_MUX_INH[0..3]` — 4 pines digitales individuales (uno por mux) para habilitarlo (activo bajo).
-- `PIN_MUX_OUT[0..3]` — 4 entradas analógicas del Teensy (A0-A3), una por mux.
-- `WIRE1_SCL_PIN = 24`, `WIRE1_SDA_PIN = 25` — remap de Wire1 para el segundo OTOS.
+- `PIN_MUX_A[4] = { 13, 4, 7, 10 }` — Selector A de U1, U2, U3, U4 (un pin por mux, NO compartido).
+- `PIN_MUX_B[4] = {  2, 5, 8, 11 }` — Selector B de U1, U2, U3, U4.
+- `PIN_MUX_C[4] = {  3, 6, 9, 12 }` — Selector C de U1, U2, U3, U4.
+- `PIN_MUX_OUT[4] = { A0, A1, A8, A9 }` — Entradas analógicas COM de cada mux. **Atención**: A8/A9 son los pines del Teensy 4.0 que llegan a U3/U4; NO usar A2/A3 (esos van al I²C2 del OTOS U6 y producen ADC=1023 sólido).
+- `MUX_CH_FOR_SENSOR[8] = { 3, 0, 1, 2, 5, 7, 6, 4 }` — Mapeo canal del mux → sensor lógico (scrambling del PCB).
+- Los pines INH (Enable) de los 4 muxes están atados a GND físico en el PCB — el firmware NO los controla. No existe `PIN_MUX_INH[]`.
+- I²C OTOS: `Wire` (SDA=18, SCL=19) → U5; `Wire1` (SDA=17, SCL=16) → U6. Ambos a dirección 0x17 default SparkFun. NO se usa Wire2.
 
 ---
 
@@ -130,7 +140,7 @@ El firmware tiene **un único modo de trabajo táctico** (siempre reporta lo mis
 
 ### 5.1 Multiplexación y barrido
 
-Los 32 sensores están conectados a 4 muxes CD4051 de 8 canales. Las líneas de selección (A, B, C) están compartidas, así que cuando el Teensy fija A/B/C en un canal i (0-7), los 4 muxes presentan sus respectivos canales i en las 4 salidas analógicas (O1, O2, O3, O4) **en paralelo**.
+Los 32 sensores están conectados a 4 muxes CD4051 de 8 canales. **Cada mux tiene sus 3 propias líneas de selección A/B/C** (12 pines digitales en total, NO compartidos — descubrimiento del schematic 2026-05-19 validado empíricamente 2026-05-24). Por cada iteración del barrido, el firmware setea las 12 líneas simultáneamente al mismo canal i (aprovechando el patrón de scrambling idéntico de los 4 muxes), espera el settle del CD4051, y lee las 4 salidas analógicas (O1, O2, O3, O4) **en paralelo** vía A0/A1/A8/A9 del Teensy 4.0.
 
 **Algoritmo del barrido**:
 
@@ -625,7 +635,7 @@ Vía USB Serial el operario puede mandar texto para probar:
 |---------|-------|
 | MCU | Teensy 4.0 a 600 MHz |
 | Sensores de línea | 32 ALS-PT19 con LED activo (reflectivo activo) |
-| Multiplexación | 4 × CD4051BM (3 bits selección compartidos, 4 salidas analógicas) |
+| Multiplexación | 4 × CD4051BM (3 bits selección propios por mux = 12 pines SEL, 4 salidas analógicas a A0/A1/A8/A9, INH a GND) |
 | Frecuencia muestreo línea | 1 kHz |
 | Algoritmo de ángulo | Centroide ponderado por intensidad |
 | Filtros aplicados | Temporal (mov avg 4), hysteresis, espacial (vecinos) |

@@ -35,29 +35,29 @@ La TASK pasa de "definir el mapeo" a **"validar el mapeo extraído"** con
 Enzo + Virginia/Elías antes de actualizar el firmware. Sin esa validación
 no se hace el cambio en `config_down.h` ni `line_ring.cpp`.
 
-## Contexto
+## Contexto histórico (lo que generó esta TASK — ya resuelto 2026-05-24)
 
-Lo que `config_down.h` dice HOY (líneas 50–61):
+Lo que `config_down.h` decía el 2026-05-19 (valores tentativos INCORRECTOS):
 
 ```cpp
-constexpr int PIN_MUX_OUT[4] = { A0, A1, A2, A3 };
-// Mapeo tentativo (a confirmar): E10=C, E11=B, E12=A según el schematic.
-// Asignaciones específicas del Teensy: pendiente Q3-similar para DOWN.
-constexpr int PIN_MUX_SEL_A = 2;
-constexpr int PIN_MUX_SEL_B = 3;
-constexpr int PIN_MUX_SEL_C = 4;
-constexpr int PIN_MUX_INH[4] = { 5, 6, 7, 8 };
+// ❌ VALORES INCORRECTOS — NO USAR — corregidos el 2026-05-24
+// (se conservan acá solo como evidencia histórica de la TASK)
+constexpr int PIN_MUX_OUT[4] = { A0, A1, A2, A3 };  // ❌ A2/A3 eran SCL2/SDA2 del OTOS U6
+constexpr int PIN_MUX_SEL_A = 2;                    // ❌ asumía SEL compartidos
+constexpr int PIN_MUX_SEL_B = 3;                    // ❌
+constexpr int PIN_MUX_SEL_C = 4;                    // ❌
+constexpr int PIN_MUX_INH[4] = { 5, 6, 7, 8 };      // ❌ INH están a GND, no se controlan
 ```
 
-Los docs del PCB del 17-may también admiten que el dato falta:
-- `hardware/electronics/2026-05-17-placa-base-down-componentes-y-circuito.md`
-  sección 4 "Open items" #5: *"Qué ADC del Teensy lee cada mux COM y cómo se
-  comparten S0/S1/S2 — schematic."*
-- `hardware/electronics/mapa-pines-placas-nuevas.md` líneas 130–134 describe
-  la arquitectura pero NO el mapeo físico.
+**Lo que `config_down.h` dice HOY (2026-05-24, valores correctos validados):**
+ver el archivo vivo
+[`software/teensy/Soccer 2026/src/down/config_down.h`](../software/teensy/Soccer%202026/src/down/config_down.h)
+y la fuente canónica
+[`hardware/electronics/down-board-pack/01-pinout-y-posiciones.md`](../hardware/electronics/down-board-pack/01-pinout-y-posiciones.md).
 
-Ver journal `2026-05-19-diagnostico-down-fallido-config-tentativo.md` para
-el postmortem completo.
+Postmortem original que generó esta TASK: journal
+`2026-05-19-diagnostico-down-fallido-config-tentativo.md` (con banner
+"CASO CERRADO" al inicio).
 
 ## Lo que necesitamos validar
 

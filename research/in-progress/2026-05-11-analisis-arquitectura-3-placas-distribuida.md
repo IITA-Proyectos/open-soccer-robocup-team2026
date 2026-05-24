@@ -132,7 +132,7 @@ Hay un patrón claro: el equipo ya **decidió fusión multi-sensor + world model
 **Función principal**: detectar la cancha (líneas y movimiento) y reportar al CENTRAL.
 
 **Responsabilidades primarias**:
-- **Lectura 24-32 sensores ALS-PT19** vía 3-4 muxes CD4051 (selección A/B/C compartida, lectura por canal en paralelo).
+- **Lectura 32 sensores ALS-PT19** vía 4 muxes CD4051 (cada mux con sus propios A/B/C = 12 pines SEL, 4 salidas analógicas en paralelo a A0/A1/A8/A9, INH a GND). [Actualizado 2026-05-24 — antes decía "A/B/C compartida" lo cual era incorrecto; ver `hardware/electronics/down-board-pack/01-pinout-y-posiciones.md`.]
 - **Cálculo del ángulo de la línea** detectada (weighted avg de cosenos/senos).
 - **Cálculo de profundidad** (cuántos sensores ven blanco).
 - **Flag "imminent_exit"** — bandera urgente cuando el robot está por salir de la cancha.

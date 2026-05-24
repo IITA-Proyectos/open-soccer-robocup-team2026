@@ -115,14 +115,28 @@ S29:   82 / 179 /  73   ← SOSPECHOSO, rango 106 (responde bajo en absoluto per
 
 Capturas completas en `software/teensy/Soccer 2026/scripts/.captures/`.
 
-### Por qué los "SOSPECHOSO" no son problema
+### Por qué los "SOSPECHOSO" no son problema (y por qué los valores absolutos no son representativos)
 
-El umbral `OK ≥ 300` del script está calibrado para **cancha real
-RoboCup**: línea blanca oficial brillante + carpet verde mate + altura
-sensor-piso típica de 5-10 mm. El test de hoy fue **cartulina amateur +
-mesa marrón + altura no controlada**. Los sensores SOSPECHOSO dan rangos
-de 100-290 puntos — **físicamente responden**, solo no alcanzan el
-umbral del banco. En cancha real estos pasan a OK fácil.
+⚠️ **El test se hizo sobre una mesa con vidrio**, no sobre cancha verde
+RoboCup. Esto importa porque el vidrio es **muy reflectante** — los LEDs
+activos del anillo iluminan hacia abajo y el vidrio devuelve mucha más luz
+que una superficie mate. Concretamente:
+
+- Algunos valores absolutos vistos hoy (por ej. S1=717 sobre blanco) son
+  **anormalmente altos** comparado con lo que va a dar carpet verde real.
+- El "ruido" de los bordes del vidrio + sombras del propio robot puede
+  amplificarse en algunos sensores periféricos.
+- **En cancha real RoboCup** los valores absolutos van a ser menores y
+  probablemente el rango blanco-negro será más limpio y mayor.
+
+El umbral `OK ≥ 300` del script está calibrado para **cancha real**:
+línea blanca oficial brillante + carpet verde mate + altura sensor-piso
+típica de 5-10 mm. El test de hoy fue **cartulina amateur + mesa con
+vidrio + altura no controlada**. Los sensores SOSPECHOSO dan rangos de
+100-290 puntos — **físicamente responden**, solo no alcanzan el umbral
+del banco. **Hay que recalibrar valores absolutos / umbrales una vez
+que se pruebe sobre cancha verde RoboCup** (esta tarea queda para la
+sesión donde se monte el robot en cancha).
 
 ## Conclusión
 

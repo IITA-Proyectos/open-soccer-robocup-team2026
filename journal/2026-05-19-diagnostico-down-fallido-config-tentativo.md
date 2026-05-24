@@ -15,6 +15,12 @@ related-tasks: [TASK-001, TASK-026]
 
 # Diagnóstico DOWN fallido: configuración tentativa tomada como cierta
 
+> **🟢 CASO CERRADO 2026-05-24.** El pinout fue corregido y validado
+> empíricamente con la placa física en banco (0 sensores muertos en el
+> verdict). Ver `journal/2026-05-24-hardware-up-down-anillo-linea.md`.
+> Esta entrada se conserva intacta como evidencia del error original (no
+> editar el cuerpo — patrimonio de la lección "no asumir sin verificar").
+
 > **TL;DR.** Armé un script de diagnóstico automatizado (`scripts/diag_capture.py`)
 > que capturó datos de los 32 sensores en 3 lecturas (mesa / blanco / negro) y
 > emitió un veredicto: 8 OK, 8 sospechosos, **16 muertos**, y un "bug de mux" en

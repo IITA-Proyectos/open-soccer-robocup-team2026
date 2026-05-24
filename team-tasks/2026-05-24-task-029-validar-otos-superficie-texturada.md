@@ -22,8 +22,19 @@ físico real, sobre una superficie adecuada.
 
 El test del 2026-05-24 sobre **hoja A4** dio tracking errático
 (desplazamiento neto 28.6 mm cuando el movimiento real fue ~300 mm).
-La causa probable es que la hoja A4 es demasiado uniforme: el OTOS es un
-sensor óptico tipo mouse y requiere **textura microscópica del piso**.
+**Hay 2 causas confounding que se deben atacar ANTES de re-medir:**
+
+1. **Lámina protectora de fábrica todavía puesta** en los lentes de los
+   2 OTOS (ver TASK-030, postergada por el usuario hasta tener tapa de
+   protección). Sin sacarla, el OTOS no enfoca el piso correctamente —
+   esta puede ser la causa principal o única del tracking pobre.
+2. **Superficie sin textura suficiente** (hoja A4 muy uniforme). Los OTOS
+   son sensores ópticos tipo mouse y requieren textura microscópica del
+   piso para tracking confiable.
+
+**Orden de ataque recomendado**: primero cerrar TASK-030 (sacar lámina),
+después re-correr este TASK sobre superficie con textura. Si el tracking
+sigue pobre después de sacar la lámina, atacar la superficie.
 
 ## Lo que hay que hacer
 

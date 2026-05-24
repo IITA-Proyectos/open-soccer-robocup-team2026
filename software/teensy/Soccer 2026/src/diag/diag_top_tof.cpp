@@ -84,10 +84,91 @@ const char* mode_name() {
     return "8x8";
 #endif
 }
+
+// ============================================================
+// Formatters de salida del frame ToF.
+// ============================================================
+// Formato comun: cada celda son 4 caracteres + 1 espacio. Valores >9999 se
+// muestran como "XXXX" (status invalido o fuera de rango). distance_mm es
+// int16_t pero la lib clampea negativos a 0 (vl53l7cx_api.cpp:776), asi que
+// el cast unsigned es seguro.
+void print_cell(int16_t mm, uint8_t status) {
+    // status==5 = "range valid". 6/9 = "range valid + reflectance/sigma warning".
+    // Otros = invalido.
+    bool valid = (status == 5 || status == 6 || status == 9);
+    if (!valid || mm < 0 || mm > 9999) {
+        Serial.print(" XXXX");
+    } else {
+        if (mm < 10)        Serial.print("    ");
+        else if (mm < 100)  Serial.print("   ");
+        else if (mm < 1000) Serial.print("  ");
+        else                Serial.print(" ");
+        Serial.print(mm);
+    }
+}
+
+void print_grid(const VL53L7CX_ResultsData& r, uint8_t side) {
+    // VL53L7CX devuelve los datos en row-major desde la esquina top-left de la
+    // imagen. Para side=4 → 16 zonas. side=8 → 64 zonas.
+    const uint8_t n = side * side;
+    Serial.print("[");
+    Serial.print(millis());
+    Serial.print(" ms]  zones=");
+    Serial.print(n);
+    // contar zonas validas
+    uint8_t valid_count = 0;
+    for (uint8_t i = 0; i < n; ++i) {
+        uint8_t s = r.target_status[i];
+        if (s == 5 || s == 6 || s == 9) ++valid_count;
+    }
+    Serial.print("  valid=");
+    Serial.print(valid_count);
+    Serial.print("/");
+    Serial.println(n);
+
+    for (uint8_t row = 0; row < side; ++row) {
+        Serial.print("  ");
+        for (uint8_t col = 0; col < side; ++col) {
+            uint8_t idx = row * side + col;
+            print_cell(r.distance_mm[idx], r.target_status[idx]);
+        }
+        Serial.println();
+    }
+}
+
+void print_single(const VL53L7CX_ResultsData& r, uint8_t side) {
+    const uint8_t n = side * side;
+    uint32_t sum = 0;
+    uint8_t valid_count = 0;
+    for (uint8_t i = 0; i < n; ++i) {
+        uint8_t s = r.target_status[i];
+        if (s == 5 || s == 6 || s == 9) {
+            int16_t d = r.distance_mm[i];
+            if (d >= 0) {
+                sum += (uint32_t)d;
+                ++valid_count;
+            }
+        }
+    }
+    Serial.print("[");
+    Serial.print(millis());
+    Serial.print(" ms] ");
+    if (valid_count == 0) {
+        Serial.print("mean=---  ");
+    } else {
+        Serial.print("mean=");
+        Serial.print(sum / valid_count);
+        Serial.print(" mm  ");
+    }
+    Serial.print("valid=");
+    Serial.print(valid_count);
+    Serial.print("/");
+    Serial.println(n);
+}
 }  // namespace
 
 // ============================================================
-// setup() / loop() — skeleton: solo banner + LED. Se llenan en Tasks 3-4.
+// setup() / loop()
 // ============================================================
 void setup() {
     pinMode(PIN_LED_STATUS, OUTPUT);
@@ -168,10 +249,38 @@ void setup() {
 }
 
 void loop() {
-    // Heartbeat visible: LED parpadea a 1 Hz.
-    static uint32_t last = 0;
-    if (millis() - last >= 500) {
-        last = millis();
-        digitalWrite(PIN_LED_STATUS, !digitalRead(PIN_LED_STATUS));
+    // Error pattern si init fallo: 3 blinks rapidos cada 1 s.
+    if (!g_init_ok) {
+        static uint32_t t0 = 0;
+        uint32_t phase = (millis() - t0) % 1000;
+        bool on = (phase < 100) || (phase >= 200 && phase < 300) || (phase >= 400 && phase < 500);
+        digitalWrite(PIN_LED_STATUS, on ? HIGH : LOW);
+        return;
     }
+
+    // Heartbeat: LED ON mientras hay frames llegando.
+    digitalWrite(PIN_LED_STATUS, HIGH);
+
+    // NOTA: la lib STM32duino expone estos metodos con prefix `vl53l7cx_`
+    // (verificado en lib/STM32duino_VL53L7CX/src/vl53l7cx_class.h:261,271).
+    uint8_t ready = 0;
+    int err = g_sensor.vl53l7cx_check_data_ready(&ready);
+    if (err != 0 || !ready) return;
+
+    VL53L7CX_ResultsData results;
+    err = g_sensor.vl53l7cx_get_ranging_data(&results);
+    if (err != 0) {
+        Serial.print("[get_ranging_data err=");
+        Serial.print(err);
+        Serial.println("]");
+        return;
+    }
+
+#if defined(DIAG_TOF_MODE_8X8)
+    print_grid(results, 8);
+#elif defined(DIAG_TOF_MODE_4X4)
+    print_grid(results, 4);
+#elif defined(DIAG_TOF_MODE_SINGLE)
+    print_single(results, 4);   // single internamente usa 4x4 para promediar
+#endif
 }

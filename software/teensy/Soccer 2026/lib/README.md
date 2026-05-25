@@ -8,7 +8,8 @@
 >
 > Vendoreadas el 2026-05-19, código fuente **podado** (sin `examples/`,
 > `examples_processing/`, `docs/` — solo lo que el compilador necesita).
-> Total: ~1.2 MB (incluye VL53L7CX vendoreada 2026-05-24 con firmware blob ~595 KB).
+> Total: ~1.9 MB (incluye VL53L7CX vendoreada 2026-05-24 con firmware blob ~595 KB
+> y VL53L5CX vendoreada 2026-05-24 con firmware blob ~582 KB).
 
 ## Contenido
 
@@ -19,6 +20,7 @@
 | `Adafruit_BusIO/` | I2C/SPI helper (dep. de BNO055) | idem | adafruit/Adafruit BusIO |
 | `Adafruit_Unified_Sensor/` | Interfaz de sensor (dep. de BNO055) | idem | adafruit/Adafruit Unified Sensor |
 | `STM32duino_VL53L7CX/` | Driver ToF multizona VL53L7CX | `diag_top_tof` (futuro `top` cuando se integre) | stm32duino/VL53L7CX |
+| `STM32duino_VL53L5CX/` | Driver ToF multizona VL53L5CX | `diag_top_tof_as_l5cx` (identificacion chip desconocido U2) | stm32duino/VL53L5CX |
 
 ## Cómo funciona
 

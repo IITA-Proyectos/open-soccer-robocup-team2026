@@ -249,12 +249,30 @@ void setup() {
 }
 
 void loop() {
-    // Error pattern si init fallo: 3 blinks rapidos cada 1 s.
+    // Error pattern si init fallo: 3 blinks rapidos cada 1 s + re-dump
+    // del diagnostico cada 2 s. El re-dump existe para garantizar que el
+    // operador vea el motivo del fallo aunque el monitor Serial se haya
+    // conectado DESPUES del setup() (caso comun: USB CDC del Teensy descarta
+    // bytes si no hay host listo en los primeros segundos).
     if (!g_init_ok) {
-        static uint32_t t0 = 0;
-        uint32_t phase = (millis() - t0) % 1000;
+        uint32_t phase = millis() % 1000;
         bool on = (phase < 100) || (phase >= 200 && phase < 300) || (phase >= 400 && phase < 500);
         digitalWrite(PIN_LED_STATUS, on ? HIGH : LOW);
+
+        static uint32_t t_last_dump = 0;
+        if (millis() - t_last_dump >= 2000) {
+            t_last_dump = millis();
+            Serial.println();
+            Serial.println("=========================================");
+            Serial.println("[error-loop] VL53L7CX init FALLO. Diagnostico fresco:");
+            scan_i2c_bus(Wire, "Wire (I2C0)");
+            Serial.println("  Si NO aparece 0x29  -> sensor no responde por I2C.");
+            Serial.println("    Causas: 3V3 caido, soldadura L7CX, XSHUT pin 2 mal ruteado,");
+            Serial.println("            pull-ups I2C ausentes en SDA/SCL.");
+            Serial.println("  Si APARECE 0x29     -> sensor responde pero la lib no inicializa.");
+            Serial.println("    Probar: -DDIAG_TOF_SKIP_XSHUT en build_flags del env.");
+            Serial.println("=========================================");
+        }
         return;
     }
 

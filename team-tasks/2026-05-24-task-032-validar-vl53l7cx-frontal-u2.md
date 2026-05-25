@@ -23,7 +23,8 @@ aceptación del spec sobre el VL53L7CX frontal (U2 del schematic).
 
 Antes de integrar el driver real del VL53L7CX en `src/top/sensors_tof.cpp`
 hace falta confirmar que el sensor físico que se soldó en la placa TOP
-responde correctamente vía I2C/Wire1, carga firmware y entrega una
+responde correctamente vía I²C (bus Wire, I²C0 — pines SDA=18 / SCL=19),
+carga firmware y entrega una
 grilla de distancias coherente. El sketch `diag_top_tof` (env homónimo
 en `platformio.ini`) es una herramienta de banco aislada del resto del
 firmware de competencia para hacer exactamente esta validación sin

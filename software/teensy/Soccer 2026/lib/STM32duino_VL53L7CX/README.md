@@ -1,3 +1,30 @@
+# DEPRECATED EN ESTE REPO — NO USAR EN CODIGO NUEVO
+
+**Bug identificado 2026-05-24**: esta lib tiene un bug en
+`src/vl53l7cx_platform.h` lineas 49-60 que rompe el init del sensor en
+Teensy 4.0 (y en cualquier plataforma con `BUFFER_LENGTH > 32` que no este
+en su lista de `#ifdef`). El sintoma es `init_sensor() = err 255` aunque
+el sensor responda OK al I2C scan en 0x29.
+
+**Detalle tecnico**: `DEFAULT_I2C_BUFFER_LEN = BUFFER_LENGTH` (256 en
+Teensy 4.0), pero cada chunk de write es `2 bytes header + 256 bytes
+payload = 258 bytes`, desbordando el buffer interno del `Wire`. El upload
+del firmware blob (~85 KB) se corrompe silenciosamente. El upstream ya
+tiene la mitad del fix (`BUFFER_LENGTH - 2`) pero solo para Arduino DUE
+(`#ifdef ARDUINO_SAM_DUE`), no para Teensy.
+
+**Solucion usada en este repo**: migramos a `lib/Adafruit_VL53L7CX/`
+(mismo sensor, lib distinta, sin este bug — usa `maxBufferSize() - 2`).
+Ver `journal/2026-05-24-hardware-up-top-tof-frontal-resuelto.md` para el
+debug completo (3 hipotesis fallidas + root cause + diff de codigo).
+
+**Por que mantenemos esta lib vendoreada**: trazabilidad historica del
+debug + sketches diag hermanos (`diag_top_tof`, `diag_top_tof_no_xshut`)
+que documentan los intentos. **NO usar en codigo nuevo del repo.** El
+firmware vivo (`src/top/sensors_tof.cpp`) usa `Adafruit_VL53L7CX`.
+
+---
+
 # STM32duino_VL53L7CX — librería vendoreada
 
 Driver Arduino oficial para el sensor ToF multizona **VL53L7CX** de

@@ -1,3 +1,31 @@
+# DEPRECATED EN ESTE REPO — NO USAR EN CODIGO NUEVO
+
+**Sospecha 2026-05-24**: misma estructura `vl53l5cx_platform.h` que la lib
+hermana `STM32duino_VL53L7CX` (en aquella confirmamos bug en lineas 49-60:
+`DEFAULT_I2C_BUFFER_LEN = BUFFER_LENGTH` desborda en 2 bytes el buffer del
+`Wire` de Teensy 4.0 al cargar el firmware blob del sensor). El sketch
+`[env:diag_top_tof_as_l5cx]` colgo silenciosamente en la carga del blob,
+sintoma compatible con el mismo bug.
+
+No se confirmo 100% porque el equipo solo tiene chips L7CX fisicamente
+disponibles — pero el codigo de plataforma es practicamente identico al de
+L7CX, asi que asumimos el mismo bug.
+
+**Solucion usada en este repo**: para L7CX migramos a
+`lib/Adafruit_VL53L7CX/`. Si en el futuro el equipo necesita usar L5CX,
+hay que buscar una alternativa Adafruit/Pololu/Sparkfun o forkear y
+parchear esta lib (cambiar `DEFAULT_I2C_BUFFER_LEN` a `min(BUFFER_LENGTH, X) - 2`).
+
+Ver `journal/2026-05-24-hardware-up-top-tof-frontal-resuelto.md` para el
+debug completo del bug en L7CX (analisis 1:1 trasladable a L5CX).
+
+**Por que mantenemos esta lib vendoreada**: trazabilidad historica del
+debug + sketch hermano `diag_top_tof_as_l5cx` que documenta el intento de
+identificar el chip por la lib que lo levante. **NO usar en codigo nuevo
+del repo.**
+
+---
+
 # STM32duino_VL53L5CX — librería vendoreada
 
 Driver Arduino oficial para el sensor ToF multizona **VL53L5CX** de

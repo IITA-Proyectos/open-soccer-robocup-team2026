@@ -48,7 +48,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 del DOWN (Serial2)
 
 ### TOP (Teensy 4.0)
-- `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (HC-SR04 funciona, VL53 stub), `comm_*`
+- `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (HC-SR04 + VL53L7CX frontal U2 vivos, lib `Adafruit_VL53L7CX` — ver journal 2026-05-24), `comm_*`
 
 ### DOWN (Teensy 4.0) — **deuda: 2 cadenas paralelas**
 - `src/down/main_down.cpp` → llama `line_ring.{h,cpp}` (cadena vieja, lectura cruda 1 kHz)
@@ -116,6 +116,17 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
   Validación cuantitativa pendiente: TASK-029. **Regla nueva descubierta**:
   hardware-up requiere power cycle completo (TASK-028). Ver
   `journal/2026-05-24-otos-lib-activada-y-power-cycle-bug.md`.
+
+- ~~**TOP VL53L7CX frontal en stub TODO_TOF_LIB**~~ → **VL53L7CX U2 FRONTAL VIVO**.
+  Misma sesión 2026-05-24. Debug de 3 horas: 3 libs ST (L5/L7/L8) fallaron
+  todas en init. Bug raiz identificado en `STM32duino_VL53L7CX/src/vl53l7cx_platform.h:49-60`
+  (`DEFAULT_I2C_BUFFER_LEN = BUFFER_LENGTH` desborda en 2 bytes el buffer
+  de `Wire` en Teensy 4.0 al cargar el firmware blob). Lib Adafruit_VL53L7CX
+  funciona out of the box. `src/top/sensors_tof.cpp` migrado del stub a
+  Adafruit (solo U2 instalado fisicamente; U3/U5/U17 quedan retornando
+  `TOF_NO_READING`). Nuevo `[env:diag_sensors_tof_live]` permite probar el
+  modulo migrado en aislamiento en banco. Libs ST marcadas DEPRECATED en
+  sus READMEs. Ver `journal/2026-05-24-hardware-up-top-tof-frontal-resuelto.md`.
 
 ### 🏁 HITO 2026-05-24 — Subsistema DOWN/BOTTOM operacional en banco + OTOS validado cuantitativamente
 La placa DOWN (también llamada "BOTTOM") pasó tests de banco con éxito:

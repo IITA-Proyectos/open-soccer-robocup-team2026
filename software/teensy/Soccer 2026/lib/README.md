@@ -8,9 +8,10 @@
 >
 > Vendoreadas el 2026-05-19, código fuente **podado** (sin `examples/`,
 > `examples_processing/`, `docs/` — solo lo que el compilador necesita).
-> Total: ~2.5 MB (incluye VL53L7CX vendoreada 2026-05-24 con firmware blob ~595 KB,
-> VL53L5CX vendoreada 2026-05-24 con firmware blob ~582 KB y VL53L8CX
-> vendoreada 2026-05-24 con firmware blob ~594 KB).
+> Total: ~3.1 MB (incluye VL53L7CX vendoreada 2026-05-24 con firmware blob ~595 KB,
+> VL53L5CX vendoreada 2026-05-24 con firmware blob ~582 KB, VL53L8CX
+> vendoreada 2026-05-24 con firmware blob ~594 KB y Adafruit_VL53L7CX
+> vendoreada 2026-05-24 con firmware blob ~595 KB).
 
 ## Contenido
 
@@ -23,6 +24,7 @@
 | `STM32duino_VL53L7CX/` | Driver ToF multizona VL53L7CX | `diag_top_tof` (futuro `top` cuando se integre) | stm32duino/VL53L7CX |
 | `STM32duino_VL53L5CX/` | Driver ToF multizona VL53L5CX | `diag_top_tof_as_l5cx` (identificacion chip desconocido U2) | stm32duino/VL53L5CX |
 | `STM32duino_VL53L8CX/` | Driver ToF multizona VL53L8CX | `diag_top_tof_as_l8cx` (identificacion chip desconocido U2 — ultimo candidato del trio) | stm32duino/VL53L8CX |
+| `Adafruit_VL53L7CX/` | Driver ToF multizona VL53L7CX (lib Adafruit, no ST) | `diag_top_tof_adafruit` (test de control vs las 3 libs ST que fallaron) | adafruit/Adafruit_VL53L7 |
 
 ## Cómo funciona
 

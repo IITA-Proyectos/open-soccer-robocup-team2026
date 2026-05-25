@@ -1,21 +1,19 @@
-// sensors_tof.h — 4 ToF (VL53L7CX o VL53L5CX) + 1 HC-SR04 ultrasonido.
+// sensors_tof.h — 4 slots ToF (VL53L7CX) + 1 HC-SR04 ultrasonido.
 //
 // Hardware (schematic TOP):
 //   • U2, U3 → Wire   (I2C bus 0, compartiendo bus con BNO055 LEFT)
 //   • U5, U17 → Wire1 (I2C bus 1, compartiendo bus con BNO055 RIGHT, REMAP 24/25)
 //   • U6 HC-SR04 → TRIG (pin 6) y ECHO (pin 7)
 //
-// Los ToF VL53L7CX y VL53L5CX entregan un array de distancias (zonas) además
-// de un valor único promedio. Para simplificar el firmware inicial usamos solo
-// el valor único central por ToF.
+// Estado al 2026-05-24 (ver journal/2026-05-24-hardware-up-top-tof-frontal-resuelto.md):
+//   • Solo U2 (frontal, Wire @ 0x29) esta fisicamente instalado y operativo.
+//     Lib usada: Adafruit_VL53L7CX (la STM32duino tiene bug en Teensy 4.0).
+//   • U3 / U5 / U17 son slots vacios — get_distance_mm(1..3) retorna
+//     TOF_NO_READING permanente hasta que lleguen los modulos. Cuando lleguen,
+//     toca agregar enumeracion XSHUT (cambio de address I2C) en sensors_tof.cpp.
+//   • HC-SR04 frontal funciona desde el dia 1.
 //
-// Q4 del coach: el equipo compró VL53L5CX pero tardan en llegar; tienen
-// VL53L7CX disponibles. Ambos usan la misma librería de ST (con flags por
-// modelo). Hardware status pending — los ToF probablemente no están montados
-// todavía en la placa que llegó.
-//
-// Stub: hasta confirmar qué modelo y que la lib está instalada, todas las
-// lecturas retornan ToF_NO_READING.
+// API publica estable: no cambio con la migracion stub -> Adafruit.
 
 #pragma once
 #include <stdint.h>

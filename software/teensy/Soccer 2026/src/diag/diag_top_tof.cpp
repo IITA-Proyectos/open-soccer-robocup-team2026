@@ -44,7 +44,16 @@
 // ============================================================
 constexpr int PIN_XSHUT_TOF_FRONT = 2;     // U2 del schematic — XSHUT al pin 2 del Teensy.
 constexpr int PIN_LED_STATUS      = 13;    // LED_BUILTIN.
-constexpr uint32_t I2C_CLOCK_HZ   = 400000;  // fast-mode standard; subir a 1 MHz si responde estable.
+
+// I2C clock: 400 kHz default (fast-mode standard). Si init_sensor() falla
+// con err=255 aunque el scan I2C vea el sensor, probablemente la transferencia
+// del firmware blob (~85 KB) esta fallando por capacitancia/ruido en el bus.
+// Compilar con -DDIAG_TOF_SLOW_I2C para bajar a 100 kHz (slow mode).
+#ifdef DIAG_TOF_SLOW_I2C
+constexpr uint32_t I2C_CLOCK_HZ   = 100000;  // slow mode
+#else
+constexpr uint32_t I2C_CLOCK_HZ   = 400000;  // fast-mode standard
+#endif
 
 // ============================================================
 // Globales

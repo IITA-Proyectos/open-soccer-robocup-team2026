@@ -59,7 +59,16 @@ constexpr uint32_t I2C_CLOCK_HZ   = 400000;  // fast-mode standard
 // Globales
 // ============================================================
 namespace {
-VL53L7CX g_sensor(&Wire, PIN_XSHUT_TOF_FRONT);   // constructor: (TwoWire*, lpn_pin/XSHUT)
+// Constructor: (TwoWire*, lpn_pin/XSHUT). Si DIAG_TOF_SKIP_XSHUT esta
+// definido, pasamos lpn_pin=-1 para que la lib NO toque XSHUT (la lib
+// chequea `if (lpn_pin >= 0)` en vl53l7cx_class.h:82 — pasar -1 hace
+// que el init no manipule el pin, util cuando XSHUT no esta ruteado
+// fisicamente al pin esperado).
+#ifdef DIAG_TOF_SKIP_XSHUT
+VL53L7CX g_sensor(&Wire, -1);
+#else
+VL53L7CX g_sensor(&Wire, PIN_XSHUT_TOF_FRONT);
+#endif
 bool g_init_ok = false;
 
 // I2C scanner — recorre addresses 7-bit (1..127) en bus Wire y reporta los

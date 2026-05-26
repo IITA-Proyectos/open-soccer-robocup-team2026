@@ -123,4 +123,22 @@ constexpr uint32_t MOTORS_SEND_INTERVAL_MS    = 10;   // 100 Hz al Zircon
 constexpr uint32_t ZIRCON_HEARTBEAT_TIMEOUT_MS = 500;
 constexpr uint32_t DOWN_HEARTBEAT_TIMEOUT_MS   = 500;
 
+// ============================================================
+// Localización en cancha RCJ Soccer Open 2026
+// ============================================================
+// Dimensiones interiores de la cancha (rulebook 2026).
+constexpr uint16_t FIELD_WIDTH_MM  = 2430;   // eje X (largo)
+constexpr uint16_t FIELD_HEIGHT_MM = 1820;   // eje Y (corto)
+
+// Ángulos de montaje de los 4 TOFs respecto al frente del robot (grados).
+// Convención: 0 = frente, 90 = izquierda, 180 = atrás, 270 = derecha.
+// Mapeo a índices del array PIN_TOF_XSHUT / sensors_tof_get_distance_mm:
+//   [0] = frontal, [1] = trasero, [2] = izquierdo, [3] = derecho
+constexpr uint16_t TOF_MOUNT_ANGLE_DEG[NUM_TOF] = { 0, 180, 90, 270 };
+
+// Umbral default para descarte de outliers por inconsistencia entre TOFs
+// del mismo eje. Si 2 TOFs estiman X (o Y) y difieren más que este valor,
+// se descarta el más lejano del pose anterior.
+constexpr uint16_t LOCALIZATION_OUTLIER_THRESHOLD_MM = 300;  // 30 cm
+
 }  // namespace iitasoccer

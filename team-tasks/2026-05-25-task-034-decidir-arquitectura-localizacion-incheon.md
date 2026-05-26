@@ -5,7 +5,9 @@ date_created: 2026-05-25
 date_due: 2026-06-01
 assigned: [gviollaz]
 priority: P1
-status: pending
+status: done
+date_resolved: 2026-05-25
+resolution: "APROBADO Sprint 1 (Alt 1 trilateración) + Sprint 2 (Alt 5 v2 LUT multizona). Ver sección Resolución abajo."
 estimated_hours: 0.5  # decisión + journal, no implementación
 blocks: [implementacion-localizacion-tof-imu, scope-firmware-pose]
 blocked_by: []
@@ -139,3 +141,34 @@ antes de la salida a Incheon (jun 30).
 - 2026-05-25: creada por Claude Opus 4.7 (Anthropic) al cerrar el
   análisis de 5 alternativas. Asignada a Gustavo (decisión arquitectural
   + budget de tiempo del equipo).
+- 2026-05-25: **APROBADA por Gustavo** — plan Sprint 1 + Sprint 2 del
+  research note `2026-05-25-localizacion-tof-imu-analisis.md`. Status → done.
+
+## Resolución
+
+**Decisión tomada por Gustavo Viollaz (@gviollaz) el 2026-05-25:**
+
+✅ **Sprint 1 — trilateración geométrica directa (Alt 1)** como baseline.
+- Spec aprobado: `docs/superpowers/specs/2026-05-25-localization-sprint1-trilateration-design.md`
+- Precisión esperada: ±2-3 cm
+- Tiempo dev: ~4-5 días
+
+✅ **Sprint 2 — LUT matching multizona 8×8 (Alt 5 v2)** como upgrade.
+- Spec a redactar tras validación del Sprint 1 en hardware.
+- Precisión esperada: ±1 cm
+- Tiempo dev: ~5-7 días
+
+❌ **Descartadas para Incheon:**
+- Alt 2 (wall-follow + dead reckoning): redundante con Alt 1.
+- Alt 3 (EKF): curva de bugs ~3 semanas, fuera de scope.
+- Alt 4 (Particle Filter MCL): CPU pesada, fuera de scope.
+
+## Próximos pasos
+
+1. Claude genera plan de implementación detallado del Sprint 1
+   (invocando skill `superpowers:writing-plans`).
+2. Gustavo revisa el plan.
+3. Implementación con subagent siguiendo TDD (tests host-native primero).
+4. Compile gates + tests host pasan antes de hardware.
+5. Validación en hardware queda BLOQUEADA por TASK-033 (bodge XSHUT).
+6. Después del Sprint 1 validado, decisión sobre arrancar Sprint 2.

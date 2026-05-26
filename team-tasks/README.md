@@ -61,6 +61,8 @@ Sistema de tareas asignadas a miembros del equipo para Incheon 2026.
 | [TASK-024](2026-05-18-task-024-arranque-rol-polaridad-arco.md) | Arranque: leer rol, polaridad de arco, fallback START | Virginia + Elías | **P0** | pending |
 | [TASK-025](2026-05-18-task-025-avast-bloquea-platformio-ssl.md) | Avast (SSL MITM) bloquea PlatformIO — excepción por máquina | Gustavo + Virginia + Elías | P1 | pending |
 | [TASK-026](2026-05-19-task-026-confirmar-pinout-mux-down.md) | Confirmar pinout Teensy↔CD4051 en placa DOWN (bloquea cualquier test del anillo) | Enzo | **P0** | pending |
+| [TASK-033](2026-05-25-task-033-decidir-cuantos-tofs-incheon.md) | Decidir cuántos TOFs llevar a Incheon (2 sin rework vs 4 con bodge) | Gustavo | P1 | pending |
+| [TASK-034](2026-05-25-task-034-decidir-arquitectura-localizacion-incheon.md) | Decidir arquitectura de localización XY+heading para Incheon (5 alternativas) | Gustavo | P1 | pending |
 
 > **Nota 2026-05-19 (cleanup quirúrgico):** análisis crítico determinó que el
 > 100% del trabajo desde 2026-05-10 fue generado por sesiones Claude

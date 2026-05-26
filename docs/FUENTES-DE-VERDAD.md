@@ -57,6 +57,15 @@ tipo: indice
    tocar el cerebro).
 3. **`cameras_runtime` no llena `ball_vx/vy`** (campos v2 nuevos). Quedan en 0;
    CENTRAL no puede usar intercepción por velocidad todavía. P2.
+4. **TOP rev 1.0 — XSHUT/LPn de los 4 ToFs no ruteados** (NC flags explícitos
+   en SCH, sin nets en PCB netlist, verificado forensicamente 2026-05-25).
+   Implicancia: máximo 2 ToFs soportados sin rework (1 por bus I²C, sin
+   enumeración de address). `config_top.h:68` con `PIN_TOF_XSHUT[4]` es
+   ficción heredada (banner aclaratorio agregado, código vivo no la usa).
+   Decisión Incheon (2 sin rework vs 4 con bodge) escalada a TASK-033.
+   Solución de fondo: TOP rev 1.1 post-Incheon. Ver
+   `journal/2026-05-25-top-xshut-no-routed-hallazgo-forense.md` +
+   `research/in-progress/2026-05-25-top-board-rev-1.1-wishlist.md`.
 
 ## Mapa de docs superados (con banner)
 

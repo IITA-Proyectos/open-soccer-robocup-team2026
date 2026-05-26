@@ -57,15 +57,40 @@ constexpr long UART_CAMERA2_BAUD      = 19200;    // Serial5
 // ============================================================
 // Sensores ToF (4×)
 // ============================================================
+// ⚠️ TOP rev 1.0: SOLO 2 ToFs SOPORTADOS SIN REWORK
+// Hallazgo forense 2026-05-25: los 4 pines XSHUT/LPn de los slots
+// U2/U3/U5/U17 están INTENCIONALMENTE SIN CONECTAR en el PCB rev 1.0
+// (NC flags explícitos en el schematic, sin nets en el PCB netlist).
+// Sin XSHUT individual no se pueden enumerar 2 sensores en el mismo bus
+// (ambos arrancan en 0x29 → colisión I²C).
+//
+// Configuración soportada SIN rework: 1 ToF por bus
+//   - U2 en Wire (I²C0) — frontal, ya validado 2026-05-24.
+//   - U5 en Wire1 (I²C1) — pendiente activar (ver TASK-033).
+// Para los 4 ToFs hay que: (a) bodge soldando jumpers Xshut → GPIOs
+// libres del Teensy, o (b) esperar TOP rev 1.1 con XSHUT ruteados.
+//
+// Ver:
+//   - journal/2026-05-25-top-xshut-no-routed-hallazgo-forense.md
+//   - research/in-progress/2026-05-25-top-board-rev-1.1-wishlist.md
+//   - team-tasks/2026-05-25-task-033-decidir-cuantos-tofs-incheon.md
+//
+// La línea PIN_TOF_XSHUT[] de abajo queda como histórica/aspiracional.
+// El código actual de sensors_tof.cpp (migrado a Adafruit 2026-05-24) ya
+// no la usa — opera con 1 sensor en 0x29 default sin XSHUT.
+// ============================================================
 // U2, U3 en Wire (I2C0) — comparten dirección por default; usar XSHUT para enumerarlos.
 // U5, U17 en Wire1 (I2C1) — idem.
 // Hardware comprado (según coach Q4): VL53L7CX disponibles, VL53L5CX en pedido.
 // Direcciones después de enumeración: 0x52, 0x54, 0x56, 0x58 (tentativas).
 constexpr int NUM_TOF = 4;
 
-// Pines XSHUT (Xshut del schematic — GPIOs para encender/apagar cada ToF
-// individualmente durante enumeración I2C). Tentativos, confirmar con TASK-003 ext.
-constexpr int PIN_TOF_XSHUT[NUM_TOF] = { 2, 3, 4, 5 };
+// ⚠️ HISTÓRICO/ASPIRACIONAL — estos pines NO están ruteados en TOP rev 1.0.
+// NO USAR como pinout de XSHUT real. Ver banner arriba.
+// El firmware vivo (sensors_tof.cpp con lib Adafruit_VL53L7CX) no
+// referencia este array — se conserva para trazabilidad del diseño
+// original y para reuso en TOP rev 1.1 cuando los XSHUT estén ruteados.
+constexpr int PIN_TOF_XSHUT[NUM_TOF] = { 2, 3, 4, 5 };  // ⚠️ NO USAR — ver banner arriba.
 
 // ============================================================
 // HC-SR04 ultrasonido (frontal, fallback)

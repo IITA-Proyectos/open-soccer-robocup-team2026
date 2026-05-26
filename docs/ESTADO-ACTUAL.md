@@ -48,7 +48,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 del DOWN (Serial2)
 
 ### TOP (Teensy 4.0)
-- `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (HC-SR04 + VL53L7CX frontal U2 vivos, lib `Adafruit_VL53L7CX` — ver journal 2026-05-24), `comm_*`
+- `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (HC-SR04 + 1 VL53L7CX frontal U2 vivo, lib `Adafruit_VL53L7CX`. ⚠️ TOP rev 1.0 NO permite >1 ToF por bus sin rework — XSHUT/LPn de los 4 slots NO ruteados en el PCB, verificación forense 2026-05-25. Máximo soportado: 2 ToFs total. Ver journal 2026-05-24 + 2026-05-25), `comm_*`
 
 ### DOWN (Teensy 4.0) — **deuda: 2 cadenas paralelas**
 - `src/down/main_down.cpp` → llama `line_ring.{h,cpp}` (cadena vieja, lectura cruda 1 kHz)
@@ -127,6 +127,27 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
   `TOF_NO_READING`). Nuevo `[env:diag_sensors_tof_live]` permite probar el
   modulo migrado en aislamiento en banco. Libs ST marcadas DEPRECATED en
   sus READMEs. Ver `journal/2026-05-24-hardware-up-top-tof-frontal-resuelto.md`.
+
+### Resuelto 2026-05-25
+- **Verificado forensicamente que los XSHUT/LPn de los 4 TOFs NO están
+  ruteados en TOP rev 1.0** (NC flags explícitos en SCH, 0 nets en PCB
+  netlist). Implicancia: máximo 2 ToFs sin rework (1 por bus I²C).
+  `config_top.h:68` con `PIN_TOF_XSHUT[4] = {2,3,4,5}` documentado como
+  ficción heredada (banner agregado, código vivo no lo usa). Wishlist
+  de TOP rev 1.1 (post-Incheon) capturado con 7 items
+  (XSHUT + agujeros cámaras + reguladores fuera del borde + conectores
+  keyed + LEDs OK + voltímetro + STM32 integrado). Decisión Incheon
+  (2 ToFs vs 4 con bodge) escalada a TASK-033. Ver journal
+  `2026-05-25-top-xshut-no-routed-hallazgo-forense.md` + research
+  `research/in-progress/2026-05-25-top-board-rev-1.1-wishlist.md`.
+
+### Deudas conocidas (resumen — la canónica está en `FUENTES-DE-VERDAD.md`)
+
+- **TOP rev 1.0 — XSHUT/LPn de los 4 slots ToF no ruteados.** Sin rework
+  hardware el máximo soportado es 2 ToFs (1 por bus I²C). Decisión
+  pendiente para Incheon: ver TASK-033 (2 ToFs sin rework vs 4 con bodge
+  de Enzo). Solución de fondo: TOP rev 1.1 post-Incheon
+  (`research/in-progress/2026-05-25-top-board-rev-1.1-wishlist.md`).
 
 ### 🏁 HITO 2026-05-24 — Subsistema DOWN/BOTTOM operacional en banco + OTOS validado cuantitativamente
 La placa DOWN (también llamada "BOTTOM") pasó tests de banco con éxito:

@@ -132,7 +132,7 @@ constexpr uint16_t FIELD_HEIGHT_MM = 1820;   // eje Y (corto)
 
 // Ángulos de montaje de los 4 TOFs respecto al frente del robot (grados).
 // Convención: 0 = frente, 90 = izquierda, 180 = atrás, 270 = derecha.
-// Mapeo a índices del array PIN_TOF_XSHUT / sensors_tof_get_distance_mm:
+// Mapeo a índices del array de sensors_tof_get_distance_mm():
 //   [0] = frontal, [1] = trasero, [2] = izquierdo, [3] = derecho
 constexpr uint16_t TOF_MOUNT_ANGLE_DEG[NUM_TOF] = { 0, 180, 90, 270 };
 

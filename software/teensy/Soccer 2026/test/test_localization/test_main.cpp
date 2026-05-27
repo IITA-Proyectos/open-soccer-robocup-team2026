@@ -251,6 +251,32 @@ void test_tof_lateral_bloqueado_se_descarta_por_inconsistencia(void) {
     TEST_ASSERT_EQUAL_UINT8(0b1011, pose.source_flags);
 }
 
+void test_pose_invalid_sin_suficientes_tofs(void) {
+    // Solo el TOF frontal es valido. Da estimacion de Y pero ninguna de X.
+    // pose.valid debe ser false.
+    auto in = make_inputs(910, 0, 0, 0, 0);
+    in.tof_valid[1] = false;
+    in.tof_valid[2] = false;
+    in.tof_valid[3] = false;
+    auto cfg = make_standard_config();
+    cfg.prev_valid = false;
+
+    auto pose = localization_compute(in, cfg);
+
+    TEST_ASSERT_FALSE(pose.valid);
+}
+
+void test_pose_invalid_todos_tofs_fuera_de_rango(void) {
+    // Los 4 TOFs leen valores fisicamente imposibles.
+    auto in = make_inputs(5000, 5000, 5000, 5000, 0);
+    auto cfg = make_standard_config();
+    cfg.prev_valid = false;
+
+    auto pose = localization_compute(in, cfg);
+
+    TEST_ASSERT_FALSE(pose.valid);
+}
+
 // ============================================================
 // Runner Unity
 // ============================================================
@@ -268,5 +294,7 @@ int main(int argc, char** argv) {
     RUN_TEST(test_tof_invalid_se_descarta);
     RUN_TEST(test_tof_lectura_mayor_que_cancha_se_descarta);
     RUN_TEST(test_tof_lateral_bloqueado_se_descarta_por_inconsistencia);
+    RUN_TEST(test_pose_invalid_sin_suficientes_tofs);
+    RUN_TEST(test_pose_invalid_todos_tofs_fuera_de_rango);
     return UNITY_END();
 }

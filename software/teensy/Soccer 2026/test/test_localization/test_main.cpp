@@ -188,6 +188,24 @@ void test_robot_asimetrico_rotado_90_discrimina_clasificacion(void) {
     TEST_ASSERT_INT16_WITHIN(50, 9000, pose.heading_centideg);
 }
 
+void test_tof_invalid_se_descarta(void) {
+    // Robot en centro, pero el TOF izquierdo viene con valid=false.
+    // El algoritmo debe usar solo 3 TOFs y aun asi calcular pose.
+    // X solo viene del TOF derecho.
+    auto in = make_inputs(910, 910, 1215, 1215, 0);
+    in.tof_valid[2] = false;  // izquierdo invalid
+    auto cfg = make_standard_config();
+    cfg.prev_valid = false;
+
+    auto pose = localization_compute(in, cfg);
+
+    TEST_ASSERT_TRUE(pose.valid);
+    TEST_ASSERT_INT16_WITHIN(10, 1215, pose.x_mm);
+    TEST_ASSERT_INT16_WITHIN(10, 910, pose.y_mm);
+    // source_flags: bits 0, 1, 3 = 0b1011 = 11
+    TEST_ASSERT_EQUAL_UINT8(0b1011, pose.source_flags);
+}
+
 // ============================================================
 // Runner Unity
 // ============================================================
@@ -202,5 +220,6 @@ int main(int argc, char** argv) {
     RUN_TEST(test_robot_en_centro_rotado_180);
     RUN_TEST(test_robot_en_centro_rotado_menos90);
     RUN_TEST(test_robot_asimetrico_rotado_90_discrimina_clasificacion);
+    RUN_TEST(test_tof_invalid_se_descarta);
     return UNITY_END();
 }

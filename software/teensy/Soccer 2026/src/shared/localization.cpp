@@ -58,6 +58,13 @@ LocalizationPose localization_compute(
     for (int i = 0; i < 4; ++i) {
         if (!in.tof_valid[i]) continue;
         uint16_t d = in.tof_distance_mm[i];
+        // Descarte por rango: si la lectura es fisicamente imposible (mayor
+        // que la dimension de la cancha en cualquier eje), descartar.
+        const uint16_t max_dim = (cfg.field_width_mm > cfg.field_height_mm)
+            ? cfg.field_width_mm : cfg.field_height_mm;
+        if (d > max_dim) continue;
+        // Descarte por minimo: el VL53L7CX no es fiable bajo 10 mm.
+        if (d < 10) continue;
         Wall w = classify_wall(heading_deg, cfg.tof_mount_angle_deg[i]);
 
         switch (w) {

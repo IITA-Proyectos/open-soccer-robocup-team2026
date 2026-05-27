@@ -49,6 +49,10 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 
 ### TOP (Teensy 4.0)
 - `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (HC-SR04 + 1 VL53L7CX frontal U2 vivo, lib `Adafruit_VL53L7CX`. ⚠️ TOP rev 1.0 NO permite >1 ToF por bus sin rework — XSHUT/LPn de los 4 slots NO ruteados en el PCB, verificación forense 2026-05-25. Máximo soportado: 2 ToFs total. Ver journal 2026-05-24 + 2026-05-25), `comm_*`
+- `src/shared/localization.cpp` — trilateracion geometrica directa (Sprint 1
+  aprobado 2026-05-25, ver `docs/superpowers/specs/2026-05-25-localization-sprint1-trilateration-design.md`).
+  Validacion en hardware pendiente: TASK-035.
+- `src/top/localization_runtime.cpp` — glue I/O.
 
 ### DOWN (Teensy 4.0) — **deuda: 2 cadenas paralelas**
 - `src/down/main_down.cpp` → llama `line_ring.{h,cpp}` (cadena vieja, lectura cruda 1 kHz)
@@ -70,6 +74,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 | `test_cameras_fusion` | 16 | rot 180°, fuse front+back, watchdog |
 | `test_behind_ball` | 16 | target detrás, aligned-to-shoot, attack-line, kickoff |
 | `test_strategy_transitions` | 35 | árbol decisión ATK + GK (caracterización) |
+| `test_localization` | 14 | trilateracion + outliers + rotaciones + edge cases |
 | `test_central_contract` | ? | contrato CENTRAL |
 | `test_central_trajectory` | ? | ball_trajectory |
 | `test_down_*` (calib, encode, geometry, model, surface, tracker) | ? | cadena DOWN nueva |
@@ -127,6 +132,12 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
   `TOF_NO_READING`). Nuevo `[env:diag_sensors_tof_live]` permite probar el
   modulo migrado en aislamiento en banco. Libs ST marcadas DEPRECATED en
   sus READMEs. Ver `journal/2026-05-24-hardware-up-top-tof-frontal-resuelto.md`.
+
+### Resuelto 2026-05-27
+- 2026-05-27: Sprint 1 localizacion (trilateracion geometrica) implementado.
+  Modulo localization.cpp puro + tests host-native 14 PASS + integrado a
+  main_top.cpp (pose llega al WorldSnapshot v2). Validacion HW pendiente
+  (TASK-035, bloqueada por bodge XSHUT TASK-033).
 
 ### Resuelto 2026-05-25
 - **Verificado forensicamente que los XSHUT/LPn de los 4 TOFs NO están

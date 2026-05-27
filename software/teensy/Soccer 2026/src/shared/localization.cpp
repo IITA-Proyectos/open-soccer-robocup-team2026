@@ -48,54 +48,85 @@ LocalizationPose localization_compute(
     LocalizationPose pose{};
     pose.valid = false;
 
-    // Acumular estimaciones de X y de Y por separado.
-    int32_t sum_x = 0; int sum_x_count = 0;
-    int32_t sum_y = 0; int sum_y_count = 0;
+    // Recolectar estimaciones por eje, con el indice del TOF que la genero.
+    struct Estimate { int16_t value; int tof_idx; };
+    Estimate x_estimates[4]; int x_count = 0;
+    Estimate y_estimates[4]; int y_count = 0;
 
-    // Convertir heading de centideg a deg (sin float).
     int16_t heading_deg = (in.bno_heading_centideg - cfg.bno_offset_centideg) / 100;
+    const uint16_t max_dim = (cfg.field_width_mm > cfg.field_height_mm)
+        ? cfg.field_width_mm : cfg.field_height_mm;
 
     for (int i = 0; i < 4; ++i) {
         if (!in.tof_valid[i]) continue;
         uint16_t d = in.tof_distance_mm[i];
-        // Descarte por rango: si la lectura es fisicamente imposible (mayor
-        // que la dimension de la cancha en cualquier eje), descartar.
-        const uint16_t max_dim = (cfg.field_width_mm > cfg.field_height_mm)
-            ? cfg.field_width_mm : cfg.field_height_mm;
-        if (d > max_dim) continue;
-        // Descarte por minimo: el VL53L7CX no es fiable bajo 10 mm.
-        if (d < 10) continue;
-        Wall w = classify_wall(heading_deg, cfg.tof_mount_angle_deg[i]);
+        if (d > max_dim || d < 10) continue;
 
+        Wall w = classify_wall(heading_deg, cfg.tof_mount_angle_deg[i]);
         switch (w) {
             case WALL_NORTH:
-                sum_y += static_cast<int32_t>(cfg.field_height_mm) - d;
-                ++sum_y_count;
-                pose.source_flags |= (1 << i);
+                y_estimates[y_count++] = { static_cast<int16_t>(cfg.field_height_mm - d), i };
                 break;
             case WALL_SOUTH:
-                sum_y += d;
-                ++sum_y_count;
-                pose.source_flags |= (1 << i);
+                y_estimates[y_count++] = { static_cast<int16_t>(d), i };
                 break;
             case WALL_EAST:
-                sum_x += static_cast<int32_t>(cfg.field_width_mm) - d;
-                ++sum_x_count;
-                pose.source_flags |= (1 << i);
+                x_estimates[x_count++] = { static_cast<int16_t>(cfg.field_width_mm - d), i };
                 break;
             case WALL_WEST:
-                sum_x += d;
-                ++sum_x_count;
-                pose.source_flags |= (1 << i);
+                x_estimates[x_count++] = { static_cast<int16_t>(d), i };
                 break;
             case WALL_NONE:
                 break;
         }
     }
 
-    if (sum_x_count > 0 && sum_y_count > 0) {
-        pose.x_mm = static_cast<int16_t>(sum_x / sum_x_count);
-        pose.y_mm = static_cast<int16_t>(sum_y / sum_y_count);
+    // Outlier rejection por consistencia entre estimaciones del mismo eje.
+    // Si 2 estimaciones difieren mas que el umbral, descartar la mas lejana
+    // del pose anterior (si hay pose anterior valido).
+    auto reject_outliers = [&](Estimate* arr, int& count, int16_t prev_value) {
+        if (!cfg.prev_valid) return;
+        // Loop hasta que no haya mas outliers. Cada iteracion del while
+        // puede descartar a lo sumo uno; con max 4 estimaciones, terminan.
+        bool changed = true;
+        while (changed && count >= 2) {
+            changed = false;
+            for (int i = 0; i < count - 1 && !changed; ++i) {
+                for (int j = i + 1; j < count && !changed; ++j) {
+                    int diff = arr[i].value - arr[j].value;
+                    if (diff < 0) diff = -diff;
+                    if (diff > cfg.outlier_threshold_mm) {
+                        // Descartar el mas lejano de prev_value.
+                        int dist_i = arr[i].value - prev_value; if (dist_i < 0) dist_i = -dist_i;
+                        int dist_j = arr[j].value - prev_value; if (dist_j < 0) dist_j = -dist_j;
+                        int reject = (dist_i > dist_j) ? i : j;
+                        // Shift left para eliminar el rechazado.
+                        for (int k = reject; k < count - 1; ++k) {
+                            arr[k] = arr[k + 1];
+                        }
+                        --count;
+                        changed = true;  // reiniciar el escaneo.
+                    }
+                }
+            }
+        }
+    };
+
+    reject_outliers(x_estimates, x_count, cfg.prev_x_mm);
+    reject_outliers(y_estimates, y_count, cfg.prev_y_mm);
+
+    if (x_count > 0 && y_count > 0) {
+        int32_t sum_x = 0; int32_t sum_y = 0;
+        for (int i = 0; i < x_count; ++i) {
+            sum_x += x_estimates[i].value;
+            pose.source_flags |= (1 << x_estimates[i].tof_idx);
+        }
+        for (int i = 0; i < y_count; ++i) {
+            sum_y += y_estimates[i].value;
+            pose.source_flags |= (1 << y_estimates[i].tof_idx);
+        }
+        pose.x_mm = static_cast<int16_t>(sum_x / x_count);
+        pose.y_mm = static_cast<int16_t>(sum_y / y_count);
         pose.heading_centideg = in.bno_heading_centideg - cfg.bno_offset_centideg;
         pose.valid = true;
     }

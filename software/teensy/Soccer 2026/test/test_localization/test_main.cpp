@@ -225,6 +225,32 @@ void test_tof_lectura_mayor_que_cancha_se_descarta(void) {
     TEST_ASSERT_EQUAL_UINT8(0b1110, pose.source_flags);
 }
 
+void test_tof_lateral_bloqueado_se_descarta_por_inconsistencia(void) {
+    // Robot en centro (1215, 910). El TOF izquierdo lee 200 mm (un robot rival
+    // pegado a 20 cm a la izquierda). El TOF derecho lee normal: 1215 mm.
+    //
+    // Sin outlier rejection: x_estimado_izq = 200, x_estimado_der = 2430-1215 = 1215.
+    //                        promedio = (200+1215)/2 = 707 mm. INCORRECTO.
+    //
+    // Con outlier rejection por consistencia con pose anterior (cfg.prev_x_mm = 1215):
+    //   x_estimado_izq = 200 → distancia a prev = |200-1215| = 1015 mm.
+    //   x_estimado_der = 1215 → distancia a prev = 0 mm.
+    //   Diferencia entre estimaciones: |200-1215| = 1015 > 300 (threshold).
+    //   → descartar la mas lejana del prev → descartar izq.
+    //   → x_robot = 1215 (solo del TOF der).
+    auto in = make_inputs(910, 910, 200, 1215, 0);
+    auto cfg = make_standard_config();
+    // prev_valid=true y prev_x_mm=1215 ya estan en make_standard_config.
+
+    auto pose = localization_compute(in, cfg);
+
+    TEST_ASSERT_TRUE(pose.valid);
+    TEST_ASSERT_INT16_WITHIN(10, 1215, pose.x_mm);
+    TEST_ASSERT_INT16_WITHIN(10, 910, pose.y_mm);
+    // source_flags: bits 0, 1, 3 = 0b1011 (sin bit 2 = TOF izq descartado)
+    TEST_ASSERT_EQUAL_UINT8(0b1011, pose.source_flags);
+}
+
 // ============================================================
 // Runner Unity
 // ============================================================
@@ -241,5 +267,6 @@ int main(int argc, char** argv) {
     RUN_TEST(test_robot_asimetrico_rotado_90_discrimina_clasificacion);
     RUN_TEST(test_tof_invalid_se_descarta);
     RUN_TEST(test_tof_lectura_mayor_que_cancha_se_descarta);
+    RUN_TEST(test_tof_lateral_bloqueado_se_descarta_por_inconsistencia);
     return UNITY_END();
 }

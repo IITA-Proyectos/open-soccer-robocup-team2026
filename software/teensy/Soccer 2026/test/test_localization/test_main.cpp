@@ -71,6 +71,45 @@ void test_robot_en_centro_apunta_arco_rival(void) {
     TEST_ASSERT_INT16_WITHIN(50, 0,    pose.heading_centideg);
 }
 
+void test_robot_en_esquina_propia_apunta_arco_rival(void) {
+    // Robot en (0, 0), apuntando a +Y.
+    auto in = make_inputs(1820, 0, 0, 2430, 0);
+    auto cfg = make_standard_config();
+    cfg.prev_valid = false;
+
+    auto pose = localization_compute(in, cfg);
+
+    TEST_ASSERT_TRUE(pose.valid);
+    TEST_ASSERT_INT16_WITHIN(10, 0, pose.x_mm);
+    TEST_ASSERT_INT16_WITHIN(10, 0, pose.y_mm);
+}
+
+void test_robot_en_esquina_rival(void) {
+    // Robot en (2430, 1820), apuntando a +Y.
+    auto in = make_inputs(0, 1820, 2430, 0, 0);
+    auto cfg = make_standard_config();
+    cfg.prev_valid = false;
+
+    auto pose = localization_compute(in, cfg);
+
+    TEST_ASSERT_TRUE(pose.valid);
+    TEST_ASSERT_INT16_WITHIN(10, 2430, pose.x_mm);
+    TEST_ASSERT_INT16_WITHIN(10, 1820, pose.y_mm);
+}
+
+void test_robot_pegado_pared_lateral(void) {
+    // Robot en (50, 910), pegado a la pared oeste.
+    auto in = make_inputs(910, 910, 50, 2380, 0);
+    auto cfg = make_standard_config();
+    cfg.prev_valid = false;
+
+    auto pose = localization_compute(in, cfg);
+
+    TEST_ASSERT_TRUE(pose.valid);
+    TEST_ASSERT_INT16_WITHIN(10, 50, pose.x_mm);
+    TEST_ASSERT_INT16_WITHIN(10, 910, pose.y_mm);
+}
+
 // ============================================================
 // Runner Unity
 // ============================================================
@@ -78,5 +117,8 @@ int main(int argc, char** argv) {
     (void)argc; (void)argv;
     UNITY_BEGIN();
     RUN_TEST(test_robot_en_centro_apunta_arco_rival);
+    RUN_TEST(test_robot_en_esquina_propia_apunta_arco_rival);
+    RUN_TEST(test_robot_en_esquina_rival);
+    RUN_TEST(test_robot_pegado_pared_lateral);
     return UNITY_END();
 }

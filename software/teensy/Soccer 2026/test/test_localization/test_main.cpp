@@ -133,6 +133,61 @@ void test_robot_en_centro_rotado_90_derecha(void) {
     TEST_ASSERT_INT16_WITHIN(50, 9000, pose.heading_centideg);
 }
 
+void test_robot_en_centro_rotado_180(void) {
+    // Robot en (1215, 910) rotado 180 grados (apunta al arco propio).
+    // Frontal mira -Y (sur), trasero mira +Y (norte), izq mira +X (este),
+    // der mira -X (oeste).
+    // Distancias: frontal→sur=910, trasero→norte=910, izq→este=1215, der→oeste=1215.
+    auto in = make_inputs(910, 910, 1215, 1215, 18000);
+    auto cfg = make_standard_config();
+    cfg.prev_valid = false;
+
+    auto pose = localization_compute(in, cfg);
+
+    TEST_ASSERT_TRUE(pose.valid);
+    TEST_ASSERT_INT16_WITHIN(10, 1215, pose.x_mm);
+    TEST_ASSERT_INT16_WITHIN(10, 910, pose.y_mm);
+}
+
+void test_robot_en_centro_rotado_menos90(void) {
+    // Robot en (1215, 910) rotado -90 grados (izquierda).
+    // Frontal mira -X (oeste), trasero mira +X (este), izq mira +Y (norte),
+    // der mira -Y (sur).
+    auto in = make_inputs(1215, 1215, 910, 910, -9000);
+    auto cfg = make_standard_config();
+    cfg.prev_valid = false;
+
+    auto pose = localization_compute(in, cfg);
+
+    TEST_ASSERT_TRUE(pose.valid);
+    TEST_ASSERT_INT16_WITHIN(10, 1215, pose.x_mm);
+    TEST_ASSERT_INT16_WITHIN(10, 910, pose.y_mm);
+}
+
+void test_robot_asimetrico_rotado_90_discrimina_clasificacion(void) {
+    // TEST DISCRIMINANTE: robot en (500, 1500) rotado 90 derecha.
+    // Esta posicion NO es simetrica como el centro — si la clasificacion
+    // de paredes esta mal, X o Y van a salir mal.
+    //
+    // Con heading=+9000 (CCW +90):
+    //   TOF[0] mount=0  → world_angle=90 → WEST  → x_est = d = 500   (TOF debe leer 500 mm)
+    //   TOF[1] mount=180 → world_angle=270 → EAST → x_est = 2430-d = 500 → d=1930
+    //   TOF[2] mount=90  → world_angle=180 → SOUTH → y_est = d = 1500 → d=1500
+    //   TOF[3] mount=270 → world_angle=360→0 → NORTH → y_est = 1820-d = 1500 → d=320
+    //
+    // Asi que las distancias son: front=500, back=1930, izq=1500, der=320
+    auto in = make_inputs(500, 1930, 1500, 320, 9000);
+    auto cfg = make_standard_config();
+    cfg.prev_valid = false;
+
+    auto pose = localization_compute(in, cfg);
+
+    TEST_ASSERT_TRUE(pose.valid);
+    TEST_ASSERT_INT16_WITHIN(10, 500,  pose.x_mm);
+    TEST_ASSERT_INT16_WITHIN(10, 1500, pose.y_mm);
+    TEST_ASSERT_INT16_WITHIN(50, 9000, pose.heading_centideg);
+}
+
 // ============================================================
 // Runner Unity
 // ============================================================
@@ -144,5 +199,8 @@ int main(int argc, char** argv) {
     RUN_TEST(test_robot_en_esquina_rival);
     RUN_TEST(test_robot_pegado_pared_lateral);
     RUN_TEST(test_robot_en_centro_rotado_90_derecha);
+    RUN_TEST(test_robot_en_centro_rotado_180);
+    RUN_TEST(test_robot_en_centro_rotado_menos90);
+    RUN_TEST(test_robot_asimetrico_rotado_90_discrimina_clasificacion);
     return UNITY_END();
 }

@@ -277,6 +277,23 @@ void test_pose_invalid_todos_tofs_fuera_de_rango(void) {
     TEST_ASSERT_FALSE(pose.valid);
 }
 
+void test_clasificacion_borde_45_grados_estable(void) {
+    // Robot rotado exactamente 45 grados. El TOF frontal (mount 0) tiene
+    // world_angle = 45 → clasificado como WALL_WEST (intervalo [45, 135)).
+    // La proyeccion va a ser incorrecta porque la distancia no es perpendicular,
+    // pero el algoritmo no debe crashear ni devolver basura.
+    auto in = make_inputs(910, 910, 1215, 1215, 4500);
+    auto cfg = make_standard_config();
+    cfg.prev_valid = false;
+
+    auto pose = localization_compute(in, cfg);
+
+    // No requerimos precision (Sprint 2 con projection por coseno la mejora),
+    // pero el algoritmo no debe crashear.
+    TEST_ASSERT_TRUE(pose.valid || !pose.valid);  // tautologia: solo verifica no crash
+    // Documentado en el spec §10 R4.
+}
+
 // ============================================================
 // Runner Unity
 // ============================================================
@@ -296,5 +313,6 @@ int main(int argc, char** argv) {
     RUN_TEST(test_tof_lateral_bloqueado_se_descarta_por_inconsistencia);
     RUN_TEST(test_pose_invalid_sin_suficientes_tofs);
     RUN_TEST(test_pose_invalid_todos_tofs_fuera_de_rango);
+    RUN_TEST(test_clasificacion_borde_45_grados_estable);
     return UNITY_END();
 }

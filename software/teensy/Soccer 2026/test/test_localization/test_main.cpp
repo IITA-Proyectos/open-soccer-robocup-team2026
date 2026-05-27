@@ -110,6 +110,29 @@ void test_robot_pegado_pared_lateral(void) {
     TEST_ASSERT_INT16_WITHIN(10, 910, pose.y_mm);
 }
 
+void test_robot_en_centro_rotado_90_derecha(void) {
+    // Robot en (1215, 910), rotado 90 grados a la derecha (heading = +9000 centideg).
+    // Ahora el TOF [0] mont 0 grados apunta a +X mundo (lateral derecho).
+    //              [1] mont 180 grados apunta a -X mundo (lateral izq).
+    //              [2] mont 90 grados (izq robot) apunta a -Y mundo (pared sur).
+    //              [3] mont 270 grados (der robot) apunta a +Y mundo (pared norte).
+    // Distancias esperadas:
+    //   frontal [0] → este: field_width - x = 2430 - 1215 = 1215
+    //   trasero [1] → oeste: x = 1215
+    //   izq [2] → sur: y = 910
+    //   der [3] → norte: field_height - y = 910
+    auto in = make_inputs(1215, 1215, 910, 910, 9000);
+    auto cfg = make_standard_config();
+    cfg.prev_valid = false;
+
+    auto pose = localization_compute(in, cfg);
+
+    TEST_ASSERT_TRUE(pose.valid);
+    TEST_ASSERT_INT16_WITHIN(10, 1215, pose.x_mm);
+    TEST_ASSERT_INT16_WITHIN(10, 910, pose.y_mm);
+    TEST_ASSERT_INT16_WITHIN(50, 9000, pose.heading_centideg);
+}
+
 // ============================================================
 // Runner Unity
 // ============================================================
@@ -120,5 +143,6 @@ int main(int argc, char** argv) {
     RUN_TEST(test_robot_en_esquina_propia_apunta_arco_rival);
     RUN_TEST(test_robot_en_esquina_rival);
     RUN_TEST(test_robot_pegado_pared_lateral);
+    RUN_TEST(test_robot_en_centro_rotado_90_derecha);
     return UNITY_END();
 }

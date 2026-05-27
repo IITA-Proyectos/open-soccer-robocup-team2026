@@ -36,6 +36,44 @@ tags: [hardware-test, top-board, localizacion, sprint1]
 5. Confirmar en el monitor: banner aparece, "BNO offset = X deg",
    "init OK".
 
+## Paso 0: Verificar signo del BNO055 (PREREQUISITO)
+
+**Antes de validar la trilateración**, hay que confirmar que el BNO055
+da heading positivo cuando el robot gira CCW (antihorario visto desde
+arriba). El código de `src/shared/localization.cpp` asume esa convención
+— si el BNO da CW positivo (lo más común en IMUs consumer), la
+trilateración va a salir reflejada y NINGÚN criterio de aceptación va a
+pasar.
+
+### Cómo verificar
+
+1. Con el robot encendido y `diag_localization_live` corriendo, ANOTAR
+   el `BNO offset = X deg` que aparece en el banner del setup.
+2. **Sin apagar el robot**, levantarlo y rotarlo manualmente 90° a la
+   DERECHA (sentido horario visto desde arriba) — el robot ahora apunta
+   hacia donde estaba el lateral derecho.
+3. Mirar el `hdg=X` printeado en el monitor durante el siguiente ciclo.
+4. Si `hdg` es **negativo** (~-90° = -9000 centideg) → ✅ CCW positivo,
+   convención correcta. Continuar con los 4 criterios de abajo.
+5. Si `hdg` es **positivo** (~+90° = +9000 centideg) → ❌ CW positivo,
+   convención invertida. Avisar al coach para fix de 1 línea en
+   `src/shared/localization.cpp` (invertir el signo del heading en el
+   cálculo de `heading_deg = (in.bno_heading_centideg - cfg.bno_offset_centideg) / 100;`,
+   o re-mapear `cfg.tof_mount_angle_deg[]` desde `{0, 180, 90, 270}` a
+   `{0, 180, 270, 90}` para compensar).
+
+### Si el signo está mal y no se puede esperar al coach
+
+Workaround inmediato (NO mergear a main sin discusión):
+```cpp
+// En localization_compute (src/shared/localization.cpp), reemplazar:
+int16_t heading_deg = (in.bno_heading_centideg - cfg.bno_offset_centideg) / 100;
+// por:
+int16_t heading_deg = -(in.bno_heading_centideg - cfg.bno_offset_centideg) / 100;
+```
+
+Después de cualquier fix, **volver a correr los 4 criterios** abajo.
+
 ## Criterios de aceptacion (los 4 que pasan = TASK done)
 
 - [ ] **Centro de cancha (1215, 910)**: pose printeada cada 500 ms

@@ -36,6 +36,11 @@ void sensors_imu_tick();
 // Si solo RIGHT está OK, usa RIGHT. Si ambos fallaron, retorna 0.
 float sensors_imu_get_heading_deg();
 
+// Mismo heading que sensors_imu_get_heading_deg() pero en centidegrees
+// (centesimas de grado). Rango [-18000, +18000].
+// Wrapper conveniente para modulos que prefieren enteros (ej. localization).
+int16_t sensors_imu_get_heading_centideg();
+
 // Diferencia entre los 2 IMUs (sanity check). > 5° indica problema.
 float sensors_imu_get_disagreement_deg();
 

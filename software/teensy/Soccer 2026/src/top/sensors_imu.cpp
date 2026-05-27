@@ -114,6 +114,13 @@ float sensors_imu_get_heading_deg() {
     return 0.0f;
 }
 
+int16_t sensors_imu_get_heading_centideg() {
+    // Wrapper: misma logica que get_heading_deg() pero en centidegrees.
+    // El heading ya viene normalizado a [-180, 180] desde el tick.
+    float heading_deg = sensors_imu_get_heading_deg();
+    return static_cast<int16_t>(heading_deg * 100.0f);
+}
+
 float sensors_imu_get_disagreement_deg() {
     if (!g_left_ready || !g_right_ready) return 0.0f;
     float diff = g_left_heading - g_right_heading;

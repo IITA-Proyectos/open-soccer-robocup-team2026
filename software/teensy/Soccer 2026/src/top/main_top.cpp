@@ -26,6 +26,7 @@
 #include "comm_down.h"         // recibe odometría OTOS desde ABAJO
 #include "comm_arbiter.h"      // bridge a placa COMM
 #include "comm_central.h"      // envía snapshot al CENTRAL
+#include "localization_runtime.h"  // fusión TOF+IMU → pose absoluta en cancha
 #include "types.h"
 
 using namespace iitasoccer;
@@ -34,6 +35,7 @@ namespace {
 
 elapsedMillis g_since_imu_tick;
 elapsedMillis g_since_tof_tick;
+elapsedMillis g_since_loc_tick;
 elapsedMillis g_since_snapshot;
 elapsedMillis g_since_debug;
 
@@ -43,12 +45,14 @@ uint32_t g_loop_count = 0;
 WorldSnapshot build_snapshot() {
     WorldSnapshot s{};
 
-    // Pose propia — por ahora solo heading del IMU dual. Pose absoluta (x, y)
-    // requiere fusión cámaras + OTOS — pendiente Nivel 2 / EKF.
-    s.my_x_mm = 0;
-    s.my_y_mm = 0;
-    s.my_heading_centideg = static_cast<int16_t>(sensors_imu_get_heading_deg() * 100.0f);
-    s.my_pose_confidence = (sensors_imu_left_ready() || sensors_imu_right_ready()) ? 60 : 0;
+    // Pose propia — trilateración TOF+IMU del módulo localization (Sprint 1).
+    // El runtime cachea el último cómputo; si valid=false (p.ej. <2 TOFs útiles),
+    // x/y caen a 0 y confidence=0 para que el CENTRAL sepa ignorar la pose.
+    auto pose = iitasoccer::localization_runtime_get_pose();
+    s.my_x_mm             = pose.x_mm;
+    s.my_y_mm             = pose.y_mm;
+    s.my_heading_centideg = pose.heading_centideg;
+    s.my_pose_confidence  = pose.valid ? 70 : 0;
 
     // Pelota — fusión front+back desde cameras_runtime (sección 7.2 de
     // FIRMWARE-PLACA-ARRIBA.md). Coords relativas al robot en mm.
@@ -97,6 +101,9 @@ void setup() {
 
     sensors_imu_init();
     sensors_tof_init();
+    // OJO: el robot DEBE apuntar al arco rival (+Y) al boot — esta llamada
+    // calibra bno_offset_centideg leyendo el heading actual.
+    iitasoccer::localization_runtime_init();
     cameras_init();      // Serial3 + Serial5 ← OpenMV front + back
     comm_down_init();    // Serial1 ← odometría desde ABAJO
     comm_arbiter_init(); // Serial4 ↔ placa COMM
@@ -123,6 +130,10 @@ void loop() {
     if (g_since_tof_tick >= TOF_TICK_INTERVAL_MS) {
         g_since_tof_tick = 0;
         sensors_tof_tick();
+    }
+    if (g_since_loc_tick >= 33) {  // ~30 Hz — matchea cadencia de los TOFs
+        g_since_loc_tick = 0;
+        iitasoccer::localization_runtime_tick();
     }
 
     // === Snapshot → CENTRAL ===

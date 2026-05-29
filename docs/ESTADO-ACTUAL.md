@@ -187,9 +187,16 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - **Pendiente humano**: validación en hardware real → **TASK-301** (3 criterios:
   power-cycle calib, all-white con luz real, frames_dropped bajo carga). Claude NO
   cierra tasks de hardware (regla 1 CLAUDE.md).
-- **Nota infra**: `[env:down]`/`[env:diag_down]` son los únicos firmware que NO
-  compilan offline (OTOS sin vendorear) → **TASK-302**. Hoy se destrabó copiando
-  el OTOS ya bajado del repo principal a `.pio/libdeps/down/` (artefacto local).
+- **Nota infra (RESUELTO 2026-05-29 — TASK-302)**: `[env:down]`/`[env:diag_down]`
+  eran los únicos firmware que NO compilaban offline. Causa: al activar OTOS
+  (TASK-012, 2026-05-24) quedó como única lib de firmware sin vendorear, con
+  `lib_deps` de registry → build roto bajo Avast (TASK-025). **Solución**: OTOS +
+  `SparkFun_Toolkit` vendoreadas en `lib/` (podadas, sin blobs) y `lib_deps`
+  quitado de ambos envs. Verificado en esta máquina (Avast): borrando
+  `.pio/libdeps/down` y con `lib_deps` vacío, `pio run -t clean -e down` y
+  `-e diag_down` dan **SUCCESS 100% offline** (FLASH 33416 / 21960 B); `.pio/libdeps/down`
+  NO se recreó (cero registry). Las 4 placas vuelven a compilar sin red.
+  TASK-302 cerrada (build-verificada, no es HW).
 
 ### Avance 2026-05-29 — diag_central_drive_straight (CENTRAL + TOP, banco)
 - Nuevo sketch que valida end-to-end la cadena de control de movimiento:

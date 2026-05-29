@@ -4,7 +4,7 @@ title: "Vendorear SparkFun OTOS + Toolkit en lib/ para que [env:down] y [env:dia
 date_created: 2026-05-29
 assigned: [gviollaz]
 priority: P2
-status: pending
+status: done
 estimated_hours: 0.5
 blocks: [build reproducible de DOWN en máquinas con Avast/SSL]
 blocked_by: [acceso de red a la lib OTOS UNA vez (excepción Avast TASK-025 o máquina con red sana)]
@@ -68,12 +68,26 @@ coordinación explícita.
 
 ## Criterio de cierre
 
-- [ ] `lib/` contiene OTOS + Toolkit podadas y commiteadas.
-- [ ] `[env:down]` y `[env:diag_down]` sin `lib_deps` de registry.
-- [ ] `pio run -t clean -e down` compila offline en una máquina con Avast.
-- [ ] `lib/README.md` actualizado.
+- [x] `lib/` contiene OTOS + Toolkit podadas y commiteadas.
+- [x] `[env:down]` y `[env:diag_down]` sin `lib_deps` de registry.
+- [x] `pio run -t clean -e down` compila offline en una máquina con Avast.
+- [x] `lib/README.md` actualizado.
 
 ## Cambios de estado
 
 - 2026-05-29: creada al detectar el gap durante la compilación de las mejoras
   de robustez DOWN (Claude Opus 4.7, requested-by Gustavo).
+- 2026-05-29 (cierre): **ejecutada y cerrada por el agente DOWN**. El `blocked_by`
+  (bajar OTOS una vez con red) ya estaba resuelto — OTOS estaba bajado en el repo
+  principal (TASK-012), así que se vendoreó **sin red**. `SparkFun_Qwiic_OTOS`
+  (49 KB) + `SparkFun_Toolkit` (110 KB) copiadas a `lib/` podadas (solo `src/` +
+  `library.properties` + LICENSE, sin examples/docs/blobs). `lib_deps` de registry
+  quitado de `[env:down]` y `[env:diag_down]`, reemplazado por comentario
+  "VENDOREADAS en lib/" (patrón top/central). **Verificado offline en esta máquina
+  (con Avast)**: borrado `.pio/libdeps/down` entero, `pio run -t clean -e down` y
+  `-e diag_down` → SUCCESS (FLASH 33416 / 21960 B); `.pio/libdeps/down` NO se
+  recreó → cero contacto con el registry. Build-verificada en software (no es task
+  de hardware) → Claude la cierra. Coordinación `platformio.ini` (regla 5):
+  `git fetch` + última edición ajena `7db45e2` (HAL refactor, solo bloques top) ya
+  en base y confirmada ancestro de HEAD → sin conflicto. Journal:
+  `journal/2026-05-29-down-task-302-otos-vendoreado-offline.md`.

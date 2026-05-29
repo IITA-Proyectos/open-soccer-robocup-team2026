@@ -8,10 +8,11 @@
 >
 > Vendoreadas el 2026-05-19, código fuente **podado** (sin `examples/`,
 > `examples_processing/`, `docs/` — solo lo que el compilador necesita).
-> Total: ~3.1 MB (incluye VL53L7CX vendoreada 2026-05-24 con firmware blob ~595 KB,
+> Total: ~3.3 MB (incluye VL53L7CX vendoreada 2026-05-24 con firmware blob ~595 KB,
 > VL53L5CX vendoreada 2026-05-24 con firmware blob ~582 KB, VL53L8CX
 > vendoreada 2026-05-24 con firmware blob ~594 KB y Adafruit_VL53L7CX
-> vendoreada 2026-05-24 con firmware blob ~595 KB).
+> vendoreada 2026-05-24 con firmware blob ~595 KB; OTOS + SparkFun_Toolkit
+> vendoreadas 2026-05-29, ~159 KB sin blobs — TASK-302).
 
 ## Contenido
 
@@ -25,6 +26,8 @@
 | `STM32duino_VL53L5CX/` | Driver ToF multizona VL53L5CX | `diag_top_tof_as_l5cx` (identificacion chip desconocido U2) | stm32duino/VL53L5CX |
 | `STM32duino_VL53L8CX/` | Driver ToF multizona VL53L8CX | `diag_top_tof_as_l8cx` (identificacion chip desconocido U2 — ultimo candidato del trio) | stm32duino/VL53L8CX |
 | `Adafruit_VL53L7CX/` | Driver ToF multizona VL53L7CX (lib Adafruit, no ST) | `diag_top_tof_adafruit` (test de control vs las 3 libs ST que fallaron) | adafruit/Adafruit_VL53L7 |
+| `SparkFun_Qwiic_OTOS/` | Driver OTOS (Optical Tracking Odometry Sensor) | `down`, `diag_down` | sparkfun/SparkFun Qwiic OTOS 1.1.0 |
+| `SparkFun_Toolkit/` | Capa común comm/bus/error (dep. de OTOS) | `down`, `diag_down` | sparkfun/SparkFun Toolkit 1.2.0 |
 
 ## Cómo funciona
 
@@ -36,6 +39,13 @@
 - **Verificado 2026-05-19**: borrando `.pio/libdeps` y compilando, las 4
   placas (`top`, `down`, `central_robot1`, `central_robot2`) dan `SUCCESS`
   sin tocar el registry.
+- **Re-verificado 2026-05-29** (TASK-302): al activar OTOS (TASK-012, 2026-05-24)
+  `[env:down]`/`[env:diag_down]` habían quedado con `lib_deps` de registry y
+  dejaron de compilar offline bajo Avast (regresión del invariante de arriba). Se
+  vendorearon `SparkFun_Qwiic_OTOS` + `SparkFun_Toolkit` acá y se quitó el
+  `lib_deps`. Borrando `.pio/libdeps/down` y con `lib_deps` vacío,
+  `pio run -t clean -e down` y `-e diag_down` dan `SUCCESS` 100% offline
+  (`.pio/libdeps/down` no se recrea). Invariante de las 4 placas offline restaurado.
 
 ## Límite conocido — Unity y los tests
 

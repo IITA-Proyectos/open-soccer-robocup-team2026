@@ -26,6 +26,14 @@ constexpr int LF_LIFTED_MIN_SENSORS        = 28;    // 28/32 = 87 % en aire
 constexpr uint16_t LF_LIFTED_DELTA_BELOW   = 50;    // raw < carpet - 50 = aire
 constexpr uint32_t LF_LIFTED_DEBOUNCE_MS   = 100;   // anti-glitch
 
+// === MuxWatchdog (TEMA 1 P0 — 2026-05-29) ===
+// Constantes default; cada llamador puede pasar valores propios.
+constexpr int      MW_MAX_MUXES            = 4;     // CD4051 en la placa DOWN
+constexpr int      MW_SENSORS_PER_MUX      = 8;     // canales por CD4051
+constexpr uint32_t MW_STUCK_DEBOUNCE_MS    = 100;   // ms con valores idénticos para diagnosticar muerto
+constexpr uint16_t MW_EXTREME_LOW          = 50;    // ADC pegado a GND
+constexpr uint16_t MW_EXTREME_HIGH         = 970;   // ADC pegado a Vref (10-bit, 1023 max)
+
 // === Filtro temporal — moving average ===
 
 struct FilterBuffer {
@@ -101,5 +109,57 @@ void lf_lifted_update(LiftedDetector& state,
                        const uint16_t* filtered_raw,
                        const uint16_t* carpet_avg,
                        int n_sensors);
+
+// === MuxWatchdog: detector de mux CD4051 muerto/colgado (TEMA 1 P0) ===
+//
+// Cada mux CD4051 controla 8 sensores. Si un mux falla (chip quemado, líneas
+// SEL flotantes, soldadura intermitente, ESD), su salida COM típicamente queda
+// pegada a Vcc o GND. El watchdog detecta esa condición monitoreando:
+//
+//   1. Si los 8 sensores de un mux dan EXACTAMENTE el mismo valor durante
+//      >= MW_STUCK_DEBOUNCE_MS ms consecutivos, Y
+//   2. ese valor está en uno de los dos extremos (≤ MW_EXTREME_LOW o
+//      ≥ MW_EXTREME_HIGH).
+//
+// → marca el mux como muerto. El bit del bitmap se setea en EV_MUX_DEAD del
+// LineStatusV2 y DOWN reporta `dead_bitmap` para que CENTRAL sepa cuál mux.
+//
+// Auto-recovery: si los valores vuelven a variar, dead[m] retorna a false
+// automáticamente (no hace falta reset manual).
+//
+// El valor "extremo" filtra falsos positivos donde 8 sensores coinciden en
+// un valor medio por azar (raro, pero posible bajo iluminación uniforme).
+struct MuxWatchdog {
+    uint32_t stuck_start_ms[MW_MAX_MUXES];  // ms en que arrancó la "racha igual"
+    uint16_t last_common_value[MW_MAX_MUXES];  // valor que tenían los 8 (si stuck)
+    bool     stuck_active[MW_MAX_MUXES];   // hay racha viva
+    bool     dead[MW_MAX_MUXES];           // muxe[m] confirmado muerto
+};
+
+// Inicializa todos los campos a estado limpio (todo en 0/false).
+void mw_init(MuxWatchdog& w);
+
+// Update por tick. `raw` = array de n_sensors lecturas RAW del ADC (NO
+// filtered — queremos detectar mux atascado a nivel hardware, antes del
+// suavizado temporal). El mux m cubre raw[m*sensors_per_mux .. +sensors_per_mux-1].
+// `n_muxes` = cuántos muxes hay físicamente (1..MW_MAX_MUXES).
+// `now_ms` debe ser monótonamente creciente.
+void mw_update(MuxWatchdog& w,
+               const uint16_t* raw,
+               int n_muxes,
+               int sensors_per_mux,
+               uint32_t now_ms,
+               uint32_t stuck_debounce_ms = MW_STUCK_DEBOUNCE_MS,
+               uint16_t extreme_low = MW_EXTREME_LOW,
+               uint16_t extreme_high = MW_EXTREME_HIGH);
+
+// True si el mux m (0-based) está muerto. Out-of-range → false.
+bool mw_is_dead(const MuxWatchdog& w, int mux_idx);
+
+// Bitmap: bit m = mux m está muerto. Solo bits 0..MW_MAX_MUXES-1 usados.
+uint8_t mw_get_dead_bitmap(const MuxWatchdog& w);
+
+// True si CUALQUIER mux está marcado muerto (para flag global EV_MUX_DEAD).
+bool mw_any_dead(const MuxWatchdog& w);
 
 }  // namespace iitasoccer

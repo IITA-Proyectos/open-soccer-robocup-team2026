@@ -23,6 +23,7 @@ struct DownModel {
     bool           was_white[DM_MAX_SENSORS];
     SurfaceMonitor surface;
     LineTracker    tracker;
+    MuxWatchdog    mux_watchdog;   // TEMA 1 P0 — 2026-05-29 (EV_MUX_DEAD)
 };
 LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
                         const uint16_t* raw, int n, uint32_t now_ms);

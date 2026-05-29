@@ -292,6 +292,151 @@ void test_lifted_recovers_when_back_on_floor(void) {
 // MAIN
 // ============================================================================
 
+// ============================================================================
+// MuxWatchdog (TEMA 1 P0 — 2026-05-29)
+// ============================================================================
+
+// Helper: arma un array raw[32] con el mux m fijo en `value` y los demás
+// "normales" (cada sensor con un valor distinto, simulando lectura sana).
+static void fill_raw_with_mux_stuck(uint16_t* raw, int mux_to_stuck, uint16_t stuck_value) {
+    for (int i = 0; i < 32; ++i) {
+        const int m = i / MW_SENSORS_PER_MUX;
+        if (m == mux_to_stuck) {
+            raw[i] = stuck_value;
+        } else {
+            // Valores con variación sensor-a-sensor (simula lectura sana).
+            raw[i] = (uint16_t)(300 + (i * 7) % 200);
+        }
+    }
+}
+
+void test_mw_init_clean(void) {
+    MuxWatchdog w;
+    mw_init(w);
+    TEST_ASSERT_FALSE(mw_any_dead(w));
+    TEST_ASSERT_EQUAL_UINT8(0, mw_get_dead_bitmap(w));
+    for (int m = 0; m < MW_MAX_MUXES; ++m) {
+        TEST_ASSERT_FALSE(mw_is_dead(w, m));
+    }
+}
+
+void test_mw_stuck_low_extreme_marks_dead(void) {
+    MuxWatchdog w;
+    mw_init(w);
+    uint16_t raw[32];
+    fill_raw_with_mux_stuck(raw, /*mux*/2, /*value*/0);
+    // Empezamos en t=0 y avanzamos 1 ms por tick durante 150 ms.
+    for (uint32_t t = 0; t <= 150; ++t) {
+        mw_update(w, raw, 4, MW_SENSORS_PER_MUX, t);
+    }
+    TEST_ASSERT_TRUE(mw_is_dead(w, 2));
+    TEST_ASSERT_FALSE(mw_is_dead(w, 0));
+    TEST_ASSERT_FALSE(mw_is_dead(w, 1));
+    TEST_ASSERT_FALSE(mw_is_dead(w, 3));
+}
+
+void test_mw_stuck_high_extreme_marks_dead(void) {
+    MuxWatchdog w;
+    mw_init(w);
+    uint16_t raw[32];
+    fill_raw_with_mux_stuck(raw, /*mux*/0, /*value*/1023);
+    for (uint32_t t = 0; t <= 150; ++t) {
+        mw_update(w, raw, 4, MW_SENSORS_PER_MUX, t);
+    }
+    TEST_ASSERT_TRUE(mw_is_dead(w, 0));
+}
+
+void test_mw_stuck_mid_value_no_dead(void) {
+    // Caso "8 sensores casualmente coinciden en 500": NO debe marcar dead.
+    // Mid (no extremo) → false positive filtrado.
+    MuxWatchdog w;
+    mw_init(w);
+    uint16_t raw[32];
+    fill_raw_with_mux_stuck(raw, /*mux*/1, /*value*/500);
+    for (uint32_t t = 0; t <= 500; ++t) {  // 500ms para asegurar
+        mw_update(w, raw, 4, MW_SENSORS_PER_MUX, t);
+    }
+    TEST_ASSERT_FALSE(mw_is_dead(w, 1));
+    TEST_ASSERT_FALSE(mw_any_dead(w));
+}
+
+void test_mw_varying_values_no_dead(void) {
+    MuxWatchdog w;
+    mw_init(w);
+    uint16_t raw[32];
+    for (int i = 0; i < 32; ++i) raw[i] = (uint16_t)(100 + i * 30);
+    for (uint32_t t = 0; t <= 500; ++t) {
+        mw_update(w, raw, 4, MW_SENSORS_PER_MUX, t);
+    }
+    TEST_ASSERT_FALSE(mw_any_dead(w));
+}
+
+void test_mw_recovery_after_dead(void) {
+    MuxWatchdog w;
+    mw_init(w);
+    uint16_t raw[32];
+    // Fase A: stuck → dead.
+    fill_raw_with_mux_stuck(raw, /*mux*/0, /*value*/1023);
+    for (uint32_t t = 0; t <= 150; ++t) {
+        mw_update(w, raw, 4, MW_SENSORS_PER_MUX, t);
+    }
+    TEST_ASSERT_TRUE(mw_is_dead(w, 0));
+
+    // Fase B: valores vuelven a variar → auto-recovery.
+    for (int i = 0; i < 32; ++i) raw[i] = (uint16_t)(100 + (i * 11) % 400);
+    mw_update(w, raw, 4, MW_SENSORS_PER_MUX, 200);
+    TEST_ASSERT_FALSE(mw_is_dead(w, 0));
+}
+
+void test_mw_bitmap_one_mux_dead(void) {
+    MuxWatchdog w;
+    mw_init(w);
+    uint16_t raw[32];
+    fill_raw_with_mux_stuck(raw, /*mux*/3, /*value*/0);
+    for (uint32_t t = 0; t <= 150; ++t) {
+        mw_update(w, raw, 4, MW_SENSORS_PER_MUX, t);
+    }
+    TEST_ASSERT_EQUAL_UINT8(0x08, mw_get_dead_bitmap(w));  // bit 3 = 1<<3 = 8
+}
+
+void test_mw_bitmap_multiple_dead(void) {
+    MuxWatchdog w;
+    mw_init(w);
+    uint16_t raw[32];
+    // Forzar mux 0 y mux 2 a stuck en valores extremos diferentes.
+    for (int i = 0; i < 32; ++i) {
+        const int m = i / MW_SENSORS_PER_MUX;
+        if (m == 0) raw[i] = 0;
+        else if (m == 2) raw[i] = 1023;
+        else raw[i] = (uint16_t)(300 + (i * 7) % 200);
+    }
+    for (uint32_t t = 0; t <= 150; ++t) {
+        mw_update(w, raw, 4, MW_SENSORS_PER_MUX, t);
+    }
+    TEST_ASSERT_EQUAL_UINT8(0x05, mw_get_dead_bitmap(w));  // bits 0 y 2 → 0b0101
+}
+
+void test_mw_no_dead_before_debounce(void) {
+    // Antes de que pase debounce_ms, NO debería marcar dead.
+    MuxWatchdog w;
+    mw_init(w);
+    uint16_t raw[32];
+    fill_raw_with_mux_stuck(raw, /*mux*/1, /*value*/0);
+    // Tick t=0 inicia racha; t=50ms aún no llegó al debounce de 100ms.
+    for (uint32_t t = 0; t <= 50; ++t) {
+        mw_update(w, raw, 4, MW_SENSORS_PER_MUX, t);
+    }
+    TEST_ASSERT_FALSE(mw_is_dead(w, 1));
+}
+
+void test_mw_oob_index_safe(void) {
+    MuxWatchdog w;
+    mw_init(w);
+    TEST_ASSERT_FALSE(mw_is_dead(w, -1));
+    TEST_ASSERT_FALSE(mw_is_dead(w, MW_MAX_MUXES));
+    TEST_ASSERT_FALSE(mw_is_dead(w, 99));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
 
@@ -326,6 +471,18 @@ int main(int, char**) {
     RUN_TEST(test_lifted_few_sensors_low_does_not_trigger);
     RUN_TEST(test_lifted_debounce_anti_glitch);
     RUN_TEST(test_lifted_recovers_when_back_on_floor);
+
+    // MuxWatchdog (TEMA 1 P0)
+    RUN_TEST(test_mw_init_clean);
+    RUN_TEST(test_mw_stuck_low_extreme_marks_dead);
+    RUN_TEST(test_mw_stuck_high_extreme_marks_dead);
+    RUN_TEST(test_mw_stuck_mid_value_no_dead);
+    RUN_TEST(test_mw_varying_values_no_dead);
+    RUN_TEST(test_mw_recovery_after_dead);
+    RUN_TEST(test_mw_bitmap_one_mux_dead);
+    RUN_TEST(test_mw_bitmap_multiple_dead);
+    RUN_TEST(test_mw_no_dead_before_debounce);
+    RUN_TEST(test_mw_oob_index_safe);
 
     return UNITY_END();
 }

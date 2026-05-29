@@ -16,6 +16,15 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     bool validated[DM_MAX_SENSORS];
     lf_spatial_filter(white, validated, n);
 
+    // TEMA 1 P0 — actualizar MuxWatchdog con valores RAW (no filtered).
+    // Queremos detectar mux pegado a nivel hardware, antes del suavizado.
+    // n_muxes derivado de n_sensores / MW_SENSORS_PER_MUX. Si n no es múltiplo
+    // exacto, redondeamos hacia abajo (no monitoreamos mux parcial).
+    const int n_muxes = (n / MW_SENSORS_PER_MUX);
+    if (n_muxes > 0) {
+        mw_update(m.mux_watchdog, raw, n_muxes, MW_SENSORS_PER_MUX, now_ms);
+    }
+
     GeomResult g = lg_compute(validated, ang, n);
 
     for(int i=0;i<n;++i)
@@ -47,6 +56,7 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     if(line_end)   ev|=EV_LINE_END;
     if(lifted)     ev|=EV_LIFTED;
     if(suspect)    ev|=EV_CALIB_SUSPECT;
+    if(mw_any_dead(m.mux_watchdog)) ev|=EV_MUX_DEAD;   // TEMA 1 P0 — 2026-05-29
     if(n<32)       ev|=EV_DEGRADED_GEOMETRY;  // anillo parcial: mux muerto o rig reducido
     s.event_flags=ev;
     s.quality = s.data_valid ? (uint8_t)(g.line_present? 85 : 95) : 0; // placeholder: metrica real (SNR) diferida a Plan 3

@@ -1,5 +1,6 @@
 #include "line_filters.h"
 #include <cmath>
+#include <cstring>
 
 namespace iitasoccer {
 
@@ -144,6 +145,80 @@ void lf_lifted_update(LiftedDetector& state,
         state.candidate_start_ms = 0;
         state.is_lifted = false;
     }
+}
+
+// === MuxWatchdog (TEMA 1 P0 — 2026-05-29) ===
+
+void mw_init(MuxWatchdog& w) {
+    std::memset(&w, 0, sizeof(w));
+}
+
+void mw_update(MuxWatchdog& w,
+               const uint16_t* raw,
+               int n_muxes,
+               int sensors_per_mux,
+               uint32_t now_ms,
+               uint32_t stuck_debounce_ms,
+               uint16_t extreme_low,
+               uint16_t extreme_high) {
+    if (raw == nullptr || n_muxes <= 0 || sensors_per_mux <= 0) return;
+    if (n_muxes > MW_MAX_MUXES) n_muxes = MW_MAX_MUXES;
+
+    for (int m = 0; m < n_muxes; ++m) {
+        const int base = m * sensors_per_mux;
+        const uint16_t first = raw[base];
+        // ¿Los 8 canales del mux dan EXACTAMENTE el mismo valor?
+        bool all_equal = true;
+        for (int k = 1; k < sensors_per_mux; ++k) {
+            if (raw[base + k] != first) { all_equal = false; break; }
+        }
+
+        if (all_equal) {
+            // Es una "racha igual". Si ya estaba activa con MISMO valor, contamos
+            // tiempo. Si cambió el valor común, reiniciamos el reloj (puede ser
+            // que el mux esté oscilando entre distintos "stuck values").
+            if (!w.stuck_active[m] || w.last_common_value[m] != first) {
+                w.stuck_active[m] = true;
+                w.stuck_start_ms[m] = now_ms;
+                w.last_common_value[m] = first;
+            }
+            const uint32_t elapsed = now_ms - w.stuck_start_ms[m];
+            const bool extreme = (first <= extreme_low) || (first >= extreme_high);
+            // Confirmamos muerto sólo si: racha >= debounce Y valor extremo.
+            if (elapsed >= stuck_debounce_ms && extreme) {
+                w.dead[m] = true;
+            }
+            // Si la racha es larga pero valor no es extremo, no confirmamos.
+            // (Caso: 8 sensores casualmente coinciden en un valor medio — raro
+            // pero no imposible bajo iluminación uniforme.)
+        } else {
+            // Los valores volvieron a variar. Reseteamos racha y auto-recovery.
+            w.stuck_active[m] = false;
+            w.stuck_start_ms[m] = 0;
+            w.last_common_value[m] = 0;
+            w.dead[m] = false;
+        }
+    }
+}
+
+bool mw_is_dead(const MuxWatchdog& w, int mux_idx) {
+    if (mux_idx < 0 || mux_idx >= MW_MAX_MUXES) return false;
+    return w.dead[mux_idx];
+}
+
+uint8_t mw_get_dead_bitmap(const MuxWatchdog& w) {
+    uint8_t bm = 0;
+    for (int m = 0; m < MW_MAX_MUXES; ++m) {
+        if (w.dead[m]) bm |= (uint8_t)(1u << m);
+    }
+    return bm;
+}
+
+bool mw_any_dead(const MuxWatchdog& w) {
+    for (int m = 0; m < MW_MAX_MUXES; ++m) {
+        if (w.dead[m]) return true;
+    }
+    return false;
 }
 
 }  // namespace iitasoccer

@@ -75,3 +75,15 @@ necesitan un arranque "frío" limpio para entregar el voltaje correcto.
 
 - 2026-05-24: creada al detectar el comportamiento durante la activación
   de la lib OTOS (TASK-012). Confirmado reproducible.
+- 2026-05-29: **el bug se repitió** en banco (sesión con María). Síntoma nuevo:
+  un bus vacío (U5) + el otro respondiendo en **`0x64`** (brownout) en vez de
+  `0x17`. Causa confirmada: la batería estaba **conectada pero SIN entregar
+  corriente** → el riel 3.3 V del MP1584 (que alimenta los OTOS) quedó hambriento.
+  Fix: batería entregando corriente + power cycle completo → ambos OTOS en `0x17`,
+  OK. **Refinamiento de la regla**: no alcanza con que la batería esté enchufada;
+  tiene que estar **ENTREGANDO corriente** (switch ON / cargada). Los 32 sensores
+  de luz pueden seguir leyendo con el riel flojo, pero los OTOS no → no usar "los
+  sensores andan" como prueba de que el 3.3 V está sano. Nota elevada a checklist
+  visible en `docs/ESTADO-ACTUAL.md`. Sigue **pending** el resto (doc operativo
+  formal + medición multímetro del 3.3 V, P0.3). Ver
+  `journal/2026-05-29-otos-revividos-power-bateria.md`.

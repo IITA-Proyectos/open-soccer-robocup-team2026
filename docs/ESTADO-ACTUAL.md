@@ -144,9 +144,23 @@ nativo, pero ya no es el único camino. Ver
   (`getPosition`, no `getPose`; mismo tipo para position y velocity).
   Ambos chips U5 y U6 responden I²C en 0x17, pose se actualiza con
   movimiento. TASK-012 bajó de P0 a P1 (queda parte ToF en stub).
-  Validación cuantitativa pendiente: TASK-029. **Regla nueva descubierta**:
-  hardware-up requiere power cycle completo (TASK-028). Ver
-  `journal/2026-05-24-otos-lib-activada-y-power-cycle-bug.md`.
+  Validación cuantitativa pendiente: TASK-029.
+
+  > ⚠️ **CÓMO ENCENDER LOS OTOS — leer ANTES de debuggear si dan `L=-- R=--`.**
+  > Los OTOS se alimentan del **3.3 V del MP1584, que viene de la BATERÍA**
+  > (el USB **NO** los alimenta — el USB solo da el Teensy). Si ves `L=-- R=--`,
+  > bus I²C vacío, o una dirección rara tipo **`0x64`** (eso es **brownout**, no
+  > es otro chip), **NO es firmware — es alimentación.** Receta:
+  > 1. Batería **cargada y entregando corriente de verdad** (switch ON, Dean XP1
+  >    bien puesto). *"Conectada pero sin pasar corriente" = OTOS muertos.*
+  > 2. **Power cycle completo**: desconectar batería **+** USB, esperar 10 s,
+  >    reconectar.
+  > 3. Verificar el scan I²C del arranque → ambos OTOS deben dar **`0x17`**.
+  >
+  > Confirmado 2026-05-24 **y otra vez 2026-05-29** (TASK-028). Detalle: los 32
+  > sensores de luz pueden seguir leyendo con el riel flojo, pero los OTOS no.
+  > Ver `journal/2026-05-29-otos-revividos-power-bateria.md` y
+  > `journal/2026-05-24-otos-lib-activada-y-power-cycle-bug.md`.
 
 - ~~**TOP VL53L7CX frontal en stub TODO_TOF_LIB**~~ → **VL53L7CX U2 FRONTAL VIVO**.
   Misma sesión 2026-05-24. Debug de 3 horas: 3 libs ST (L5/L7/L8) fallaron
@@ -219,6 +233,23 @@ nativo, pero ya no es el único camino. Ver
   `-e diag_down` dan **SUCCESS 100% offline** (FLASH 33416 / 21960 B); `.pio/libdeps/down`
   NO se recreó (cero registry). Las 4 placas vuelven a compilar sin red.
   TASK-302 cerrada (build-verificada, no es HW).
+
+### Avance 2026-05-29 — DOWN↔CENTRAL bring-up (hallazgos verificados + tooling down_debug)
+- Sesión con María (banco, sin placa TOP). Verificado en código:
+  - **DOWN→CENTRAL (Serial1→Serial2) lleva SOLO la línea** (`LineStatusV2`), no OTOS;
+    los OTOS van DOWN→TOP (`main_down.cpp:101/107`).
+  - **El "ir derecho" del sketch de manejo usa heading IMU/TOF, no OTOS**:
+    `main_top.cpp::build_snapshot` toma `localization_runtime_get_pose()` (BNO+TOF);
+    el pose OTOS llega al TOP pero NO entra al snapshot. "Manejar con OTOS" no está
+    cableado (post-Incheon, `TODO_DIFFERENTIAL_OTOS`).
+  - **Conflicto pines 7/8 BLOQUEA DOWN→CENTRAL**: Serial2 (UART desde DOWN) = pines
+    7/8 = mismos de un motor (`config_central.h`); `motors_init()` los pone OUTPUT
+    (`motors_zircon.cpp:101-105`) y pisa el UART. Todo firmware CENTRAL llama
+    `motors_init()` → **ninguno puede recibir a DOWN** → **TASK-036**.
+- **Tooling**: `[env:down_debug]` (= `[env:down]` + `-DDOWN_DEBUG_SERIAL`) imprime por
+  USB, 4 Hz, lo que DOWN manda por Serial1 (data_valid, line_present, ángulo,
+  imm_exit, flags, tx_ok/tx_drop). Valida la transmisión DOWN **sin** placa CENTRAL.
+  `[env:down]` competencia queda IDÉNTICO (FLASH 33416). HW pendiente (María).
 
 ### Avance 2026-05-29 — diag_central_drive_straight (CENTRAL + TOP, banco)
 - Nuevo sketch que valida end-to-end la cadena de control de movimiento:

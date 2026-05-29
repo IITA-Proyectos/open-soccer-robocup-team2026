@@ -27,11 +27,11 @@ validados.
 
 ## ⚠️ UART: Serial7 (RX7 = pin 28), NO Serial2
 
-El test `diag_central_motors` (2026-05-29) confirmó que el **motor 2 gira** con
-los pines **8/7** (driver U17). Esos son exactamente los pines de **Serial2**
-(RX2=7, TX2=8). Por lo tanto **los pines 7/8 son del motor — Serial2 NO se puede
-usar** para DOWN→CENTRAL. Esto resuelve empíricamente la **TASK-036** (la cierra
-el equipo, no Claude).
+Se usa Serial7 para **esquivar** el posible conflicto de pines 7/8: el motor 2
+(driver U17) usaría los pines **8/7**, que son también los de **Serial2** (RX2=7,
+TX2=8). El veredicto (¿el motor de U17 realmente gira con 7/8?) **quedó PENDIENTE
+de aislar en banco** (Gustavo 2026-05-29) → **TASK-036 sigue abierta** (la cierra
+el equipo, no Claude). Mientras tanto, usar Serial7 evita la pregunta por completo.
 
 ➡️ Se usa **Serial7 → RX7 = pin 28, TX7 = pin 29** (libres según el pinout).
 
@@ -129,10 +129,10 @@ bytes = 1/sensor, entra justo en el payload de 32 B del protocolo):
 - Helpers de interpretación: [`src/shared/line_view.h`](../../software/teensy/Soccer%202026/src/shared/line_view.h)
 - Emisor DOWN: [`src/down/comm_central.cpp`](../../software/teensy/Soccer%202026/src/down/comm_central.cpp)
 - Contrato canónico: [`docs/firmware/CONTRATO-DATOS-DOWN.md`](CONTRATO-DATOS-DOWN.md)
-- TASK-100 (validación ingest línea) · TASK-036 (pines 7/8, evidencia acá)
+- TASK-100 (validación ingest línea) · TASK-036 (pines 7/8, veredicto pendiente de aislar)
 
 ## Cambios
 
 - 2026-05-29 — creación. Sketch receiver + env `diag_central_comm_down` + doc.
-  Usa Serial7 (pines 7/8 = motor 2, confirmado por diag_central_motors).
+  Usa Serial7 para esquivar el posible conflicto 7/8 con el motor 2 (veredicto sin aislar — TASK-036).
   Author: Claude Opus 4.7 (Anthropic). Requested-by: Viollaz.

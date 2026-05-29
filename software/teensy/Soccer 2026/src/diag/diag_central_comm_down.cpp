@@ -12,8 +12,8 @@
 //   un 2do paso — necesitan un mensaje nuevo que DOWN tiene que mandar).
 //
 // ⚠️ UART — Serial7 (RX7 = pin 28, TX7 = pin 29) del Teensy 4.1.
-//    NO Serial2 (pines 7/8 = MOTOR 2, driver U17, confirmado en
-//    diag_central_motors el 2026-05-29 → evidencia TASK-036).
+//    Se usa Serial7 para esquivar el posible conflicto de pines 7/8 con el
+//    motor 2 (driver U17). Veredicto del 7/8 PENDIENTE de aislar (TASK-036).
 //    Cableado:
 //        DOWN  TX1 (pin 1)   ->   CENTRAL  RX7 (pin 28)
 //        DOWN  GND           <->  CENTRAL  GND
@@ -40,7 +40,8 @@ namespace {
 constexpr long DOWN_LINK_BAUD = 230400;   // mismo baud que DOWN
 
 // UART hacia DOWN. Serial7 = RX7 pin 28 / TX7 pin 29 (Teensy 4.1).
-// NO Serial2 (pines 7/8 = motor 2). Si algún día se recablea, cambiar acá.
+// Serial7 esquiva el posible conflicto 7/8 con el motor 2 (sin aislar). Si algún
+// día se recablea / se aísla el veredicto, cambiar acá.
 #define DOWN_UART Serial7
 
 // Cada cuánto se redibuja el panel (ms). 500 ms = legible, no satura.

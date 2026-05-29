@@ -82,18 +82,21 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 | `test_calib_storage` | 19 | persistencia de calibración (`calib_storage`) |
 | `test_sensor_health` | 12 | salud/watchdog de sensores (`sensor_health`) |
 | `test_central_contract` | 2 | contrato CENTRAL |
+| `test_central_line_ingest` | 8 | ingest `LineStatusV2` DOWN→CENTRAL (`line_view`) |
 | `test_central_motion` | 9 | `motion_target` |
 | `test_central_trajectory` | 7 | `ball_trajectory` |
 | `test_down_calib` | 5 | cadena DOWN: calib |
 | `test_down_encode` | 3 | cadena DOWN: encode |
 | `test_down_geometry` | 20 | cadena DOWN: geometry |
-| `test_down_model` | 5 | cadena DOWN: model |
+| `test_down_model` | 7 | cadena DOWN: model |
 | `test_down_surface` | 5 | cadena DOWN: surface |
 | `test_down_tracker` | 3 | cadena DOWN: tracker |
-| **Total (19 envs)** | **246** | **0 fallos** |
+| **Total (20 envs)** | **262** | **0 fallos** |
 
-**Estado (2026-05-29):** ✅ **246 tests / 19 envs / 0 fallos**, corridos
-**offline** en esta máquina con `scripts/run-host-tests.sh` (compila cada test
+**Estado (2026-05-29, post-merge 3 agentes):** ✅ **262 tests / 20 envs / 0 fallos** —
+verificado con `pio test -e test_native` tras mergear central+top+down a `main`
+(el +16 vs el snapshot previo de 246 = `test_central_line_ingest` nuevo + tests de DOWN).
+También corren **offline** con `scripts/run-host-tests.sh` (compila cada test
 con g++ contra Unity vendoreado + `src/shared`, salteando PlatformIO y el
 registry que Avast bloqueaba). TASK-025 (excepción Avast) **deja de ser
 bloqueante** para correr la suite — sigue siendo deseable para `pio test`

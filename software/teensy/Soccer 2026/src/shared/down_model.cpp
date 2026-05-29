@@ -1,4 +1,5 @@
 #include "down_model.h"
+#include "sensor_geometry.h"   // TEMA 3 P1 — SENSOR_POS[32] geometría real
 namespace iitasoccer {
 LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
                         const uint16_t* raw, int n, uint32_t now_ms){
@@ -37,7 +38,31 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
         if (!sh_is_healthy(m.sensor_health, i)) validated[i] = false;
     }
 
-    GeomResult g = lg_compute(validated, ang, n);
+    // TEMA 3 P1 — geometría REAL del PCB cuando n == SENSOR_COUNT (32).
+    // Cuando n == 32 usamos lg_compute_xy con las coordenadas (x, y) reales
+    // del schematic (validadas empíricamente 2026-05-24). Es más correcto
+    // que el centroide angular uniforme porque los 32 sensores del PCB DOWN
+    // viven en 3 anillos con radios distintos (R ≈ 37, 54, 80-87 mm), NO en
+    // un anillo perfecto equidistante.
+    //
+    // Cuando n < 32 (anillo parcial: 1-3 muxes conectados o mux muerto),
+    // SENSOR_POS[0..n-1] NO refleja la geometría correcta (la LUT asume los
+    // 32 sensores físicos en su orden de PCB; con n<32 los sensores que
+    // faltan no son los del FINAL sino los del medio/principio según qué
+    // muxes estén conectados). Fallback al centroide angular uniforme, que
+    // al menos no introduce sesgos sistemáticos.
+    //
+    // lg_compute_xy NO computa corner detection (la lógica de "2 clusters
+    // separados ~90°" requiere ángulos discretos). Llamamos también
+    // lg_compute para tomar PRESTADO su flag corner.
+    GeomResult g_ang = lg_compute(validated, ang, n);
+    GeomResult g;
+    if (n == SENSOR_COUNT) {
+        g = lg_compute_xy(validated, SENSOR_POS, n);
+        g.corner = g_ang.corner;
+    } else {
+        g = g_ang;
+    }
 
     for(int i=0;i<n;++i)
         lc_adapt_carpet(m.calib[i], filt[i], validated[i], cfg.adapt_alpha);

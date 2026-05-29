@@ -182,7 +182,15 @@ void mw_update(MuxWatchdog& w,
                 w.stuck_start_ms[m] = now_ms;
                 w.last_common_value[m] = first;
             }
-            const uint32_t elapsed = now_ms - w.stuck_start_ms[m];
+            // Cálculo wrap-safe del tiempo transcurrido: si now_ms < stuck_start_ms
+            // (millis() wrapeó tras ~49.7 días o el caller pasó tiempo no-monótono),
+            // reiniciamos la racha en lugar de calcular un elapsed gigantesco.
+            const int32_t elapsed_signed = (int32_t)(now_ms - w.stuck_start_ms[m]);
+            if (elapsed_signed < 0) {
+                w.stuck_start_ms[m] = now_ms;
+                continue;  // próximo mux; este tick no evalúa.
+            }
+            const uint32_t elapsed = (uint32_t)elapsed_signed;
             const bool extreme = (first <= extreme_low) || (first >= extreme_high);
             // Confirmamos muerto sólo si: racha >= debounce Y valor extremo.
             if (elapsed >= stuck_debounce_ms && extreme) {

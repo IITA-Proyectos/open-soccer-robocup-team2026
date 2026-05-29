@@ -73,8 +73,9 @@ void sh_update(SensorHealth& s,
                uint16_t max_transitions = SH_MAX_TRANSITIONS_PER_WINDOW,
                uint32_t max_stuck_ms = SH_MAX_STUCK_MS);
 
-// True si el sensor i está sano. Out-of-range → true (asume healthy por defecto
-// para no excluir sensores válidos por error de indexado).
+// True si el sensor i está sano. Out-of-range → false (asume UNHEALTHY como
+// defensa: si un bug upstream pasa i+1, el sensor "fantasma" se excluye en
+// lugar de contaminar el centroide). Fix de audit 2026-05-29.
 bool sh_is_healthy(const SensorHealth& s, int sensor_idx);
 
 // True si CUALQUIER sensor está unhealthy (para flag global EV_SENSOR_NOISY).

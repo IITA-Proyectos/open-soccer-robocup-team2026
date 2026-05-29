@@ -73,9 +73,16 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     bool line_end = lt_update(m.tracker, g.line_present, now_ms,
                               cfg.line_end_min_track_ms);
 
+    // Fix audit 2026-05-29: data_valid también debe ser false si hay mux muerto.
+    // Si un mux entero (8 sensores) está colgado, el centroide está sesgado
+    // sistemáticamente — no confiar en el ángulo. EV_SENSOR_NOISY individual NO
+    // invalida data_valid porque el sensor ruidoso ya se EXCLUYÓ del centroide
+    // (sólo afecta a UN sensor, no a 8 como mux_dead).
+    const bool any_mux_dead = mw_any_dead(m.mux_watchdog);
+
     LineStatusV2 s{};
     s.schema_version = LSV2_SCHEMA;
-    s.data_valid = sm_data_valid(lifted, suspect);
+    s.data_valid = sm_data_valid(lifted, suspect) && !any_mux_dead ? 1 : 0;
     s.line_present = g.line_present ? 1 : 0;
     s.sensors_on_line = g.sensors_on_line;
     if(g.line_present){
@@ -93,7 +100,7 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     if(line_end)   ev|=EV_LINE_END;
     if(lifted)     ev|=EV_LIFTED;
     if(suspect)    ev|=EV_CALIB_SUSPECT;
-    if(mw_any_dead(m.mux_watchdog)) ev|=EV_MUX_DEAD;   // TEMA 1 P0 — 2026-05-29
+    if(any_mux_dead) ev|=EV_MUX_DEAD;   // TEMA 1 P0 — 2026-05-29 (cacheado arriba)
     if(sh_any_unhealthy(m.sensor_health, n)) ev|=EV_SENSOR_NOISY;  // TEMA 4 P1 — 2026-05-29
     if(n<32)       ev|=EV_DEGRADED_GEOMETRY;  // anillo parcial: mux muerto o rig reducido
     s.event_flags=ev;

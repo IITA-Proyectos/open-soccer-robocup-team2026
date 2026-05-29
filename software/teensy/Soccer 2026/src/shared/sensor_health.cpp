@@ -55,12 +55,31 @@ void sh_update(SensorHealth& s,
     }
 
     // === Evaluación al cierre de la ventana ===
-    if (now_ms - s.window_start_ms >= window_ms) {
+    // Wrap-safe: si now_ms < window_start_ms (millis() wrapeó tras ~49.7 días
+    // o el caller pasó tiempo no-monótono), reiniciamos la ventana en lugar de
+    // disparar evaluación inmediata por elapsed gigantesco.
+    const int32_t window_elapsed_signed = (int32_t)(now_ms - s.window_start_ms);
+    if (window_elapsed_signed < 0) {
+        s.window_start_ms = now_ms;
+        for (int i = 0; i < n_sensors; ++i) {
+            s.transition_count[i] = 0;
+            // No reseteamos same_raw_start_ms: si el sensor sigue stuck con
+            // el MISMO valor pre y post wrap, el próximo tick lo retomará
+            // ajustado naturalmente.
+        }
+        return;
+    }
+    if ((uint32_t)window_elapsed_signed >= window_ms) {
         for (int i = 0; i < n_sensors; ++i) {
             const bool too_noisy = s.transition_count[i] > max_transitions;
-            const uint32_t stuck_dur =
-                (s.same_raw_active[i] && now_ms >= s.same_raw_start_ms[i])
-                    ? (now_ms - s.same_raw_start_ms[i]) : 0;
+            // Wrap-safe stuck duration.
+            uint32_t stuck_dur = 0;
+            if (s.same_raw_active[i]) {
+                const int32_t sd_signed =
+                    (int32_t)(now_ms - s.same_raw_start_ms[i]);
+                if (sd_signed >= 0) stuck_dur = (uint32_t)sd_signed;
+                else                s.same_raw_start_ms[i] = now_ms;  // post-wrap reseat
+            }
             const bool stuck = stuck_dur >= max_stuck_ms;
 
             // Auto-recovery: si el sensor cumple AMBAS condiciones de buena
@@ -75,7 +94,12 @@ void sh_update(SensorHealth& s,
 }
 
 bool sh_is_healthy(const SensorHealth& s, int sensor_idx) {
-    if (sensor_idx < 0 || sensor_idx >= SH_MAX_SENSORS) return true;
+    // Fix audit 2026-05-29: OOB → false (unhealthy = exclusión defensiva).
+    // Antes: OOB → true. Cambio: si un bug upstream pasa i+1 sin bounds check,
+    // el sensor "fantasma" se excluye del centroide en lugar de contaminarlo.
+    // El llamador down_model ya filtra con `i < n` antes de llamar, así que
+    // este cambio sólo afecta llamadores defectuosos — y los hace más seguros.
+    if (sensor_idx < 0 || sensor_idx >= SH_MAX_SENSORS) return false;
     return !s.unhealthy[sensor_idx];
 }
 

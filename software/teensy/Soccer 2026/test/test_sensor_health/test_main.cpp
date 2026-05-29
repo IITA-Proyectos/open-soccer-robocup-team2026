@@ -25,14 +25,41 @@ void test_sh_init_all_healthy(void) {
     TEST_ASSERT_EQUAL_UINT32(0u, sh_get_unhealthy_bitmap(s, 32));
 }
 
-void test_sh_oob_index_returns_healthy(void) {
-    // Indices fuera de rango devuelven true (asume healthy) para no
-    // bloquear sensores válidos por error de indexado.
+void test_sh_oob_index_returns_unhealthy(void) {
+    // Fix audit 2026-05-29: indices fuera de rango devuelven FALSE (unhealthy)
+    // como defensa contra bugs upstream que pasen i+1 sin bounds check.
     SensorHealth s;
     sh_init(s);
-    TEST_ASSERT_TRUE(sh_is_healthy(s, -1));
-    TEST_ASSERT_TRUE(sh_is_healthy(s, 32));
-    TEST_ASSERT_TRUE(sh_is_healthy(s, 999));
+    TEST_ASSERT_FALSE(sh_is_healthy(s, -1));
+    TEST_ASSERT_FALSE(sh_is_healthy(s, 32));
+    TEST_ASSERT_FALSE(sh_is_healthy(s, 999));
+    // Pero los sensores válidos siguen sanos al init:
+    TEST_ASSERT_TRUE(sh_is_healthy(s, 0));
+    TEST_ASSERT_TRUE(sh_is_healthy(s, 31));
+}
+
+void test_sh_now_ms_wrap_does_not_falsely_trigger(void) {
+    // Wrap-safe: si now_ms regresa (millis() wrap a ~49.7 días o reset
+    // de timer), sh_update no debe disparar unhealthy por elapsed gigante.
+    SensorHealth s;
+    sh_init(s);
+    uint16_t raw[32];
+    bool white[32] = {false};
+
+    // Fase A: 1.5 seg normales — ventana cierra normalmente.
+    for (uint32_t t = 0; t <= 1500; ++t) {
+        for (int i = 0; i < 32; ++i) raw[i] = (uint16_t)(300 + ((i + t) % 10));
+        sh_update(s, raw, white, 32, t);
+    }
+    TEST_ASSERT_FALSE(sh_any_unhealthy(s, 32));
+
+    // Fase B: now_ms retrocede súbitamente (simula wrap o reset).
+    // El módulo debe reiniciar la ventana sin disparar falsos positivos.
+    for (uint32_t t = 100; t <= 800; ++t) {  // tiempos MENORES que los de A
+        for (int i = 0; i < 32; ++i) raw[i] = (uint16_t)(300 + ((i + t) % 10));
+        sh_update(s, raw, white, 32, t);
+    }
+    TEST_ASSERT_FALSE(sh_any_unhealthy(s, 32));
 }
 
 // ============================================================================
@@ -221,7 +248,8 @@ void test_sh_n_sensors_clamped_to_max(void) {
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_sh_init_all_healthy);
-    RUN_TEST(test_sh_oob_index_returns_healthy);
+    RUN_TEST(test_sh_oob_index_returns_unhealthy);
+    RUN_TEST(test_sh_now_ms_wrap_does_not_falsely_trigger);
     RUN_TEST(test_sh_normal_operation_stays_healthy);
     RUN_TEST(test_sh_few_transitions_per_window_stays_healthy);
     RUN_TEST(test_sh_noisy_sensor_marked_unhealthy);

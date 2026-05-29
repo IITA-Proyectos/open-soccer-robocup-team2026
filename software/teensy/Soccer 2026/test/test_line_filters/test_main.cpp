@@ -437,6 +437,27 @@ void test_mw_oob_index_safe(void) {
     TEST_ASSERT_FALSE(mw_is_dead(w, 99));
 }
 
+void test_mw_now_ms_wrap_no_false_positive(void) {
+    // Fix audit 2026-05-29: si now_ms retrocede (millis() wrap a ~49.7 días),
+    // mw_update no debe disparar dead inmediato por elapsed gigante.
+    MuxWatchdog w;
+    mw_init(w);
+    uint16_t raw[32];
+    fill_raw_with_mux_stuck(raw, /*mux*/0, /*value*/0);
+    // Fase A: tick normal a t=1000, arranca racha.
+    mw_update(w, raw, 4, MW_SENSORS_PER_MUX, 1000);
+    // Fase B: now_ms retrocede a t=50 (simula wrap). Racha debería reiniciarse,
+    // NO disparar dead inmediato a pesar de que aparente elapsed = -950 → 4G.
+    mw_update(w, raw, 4, MW_SENSORS_PER_MUX, 50);
+    TEST_ASSERT_FALSE(mw_is_dead(w, 0));
+    // Fase C: avanzar normalmente desde el nuevo cero. Racha completa →
+    // confirmar que sigue funcionando post-wrap.
+    for (uint32_t t = 51; t <= 200; ++t) {
+        mw_update(w, raw, 4, MW_SENSORS_PER_MUX, t);
+    }
+    TEST_ASSERT_TRUE(mw_is_dead(w, 0));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
 
@@ -483,6 +504,7 @@ int main(int, char**) {
     RUN_TEST(test_mw_bitmap_multiple_dead);
     RUN_TEST(test_mw_no_dead_before_debounce);
     RUN_TEST(test_mw_oob_index_safe);
+    RUN_TEST(test_mw_now_ms_wrap_no_false_positive);
 
     return UNITY_END();
 }

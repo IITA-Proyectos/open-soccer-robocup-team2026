@@ -6,6 +6,7 @@
 #include "line_tracker.h"
 #include "line_calib.h"
 #include "surface_monitor.h"
+#include "sensor_health.h"   // TEMA 4 P1 — 2026-05-29
 namespace iitasoccer {
 constexpr int DM_MAX_SENSORS = 32;
 struct DownModelCfg {
@@ -23,7 +24,8 @@ struct DownModel {
     bool           was_white[DM_MAX_SENSORS];
     SurfaceMonitor surface;
     LineTracker    tracker;
-    MuxWatchdog    mux_watchdog;   // TEMA 1 P0 — 2026-05-29 (EV_MUX_DEAD)
+    MuxWatchdog    mux_watchdog;     // TEMA 1 P0 — 2026-05-29 (EV_MUX_DEAD)
+    SensorHealth   sensor_health;    // TEMA 4 P1 — 2026-05-29 (EV_SENSOR_NOISY)
 };
 LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
                         const uint16_t* raw, int n, uint32_t now_ms);

@@ -25,6 +25,18 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
         mw_update(m.mux_watchdog, raw, n_muxes, MW_SENSORS_PER_MUX, now_ms);
     }
 
+    // TEMA 4 P1 — tracking de salud per-sensor (transiciones + stuck).
+    // Usamos `white` (POST-hysteresis pre-spatial-filter) para contar
+    // transiciones blanco↔no-blanco (no validated, que ya está filtrado
+    // espacialmente y podría enmascarar oscilación real del sensor).
+    sh_update(m.sensor_health, raw, white, n, now_ms);
+
+    // Si un sensor está marcado unhealthy, lo excluimos del centroide.
+    // Esto previene que un sensor ruidoso/stuck contamine el ángulo.
+    for (int i = 0; i < n; ++i) {
+        if (!sh_is_healthy(m.sensor_health, i)) validated[i] = false;
+    }
+
     GeomResult g = lg_compute(validated, ang, n);
 
     for(int i=0;i<n;++i)
@@ -57,6 +69,7 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     if(lifted)     ev|=EV_LIFTED;
     if(suspect)    ev|=EV_CALIB_SUSPECT;
     if(mw_any_dead(m.mux_watchdog)) ev|=EV_MUX_DEAD;   // TEMA 1 P0 — 2026-05-29
+    if(sh_any_unhealthy(m.sensor_health, n)) ev|=EV_SENSOR_NOISY;  // TEMA 4 P1 — 2026-05-29
     if(n<32)       ev|=EV_DEGRADED_GEOMETRY;  // anillo parcial: mux muerto o rig reducido
     s.event_flags=ev;
     s.quality = s.data_valid ? (uint8_t)(g.line_present? 85 : 95) : 0; // placeholder: metrica real (SNR) diferida a Plan 3

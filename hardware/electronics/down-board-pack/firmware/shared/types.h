@@ -153,5 +153,6 @@ constexpr uint8_t EV_LIFTED            = 0x08;
 constexpr uint8_t EV_CALIB_SUSPECT     = 0x10;
 constexpr uint8_t EV_MUX_DEAD          = 0x20;
 constexpr uint8_t EV_DEGRADED_GEOMETRY = 0x40;
+constexpr uint8_t EV_SENSOR_NOISY      = 0x80;   // TEMA 4 P1 (2026-05-29)
 
 }  // namespace iitasoccer

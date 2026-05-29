@@ -139,6 +139,43 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
   main_top.cpp (pose llega al WorldSnapshot v2). Validacion HW pendiente
   (TASK-035, bloqueada por bodge XSHUT TASK-033).
 
+### Avance 2026-05-28 — diag_central_motors (CENTRAL, banco)
+- Nuevo sketch standalone para validar los 3 H-bridges del Zircon Rev v15
+  uno a la vez, con onda PWM controlada por botón (pin 9). Sirve para
+  mapear "motor N firmware → rueda física" y para **resolver
+  empíricamente el conflicto pines 7/8** (motor 2 vs Serial2 hacia DOWN):
+  si el motor 2 del driver U17 NO gira → pines 7/8 son Serial2; si gira →
+  son motor y hay que migrar Serial2 a otro UART (Serial7 28/29 libre).
+- Archivos: [`src/diag/diag_central_motors.cpp`](../software/teensy/Soccer%202026/src/diag/diag_central_motors.cpp)
+  + `[env:diag_central_motors]` en `platformio.ini` + doc operativo
+  [`docs/firmware/DIAG-CENTRAL-MOTORS.md`](firmware/DIAG-CENTRAL-MOTORS.md).
+- Sesión Claude: scope acotado a producir el sketch + docs (excepción
+  explícita a la moratoria aprobada por Gustavo, alineada con el espíritu
+  de "desbloqueo de hardware"). El brainstorm de "desarrollo completo de
+  software CENTRAL" quedó pausado para una próxima sesión, post-ensayo
+  del diag_central_motors en banco.
+- **Pendiente humano**: Virginia/Elías/Enzo correr el test en banco
+  (procedimiento en el doc). Cierra empíricamente el conflicto pines 7/8.
+
+### Avance 2026-05-29 — diag_central_drive_straight (CENTRAL + TOP, banco)
+- Nuevo sketch que valida end-to-end la cadena de control de movimiento:
+  `WorldSnapshot (Serial1 desde TOP) → world_model → HeadingPID →
+  kinematics inversa omni-3 → motors_zircon`. Botón pin 9 controla
+  FORWARD 3 s → PAUSED 1 s → REVERSE 3 s → DONE.
+- Archivos: [`src/diag/diag_central_drive_straight.cpp`](../software/teensy/Soccer%202026/src/diag/diag_central_drive_straight.cpp)
+  + envs `[env:diag_central_drive_robot1]` / `[env:diag_central_drive_robot2]`
+  en `platformio.ini` + doc operativo
+  [`docs/firmware/DIAG-CENTRAL-DRIVE.md`](firmware/DIAG-CENTRAL-DRIVE.md).
+- **Diferencia con la propuesta original del usuario**: pidió "PID
+  diferencial por diferencia de las 2 OTOS". CENTRAL hoy recibe SOLO la
+  pose fusionada del TOP, no las 2 OTOS crudas — para el diferencial hay
+  que ampliar el contrato a v3 o agregar bypass DOWN→CENTRAL (ambos
+  post-Incheon). Este sketch usa HeadingPID clásico con `my_heading_centideg`
+  del WorldSnapshot, que para "ir derecho" es suficiente.
+- **Pendiente humano**: TASK-037 — Virginia/Elías/Enzo correr el test en
+  banco con cadena TOP→CENTRAL operativa. Pre-requisito: TASK-036 cerrada
+  (motores validados) + TOP con firmware mandando snapshots.
+
 ### Resuelto 2026-05-25
 - **Verificado forensicamente que los XSHUT/LPn de los 4 TOFs NO están
   ruteados en TOP rev 1.0** (NC flags explícitos en SCH, 0 nets en PCB

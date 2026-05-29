@@ -103,7 +103,12 @@ bloqueante** para correr la suite — sigue siendo deseable para `pio test`
 nativo, pero ya no es el único camino. Ver
 `journal/2026-05-29-auditoria-top-pre-incheon-top.md`.
 
-## TASKs activas (al 2026-05-19) — ver `team-tasks/README.md`
+## TASKs activas — snapshot al 2026-05-19 (lista viva abajo + en `team-tasks/`)
+
+> ⚠️ **Lista congelada al 2026-05-19.** El estado vivo está en las secciones
+> «Avance YYYY-MM-DD» de arriba + los archivos de `team-tasks/` (incluye las
+> series 100/200/300, que no figuran en esta lista). No tomar esto como estado
+> actual de prioridades.
 
 **P0 hardware (asignar HOY a humanos, no a Claude):**
 - TASK-001 (Enzo): fix 10 nets DOWN PCB

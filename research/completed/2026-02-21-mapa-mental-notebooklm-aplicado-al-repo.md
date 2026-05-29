@@ -26,15 +26,16 @@ La idea no es "decoración académica": es reducir el caos típico de robótica 
 
 ## Artefactos visuales de NotebookLM
 
-Capturas del mapa mental original:
+Capturas del mapa mental original (referencia de origen):
 
-- [`notebooklm-mindmap-resumen.png`](../references/notebooklm/notebooklm-mindmap-resumen.png) — Vista general (5 ramas principales)
-- [`notebooklm-mindmap-detalle-1.png`](../references/notebooklm/notebooklm-mindmap-detalle-1.png) — Detalle con sub-ramas
-- [`notebooklm-mindmap-detalle-2.png`](../references/notebooklm/notebooklm-mindmap-detalle-2.png) — Detalle alternativo
+> **Nota (2026-05-29):** los artefactos de NotebookLM (`notebooklm-mindmap-*.png`
+> y su README) **nunca se commitearon** al repo — vivían solo en NotebookLM, así
+> que se quitaron los links a `references/notebooklm/` por estar rotos. Este
+> documento **no depende** de las imágenes para ser útil.
 
-Ver [README de la carpeta](../references/notebooklm/README.md) para más contexto sobre el origen.
-
-> Nota: este documento **no depende** de las imágenes para ser útil, pero las imágenes ayudan como "mapa visual" en reuniones.
+- `notebooklm-mindmap-resumen.png` — Vista general (5 ramas principales)
+- `notebooklm-mindmap-detalle-1.png` — Detalle con sub-ramas
+- `notebooklm-mindmap-detalle-2.png` — Detalle alternativo
 
 ---
 

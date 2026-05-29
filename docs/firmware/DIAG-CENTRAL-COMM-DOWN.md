@@ -67,21 +67,32 @@ pio device monitor -b 115200
 El LED de CENTRAL queda **fijo** si recibe `LineStatusV2` fresco (<500 ms); si
 no, **parpadea** (sin datos).
 
-### Qué mirar (status cada 500 ms)
+### Qué mirar (panel cada 500 ms)
+
+El display es un **panel legible**, no una línea densa de números:
 
 ```
-[COMM-DOWN] bytes=12345 frames=120 crc_err=0 resync=0 seq_gaps=0 otros=0 | LSV2 #120 hace 3ms valid=1 present=1 ang=45.0 pen=15 on_line=4/32 q=90 age=8ms flags=[IMM ]
++=========== LINEA  DOWN -> CENTRAL ===========+
+ ESTADO   : >>> SOBRE LA LINEA <<<
+ DIRECCION: > DERECHA  (45 grados)
+ SENSORES : 04/32 [######------------------]
+ PENETRA. :  15 mm [#####-----------]
+ CALIDAD  : 90/100
+ EVENTOS  : SALIDA-INMINENTE
+ ----------------------------------------------
+ ENLACE   : 120 frames | 0 CRC err | 0 perdidos | hace 8 ms
++==============================================+
 ```
 
-| Campo | Qué significa |
+| Línea | Qué significa |
 |---|---|
-| `bytes` | bytes crudos recibidos por Serial7 (si queda en 0 → no llega NADA: cable/pin/GND/baud) |
-| `frames` | frames válidos decodificados (CRC OK + sync OK) |
-| `crc_err` | frames con CRC malo (ruido / baud equivocado / mal cable) — debe ser ≈0 |
-| `resync` / `seq_gaps` | resincronizaciones del decoder / frames perdidos |
-| `valid` / `present` | `data_valid` y `line_present` del contrato |
-| `ang` / `pen` / `on_line` | ángulo (°), penetración (mm), **cuenta** de sensores en línea (0–32) |
-| `flags` | eventos: `IMM` (salida inminente), `LIFT` (levantado), `COR`, `END`, etc. |
+| **ESTADO** | `fuera de linea` / `SOBRE LA LINEA` / `SALIDA INMINENTE` / `ROBOT LEVANTADO` / `DATOS NO VALIDOS` |
+| **DIRECCION** | flecha + palabra + grados (0° = frente; el signo izq/der se confirma en banco) |
+| **SENSORES** | **CUENTA** de sensores en línea (0–32) — no las posiciones (eso necesita el mensaje de 32 crudos, ver abajo) |
+| **PENETRA. / CALIDAD / EVENTOS** | campos del contrato `LineStatusV2` |
+| **ENLACE** | salud del link: `frames` sube + `CRC err ≈ 0` = **link OK**. `[STALE!]` = no llegan datos hace >500 ms |
+
+Si todavía no llegó ningún frame, el panel muestra **"ESPERANDO datos de DOWN"** con la checklist de cableado.
 
 ## Interpretación rápida
 

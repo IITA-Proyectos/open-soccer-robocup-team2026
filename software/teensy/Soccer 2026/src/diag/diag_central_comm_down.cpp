@@ -1,37 +1,27 @@
 // diag_central_comm_down.cpp — Receiver de banco: valida el link DOWN -> CENTRAL
 //
 // Para qué sirve:
-//   Primer paso del bring-up de la comunicación DOWN -> CENTRAL. Escucha el
-//   UART donde DOWN reporta, corre el FrameDecoder del protocolo (proto.h), y
-//   por cada frame válido imprime el LineStatusV2 decodificado + la SALUD del
-//   enlace (bytes, frames OK, errores CRC, resyncs, huecos de SEQ).
+//   Primer paso del bring-up de la comunicación DOWN → CENTRAL (el hito que
+//   destraba la moratoria). CENTRAL escucha el UART, corre el FrameDecoder del
+//   protocolo (proto.h), decodifica el LineStatusV2 que DOWN ya manda, y lo
+//   muestra como un PANEL legible para humanos (estado, dirección con flecha,
+//   barras) + salud del enlace.
 //
-//   Filosofía: probar que los BYTES FLUYEN con CRC OK usando el payload que
-//   DOWN ya manda (LineStatusV2), ANTES de sumar mensajes nuevos (32 sensores
-//   crudos). Si esto anda, el canal físico + el protocolo están validados.
+//   Filosofía: probar que los bytes fluyen con CRC OK usando el payload que
+//   DOWN ya emite, ANTES de sumar mensajes nuevos (los 32 sensores crudos son
+//   un 2do paso — necesitan un mensaje nuevo que DOWN tiene que mandar).
 //
 // ⚠️ UART — Serial7 (RX7 = pin 28, TX7 = pin 29) del Teensy 4.1.
-//    NO se usa Serial2 (pines 7/8): esos pines son el MOTOR 2 (driver U17),
-//    confirmado en diag_central_motors el 2026-05-29 (resuelve TASK-036).
-//    Cableado correcto:
+//    NO Serial2 (pines 7/8 = MOTOR 2, driver U17, confirmado en
+//    diag_central_motors el 2026-05-29 → evidencia TASK-036).
+//    Cableado:
 //        DOWN  TX1 (pin 1)   ->   CENTRAL  RX7 (pin 28)
 //        DOWN  GND           <->  CENTRAL  GND
-//    Baud: 230400 (igual que DOWN — ver config_down.h / comm_central.cpp).
-//
-// DOWN manda hoy: LineStatusV2 (MsgType LINE_URGENT, 16 bytes) — resumen
-//   procesado del anillo de 32 sensores (ángulo, penetración, CUENTA de
-//   sensores en línea 0..32, flags). NO manda los 32 sensores individuales
-//   (eso es un mensaje nuevo, 2do paso del bring-up).
+//    Baud: 230400 (igual que DOWN — config_down.h / comm_central.cpp).
 //
 // Uso:
 //   pio run -e diag_central_comm_down -t upload
 //   pio device monitor -b 115200
-//
-// Qué esperar:
-//   - DOWN fuera de la línea (sobre carpet): frames suben sostenido, crc_err≈0,
-//     present=0, on_line bajo.
-//   - DOWN sobre la línea blanca: present=1, on_line sube, ang/pen coherentes.
-//   - DOWN levantado en el aire: flags incluye LIFT.
 //
 // Atribución:
 //   Author: Claude Opus 4.7 (Anthropic)
@@ -53,6 +43,12 @@ constexpr long DOWN_LINK_BAUD = 230400;   // mismo baud que DOWN
 // NO Serial2 (pines 7/8 = motor 2). Si algún día se recablea, cambiar acá.
 #define DOWN_UART Serial7
 
+// Cada cuánto se redibuja el panel (ms). 500 ms = legible, no satura.
+constexpr uint32_t PANEL_INTERVAL_MS = 500;
+
+// Escala de la barra de penetración (mm a fondo de escala).
+constexpr int PENETRATION_FULL_SCALE_MM = 50;
+
 FrameDecoder g_decoder;
 
 // Tracking de SEQ — cuenta discontinuidades (frames perdidos / fuera de orden).
@@ -69,30 +65,64 @@ uint32_t     g_last_lsv2_ms  = 0;
 // Frames válidos que NO son LineStatusV2 (para ver si llega "otra cosa").
 uint32_t g_other_frames = 0;
 
-elapsedMillis g_since_print;
+elapsedMillis g_since_panel;
+
+// ---- Helpers de presentación ----------------------------------------------
+
+// Barra de progreso ASCII: [####------]
+void print_bar(int value, int max_value, int width) {
+    int filled = (max_value > 0) ? (value * width) / max_value : 0;
+    if (filled > width) filled = width;
+    if (filled < 0)     filled = 0;
+    Serial.print('[');
+    for (int i = 0; i < width; ++i) Serial.print(i < filled ? '#' : '-');
+    Serial.print(']');
+}
 
 // Decodifica event_flags a una cadena corta legible.
 void print_event_flags(uint8_t ev) {
-    if (ev == 0) { Serial.print("-"); return; }
-    if (ev & EV_IMMINENT_EXIT)     Serial.print("IMM ");
-    if (ev & EV_CORNER)            Serial.print("COR ");
-    if (ev & EV_LINE_END)          Serial.print("END ");
-    if (ev & EV_LIFTED)            Serial.print("LIFT ");
-    if (ev & EV_CALIB_SUSPECT)     Serial.print("CAL? ");
-    if (ev & EV_MUX_DEAD)          Serial.print("MUX! ");
-    if (ev & EV_DEGRADED_GEOMETRY) Serial.print("GEO ");
-    if (ev & EV_SENSOR_NOISY)      Serial.print("NOISY ");
+    if (ev == 0) { Serial.print("(ninguno)"); return; }
+    if (ev & EV_IMMINENT_EXIT)     Serial.print("SALIDA-INMINENTE ");
+    if (ev & EV_CORNER)            Serial.print("ESQUINA ");
+    if (ev & EV_LINE_END)          Serial.print("FIN-LINEA ");
+    if (ev & EV_LIFTED)            Serial.print("LEVANTADO ");
+    if (ev & EV_CALIB_SUSPECT)     Serial.print("CALIB? ");
+    if (ev & EV_MUX_DEAD)          Serial.print("MUX-MUERTO ");
+    if (ev & EV_DEGRADED_GEOMETRY) Serial.print("GEOMETRIA ");
+    if (ev & EV_SENSOR_NOISY)      Serial.print("RUIDO ");
 }
 
+// Dirección de la línea como flecha + palabra (visto desde el robot).
+// Convención: 0° = frente. Signo izq/der a confirmar en banco.
+void print_direction(float deg) {
+    float a = deg;
+    while (a > 180.0f)  a -= 360.0f;
+    while (a < -180.0f) a += 360.0f;
+
+    char arrow;
+    const char* label;
+    if      (a >= -45.0f && a <= 45.0f) { arrow = '^'; label = "FRENTE"; }
+    else if (a > 45.0f   && a < 135.0f) { arrow = '>'; label = "DERECHA"; }
+    else if (a <= -45.0f && a > -135.0f){ arrow = '<'; label = "IZQUIERDA"; }
+    else                                { arrow = 'v'; label = "ATRAS"; }
+
+    Serial.print(arrow);
+    Serial.print(' ');
+    Serial.print(label);
+    Serial.print("  (");
+    Serial.print(deg, 0);
+    Serial.print(" grados)");
+}
+
+// ---- RX --------------------------------------------------------------------
+
 void on_frame(const Frame& f) {
-    // SEQ: contar discontinuidades.
     if (g_have_last_seq && f.seq != static_cast<uint8_t>(g_last_seq + 1)) {
         g_seq_gaps++;
     }
     g_last_seq = f.seq;
     g_have_last_seq = true;
 
-    // ¿Es el LineStatusV2 que DOWN manda?
     LineStatusV2 ls{};
     if (lsv2_from_frame(f, ls)) {
         g_lsv2 = ls;
@@ -104,51 +134,88 @@ void on_frame(const Frame& f) {
     }
 }
 
-void print_status() {
-    Serial.print("[COMM-DOWN] bytes=");
-    Serial.print(g_decoder.bytes_received());
-    Serial.print(" frames=");
-    Serial.print(g_decoder.frames_decoded());
-    Serial.print(" crc_err=");
-    Serial.print(g_decoder.crc_errors());
-    Serial.print(" resync=");
-    Serial.print(g_decoder.resync_events());
-    Serial.print(" seq_gaps=");
-    Serial.print(g_seq_gaps);
-    Serial.print(" otros=");
-    Serial.print(g_other_frames);
+// ---- Panel -----------------------------------------------------------------
+
+void print_panel() {
+    Serial.println();
+    Serial.println(F("+=========== LINEA  DOWN -> CENTRAL ===========+"));
 
     if (!g_have_lsv2) {
-        if (g_decoder.frames_decoded() == 0) {
-            Serial.println(" | sin frames -> revisar: cable DOWN TX1(pin1)->CENTRAL RX7(pin28), GND comun, DOWN flasheado y enviando, baud 230400.");
+        Serial.print(F(" ESPERANDO datos de DOWN...   frames="));
+        Serial.print(g_decoder.frames_decoded());
+        Serial.print(F("  bytes="));
+        Serial.println(g_decoder.bytes_received());
+        if (g_decoder.bytes_received() == 0) {
+            Serial.println(F(" -> No llega NADA. Revisar:"));
+            Serial.println(F("    cable DOWN TX1(pin 1) -> CENTRAL RX7(pin 28),"));
+            Serial.println(F("    GND comun, DOWN flasheado y enviando, baud 230400."));
         } else {
-            Serial.println(" | frames OK pero ninguno es LineStatusV2 (16B). Revisar version de firmware DOWN.");
+            Serial.println(F(" -> Llegan bytes pero ningun frame valido todavia."));
+            Serial.println(F("    Revisar baud / TX-RX cruzados / masa."));
         }
+        Serial.println(F("+==============================================+"));
         return;
     }
 
     const LineStatusV2& s = g_lsv2;
-    Serial.print(" | LSV2 #");
-    Serial.print(g_lsv2_count);
-    Serial.print(" hace ");
-    Serial.print(millis() - g_last_lsv2_ms);
-    Serial.print("ms valid=");
-    Serial.print(s.data_valid);
-    Serial.print(" present=");
-    Serial.print(lsv2_line_present(s) ? 1 : 0);
-    Serial.print(" ang=");
-    Serial.print(lsv2_line_angle_deg(s), 1);
-    Serial.print(" pen=");
-    Serial.print(lsv2_penetration_u8(s));
-    Serial.print(" on_line=");
-    Serial.print(lsv2_sensors_on_line(s));
-    Serial.print("/32 q=");
+    const bool stale = (millis() - g_last_lsv2_ms) > 500;
+
+    // --- Estado grande ---
+    Serial.print(F(" ESTADO   : "));
+    if      (lsv2_lifted(s))         Serial.println(F("[ ROBOT LEVANTADO - datos ignorados ]"));
+    else if (!s.data_valid)          Serial.println(F("[ DATOS NO VALIDOS (data_valid=0) ]"));
+    else if (lsv2_imminent_exit(s))  Serial.println(F("*** SALIDA INMINENTE - FRENAR ***"));
+    else if (lsv2_line_present(s))   Serial.println(F(">>> SOBRE LA LINEA <<<"));
+    else                             Serial.println(F("... fuera de linea ..."));
+
+    // --- Direccion ---
+    Serial.print(F(" DIRECCION: "));
+    print_direction(lsv2_line_angle_deg(s));
+    Serial.println();
+
+    // --- Sensores en linea (CUENTA, no posiciones) ---
+    const uint8_t on_line = lsv2_sensors_on_line(s);
+    Serial.print(F(" SENSORES : "));
+    if (on_line < 10) Serial.print('0');
+    Serial.print(on_line);
+    Serial.print(F("/32 "));
+    print_bar(on_line, 32, 24);
+    Serial.println();
+
+    // --- Penetracion ---
+    const uint8_t pen = lsv2_penetration_u8(s);
+    Serial.print(F(" PENETRA. : "));
+    if (pen < 100) Serial.print(' ');
+    if (pen < 10)  Serial.print(' ');
+    Serial.print(pen);
+    Serial.print(F(" mm "));
+    print_bar(pen, PENETRATION_FULL_SCALE_MM, 16);
+    Serial.println();
+
+    // --- Calidad ---
+    Serial.print(F(" CALIDAD  : "));
     Serial.print(s.quality);
-    Serial.print(" age=");
-    Serial.print(s.sample_age_ms);
-    Serial.print("ms flags=[");
+    Serial.println(F("/100"));
+
+    // --- Eventos ---
+    Serial.print(F(" EVENTOS  : "));
     print_event_flags(s.event_flags);
-    Serial.println("]");
+    Serial.println();
+
+    // --- Salud del enlace ---
+    Serial.println(F(" ----------------------------------------------"));
+    Serial.print(F(" ENLACE   : "));
+    Serial.print(g_decoder.frames_decoded());
+    Serial.print(F(" frames | "));
+    Serial.print(g_decoder.crc_errors());
+    Serial.print(F(" CRC err | "));
+    Serial.print(g_seq_gaps);
+    Serial.print(F(" perdidos | hace "));
+    Serial.print(millis() - g_last_lsv2_ms);
+    Serial.print(F(" ms"));
+    if (stale) Serial.print(F("  [STALE!]"));
+    Serial.println();
+    Serial.println(F("+==============================================+"));
 }
 
 }  // namespace
@@ -164,15 +231,13 @@ void setup() {
     DOWN_UART.begin(DOWN_LINK_BAUD);
 
     Serial.println();
-    Serial.println("==================================================");
-    Serial.println("  diag_central_comm_down  -  link DOWN -> CENTRAL");
-    Serial.println("==================================================");
-    Serial.println(" UART: Serial7  (RX7 = pin 28)  @ 230400");
-    Serial.println(" Cablear: DOWN TX1(pin 1) -> CENTRAL RX7(pin 28), GND comun.");
-    Serial.println(" NO usar Serial2 (pines 7/8 = motor 2).");
-    Serial.println(" Decodifica el LineStatusV2 que DOWN ya manda + salud del enlace.");
-    Serial.println(" Status cada 500 ms abajo:");
-    Serial.println();
+    Serial.println(F("=================================================="));
+    Serial.println(F("  diag_central_comm_down  -  link DOWN -> CENTRAL"));
+    Serial.println(F("=================================================="));
+    Serial.println(F(" UART: Serial7 (RX7 = pin 28) @ 230400"));
+    Serial.println(F(" Cablear: DOWN TX1(pin 1) -> CENTRAL RX7(pin 28), GND comun."));
+    Serial.println(F(" NO usar Serial2 (pines 7/8 = motor 2)."));
+    Serial.println(F(" Panel cada 500 ms abajo:"));
 }
 
 void loop() {
@@ -189,8 +254,8 @@ void loop() {
     if (fresh) digitalWrite(LED_BUILTIN, HIGH);
     else       digitalWrite(LED_BUILTIN, (millis() / 250) % 2);
 
-    if (g_since_print >= 500) {
-        g_since_print = 0;
-        print_status();
+    if (g_since_panel >= PANEL_INTERVAL_MS) {
+        g_since_panel = 0;
+        print_panel();
     }
 }

@@ -299,6 +299,22 @@ nativo, pero ya no es el único camino. Ver
 - **Pendiente humano:** confirmar con Enzo a qué pines del Teensy llega el conector
   **U9** (cámara trasera, hoy provisional en Serial7). La placa TOP aún no está armada.
 
+### 🏁 Avance 2026-05-29 — BANCO: motores CENTRAL + enlace físico DOWN↔CENTRAL
+- **Motores del CENTRAL andan** (`diag_central_motors` en banco): identificados
+  motor 1/2/3 + definida la orientación (horario/antihorario) de cada uno. Los
+  valores específicos (mapeo motor↔rueda, sentidos) y el **veredicto del conflicto
+  7/8** (¿giró el motor del driver U17 en pines 7/8?) → cargar de las notas de banco.
+- **Enlace físico DOWN→CENTRAL validado** (test mínimo "mandar un 1":
+  `diag_down_send1`/`diag_central_recv1`): el cable + UART transmiten (DOWN Serial1
+  TX1 pin 1 → CENTRAL Serial2 RX2 pin 7 + GND, 230400). **Falta:** la lectura por
+  **protocolo** end-to-end. La herramienta ya existe: `diag_central_comm_down`
+  decodifica `LineStatusV2` (proto.h `FrameDecoder` + `line_view.h`, campo por
+  campo) en **Serial7**. Falta que DOWN emita frames reales + decidir el Serial
+  definitivo del link en CENTRAL (Serial2 7/8 vs Serial7, según veredicto 7/8).
+- Tools en ramas `agente/central` (diag_central_comm_down + motors antirebote) y
+  `agente/down` (send1/recv1) — pendiente decidir merge a `main`.
+- Detalle completo: `journal/2026-05-29-sesion-banco-motores-y-enlace-down-central.md`.
+
 ### Resuelto 2026-05-25
 - **Verificado forensicamente que los XSHUT/LPn de los 4 TOFs NO están
   ruteados en TOP rev 1.0** (NC flags explícitos en SCH, 0 nets en PCB

@@ -137,29 +137,32 @@ void comm_central_send_line_urgent() {
     }
 
 #ifdef DOWN_DEBUG_SERIAL
-    // Debug de bring-up (validacion DOWN->CENTRAL, TASK-301): imprime por el USB
-    // lo MISMO que se acaba de mandar por Serial1, throttled a ~4 Hz. Se activa
-    // SOLO compilando con -DDOWN_DEBUG_SERIAL (ver [env:down_debug]); el firmware
-    // de competencia [env:down] NO lo incluye. Sirve para ver, SIN la placa
-    // CENTRAL, que DOWN emite la linea y que responde al mover el robot sobre el
-    // blanco. tx_ok sube ~200/s = el UART transmite; tx_drop ~0 = sano (P1.6).
+    // Debug de bring-up (TASK-301): imprime por el USB, a ~4 Hz, lo esencial que
+    // DOWN tiene listo para CENTRAL: ¿HAY LINEA? (line_present del DownModel —
+    // logica de linea ya probada) + la pose de los 2 OTOS + contadores de TX.
+    // Se activa SOLO con -DDOWN_DEBUG_SERIAL (ver [env:down_debug]); el firmware
+    // de competencia no lo trae. Reemplaza el volcado de 32 sensores crudos (eso
+    // vive en diag_down).
+    // NOTA: line_present YA se transmite a CENTRAL en LineStatusV2 (arriba). La
+    // pose OTOS por ahora NO se transmite a CENTRAL (va al TOP por Serial5);
+    // mandarla a CENTRAL requiere destrabar los pines 7/8 (TASK-036). Aca se
+    // muestra por USB para validar que el dato existe y responde.
     static elapsedMillis dbg_since;
     if (dbg_since >= 250) {
         dbg_since = 0;
-        Serial.print("[DOWN->CENTRAL] tx_ok=");  Serial.print(g_frames_sent);
-        Serial.print(" tx_drop=");               Serial.print(g_frames_dropped);
-        Serial.print(" | data_valid=");          Serial.print(s.data_valid);
-        Serial.print(" line_present=");          Serial.print(s.line_present);
-        Serial.print(" sens_on_line=");          Serial.print(s.sensors_on_line);
-        Serial.print(" angle_deg=");
-        if (s.line_angle_centideg == LSV2_NA_I16) Serial.print("N/A");
-        else                                      Serial.print(s.line_angle_centideg / 100.0f, 1);
-        Serial.print(" penet_mm=");
-        if (s.penetration_mm == LSV2_NA_U16)      Serial.print("N/A");
-        else                                      Serial.print(s.penetration_mm);
-        Serial.print(" imm_exit=");               Serial.print((s.event_flags & EV_IMMINENT_EXIT) ? 1 : 0);
-        Serial.print(" flags=0x");                Serial.print(s.event_flags, HEX);
-        Serial.print(" q=");                      Serial.print(s.quality);
+        Serial.print("[DOWN] LINEA=");
+        Serial.print(s.line_present ? "SI" : "NO");
+        if (s.line_present && s.line_angle_centideg != LSV2_NA_I16) {
+            Serial.print(" ang=");
+            Serial.print(s.line_angle_centideg / 100.0f, 1);
+        }
+        Serial.print("  | OTOS x=");  Serial.print(otos_get_x_mm(), 1);
+        Serial.print(" y=");          Serial.print(otos_get_y_mm(), 1);
+        Serial.print(" hdg=");        Serial.print(otos_get_heading_deg(), 1);
+        Serial.print(" [L=");         Serial.print(otos_is_left_ready()  ? "ok" : "--");
+        Serial.print(" R=");          Serial.print(otos_is_right_ready() ? "ok" : "--");
+        Serial.print("]  | tx_ok=");  Serial.print(g_frames_sent);
+        Serial.print(" drop=");       Serial.print(g_frames_dropped);
         Serial.println();
     }
 #endif

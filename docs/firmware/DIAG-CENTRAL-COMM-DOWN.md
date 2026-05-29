@@ -79,6 +79,8 @@ El display es un **panel legible**, no una línea densa de números:
  PENETRA. :  15 mm [#####-----------]
  CALIDAD  : 90/100
  EVENTOS  : SALIDA-INMINENTE
+ CAMPOS   : schema=2 valid=1 present=1 on_line=4 q=90 age=8ms ev=0x1
+            angle=45.00deg escape=N/A pen=15mm cross=-3mm
  ----------------------------------------------
  ENLACE   : 120 frames | 0 CRC err | 0 perdidos | hace 8 ms
 +==============================================+
@@ -90,6 +92,7 @@ El display es un **panel legible**, no una línea densa de números:
 | **DIRECCION** | flecha + palabra + grados (0° = frente; el signo izq/der se confirma en banco) |
 | **SENSORES** | **CUENTA** de sensores en línea (0–32) — no las posiciones (eso necesita el mensaje de 32 crudos, ver abajo) |
 | **PENETRA. / CALIDAD / EVENTOS** | campos del contrato `LineStatusV2` |
+| **CAMPOS** | vista **cruda decodificada**: TODOS los campos del `LineStatusV2` campo por campo (lo que sale del decoder), con `N/A` donde el contrato usa sentinel |
 | **ENLACE** | salud del link: `frames` sube + `CRC err ≈ 0` = **link OK**. `[STALE!]` = no llegan datos hace >500 ms |
 
 Si todavía no llegó ningún frame, el panel muestra **"ESPERANDO datos de DOWN"** con la checklist de cableado.

@@ -114,6 +114,34 @@ void print_direction(float deg) {
     Serial.print(" grados)");
 }
 
+// Vuelca TODOS los campos del LineStatusV2 ya decodificados (con N/A donde el
+// contrato usa un sentinel). Es la vista "cruda decodificada": exactamente lo
+// que sale del decoder, campo por campo, para no dejar duda de la decodificación.
+void print_decoded_fields(const LineStatusV2& s) {
+    Serial.print(F(" CAMPOS   : schema="));
+    Serial.print(s.schema_version);
+    Serial.print(F(" valid="));    Serial.print(s.data_valid);
+    Serial.print(F(" present="));  Serial.print(s.line_present);
+    Serial.print(F(" on_line="));  Serial.print(s.sensors_on_line);
+    Serial.print(F(" q="));        Serial.print(s.quality);
+    Serial.print(F(" age="));      Serial.print(s.sample_age_ms);
+    Serial.print(F("ms ev=0x"));   Serial.println(s.event_flags, HEX);
+
+    Serial.print(F("            angle="));
+    if (s.line_angle_centideg == LSV2_NA_I16) Serial.print(F("N/A"));
+    else { Serial.print(s.line_angle_centideg / 100.0f, 2); Serial.print(F("deg")); }
+    Serial.print(F(" escape="));
+    if (s.escape_angle_centideg == LSV2_NA_I16) Serial.print(F("N/A"));
+    else { Serial.print(s.escape_angle_centideg / 100.0f, 2); Serial.print(F("deg")); }
+    Serial.print(F(" pen="));
+    if (s.penetration_mm == LSV2_NA_U16) Serial.print(F("N/A"));
+    else { Serial.print(s.penetration_mm); Serial.print(F("mm")); }
+    Serial.print(F(" cross="));
+    if (s.cross_track_mm == LSV2_NA_I16) Serial.print(F("N/A"));
+    else { Serial.print(s.cross_track_mm); Serial.print(F("mm")); }
+    Serial.println();
+}
+
 // ---- RX --------------------------------------------------------------------
 
 void on_frame(const Frame& f) {
@@ -201,6 +229,9 @@ void print_panel() {
     Serial.print(F(" EVENTOS  : "));
     print_event_flags(s.event_flags);
     Serial.println();
+
+    // --- Campos crudos ya decodificados (vista "decodificada" completa) ---
+    print_decoded_fields(s);
 
     // --- Salud del enlace ---
     Serial.println(F(" ----------------------------------------------"));

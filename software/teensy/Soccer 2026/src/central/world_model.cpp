@@ -1,4 +1,5 @@
 #include "world_model.h"
+#include "line_view.h"
 #include <Arduino.h>
 
 namespace iitasoccer {
@@ -6,7 +7,7 @@ namespace iitasoccer {
 namespace {
 
 WorldSnapshot g_snap{};
-LineStatus    g_line{};
+LineStatusV2  g_line{};
 uint32_t g_snap_last_ms = 0;
 uint32_t g_line_last_ms = 0;
 
@@ -21,7 +22,7 @@ inline bool flag_set(uint8_t flags, uint8_t bit) {
 
 void world_model_init() {
     g_snap = WorldSnapshot{};
-    g_line = LineStatus{};
+    g_line = LineStatusV2{};
     g_snap_last_ms = 0;
     g_line_last_ms = 0;
 }
@@ -31,7 +32,7 @@ void world_model_apply_snapshot(const WorldSnapshot& snap) {
     g_snap_last_ms = millis();
 }
 
-void world_model_apply_line(const LineStatus& line) {
+void world_model_apply_line(const LineStatusV2& line) {
     g_line = line;
     g_line_last_ms = millis();
 }
@@ -58,10 +59,10 @@ float world_model_get_goal_opp_distance_mm(){ return static_cast<float>(g_snap.g
 
 uint16_t world_model_get_min_obstacle_mm()  { return g_snap.min_obstacle_mm; }
 
-bool     world_model_line_detected()        { return g_line.depth_mm > 0; }
-float    world_model_get_line_angle_deg()   { return g_line.angle_centideg / 100.0f; }
-uint8_t  world_model_get_line_depth()       { return g_line.depth_mm; }
-bool     world_model_imminent_exit()        { return g_line.imminent_exit_flag != 0; }
+bool     world_model_line_detected()        { return lsv2_line_present(g_line); }
+float    world_model_get_line_angle_deg()   { return lsv2_line_angle_deg(g_line); }
+uint8_t  world_model_get_line_depth()       { return lsv2_penetration_u8(g_line); }
+bool     world_model_imminent_exit()        { return lsv2_imminent_exit(g_line); }
 
 bool world_model_match_running()        { return flag_set(g_snap.flags, 3); }
 bool world_model_in_own_penalty_area()  { return flag_set(g_snap.flags, 0); }

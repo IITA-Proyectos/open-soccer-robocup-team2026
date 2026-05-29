@@ -69,6 +69,24 @@ void lf_spatial_filter(const bool* is_white,
                         bool* validated_out,
                         int n_sensors);
 
+// === Detección de saturación "todo blanco" (TEMA P1.5 — 2026-05-29) ===
+//
+// Una línea de cancha real es una FRANJA: enciende a lo sumo una fracción del
+// anillo (~15/32 incluso en una esquina). Si CASI TODOS los sensores leen
+// blanco, NO es una línea — es una falla: calibración rota (threshold por
+// debajo del carpet real), superficie anómala toda-brillante, o luz ambiente
+// saturando el anillo. En cualquier caso el centroide angular carece de
+// sentido y el packet debe invalidarse.
+//
+// Es el OPUESTO conceptual del detector de lifted (lifted = ~todo OSCURO por
+// debajo del carpet; saturación = ~todo BRILLANTE sobre el threshold). Función
+// pura y stateless: cuenta sensores en blanco y compara contra el umbral.
+//
+// `white` = array de n elementos (estado post-histéresis por sensor).
+// Retorna true si la cantidad de `true` en `white` es >= min_white_count.
+// n <= 0 → false (sin sensores no hay saturación posible).
+bool lf_all_white(const bool* white, int n, int min_white_count);
+
 // === Cálculo de ángulo (centroide ponderado) ===
 
 struct AngleResult {

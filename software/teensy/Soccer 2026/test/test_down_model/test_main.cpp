@@ -62,6 +62,34 @@ void test_n_over_max_is_clamped(void){
     TEST_ASSERT_TRUE(s.sensors_on_line <= DM_MAX_SENSORS);
 }
 
+// TEMA P1.5 — saturación "todo blanco" (audit 2026-05-29).
+// Si CASI TODO el anillo lee blanco no es línea real: se invalida el packet.
+void test_all_white_saturation_rejected(void){
+    DownModel m{}; DownModelCfg cfg; mkcfg(cfg);
+    for(int i=0;i<8;++i) lc_set_static(m.calib[i],200,800);  // threshold=500
+    // Los 8 sensores muy por encima de threshold+band (520) → saturado.
+    uint16_t raw[8]={820,830,810,840,825,815,835,820};
+    LineStatusV2 s = dm_update(m,cfg,raw,8,1000);
+    TEST_ASSERT_EQUAL_UINT8(0, s.line_present);            // no es línea
+    TEST_ASSERT_EQUAL_UINT8(0, s.data_valid);              // packet inválido
+    TEST_ASSERT_EQUAL_UINT8(0, s.sensors_on_line);
+    TEST_ASSERT_TRUE(s.event_flags & EV_CALIB_SUSPECT);    // saturación reusa este flag
+    TEST_ASSERT_EQUAL_INT16(LSV2_NA_I16, s.line_angle_centideg);
+}
+
+// Caso límite opuesto: una línea fuerte (6/8) NO debe confundirse con saturación.
+void test_strong_line_not_saturation(void){
+    DownModel m{}; DownModelCfg cfg; mkcfg(cfg);
+    for(int i=0;i<8;++i) lc_set_static(m.calib[i],200,800);
+    // 6 blancos + 2 carpet: umbral saturación 7/8=7 NO se alcanza.
+    uint16_t raw[8]={820,830,810,840,825,815,205,200};
+    LineStatusV2 s = dm_update(m,cfg,raw,8,1000);
+    TEST_ASSERT_EQUAL_UINT8(1, s.line_present);
+    TEST_ASSERT_EQUAL_UINT8(1, s.data_valid);              // sigue válido
+    TEST_ASSERT_TRUE(s.sensors_on_line >= 1);
+    TEST_ASSERT_TRUE(s.event_flags & EV_IMMINENT_EXIT);    // 6 >= imminent_depth=6
+}
+
 int main(int, char**){
     UNITY_BEGIN();
     RUN_TEST(test_no_line_carpet_valid);
@@ -69,5 +97,7 @@ int main(int, char**){
     RUN_TEST(test_lifted_sets_invalid_and_flag);
     RUN_TEST(test_calib_suspect_sets_invalid_and_flag);
     RUN_TEST(test_n_over_max_is_clamped);
+    RUN_TEST(test_all_white_saturation_rejected);
+    RUN_TEST(test_strong_line_not_saturation);
     return UNITY_END();
 }

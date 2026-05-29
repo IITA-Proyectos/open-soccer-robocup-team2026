@@ -38,6 +38,19 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
         if (!sh_is_healthy(m.sensor_health, i)) validated[i] = false;
     }
 
+    // TEMA P1.5 — rechazo de saturación "todo blanco" (audit 2026-05-29).
+    // Si >= 7/8 del anillo lee blanco NO es una línea real (una franja
+    // enciende a lo sumo ~15/32 sensores). Es falla: calib rota, superficie
+    // toda-brillante o luz ambiente saturando. Zeroeamos validated[] para que
+    // la geometría produzca line_present=0 de forma natural (sin sprinkling de
+    // !saturated por toda la salida) y NO adaptamos calib en este tick (no
+    // queremos "aprender" valores saturados como baseline). Umbral 7/8 espeja
+    // al detector de lifted (su opuesto: lifted = ~todo OSCURO).
+    const bool saturated = lf_all_white(white, n, (n * 7) / 8);
+    if (saturated) {
+        for (int i = 0; i < n; ++i) validated[i] = false;
+    }
+
     // TEMA 3 P1 — geometría REAL del PCB cuando n == SENSOR_COUNT (32).
     // Cuando n == 32 usamos lg_compute_xy con las coordenadas (x, y) reales
     // del schematic (validadas empíricamente 2026-05-24). Es más correcto
@@ -64,8 +77,13 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
         g = g_ang;
     }
 
-    for(int i=0;i<n;++i)
-        lc_adapt_carpet(m.calib[i], filt[i], validated[i], cfg.adapt_alpha);
+    // No adaptar calib en ticks saturados: validated[] ya está en cero y
+    // adaptar nudgearía el carpet hacia los valores blancos (corrompería el
+    // baseline). Saltamos el drift mientras dura la falla.
+    if (!saturated) {
+        for(int i=0;i<n;++i)
+            lc_adapt_carpet(m.calib[i], filt[i], validated[i], cfg.adapt_alpha);
+    }
     bool suspect = lc_is_suspect(m.calib, n, cfg.calib_min_margin);
     bool lifted  = sm_update(m.surface, filt, carpet, n, now_ms,
                              cfg.lifted_debounce_ms,
@@ -82,7 +100,7 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
 
     LineStatusV2 s{};
     s.schema_version = LSV2_SCHEMA;
-    s.data_valid = sm_data_valid(lifted, suspect) && !any_mux_dead ? 1 : 0;
+    s.data_valid = (sm_data_valid(lifted, suspect) && !any_mux_dead && !saturated) ? 1 : 0;
     s.line_present = g.line_present ? 1 : 0;
     s.sensors_on_line = g.sensors_on_line;
     if(g.line_present){
@@ -99,7 +117,7 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     if(g.corner)   ev|=EV_CORNER;
     if(line_end)   ev|=EV_LINE_END;
     if(lifted)     ev|=EV_LIFTED;
-    if(suspect)    ev|=EV_CALIB_SUSPECT;
+    if(suspect || saturated) ev|=EV_CALIB_SUSPECT;  // saturación todo-blanco reusa este flag (sin bit libre en el contrato de 16 bytes)
     if(any_mux_dead) ev|=EV_MUX_DEAD;   // TEMA 1 P0 — 2026-05-29 (cacheado arriba)
     if(sh_any_unhealthy(m.sensor_health, n)) ev|=EV_SENSOR_NOISY;  // TEMA 4 P1 — 2026-05-29
     if(n<32)       ev|=EV_DEGRADED_GEOMETRY;  // anillo parcial: mux muerto o rig reducido

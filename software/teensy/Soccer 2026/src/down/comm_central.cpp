@@ -6,6 +6,7 @@
 #include "types.h"
 #include "down_model.h"
 #include "down_encode.h"
+#include "eeprom_calib.h"
 
 #include <Arduino.h>
 #include <string.h>
@@ -17,6 +18,7 @@ namespace {
 FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
 uint32_t g_frames_sent = 0;
+uint32_t g_frames_dropped = 0;   // P1.6: frames descartados por TX buffer lleno
 uint8_t  g_send_seq = 0;
 
 DownModel g_dm;
@@ -31,6 +33,18 @@ DownModelCfg g_dmcfg = {
 };
 bool g_dm_init = false;
 
+// Deriva la calib por-sensor de g_dm desde los promedios actuales del line_ring
+// y la marca como inicializada. Usada por el lazy-init del send y por el handler
+// de recalibración. (DRY: una sola fuente de la derivación.)
+void derive_calib_from_line_ring() {
+    for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
+        lc_set_static(g_dm.calib[i],
+                      line_ring_get_carpet_avg(static_cast<uint8_t>(i)),
+                      line_ring_get_white_avg(static_cast<uint8_t>(i)));
+    }
+    g_dm_init = true;
+}
+
 void handle_frame(const Frame& f) {
     switch (f.type) {
         case MsgType::CENTRAL_RESET_OTOS:
@@ -38,10 +52,24 @@ void handle_frame(const Frame& f) {
             break;
         case MsgType::CENTRAL_CALIB_LINE:
             if (f.payload_len >= 1) {
-                if (f.payload[0] == 0) line_ring_calibrate_carpet();
-                else if (f.payload[0] == 1) line_ring_calibrate_white();
+                if (f.payload[0] == 0) {
+                    // Paso 1 (carpet): re-derivar en el proximo send. Aun falta
+                    // el blanco — todavia no persistimos (calib incompleta).
+                    line_ring_calibrate_carpet();
+                    g_dm_init = false;
+                } else if (f.payload[0] == 1) {
+                    // Paso 2 (white): calib completa (carpet previo + blanco
+                    // ahora). Derivar ya mismo y PERSISTIR en EEPROM para que
+                    // sobreviva al power cycle (audit P0.2 — 2026-05-29).
+                    line_ring_calibrate_white();
+                    derive_calib_from_line_ring();
+                    if (ec_save_calibration(g_dm.calib, NUM_LINE_SENSORS)) {
+                        Serial.println("[DOWN] calib persistida en EEPROM");
+                    } else {
+                        Serial.println("[DOWN] WARN: fallo guardar calib en EEPROM");
+                    }
+                }
             }
-            g_dm_init = false;  // recalibrar: forzar reload de calib en el proximo send
             break;
         default:
             // Comandos no esperados se ignoran.
@@ -70,14 +98,10 @@ int comm_central_tick() {
 }
 
 void comm_central_send_line_urgent() {
-    // Inicialización lazy: cargar calibración por sensor desde line_ring la primera vez.
+    // Inicialización lazy: derivar calib desde line_ring la primera vez (salvo
+    // que ya esté cargada de EEPROM por comm_central_load_persisted_calib()).
     if (!g_dm_init) {
-        for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
-            lc_set_static(g_dm.calib[i],
-                          line_ring_get_carpet_avg(static_cast<uint8_t>(i)),
-                          line_ring_get_white_avg(static_cast<uint8_t>(i)));
-        }
-        g_dm_init = true;
+        derive_calib_from_line_ring();
     }
 
     // Leer valores crudos del anillo de sensores.
@@ -98,13 +122,36 @@ void comm_central_send_line_urgent() {
     uint8_t buf[PROTO_MAX_FRAME];
     size_t nb = down_encode_line(s, g_send_seq++, buf, sizeof(buf));
     if (nb > 0) {
-        Serial1.write(buf, nb);
-        g_frames_sent++;
+        // Backpressure (audit P1.6 — 2026-05-29): escribir solo si hay espacio
+        // en el TX buffer del UART. Serial.write() del core Teensy hace
+        // busy-wait cuando el buffer está lleno — a 200 Hz eso le robaría
+        // ciclos al line_ring de 1 kHz. Si no hay espacio dropeamos el frame:
+        // CENTRAL tolera huecos (siempre actúa sobre el measurement más
+        // reciente, no acumula). El contador permite diagnosticar saturación.
+        if (Serial1.availableForWrite() >= (int)nb) {
+            Serial1.write(buf, nb);
+            g_frames_sent++;
+        } else {
+            g_frames_dropped++;
+        }
     }
+}
+
+bool comm_central_load_persisted_calib() {
+    // EEPROM gana sobre la derivación boot-time del line_ring: trae una
+    // referencia de BLANCO real (medida en una calibración manual previa), que
+    // el boot no tiene (solo capturó carpet). El carpet ligeramente stale se
+    // auto-corrige por lc_adapt_carpet en los primeros segundos de operación.
+    if (ec_load_calibration(g_dm.calib, NUM_LINE_SENSORS)) {
+        g_dm_init = true;   // bloquea la calib: no re-derivar desde line_ring
+        return true;
+    }
+    return false;           // EEPROM vacía/inválida → lazy-init fallback
 }
 
 uint32_t comm_central_get_frames_received() { return g_frames_received; }
 uint32_t comm_central_get_frames_sent()     { return g_frames_sent; }
+uint32_t comm_central_get_frames_dropped()  { return g_frames_dropped; }
 uint32_t comm_central_get_crc_errors()      { return g_decoder.crc_errors(); }
 
 }  // namespace iitasoccer

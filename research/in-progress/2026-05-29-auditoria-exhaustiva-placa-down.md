@@ -58,6 +58,9 @@ activarse en condiciones reales de competencia. Los 3 críticos son:
    `main_down.cpp` setup/loop. Cada power cycle = calibración perdida.
    En un torneo con N matches y power cycles entre matches, esto se
    traduce en N momentos de "robot arranca con datos inválidos".
+   *(ACTUALIZADO 2026-05-29: integrado en firmware vía
+   `comm_central_load_persisted_calib()` — compila, pendiente test
+   power-cycle en banco. Ver Tema P0.2 + TASK-301.)*
 3. **CENTRAL consume solo 2 de los 7 flags que DOWN emite hoy**
    (`imminent_exit`, `line_angle`). Los otros 5 (`mux_dead`,
    `sensor_noisy`, `calib_suspect`, `degraded_geometry`, `corner`,
@@ -492,6 +495,25 @@ así que rechaza buffer corrupto y vuelve a default.
    desconectar batería + USB 10 seg; reconectar; confirmar que arranca con
    `data_valid=1` (calibración sobrevivió).
 
+> **✅ IMPLEMENTADO EN FIRMWARE — 2026-05-29 (compila, falta validación HW).**
+> El snippet de arriba era una **aproximación incorrecta**: asumía un
+> `g_model.calib` global accesible desde `main_down.cpp`. En realidad el
+> `DownModel` (`g_dm`) vive en el **namespace anónimo de `comm_central.cpp`**
+> — `main_down.cpp` no puede tocarlo. La integración real:
+> - **`comm_central.cpp`**: nueva función pública `comm_central_load_persisted_calib()`
+>   que hace `ec_load_calibration(g_dm.calib, …)` y, si carga OK, setea
+>   `g_dm_init = true` para **bloquear el lazy-init** (la EEPROM gana sobre la
+>   derivación boot-time del `line_ring`, porque trae una referencia de BLANCO
+>   real que el boot no tiene).
+> - **`main_down.cpp::setup()`**: llama esa función después de
+>   `line_ring_calibrate_carpet()` y loguea si cargó de EEPROM o usa fallback.
+> - **SAVE**: no es un comando "save calib" separado — se persiste
+>   automáticamente al completar el paso 2 (blanco) del comando
+>   `CENTRAL_CALIB_LINE` (`ec_save_calibration` dentro del handler RX), que es
+>   el único momento en que la calib está completa (carpet+blanco).
+> - **Verificación:** `pio run -e down` compila y linkea OK (FLASH 33 KB).
+>   Pendiente: test power-cycle en banco (→ **TASK-301**, criterio 1).
+
 ### Tema P0.3 — Medir voltajes MP1584 con multímetro
 
 **Categoría:** electrónica / hardware
@@ -553,6 +575,23 @@ Implementar `lf_all_white_rejection()` en line_filters: si todos los
 sensores marcan blanco simultáneamente, forzar todos a no-blanco. Patrón
 Omicron. Mitigación para Modo 5 (luz extrema).
 
+> **✅ IMPLEMENTADO + TESTEADO HOST — 2026-05-29.**
+> - **`line_filters.{h,cpp}`**: `lf_all_white(white, n, min_white_count)` —
+>   predicado puro stateless (sin la mutación in-place que sugería el nombre
+>   `_rejection`; la decisión de qué hacer con la saturación vive en
+>   `down_model`, no en el filtro).
+> - **`down_model.cpp` (`dm_update`)**: si `lf_all_white(…, (n*7)/8)` (umbral
+>   espejo del detector de "levantado") → se invalidan todos los sensores
+>   (`validated[i]=false`) para que la geometría dé `line_present=0`
+>   naturalmente, **se saltea la adaptación de calib** ese tick (no arrastrar
+>   el baseline de carpet hacia el blanco) y se marca `data_valid=0`. La
+>   señal sale por `EV_CALIB_SUSPECT` (el contrato de 16 bytes / 8 flags está
+>   lleno — no hay bit libre para un flag de saturación propio).
+> - **Tests:** 6 nuevos en `test_line_filters` (39 total, 0 fallos) + 2 en
+>   `test_down_model` (7 total, 0 fallos) corridos con g++ host (fallback
+>   documentado por TASK-025; `pio test` no resuelve Unity offline).
+> - Pendiente: validación con luz real en cancha (→ **TASK-301**, criterio 2).
+
 ### Tema P1.6 — `availableForWrite()` check en `comm_central_send`
 
 **Categoría:** firmware / robustez UART
@@ -561,6 +600,18 @@ Omicron. Mitigación para Modo 5 (luz extrema).
 
 Antes de TX, chequear `Serial1.availableForWrite() >= frame_size`. Si no,
 skipear ese frame (mejor perder 1 muestra que demorar el loop principal).
+
+> **✅ IMPLEMENTADO EN FIRMWARE — 2026-05-29 (compila, falta validación HW).**
+> - Guard `availableForWrite()` agregado en **AMBOS** emisores, no solo en
+>   `comm_central`: `comm_central.cpp` (Serial1, línea urgente 200 Hz) y
+>   `comm_top.cpp` (Serial5, odometría 100 Hz). Sin el guard, `Serial.write()`
+>   del core Teensy hace busy-wait con el buffer lleno y le roba ciclos al
+>   `line_ring` de 1 kHz.
+> - Cada módulo expone un contador `..._get_frames_dropped()` para diagnosticar
+>   saturación de UART en banco/torneo.
+> - **Verificación:** `pio run -e down` compila y linkea OK.
+> - Pendiente: confirmar bajo carga real que `frames_dropped` se mantiene bajo
+>   y que el tick de 1 kHz no se degrada (→ **TASK-301**, criterio 3).
 
 ### Tema P1.7 — Checklist pre-match
 
@@ -589,17 +640,17 @@ Documentar en `docs/operacion/checklist-pre-match.md`:
 
 ### Semana 1 (T-25 a T-19): cerrar bloqueantes
 
-- **P0.1** (3h) — validar UART real.
-- **P0.2** (1h) — integrar calib_storage.
-- **P0.3** (0.5h) — medir voltajes MP1584.
-- **P0.4** (2h) — guard `data_valid` en strategy.cpp.
+- **P0.1** (3h) — validar UART real. *(pendiente — TASK-031/301)*
+- **P0.2** (1h) — integrar calib_storage. *(✅ firmware 2026-05-29; falta HW — TASK-301)*
+- **P0.3** (0.5h) — medir voltajes MP1584. *(pendiente HW)*
+- **P0.4** (2h) — guard `data_valid` en strategy.cpp. *(pendiente — fuera de scope DOWN, toca CENTRAL)*
 
 **Total: 6.5 horas. Riesgo residual baja de MEDIO-ALTO a BAJO-MEDIO.**
 
 ### Semana 2 (T-18 a T-12): robustez
 
-- **P1.5** (0.5h) — all-white rejection.
-- **P1.6** (0.5h) — UART backpressure check.
+- **P1.5** (0.5h) — all-white rejection. *(✅ firmware + tests host 2026-05-29; falta HW — TASK-301)*
+- **P1.6** (0.5h) — UART backpressure check. *(✅ firmware 2026-05-29; falta HW — TASK-301)*
 - **P1.7** (1h) — checklist pre-match.
 - Plan de prueba hardware completo de TASK-001 (10 nets PCB), TASK-027
   (orientación PCB), TASK-029 (validación cuantitativa OTOS).

@@ -31,7 +31,11 @@ constexpr int MAX_BYTES_PER_TICK = 64;
 // === Estado ===
 
 CameraParser g_parser_front;    // Serial3 → conector U8 (cámara frontal)
-CameraParser g_parser_back;     // Serial5 → conector U9 (cámara trasera)
+CameraParser g_parser_back;     // Serial7 → conector U9 (cámara trasera)
+// ⚠️ MOVIDA 2026-05-29 de Serial5 → Serial7 (pines 28/29, UART libre): Serial5
+// (pines 20/21) pasó a ser el UART hacia CENTRAL (WORLD_SNAPSHOT). Serial7 es el
+// candidato libre. CONFIRMAR con Enzo a qué pines del Teensy llega físicamente el
+// conector U9 de la cámara trasera (la placa TOP todavía no está armada).
 
 uint32_t g_last_packet_ms_front = 0;
 uint32_t g_last_packet_ms_back  = 0;
@@ -85,7 +89,7 @@ void recompute_fused(uint32_t now_ms) {
 
 void cameras_init() {
     Serial3.begin(UART_CAMERA1_BAUD);
-    Serial5.begin(UART_CAMERA2_BAUD);
+    Serial7.begin(UART_CAMERA2_BAUD);
     g_parser_front.reset();
     g_parser_back.reset();
     g_last_packet_ms_front = 0;
@@ -108,10 +112,10 @@ void cameras_tick() {
         ++drained;
     }
 
-    // Drenar Serial5 (cámara trasera).
+    // Drenar Serial7 (cámara trasera).
     drained = 0;
-    while (Serial5.available() && drained < MAX_BYTES_PER_TICK) {
-        const uint8_t byte = static_cast<uint8_t>(Serial5.read());
+    while (Serial7.available() && drained < MAX_BYTES_PER_TICK) {
+        const uint8_t byte = static_cast<uint8_t>(Serial7.read());
         if (g_parser_back.feed(byte)) {
             g_last_packet_ms_back = (now_ms == 0) ? 1 : now_ms;
         }

@@ -282,6 +282,23 @@ nativo, pero ya no es el único camino. Ver
   Ver `journal/2026-05-29-auditoria-top-pre-incheon-top.md` (auditoria completa
   + temas-a-analizar en formato coach para los hallazgos dependientes de HW).
 
+### Avance 2026-05-29 — corrección UART TOP→CENTRAL = Serial5 (no Serial2/7-8)
+- **Hallazgo (Gustavo, en banco):** el diagrama del Teensy tiene doble numeración
+  (externa + interna); vale la **interna (GPIO)**. El conector del TOP hacia CENTRAL
+  cae en los **pines 20/21 = Serial5**, NO en 7/8 (Serial2). Era mala lectura del diagrama.
+- **Impacto:** (1) destraba el riesgo G-TOP-01 ("Serial2→CENTRAL NO CONFIRMADO →
+  el snapshot nunca llega"); (2) **resuelve el conflicto del pin 7 del TOP** (HC-SR04
+  ECHO vs Serial2 RX2): Serial2 ya no se usa. ⚠️ **NO confundir con el conflicto 7/8
+  del CENTRAL** (Motor U17 vs Serial2 hacia DOWN) — ese sigue ABIERTO (lo resuelve
+  `diag_central_motors` en banco).
+- **Firmware corregido (compila OK, top_robot1 SUCCESS):** `src/top/comm_central.cpp`
+  → `Serial5`; cámara trasera movida de Serial5 a **Serial7** (28/29) en `cameras_runtime.cpp`.
+- **Docs actualizados:** `top-board-pack/01`, `CONTRATO-DATOS-TOP`, `CONTRATO-DATOS-CAMARAS`,
+  `ARQUITECTURA-3-PLACAS`, `FIRMWARE-PLACA-ARRIBA`, `cameraBack-pack`, `FUENTES-DE-VERDAD`.
+  De paso se corrigió un RX/TX cruzado de Serial5 (20=TX5, 21=RX5) en `config_down.h` + ARQUITECTURA.
+- **Pendiente humano:** confirmar con Enzo a qué pines del Teensy llega el conector
+  **U9** (cámara trasera, hoy provisional en Serial7). La placa TOP aún no está armada.
+
 ### Resuelto 2026-05-25
 - **Verificado forensicamente que los XSHUT/LPn de los 4 TOFs NO están
   ruteados en TOP rev 1.0** (NC flags explícitos en SCH, 0 nets en PCB

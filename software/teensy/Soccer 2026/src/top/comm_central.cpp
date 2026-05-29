@@ -24,14 +24,20 @@ void handle_frame(const Frame& f) {
 
 }  // namespace
 
+// UART hacia CENTRAL = Serial5 (Teensy 4.0: TX5 = pin 20, RX5 = pin 21), conector U1.
+// CORREGIDO 2026-05-29: antes estaba en Serial2 (pines 7/8). Leyendo la numeración
+// INTERNA (GPIO) del diagrama del Teensy 4.0, el conector a CENTRAL cae en los pines
+// 20/21 = Serial5, NO en 7/8. Esto resuelve el "conflicto pin 7" (HC-SR04 ECHO vs
+// Serial2 RX2) y el "Serial2 → CENTRAL NO CONFIRMADO". La cámara trasera, que usaba
+// Serial5, se movió a Serial7 (ver cameras_runtime.cpp).
 void comm_central_init() {
-    Serial2.begin(UART_BAUD);
+    Serial5.begin(UART_BAUD);
 }
 
 int comm_central_tick() {
     int processed = 0;
-    while (Serial2.available() > 0) {
-        const uint8_t b = static_cast<uint8_t>(Serial2.read());
+    while (Serial5.available() > 0) {
+        const uint8_t b = static_cast<uint8_t>(Serial5.read());
         if (g_decoder.feed(b)) {
             handle_frame(g_decoder.get_frame());
             processed++;
@@ -50,7 +56,7 @@ void comm_central_send_snapshot(const WorldSnapshot& snap) {
     uint8_t buf[PROTO_MAX_FRAME];
     size_t n = proto_encode(f, buf, sizeof(buf));
     if (n > 0) {
-        Serial2.write(buf, n);
+        Serial5.write(buf, n);
         g_frames_sent++;
     }
 }

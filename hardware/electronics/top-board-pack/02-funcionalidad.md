@@ -45,7 +45,7 @@ implementado todavía.
 | **ToF VL53L5/L7CX** | 2 | ⚠️ **STUB** (sin lectura real) | `firmware/top/sensors_tof.{h,cpp}` |
 | Comm con COMM (Serial4) | 1 | ✅ vivo (arbiter) | `firmware/top/comm_arbiter.{h,cpp}` |
 | Comm con DOWN (Serial1) | 1 | ✅ vivo | `firmware/top/comm_down.{h,cpp}` |
-| Comm con CENTRAL (Serial2) | 1 | ✅ vivo | `firmware/top/comm_central.{h,cpp}` |
+| Comm con CENTRAL (**Serial5**, ex-Serial2) | 1 | ✅ vivo | `firmware/top/comm_central.{h,cpp}` |
 | **WorldSnapshot v2 con `ball_vx/vy`** | 2 | ⚠️ struct definido pero `cameras_runtime` no llena los campos (quedan en 0) | `firmware/shared/types.h` + tests `test_central_contract` |
 | EKF de pose absoluta | 3 | ⏳ futuro | — |
 | Kalman pelota (predicción cuando no se ve) | 3 | ⏳ futuro | — |
@@ -162,7 +162,7 @@ Wiring sobre los 2 UART: [`firmware/top/cameras_runtime.{h,cpp}`](firmware/top/c
 
 Las 2 cámaras OpenMV están montadas:
 - **Cámara 1** (Serial3, U8) — frontal: mira hacia +Y del robot.
-- **Cámara 2** (Serial5, U9) — trasera: mira hacia −Y. **Sus coordenadas están rotadas 180°** y la fusión las corrige automáticamente.
+- **Cámara 2** (**Serial7**, U9, movida de Serial5 el 2026-05-29) — trasera: mira hacia −Y. **Sus coordenadas están rotadas 180°** y la fusión las corrige automáticamente.
 
 Algoritmo de fusión (en `firmware/shared/cameras_fusion.{h,cpp}`):
 
@@ -303,10 +303,10 @@ Diseño general de las 3 placas: [`05-protocolo-comunicaciones.md`](05-protocolo
 | Serial | Pines RX/TX | A quién | Qué pasa |
 |---|---|---|---|
 | Serial1 | 0/1 | ← DOWN | RX: DOWN_OTOS_POSE + DOWN_OTOS_VEL + LINE_STATUS @ 100 Hz |
-| Serial2 | 7/8 | → CENTRAL | TX: **WORLD_SNAPSHOT @ 100 Hz** |
+| **Serial5** | **20/21** | → CENTRAL | TX: **WORLD_SNAPSHOT @ 100 Hz** (✅ corregido 2026-05-29: era "Serial2 7/8") |
 | Serial3 | 15/14 | ← cámara 1 | RX: parser OpenMV (9 bytes/packet) |
 | Serial4 | 16/17 | ↔ COMM | RX: comando árbitro + partner. TX: comandos al árbitro (futuro) |
-| Serial5 | 21/20 | ← cámara 2 | RX: parser OpenMV (9 bytes/packet) |
+| **Serial7** | **28/29** | ← cámara 2 | RX: parser OpenMV (⚠️ provisional, movida de Serial5) |
 
 ### 10.2 Heartbeat / watchdogs
 

@@ -114,14 +114,16 @@ primero). El CRC viaja big-endian. No confundir.
 | UART | Pines | Baud | Enlace | Confirmado |
 |------|-------|------|--------|-----------|
 | Serial1 | RX=0, TX=1 | 230400 | ← DOWN (odometría OTOS) | Inferido del schematic |
-| Serial2 | RX=7, TX=8 | 230400 | → CENTRAL (snapshot) | **NO CONFIRMADO** (`config_top.h:40-42`) |
+| **Serial5** | **RX=21, TX=20** | 230400 | **→ CENTRAL (snapshot)** | ✅ **2026-05-29: el conector a CENTRAL está en pines 20/21 = Serial5, NO 7/8** |
 | Serial3 | RX=15, TX=14 | 19200 | ← Cámara frontal (OpenMV) | Schematic U8 |
 | Serial4 | RX=16, TX=17 | 115200 | ↔ COMM (árbitros + ESP-NOW) | Schematic U15 |
-| Serial5 | RX=21, TX=20 | 19200 | ← Cámara trasera (OpenMV) | Schematic U9 |
+| **Serial7** | **RX=28, TX=29** | 19200 | ← Cámara trasera (OpenMV) | ⚠️ provisional: movida de Serial5 (ahora CENTRAL); confirmar U9 |
+| ~~Serial2~~ (7/8) | — | — | NO usado (pin 7 = HC-SR04 ECHO) | — |
 
-> **Crítico:** el mapeo de Serial2 (→CENTRAL) no está confirmado en hardware.
-> Si el cableado físico cruza Serial1 y Serial2, CENTRAL nunca recibe el snapshot
-> → motores parados siempre. Verificar con osciloscopio antes de confiar (TASK-008/014).
+> **✅ Resuelto 2026-05-29:** el enlace TOP→CENTRAL usa **Serial5 (pines 20/21)**, no
+> Serial2 (7/8). El diagrama del Teensy tiene número externo + interno; vale el interno
+> (GPIO). Destraba el riesgo "el snapshot nunca llega" y resuelve el conflicto del pin 7
+> (HC-SR04 ECHO). Firmware corregido (`comm_central.cpp` → Serial5; cam trasera → Serial7).
 
 ---
 

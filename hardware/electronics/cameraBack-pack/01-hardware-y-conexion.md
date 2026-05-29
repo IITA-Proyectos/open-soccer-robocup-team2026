@@ -27,20 +27,20 @@ parte-de: cameraBack-pack
 
 | Atributo | Valor |
 |---|---|
-| **Puerto en el Teensy 4.0 (TOP)** | `Serial5` |
-| Pin Arduino RX (TOP recibe de la cámara) | **21** |
-| Pin Arduino TX (TOP envía a la cámara — no usado) | **20** |
-| Pin header Teensy | header 5 (RX) + header 4 (TX) |
+| **Puerto en el Teensy 4.0 (TOP)** | `Serial7` ⚠️ (movida de `Serial5` el 2026-05-29) |
+| Pin Arduino RX (TOP recibe de la cámara) | **28** |
+| Pin Arduino TX (TOP envía a la cámara — no usado) | **29** |
 | Conector físico en el PCB TOP | **U9** "UART-CAMERA2" |
 | Baud rate | **19200 8N1** |
-| Constante en firmware Teensy | `UART_CAMERA2_BAUD = 19200` en `config_top.h:55` |
+| Constante en firmware Teensy | `UART_CAMERA2_BAUD = 19200` (`cameras_runtime.cpp` usa `Serial7`) |
 | Constante en firmware OpenMV | `UART(3, 19200)` en `current-generic.py:6` (UART3 del OpenMV — la H7 solo tiene UART3 expuesto) |
 | Sentido de datos | Cámara → TOP (unidireccional en práctica; TX del TOP existe pero no se usa) |
 
-> ⚠️ **Pendiente de confirmación (TASK-008)**: el wiring físico entre el
-> conector U9 del PCB TOP y los pines 21/20 del Teensy 4.0 NO está verificado
-> con osciloscopio. Si U9 va a otros pines del Teensy, la cámara trasera no
-> envía a Serial5 sino al UART que esté cableado en U9.
+> ⚠️ **Cambio 2026-05-29**: la cámara trasera se movió de **Serial5 → Serial7
+> (pines 28/29)** porque **Serial5 (pines 20/21) pasó a ser el UART TOP→CENTRAL**
+> (`WORLD_SNAPSHOT`). El conector físico **U9** es el mismo; falta confirmar con
+> Enzo a qué pines del Teensy llega. Firmware vivo ya corregido
+> (`cameras_runtime.cpp` → `Serial7`).
 
 ## 3. Montaje físico en el robot
 

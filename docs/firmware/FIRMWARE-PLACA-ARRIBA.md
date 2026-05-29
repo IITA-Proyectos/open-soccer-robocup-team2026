@@ -73,13 +73,13 @@ La placa ARRIBA es el módulo más complejo computacionalmente del robot. Su car
 | Componente | Cantidad | Conexión | Notas técnicas |
 |-----------|----------|----------|----------------|
 | MCU Teensy 4.0 | 1 | — | Cortex-M7 600 MHz, 1 MB RAM, 2 MB flash |
-| Cámaras OpenMV H7 / H7 Plus | 2 | UART (Serial3 + Serial5) | 19200 baud, protocolo viejo 9 bytes/packet |
+| Cámaras OpenMV H7 / H7 Plus | 2 | UART (Serial3 frontal + Serial7 trasera) | 19200 baud, protocolo viejo 9 bytes/packet |
 | BNO055 IMU | 2 | I2C dual (Wire + Wire1) | Wire1 remapeado a pines 24/25 (Q3 confirmado) |
 | Sensor ToF VL53L5CX o L7CX | 4 | I2C en 2 buses, XSHUT individual | 8×8 SPAD multizona, hasta 60 Hz (4×4) o 15 Hz (8×8) |
 | Ultrasonido HC-SR04 | 1 | TRIG/ECHO pines 6/7 | Frontal, fallback de ToF, lectura bloqueante 25 ms |
 | Placa COMM (ESP32-C6) | 1 | UART (Serial4) | Bridge a árbitros + ESP-NOW partner |
 | Conector hacia DOWN | 1 | UART (Serial1) | Recibe ODOM_POSE/VEL de ABAJO |
-| Conector hacia CENTRAL | 1 | UART (Serial2 libre, pines 7/8) | Envía WORLD_SNAPSHOT |
+| Conector hacia CENTRAL | 1 | UART (**Serial5, pines 20/21**) | Envía WORLD_SNAPSHOT |
 | Conector Dean-T-F batería | 1 | 7.4V LiPo | Comparte con CENTRAL y ABAJO |
 | Reguladores MP1584-EN | 2 | 7.4V → 5V y 7.4V → 3.3V | Para sensores y MCU |
 | LED de estado | 1 | LED_BUILTIN (pin 13) | Diagnóstico humano |
@@ -98,10 +98,15 @@ Los 2 BNO055 comparten dirección I2C (0x28) por default — por eso obligatorio
 | Serial | TX | RX | Conectado a | Baud | Rol |
 |--------|----|----|-------------|------|-----|
 | Serial1 | 1 | 0 | conector U16 ← DOWN | 230400 | Recibe ODOM |
-| Serial2 | 8 | 7 | conector U1 → CENTRAL | 230400 | **Envía WORLD_SNAPSHOT** |
+| **Serial5** | **20** | **21** | conector U1 → CENTRAL | 230400 | **Envía WORLD_SNAPSHOT** (✅ corregido 2026-05-29: era "Serial2 7/8") |
 | Serial3 | 14 | 15 | conector U8 ↔ Cámara 1 | 19200 | Protocolo OpenMV |
 | Serial4 | 17 | 16 | conector U15 ↔ COMM | 115200 | Bridge árbitros + partner |
-| Serial5 | 20 | 21 | conector U9 ↔ Cámara 2 | 19200 | Protocolo OpenMV |
+| **Serial7** | **29** | **28** | conector U9 ↔ Cámara 2 | 19200 | Protocolo OpenMV (⚠️ movida de Serial5 → ahora CENTRAL) |
+
+> **✅ Corrección 2026-05-29 (vale para todo este doc):** el UART **TOP→CENTRAL es
+> Serial5 (pines 20/21)**, no Serial2 (7/8) — se leyó mal la numeración del diagrama
+> (vale la interna/GPIO). La cámara trasera pasó a Serial7. El pin 7 queda solo para
+> HC-SR04 ECHO (sin conflicto). Donde más abajo diga "Serial2 → CENTRAL", está superado.
 
 Quedan libres Serial6 (BLOQUEADO por Wire1 remap, pines 24/25) y Serial7 (pines 28/29 disponibles para expansión).
 

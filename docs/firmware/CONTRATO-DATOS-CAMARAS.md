@@ -68,17 +68,19 @@ por cámara, porque la homografía, el mirror y el FOV son distintos.
 
 | Parámetro | Cámara frontal (cam 1) | Cámara trasera (cam 2) |
 |-----------|------------------------|------------------------|
-| Puerto Teensy | Serial3 | Serial5 |
-| Pines Teensy 4.0 | RX=15, TX=14 | RX=21, TX=20 |
+| Puerto Teensy | Serial3 | **Serial7** (⚠️ movida de Serial5 el 2026-05-29) |
+| Pines Teensy 4.0 | RX=15, TX=14 | **RX=28, TX=29** |
 | Conector en PCB TOP | U8 "UART-CAMERA1" | U9 "UART-CAMERA2" |
 | Baud rate | 19200 8N1 | 19200 8N1 |
 | Constante firmware | `UART_CAMERA1_BAUD = 19200` | `UART_CAMERA2_BAUD = 19200` |
 
-Fuente: `config_top.h:43,45,53,55`.
+Fuente: `src/top/cameras_runtime.cpp` (código vivo).
 
-> **Nota de calibración pendiente (TASK-008):** el wiring físico entre conectores
-> PCB y UARTs Teensy NO está confirmado. Hay que medir con osciloscopio antes
-> de confiar en estas asignaciones. Ver `config_top.h:39-42` ("NO CONFIRMADO").
+> **⚠️ Cambio 2026-05-29:** la cámara trasera se movió de **Serial5 → Serial7
+> (pines 28/29)** porque **Serial5 (20/21) pasó a ser el UART TOP→CENTRAL**
+> (`WORLD_SNAPSHOT`). Los pines físicos del conector U9 quedan pendientes de
+> confirmar con Enzo (la placa TOP todavía no está armada). Firmware ya
+> corregido en `cameras_runtime.cpp`.
 
 ### 1.2 Protocolo actual — 9 bytes raw
 

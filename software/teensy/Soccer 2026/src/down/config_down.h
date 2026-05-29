@@ -84,7 +84,7 @@ constexpr float OTOS_SEPARATION_MM = 200.0f;  // tentativo: 10cm desde el centro
 // ============================================================
 // UART hacia TOP
 // ============================================================
-// Serial5 (Teensy 4.0 pines 20=RX, 21=TX) — conector U10 "COMUNICATION" del schematic.
+// Serial5 (Teensy 4.0 pines 20=TX5, 21=RX5) — conector U10 "COMUNICATION" del schematic.
 constexpr long UART_TOP_BAUD = 230400;
 
 // ============================================================

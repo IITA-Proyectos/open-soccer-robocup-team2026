@@ -33,9 +33,13 @@
 // Notas de seguridad:
 //   - PWM máximo está limitado a 128/255 (50%) — suficiente para validar
 //     dirección y rango sin lanzar el robot del banco.
-//   - Sólo se prueba un sentido (horario, INA=HIGH, INB=LOW). Esto basta
-//     para identificar la rueda. Para invertir, recompilar con
-//     -DDIAG_MOTORS_REVERSE.
+//   - Cada motor se prueba en UN sentido a la vez. El sentido se controla:
+//       • POR MOTOR  → arreglo MOTOR_DIR[] de abajo (editás el signo del
+//         motor que gira al revés y recompilás). Es lo normal en este robot:
+//         las ruedas omni están montadas con orientaciones distintas.
+//       • LOS 3 A LA VEZ → flag de build -DDIAG_MOTORS_REVERSE (sin editar).
+//     Default: los 3 en horario (INA=HIGH, INB=LOW). Los dos se combinan
+//     (sentido efectivo = DIRECTION_SIGN × MOTOR_DIR[i]).
 //   - El sketch NO depende de config_central.h ni del rol — los pines están
 //     hardcodeados acá según hardware/electronics/mapa-pines-teensy-ambos-robots.md
 //     y el doc del 2026-03-20. Si el cableado físico difiere, ajustar la
@@ -76,6 +80,22 @@ constexpr int MAX_PWM_TEST       = 128;     // 50% del rango — SEGURO para ban
 constexpr uint32_t WAVE_PERIOD_MS = 2000;   // 2 s por ciclo de onda (sub-baja)
 constexpr uint32_t DEBOUNCE_MS    = 30;
 
+// ============================================================
+// Sentido de giro POR MOTOR.  +1 = horario, -1 = antihorario.
+// Editá ESTE arreglo cuando un motor gire al revés de lo que querés.
+// El índice coincide con la tabla MOTORS[] de arriba:
+//     MOTOR_DIR[0] → Motor 1,  [1] → Motor 2,  [2] → Motor 3.
+//
+// Flujo de banco: flasheás con { +1, +1, +1 }, mirás qué rueda gira para el
+// lado equivocado, le cambiás el signo a ESE motor, recompilás y reflasheás.
+// Cuando los 3 empujen para donde corresponde, esos mismos signos son los que
+// van al firmware de producción (config_central.h / motors_zircon.cpp).
+// ============================================================
+constexpr int MOTOR_DIR[3] = { +1, +1, +1 };
+
+// Multiplicador GLOBAL: invierte los 3 motores a la vez (se combina con
+// MOTOR_DIR). Se activa con el flag de build -DDIAG_MOTORS_REVERSE, sin
+// editar código.
 #ifdef DIAG_MOTORS_REVERSE
 constexpr int DIRECTION_SIGN = -1;
 #else
@@ -132,9 +152,11 @@ void all_motors_off() {
 // Esto permite escuchar (cambio de tono) y ver (cambio de velocidad) la
 // respuesta al PWM en todo el rango sin invertir dirección.
 void apply_wave(int motor_idx, uint32_t elapsed_ms) {
+    if (motor_idx < 0 || motor_idx > 2) return;   // guard: indexamos MOTOR_DIR[]
     const float phase = (elapsed_ms % WAVE_PERIOD_MS) / static_cast<float>(WAVE_PERIOD_MS);
     const float wave  = (1.0f - cosf(phase * 2.0f * static_cast<float>(M_PI))) * 0.5f;  // 0..1..0
-    const int   pwm   = DIRECTION_SIGN * static_cast<int>(wave * MAX_PWM_TEST);
+    const int   sign  = DIRECTION_SIGN * MOTOR_DIR[motor_idx];  // global × por-motor
+    const int   pwm   = sign * static_cast<int>(wave * MAX_PWM_TEST);
     motor_set(motor_idx, pwm);
 }
 
@@ -195,8 +217,13 @@ void enter_state(State s) {
             Serial.print  (" PWM maximo: ");
             Serial.print  (MAX_PWM_TEST);
             Serial.println("/255 (50%).");
-            Serial.print  (" Direccion: ");
+            Serial.print  (" Direccion global: ");
             Serial.println(DIRECTION_SIGN > 0 ? "horario (default)" : "antihorario (-DDIAG_MOTORS_REVERSE)");
+            Serial.print  (" Sentido efectivo (M1 M2 M3): ");
+            for (int i = 0; i < 3; i++) {
+                Serial.print((DIRECTION_SIGN * MOTOR_DIR[i]) > 0 ? "CW " : "CCW ");
+            }
+            Serial.println();
             Serial.println();
             break;
         }

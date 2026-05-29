@@ -198,6 +198,23 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
   NO se recreó (cero registry). Las 4 placas vuelven a compilar sin red.
   TASK-302 cerrada (build-verificada, no es HW).
 
+### Avance 2026-05-29 — DOWN↔CENTRAL bring-up (hallazgos verificados + tooling down_debug)
+- Sesión con María (banco, sin placa TOP). Verificado en código:
+  - **DOWN→CENTRAL (Serial1→Serial2) lleva SOLO la línea** (`LineStatusV2`), no OTOS;
+    los OTOS van DOWN→TOP (`main_down.cpp:101/107`).
+  - **El "ir derecho" del sketch de manejo usa heading IMU/TOF, no OTOS**:
+    `main_top.cpp::build_snapshot` toma `localization_runtime_get_pose()` (BNO+TOF);
+    el pose OTOS llega al TOP pero NO entra al snapshot. "Manejar con OTOS" no está
+    cableado (post-Incheon, `TODO_DIFFERENTIAL_OTOS`).
+  - **Conflicto pines 7/8 BLOQUEA DOWN→CENTRAL**: Serial2 (UART desde DOWN) = pines
+    7/8 = mismos de un motor (`config_central.h`); `motors_init()` los pone OUTPUT
+    (`motors_zircon.cpp:101-105`) y pisa el UART. Todo firmware CENTRAL llama
+    `motors_init()` → **ninguno puede recibir a DOWN** → **TASK-036**.
+- **Tooling**: `[env:down_debug]` (= `[env:down]` + `-DDOWN_DEBUG_SERIAL`) imprime por
+  USB, 4 Hz, lo que DOWN manda por Serial1 (data_valid, line_present, ángulo,
+  imm_exit, flags, tx_ok/tx_drop). Valida la transmisión DOWN **sin** placa CENTRAL.
+  `[env:down]` competencia queda IDÉNTICO (FLASH 33416). HW pendiente (María).
+
 ### Avance 2026-05-29 — diag_central_drive_straight (CENTRAL + TOP, banco)
 - Nuevo sketch que valida end-to-end la cadena de control de movimiento:
   `WorldSnapshot (Serial1 desde TOP) → world_model → HeadingPID →

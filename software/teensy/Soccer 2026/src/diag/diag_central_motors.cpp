@@ -164,7 +164,8 @@ void apply_wave(int motor_idx, uint32_t elapsed_ms) {
 // Detección de evento "avanzar al siguiente estado"
 // Acepta dos formas:
 //   1. Flanco de bajada del botón físico (pin 9, INPUT_PULLUP)
-//   2. Cualquier byte recibido por Serial USB (newline o lo que sea)
+//   2. Un ENTER (newline/CR) recibido por Serial USB — el resto de los bytes
+//      se ignora (la basura del USB al conectar el monitor no debe avanzar).
 // El (2) es backup por si el pulsador físico no está cableado en la placa.
 // ============================================================
 
@@ -179,13 +180,17 @@ bool button_pressed_edge() {
     return false;
 }
 
+// Avanza SOLO con un fin de línea (ENTER). Los demás bytes se drenan sin
+// avanzar, así la basura que mete el USB al abrir el Serial Monitor NO dispara
+// transiciones (era la causa del salto M1->M2->M3 al arrancar).
+// Backup del botón físico: escribí cualquier cosa + ENTER en el Serial Monitor.
 bool serial_advance_request() {
-    bool got_any = false;
+    bool advance = false;
     while (Serial.available() > 0) {
-        Serial.read();
-        got_any = true;
+        const char c = static_cast<char>(Serial.read());
+        if (c == '\n' || c == '\r') advance = true;
     }
-    return got_any;
+    return advance;
 }
 
 // ============================================================
@@ -205,7 +210,7 @@ void enter_state(State s) {
             Serial.println(" diag_central_motors  -  Zircon Rev v15");
             Serial.println("==============================================");
             Serial.println(" Apreta el BOTON (pin 9) para arrancar el test.");
-            Serial.println(" (Tambien se acepta cualquier input por Serial.)");
+            Serial.println(" (Backup: escribi algo + ENTER en el Serial Monitor.)");
             Serial.println();
             Serial.println(" Cada apreton avanza al siguiente motor:");
             Serial.println("   #1  -> Motor 1 arranca (onda)");
@@ -283,6 +288,13 @@ void setup() {
     // Esperar conexión USB hasta 2 s (el Teensy NO bloquea si no hay host).
     const uint32_t t0 = millis();
     while (!Serial && (millis() - t0) < 2000) { /* spin */ }
+
+    // Anti-arranque-fantasma: dejar asentar el pin del botón y DRENAR los bytes
+    // que el USB/monitor serie mete al conectarse. Sin esto, esos bytes se leían
+    // como "avanzar de estado" y la FSM saltaba sola M1->M2->M3 al arrancar.
+    delay(300);
+    while (Serial.available() > 0) Serial.read();
+    g_button_last = (digitalRead(PIN_BUTTON) == LOW);  // baseline = estado real
 
     enter_state(State::WAITING_START);
 }

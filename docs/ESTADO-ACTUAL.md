@@ -53,6 +53,10 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
   aprobado 2026-05-25, ver `docs/superpowers/specs/2026-05-25-localization-sprint1-trilateration-design.md`).
   Validacion en hardware pendiente: TASK-035.
 - `src/top/localization_runtime.cpp` — glue I/O.
+- `src/top/hardware_profile.h` + `pinout_common.h` + `pinout_robot1.h`
+  + `pinout_robot2.h` — HAL refactor Sprint A (2026-05-29). El código
+  vivo del firmware usa `hardware_profile.h` (a través del wrapper
+  legacy `config_top.h`). Spec: docs/superpowers/specs/2026-05-29-hal-robot-config-design.md
 
 ### DOWN (Teensy 4.0) — **deuda: 2 cadenas paralelas**
 - `src/down/main_down.cpp` → llama `line_ring.{h,cpp}` (cadena vieja, lectura cruda 1 kHz)
@@ -157,6 +161,13 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - **Pendiente humano**: Virginia/Elías/Enzo correr el test en banco
   (procedimiento en el doc). Cierra empíricamente el conflicto pines 7/8.
 
+### Resuelto 2026-05-29
+- HAL Sprint A (TOP): 4 archivos nuevos (hardware_profile.h, pinout_common.h,
+  pinout_robot1.h, pinout_robot2.h) + config_top.h migrado a wrapper +
+  envs por robot en platformio.ini. Backwards compat preservada (Sprint 1
+  localización intacto). 14/14 tests host-native siguen pasando. Pendiente:
+  TASK-038 (pines XSHUT reales) para arrancar Sprint B.
+
 ### Avance 2026-05-29 — diag_central_drive_straight (CENTRAL + TOP, banco)
 - Nuevo sketch que valida end-to-end la cadena de control de movimiento:
   `WorldSnapshot (Serial1 desde TOP) → world_model → HeadingPID →
@@ -196,6 +207,11 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
   pendiente para Incheon: ver TASK-033 (2 ToFs sin rework vs 4 con bodge
   de Enzo). Solución de fondo: TOP rev 1.1 post-Incheon
   (`research/in-progress/2026-05-25-top-board-rev-1.1-wishlist.md`).
+- HAL Sprint B (extender sensors_tof.cpp para enumerar NUM_TOF_ACTIVE
+  TOFs con XSHUT secuencial al boot). Bloqueado por TASK-038
+  (confirmar pines reales del bodge).
+- HAL para CENTRAL (replicar el patrón en src/central/config_central.h).
+  Sprint futuro.
 
 ### 🏁 HITO 2026-05-24 — Subsistema DOWN/BOTTOM operacional en banco + OTOS validado cuantitativamente
 La placa DOWN (también llamada "BOTTOM") pasó tests de banco con éxito:

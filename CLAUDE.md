@@ -92,6 +92,88 @@ Antes de hacer CUALQUIER cosa en este repo:
 
 Gustavo opera otras sesiones Claude en paralelo con frames distintos (CRM IITA, RCJ Rescue Line, marketing, ventas). Este frame coach soccer es **scoped al repo `iitasoccer/open-soccer-robocup-team2026/`** y no debe filtrar a esas otras sesiones. Si dentro de una sesión soccer aparece una pregunta fuera del dominio técnico (ej. ventas, admin), aclarar y no aplicar este frame.
 
+## Trabajando con múltiples agentes en paralelo (git worktrees, agregado 2026-05-29)
+
+Desde 2026-05-29, el repo soporta hasta **3 agentes Claude trabajando en
+paralelo**, uno por placa (CENTRAL, TOP, DOWN), sin pisarse mutuamente.
+Cada agente vive en su propia **git worktree** con su propio branch.
+
+### Setup físico en el disco
+
+```
+C:/Users/violl/iitasoccer/
+├── open-soccer-robocup-team2026/   ← repo principal (Gustavo: merges + visión global)
+│                                       branch: main
+├── soccer-agente-central/           ← worktree CENTRAL
+│                                       branch: agente/central
+├── soccer-agente-top/               ← worktree TOP
+│                                       branch: agente/top
+└── soccer-agente-down/              ← worktree DOWN
+                                        branch: agente/down
+```
+
+Los 4 directorios son **el mismo repo git** (comparten `.git/objects/`),
+cada uno con su **working tree e índice independientes**. Lo que hace un
+agente en su worktree NO afecta a las otras hasta que Gustavo mergea.
+
+### Reglas por agente
+
+Cada worktree tiene un archivo `AGENT-SCOPE.md` (LOCAL, no commiteado, en
+`.gitignore`) que documenta el scope específico de su placa: qué puede
+editar, qué requiere precaución, qué rango de TASK numbers le corresponde,
+qué leer al boot. Si el archivo se borra accidentalmente, se recrea desde
+el contenido versionado en `docs/agent-scopes/<placa>.md` (cuando exista —
+hoy 2026-05-29 los AGENT-SCOPE locales son la única fuente).
+
+### Cuándo abrir sesión en cada worktree
+
+- **Trabajo en una placa específica** → abrir Claude Code en
+  `soccer-agente-{central,top,down}/`. Ahí el agente edita libremente su
+  placa y commitea a su branch.
+- **Merges, visión global, decisiones cross-placa** → abrir Claude en
+  `open-soccer-robocup-team2026/` (repo principal). Ahí mergeás los
+  branches `agente/*` a `main` y coordinás trabajo grande.
+
+### Reglas no negociables del multi-agente
+
+1. **Un agente NUNCA cambia de branch en su worktree.** Si necesita otro branch, se crea otra worktree.
+2. **Un agente NUNCA mergea a main.** Eso lo hace Gustavo desde el repo principal.
+3. **`git push origin main` NO se ejecuta desde una worktree.** Solo `git push origin agente/<placa>`.
+4. **`git rebase` y `git reset --hard` están prohibidos** desde worktrees — afectan a los otros agentes.
+5. **Antes de tocar `src/shared/`, `platformio.ini` o docs canónicos**, el agente hace `git fetch && git log origin/main -10 -- <archivo>` para ver si otro agente lo cambió.
+6. **Rangos de TASK numbers**:
+   - CENTRAL: TASK-100 a TASK-199
+   - TOP: TASK-200 a TASK-299
+   - DOWN: TASK-300 a TASK-399
+   - TASKs viejas (001-099) NO se renumeran — siguen siendo válidas.
+
+### Cómo mergear los branches `agente/*` a main
+
+```bash
+cd ~/iitasoccer/open-soccer-robocup-team2026
+git fetch
+git merge --no-ff agente/central     # uno por uno, secuencial
+git merge --no-ff agente/top
+git merge --no-ff agente/down
+git push origin main
+```
+
+Si hay conflictos en `src/shared/` o `platformio.ini` (esperables cuando 2 agentes editaron lo mismo), los resolvés vos en `main`. Después los `agente/*` branches pueden seguir desde la nueva base con `git rebase main` (cada agente lo hace al inicio de su próxima sesión).
+
+### Si una worktree se rompe / hay que recrearla
+
+```bash
+cd ~/iitasoccer/open-soccer-robocup-team2026
+git worktree remove ../soccer-agente-central       # destruye el dir
+git branch -D agente/central                        # destruye el branch (atención: pierdes trabajo sin merge)
+git worktree add ../soccer-agente-central -b agente/central
+# Recrear AGENT-SCOPE.md a mano (template en commit que creó el setup).
+```
+
+### Por qué este setup
+
+Lecciones del incidente del commit `909a14b` del 2026-05-29: 2 sesiones Claude haciendo `git add` + `git commit` en paralelo sobre el mismo working tree → race condition donde una sesión arrastra el staging de la otra al commit. Cambio de subdirectorio NO resuelve esto (mismo `.git/`, mismo index). Las worktrees lo resuelven de raíz porque cada una tiene su propio index.
+
 ## Spec del setup
 
 [`docs/coach-system/2026-05-10-fase-0-setup-design.md`](docs/coach-system/2026-05-10-fase-0-setup-design.md) — plan de 4 fases acordado con Gustavo el 2026-05-10.

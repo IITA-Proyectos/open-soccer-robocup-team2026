@@ -24,3 +24,7 @@ __pycache__/
 *.tmp
 *.bak
 *.autosave
+
+# Multi-agente — AGENT-SCOPE.md vive LOCAL en cada worktree (no se commitea).
+# Ver CLAUDE.md sección "Trabajando con múltiples agentes en paralelo".
+/AGENT-SCOPE.md

@@ -90,9 +90,8 @@ tags: [vision, openmv, calibracion]
 
 ## Flujo de trabajo con branches
 
-- `main`: versión estable, funcional
-- `develop`: integración de trabajo en progreso
-- `feature/nombre`: desarrollo de funcionalidades específicas
-- `test/nombre`: ramas para experimentación
+- `main`: versión estable e integrada. Los merges a `main` los hace **Gustavo** desde el repo principal (`git merge --no-ff agente/<placa>`).
+- `agente/central`, `agente/top`, `agente/down`: ramas de trabajo, **una por placa**, cada una en su propia **git worktree**. Cada agente (humano o IA) edita y commitea solo en la suya.
+- Ramas puntuales para experimentos o features cruzados: nombre descriptivo en kebab-case.
 
-Siempre hacer Pull Request para mergear a `main`.
+**Reglas del multi-agente (no negociables):** un agente nunca cambia de branch en su worktree, nunca mergea a `main`, y nunca corre `git push origin main`, `git rebase` ni `git reset --hard` desde una worktree. El detalle completo (setup en disco, rangos de TASK por placa, cómo mergear) está en **[`CLAUDE.md`](CLAUDE.md) → "Trabajando con múltiples agentes en paralelo"**.

@@ -8,13 +8,14 @@ Este repositorio pertenece a un equipo de estudiantes del IITA (Instituto de Inf
 
 El equipo construye y programa **2 robots autónomos** (un arquero y un delantero) que juegan fútbol en una cancha regulada. Los robots usan:
 
-- **Microcontroladores**: Teensy / Arduino
-- **Visión**: Cámaras OpenMV (H7 / H7 Plus) con MicroPython
-- **Comunicación**: UART entre OpenMV y Teensy
-- **Sensores**: Línea (infrarrojos), giróscopo/IMU, ultrasonido
-- **Actuadores**: Motores TT con drivers H-bridge, servos, dribbler, solenoide
-- **Estructura**: Impresión 3D (Tinkercad/OpenSCAD) + construcción manual
-- **Placa custom**: PCB "Zircon" con librería propia (zirconLib)
+- **Arquitectura**: distribuida en **3 placas por robot** conectadas por UART — CENTRAL (Teensy 4.1, PCB custom "Zircon") + TOP/ARRIBA (Teensy 4.0) + DOWN/ABAJO (Teensy 4.0). Detalle: [`docs/ARQUITECTURA-3-PLACAS-2026.md`](docs/ARQUITECTURA-3-PLACAS-2026.md).
+- **Microcontroladores**: 3× Teensy por robot (1× 4.1 + 2× 4.0) + ESP32-C6 en la placa COMM (señales de árbitro RCJ)
+- **Visión**: 2× cámaras OpenMV (H7 / H7 Plus) con MicroPython — frontal + trasera
+- **Comunicación**: UART entre placas (CENTRAL↔TOP↔DOWN) y OpenMV↔Teensy; ESP32-C6 para árbitros
+- **Sensores**: línea (anillo de 32 sensores ópticos), 2× OTOS (odometría), IMU/giróscopo (BNO055), ToF VL53L7CX, ultrasonido HC-SR04
+- **Actuadores**: motores TT con drivers H-bridge (base omni-3), dribbler, solenoide (kicker)
+- **Estructura**: impresión 3D (Tinkercad/OpenSCAD) + construcción manual
+- **Placa custom**: PCB "Zircon" (CENTRAL) con librería propia (zirconLib)
 
 ## Reglas que debés seguir
 
@@ -67,10 +68,15 @@ journal/YYYY-MM-DD-descripcion.md
 
 ## Archivos clave a leer primero
 
-1. `README.md` — Visión general del proyecto
-2. `CONTRIBUTING.md` — Reglas de contribución y atribución
-3. `competition/timeline.md` — Cronograma y deadlines
-4. `legacy/2025-season/README.md` — Qué se hizo el año pasado
+> ⚠️ **Antes de tocar nada, hacé `git pull`** y leé los dos índices vivos (1 y 2). Es obligatorio — ver [`CLAUDE.md`](CLAUDE.md) → "Protocolo de sesión".
+
+1. **[`docs/ESTADO-ACTUAL.md`](docs/ESTADO-ACTUAL.md)** — ⭐ estado vivo del robot: qué módulos corren, qué TASKs bloquean, qué deudas hay. **1ª lectura obligatoria.**
+2. **[`docs/FUENTES-DE-VERDAD.md`](docs/FUENTES-DE-VERDAD.md)** — ⭐ qué doc/módulo es canónico por tema (no editar un doc superado).
+3. [`README.md`](README.md) — visión general del proyecto y estructura.
+4. [`CLAUDE.md`](CLAUDE.md) — frame del coach + protocolo multi-agente (git worktrees).
+5. [`CONTRIBUTING.md`](CONTRIBUTING.md) — reglas de contribución y atribución.
+6. [`competition/timeline.md`](competition/timeline.md) — cronograma y deadlines.
+7. [`legacy/2025-season/README.md`](legacy/2025-season/README.md) — qué se hizo el año pasado.
 
 ## Convenciones de tags
 

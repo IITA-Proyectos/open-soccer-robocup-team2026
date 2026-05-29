@@ -15,29 +15,34 @@ El equipo 2026 se basa en el trabajo realizado por el equipo 2025, cuyo código 
 
 ```
 open-soccer-robocup-team2026/
+├── docs/                    # Documentación técnica + índices operativos
+│   ├── ESTADO-ACTUAL.md     #   ⭐ Estado vivo del robot (1ª lectura obligatoria)
+│   ├── FUENTES-DE-VERDAD.md #   ⭐ Qué doc/módulo es canónico por tema
+│   ├── ARQUITECTURA-3-PLACAS-2026.md  #  Arquitectura del robot 2026
+│   ├── firmware/            #   Specs y contratos de datos por placa
+│   ├── decisions/           #   Decisiones de diseño (fechadas)
+│   └── superpowers/         #   Planes y specs de sprints
+├── team-tasks/              # Tareas que requieren acción humana (TASK-NNN)
 ├── journal/                 # Diario de ingeniería (entradas cronológicas)
-├── research/                # Pipeline de investigación
-│   ├── backlog/             #   Temas pendientes de investigar
-│   ├── in-progress/         #   En análisis
-│   ├── completed/           #   Análisis terminados con conclusiones
-│   └── references/          #   Proyectos externos para estudiar
+├── research/                # Pipeline de investigación (backlog → in-progress → completed)
 ├── testing/                 # Protocolos y resultados de pruebas
-│   ├── protocols/           #   Procedimientos de prueba
-│   └── results/             #   Resultados con fecha
 ├── hardware/                # Todo lo físico del robot
-│   ├── electronics/         #   PCB, sensores, esquemáticos
+│   ├── electronics/         #   PCB, sensores, esquemáticos + packs por subsistema
 │   ├── electrical/          #   Baterías, motores, drivers, potencia
 │   └── mechanical/          #   Impresión 3D, piezas manuales, ensamblaje
 ├── software/                # Todo el código
-│   ├── robot-arquero/       #   Software del arquero
-│   ├── robot-delantero/     #   Software del delantero
+│   ├── teensy/Soccer 2026/  #   ⭐ Firmware VIVO 3 placas (PlatformIO) — src/{central,top,down,shared,diag}
+│   ├── staging/             #   Sketches y experimentos por subsistema
+│   ├── robot-arquero/       #   Material específico del arquero (ROBOT1)
+│   ├── robot-delantero/     #   Material específico del delantero (ROBOT2)
 │   ├── vision/              #   Código de cámara OpenMV
-│   ├── communication/       #   Comunicación entre robots
-│   └── libraries/           #   Librerías compartidas
+│   ├── communication/       #   Comunicación entre placas / robots
+│   └── libraries/zirconLib/ #   Librería de la placa Zircon
+├── skills/                  # Playbooks técnicos del dominio (knowledge base, no auto-invocables)
 ├── competition/             # Reglas, cronograma, poster técnico
 │   ├── rules/
 │   └── timeline.md
-└── legacy/                  # Contenido migrado de temporadas anteriores
+└── legacy/                  # Contenido migrado de temporadas anteriores (NO tocar)
     └── 2025-season/
 ```
 

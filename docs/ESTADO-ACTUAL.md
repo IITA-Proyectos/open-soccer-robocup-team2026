@@ -1,12 +1,12 @@
 ---
 title: "Estado actual del robot — vivo, 1 página"
-date: 2026-05-19
-last-updated-by: "Claude (sesión 2026-05-19, cleanup quirúrgico)"
+date: 2026-05-29
+last-updated-by: "Claude (coach, sesión 2026-05-29 — sync de frontmatter/calendario)"
 status: vivo
 tipo: indice-operacional
 ---
 
-# Estado actual — Snapshot del repo (al 2026-05-19)
+# Estado actual — Snapshot del repo (al 2026-05-29)
 
 > **Toda sesión Claude que toca este repo: ESTA es la primera lectura
 > obligatoria** (después de `git pull`). Si lo que estás por hacer contradice
@@ -30,7 +30,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 
 ## Calendario crítico
 
-- **Incheon 2026** — 30-jun a 6-jul (≈42 días).
+- **Incheon 2026** — 30-jun a 6-jul (**≈32 días** al 2026-05-29).
 - **Estrategia** (CLAUDE.md): inversión en aprendizaje, no en podio. Robot
   honesto, partidos jugados, captura sistemática.
 - **Estado realista hoy**: 50/50 que el robot compita "de verdad" (ver

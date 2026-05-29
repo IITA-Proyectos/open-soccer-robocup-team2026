@@ -26,16 +26,6 @@ bool fresh(uint32_t last_ms) {
     return (millis() - last_ms) < DOWN_HEARTBEAT_TIMEOUT_MS;
 }
 
-void send_empty(MsgType type) {
-    Frame f{};
-    f.type = type;
-    f.seq = g_send_seq++;
-    f.payload_len = 0;
-    uint8_t buf[PROTO_MAX_FRAME];
-    size_t n = proto_encode(f, buf, sizeof(buf));
-    if (n > 0) Serial1.write(buf, n);
-}
-
 void handle_frame(const Frame& f) {
     g_frames_received++;
     switch (f.type) {

@@ -68,7 +68,24 @@ original). Esta tarea **bloquea** todo el rediseño de comms.
 
 _(completar al ejecutar — registrar los números medidos acá y en el journal)_
 
+- **2026-05-29 — lado firmware del HC-SR04 RESUELTO** (no cierra la TASK).
+  La auditoría del TOP gateó el HC-SR04 tras `#ifdef TOP_ENABLE_HCSR04`
+  (OFF por default) en `sensors_tof.cpp`: sin el flag, no se llama a
+  `pulseIn(PIN_HCSR04_ECHO=7, …, 25000UL)` ni se tocan los pines 6/7, así que
+  el stall de 25 ms del paso 1 **ya no ocurre** en el build de competencia. El
+  ToF frontal U2 cubre la distancia frontal de forma redundante.
+  **Lo que SIGUE pendiente de esta TASK** (sigue siendo P0, sigue abierta):
+  - El paso 2 (acotar el I²C bloqueante del BNO055) **no** se tocó.
+  - Los pasos 3-5 (instrumentar + **medir el período real con osciloscopio**
+    en TOP/CENTRAL/DOWN) **siguen siendo del equipo** — son la base empírica
+    de las ventanas de frescura (TASK-017).
+  - Decisión de hardware: si alguna vez se quiere reactivar el HC-SR04, primero
+    hay que **mover el ECHO del pin 7** (Serial2 RX2) a un pin libre.
+  Ver `journal/2026-05-29-auditoria-top-pre-incheon-top.md` (Tema B).
+
 ## Cambios de estado
 
 - 2026-05-18: creada por Claude tras la verificación independiente del protocolo
   de comms, a pedido de Gustavo Viollaz.
+- 2026-05-29: lado firmware del stall HC-SR04 resuelto (gateado por flag); resta
+  acotar I²C BNO055 + medir período de loop en hardware. TASK sigue abierta P0.

@@ -72,19 +72,33 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 | Suite | Tests | Cubre |
 |---|---|---|
 | `test_kinematics` | 11 | omni-3 |
-| `test_pids` | 17 | heading + lateral + distancia |
+| `test_pids` | 18 | heading + lateral + distancia |
 | `test_proto` | 13 | CRC, frame, marker |
-| `test_line_filters` | 22 | temporal + hysteresis + spatial + centroide + lifted |
+| `test_line_filters` | 33 | temporal + hysteresis + spatial + centroide + lifted |
 | `test_cameras_fusion` | 16 | rot 180°, fuse front+back, watchdog |
 | `test_behind_ball` | 16 | target detrás, aligned-to-shoot, attack-line, kickoff |
 | `test_strategy_transitions` | 35 | árbol decisión ATK + GK (caracterización) |
 | `test_localization` | 14 | trilateracion + outliers + rotaciones + edge cases |
-| `test_central_contract` | ? | contrato CENTRAL |
-| `test_central_trajectory` | ? | ball_trajectory |
-| `test_down_*` (calib, encode, geometry, model, surface, tracker) | ? | cadena DOWN nueva |
-| **Total estimado** | **≥130** | — |
+| `test_calib_storage` | 19 | persistencia de calibración (`calib_storage`) |
+| `test_sensor_health` | 12 | salud/watchdog de sensores (`sensor_health`) |
+| `test_central_contract` | 2 | contrato CENTRAL |
+| `test_central_motion` | 9 | `motion_target` |
+| `test_central_trajectory` | 7 | `ball_trajectory` |
+| `test_down_calib` | 5 | cadena DOWN: calib |
+| `test_down_encode` | 3 | cadena DOWN: encode |
+| `test_down_geometry` | 20 | cadena DOWN: geometry |
+| `test_down_model` | 5 | cadena DOWN: model |
+| `test_down_surface` | 5 | cadena DOWN: surface |
+| `test_down_tracker` | 3 | cadena DOWN: tracker |
+| **Total (19 envs)** | **246** | **0 fallos** |
 
-**Estado:** todavía NO se corrieron de punta a punta en esta máquina (TASK-025 Avast destraba). Verificación hoy = lectura cruzada del código.
+**Estado (2026-05-29):** ✅ **246 tests / 19 envs / 0 fallos**, corridos
+**offline** en esta máquina con `scripts/run-host-tests.sh` (compila cada test
+con g++ contra Unity vendoreado + `src/shared`, salteando PlatformIO y el
+registry que Avast bloqueaba). TASK-025 (excepción Avast) **deja de ser
+bloqueante** para correr la suite — sigue siendo deseable para `pio test`
+nativo, pero ya no es el único camino. Ver
+`journal/2026-05-29-auditoria-top-pre-incheon-top.md`.
 
 ## TASKs activas (al 2026-05-19) — ver `team-tasks/README.md`
 
@@ -204,6 +218,31 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - **Pendiente humano**: TASK-100 — validar ingest + frenado en banco
   (blocked_by TASK-036, por el conflicto pines 7/8 / Serial2).
 - Journal: `journal/2026-05-29-fix-contrato-linea-central.md`.
+
+### Avance 2026-05-29 — auditoria independiente TOP pre-Incheon + 3 fixes (TOP)
+- **Suite host-native corrida punta a punta por primera vez**: 246 tests /
+  19 envs / **0 fallos**, 100% offline via nuevo `scripts/run-host-tests.sh`
+  (saltea PlatformIO + el registry que Avast bloqueaba). Esto destraba la
+  verificacion que TASK-025 mantenia bloqueada.
+- **3 fixes de firmware aplicados** (compilan limpio ambos robots, sin warnings):
+  1. **`main_top.cpp` — heading al CENTRAL ahora viene del IMU.** Antes
+     `build_snapshot()` mandaba `pose.heading_centideg` de localization, que
+     es SIEMPRE 0 con el hardware actual (TOFs solo en eje Y, pose nunca
+     `valid`, heading nunca se escribe). CENTRAL navegaba con heading=0 fijo.
+     Ahora `s.my_heading_centideg = sensors_imu_get_heading_centideg()`
+     (los 2 BNO055 si dan orientacion). **Mejora la validez de TASK-037**
+     (diag_central_drive usa ese heading).
+  2. **`sensors_tof.cpp` — HC-SR04 gateado tras `#ifdef TOP_ENABLE_HCSR04`
+     (OFF por default).** El `pulseIn(PIN_HCSR04_ECHO=7, ..., 25000UL)` corria
+     sobre el pin 7 = Serial2 RX2 (uplink WorldSnapshot), causando stall de
+     25 ms + `min_obstacle_mm` basura. Resuelve el lado firmware de TASK-014.
+     El VL53L7CX frontal U2 cubre la distancia frontal de forma redundante.
+  3. **`comm_down.cpp` — removida funcion muerta `send_empty()`** (sin
+     callers, generaba warning).
+- **Pendiente humano**: **TASK-200** — validar en hardware que (a) el heading
+  llega al CENTRAL y el robot orienta, y (b) el loop ya no se cuelga 25 ms.
+  Ver `journal/2026-05-29-auditoria-top-pre-incheon-top.md` (auditoria completa
+  + temas-a-analizar en formato coach para los hallazgos dependientes de HW).
 
 ### Resuelto 2026-05-25
 - **Verificado forensicamente que los XSHUT/LPn de los 4 TOFs NO están

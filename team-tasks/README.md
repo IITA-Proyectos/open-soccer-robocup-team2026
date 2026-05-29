@@ -63,6 +63,12 @@ Sistema de tareas asignadas a miembros del equipo para Incheon 2026.
 | [TASK-026](2026-05-19-task-026-confirmar-pinout-mux-down.md) | Confirmar pinout Teensy↔CD4051 en placa DOWN (bloquea cualquier test del anillo) | Enzo | **P0** | pending |
 | [TASK-033](2026-05-25-task-033-decidir-cuantos-tofs-incheon.md) | Decidir cuántos TOFs llevar a Incheon (2 sin rework vs 4 con bodge) | Gustavo | P1 | pending |
 | [TASK-034](2026-05-25-task-034-decidir-arquitectura-localizacion-incheon.md) | Decidir arquitectura de localización XY+heading para Incheon (5 alternativas) | Gustavo | P1 | pending |
+| [TASK-200](2026-05-29-task-200-validar-fixes-heading-y-loop-top.md) | Validar en HW los 2 fixes del TOP (heading al CENTRAL + loop sin stall HC-SR04) | Virginia + Elías | P1 | pending |
+
+> **Nota:** esta tabla quedó parcialmente desactualizada (faltan TASK-027 a 032
+> y 035-038, que existen como archivos en este dir). El índice vivo está en
+> `docs/ESTADO-ACTUAL.md`. Rango de TASK por placa (multi-agente): CENTRAL
+> 100-199, TOP 200-299, DOWN 300-399; las viejas 001-099 no se renumeran.
 
 > **Nota 2026-05-19 (cleanup quirúrgico):** análisis crítico determinó que el
 > 100% del trabajo desde 2026-05-10 fue generado por sesiones Claude

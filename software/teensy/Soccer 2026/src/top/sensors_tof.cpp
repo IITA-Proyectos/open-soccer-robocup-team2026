@@ -51,6 +51,25 @@ bool                  g_tof_init_logged = false;  // anti-spam del log de init
 constexpr uint8_t TOF_RESOLUTION_ZONES = 16;  // 4x4
 constexpr uint8_t TOF_RANGING_FREQ_HZ  = 15;
 
+// ----------------------------------------------------------------------------
+// HC-SR04 — DESHABILITADO POR DEFAULT (conflicto de pin 7).
+// ----------------------------------------------------------------------------
+// PIN_HCSR04_ECHO = 7 (pinout_common.h) colisiona con Serial2 RX2 del Teensy
+// 4.0, que es el UART del WORLD_SNAPSHOT hacia CENTRAL (comm_central.cpp ->
+// Serial2.begin, pins 7/8). main_top arranca comm_central LAST, asi que en
+// runtime el pin 7 queda bajo control del periferico UART. Consecuencias del
+// pulseIn(7,...) sobre ese pin:
+//   1. Lectura basura -> min_obstacle_mm contaminado (puede disparar evasion
+//      espuria o enmascarar un obstaculo real frente al robot).
+//   2. pulseIn BLOQUEA hasta 25 ms esperando un echo que nunca llega bien
+//      (la linea RX idlea en HIGH porque CENTRAL no transmite a TOP). A ~90 ms
+//      de cadencia, eso roba 25 ms al loop y degrada el uplink de 100 Hz.
+// El ToF frontal U2 ya cubre la distancia frontal, asi que el HC-SR04 es
+// redundante. Para reactivarlo hay que primero MOVER el ECHO a un pin libre
+// (decision de hardware -> team-task) y recien ahi compilar con
+// -DTOP_ENABLE_HCSR04. Sin ese flag, el modulo no toca los pines 6/7 ni llama
+// a pulseIn, y sensors_hcsr04_get_distance_mm() devuelve TOF_NO_READING.
+#ifdef TOP_ENABLE_HCSR04
 // HC-SR04 — lectura bloqueante, simple (sin cambios desde el stub).
 uint16_t read_hcsr04() {
     digitalWrite(PIN_HCSR04_TRIG, LOW);
@@ -65,6 +84,7 @@ uint16_t read_hcsr04() {
     // Velocidad del sonido: 343 m/s = 0.343 mm/µs. Duracion es ida + vuelta.
     return static_cast<uint16_t>((duration_us * 343UL) / 2000UL);
 }
+#endif  // TOP_ENABLE_HCSR04
 
 // Promedia las zonas validas del frame 4x4 del L7CX. status==5/6/9 son
 // "valid range" segun convencion ST. Devuelve TOF_NO_READING si NINGUNA
@@ -88,9 +108,12 @@ uint16_t mean_valid_zones(const VL53L7CX_ResultsData& r, uint8_t n_zones) {
 }  // namespace
 
 bool sensors_tof_init() {
-    // HC-SR04 frontal — igual que antes, funciona.
+#ifdef TOP_ENABLE_HCSR04
+    // HC-SR04 frontal — solo si se reactivo explicitamente (ver nota del
+    // conflicto de pin 7 arriba). NO tocar pin 7 si Serial2 lo necesita.
     pinMode(PIN_HCSR04_TRIG, OUTPUT);
     pinMode(PIN_HCSR04_ECHO, INPUT);
+#endif
 
     for (int i = 0; i < NUM_TOF; ++i) {
         g_distances_mm[i] = TOF_NO_READING;
@@ -158,13 +181,16 @@ void sensors_tof_tick() {
         }
     }
 
+#ifdef TOP_ENABLE_HCSR04
     // HC-SR04 — lectura bloqueante. Corremos solo cada N ticks para no
     // saturar el loop (cada lectura puede tomar hasta 25ms).
+    // OJO: deshabilitado por default — conflicto pin 7 con Serial2 (ver arriba).
     static uint32_t last_hc = 0;
     if (g_tick_count - last_hc >= 3) {
         g_hcsr04_mm = read_hcsr04();
         last_hc = g_tick_count;
     }
+#endif
 }
 
 uint16_t sensors_tof_get_distance_mm(uint8_t idx) {

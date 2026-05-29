@@ -47,12 +47,21 @@ WorldSnapshot build_snapshot() {
 
     // Pose propia — trilateración TOF+IMU del módulo localization (Sprint 1).
     // El runtime cachea el último cómputo; si valid=false (p.ej. <2 TOFs útiles),
-    // x/y caen a 0 y confidence=0 para que el CENTRAL sepa ignorar la pose.
+    // x/y caen a 0 y confidence=0 para que el CENTRAL sepa ignorar la POSICIÓN.
     auto pose = iitasoccer::localization_runtime_get_pose();
     s.my_x_mm             = pose.x_mm;
     s.my_y_mm             = pose.y_mm;
-    s.my_heading_centideg = pose.heading_centideg;
     s.my_pose_confidence  = pose.valid ? 70 : 0;
+
+    // Heading: SIEMPRE del IMU, desacoplado de la validez de la POSICIÓN.
+    // localization_compute() solo escribe pose.heading_centideg dentro del bloque
+    // valid (necesita un TOF de eje X y otro de eje Y a la vez); con el hardware
+    // actual (TOFs solo en el eje Y) la pose nunca es válida, así que
+    // pose.heading_centideg quedaba en 0 y el CENTRAL navegaba con heading=0 fijo.
+    // El robot SÍ conoce su orientación (2 BNO055), aunque no su posición. CENTRAL
+    // consume el heading sin gatearlo por confidence (ver world_model.cpp), por lo
+    // que enviarlo directo del IMU es seguro y estrictamente más correcto.
+    s.my_heading_centideg = sensors_imu_get_heading_centideg();
 
     // Pelota — fusión front+back desde cameras_runtime (sección 7.2 de
     // FIRMWARE-PLACA-ARRIBA.md). Coords relativas al robot en mm.

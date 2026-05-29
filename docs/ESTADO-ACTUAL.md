@@ -122,9 +122,23 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
   (`getPosition`, no `getPose`; mismo tipo para position y velocity).
   Ambos chips U5 y U6 responden I²C en 0x17, pose se actualiza con
   movimiento. TASK-012 bajó de P0 a P1 (queda parte ToF en stub).
-  Validación cuantitativa pendiente: TASK-029. **Regla nueva descubierta**:
-  hardware-up requiere power cycle completo (TASK-028). Ver
-  `journal/2026-05-24-otos-lib-activada-y-power-cycle-bug.md`.
+  Validación cuantitativa pendiente: TASK-029.
+
+  > ⚠️ **CÓMO ENCENDER LOS OTOS — leer ANTES de debuggear si dan `L=-- R=--`.**
+  > Los OTOS se alimentan del **3.3 V del MP1584, que viene de la BATERÍA**
+  > (el USB **NO** los alimenta — el USB solo da el Teensy). Si ves `L=-- R=--`,
+  > bus I²C vacío, o una dirección rara tipo **`0x64`** (eso es **brownout**, no
+  > es otro chip), **NO es firmware — es alimentación.** Receta:
+  > 1. Batería **cargada y entregando corriente de verdad** (switch ON, Dean XP1
+  >    bien puesto). *"Conectada pero sin pasar corriente" = OTOS muertos.*
+  > 2. **Power cycle completo**: desconectar batería **+** USB, esperar 10 s,
+  >    reconectar.
+  > 3. Verificar el scan I²C del arranque → ambos OTOS deben dar **`0x17`**.
+  >
+  > Confirmado 2026-05-24 **y otra vez 2026-05-29** (TASK-028). Detalle: los 32
+  > sensores de luz pueden seguir leyendo con el riel flojo, pero los OTOS no.
+  > Ver `journal/2026-05-29-otos-revividos-power-bateria.md` y
+  > `journal/2026-05-24-otos-lib-activada-y-power-cycle-bug.md`.
 
 - ~~**TOP VL53L7CX frontal en stub TODO_TOF_LIB**~~ → **VL53L7CX U2 FRONTAL VIVO**.
   Misma sesión 2026-05-24. Debug de 3 horas: 3 libs ST (L5/L7/L8) fallaron

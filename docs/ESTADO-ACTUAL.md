@@ -45,7 +45,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - `src/central/imu_zircon.{h,cpp}` — BNO055 respaldo
 - `src/central/world_model.{h,cpp}` — espejo del WorldSnapshot
 - `src/central/comm_top.{h,cpp}` — recibe WorldSnapshot del TOP (Serial1)
-- `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 del DOWN (Serial2)
+- `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 del DOWN. ⚠️ UART a migrar **Serial2 → Serial7** (pines 7/8 = motor 2, confirmado por `diag_central_motors` 2026-05-29 → evidencia para cerrar TASK-036). Receiver de banco del link: env `diag_central_comm_down` + [`docs/firmware/DIAG-CENTRAL-COMM-DOWN.md`](firmware/DIAG-CENTRAL-COMM-DOWN.md).
 
 ### TOP (Teensy 4.0)
 - `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (HC-SR04 + 1 VL53L7CX frontal U2 vivo, lib `Adafruit_VL53L7CX`. ⚠️ TOP rev 1.0 NO permite >1 ToF por bus sin rework — XSHUT/LPn de los 4 slots NO ruteados en el PCB, verificación forense 2026-05-25. Máximo soportado: 2 ToFs total. Ver journal 2026-05-24 + 2026-05-25), `comm_*`

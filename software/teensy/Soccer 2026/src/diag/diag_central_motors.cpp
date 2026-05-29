@@ -33,9 +33,13 @@
 // Notas de seguridad:
 //   - PWM máximo está limitado a 128/255 (50%) — suficiente para validar
 //     dirección y rango sin lanzar el robot del banco.
-//   - Sólo se prueba un sentido (horario, INA=HIGH, INB=LOW). Esto basta
-//     para identificar la rueda. Para invertir, recompilar con
-//     -DDIAG_MOTORS_REVERSE.
+//   - Cada motor se prueba en UN sentido a la vez. El sentido se controla:
+//       • POR MOTOR  → arreglo MOTOR_DIR[] de abajo (editás el signo del
+//         motor que gira al revés y recompilás). Es lo normal en este robot:
+//         las ruedas omni están montadas con orientaciones distintas.
+//       • LOS 3 A LA VEZ → flag de build -DDIAG_MOTORS_REVERSE (sin editar).
+//     Default: los 3 en horario (INA=HIGH, INB=LOW). Los dos se combinan
+//     (sentido efectivo = DIRECTION_SIGN × MOTOR_DIR[i]).
 //   - El sketch NO depende de config_central.h ni del rol — los pines están
 //     hardcodeados acá según hardware/electronics/mapa-pines-teensy-ambos-robots.md
 //     y el doc del 2026-03-20. Si el cableado físico difiere, ajustar la
@@ -74,8 +78,25 @@ constexpr int PIN_LED    = 13;    // LED_BUILTIN del Teensy 4.1
 
 constexpr int MAX_PWM_TEST       = 128;     // 50% del rango — SEGURO para banco
 constexpr uint32_t WAVE_PERIOD_MS = 2000;   // 2 s por ciclo de onda (sub-baja)
-constexpr uint32_t DEBOUNCE_MS    = 30;
+constexpr uint32_t DEBOUNCE_MS    = 50;     // el botón debe mantenerse estable 50 ms (anti-ruido motor)
+constexpr uint32_t MIN_DWELL_MS   = 300;    // ignora apretones los primeros 300 ms de cada motor (anti-cascada)
 
+// ============================================================
+// Sentido de giro POR MOTOR.  +1 = horario, -1 = antihorario.
+// Editá ESTE arreglo cuando un motor gire al revés de lo que querés.
+// El índice coincide con la tabla MOTORS[] de arriba:
+//     MOTOR_DIR[0] → Motor 1,  [1] → Motor 2,  [2] → Motor 3.
+//
+// Flujo de banco: flasheás con { +1, +1, +1 }, mirás qué rueda gira para el
+// lado equivocado, le cambiás el signo a ESE motor, recompilás y reflasheás.
+// Cuando los 3 empujen para donde corresponde, esos mismos signos son los que
+// van al firmware de producción (config_central.h / motors_zircon.cpp).
+// ============================================================
+constexpr int MOTOR_DIR[3] = { +1, +1, +1 };
+
+// Multiplicador GLOBAL: invierte los 3 motores a la vez (se combina con
+// MOTOR_DIR). Se activa con el flag de build -DDIAG_MOTORS_REVERSE, sin
+// editar código.
 #ifdef DIAG_MOTORS_REVERSE
 constexpr int DIRECTION_SIGN = -1;
 #else
@@ -132,9 +153,11 @@ void all_motors_off() {
 // Esto permite escuchar (cambio de tono) y ver (cambio de velocidad) la
 // respuesta al PWM en todo el rango sin invertir dirección.
 void apply_wave(int motor_idx, uint32_t elapsed_ms) {
+    if (motor_idx < 0 || motor_idx > 2) return;   // guard: indexamos MOTOR_DIR[]
     const float phase = (elapsed_ms % WAVE_PERIOD_MS) / static_cast<float>(WAVE_PERIOD_MS);
     const float wave  = (1.0f - cosf(phase * 2.0f * static_cast<float>(M_PI))) * 0.5f;  // 0..1..0
-    const int   pwm   = DIRECTION_SIGN * static_cast<int>(wave * MAX_PWM_TEST);
+    const int   sign  = DIRECTION_SIGN * MOTOR_DIR[motor_idx];  // global × por-motor
+    const int   pwm   = sign * static_cast<int>(wave * MAX_PWM_TEST);
     motor_set(motor_idx, pwm);
 }
 
@@ -142,28 +165,43 @@ void apply_wave(int motor_idx, uint32_t elapsed_ms) {
 // Detección de evento "avanzar al siguiente estado"
 // Acepta dos formas:
 //   1. Flanco de bajada del botón físico (pin 9, INPUT_PULLUP)
-//   2. Cualquier byte recibido por Serial USB (newline o lo que sea)
+//   2. Un ENTER (newline/CR) recibido por Serial USB — el resto de los bytes
+//      se ignora (la basura del USB al conectar el monitor no debe avanzar).
 // El (2) es backup por si el pulsador físico no está cableado en la placa.
 // ============================================================
 
 bool button_pressed_edge() {
-    const bool now_pressed = (digitalRead(PIN_BUTTON) == LOW);
+    // Antirebote por ESTABILIDAD: la lectura cruda del pin tiene que mantenerse
+    // igual durante DEBOUNCE_MS para que el estado "oficial" (g_button_last)
+    // cambie. Así los picos cortos de RUIDO DE LOS MOTORES en el pin 9 NO se
+    // leen como apretones (era lo que hacía saltar M1->M2->M3 solo al girar el
+    // motor). g_button_last = estado ya filtrado (false = suelto).
+    static bool raw_last = false;
+    const bool raw = (digitalRead(PIN_BUTTON) == LOW);
     const uint32_t now = millis();
-    if (now_pressed != g_button_last && (now - g_button_change_ms) >= DEBOUNCE_MS) {
+
+    if (raw != raw_last) {            // la lectura cruda cambió: reiniciar timer
+        raw_last = raw;
         g_button_change_ms = now;
-        g_button_last = now_pressed;
-        if (now_pressed) return true;   // flanco "estaba suelto → ahora apretado"
+    }
+    if ((now - g_button_change_ms) >= DEBOUNCE_MS && raw != g_button_last) {
+        g_button_last = raw;          // adoptar la lectura ya estable
+        if (g_button_last) return true;   // flanco estable suelto -> apretado
     }
     return false;
 }
 
+// Avanza SOLO con un fin de línea (ENTER). Los demás bytes se drenan sin
+// avanzar, así la basura que mete el USB al abrir el Serial Monitor NO dispara
+// transiciones (era la causa del salto M1->M2->M3 al arrancar).
+// Backup del botón físico: escribí cualquier cosa + ENTER en el Serial Monitor.
 bool serial_advance_request() {
-    bool got_any = false;
+    bool advance = false;
     while (Serial.available() > 0) {
-        Serial.read();
-        got_any = true;
+        const char c = static_cast<char>(Serial.read());
+        if (c == '\n' || c == '\r') advance = true;
     }
-    return got_any;
+    return advance;
 }
 
 // ============================================================
@@ -183,7 +221,7 @@ void enter_state(State s) {
             Serial.println(" diag_central_motors  -  Zircon Rev v15");
             Serial.println("==============================================");
             Serial.println(" Apreta el BOTON (pin 9) para arrancar el test.");
-            Serial.println(" (Tambien se acepta cualquier input por Serial.)");
+            Serial.println(" (Backup: escribi algo + ENTER en el Serial Monitor.)");
             Serial.println();
             Serial.println(" Cada apreton avanza al siguiente motor:");
             Serial.println("   #1  -> Motor 1 arranca (onda)");
@@ -195,8 +233,13 @@ void enter_state(State s) {
             Serial.print  (" PWM maximo: ");
             Serial.print  (MAX_PWM_TEST);
             Serial.println("/255 (50%).");
-            Serial.print  (" Direccion: ");
+            Serial.print  (" Direccion global: ");
             Serial.println(DIRECTION_SIGN > 0 ? "horario (default)" : "antihorario (-DDIAG_MOTORS_REVERSE)");
+            Serial.print  (" Sentido efectivo (M1 M2 M3): ");
+            for (int i = 0; i < 3; i++) {
+                Serial.print((DIRECTION_SIGN * MOTOR_DIR[i]) > 0 ? "CW " : "CCW ");
+            }
+            Serial.println();
             Serial.println();
             break;
         }
@@ -257,6 +300,13 @@ void setup() {
     const uint32_t t0 = millis();
     while (!Serial && (millis() - t0) < 2000) { /* spin */ }
 
+    // Anti-arranque-fantasma: dejar asentar el pin del botón y DRENAR los bytes
+    // que el USB/monitor serie mete al conectarse. Sin esto, esos bytes se leían
+    // como "avanzar de estado" y la FSM saltaba sola M1->M2->M3 al arrancar.
+    delay(300);
+    while (Serial.available() > 0) Serial.read();
+    g_button_last = (digitalRead(PIN_BUTTON) == LOW);  // baseline = estado real
+
     enter_state(State::WAITING_START);
 }
 
@@ -271,9 +321,12 @@ void loop() {
     }
 
     // Avanzar de estado si:
-    //   - hubo flanco de bajada del botón, O
-    //   - llegó cualquier byte por Serial USB
-    if (button_pressed_edge() || serial_advance_request()) {
+    //   - hubo flanco estable del botón, O
+    //   - llegó un ENTER por Serial USB
+    // ...pero NO en los primeros MIN_DWELL_MS de cada estado: así el transitorio
+    // de arranque del motor no se lee como apretón y cascadea.
+    const bool dwell_ok = (millis() - g_state_start_ms) >= MIN_DWELL_MS;
+    if (dwell_ok && (button_pressed_edge() || serial_advance_request())) {
         switch (g_state) {
             case State::WAITING_START: enter_state(State::TESTING_M1); break;
             case State::TESTING_M1:    enter_state(State::TESTING_M2); break;

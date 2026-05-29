@@ -18,7 +18,8 @@ void world_model_init();
 void world_model_apply_snapshot(const WorldSnapshot& snap);
 
 // Actualiza el mini-mundo de la línea con el último LINE_URGENT recibido de DOWN.
-void world_model_apply_line(const LineStatus& line);
+// Recibe el contrato v2 (LineStatusV2, 16 bytes). Ver docs/firmware/CONTRATO-DATOS-DOWN.md.
+void world_model_apply_line(const LineStatusV2& line);
 
 // Fresheness check — si no se recibe snapshot en N ms, datos son stale.
 bool world_model_snapshot_is_fresh();

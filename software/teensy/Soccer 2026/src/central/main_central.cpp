@@ -86,7 +86,7 @@ void loop() {
 
     // === RX: drenar ambos UARTs (no bloquea) ===
     comm_top_tick();    // aplica WorldSnapshot al world_model
-    comm_down_tick();   // aplica LineStatus al world_model
+    comm_down_tick();   // aplica LineStatusV2 al world_model
 
     // === EMERGENCY_LINE — bypass de FSM ===
     // Si ABAJO reporta línea inminente Y los datos son frescos, frenar AHORA.

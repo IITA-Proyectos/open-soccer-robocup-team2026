@@ -2,9 +2,9 @@
 #include "world_model.h"
 #include "proto.h"
 #include "types.h"
+#include "line_view.h"
 
 #include <Arduino.h>
-#include <string.h>
 
 namespace iitasoccer {
 
@@ -18,9 +18,8 @@ constexpr long UART_BAUD = 230400;
 
 void handle_frame(const Frame& f) {
     g_frames_received++;
-    if (f.type == MsgType::LINE_URGENT && f.payload_len == sizeof(LineStatus)) {
-        LineStatus ls{};
-        memcpy(&ls, f.payload, sizeof(LineStatus));
+    LineStatusV2 ls{};
+    if (lsv2_from_frame(f, ls)) {
         world_model_apply_line(ls);
     }
 }

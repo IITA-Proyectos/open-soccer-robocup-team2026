@@ -187,6 +187,24 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
   banco con cadena TOP→CENTRAL operativa. Pre-requisito: TASK-036 cerrada
   (motores validados) + TOP con firmware mandando snapshots.
 
+### Avance 2026-05-29 — fix P0 contrato de línea DOWN→CENTRAL (firmware)
+- `comm_down.cpp` decodificaba `LineStatus` viejo (5 B) y descartaba **todos**
+  los frames de DOWN, que manda `LineStatusV2` (16 B): `payload_len==5` daba
+  false para los 16 B reales. CENTRAL quedaba **ciego a la línea** (sin frenado
+  de borde, sin datos para el GK, `LINE_AVOID` sin entrada). **Corregido**:
+  nuevo `src/shared/line_view.h` (helpers puros) + `comm_down`/`world_model`
+  migrados a `LineStatusV2`. `strategy.cpp` SIN cambios (firmas de accessors
+  intactas). Ahora `world_model_imminent_exit()` filtra `lifted` (honra el
+  contrato de `strategy.cpp:17`, que el código viejo ignoraba).
+- Verificación: harness g++ offline 8/8 PASS (chain real encode→decode→interpret)
+  + `-fsyntax-only` limpio en los 2 archivos de `src/central`. El test Unity
+  `test/test_central_line_ingest` quedó escrito pero `pio test -e test_native`
+  NO corrió acá (sandbox sin red → no baja Unity; `test_down_encode` también
+  ERRORÓ igual). El equipo lo corre con red para el verde oficial.
+- **Pendiente humano**: TASK-100 — validar ingest + frenado en banco
+  (blocked_by TASK-036, por el conflicto pines 7/8 / Serial2).
+- Journal: `journal/2026-05-29-fix-contrato-linea-central.md`.
+
 ### Resuelto 2026-05-25
 - **Verificado forensicamente que los XSHUT/LPn de los 4 TOFs NO están
   ruteados en TOP rev 1.0** (NC flags explícitos en SCH, 0 nets en PCB

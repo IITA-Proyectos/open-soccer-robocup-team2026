@@ -2,19 +2,22 @@
 #include <Wire.h>
 
 // =============================================================================
-// CONFIGURACIÓN DE PINES - ROBOT 2 (delantero)
+// CONFIGURACIÓN DE PINES - ROBOT 2 (delantero) — Zircon Rev v15
+// Mismo pinout que el sketch canónico diag_central_motors.cpp:
+//   Motor 1 -> driver U5      Motor 2 -> driver U17      Motor 3 -> driver U7
+//   (Motor 2 usa pines 7/8 = posible conflicto con Serial2 hacia DOWN)
 // =============================================================================
-#define INA1 2
-#define INB1 5
-#define PWM1 3
+#define INA1  2     // Motor 1 (U5)
+#define INB1  5
+#define PWM1  3
 
-#define INA2 8
-#define INB2 7
-#define PWM2 6
+#define INA2  8     // Motor 2 (U17) — pines 7/8: ojo Serial2 hacia DOWN
+#define INB2  7
+#define PWM2  6
 
-#define INA3 11
+#define INA3 11     // Motor 3 (U7)
 #define INB3 12
-#define PWM3 4
+#define PWM3  4
 
 unsigned long tiempoInicioTest = 0;
 int estado = 1;

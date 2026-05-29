@@ -64,6 +64,17 @@ void lf_spatial_filter(const bool* is_white, bool* validated_out, int n_sensors)
     }
 }
 
+// === Saturación "todo blanco" ===
+
+bool lf_all_white(const bool* white, int n, int min_white_count) {
+    if (white == nullptr || n <= 0) return false;
+    int count = 0;
+    for (int i = 0; i < n; ++i) {
+        if (white[i]) ++count;
+    }
+    return count >= min_white_count;
+}
+
 // === Centroide angular ===
 
 AngleResult lf_compute_centroid_angle(const bool* validated_white,

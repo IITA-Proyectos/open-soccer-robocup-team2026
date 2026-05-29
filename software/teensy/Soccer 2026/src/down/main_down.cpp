@@ -63,6 +63,17 @@ void setup() {
     line_ring_calibrate_carpet();
     Serial.println("[DOWN] calibracion carpet OK");
 
+    // Cargar calibración persistida en EEPROM (audit P0.2 — 2026-05-29).
+    // Si existe una calib manual previa (carpet+blanco), gana sobre la
+    // derivación boot-time porque trae una referencia de BLANCO real. El
+    // carpet recién medido arriba se usa solo como fallback si la EEPROM
+    // está vacía/inválida (primer arranque o tras ec_erase_calibration()).
+    if (comm_central_load_persisted_calib()) {
+        Serial.println("[DOWN] calib cargada de EEPROM (persistida)");
+    } else {
+        Serial.println("[DOWN] EEPROM sin calib valida — usando carpet recien medido");
+    }
+
     digitalWrite(PIN_LED_STATUS, HIGH);
     Serial.println("[DOWN] listo: odometria a ARRIBA + linea urgente a CENTRAL");
 }

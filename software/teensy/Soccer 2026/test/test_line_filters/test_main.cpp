@@ -141,6 +141,53 @@ void test_spatial_inplace(void) {
 }
 
 // ============================================================================
+// SATURACIÓN "TODO BLANCO" (TEMA P1.5 — 2026-05-29)
+// ============================================================================
+
+void test_all_white_full_ring_is_saturated(void) {
+    constexpr int N = 8;
+    bool w[N]; for (int i = 0; i < N; ++i) w[i] = true;
+    TEST_ASSERT_TRUE(lf_all_white(w, N, (N * 7) / 8));  // 8 >= 7
+}
+
+void test_all_white_below_threshold_not_saturated(void) {
+    constexpr int N = 8;
+    // 6 de 8 blancos: línea fuerte pero NO saturación (umbral 7/8 = 7).
+    bool w[N] = {true, true, true, true, true, true, false, false};
+    TEST_ASSERT_FALSE(lf_all_white(w, N, (N * 7) / 8));  // 6 < 7
+}
+
+void test_all_white_exact_threshold_is_saturated(void) {
+    constexpr int N = 8;
+    // Exactamente el umbral cuenta como saturado (>=, no >).
+    bool w[N] = {true, true, true, true, true, true, true, false};
+    TEST_ASSERT_TRUE(lf_all_white(w, N, 7));  // 7 >= 7
+}
+
+void test_all_white_none_white_not_saturated(void) {
+    constexpr int N = 8;
+    bool w[N] = {};  // todos false (carpet)
+    TEST_ASSERT_FALSE(lf_all_white(w, N, 1));
+}
+
+void test_all_white_guards_invalid_args(void) {
+    bool w[8]; for (int i = 0; i < 8; ++i) w[i] = true;
+    TEST_ASSERT_FALSE(lf_all_white(w, 0, 1));        // n <= 0
+    TEST_ASSERT_FALSE(lf_all_white(nullptr, 8, 1));  // ptr nulo
+}
+
+void test_all_white_32_ring_thresholds(void) {
+    constexpr int N = 32;
+    bool w[N];
+    // 28/32 blancos (umbral 32*7/8 = 28) → saturado.
+    for (int i = 0; i < N; ++i) w[i] = (i < 28);
+    TEST_ASSERT_TRUE(lf_all_white(w, N, (N * 7) / 8));
+    // 27/32 → NO saturado (línea grande en esquina, pero plausible).
+    w[27] = false;
+    TEST_ASSERT_FALSE(lf_all_white(w, N, (N * 7) / 8));
+}
+
+// ============================================================================
 // CENTROIDE ANGULAR
 // ============================================================================
 
@@ -478,6 +525,14 @@ int main(int, char**) {
     RUN_TEST(test_spatial_anillo_wraparound);
     RUN_TEST(test_spatial_all_white_all_validated);
     RUN_TEST(test_spatial_inplace);
+
+    // Saturación todo-blanco (TEMA P1.5)
+    RUN_TEST(test_all_white_full_ring_is_saturated);
+    RUN_TEST(test_all_white_below_threshold_not_saturated);
+    RUN_TEST(test_all_white_exact_threshold_is_saturated);
+    RUN_TEST(test_all_white_none_white_not_saturated);
+    RUN_TEST(test_all_white_guards_invalid_args);
+    RUN_TEST(test_all_white_32_ring_thresholds);
 
     // Centroide angular
     RUN_TEST(test_angle_single_sensor_at_0_returns_0_deg);

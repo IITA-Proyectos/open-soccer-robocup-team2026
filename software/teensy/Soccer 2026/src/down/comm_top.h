@@ -29,6 +29,7 @@ void comm_top_send_status();
 // Estadísticas para debug:
 uint32_t comm_top_get_frames_received();
 uint32_t comm_top_get_frames_sent();
+uint32_t comm_top_get_frames_dropped();  // descartados por TX buffer lleno (P1.6)
 uint32_t comm_top_get_crc_errors();
 
 }  // namespace iitasoccer

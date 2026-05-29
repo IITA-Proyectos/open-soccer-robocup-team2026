@@ -64,6 +64,8 @@ Sistema de tareas asignadas a miembros del equipo para Incheon 2026.
 | [TASK-033](2026-05-25-task-033-decidir-cuantos-tofs-incheon.md) | Decidir cuántos TOFs llevar a Incheon (2 sin rework vs 4 con bodge) | Gustavo | P1 | pending |
 | [TASK-034](2026-05-25-task-034-decidir-arquitectura-localizacion-incheon.md) | Decidir arquitectura de localización XY+heading para Incheon (5 alternativas) | Gustavo | P1 | pending |
 | [TASK-200](2026-05-29-task-200-validar-fixes-heading-y-loop-top.md) | Validar en HW los 2 fixes del TOP (heading al CENTRAL + loop sin stall HC-SR04) | Virginia + Elías | P1 | pending |
+| [TASK-301](2026-05-29-task-301-validar-hw-robustez-down.md) | Validar HW robustez DOWN (P0.2 calib EEPROM + P1.5 all-white + P1.6 backpressure) | Virginia + Elías | P1 | pending |
+| [TASK-302](2026-05-29-task-302-vendorear-otos-offline.md) | Vendorear OTOS+Toolkit en lib/ para compilar [env:down] offline (Avast) | Gustavo / agente DOWN | P2 | **done** ✅ |
 
 > **Nota:** esta tabla quedó parcialmente desactualizada (faltan TASK-027 a 032
 > y 035-038, que existen como archivos en este dir). El índice vivo está en

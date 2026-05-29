@@ -74,7 +74,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 | `test_kinematics` | 11 | omni-3 |
 | `test_pids` | 18 | heading + lateral + distancia |
 | `test_proto` | 13 | CRC, frame, marker |
-| `test_line_filters` | 33 | temporal + hysteresis + spatial + centroide + lifted |
+| `test_line_filters` | 39 | temporal + hysteresis + spatial + centroide + lifted + saturación todo-blanco |
 | `test_cameras_fusion` | 16 | rot 180°, fuse front+back, watchdog |
 | `test_behind_ball` | 16 | target detrás, aligned-to-shoot, attack-line, kickoff |
 | `test_strategy_transitions` | 35 | árbol decisión ATK + GK (caracterización) |
@@ -181,6 +181,36 @@ nativo, pero ya no es el único camino. Ver
   envs por robot en platformio.ini. Backwards compat preservada (Sprint 1
   localización intacto). 14/14 tests host-native siguen pasando. Pendiente:
   TASK-038 (pines XSHUT reales) para arrancar Sprint B.
+
+### Avance 2026-05-29 — DOWN robustez (P0.2 + P1.5 + P1.6 del audit)
+- Implementados en firmware los 3 hallazgos in-scope del audit
+  `research/in-progress/2026-05-29-auditoria-exhaustiva-placa-down.md`:
+  - **P0.2 — persistencia de calib en EEPROM**: `comm_central_load_persisted_calib()`
+    (nueva, en `comm_central.cpp`) carga la calib al boot y bloquea el lazy-init;
+    el SAVE se dispara al completar el paso "blanco" del comando `CENTRAL_CALIB_LINE`.
+    La calib sobrevive al power cycle (objetivo: no perder calib entre matches).
+  - **P1.5 — rechazo de saturación "todo blanco"**: `lf_all_white()` (nuevo, puro)
+    + uso en `dm_update` (invalida sensores, saltea adaptación, marca `data_valid=0`,
+    señaliza por `EV_CALIB_SUSPECT`). Mitiga luz extrema (Modo 5 del audit).
+  - **P1.6 — backpressure UART**: guard `availableForWrite()` en `comm_central.cpp`
+    (Serial1) **y** `comm_top.cpp` (Serial5) + contadores `..._get_frames_dropped()`.
+    Evita que `Serial.write()` con buffer lleno robe ciclos al `line_ring` de 1 kHz.
+- **Verificación host**: `pio run -e down` compila y linkea OK (FLASH 33 KB).
+  Tests host-native: `test_line_filters` 39/39, `test_down_model` 7/7 (g++ fallback,
+  TASK-025). Los cambios Arduino-only (comm_*, main_down) son **compile-only**.
+- **Pendiente humano**: validación en hardware real → **TASK-301** (3 criterios:
+  power-cycle calib, all-white con luz real, frames_dropped bajo carga). Claude NO
+  cierra tasks de hardware (regla 1 CLAUDE.md).
+- **Nota infra (RESUELTO 2026-05-29 — TASK-302)**: `[env:down]`/`[env:diag_down]`
+  eran los únicos firmware que NO compilaban offline. Causa: al activar OTOS
+  (TASK-012, 2026-05-24) quedó como única lib de firmware sin vendorear, con
+  `lib_deps` de registry → build roto bajo Avast (TASK-025). **Solución**: OTOS +
+  `SparkFun_Toolkit` vendoreadas en `lib/` (podadas, sin blobs) y `lib_deps`
+  quitado de ambos envs. Verificado en esta máquina (Avast): borrando
+  `.pio/libdeps/down` y con `lib_deps` vacío, `pio run -t clean -e down` y
+  `-e diag_down` dan **SUCCESS 100% offline** (FLASH 33416 / 21960 B); `.pio/libdeps/down`
+  NO se recreó (cero registry). Las 4 placas vuelven a compilar sin red.
+  TASK-302 cerrada (build-verificada, no es HW).
 
 ### Avance 2026-05-29 — diag_central_drive_straight (CENTRAL + TOP, banco)
 - Nuevo sketch que valida end-to-end la cadena de control de movimiento:

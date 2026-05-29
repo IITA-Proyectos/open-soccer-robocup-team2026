@@ -78,7 +78,8 @@ constexpr int PIN_LED    = 13;    // LED_BUILTIN del Teensy 4.1
 
 constexpr int MAX_PWM_TEST       = 128;     // 50% del rango — SEGURO para banco
 constexpr uint32_t WAVE_PERIOD_MS = 2000;   // 2 s por ciclo de onda (sub-baja)
-constexpr uint32_t DEBOUNCE_MS    = 30;
+constexpr uint32_t DEBOUNCE_MS    = 50;     // el botón debe mantenerse estable 50 ms (anti-ruido motor)
+constexpr uint32_t MIN_DWELL_MS   = 300;    // ignora apretones los primeros 300 ms de cada motor (anti-cascada)
 
 // ============================================================
 // Sentido de giro POR MOTOR.  +1 = horario, -1 = antihorario.
@@ -170,12 +171,22 @@ void apply_wave(int motor_idx, uint32_t elapsed_ms) {
 // ============================================================
 
 bool button_pressed_edge() {
-    const bool now_pressed = (digitalRead(PIN_BUTTON) == LOW);
+    // Antirebote por ESTABILIDAD: la lectura cruda del pin tiene que mantenerse
+    // igual durante DEBOUNCE_MS para que el estado "oficial" (g_button_last)
+    // cambie. Así los picos cortos de RUIDO DE LOS MOTORES en el pin 9 NO se
+    // leen como apretones (era lo que hacía saltar M1->M2->M3 solo al girar el
+    // motor). g_button_last = estado ya filtrado (false = suelto).
+    static bool raw_last = false;
+    const bool raw = (digitalRead(PIN_BUTTON) == LOW);
     const uint32_t now = millis();
-    if (now_pressed != g_button_last && (now - g_button_change_ms) >= DEBOUNCE_MS) {
+
+    if (raw != raw_last) {            // la lectura cruda cambió: reiniciar timer
+        raw_last = raw;
         g_button_change_ms = now;
-        g_button_last = now_pressed;
-        if (now_pressed) return true;   // flanco "estaba suelto → ahora apretado"
+    }
+    if ((now - g_button_change_ms) >= DEBOUNCE_MS && raw != g_button_last) {
+        g_button_last = raw;          // adoptar la lectura ya estable
+        if (g_button_last) return true;   // flanco estable suelto -> apretado
     }
     return false;
 }
@@ -310,9 +321,12 @@ void loop() {
     }
 
     // Avanzar de estado si:
-    //   - hubo flanco de bajada del botón, O
-    //   - llegó cualquier byte por Serial USB
-    if (button_pressed_edge() || serial_advance_request()) {
+    //   - hubo flanco estable del botón, O
+    //   - llegó un ENTER por Serial USB
+    // ...pero NO en los primeros MIN_DWELL_MS de cada estado: así el transitorio
+    // de arranque del motor no se lee como apretón y cascadea.
+    const bool dwell_ok = (millis() - g_state_start_ms) >= MIN_DWELL_MS;
+    if (dwell_ok && (button_pressed_edge() || serial_advance_request())) {
         switch (g_state) {
             case State::WAITING_START: enter_state(State::TESTING_M1); break;
             case State::TESTING_M1:    enter_state(State::TESTING_M2); break;

@@ -328,7 +328,19 @@ nativo, pero ya no es el único camino. Ver
   `ARQUITECTURA-3-PLACAS`, `FIRMWARE-PLACA-ARRIBA`, `cameraBack-pack`, `FUENTES-DE-VERDAD`.
   De paso se corrigió un RX/TX cruzado de Serial5 (20=TX5, 21=RX5) en `config_down.h` + ARQUITECTURA.
 - **Pendiente humano:** confirmar con Enzo a qué pines del Teensy llega el conector
-  **U9** (cámara trasera, hoy provisional en Serial7). La placa TOP aún no está armada.
+  **U9** (cámara trasera, hoy provisional en Serial7).
+
+### 🏁 HITO 2026-05-29 — TOP ARMADA: las 3 placas físicas existen (robot casi completo)
+- Se terminó de armar la **placa/carcaza TOP**. Por primera vez las **3 placas están
+  físicamente montadas** (CENTRAL + DOWN ya estaban). Robot casi completo a nivel
+  mecánico/electrónico.
+- **Falta para cerrar la integración**: las 2 conexiones inter-placa hacia TOP —
+  (1) **DOWN↔TOP** (DOWN Serial5 → TOP Serial1: odometría OTOS + LINE_STATUS),
+  (2) **CENTRAL↔TOP** (TOP Serial5 → CENTRAL Serial1: WorldSnapshot). Firmware listo
+  en ambas puntas; falta cablear + validar el stream por protocolo.
+- **Se DESTRABAN** (ya no bloqueadas por "TOP sin armar"): TASK-022 (cámara operativa),
+  TASK-024 (rol/polaridad), TASK-032 (ToF U2 en HW), TASK-035 (localización),
+  TASK-200 (heading IMU→CENTRAL + loop), TASK-037 (drive-straight), TASK-003 (Wire1 remap).
 
 ### 🏁 Avance 2026-05-29 — BANCO: motores CENTRAL + enlace físico DOWN↔CENTRAL
 - **Motores del CENTRAL andan** (`diag_central_motors` en banco): identificados

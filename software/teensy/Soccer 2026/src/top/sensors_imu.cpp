@@ -30,6 +30,18 @@ constexpr uint32_t STABILIZE_MS       = 1000;
 constexpr uint32_t GYRO_CALIB_MS      = 2000;
 constexpr int      HEADING_SAMPLES    = 10;
 
+// Signo del heading. MEDIDO EN BANCO 2026-05-31 (diag_top_bno): el BNO055 de
+// esta placa entrega Euler yaw CRECIENTE al girar a la DERECHA (horario / CW):
+// girar 90° a la derecha -> +90, a la izquierda -> -90.
+// Pero la convención CANÓNICA del firmware (localization.cpp::classify_wall +
+// TOF_MOUNT_ANGLE_DEG en pinout_common.h) es CCW-positiva: girar a la IZQUIERDA
+// SUBE el heading. localization.cpp ya advertía esto en su comentario ("si el
+// BNO da CW positivo, invertir el signo"). Lo invertimos ACÁ, en la FUENTE, para
+// que TODO el firmware (snapshot a CENTRAL, HeadingPID del CENTRAL, localización)
+// reciba heading CCW-positivo y consistente. NO volver a invertir aguas abajo.
+// Si en el futuro se monta el chip al revés (boca abajo), revisar este signo.
+constexpr float HEADING_SIGN = -1.0f;
+
 bool init_one_bno(Adafruit_BNO055& bno) {
     const uint32_t start = millis();
     // OPERATION_MODE_IMUPLUS es enum global de adafruit_bno055_opmode_t,
@@ -99,11 +111,15 @@ bool sensors_imu_init() {
 }
 
 void sensors_imu_tick() {
+    // HEADING_SIGN invierte el yaw crudo (CW-positivo del chip) a la convención
+    // CCW-positiva del firmware. Ver nota en la sección de constantes.
     if (g_left_ready) {
-        g_left_heading = normalize_heading(read_raw_yaw(g_imu_left) - g_left_offset);
+        g_left_heading = normalize_heading(
+            HEADING_SIGN * (read_raw_yaw(g_imu_left) - g_left_offset));
     }
     if (g_right_ready) {
-        g_right_heading = normalize_heading(read_raw_yaw(g_imu_right) - g_right_offset);
+        g_right_heading = normalize_heading(
+            HEADING_SIGN * (read_raw_yaw(g_imu_right) - g_right_offset));
     }
 }
 

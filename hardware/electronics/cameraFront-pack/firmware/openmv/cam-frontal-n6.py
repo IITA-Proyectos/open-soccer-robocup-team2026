@@ -1,13 +1,19 @@
 # cam-frontal-n6.py — Cámara FRONTAL del robot Soccer 2026 — OpenMV N6 (STM32N6)
 #
-# Port del template H7 a la OpenMV N6 (módulo `sensor` deprecado → `csi`).
-# Bugs P0 corregidos: sentinel no-blob → Y_coded=0; clamp anti-crash [0,255].
-# Detección find_blobs + LAB (pelota naranja 201 / arco amarillo 202 / arco azul 203).
+# Basado en el `current-generic.py` que SÍ funciona (muestra color) en esta N6
+# (fw 4.8.1): usa el módulo **`sensor`** para la cámara. (Probado: `csi` daba
+# preview NEGRO en esta placa; el módulo `sensor`, aunque "deprecado", funciona
+# en 4.8.1 y es lo que usa el generic. Migrar a `csi` queda post-Incheon.)
+#
+# Mejoras vs el generic (lo que aporta este script): bugs P0 corregidos
+# (sentinel no-blob → Y_coded=0; clamp anti-crash [0,255]), sin LEDs (la API de
+# LED de la N6 crasheaba), y flag BRING_UP para alternar autos/exposición-fija.
+# Detección find_blobs + LAB: pelota naranja 201 / arco amarillo 202 / arco azul 203.
 #
 # ╔══════════════════════════════════════════════════════════════════════════╗
 # ║ ★ BRING-UP vs COMPETENCIA — leer ★                                         ║
-# ║  BRING_UP=True  → autos (WB/gain/exposición) ON: SE VE imagen para calibrar.║
-# ║                   Usar AHORA, hasta tener los thresholds LAB.              ║
+# ║  BRING_UP=True  → autos (WB/gain) ON como el generic: SE VE imagen para     ║
+# ║                   calibrar. Usar AHORA, hasta tener los thresholds LAB.    ║
 # ║  BRING_UP=False → autos OFF + exposición fija: estable para competir (la    ║
 # ║                   luz no rompe los LAB). Pasar a False DESPUÉS de calibrar. ║
 # ╠══════════════════════════════════════════════════════════════════════════╣
@@ -17,11 +23,9 @@
 # ║         Threshold Editor del IDE, en la luz real. SIN ESTO NO DETECTA.     ║
 # ║ [HOMOG] H_MATRIX es placeholder; recalibrar para ESTA cámara.             ║
 # ║ [FLIP]  HMIRROR/VFLIP = montaje 180° (conector arriba). Verificar preview. ║
-# ║ [LED]   SIN LEDs de diagnóstico a propósito: la API de LED de la N6 difiere ║
-# ║         del H7 y hacía crashear el loop. No hacen falta para detectar/enviar.║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
-import csi
+import sensor
 import time
 import math
 
@@ -68,24 +72,22 @@ SENTINEL_X = 0
 SENTINEL_Y_CODED = 0    # → Y = 0-100 = -100 en el parser TOP → is_visible = False
 # ============================================================================
 
-# --- Inicialización del sensor (API `csi` de la N6) ---
-csi0 = csi.CSI()
-csi0.reset()
-csi0.pixformat(csi.RGB565)
-csi0.framesize(csi.QVGA)
+# --- Inicialización del sensor (módulo `sensor`, IGUAL que el generic que funciona) ---
+sensor.reset()
+sensor.set_pixformat(sensor.RGB565)
+sensor.set_framesize(sensor.QVGA)
 if BRING_UP:
-    # Autos ON: para VER imagen y calibrar. (Competencia → poner BRING_UP=False.)
-    csi0.auto_whitebal(True)
-    csi0.auto_gain(True)
-    csi0.auto_exposure(True)
+    # Como el generic que muestra color: WB + gain en auto, exposición por default.
+    sensor.set_auto_whitebal(True)
+    sensor.set_auto_gain(True)
 else:
-    # Autos OFF + exposición fija: la luz no rompe los thresholds LAB.
-    csi0.auto_whitebal(False)
-    csi0.auto_gain(False)
-    csi0.auto_exposure(False, exposure_us=EXPOSURE_US)
-csi0.hmirror(HMIRROR)
-csi0.vflip(VFLIP)
-csi0.snapshot(time=500)                  # estabilización (reemplaza skip_frames)
+    # Competencia: todo fijo para que la luz no rompa los thresholds LAB.
+    sensor.set_auto_whitebal(False)
+    sensor.set_auto_gain(False)
+    sensor.set_auto_exposure(False, exposure_us=EXPOSURE_US)
+sensor.set_hmirror(HMIRROR)
+sensor.set_vflip(VFLIP)
+sensor.skip_frames(time=2000)            # dejar converger los autos (igual que el generic)
 
 uart = UART(UART_PORT, UART_BAUD)
 
@@ -131,7 +133,7 @@ def procesar_blob(blobs):
 # ============================================================================
 while True:
     clock.tick()
-    img = csi0.snapshot()
+    img = sensor.snapshot()
 
     naranja_blobs  = img.find_blobs([NARANJA_THRESHOLD],
                                     pixels_threshold=NARANJA_PIXELS_MIN,

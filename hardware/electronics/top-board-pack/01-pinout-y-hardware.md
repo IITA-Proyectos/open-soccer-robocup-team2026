@@ -106,22 +106,28 @@ pata **LP** cableada por bodge a un pin del Teensy. Pines **confirmados** con
 `diag_top_tof_census` (R1, tras power-cycle), polaridad **ACTIVO-ALTO**
 (HIGH = ToF despierto):
 
-| ToF (índice firmware) | I²C bus | Pin LP (Arduino) | Dirección asignada |
-|---|---|---|---|
-| **ToF[0]** | Wire (I²C0) | **9**  | 0x2A |
-| **ToF[1]** | Wire (I²C0) | **10** ⚠️ | 0x2B |
-| **ToF[2]** | Wire (I²C0) | **11** | 0x2C |
-| **ToF[3]** | Wire (I²C0) | **12** | 0x2D |
+| ToF (índice firmware) | I²C bus | Pin LP | Dir | Posición física | Ángulo montaje |
+|---|---|---|---|---|---|
+| **ToF[0]** | Wire (I²C0) | **9**  | 0x2A | **FRENTE**    | 0°   |
+| **ToF[1]** | Wire (I²C0) | **10** ⚠️ | 0x2B | **ATRÁS**     | 180° |
+| **ToF[2]** | Wire (I²C0) | **11** | 0x2C | **DERECHA**   | 270° |
+| **ToF[3]** | Wire (I²C0) | **12** | 0x2D | **IZQUIERDA** | 90°  |
 
-> ⚠️ **El SET de pines {9,10,11,12} está confirmado**, pero la asignación de
-> cada pin a una **posición física** (frontal/trasero/izq/der) sigue PENDIENTE:
-> se cierra corriendo `diag_top_tof_quad_live` y tapando cada sensor para ver
-> cuál cae. La hipótesis vieja `{2,3,4,5}` con direcciones `0x52..0x58` era
-> incorrecta — quedó descartada.
+> ✅ **Pines y posiciones CONFIRMADOS en banco** (2026-05-30/31, Gustavo): SET
+> de pines {9,10,11,12} (`diag_top_tof_census`) + mapeo pin→posición. La
+> hipótesis vieja `{2,3,4,5}` / `0x52..0x58` quedó descartada.
 >
-> ⚠️ **Conflicto pin 10:** el pin 10 figuraba como dipswitch de rol y ahora
-> es un LP de ToF (confirmado en banco). No pueden coexistir → reubicar la
-> lectura de rol a un pin libre (22/23). Decisión de hardware → Enzo.
+> ⚠️ **Ángulos corregidos**: `TOF_MOUNT_ANGLE_DEG` era `{0,180,90,270}` (cruzaba
+> der/izq en localization) → ahora `{0,180,270,90}`. Ver journal 2026-05-31.
+>
+> ⚠️ **Orientación interna de zonas PENDIENTE**: cada ToF entrega una grilla
+> 8×8; el orden de zonas depende del montaje. El **izquierdo (TOF3) es de otro
+> fabricante, montado mirando abajo** → puede tener arriba/abajo o izq/der
+> invertidos. Verificar con `diag_top_tof_zonemap`. Importa para el barrido
+> tipo lidar-360 (no para el promedio de zonas actual).
+>
+> ⚠️ **Conflicto pin 10:** era dipswitch de rol y ahora es LP de ToF. No pueden
+> coexistir → reubicar la lectura de rol a un pin libre (22/23). → Enzo.
 
 Hardware: **VL53L7CX**. La enumeración I²C por LP es estándar: dormir todos los
 LP, despertar el que queremos (HIGH), cambiar su dirección, repetir.

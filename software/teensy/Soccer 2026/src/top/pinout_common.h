@@ -64,11 +64,25 @@ constexpr uint16_t FIELD_WIDTH_MM  = 2430;   // eje X (largo)
 constexpr uint16_t FIELD_HEIGHT_MM = 1820;   // eje Y (corto)
 
 // Ángulos de montaje físico de los TOFs fijos (mismo en ambos robots).
-// 4 ToF fijos: frontal(0°), trasero(180°), izquierdo(90°), derecho(270°).
-// Cuando se agreguen los 2 ToF móviles (ver NUM_TOF_MAX abajo), su ángulo
-// es DINÁMICO (lo da el servo/mecanismo que los orienta hacia la pelota),
-// así que NO va en este array estático.
-constexpr uint16_t TOF_MOUNT_ANGLE_DEG[4] = { 0, 180, 90, 270 };
+// CONVENCIÓN (ver localization.cpp::classify_wall): heading 0 = robot mira al
+// arco rival (+Y). El ángulo de montaje se SUMA al heading; +90° = izquierda
+// del robot (pared -X / WEST), +270° = derecha del robot (pared +X / EAST).
+//
+// Mapeo CONFIRMADO en banco (2026-05-30, Gustavo):
+//   índice [0] = FRENTE     → 0°    (mira +Y, arco rival)
+//   índice [1] = ATRÁS      → 180°  (mira -Y)
+//   índice [2] = DERECHA    → 270°  (mira +X, pared EAST)
+//   índice [3] = IZQUIERDA  → 90°   (mira -X, pared WEST)
+//
+// ⚠️ CORREGIDO 2026-05-30: antes era {0,180,90,270}, que asignaba el índice 2 a
+// izquierda y el 3 a derecha — invertido respecto al hardware real. Con el valor
+// viejo, localization cruzaba las lecturas der/izq. Ahora coincide con el mapeo
+// físico confirmado (TOF2=derecha, TOF3=izquierda).
+//
+// Cuando se agreguen los 2 ToF móviles (ver NUM_TOF_MAX abajo), su ángulo es
+// DINÁMICO (lo da el mecanismo que los orienta hacia la pelota), así que NO va
+// en este array estático.
+constexpr uint16_t TOF_MOUNT_ANGLE_DEG[4] = { 0, 180, 270, 90 };
 
 // Umbral default para descarte de outliers en localización
 constexpr uint16_t LOCALIZATION_OUTLIER_THRESHOLD_MM = 300;

@@ -21,11 +21,13 @@ namespace iitasoccer {
 // ⚠️ FALTA correr el banco en R2 (diag_top_tof_census, mismo procedimiento
 // con POWER-CYCLE). Si en R2 dieran otros pines, CAMBIAR ACÁ y reflashear
 // `pio run -e top_robot2 -t upload`.
+// Posiciones (confirmadas en R1, esperadas iguales en R2 — confirmar en banco):
+//   [0]=FRENTE [1]=ATRÁS [2]=DERECHA [3]=IZQUIERDA. Ángulos en pinout_common.h.
 constexpr int PIN_TOF_XSHUT[4] = {
-    9,   // TOF[0]  (esperado igual que R1; confirmar en banco R2)
-    10,  // TOF[1]  (esperado igual que R1; confirmar en banco R2)
-    11,  // TOF[2]  (esperado igual que R1; confirmar en banco R2)
-    12,  // TOF[3]  (esperado igual que R1; confirmar en banco R2)
+    9,   // TOF[0] FRENTE     (dir 0x2A)
+    10,  // TOF[1] ATRÁS      (dir 0x2B)
+    11,  // TOF[2] DERECHA    (dir 0x2C)
+    12,  // TOF[3] IZQUIERDA  (dir 0x2D)
 };
 
 // ============================================================

@@ -29,21 +29,24 @@ namespace iitasoccer {
 //   22 en vez de 10 — corregido.)
 // Ver journal/2026-05-30-top-tof-4-en-bus-unico-enumeracion-ok.md.
 //
-// ⚠️ El SET de pines está confirmado, pero la asignación pin -> posición
-// física (frontal/tras/izq/der) sigue PENDIENTE: se cierra corriendo
-// diag_top_tof_quad_live y tapando cada sensor. El orden de abajo es el
-// tentativo del slot del schematic; ajustar tras ese test.
+// Mapeo pin -> posición física CONFIRMADO en banco (2026-05-30, Gustavo):
+//   [0] = LP pin 9  → dir 0x2A → FRENTE
+//   [1] = LP pin 10 → dir 0x2B → ATRÁS
+//   [2] = LP pin 11 → dir 0x2C → DERECHA
+//   [3] = LP pin 12 → dir 0x2D → IZQUIERDA
+// El ángulo de montaje de cada índice está en pinout_common.h
+// (TOF_MOUNT_ANGLE_DEG = {0,180,270,90}, ya alineado con este mapeo).
 //
-// Mapeo a slots físicos del PCB:
-//   [0] = TOF frontal  (slot U2 del schematic)
-//   [1] = TOF trasero  (slot U3 del schematic)
-//   [2] = TOF izquierdo (slot U5 del schematic)
-//   [3] = TOF derecho  (slot U17 del schematic)
+// ⚠️ PENDIENTE distinto (no es la posición): la ORIENTACIÓN INTERNA DE LAS ZONAS
+// de cada sensor. El ToF IZQUIERDO es de otro fabricante y se montó mirando
+// hacia abajo → puede tener arriba/abajo y/o izq/der de su grilla invertidos.
+// Verificar con diag_top_tof_zonemap. Para el barrido tipo lidar-360 esto
+// importa; para el promedio de zonas actual no. Ver journal 2026-05-31.
 constexpr int PIN_TOF_XSHUT[4] = {
-    9,   // TOF[0]  (LP confirmado; posición a mapear con quad_live)
-    10,  // TOF[1]  (LP confirmado; posición a mapear con quad_live)
-    11,  // TOF[2]  (LP confirmado; posición a mapear con quad_live)
-    12,  // TOF[3]  (LP confirmado; posición a mapear con quad_live)
+    9,   // TOF[0] FRENTE     (dir 0x2A)
+    10,  // TOF[1] ATRÁS      (dir 0x2B)
+    11,  // TOF[2] DERECHA    (dir 0x2C)
+    12,  // TOF[3] IZQUIERDA  (dir 0x2D)
 };
 
 // ============================================================

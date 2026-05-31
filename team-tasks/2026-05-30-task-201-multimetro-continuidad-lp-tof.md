@@ -4,13 +4,23 @@ title: "Multímetro: continuidad LP de cada ToF → pin Teensy (bodge bus único
 date_created: 2026-05-30
 date_due: 2026-06-03
 assigned: [Enzo]
-priority: P1
-status: pending
+priority: P2
+status: obsoleta-por-banco
 estimated_hours: 1
-blocks: [enumeracion-4-tof, task-035-validacion-hardware]
+blocks: []
 blocked_by: []
 tags: [hardware, top-board, tof, lp, xshut, bodge, multimetro, i2c]
 ---
+
+> **⚠️ ACTUALIZACIÓN 2026-05-30 — esta TASK quedó OBSOLETA / degradada a P2.**
+> El motivo original era "ningún LP funciona, medir continuidad". Pero ese
+> diagnóstico era un **falso negativo por procedimiento** (faltó power-cycle).
+> Tras cortar/reponer energía, el banco confirmó que **los 4 LP funcionan**
+> (pines 9,10,11,12, activo-alto, enumerados a 0x2A..0x2D). Ver
+> `journal/2026-05-30-top-tof-4-en-bus-unico-enumeracion-ok.md`.
+> **El multímetro ya no es necesario para desbloquear.** Queda solo como
+> verificación opcional si en algún momento un ToF deja de enumerar. La cierra
+> el equipo (Claude no cierra TASKs de hardware).
 
 # TASK-201 — Multímetro: continuidad LP de cada ToF → pin Teensy
 

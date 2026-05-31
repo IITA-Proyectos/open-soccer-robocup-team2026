@@ -201,23 +201,29 @@ nativo, pero ya no es el único camino. Ver
   banco con cadena TOP→CENTRAL operativa. Pre-requisito: TASK-036 cerrada
   (motores validados) + TOP con firmware mandando snapshots.
 
-### Avance 2026-05-30 — TOP: 4 ToF a bus único, pero el control LP NO llega al Teensy
+### Avance 2026-05-30 — TOP: ✅ los 4 ToF enumeran en bus único (bodge LP OK)
 - Enzo recableó la placa TOP: los **4 ToF al bus principal `Wire` (18/19)** +
   bodge de la pata **LP** de cada ToF a un pin del Teensy (reusando la traza de
   INT), para **liberar `Wire1` (24/25)** hacia la placa DOWN.
-- Diagnóstico de banco (3 sketches nuevos: `diag_top_tof_lp_discover`,
-  `diag_top_tof_enumerate`, `diag_top_tof_census`). **Veredicto definitivo**:
-  el Teensy **NO controla el LP de ningún ToF** — probados los 8 pines libres
-  (2,9,10,11,12,13,22,23) en **ambas polaridades**, todos "sin efecto". Bus
-  sano (BNO 0x28 ✅), pero **solo 1 ToF leíble** (frontal U2 fijo en 0x29).
-- **No es problema de firmware**: sin control LP individual es imposible
-  enumerar 4 ToF idénticos en un bus (todos nacen en 0x29, se mueven juntos al
-  reasignar). El software llegó a su límite.
-- **Pendiente humano: TASK-201** (Enzo) — multímetro de continuidad LP→pin
-  Teensy de cada ToF + confirmar que el bodge esté en el pad LP (pin1) y no en
-  INT (pin2). Decisión a cruzar con TASK-033/034: insistir con el bodge (≥3 LP)
-  vs volver a **2+2 en dos buses** + DOWN por UART. Ver
-  `journal/2026-05-30-top-tof-bus-unico-lp-no-controlable.md`.
+- Diagnóstico de banco (5 sketches nuevos: `diag_top_i2c_scan`,
+  `diag_top_tof_lp_discover`, `diag_top_tof_enumerate`, `diag_top_tof_census`,
+  `diag_top_tof_quad_live`). **Veredicto (tras power-cycle): los 4 LP
+  funcionan** → pines **9,10,11,12 activo-ALTO**, enumerados a
+  0x2A/0x2B/0x2C/0x2D. ✅
+- **Lección clave**: las direcciones I2C de los VL53L7CX **persisten entre
+  resets**; hay que **power-ciclar** (cortar/reponer energía) tras flashear o el
+  bus arranca sucio. Un primer diagnóstico sin power-cycle dio un FALSO
+  NEGATIVO ("ningún LP funciona", commit `096108a`) que quedó refutado y
+  corregido.
+- **Habilita**: `Wire1` libre para DOWN + **localización 2D por trilateración**
+  con 4 ToF reales.
+- **TASK-201** (multímetro de continuidad LP) **degradada**: ya confirmado por
+  banco, queda opcional.
+- **Pendiente firmware (HAL Sprint B)**: correr `diag_top_tof_quad_live` para
+  confirmar ranging + mapear dirección→posición (tapar cada sensor), luego
+  actualizar `pinout_robot1.h` (`PIN_TOF_XSHUT={9,10,11,12}`, `NUM_TOF_ACTIVE=4`,
+  flags) y extender `sensors_tof.cpp` para enumerar los 4 al boot. Ver
+  `journal/2026-05-30-top-tof-4-en-bus-unico-enumeracion-ok.md`.
 
 ### Avance 2026-05-29 — auditoria independiente TOP pre-Incheon + 3 fixes (TOP)
 - **Suite host-native corrida punta a punta por primera vez**: 246 tests /

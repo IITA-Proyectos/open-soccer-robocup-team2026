@@ -54,6 +54,17 @@ struct CamLink {
 
 CamLink g_front{ "FRONTAL  (Serial3 / RX pin 15 / conector U8)", &Serial3 };
 CamLink g_back { "TRASERA  (Serial7 / RX pin 28 / conector U9)", &Serial7 };
+// La trasera ANTES estaba en Serial5 (pines 20/21) y su conector físico U9 nunca
+// se confirmó. La escuchamos también en Serial5 por si el cable quedó ahí.
+CamLink g_back5{ "TRASERA? (Serial5 / RX pin 21 — candidato, era su puerto viejo)", &Serial5 };
+
+// Scan crudo (solo cuenta bytes) de otros UART, para ubicar dónde cae la trasera.
+struct RawScan { const char* name; HardwareSerial* uart; uint32_t win = 0; };
+RawScan g_scan[] = {
+    { "Serial1(RX0)",  &Serial1 },
+    { "Serial4(RX16)", &Serial4 },
+    { "Serial6(RX25)", &Serial6 },
+};
 
 void drain(CamLink& c, uint32_t now) {
     int budget = DRAIN_BUDGET;
@@ -117,7 +128,9 @@ void setup() {
     while (!Serial && (millis() - t0) < 2000) { /* esperar host hasta 2 s */ }
 
     Serial3.begin(CAM_BAUD);   // frontal (U8)
-    Serial7.begin(CAM_BAUD);   // trasera (U9)
+    Serial7.begin(CAM_BAUD);   // trasera (U9, según firmware actual)
+    Serial5.begin(CAM_BAUD);   // trasera candidato (su puerto viejo)
+    Serial1.begin(CAM_BAUD); Serial4.begin(CAM_BAUD); Serial6.begin(CAM_BAUD);  // scan
 
     Serial.println();
     Serial.println("=====================================================");
@@ -133,6 +146,11 @@ void loop() {
     const uint32_t now = millis();
     drain(g_front, now);
     drain(g_back,  now);
+    drain(g_back5, now);
+    for (auto& s : g_scan) {
+        int budget = DRAIN_BUDGET;
+        while (s.uart->available() && budget-- > 0) { s.uart->read(); s.win++; }
+    }
 
     static uint32_t t_last = 0;
     if (now - t_last >= REPORT_MS) {
@@ -140,5 +158,12 @@ void loop() {
         Serial.print("\n----- t="); Serial.print(now / 1000); Serial.println(" s -----");
         report(g_front, now);
         report(g_back,  now);
+        report(g_back5, now);
+        Serial.print("   SCAN otros UART (buscando la trasera, bytes nuevos): ");
+        for (auto& s : g_scan) {
+            Serial.print(s.name); Serial.print("=+"); Serial.print(s.win); Serial.print("  ");
+            s.win = 0;
+        }
+        Serial.println();
     }
 }

@@ -37,7 +37,11 @@ struct BallFused {
 
 // Resultado fusionado de un arco (ángulo + distancia relativos al robot).
 //   • angle_centideg: ángulo respecto al frente del robot, +x lateral.
-//     Convención: atan2(x_mm, y_mm) (cero = frente, +90° = izquierda).
+//     Convención: atan2(x_mm, y_mm) (cero = frente, +90° = DERECHA del robot).
+//     Ver docs/CONVENCION-EJES-ROBOT.md (+x = derecha, primera persona).
+//     [CORREGIDO 2026-05-31: este comentario decía "+90° = izquierda", que
+//      contradecía behind_ball.h y la convención canónica. La fórmula es la
+//      misma; solo la etiqueta estaba mal.]
 //   • distance_mm: módulo del vector.
 struct GoalFused {
     int16_t angle_centideg;

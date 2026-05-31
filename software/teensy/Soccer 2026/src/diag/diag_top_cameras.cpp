@@ -62,6 +62,7 @@ CamLink g_back5{ "TRASERA? (Serial5 / RX pin 21 — candidato, era su puerto vie
 struct RawScan { const char* name; HardwareSerial* uart; uint32_t win = 0; };
 RawScan g_scan[] = {
     { "Serial1(RX0)",  &Serial1 },
+    { "Serial2(RX7)",  &Serial2 },   // HC-SR04 NO conectado -> pin 7 libre para escuchar
     { "Serial4(RX16)", &Serial4 },
     { "Serial6(RX25)", &Serial6 },
 };
@@ -130,7 +131,7 @@ void setup() {
     Serial3.begin(CAM_BAUD);   // frontal (U8)
     Serial7.begin(CAM_BAUD);   // trasera (U9, según firmware actual)
     Serial5.begin(CAM_BAUD);   // trasera candidato (su puerto viejo)
-    Serial1.begin(CAM_BAUD); Serial4.begin(CAM_BAUD); Serial6.begin(CAM_BAUD);  // scan
+    Serial1.begin(CAM_BAUD); Serial2.begin(CAM_BAUD); Serial4.begin(CAM_BAUD); Serial6.begin(CAM_BAUD);  // scan (los 7 UART)
 
     Serial.println();
     Serial.println("=====================================================");

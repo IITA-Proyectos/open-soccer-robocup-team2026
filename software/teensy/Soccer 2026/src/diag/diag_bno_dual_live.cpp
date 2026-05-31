@@ -6,11 +6,20 @@
 // diag_top_bno (ya en el repo) probó UN BNO y midió el sentido de giro
 // (resultado banco 2026-05-31: el chip da yaw CW-positivo; el firmware lo
 // invierte con HEADING_SIGN=-1 en sensors_imu.cpp para que IZQUIERDA suba el
-// heading = convención CCW de la cancha). Hoy hay UN solo BNO conectado (LEFT).
+// heading = convención CCW de la cancha).
 //
-// Este diag es el PRIMER test a correr cuando se suelde el 2do BNO (RIGHT, en
-// Wire1 pines 24/25). Valida, SIN depender de localización:
-//   1) Que ambos inicialicen (LEFT en Wire 18/19, RIGHT en Wire1 24/25; ambos 0x28).
+// ARQUITECTURA NUEVA (recableado 2026-05-31, confirmada en banco):
+//   Los 2 BNO055 estan en el MISMO bus Wire (18/19) — NO en buses separados.
+//   LEFT  = 0x28 (ADR a GND/flotante)
+//   RIGHT = 0x29 (ADR puenteado a 3V3)   <-- verificado con diag_bno_addr_check
+//   Esto LIBERA Wire1 (24/25) para la comunicacion con la placa DOWN.
+//
+// ⚠️ 0x29 lo comparten el BNO RIGHT y los 4 ToF (direccion de fabrica del
+//    VL53L7CX). Para que el BNO en 0x29 no colisione con los ToF, este diag
+//    DUERME los 4 ToF (LP pins 9/10/11/12 en LOW) antes de hablar el bus.
+//
+// Valida, SIN depender de localización:
+//   1) Que ambos inicialicen (LEFT 0x28 + RIGHT 0x29, ambos en Wire).
 //   2) Heading de cada uno + heading FUSIONADO (promedio circular, maneja el
 //      wraparound -179/+179 con atan2).
 //   3) DESACUERDO entre ambos (|L-R| circular). Sano: < ~5° en reposo.
@@ -41,9 +50,14 @@
 
 namespace {
 
-constexpr uint8_t  BNO_ADDR        = 0x28;   // ambos chips, en buses distintos
-constexpr int      WIRE1_SCL       = 24;     // remap confirmado
-constexpr int      WIRE1_SDA       = 25;
+// Arquitectura nueva: AMBOS BNO en el MISMO bus Wire, direcciones distintas.
+constexpr uint8_t  BNO_ADDR_LEFT   = 0x28;   // ADR a GND/flotante
+constexpr uint8_t  BNO_ADDR_RIGHT  = 0x29;   // ADR puenteado a 3V3
+
+// LP de los 4 ToF — los dormimos para que no aparezcan en 0x29 y colisionen
+// con el BNO RIGHT. Activo-alto: LOW = ToF dormido. (Pines confirmados banco.)
+constexpr uint8_t  TOF_LP_PIN[4]   = {9, 10, 11, 12};
+constexpr uint8_t  TOF_SLEEP_LVL   = LOW;
 
 constexpr uint32_t INIT_TIMEOUT_MS = 3000;
 constexpr uint32_t STABILIZE_MS    = 1000;
@@ -57,8 +71,8 @@ constexpr float    HEADING_SIGN    = -1.0f;
 constexpr float    DISAGREE_WARN_DEG  = 5.0f;    // desacuerdo sano en reposo
 constexpr float    IMPACT_JUMP_DEG    = 15.0f;   // salto de desacuerdo = impacto
 
-Adafruit_BNO055 g_left (55, BNO_ADDR, &Wire);
-Adafruit_BNO055 g_right(56, BNO_ADDR, &Wire1);
+Adafruit_BNO055 g_left (55, BNO_ADDR_LEFT,  &Wire);
+Adafruit_BNO055 g_right(56, BNO_ADDR_RIGHT, &Wire);  // mismo bus, 0x29
 
 bool  g_left_ok = false, g_right_ok = false;
 float g_left_zero = 0.0f, g_right_zero = 0.0f;
@@ -163,16 +177,19 @@ void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH);
 
+    // Dormir los 4 ToF ANTES de hablar el bus: comparten 0x29 con el BNO RIGHT.
+    for (uint8_t i = 0; i < 4; ++i) {
+        pinMode(TOF_LP_PIN[i], OUTPUT);
+        digitalWrite(TOF_LP_PIN[i], TOF_SLEEP_LVL);
+    }
+    delay(60);
+
     Wire.begin();
     Wire.setClock(400000);
-    Wire1.setSCL(WIRE1_SCL);
-    Wire1.setSDA(WIRE1_SDA);
-    Wire1.begin();
-    Wire1.setClock(400000);
 
-    Serial.println("\n### Init BNO LEFT (Wire / 18-19) ###");
+    Serial.println("\n### Init BNO LEFT (Wire / 18-19 @ 0x28) ###");
     g_left_ok = init_bno(g_left, "LEFT");
-    Serial.println("\n### Init BNO RIGHT (Wire1 / 24-25 remap) ###");
+    Serial.println("\n### Init BNO RIGHT (Wire / 18-19 @ 0x29) ###");
     g_right_ok = init_bno(g_right, "RIGHT");
 
     if (g_left_ok)  g_left_zero  = capture_zero(g_left);
@@ -183,9 +200,9 @@ void setup() {
     Serial.print("  RIGHT=");
     Serial.println(g_right_ok ? "OK" : "FAIL");
     if (g_left_ok && g_right_ok)
-        Serial.println("-> 2 BNO: fusion + deteccion de impacto ACTIVAS.");
+        Serial.println("-> 2 BNO (0x28 + 0x29): fusion + deteccion de impacto ACTIVAS.");
     else if (g_left_ok || g_right_ok)
-        Serial.println("-> 1 BNO: degradado (sin fusion). Soldar el otro para redundancia.");
+        Serial.println("-> 1 BNO: degradado (sin fusion). Revisar el otro (0x28/0x29).");
     else
         Serial.println("-> NINGUN BNO. Revisar I2C/alimentacion (diag_top_i2c_scan).");
     header();

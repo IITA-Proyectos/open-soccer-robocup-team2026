@@ -1,11 +1,13 @@
 // sensors_imu.h — Wrapper de los 2 BNO055 de la placa TOP.
 //
-// Hardware (schematic 04-12):
-//   U10 (BNO055 #1) → Wire   (I2C bus 0, pines 18/19 default del Teensy 4.0)
-//   U11 (BNO055 #2) → Wire1  (I2C bus 1, REMAPEADO a pines 24/25 — ver config_top.h)
+// Hardware (recableado 2026-05-31, confirmado en banco con diag_bno_addr_check):
+//   BNO055 LEFT  → Wire (I2C bus 0, pines 18/19) @ 0x28 (ADR a GND/flotante)
+//   BNO055 RIGHT → Wire (I2C bus 0, pines 18/19) @ 0x29 (ADR puenteado a 3V3)
 //
-// Ambos BNO055 comparten dirección I2C 0x28 por default. Separados en 2 buses
-// para evitar colisión.
+// AMBOS en el MISMO bus, en direcciones distintas. Esto LIBERA Wire1 (24/25)
+// para la comunicación con la placa DOWN. (Antes RIGHT vivía en Wire1 @ 0x28;
+// el recableado lo movió.) OJO: 0x29 es también la dir de fábrica de los ToF;
+// por eso los ToF se enumeran a 0x2A..0x2D al boot y no colisionan con RIGHT.
 //
 // Lecciones aplicadas de docs/internal/giroscopo-bno055-analisis-tecnico.md:
 //   • Modo IMUPLUS (acel + gyro, sin magnetómetro) → evita interferencia magnética
@@ -17,10 +19,11 @@
 //     el firmware sigue con el otro.
 //   • NUNCA `while(1)` colgante.
 //
-// Estrategia dual:
-//   Ambos sensores deberían reportar headings similares. Si difieren mucho, hay
-//   sospecha de problema (impacto, interferencia, falla). El firmware reporta
-//   el heading del IMU con mejor calibración, o el promedio si ambos están OK.
+// Estrategia dual (FUSIÓN):
+//   El heading principal (get_heading_deg) es el promedio CIRCULAR de ambos
+//   sensores cuando los 2 están OK y de acuerdo (< 30° de diferencia). Si
+//   discrepan (impacto/falla), usa LEFT como referencia. Con 1 solo BNO, usa
+//   ese. El desacuerdo queda visible vía get_disagreement_deg() para diagnóstico.
 
 #pragma once
 #include <stdint.h>
@@ -32,9 +35,15 @@ bool sensors_imu_init();
 // Actualiza lecturas de ambos IMUs. Llamar a 100 Hz desde el loop.
 void sensors_imu_tick();
 
-// Heading principal en [-180, +180] grados. Si el BNO055 LEFT está OK, usa ese.
-// Si solo RIGHT está OK, usa RIGHT. Si ambos fallaron, retorna 0.
+// Heading principal del robot en [-180, +180] grados, convención CCW-positiva
+// (girar a la IZQUIERDA sube el heading). Es el promedio CIRCULAR de los 2 BNO
+// cuando ambos están OK y de acuerdo; degrada a 1 BNO; 0 si ambos fallan.
 float sensors_imu_get_heading_deg();
+
+// Headings individuales de cada BNO (diagnóstico / fusión externa). Mismas
+// unidades y convención que get_heading_deg(). 0 si el sensor no está listo.
+float sensors_imu_get_left_heading_deg();
+float sensors_imu_get_right_heading_deg();
 
 // Mismo heading que sensors_imu_get_heading_deg() pero en centidegrees
 // (centesimas de grado). Rango [-18000, +18000].

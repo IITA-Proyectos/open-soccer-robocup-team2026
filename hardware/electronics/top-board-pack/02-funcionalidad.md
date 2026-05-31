@@ -42,7 +42,7 @@ implementado todavía.
 | Fusión cámaras (front + back, rot 180°, watchdog) | 2 | ✅ vivo + 16 tests | `firmware/shared/cameras_fusion.{h,cpp}` + `firmware/top/cameras_runtime.{h,cpp}` |
 | BNO055 dual (lectura + consistencia) | 2 | ✅ vivo | `firmware/top/sensors_imu.{h,cpp}` |
 | HC-SR04 (frontal) | 1 | ✅ vivo (bloqueante 25 ms) | `firmware/top/sensors_tof.{h,cpp}` |
-| **ToF VL53L5/L7CX** | 2 | ⚠️ **STUB** (sin lectura real) | `firmware/top/sensors_tof.{h,cpp}` |
+| **ToF VL53L7CX** | 4 (HW) | ⚠️ HW OK (enumeran 0x2A..0x2D), firmware lee 1 (Sprint B pendiente) | `firmware/top/sensors_tof.{h,cpp}` |
 | Comm con COMM (Serial4) | 1 | ✅ vivo (arbiter) | `firmware/top/comm_arbiter.{h,cpp}` |
 | Comm con DOWN (Serial1) | 1 | ✅ vivo | `firmware/top/comm_down.{h,cpp}` |
 | Comm con CENTRAL (**Serial5**, ex-Serial2) | 1 | ✅ vivo | `firmware/top/comm_central.{h,cpp}` |
@@ -202,19 +202,21 @@ FusedView fuse(CameraFrame front, CameraFrame back, uint32_t now_ms) {
 
 Detalles del workflow de calibración: ver skill `openmv-vision-tuning` del repo.
 
-## 7. Procesamiento de ToF multizona — futuro (NO implementado)
+## 7. Procesamiento de ToF multizona — HW OK, firmware pendiente (HAL Sprint B)
 
-### 7.1 Estado actual
+### 7.1 Estado actual (2026-05-30)
 
 | ToF | Estado | Razón |
 |---|---|---|
-| HC-SR04 (frontal) | ✅ vivo | Lectura bloqueante de 25 ms en `sensors_tof.cpp`. Distancia frontal, fallback de visión. |
-| 4× VL53L5/L7CX | ⚠️ **STUB** | El firmware `sensors_tof.cpp` solo declara las constantes pero no inicializa ni lee los chips reales. |
+| HC-SR04 (frontal) | ⚠️ gateado OFF | `pulseIn` colisionaba con el pin del uplink; deshabilitado por `#ifdef TOP_ENABLE_HCSR04`. El ToF frontal lo reemplaza. |
+| 4× VL53L7CX | ✅ HW enumera / ⏳ firmware lee 1 | Hardware: los 4 enumeran a 0x2A..0x2D (banco 2026-05-30, bodge LP pines {9,10,11,12} activo-alto). Firmware: `sensors_tof.cpp` todavía lee solo 1 ToF — extenderlo a los 4 es HAL Sprint B. |
 
-### 7.2 Lo que debería hacer cuando se active
+### 7.2 Lo que falta en firmware (HAL Sprint B)
 
-1. **Enumeración al boot**: cambiar XSHUT secuencialmente (pines 2/3/4/5)
-   para asignar direcciones 0x52/0x54/0x56/0x58 a los 4 chips.
+1. **Enumeración al boot**: dormir todos los LP (pines **{9,10,11,12}**, LOW),
+   despertar uno por uno (HIGH) y asignar **0x2A/0x2B/0x2C/0x2D** con
+   `setAddress()`. ⚠️ Las direcciones I²C persisten con 3V3 → power-cycle al
+   probar (no alcanza el reset). Pines/direcciones ya en `pinout_robot1.h`.
 2. **Lectura a 15-30 Hz**: matriz 8×8 SPAD por chip = 64 distancias por chip,
    total 256 distancias.
 3. **Procesamiento**: detectar pared más cercana en cada chip por mediana de
@@ -223,8 +225,11 @@ Detalles del workflow de calibración: ver skill `openmv-vision-tuning` del repo
    izq, der), 4 distancias a pared → resolver pose XY del robot en la cancha
    (conociendo dimensiones del field).
 
-Esto es **Nivel 3+** del plan. No bloquea Incheon (la pose viene de OTOS por
-DOWN, fusionada con cámaras).
+El **hardware ya soporta los 4 ToF** (gran avance vs "1 frontal"); falta el
+firmware que los explote. Diagnósticos de banco: `diag_top_tof_census` (enumera
++ verifica LP) y `diag_top_tof_quad_live` (lee los 4 + mapea posición). Plan de
+escalado: 6 ToF (4 fijos + 2 móviles para pelota). Ver
+`journal/2026-05-30-top-tof-4-en-bus-unico-enumeracion-ok.md`.
 
 ## 8. Fusión sensorial → WorldSnapshot
 

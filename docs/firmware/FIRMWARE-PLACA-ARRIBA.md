@@ -70,12 +70,23 @@ La placa ARRIBA es el módulo más complejo computacionalmente del robot. Su car
 
 ## 2. Hardware sobre el que corre
 
+> **🔧 ACTUALIZACIÓN ToF 2026-05-30 (recableado de Enzo, confirmado en banco).**
+> Este doc es de diseño (2026-05-11) y partes están desactualizadas. Verdad de
+> hardware sobre ToF: los **4 ToF VL53L7CX cuelgan TODOS del bus `Wire`** (I²C0,
+> 18/19), cada uno con su pata **LP** cableada por bodge a un pin del Teensy
+> (**{9,10,11,12}, activo-alto**), y **enumeran a 0x2A/0x2B/0x2C/0x2D** (NO
+> 0x52..0x58). Esto **liberó `Wire1` (24/25) para la placa DOWN**. ⚠️ Las
+> direcciones I²C persisten con 3V3 → power-cycle obligatorio al enumerar.
+> El UART TOP→CENTRAL es **Serial5 (20/21)**, no Serial2 (corregido en `main`).
+> Pinout canónico: `hardware/electronics/top-board-pack/01-pinout-y-hardware.md`.
+> Detalle: `journal/2026-05-30-top-tof-4-en-bus-unico-enumeracion-ok.md`.
+
 | Componente | Cantidad | Conexión | Notas técnicas |
 |-----------|----------|----------|----------------|
 | MCU Teensy 4.0 | 1 | — | Cortex-M7 600 MHz, 1 MB RAM, 2 MB flash |
 | Cámaras OpenMV H7 / H7 Plus | 2 | UART (Serial3 frontal + Serial7 trasera) | 19200 baud, protocolo viejo 9 bytes/packet |
 | BNO055 IMU | 2 | I2C dual (Wire + Wire1) | Wire1 remapeado a pines 24/25 (Q3 confirmado) |
-| Sensor ToF VL53L5CX o L7CX | 4 | I2C en 2 buses, XSHUT individual | 8×8 SPAD multizona, hasta 60 Hz (4×4) o 15 Hz (8×8) |
+| Sensor ToF VL53L7CX | 4 fijos (plan: 6) | **TODOS en `Wire` (I²C0)**, LP individual por bodge | 8×8 SPAD multizona. Dir 0x2A..0x2D. Plan: +2 móviles para pelota |
 | Ultrasonido HC-SR04 | 1 | TRIG/ECHO pines 6/7 | Frontal, fallback de ToF, lectura bloqueante 25 ms |
 | Placa COMM (ESP32-C6) | 1 | UART (Serial4) | Bridge a árbitros + ESP-NOW partner |
 | Conector hacia DOWN | 1 | UART (Serial1) | Recibe ODOM_POSE/VEL de ABAJO |
@@ -88,10 +99,17 @@ La placa ARRIBA es el módulo más complejo computacionalmente del robot. Su car
 
 | Bus | SDA | SCL | Periféricos | Tráfico estimado |
 |-----|-----|-----|-------------|------------------|
-| Wire (I2C0) | 18 | 19 | BNO055 #1 (0x28) + ToF #1 (0x52) + ToF #2 (0x54) | ~30 KHz transacciones |
-| Wire1 (I2C1) | 25 (remap) | 24 (remap) | BNO055 #2 (0x28) + ToF #3 (0x56) + ToF #4 (0x58) | ~30 KHz |
+| Wire (I2C0) | 18 | 19 | BNO055 #1 (0x28) + **los 4 ToF** (0x2A/0x2B/0x2C/0x2D) | ~30 KHz transacciones |
+| Wire1 (I2C1) | 25 (remap) | 24 (remap) | BNO055 #2 (0x28) + **(libre para placa DOWN)** | ~30 KHz |
 
-Los 2 BNO055 comparten dirección I2C (0x28) por default — por eso obligatorio separarlos en buses distintos. Los 4 ToF se diferencian por XSHUT durante enumeración (cambiándolos secuencialmente de 0x52 → 0x54 → 0x56 → 0x58).
+Los 2 BNO055 comparten dirección I2C (0x28) por default — por eso obligatorio
+separarlos en buses distintos. Los **4 ToF cuelgan del mismo bus `Wire`**
+(recableado 2026-05-30) y se enumeran al boot por su pin **LP** (bodge):
+arrancan todos en 0x29, se duermen todos, se despierta uno por uno y a cada uno
+se le asigna **0x2A → 0x2B → 0x2C → 0x2D** (ninguno queda en 0x29). Pines LP
+confirmados en banco: **{9,10,11,12}, activo-alto**. ⚠️ Las direcciones I²C de
+los VL53L7CX persisten con 3V3 → **power-cycle obligatorio al enumerar** (un
+reset del Teensy no las borra).
 
 ### UARTs
 
@@ -421,7 +439,10 @@ Esto da pose **independiente de orientación** y es el approach estándar en rob
 | Trilateración simple | ~100 µs | trivial |
 | EKF update | ~1 ms | 100+ Hz alcanzable |
 
-**Frecuencia objetivo del firmware**: 30 Hz para cada ToF. Los 4 se leen secuencialmente pero en buses I2C separados (2 por bus) → tiempo total ~6 ms (2 lecturas paralelas × 3 ms cada bus). Con tick a 30 Hz queda margen.
+**Frecuencia objetivo del firmware**: 30 Hz para cada ToF. Los 4 cuelgan del
+**mismo bus `Wire`** (recableado 2026-05-30), así que se leen secuencialmente en
+ese bus → ~4 × ~3 ms ≈ 12 ms. Con tick a 30 Hz (33 ms) queda margen. (El diseño
+original asumía 2 buses paralelos; ya no aplica.)
 
 ---
 
@@ -811,7 +832,7 @@ loop():
         imu_dual_tick()         # ~600 µs (2 I2C lecturas paralelas + consistency)
 
     if since_tof_tick >= 33 ms:    # 30 Hz
-        tof_quad_tick()         # ~6 ms (4 lecturas I2C en 2 buses paralelos)
+        tof_quad_tick()         # ~12 ms (4 lecturas I2C en 1 bus Wire, recableado 2026-05-30)
 
     # Fusión
     if since_ekf_tick >= 10 ms:
@@ -849,7 +870,7 @@ Esto es **lo mejor alcanzable con el protocolo OpenMV viejo**. Migración a baud
 |-------|--------|
 | ToF mide (interno) | ~16 ms (60 Hz interno) |
 | Próximo tick de `tof_quad_tick()` (peor caso) | < 33 ms |
-| I2C transferencia | ~3 ms × 2 buses paralelos |
+| I2C transferencia | ~3 ms × 4 ToF en 1 bus `Wire` (recableado 2026-05-30) |
 | Trilateración + EKF | ~1 ms |
 | Snapshot + TX | ~3 ms |
 | **Total peor caso** | **~55 ms** |

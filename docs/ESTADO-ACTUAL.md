@@ -48,7 +48,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 del DOWN (hoy `Serial2`). ⚠️ **Veredicto del conflicto 7/8 PENDIENTE de aislar** (Gustavo 2026-05-29: NO se aisló en banco si el motor del driver U17 usa 7/8). SI se confirma que 7/8 son del motor → migrar `Serial2` → `Serial7` acá. Por las dudas, el receiver de banco del link ya se hizo en **Serial7**: env `diag_central_comm_down` + [`docs/firmware/DIAG-CENTRAL-COMM-DOWN.md`](firmware/DIAG-CENTRAL-COMM-DOWN.md).
 
 ### TOP (Teensy 4.0)
-- `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (HC-SR04 + 1 VL53L7CX frontal U2 vivo, lib `Adafruit_VL53L7CX`. ⚠️ TOP rev 1.0 NO permite >1 ToF por bus sin rework — XSHUT/LPn de los 4 slots NO ruteados en el PCB, verificación forense 2026-05-25. Máximo soportado: 2 ToFs total. Ver journal 2026-05-24 + 2026-05-25), `comm_*`
+- `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (4 ToF VL53L7CX en bus único `Wire`, lib `Adafruit_VL53L7CX`. ✅ Bodge de Enzo 2026-05-30: los 4 ToF con LP en pines {9,10,11,12} (activo-alto), enumeran a 0x2A..0x2D, confirmado en banco. `Wire1` liberado para DOWN. ⚠️ Probar ToF SIEMPRE con power-cycle (las direcciones I²C persisten). El firmware vivo `sensors_tof.cpp` todavía lee 1 ToF — extender a los 4 es HAL Sprint B. Plan: escalar a 6 ToF (4 fijos + 2 móviles para pelota). Ver journal 2026-05-30), `comm_*`
 - `src/shared/localization.cpp` — trilateracion geometrica directa (Sprint 1
   aprobado 2026-05-25, ver `docs/superpowers/specs/2026-05-25-localization-sprint1-trilateration-design.md`).
   Validacion en hardware pendiente: TASK-035.
@@ -288,6 +288,30 @@ nativo, pero ya no es el único camino. Ver
   (blocked_by TASK-036, por el conflicto pines 7/8 / Serial2).
 - Journal: `journal/2026-05-29-fix-contrato-linea-central.md`.
 
+### Avance 2026-05-30 — TOP: ✅ los 4 ToF enumeran en bus único (bodge LP OK)
+- Enzo recableó la placa TOP: los **4 ToF al bus principal `Wire` (18/19)** +
+  bodge de la pata **LP** de cada ToF a un pin del Teensy (reusando la traza de
+  INT), para **liberar `Wire1` (24/25)** hacia la placa DOWN.
+- Diagnóstico de banco (5 sketches nuevos: `diag_top_i2c_scan`,
+  `diag_top_tof_lp_discover`, `diag_top_tof_enumerate`, `diag_top_tof_census`,
+  `diag_top_tof_quad_live`). **Veredicto (tras power-cycle): los 4 LP
+  funcionan** → pines **9,10,11,12 activo-ALTO**, enumerados a
+  0x2A/0x2B/0x2C/0x2D. ✅
+- **Lección clave**: las direcciones I2C de los VL53L7CX **persisten entre
+  resets**; hay que **power-ciclar** (cortar/reponer energía) tras flashear o el
+  bus arranca sucio. Un primer diagnóstico sin power-cycle dio un FALSO
+  NEGATIVO ("ningún LP funciona", commit `096108a`) que quedó refutado y
+  corregido.
+- **Habilita**: `Wire1` libre para DOWN + **localización 2D por trilateración**
+  con 4 ToF reales.
+- **TASK-201** (multímetro de continuidad LP) **degradada**: ya confirmado por
+  banco, queda opcional.
+- **Pendiente firmware (HAL Sprint B)**: correr `diag_top_tof_quad_live` para
+  confirmar ranging + mapear dirección→posición (tapar cada sensor), luego
+  actualizar `pinout_robot1.h` (`PIN_TOF_XSHUT={9,10,11,12}`, `NUM_TOF_ACTIVE=4`,
+  flags) y extender `sensors_tof.cpp` para enumerar los 4 al boot. Ver
+  `journal/2026-05-30-top-tof-4-en-bus-unico-enumeracion-ok.md`.
+
 ### Avance 2026-05-29 — auditoria independiente TOP pre-Incheon + 3 fixes (TOP)
 - **Suite host-native corrida punta a punta por primera vez**: 246 tests /
   19 envs / **0 fallos**, 100% offline via nuevo `scripts/run-host-tests.sh`
@@ -358,29 +382,28 @@ nativo, pero ya no es el único camino. Ver
   `agente/down` (send1/recv1) — pendiente decidir merge a `main`.
 - Detalle completo: `journal/2026-05-29-sesion-banco-motores-y-enlace-down-central.md`.
 
-### Resuelto 2026-05-25
-- **Verificado forensicamente que los XSHUT/LPn de los 4 TOFs NO están
-  ruteados en TOP rev 1.0** (NC flags explícitos en SCH, 0 nets en PCB
-  netlist). Implicancia: máximo 2 ToFs sin rework (1 por bus I²C).
-  `config_top.h:68` con `PIN_TOF_XSHUT[4] = {2,3,4,5}` documentado como
-  ficción heredada (banner agregado, código vivo no lo usa). Wishlist
-  de TOP rev 1.1 (post-Incheon) capturado con 7 items
-  (XSHUT + agujeros cámaras + reguladores fuera del borde + conectores
-  keyed + LEDs OK + voltímetro + STM32 integrado). Decisión Incheon
-  (2 ToFs vs 4 con bodge) escalada a TASK-033. Ver journal
-  `2026-05-25-top-xshut-no-routed-hallazgo-forense.md` + research
-  `research/in-progress/2026-05-25-top-board-rev-1.1-wishlist.md`.
+### Resuelto 2026-05-25 → SUPERADO por bodge 2026-05-30
+- **Verificado forensicamente que los XSHUT/LPn de los 4 TOFs NO estaban
+  ruteados en TOP rev 1.0 de fábrica** (NC flags explícitos en SCH, 0 nets en
+  PCB netlist). Implicancia de entonces: máximo 2 ToFs sin rework.
+  ⚠️ **SUPERADO el 2026-05-30**: el bodge manual de Enzo cableó los 4 LP a
+  pines del Teensy {9,10,11,12} y movió los 4 ToF a `Wire` — los 4 enumeran
+  (confirmado en banco). Ver el "Avance 2026-05-30" arriba. El wishlist de TOP
+  rev 1.1 (post-Incheon) sigue válido (rutear el XSHUT en el PCB elimina el
+  bodge frágil). Ver `journal/2026-05-30-top-tof-4-en-bus-unico-enumeracion-ok.md`.
 
 ### Deudas conocidas (resumen — la canónica está en `FUENTES-DE-VERDAD.md`)
 
-- **TOP rev 1.0 — XSHUT/LPn de los 4 slots ToF no ruteados.** Sin rework
-  hardware el máximo soportado es 2 ToFs (1 por bus I²C). Decisión
-  pendiente para Incheon: ver TASK-033 (2 ToFs sin rework vs 4 con bodge
-  de Enzo). Solución de fondo: TOP rev 1.1 post-Incheon
-  (`research/in-progress/2026-05-25-top-board-rev-1.1-wishlist.md`).
-- HAL Sprint B (extender sensors_tof.cpp para enumerar NUM_TOF_ACTIVE
-  TOFs con XSHUT secuencial al boot). Bloqueado por TASK-038
-  (confirmar pines reales del bodge).
+- ~~**TOP rev 1.0 — XSHUT/LPn de los 4 slots ToF no ruteados**~~ → **RESUELTO
+  por bodge de Enzo (2026-05-30)**: los 4 ToF enumeran en `Wire` (LP pines
+  {9,10,11,12}). TASK-033 (cuántos ToF) decidida por los hechos: 4. Solución de
+  fondo (rutear en PCB) queda para TOP rev 1.1 post-Incheon.
+- **HAL Sprint B**: extender `sensors_tof.cpp` para enumerar los 4 ToF al boot
+  (hoy lee 1). Ya NO bloqueado por TASK-038 (pines confirmados en banco). Falta:
+  el código de enumeración + confirmar ranging (`diag_top_tof_quad_live`) +
+  mapear dirección→posición física.
+- **Conflicto pin 10**: el bodge usa el pin 10 como LP de ToF, pero ese pin era
+  el dipswitch de rol → reubicar la lectura de rol (anotado en pinout_robot1.h).
 - HAL para CENTRAL (replicar el patrón en src/central/config_central.h).
   Sprint futuro.
 

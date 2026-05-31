@@ -94,7 +94,8 @@ GoalFused fuse_goal_dual(const CamObs& front,
     }
 
     if (out.visible) {
-        // Convención: atan2(x, y) con +y = frente del robot, +x = lateral.
+        // Convención: atan2(x, y) con +y = frente del robot, +x = DERECHA.
+        // => +90° = arco a la derecha del robot. Ver docs/CONVENCION-EJES-ROBOT.md.
         // Devolvemos centideg para encajar en el campo de WorldSnapshot.
         const float angle_rad = std::atan2(x, y);
         out.angle_centideg = static_cast<int16_t>(angle_rad * (18000.0f / PI_F));

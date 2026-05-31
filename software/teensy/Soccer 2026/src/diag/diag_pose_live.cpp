@@ -44,6 +44,11 @@ using namespace iitasoccer;
 
 namespace {
 
+// Sentinels locales (sensors_tof.h los define igual, pero ese header arrastra
+// config_top.h/HAL que exige -DROBOT1/2; este diag es autonomo, no lo usa).
+constexpr uint16_t TOF_NO_READING   = 0xFFFF;
+constexpr uint16_t TOF_MAX_RANGE_MM = 4000;
+
 // ---- Cancha / montaje (espejo de pinout_common.h; este diag no usa el HAL) ----
 constexpr uint16_t FIELD_WIDTH_MM  = 2430;   // X (largo)
 constexpr uint16_t FIELD_HEIGHT_MM = 1820;   // Y (corto)

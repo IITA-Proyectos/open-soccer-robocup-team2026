@@ -25,7 +25,7 @@ fuentes:
 | MCU **Teensy 4.0** (U14) | 1 | Cortex-M7 a 600 MHz, 1 MB RAM, 2 MB flash, **7 UARTs hardware** |
 | Cámaras **OpenMV H7 / H7 Plus** | 2 | UART (Serial3 + Serial5), 19200 baud, protocolo viejo 9 bytes/packet |
 | **BNO055** IMU | 2 | I²C dual (`Wire` + `Wire1`). Ambos dirección 0x28, por eso buses separados |
-| Sensor ToF **VL53L5/L7CX** | 4 | I²C en 2 buses, XSHUT individual. 8×8 SPAD multizona |
+| Sensor ToF **VL53L7CX** | 4 fijos (plan: 6) | TODOS en `Wire` (I²C0), LP individual por pin. Enumeran a 0x2A..0x2D. 8×8 SPAD multizona. Plan de escalado: +2 móviles para pelota |
 | Ultrasonido **HC-SR04** | 1 | TRIG/ECHO pines 6/7. Frontal, fallback de ToF |
 | Conector a placa **COMM** (ESP32-C6) | 1 | UART (Serial4). Bridge a árbitros + ESP-NOW partner |
 | Conector a placa **DOWN** (sensores piso) | 1 | UART (Serial1). Recibe DOWN_OTOS_POSE/VEL + LINE_STATUS |
@@ -53,10 +53,16 @@ fuentes:
 
 ### 2.1 Buses I²C — distribución crítica
 
+> **🔧 ACTUALIZACIÓN 2026-05-30 (recableado de Enzo, confirmado en banco).**
+> Los **4 ToF se movieron al bus `Wire` (I²C0, 18/19)**, con la pata **LP** de
+> cada uno cableada por bodge a un pin del Teensy. Esto **liberó `Wire1`
+> (24/25)** — ahora reservado para comunicación con la placa **DOWN**, NO para
+> ToF. La tabla refleja el estado nuevo.
+
 | Bus | API Arduino | Pin Arduino SDA | Pin Arduino SCL | Periféricos | Dirección I²C |
 |---|---|---|---|---|---|
-| **I²C #0** | `Wire` | **18** | **19** | BNO055 izq (U10) + ToF U2 + ToF U3 | BNO055=0x28; ToF=0x52 y 0x54 (asignadas vía XSHUT) |
-| **I²C #1** | `Wire1` | **25** ⚠️ remap | **24** ⚠️ remap | BNO055 der (U11) + ToF U5 + ToF U17 | BNO055=0x28; ToF=0x56 y 0x58 |
+| **I²C #0** | `Wire` | **18** | **19** | BNO055 izq (U10) + **los 4 ToF** (U2/U3/U5/U17) | BNO055=0x28; ToF=0x2A/0x2B/0x2C/0x2D (asignadas vía LP) |
+| **I²C #1** | `Wire1` | **25** ⚠️ remap | **24** ⚠️ remap | BNO055 der (U11) + **(libre para placa DOWN)** | BNO055=0x28 |
 
 > **Remap crítico de `Wire1`** (Q3 confirmado por análisis PCB, 2026-05-10):
 > los pines default de `Wire1` en Teensy 4.0 son 16/17, pero esos están
@@ -70,8 +76,16 @@ fuentes:
 > Pendiente físicamente confirmar con TASK-003.
 
 Los 2 BNO055 **comparten dirección 0x28** de fábrica → obligatorio en buses
-distintos. Los 4 ToF se enumeran al boot cambiando XSHUT secuencialmente:
-default 0x52 → cambian a 0x54 → 0x56 → 0x58.
+distintos. Los **4 ToF se enumeran al boot** en `Wire`: arrancan todos en 0x29
+de fábrica, se duermen todos por LP, se despierta uno por uno y a cada uno se
+le asigna 0x2A → 0x2B → 0x2C → 0x2D. **Ninguno queda en 0x29.**
+
+> ⚠️ **PROCEDIMIENTO OBLIGATORIO al probar/enumerar ToF.** Las direcciones I²C
+> de los VL53L7CX **persisten mientras el módulo tenga 3V3** — un reset del
+> Teensy NO las borra. Hay que **QUITAR ENERGÍA Y REPONERLA (power-cycle)** tras
+> flashear, o el bus arranca sucio (ToF pegados en direcciones de corridas
+> previas) y la enumeración no parte de fábrica. Esto causó un falso negativo
+> en el primer diagnóstico. Ver `journal/2026-05-30-top-tof-4-en-bus-unico-enumeracion-ok.md`.
 
 ### 2.2 UARTs — las 5 conexiones externas
 
@@ -85,20 +99,38 @@ default 0x52 → cambian a 0x54 → 0x56 → 0x58.
 | Serial6 | ~~25~~ | ~~24~~ | — | **BLOQUEADO** | — | Pines tomados por `Wire1` remap |
 | Serial7 | 28 | 29 | — | **LIBRE** | — | Expansión futura |
 
-### 2.3 Sensores ToF (4×) — pines XSHUT
+### 2.3 Sensores ToF — pines LP (bodge, confirmados en banco 2026-05-30)
 
-| ToF | I²C bus | Pin XSHUT (Arduino) | Dirección asignada al boot |
+Los 4 ToF cuelgan del **mismo bus `Wire`** (I²C0, 18/19). Cada uno tiene su
+pata **LP** cableada por bodge a un pin del Teensy. Pines **confirmados** con
+`diag_top_tof_census` (R1, tras power-cycle), polaridad **ACTIVO-ALTO**
+(HIGH = ToF despierto):
+
+| ToF (índice firmware) | I²C bus | Pin LP (Arduino) | Dirección asignada |
 |---|---|---|---|
-| **ToF 1** (U2) | Wire (I²C0) | **2** | 0x52 ⚠️ tentativa |
-| **ToF 2** (U3) | Wire (I²C0) | **3** | 0x54 ⚠️ tentativa |
-| **ToF 3** (U5) | Wire1 (I²C1) | **4** | 0x56 ⚠️ tentativa |
-| **ToF 4** (U17) | Wire1 (I²C1) | **5** | 0x58 ⚠️ tentativa |
+| **ToF[0]** | Wire (I²C0) | **9**  | 0x2A |
+| **ToF[1]** | Wire (I²C0) | **10** ⚠️ | 0x2B |
+| **ToF[2]** | Wire (I²C0) | **11** | 0x2C |
+| **ToF[3]** | Wire (I²C0) | **12** | 0x2D |
 
-Hardware comprado (según coach Q4): **VL53L7CX disponibles**, VL53L5CX en
-pedido. Pines XSHUT tentativos — confirmar con TASK-003 extendida. La
-enumeración I²C por XSHUT es estándar: pre-condicion, XSHUT del que queremos
-enumerar HIGH, otros LOW; se cambia la dirección con `setI2CAddress()`; se
-suben los siguientes XSHUT.
+> ⚠️ **El SET de pines {9,10,11,12} está confirmado**, pero la asignación de
+> cada pin a una **posición física** (frontal/trasero/izq/der) sigue PENDIENTE:
+> se cierra corriendo `diag_top_tof_quad_live` y tapando cada sensor para ver
+> cuál cae. La hipótesis vieja `{2,3,4,5}` con direcciones `0x52..0x58` era
+> incorrecta — quedó descartada.
+>
+> ⚠️ **Conflicto pin 10:** el pin 10 figuraba como dipswitch de rol y ahora
+> es un LP de ToF (confirmado en banco). No pueden coexistir → reubicar la
+> lectura de rol a un pin libre (22/23). Decisión de hardware → Enzo.
+
+Hardware: **VL53L7CX**. La enumeración I²C por LP es estándar: dormir todos los
+LP, despertar el que queremos (HIGH), cambiar su dirección, repetir.
+
+**Plan de escalado a 6 ToF (diseño objetivo, no cableado todavía):** además de
+los 4 fijos, se planean **2 ToF móviles** sobre un mecanismo que los orienta
+para **ubicar la pelota** (complemento de la cámara). Colgarían del mismo bus
+`Wire` con su LP propio, enumerados a 0x2E/0x2F. Ver `pinout_common.h`
+(`NUM_TOF_MAX = 6`).
 
 ### 2.4 HC-SR04 (ultrasonido frontal)
 
@@ -134,28 +166,29 @@ Pin Arduino **13** (LED_BUILTIN).
 |---|---|---|
 | 0 | RX1 (Serial1) ← DOWN | ✅ |
 | 1 | TX1 (Serial1) → DOWN | ✅ |
-| 2 | XSHUT ToF 1 | ⚠️ tentativo |
-| 3 | XSHUT ToF 2 | ⚠️ tentativo |
-| 4 | XSHUT ToF 3 | ⚠️ tentativo |
-| 5 | XSHUT ToF 4 | ⚠️ tentativo |
+| 2 | libre (ya NO es XSHUT ToF) | ✅ |
+| 3 | libre (ya NO es XSHUT ToF) | ✅ |
+| 4 | libre (ya NO es XSHUT ToF) | ✅ |
+| 5 | libre (ya NO es XSHUT ToF) | ✅ |
 | 6 | HC-SR04 TRIG | ✅ |
 | 7 | HC-SR04 ECHO **+** RX2 (Serial2) ← CENTRAL | ⚠️ **POSIBLE CONFLICTO** |
 | 8 | TX2 (Serial2) → CENTRAL | ⚠️ tentativo (conector U1 sin doc clara) |
-| 9 | libre | ✅ |
-| 10 | Dipswitch rol (pull-up) | ✅ |
-| 11, 12 | libres | ✅ |
+| 9 | **LP ToF[0]** (bodge) | ✅ banco 2026-05-30 |
+| 10 | **LP ToF[1]** (bodge) ⚠️ colisiona con dipswitch rol | ⚠️ conflicto |
+| 11 | **LP ToF[2]** (bodge) | ✅ banco 2026-05-30 |
+| 12 | **LP ToF[3]** (bodge) | ✅ banco 2026-05-30 |
 | 13 | LED_BUILTIN | ✅ |
 | 14 | TX3 (Serial3) → Cámara 1 | ✅ |
 | 15 | RX3 (Serial3) ← Cámara 1 | ✅ |
 | 16 | RX4 (Serial4) ← COMM (= SCL1 default, NO usado para I²C) | ✅ |
 | 17 | TX4 (Serial4) → COMM (= SDA1 default, NO usado para I²C) | ✅ |
-| 18 | SDA0 (Wire) — BNO055 izq + ToF 1/2 | ✅ |
-| 19 | SCL0 (Wire) — BNO055 izq + ToF 1/2 | ✅ |
+| 18 | SDA0 (Wire) — BNO055 izq + **los 4 ToF** | ✅ |
+| 19 | SCL0 (Wire) — BNO055 izq + **los 4 ToF** | ✅ |
 | 20 | TX5 (Serial5) → Cámara 2 | ✅ |
 | 21 | RX5 (Serial5) ← Cámara 2 | ✅ |
-| 22, 23 | libres | ✅ |
-| **24** | **SCL1 (Wire1 REMAP)** — BNO055 der + ToF 3/4 | ⚠️ Q3 — confirmar con TASK-003 |
-| **25** | **SDA1 (Wire1 REMAP)** — BNO055 der + ToF 3/4 | ⚠️ Q3 — confirmar con TASK-003 |
+| 22, 23 | libres (candidatos para reubicar el dipswitch de rol) | ✅ |
+| **24** | **SCL1 (Wire1 REMAP)** — BNO055 der + **libre para placa DOWN** (ya NO ToF) | ⚠️ confirmar |
+| **25** | **SDA1 (Wire1 REMAP)** — BNO055 der + **libre para placa DOWN** (ya NO ToF) | ⚠️ confirmar |
 | 26–33 | libres | ✅ |
 
 ## 4. Pendientes humanos (NO bloquean uso del pack, pero hay que resolver)
@@ -165,8 +198,8 @@ Pin Arduino **13** (LED_BUILTIN).
 | 1 | Confirmar `Wire1` remap a pines 24/25 con multímetro (TASK-003) | Enzo | I²C bus 1 funcionando → 1 BNO055 + 2 ToF |
 | 2 | **Confirmar pines 7/8 del conector U1** (Serial2 hacia CENTRAL) | Enzo | UART TOP→CENTRAL → robot no recibe WORLD_SNAPSHOT |
 | 3 | **Resolver conflicto pin 7** (HC-SR04 ECHO **vs** Serial2 RX2) | Enzo + firmware | Una de las dos funciones no puede coexistir |
-| 4 | Confirmar pines XSHUT de los 4 ToF (TASK-003 ext) | Enzo | Enumeración I²C de los 4 ToF al boot |
-| 5 | Confirmar direcciones I²C asignadas (0x52/54/56/58) | firmware | Coincidencia con código `sensors_tof.cpp` |
+| 4 | ~~Confirmar pines XSHUT/LP de los 4 ToF~~ → **RESUELTO en banco 2026-05-30**: LP = {9,10,11,12}, activo-alto, enumeran 0x2A..0x2D | ✅ | — |
+| 5 | **Mapear dirección → posición física** (tapar cada sensor con `diag_top_tof_quad_live`) + reubicar dipswitch de rol (pin 10 colisiona con LP ToF) | Enzo + firmware | Localización por trilateración + lectura de rol confiable |
 | 6 | **Recuperar BOM y Pick&Place del proyecto EasyEDA TOP** (TASK-013) | Enzo | Trazabilidad de componentes para repuestos en Incheon |
 | 7 | Cruzar BOM con `mapa-pines-placas-nuevas.md` para verificar componentes | Enzo + Claude | Confiar 100% del schematic-vs-fabricación |
 

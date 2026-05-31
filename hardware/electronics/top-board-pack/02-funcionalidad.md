@@ -42,7 +42,7 @@ implementado todavía.
 | Fusión cámaras (front + back, rot 180°, watchdog) | 2 | ✅ vivo + 16 tests | `firmware/shared/cameras_fusion.{h,cpp}` + `firmware/top/cameras_runtime.{h,cpp}` |
 | BNO055 dual (lectura + consistencia) | 2 | ✅ vivo | `firmware/top/sensors_imu.{h,cpp}` |
 | HC-SR04 (frontal) | 1 | ✅ vivo (bloqueante 25 ms) | `firmware/top/sensors_tof.{h,cpp}` |
-| **ToF VL53L5/L7CX** | 2 | ⚠️ **STUB** (sin lectura real) | `firmware/top/sensors_tof.{h,cpp}` |
+| **ToF VL53L7CX** | 4 (HW) | ⚠️ HW OK (enumeran 0x2A..0x2D), firmware lee 1 (Sprint B pendiente) | `firmware/top/sensors_tof.{h,cpp}` |
 | Comm con COMM (Serial4) | 1 | ✅ vivo (arbiter) | `firmware/top/comm_arbiter.{h,cpp}` |
 | Comm con DOWN (Serial1) | 1 | ✅ vivo | `firmware/top/comm_down.{h,cpp}` |
 | Comm con CENTRAL (Serial2) | 1 | ✅ vivo | `firmware/top/comm_central.{h,cpp}` |

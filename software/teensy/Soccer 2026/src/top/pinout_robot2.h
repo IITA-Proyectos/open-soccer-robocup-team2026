@@ -12,35 +12,48 @@
 namespace iitasoccer {
 
 // ============================================================
-// XSHUT (LPn) de los 4 TOFs — bodge físico de Enzo
+// LP (XSHUT) de los 4 TOFs — bodge físico de Enzo
 // ============================================================
-// PLACEHOLDER (mismos que R1 hasta confirmación). Si Enzo soldó otros
-// pines en R2, CAMBIAR ACÁ y reflashear `pio run -e top_robot2 -t upload`.
+// Mismo diseño que R1: 4 ToF en `Wire` (18/19) con LP individual; Wire1
+// (24/25) liberado para la placa DOWN. En R1 los pines LP {9,10,11,12}
+// (activo-ALTO) quedaron CONFIRMADOS en banco (2026-05-30, ver journal).
+// R2 es una construcción manual separada: se asumen los mismos pines, pero
+// ⚠️ FALTA correr el banco en R2 (diag_top_tof_census, mismo procedimiento
+// con POWER-CYCLE). Si en R2 dieran otros pines, CAMBIAR ACÁ y reflashear
+// `pio run -e top_robot2 -t upload`.
 constexpr int PIN_TOF_XSHUT[4] = {
-    9,   // PLACEHOLDER — TOF[0] frontal U2
-    11,  // PLACEHOLDER — TOF[1] trasero U3
-    12,  // PLACEHOLDER — TOF[2] izquierdo U5
-    22,  // PLACEHOLDER — TOF[3] derecho U17
+    9,   // TOF[0]  (esperado igual que R1; confirmar en banco R2)
+    10,  // TOF[1]  (esperado igual que R1; confirmar en banco R2)
+    11,  // TOF[2]  (esperado igual que R1; confirmar en banco R2)
+    12,  // TOF[3]  (esperado igual que R1; confirmar en banco R2)
 };
 
 // ============================================================
-// Direcciones I²C asignadas tras enumeración XSHUT
+// Direcciones I²C asignadas tras enumeración LP
 // ============================================================
+// Ninguno queda en 0x29 (el bodge controla los 4 LP). PROCEDIMIENTO al
+// probar: power-cycle tras flashear (las direcciones persisten con 3V3).
 constexpr uint8_t TOF_I2C_ADDR_ASSIGNED[4] = {
-    0x29, 0x2A, 0x2B, 0x2C,
+    0x2A, 0x2B, 0x2C, 0x2D,
 };
 
 // ============================================================
 // Feature flags — qué sensores están físicamente instalados HOY en R2
 // ============================================================
+// 4 ToF fijos (mismo diseño que R1). En 1 asumiendo paridad con R1;
+// confirmar enumeración + ranging en banco R2.
 #define ROBOT_HAS_TOF_FRONT 1
 #define ROBOT_HAS_TOF_BACK  1
-#define ROBOT_HAS_TOF_LEFT  0
-#define ROBOT_HAS_TOF_RIGHT 0
+#define ROBOT_HAS_TOF_LEFT  1
+#define ROBOT_HAS_TOF_RIGHT 1
 #define ROBOT_HAS_OTOS      1   // R2 (delantero) con OTOS
 
-constexpr int NUM_TOF_ACTIVE = 2;
+constexpr int NUM_TOF_ACTIVE = 4;
 
+// ⚠️ CONFLICTO DE PIN (ver R1): el pin 10 quedó como LP de ToF
+// (PIN_TOF_XSHUT[1]=10) y acá también es el dipswitch de rol. No pueden
+// coexistir; reubicar la lectura de rol a un pin libre. Decisión de
+// hardware -> Enzo. Confirmar en el banco de R2.
 constexpr int PIN_ROLE_DIPSWITCH = 10;
 
 }  // namespace iitasoccer

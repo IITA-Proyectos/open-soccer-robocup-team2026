@@ -48,7 +48,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 del DOWN (Serial2)
 
 ### TOP (Teensy 4.0)
-- `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (HC-SR04 + 1 VL53L7CX frontal U2 vivo, lib `Adafruit_VL53L7CX`. ⚠️ TOP rev 1.0 NO permite >1 ToF por bus sin rework — XSHUT/LPn de los 4 slots NO ruteados en el PCB, verificación forense 2026-05-25. Máximo soportado: 2 ToFs total. Ver journal 2026-05-24 + 2026-05-25), `comm_*`
+- `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (4 ToF VL53L7CX en bus único `Wire`, lib `Adafruit_VL53L7CX`. ✅ Bodge de Enzo 2026-05-30: los 4 ToF con LP en pines {9,10,11,12} (activo-alto), enumeran a 0x2A..0x2D, confirmado en banco. `Wire1` liberado para DOWN. ⚠️ Probar ToF SIEMPRE con power-cycle (las direcciones I²C persisten). El firmware vivo `sensors_tof.cpp` todavía lee 1 ToF — extender a los 4 es HAL Sprint B. Plan: escalar a 6 ToF (4 fijos + 2 móviles para pelota). Ver journal 2026-05-30), `comm_*`
 - `src/shared/localization.cpp` — trilateracion geometrica directa (Sprint 1
   aprobado 2026-05-25, ver `docs/superpowers/specs/2026-05-25-localization-sprint1-trilateration-design.md`).
   Validacion en hardware pendiente: TASK-035.

@@ -23,6 +23,14 @@ tags: [analisis, comunicacion, down, central, top, protocolo, buffers, timing, i
 
 ---
 
+## Implementado en esta sesión (2026-05-31, `agente/central`)
+
+✅ **#4 schema gate** (`line_view.h`) · ✅ **#3 telemetría de SEQ / pérdida de frames** (`comm_down.cpp`) · ✅ **#8 observabilidad** (`data_valid`/`event_flags` + telemetría en el print de `main_central`). Verificados (compila `central_robot1` + diag; harness g++ del schema gate 7/7 PASS). Detalle: `journal/2026-05-31-quick-wins-link-down-central.md`.
+
+**Pendiente:** #1 `[env:down]` con 32 sensores y #2 `sample_age_ms` → **scope agente DOWN** (tocan código/config de DOWN; #1 además tiene un comentario deliberado "1 mux para placa 04-12"). #5 watchdog de emergencia (diseño) y contratos v1→v2 (docs) → próximas sesiones. El **P0 de pines 7/8 (TASK-036)** sigue siendo el único bloqueante duro, y es de hardware.
+
+---
+
 ## Como funciona hoy (con timing/frecuencias)
 
 **Linea (DOWN, lectura fisica) — 1 kHz.** `line_ring_tick()` (`main_down.cpp:87-90`) lee 32 sensores ALS-PT19 via 4 muxes CD4051 cada 1 ms. El scrambling de Enzo (`MUX_CH_FOR_SENSOR`) deja `g_raw[]` en orden logico S0..S31.

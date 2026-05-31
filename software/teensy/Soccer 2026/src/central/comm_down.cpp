@@ -14,10 +14,24 @@ FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
 uint8_t  g_send_seq = 0;
 
+// Deteccion de perdida de frames (el SEQ del protocolo viaja 0..255 con wrap).
+bool     g_have_last_seq = false;
+uint8_t  g_last_seq      = 0;
+uint32_t g_frames_lost   = 0;
+
 constexpr long UART_BAUD = 230400;
 
 void handle_frame(const Frame& f) {
     g_frames_received++;
+    // Perdida de frames: (uint8_t)(seq - last - 1) = cuantos faltaron entre este
+    // y el anterior (0 si consecutivo; el cast maneja el wrap 255->0). Mide la
+    // MAGNITUD del hueco, no solo el evento — telemetria para "aprendizaje Incheon".
+    if (g_have_last_seq) {
+        g_frames_lost += static_cast<uint8_t>(f.seq - g_last_seq - 1);
+    }
+    g_last_seq = f.seq;
+    g_have_last_seq = true;
+
     LineStatusV2 ls{};
     if (lsv2_from_frame(f, ls)) {
         world_model_apply_line(ls);
@@ -66,5 +80,6 @@ void comm_down_send_calib_line(bool white) {
 
 uint32_t comm_down_get_frames_received() { return g_frames_received; }
 uint32_t comm_down_get_crc_errors()      { return g_decoder.crc_errors(); }
+uint32_t comm_down_get_frames_lost()     { return g_frames_lost; }
 
 }  // namespace iitasoccer

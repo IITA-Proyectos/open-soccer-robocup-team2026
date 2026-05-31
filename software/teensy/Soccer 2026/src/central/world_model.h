@@ -45,6 +45,8 @@ bool     world_model_line_detected();
 float    world_model_get_line_angle_deg();
 uint8_t  world_model_get_line_depth();
 bool     world_model_imminent_exit();
+bool     world_model_line_data_valid();   // data_valid del último frame (compuerta maestra)
+uint8_t  world_model_line_event_flags();  // EV_* del último frame (diagnóstico / observabilidad)
 
 // === Estado táctico (de WorldSnapshot.flags) ===
 bool world_model_match_running();

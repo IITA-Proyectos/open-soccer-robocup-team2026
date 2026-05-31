@@ -63,6 +63,8 @@ bool     world_model_line_detected()        { return lsv2_line_present(g_line); 
 float    world_model_get_line_angle_deg()   { return lsv2_line_angle_deg(g_line); }
 uint8_t  world_model_get_line_depth()       { return lsv2_penetration_u8(g_line); }
 bool     world_model_imminent_exit()        { return lsv2_imminent_exit(g_line); }
+bool     world_model_line_data_valid()      { return g_line.data_valid != 0; }
+uint8_t  world_model_line_event_flags()     { return g_line.event_flags; }
 
 bool world_model_match_running()        { return flag_set(g_snap.flags, 3); }
 bool world_model_in_own_penalty_area()  { return flag_set(g_snap.flags, 0); }

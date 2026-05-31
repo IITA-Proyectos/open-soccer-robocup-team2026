@@ -130,6 +130,18 @@ void test_wrong_type_rejected(void) {
     TEST_ASSERT_FALSE(lsv2_from_frame(f, out));
 }
 
+// Gate de schema (P1, analisis 2026-05-31): un frame de 16 bytes pero con
+// schema_version != LSV2_SCHEMA se RECHAZA (no se reinterpreta como basura).
+// Cubre el escenario DOWN/CENTRAL flasheados con schemas distintos.
+void test_wrong_schema_rejected(void) {
+    LineStatusV2 s = make_example_B();
+    s.schema_version = 99;            // schema incompatible, MISMO tamano (16 B)
+    Frame f{};
+    TEST_ASSERT_TRUE(encode_then_decode(s, f));   // frame valido (CRC OK, 16 B)
+    LineStatusV2 out{};
+    TEST_ASSERT_FALSE(lsv2_from_frame(f, out));   // pero rechazado por schema
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_roundtrip_example_B);
@@ -140,5 +152,6 @@ int main(int, char**) {
     RUN_TEST(test_penetration_clamp_and_na);
     RUN_TEST(test_old_size_payload_rejected);
     RUN_TEST(test_wrong_type_rejected);
+    RUN_TEST(test_wrong_schema_rejected);
     return UNITY_END();
 }

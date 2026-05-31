@@ -1,55 +1,54 @@
 # cam-trasera-n6.py — Cámara TRASERA del robot Soccer 2026 — OpenMV N6 (STM32N6)
 #
-# Port del template H7 (`target-cam-trasera-template.py`) a la OpenMV **N6**.
-# Lógica de detección y protocolo IDÉNTICOS; solo cambió la capa de cámara
-# (`sensor` deprecado → `csi`). Bugs P0 ya corregidos (sentinel no-blob → Y_coded=0,
-# clamp anti-crash [0,255], autos OFF).
+# Basado en el `current-generic.py` que SÍ funciona en la N6 (fw 4.8.1): usa el
+# módulo **`sensor`** y **`pyb.UART`** (probado: `csi` daba preview NEGRO y
+# `machine.UART` crasheaba en write en esta placa). Migrar a csi/machine = post-Incheon.
 #
-# IMPORTANTE: la cámara trasera NO rota sus coordenadas acá. La rotación 180° la
-# hace el TOP (`cameras_fusion.cpp:25-30`). Esta cámara reporta lo que ve en SU
-# PROPIO frame, como si fuera la única.
+# Mejoras vs el generic: bugs P0 corregidos (sentinel no-blob → Y_coded=0;
+# clamp anti-crash [0,255]), sin LEDs (la API de LED de la N6 crasheaba el loop),
+# y flag BRING_UP para alternar autos / exposición-fija.
+#
+# IMPORTANTE: la cámara trasera NO rota sus coordenadas acá. La rotación 180° por
+# "mirar hacia atrás" la hace el TOP (`cameras_fusion.cpp:25-30`, cam_id=1). Esta
+# cámara reporta lo que ve en SU PROPIO frame, como si fuera la única.
 #
 # ╔══════════════════════════════════════════════════════════════════════════╗
-# ║ ★ ANTES DE CONFIAR EN ESTE SCRIPT — CONFIRMAR / CALIBRAR EN BANCO (N6) ★   ║
+# ║ ★ BRING-UP vs COMPETENCIA — leer ★                                         ║
+# ║  BRING_UP=True  → autos (WB/gain) ON: SE VE imagen para calibrar (AHORA).   ║
+# ║  BRING_UP=False → autos OFF + exposición fija (competencia, tras calibrar). ║
 # ╠══════════════════════════════════════════════════════════════════════════╣
-# ║ [UART]  UART_PORT: la N6 tiene 3 UART. Confirmar cuál mapea a los pines    ║
-# ║         que van al Serial7 del Teensy (trasera = conector U9). Probar 1/2/3.║
-# ║ [API]   Migrado a `csi`. Si algún `csi.*` da error, ver la API exacta en   ║
-# ║         docs.openmv.io/library/omv.csi.html (varía por versión de firmware).║
-# ║ [LAB]   Los 3 thresholds son del sensor VIEJO (H7). La N6 tiene OTRO sensor║
-# ║         (PAG7936 global shutter) → RECALIBRAR. SIN ESTO NO DETECTA.         ║
-# ║ [EXPO]  EXPOSURE_US placeholder; re-medir (global shutter).                 ║
-# ║ [HOMOG] H_MATRIX: la trasera necesita SU PROPIA H (4 puntos DETRÁS del      ║
-# ║         robot). NO reusar la del frontal.                                   ║
-# ║ [FLIP]  HMIRROR/VFLIP: probablemente distintos al frontal (montaje espejo). ║
+# ║ [UART]  UART_PORT: confirmar cuál UART de la N6 va al Serial7 del Teensy   ║
+# ║         (trasera = conector U9). Probar 1/2/3.                             ║
+# ║ [LAB]   Recalibrar los 3 thresholds en la N6 (PAG7936 ≠ H7). SIN ESTO no detecta.║
+# ║ [HOMOG] H_MATRIX: la trasera necesita SU PROPIA H (4 puntos DETRÁS del robot)║
+# ║ [FLIP]  HMIRROR/VFLIP: montaje 180°; puede diferir del frontal (verificar). ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
-import csi, image, time, math
+import sensor
+import time
+import math
 
-try:
-    from machine import UART
-except ImportError:
-    from pyb import UART
+# --- UART: pyb.UART (lo que usa el generic que funciona en la N6) ---
+from pyb import UART
 
 # ============================================================================
-# ★ BLOQUE A CONFIRMAR / CALIBRAR EN BANCO (N6) ★
+# ★ CONFIG — BRING-UP / CALIBRACIÓN ★
 # ============================================================================
+BRING_UP  = True        # True = autos ON (ver imagen para calibrar). False = competencia.
+
 CAM_ID    = 1           # 1 = TRASERA (informativo; el TOP distingue por puerto UART)
-UART_PORT = 3           # ⚠️ CONFIRMAR en N6 — ¿cuál de los 3 UART va al Serial7 del Teensy?
+UART_PORT = 3           # ⚠️ CONFIRMAR en N6 — ¿cuál UART va al Serial7 del Teensy?
 UART_BAUD = 19200       # debe coincidir con cameras_runtime.cpp del TOP (no cambiar)
 
-EXPOSURE_US = 37000     # ⚠️ RE-MEDIR en la N6 (global shutter)
+EXPOSURE_US = 37000     # ⚠️ solo se usa si BRING_UP=False. RE-MEDIR en la N6.
 
-# ⚠️ Montaje físico rotado 180° (conector arriba) → HMIRROR+VFLIP=True COMPENSA
-# ese montaje (giro de 180° de la imagen). Confirmar con el preview que quede
-# DERECHA (puede diferir del frontal si quedó espejada por el montaje).
-# OJO: la rotación por "mirar hacia ATRÁS" NO se hace acá — la hace el TOP en
-# cameras_fusion.cpp (cam_id=1). Acá SOLO se corrige la orientación de la imagen.
+# Montaje físico 180° (conector arriba) → HMIRROR+VFLIP compensa. Verificar preview.
+# (Puede diferir del frontal si quedó espejada por el montaje.)
 HMIRROR = True
 VFLIP   = True
 
 # ⚠️ La trasera necesita SU PROPIA H_MATRIX (4 puntos en el suelo DETRÁS del robot).
-# Esta es la del script genérico viejo — NO sirve para la trasera. Recalibrar.
+# Esta es la del generic — NO sirve para la trasera. Recalibrar.
 H_MATRIX = [
     [ 4.49341044e-02, -9.48228474e-01,  7.78932109e+02],
     [-2.39913185e+00, -5.65934886e-02,  3.91128921e+02],
@@ -70,51 +69,28 @@ AZUL_PIXELS_MIN     = 300
 SENTINEL_X = 0
 SENTINEL_Y_CODED = 0    # → Y = 0-100 = -100 en el parser TOP → is_visible = False
 # ============================================================================
-# fin del bloque a calibrar
-# ============================================================================
 
-# --- Inicialización del sensor (API `csi` de la N6) ---
-csi0 = csi.CSI()
-csi0.reset()
-csi0.pixformat(csi.RGB565)
-csi0.framesize(csi.QVGA)
-# ⚠️ CRÍTICO — todos los autos en OFF:
-csi0.auto_whitebal(False)
-csi0.auto_gain(False)
-csi0.auto_exposure(False, exposure_us=EXPOSURE_US)
-csi0.hmirror(HMIRROR)
-csi0.vflip(VFLIP)
-csi0.snapshot(time=500)                  # estabilización
+# --- Inicialización del sensor (módulo `sensor`, IGUAL que el generic que funciona) ---
+sensor.reset()
+sensor.set_pixformat(sensor.RGB565)
+sensor.set_framesize(sensor.QVGA)
+if BRING_UP:
+    sensor.set_auto_whitebal(True)
+    sensor.set_auto_gain(True)
+else:
+    sensor.set_auto_whitebal(False)
+    sensor.set_auto_gain(False)
+    sensor.set_auto_exposure(False, exposure_us=EXPOSURE_US)
+sensor.set_hmirror(HMIRROR)
+sensor.set_vflip(VFLIP)
+sensor.skip_frames(time=2000)            # dejar converger los autos (igual que el generic)
 
 uart = UART(UART_PORT, UART_BAUD)
-
-# --- LEDs de diagnóstico (OPCIONALES: si la API difiere en N6, se ignoran) ---
-try:
-    import pyb
-    led_rojo, led_verde, led_azul = pyb.LED(1), pyb.LED(2), pyb.LED(3)
-except Exception:
-    class _NoLED:
-        def on(self): pass
-        def off(self): pass
-    led_rojo = led_verde = led_azul = _NoLED()
-
-def _set(led, on):
-    try:
-        led.on() if on else led.off()
-    except Exception:
-        pass
-
-try:
-    for _ in range(2):                    # parpadeo de inicio (trasera = 2 azules, distinto del frontal)
-        _set(led_azul, True);  time.sleep_ms(300)
-        _set(led_azul, False); time.sleep_ms(300)
-except Exception:
-    pass
 
 clock = time.clock()
 
 # ============================================================================
-# TRANSFORMACIÓN pixel → coord física (con clamp anti-crash) — IDÉNTICA al H7
+# TRANSFORMACIÓN pixel → coord física (con clamp anti-crash)
 # ============================================================================
 def transformar(u, v):
     H = H_MATRIX
@@ -133,10 +109,8 @@ def transformar(u, v):
 
     Y_coded = int(Y) + 100
     X_int   = int(X)
-
     if X_int == 0 and Y_coded == 0:
         X_int = 1
-
     X_int   = max(0, min(255, X_int))            # ⚠️ clamp uint8 final → anti-crash
     Y_coded = max(0, min(255, Y_coded))
     return X_int, Y_coded
@@ -154,7 +128,7 @@ def procesar_blob(blobs):
 # ============================================================================
 while True:
     clock.tick()
-    img = csi0.snapshot()
+    img = sensor.snapshot()
 
     naranja_blobs  = img.find_blobs([NARANJA_THRESHOLD],
                                     pixels_threshold=NARANJA_PIXELS_MIN,
@@ -166,14 +140,12 @@ while True:
                                     pixels_threshold=AZUL_PIXELS_MIN,
                                     area_threshold=AZUL_PIXELS_MIN, merge=True)
 
-    _set(led_rojo,  bool(naranja_blobs))
-    _set(led_verde, bool(amarillo_blobs))
-    _set(led_azul,  bool(azul_blobs))
-
     Xp,  Ypc  = procesar_blob(naranja_blobs)
     Xam, Yamc = procesar_blob(amarillo_blobs)
     Xaz, Yazc = procesar_blob(azul_blobs)
 
     packet = bytearray([201, Xp, Ypc, 202, Xam, Yamc, 203, Xaz, Yazc])
     uart.write(packet)
-    # SIN print() en producción.
+    if BRING_UP:
+        print(list(packet))   # bring-up: ver en consola que salen paquetes válidos
+    # En competencia (BRING_UP=False) NO imprime — el print baja los fps.

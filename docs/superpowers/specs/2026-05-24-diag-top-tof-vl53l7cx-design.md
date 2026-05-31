@@ -19,6 +19,15 @@ related:
 
 # diag_top_tof — diseño aprobado
 
+> **🔧 ACTUALIZACIÓN 2026-05-30 (registro de diseño histórico).** Este spec es de
+> cuando solo el ToF frontal U2 estaba vivo. Desde el bodge de Enzo (2026-05-30)
+> los **4 ToF cuelgan del bus `Wire`** con LP individual (pines {9,10,11,12},
+> activo-alto) y **enumeran a 0x2A/0x2B/0x2C/0x2D** — NO 0x52/54/56/58 como dice
+> el cuerpo. Mapeo de posición confirmado: TOF0=frente, TOF1=atrás, TOF2=derecha,
+> TOF3=izquierda. Diagnósticos vigentes: `diag_top_tof_census`,
+> `diag_top_tof_quad_live`, `diag_top_tof_zonemap`. Ver
+> `journal/2026-05-31-top-tof-posiciones-y-orientacion-zonas.md`.
+
 > Aprobado por Gustavo (2026-05-24). Sketch de **diagnóstico de hardware**
 > standalone para validar que el sensor VL53L7CX frontal de la placa TOP
 > responde y mide. **No modifica el firmware de competencia** — sigue el

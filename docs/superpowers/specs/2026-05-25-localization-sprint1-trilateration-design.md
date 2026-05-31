@@ -21,6 +21,17 @@ related:
 
 # Localización Sprint 1 — trilateración geométrica directa
 
+> **🔧 ACTUALIZACIÓN 2026-05-30/31 (registro de diseño histórico).** (1) El
+> riesgo R1 ("bodge XSHUT no se completa → solo 2 ToF") quedó **MITIGADO**: los
+> 4 ToF enumeran en `Wire` (LP {9,10,11,12}, dir 0x2A..0x2D, banco 2026-05-30).
+> (2) **Corrección de mapeo**: el array `TOF_MOUNT_ANGLE_DEG` era `{0,180,90,270}`
+> y cruzaba derecha/izquierda; el mapeo físico real es TOF0=frente(0°),
+> TOF1=atrás(180°), TOF2=derecha(270°), TOF3=izquierda(90°) → corregido a
+> `{0,180,270,90}` en `pinout_common.h`. (3) Pendiente: orientación interna de
+> las zonas de cada sensor (el izquierdo es de otro fabricante) para el barrido
+> lidar-360 — ver `diag_top_tof_zonemap` y
+> `journal/2026-05-31-top-tof-posiciones-y-orientacion-zonas.md`.
+
 > Aprobado por Gustavo (2026-05-25). Primer sprint de localización XY + heading
 > del robot en la cancha de RCJ Soccer Open 2026, usando los 4 TOF VL53L7CX
 > cardinales + heading del BNO055. **Baseline simple (±2-3 cm)** que se complementa

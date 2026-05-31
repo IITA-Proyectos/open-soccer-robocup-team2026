@@ -17,8 +17,12 @@ namespace iitasoccer {
 constexpr uint16_t LOCALIZATION_TOF_NO_READING = 0xFFFF;
 
 // Datos crudos que necesita la trilateracion.
+// Orden de los TOF (confirmado en banco 2026-05-31, ver docs/CONVENCION-EJES-ROBOT.md):
+//   [0]=FRENTE  [1]=ATRAS  [2]=DERECHA  [3]=IZQUIERDA   (derecha/izq = primera persona)
+// (Antes este comentario decia "[2]=izq, [3]=der" — estaba invertido respecto
+//  al hardware real; los angulos en tof_mount_angle_deg se corrigieron junto.)
 struct LocalizationInputs {
-    uint16_t tof_distance_mm[4];   // [0]=frontal, [1]=trasero, [2]=izq, [3]=der
+    uint16_t tof_distance_mm[4];   // [0]=frente, [1]=atras, [2]=derecha, [3]=izquierda
     bool     tof_valid[4];          // false si lectura era invalida o ruidosa
     int16_t  bno_heading_centideg; // -18000..18000 (= +-180 grados x 100)
 };
@@ -28,7 +32,7 @@ struct LocalizationConfig {
     uint16_t field_width_mm;        // 2430 — eje X de la cancha
     uint16_t field_height_mm;       // 1820 — eje Y de la cancha
     int16_t  bno_offset_centideg;   // calibrado al boot (heading apuntando al arco rival)
-    uint16_t tof_mount_angle_deg[4]; // {0, 180, 90, 270} = {front, back, izq, der}
+    uint16_t tof_mount_angle_deg[4]; // {0,180,270,90} = {frente,atras,derecha,izquierda}
     uint16_t outlier_threshold_mm;  // umbral inconsistencia entre TOFs del mismo eje
     // Pose anterior para el outlier rejection por consistencia. Si es la primera
     // llamada, pasar {0, 0, 0, 0, false}.

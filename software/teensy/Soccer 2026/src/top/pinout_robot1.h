@@ -16,56 +16,84 @@
 namespace iitasoccer {
 
 // ============================================================
-// XSHUT (LPn) de los 4 TOFs — bodge físico de Enzo
+// LP (XSHUT) de los 4 TOFs — bodge físico de Enzo (CONFIRMADO en banco)
 // ============================================================
-// PLACEHOLDER hasta confirmar con Enzo después del bodge. Estos pines
-// están libres en rev 1.0 según `01-pinout-y-hardware.md` (NC en el
-// schematic, sin conflicto con otros usos). Si Enzo soldó otros pines,
-// CAMBIAR ACÁ y reflashear.
+// Recableado 2026-05-30: los 4 ToF cuelgan del MISMO bus (Wire, 18/19) y
+// la pata LP de cada uno está cableada por bodge a un pin del Teensy
+// (reusando la traza que iba a INT, anulando INT). Esto liberó Wire1
+// (24/25) para la placa DOWN.
 //
-// Mapeo a slots físicos del PCB:
-//   [0] = TOF frontal  (slot U2 del schematic)
-//   [1] = TOF trasero  (slot U3 del schematic)
-//   [2] = TOF izquierdo (slot U5 del schematic)
-//   [3] = TOF derecho  (slot U17 del schematic)
+// Pines CONFIRMADOS en banco (diag_top_tof_census, R1, 2026-05-30):
+//   LP = {9, 10, 11, 12}, polaridad ACTIVO-ALTO (HIGH = ToF despierto).
+//   Los 4 ToF enumeran a 0x2A/0x2B/0x2C/0x2D. (La hipótesis previa tenía
+//   22 en vez de 10 — corregido.)
+// Ver journal/2026-05-30-top-tof-4-en-bus-unico-enumeracion-ok.md.
+//
+// Mapeo pin -> posición física CONFIRMADO en banco (2026-05-30, Gustavo):
+//   [0] = LP pin 9  → dir 0x2A → FRENTE
+//   [1] = LP pin 10 → dir 0x2B → ATRÁS
+//   [2] = LP pin 11 → dir 0x2C → DERECHA
+//   [3] = LP pin 12 → dir 0x2D → IZQUIERDA
+// El ángulo de montaje de cada índice está en pinout_common.h
+// (TOF_MOUNT_ANGLE_DEG = {0,180,270,90}, ya alineado con este mapeo).
+//
+// ⚠️ PENDIENTE distinto (no es la posición): la ORIENTACIÓN INTERNA DE LAS ZONAS
+// de cada sensor. El ToF IZQUIERDO es de otro fabricante y se montó mirando
+// hacia abajo → puede tener arriba/abajo y/o izq/der de su grilla invertidos.
+// Verificar con diag_top_tof_zonemap. Para el barrido tipo lidar-360 esto
+// importa; para el promedio de zonas actual no. Ver journal 2026-05-31.
 constexpr int PIN_TOF_XSHUT[4] = {
-    9,   // PLACEHOLDER — TOF[0] frontal U2
-    11,  // PLACEHOLDER — TOF[1] trasero U3
-    12,  // PLACEHOLDER — TOF[2] izquierdo U5
-    22,  // PLACEHOLDER — TOF[3] derecho U17
+    9,   // TOF[0] FRENTE     (dir 0x2A)
+    10,  // TOF[1] ATRÁS      (dir 0x2B)
+    11,  // TOF[2] DERECHA    (dir 0x2C)
+    12,  // TOF[3] IZQUIERDA  (dir 0x2D)
 };
 
 // ============================================================
-// Direcciones I²C asignadas tras enumeración XSHUT
+// Direcciones I²C asignadas tras enumeración LP
 // ============================================================
-// Default del L7CX es 0x29. Cada TOF se levanta uno por uno con XSHUT y
-// se le asigna una dirección distinta. El módulo sensors_tof.cpp (Sprint B
-// futuro) hace esa enumeración usando este array.
+// Default del L7CX es 0x29. Al boot se duermen todos los LP, se despierta
+// uno por uno y a cada ToF se le asigna una dirección distinta. NINGUNO
+// queda en 0x29 (el bodge controla los 4 LP). El módulo sensors_tof.cpp
+// (HAL Sprint B, pendiente) hará esa enumeración usando este array.
+//
+// PROCEDIMIENTO OBLIGATORIO al probar/enumerar: las direcciones I²C de los
+// VL53L7CX PERSISTEN mientras tengan 3V3 (un reset del Teensy NO las borra).
+// Hay que QUITAR ENERGÍA Y REPONERLA (power-cycle) tras flashear, o el bus
+// arranca sucio. Ver el journal del 2026-05-30.
 constexpr uint8_t TOF_I2C_ADDR_ASSIGNED[4] = {
-    0x29,  // TOF[0] frontal — mantiene default
-    0x2A,  // TOF[1] trasero — reasignado
-    0x2B,  // TOF[2] izquierdo — reasignado
-    0x2C,  // TOF[3] derecho — reasignado
+    0x2A,  // TOF[0]
+    0x2B,  // TOF[1]
+    0x2C,  // TOF[2]
+    0x2D,  // TOF[3]
 };
 
 // ============================================================
 // Feature flags — qué sensores están físicamente instalados HOY en R1
 // ============================================================
-// Actualizar cuando Enzo termine de soldar cada slot. Cambiar de 0 a 1
-// el flag correspondiente cuando el sensor esté soldado + verificado.
+// Los 4 ToF fijos están soldados y ENUMERAN en banco (2026-05-30). Quedan
+// en 1 hasta confirmar RANGING real con diag_top_tof_quad_live + mapear
+// posición. (Ranging != solo responder I²C.)
 #define ROBOT_HAS_TOF_FRONT 1
 #define ROBOT_HAS_TOF_BACK  1
-#define ROBOT_HAS_TOF_LEFT  0
-#define ROBOT_HAS_TOF_RIGHT 0
+#define ROBOT_HAS_TOF_LEFT  1
+#define ROBOT_HAS_TOF_RIGHT 1
 #define ROBOT_HAS_OTOS      0   // R1 (arquero) sin OTOS
 
 // Cantidad de TOFs activos (calcular a mano según los HAS_* arriba).
-// Si cambian los flags, recalcular este valor.
-constexpr int NUM_TOF_ACTIVE = 2;
+// 4 ToF fijos confirmados enumerando. Ver NUM_TOF / NUM_TOF_MAX en
+// pinout_common.h para el plan de escalado a 6 (4 fijos + 2 móviles).
+constexpr int NUM_TOF_ACTIVE = 4;
 
 // ============================================================
 // Dipswitch de rol (idéntico ambos robots por hardware)
 // ============================================================
+// ⚠️ CONFLICTO DE PIN (detectado 2026-05-30): el banco confirmó que el pin
+// 10 controla un LP de ToF (PIN_TOF_XSHUT[1]=10). Pero acá el dipswitch de
+// rol también está en 10. NO pueden coexistir. Hay que reubicar la lectura
+// de rol a otro pin libre (p.ej. 22/23, que quedaron libres al confirmarse
+// que el LP NO usa el 22). Decisión de hardware -> Enzo. Hasta resolverlo,
+// la lectura de rol por dipswitch es NO confiable en este pin.
 constexpr int PIN_ROLE_DIPSWITCH = 10;
 
 }  // namespace iitasoccer

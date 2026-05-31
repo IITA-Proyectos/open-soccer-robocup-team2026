@@ -49,7 +49,13 @@ area: vision
 4. **Homografía** (`H_MATRIX`) — calibrar con 4 puntos conocidos en el suelo
    (la **trasera con los suyos, DETRÁS** del robot). Procedimiento en
    `cameraFront-pack/04-calibracion-lab-y-homografia.md`. Validar error <10% a 30/50/80/100 cm.
-5. **`HMIRROR`/`VFLIP`** — verificar con el preview del IDE según el montaje real.
+5. **`HMIRROR`/`VFLIP`** — las cámaras están **montadas rotadas 180°** (conector arriba):
+   `HMIRROR=True + VFLIP=True` (juntos = giro de 180° de la imagen) compensa ese montaje.
+   Verificar con el **preview** del IDE que la imagen quede **derecha**; si queda espejada/al
+   revés, ajustar el par. **OJO — son DOS rotaciones distintas, no confundir:**
+   - El giro de la **imagen** por el montaje 180° → acá, en el script (HMIRROR/VFLIP).
+   - El giro de **coordenadas** de la trasera por mirar hacia atrás → lo hace el **TOP**
+     (`cameras_fusion.cpp:25-30`, cam_id=1). Las dos hacen falta; no quitar ninguna.
 
 ## D. Validar la cadena cámara → TOP
 

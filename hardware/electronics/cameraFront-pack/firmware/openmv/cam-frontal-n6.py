@@ -40,8 +40,11 @@ UART_BAUD = 19200       # debe coincidir con cameras_runtime.cpp del TOP (no cam
 
 EXPOSURE_US = 37000     # ⚠️ RE-MEDIR en la N6 (global shutter)
 
-HMIRROR = True          # ⚠️ VERIFICAR con preview del IDE
-VFLIP   = True          # ⚠️ VERIFICAR con preview del IDE
+# ⚠️ Montaje físico rotado 180° (conector arriba) → HMIRROR+VFLIP=True (juntos =
+# giro de 180° de la imagen) COMPENSA ese montaje. Confirmar con el preview del
+# IDE que la imagen quede DERECHA; si queda espejada/al revés, ajustar este par.
+HMIRROR = True
+VFLIP   = True
 
 # ⚠️ RECALIBRAR H_MATRIX para la cámara frontal (4 puntos conocidos en el suelo).
 # Esta es la H del script genérico viejo — placeholder de desarrollo.

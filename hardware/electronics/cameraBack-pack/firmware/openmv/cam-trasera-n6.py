@@ -40,8 +40,13 @@ UART_BAUD = 19200       # debe coincidir con cameras_runtime.cpp del TOP (no cam
 
 EXPOSURE_US = 37000     # ⚠️ RE-MEDIR en la N6 (global shutter)
 
-HMIRROR = True          # ⚠️ VERIFICAR — probablemente distinto al frontal (montaje espejado)
-VFLIP   = True          # ⚠️ VERIFICAR con preview del IDE
+# ⚠️ Montaje físico rotado 180° (conector arriba) → HMIRROR+VFLIP=True COMPENSA
+# ese montaje (giro de 180° de la imagen). Confirmar con el preview que quede
+# DERECHA (puede diferir del frontal si quedó espejada por el montaje).
+# OJO: la rotación por "mirar hacia ATRÁS" NO se hace acá — la hace el TOP en
+# cameras_fusion.cpp (cam_id=1). Acá SOLO se corrige la orientación de la imagen.
+HMIRROR = True
+VFLIP   = True
 
 # ⚠️ La trasera necesita SU PROPIA H_MATRIX (4 puntos en el suelo DETRÁS del robot).
 # Esta es la del script genérico viejo — NO sirve para la trasera. Recalibrar.

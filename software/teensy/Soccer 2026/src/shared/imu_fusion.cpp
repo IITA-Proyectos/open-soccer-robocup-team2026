@@ -61,6 +61,8 @@ void imu_fusion_init(ImuFusion& f) {
         s.request_reset = false;
         s.reseed_heading = 0.0f;
         s.seen          = false;
+        s.rest_prev_heading = 0.0f;
+        s.rest_tracking = false;
     }
     f.fused_heading_deg = 0.0f;
     f.fused_valid       = false;
@@ -150,34 +152,45 @@ void imu_fusion_update(ImuFusion& f,
         at_rest = (present_cnt > 0 && present_cnt == still_cnt);
     }
 
-    // En reposo medimos cuánto se aparta cada sensor del consenso (el otro, si
-    // está sano). Un desvío sostenido = ese sensor está driftando => reset.
-    static_assert(IMU_FUSION_N == 2, "drift loop asume 2 sensores");
+    // Drift de un sensor = su heading se MUEVE estando el robot quieto. Lo
+    // medimos vs SU PROPIO heading del ciclo anterior (asimétrico): el que se
+    // queda quieto no driftea, el que se va sí. (Comparar "vs el otro" era
+    // simétrico y marcaba a los dos ante un simple offset de montaje.)
+    // 1) Actualizar el drift_dps de cada sensor y hallar el MÁS estable.
+    int   most_stable = -1;
+    float best_rate   = 1e9f;
     for (int i = 0; i < IMU_FUSION_N; ++i) {
         ImuSensorState& s = f.s[i];
-        if (!at_rest || !sensor_cfg[i].enabled || !in[i].present
-            || s.health == ImuHealth::DEAD) {
-            // fuera de reposo: el acumulador de drift se enfría de a poco.
-            if (s.drift_accum_ms > dt_ms) s.drift_accum_ms -= dt_ms; else s.drift_accum_ms = 0;
-            continue;
+        const bool usable = sensor_cfg[i].enabled && in[i].present
+                            && s.health != ImuHealth::DEAD;
+        if (at_rest && usable) {
+            if (s.rest_tracking && dt_s > 0.0f) {
+                const float wander = std::fabs(imu_diff(s.heading_deg, s.rest_prev_heading));
+                s.drift_dps = 0.9f * s.drift_dps + 0.1f * (wander / dt_s);
+            }
+            s.rest_prev_heading = s.heading_deg;
+            s.rest_tracking = true;
+            if (s.drift_dps < best_rate) { best_rate = s.drift_dps; most_stable = i; }
+        } else {
+            s.rest_tracking = false;
+            s.drift_dps *= 0.99f;   // fuera de reposo, enfriar la estimación
         }
-        // velocidad de cambio del heading en reposo = |drift| instantáneo
-        const int other = 1 - i;
-        // referencia: el heading del OTRO sensor si está sano; si no, su propio histórico
-        // (acá medimos cuánto se aparta este sensor del consenso a lo largo del reposo)
-        float drift_rate = 0.0f;
-        if (f.s[other].health == ImuHealth::OK && in[other].present) {
-            drift_rate = imu_diff(s.heading_deg, f.s[other].heading_deg);  // desvío vs sano
-            // lo expresamos como °/s dividiendo por una ventana nominal de 1 s
-            // (no integramos: usamos la magnitud del desvío sostenido)
-        }
-        // EMA del desvío
-        s.drift_dps = 0.9f * s.drift_dps + 0.1f * std::fabs(drift_rate);
-        if (s.drift_dps > cfg.drift_reset_dps && f.s[other].health == ImuHealth::OK) {
+    }
+    // 2) Flag de reset: sensor driftando sostenido, habiendo un sensor MÁS
+    //    estable y sano para re-sembrarlo. Si TODOS driftean, no se puede
+    //    arreglar sin referencia absoluta (Capa 3) -> no se marca ninguno.
+    for (int i = 0; i < IMU_FUSION_N; ++i) {
+        ImuSensorState& s = f.s[i];
+        const bool usable = sensor_cfg[i].enabled && in[i].present
+                            && s.health != ImuHealth::DEAD;
+        const bool ref_ok = (most_stable >= 0 && most_stable != i
+                             && f.s[most_stable].drift_dps < cfg.drift_reset_dps
+                             && f.s[most_stable].health != ImuHealth::DEAD);
+        if (at_rest && usable && s.drift_dps > cfg.drift_reset_dps && ref_ok) {
             if (s.drift_accum_ms < 0xFFFFFFFF - dt_ms) s.drift_accum_ms += dt_ms;
             if (s.drift_accum_ms >= cfg.drift_reset_ms) {
                 s.request_reset  = true;
-                s.reseed_heading = f.s[other].heading_deg;  // re-sembrar con el sano
+                s.reseed_heading = f.s[most_stable].heading_deg;  // del más estable
             }
         } else {
             if (s.drift_accum_ms > dt_ms) s.drift_accum_ms -= dt_ms; else s.drift_accum_ms = 0;
@@ -246,7 +259,9 @@ void imu_fusion_clear_reset(ImuFusion& f, int i) {
     s.drift_accum_ms = 0;
     s.glitch_streak  = 0;
     s.glitched       = false;
-    s.heading_deg    = s.reseed_heading;  // arranca alineado con el sano
+    s.heading_deg    = s.reseed_heading;  // arranca alineado con el más estable
+    s.rest_prev_heading = s.reseed_heading;
+    s.rest_tracking  = false;
     s.seen           = false;             // re-ceba el glitch-test
     s.miss_count     = 0;
     s.health         = ImuHealth::DEGRADED;  // sube a OK cuando recalibre

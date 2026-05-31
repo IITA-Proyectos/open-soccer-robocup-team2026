@@ -56,6 +56,11 @@ float sensors_imu_get_disagreement_deg();
 // Recalibra el heading inicial (zero offset) usando el IMU que esté OK.
 void sensors_imu_recalibrate_zero();
 
+// Fuerza guardar el perfil de calibración de cada BNO en EEPROM (Capa 2).
+// Solo guarda el de un chip si ya está fully-calibrated. Devuelve true si
+// guardó al menos uno. El tick también auto-guarda solo al detectar calib.
+bool sensors_imu_save_calibration();
+
 // Diagnóstico:
 bool sensors_imu_left_ready();
 bool sensors_imu_right_ready();

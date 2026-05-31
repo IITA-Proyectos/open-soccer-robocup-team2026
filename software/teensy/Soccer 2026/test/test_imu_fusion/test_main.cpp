@@ -148,16 +148,32 @@ void test_drift_requests_reset_and_reseed() {
     ImuFusion f; imu_fusion_init(f);
     ImuFusionCfg cfg = imu_fusion_default_cfg();
     ImuSensorCfg sc[2] = { imu_fusion_default_sensor_cfg(), imu_fusion_default_sensor_cfg() };
-    // robot en REPOSO (gyro 0). sensor0 sano a 0°; sensor1 sano pero desviado 5°
-    // de forma sostenida -> se lo flaggea para reset, sembrando con sensor0 (0°).
-    for (int i = 0; i < 70; ++i) {
-        ImuSample in[2] = { mk(true, 0.0f, 0.0f, 3), mk(true, 5.0f, 0.0f, 3) };
-        imu_fusion_update(f, cfg, sc, in, 0.1f);  // dt 100ms -> 70 ciclos = 7 s
+    // robot en REPOSO (gyro ~0). sensor0 estable a 0°; sensor1 DRIFTA: su heading
+    // se va solo ~1°/s (drift real, no un offset fijo). Tras varios segundos
+    // sostenidos, sensor1 se marca para reset, sembrado con el estable (~0).
+    float h1 = 0.0f;
+    for (int i = 0; i < 90; ++i) {        // dt 100ms x 90 = 9 s
+        h1 += 0.1f;                       // +1 grado/s
+        ImuSample in[2] = { mk(true, 0.0f, 0.0f, 3), mk(true, h1, 0.0f, 3) };
+        imu_fusion_update(f, cfg, sc, in, 0.1f);
     }
     TEST_ASSERT_TRUE(f.s[1].request_reset);
-    TEST_ASSERT_FLOAT_WITHIN(1.0f, 0.0f, f.s[1].reseed_heading);
-    // y el sensor0 sano NO se marca para reset.
     TEST_ASSERT_FALSE(f.s[0].request_reset);
+    TEST_ASSERT_FLOAT_WITHIN(2.0f, 0.0f, f.s[1].reseed_heading);  // del estable
+}
+
+void test_constant_offset_is_not_drift() {
+    // Un offset CONSTANTE (mismo valor cada ciclo) NO es drift: ninguno se mueve
+    // en el tiempo. NO debe marcarse reset (eso es trabajo de mount_offset).
+    ImuFusion f; imu_fusion_init(f);
+    ImuFusionCfg cfg = imu_fusion_default_cfg();
+    ImuSensorCfg sc[2] = { imu_fusion_default_sensor_cfg(), imu_fusion_default_sensor_cfg() };
+    for (int i = 0; i < 90; ++i) {
+        ImuSample in[2] = { mk(true, 0.0f, 0.0f, 3), mk(true, 5.0f, 0.0f, 3) };
+        imu_fusion_update(f, cfg, sc, in, 0.1f);
+    }
+    TEST_ASSERT_FALSE(f.s[0].request_reset);
+    TEST_ASSERT_FALSE(f.s[1].request_reset);
 }
 
 void test_clear_reset_realigns() {
@@ -197,6 +213,7 @@ int main() {
     RUN_TEST(test_fast_rotation_not_glitch);
     RUN_TEST(test_mount_offset_applied);
     RUN_TEST(test_drift_requests_reset_and_reseed);
+    RUN_TEST(test_constant_offset_is_not_drift);
     RUN_TEST(test_clear_reset_realigns);
     RUN_TEST(test_disabled_sensor_ignored);
     return UNITY_END();

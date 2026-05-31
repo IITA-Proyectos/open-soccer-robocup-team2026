@@ -71,15 +71,17 @@ struct ImuSample {
 // Estado por sensor (persiste entre ticks; lo maneja el módulo).
 struct ImuSensorState {
     ImuHealth health;
-    float     heading_deg;      // último heading bueno (con mount_offset aplicado)
-    float     drift_dps;        // estimación EMA del drift en reposo
-    uint32_t  drift_accum_ms;   // cuánto tiempo lleva driftando feo
-    uint16_t  miss_count;       // ciclos consecutivos sin present
-    uint8_t   glitch_streak;    // glitches consecutivos
-    bool      glitched;         // hubo glitch en el ciclo ACTUAL (excluir de fusión)
-    bool      request_reset;    // la capa HW debe re-inicializar este sensor
-    float     reseed_heading;   // al re-init, sembrar este heading (del sano)
-    bool      seen;             // alguna vez estuvo present (ceba el glitch-test)
+    float     heading_deg;       // último heading bueno (con mount_offset aplicado)
+    float     drift_dps;         // EMA del wander en reposo (°/s) — vs SÍ MISMO
+    uint32_t  drift_accum_ms;    // cuánto tiempo lleva driftando feo
+    uint16_t  miss_count;        // ciclos consecutivos sin present
+    uint8_t   glitch_streak;     // glitches consecutivos
+    bool      glitched;          // hubo glitch en el ciclo ACTUAL (excluir de fusión)
+    bool      request_reset;     // la capa HW debe re-inicializar este sensor
+    float     reseed_heading;    // al re-init, sembrar este heading (del más estable)
+    bool      seen;              // alguna vez estuvo present (ceba el glitch-test)
+    float     rest_prev_heading; // heading del ciclo anterior estando en reposo
+    bool      rest_tracking;     // venía en reposo el ciclo anterior
 };
 
 struct ImuFusion {

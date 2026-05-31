@@ -827,7 +827,7 @@ loop():
         imu_dual_tick()         # ~600 µs (2 I2C lecturas paralelas + consistency)
 
     if since_tof_tick >= 33 ms:    # 30 Hz
-        tof_quad_tick()         # ~6 ms (4 lecturas I2C en 2 buses paralelos)
+        tof_quad_tick()         # ~12 ms (4 lecturas I2C en 1 bus Wire, recableado 2026-05-30)
 
     # Fusión
     if since_ekf_tick >= 10 ms:
@@ -865,7 +865,7 @@ Esto es **lo mejor alcanzable con el protocolo OpenMV viejo**. Migración a baud
 |-------|--------|
 | ToF mide (interno) | ~16 ms (60 Hz interno) |
 | Próximo tick de `tof_quad_tick()` (peor caso) | < 33 ms |
-| I2C transferencia | ~3 ms × 2 buses paralelos |
+| I2C transferencia | ~3 ms × 4 ToF en 1 bus `Wire` (recableado 2026-05-30) |
 | Trilateración + EKF | ~1 ms |
 | Snapshot + TX | ~3 ms |
 | **Total peor caso** | **~55 ms** |

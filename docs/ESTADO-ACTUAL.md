@@ -250,29 +250,28 @@ nativo, pero ya no es el único camino. Ver
   Ver `journal/2026-05-29-auditoria-top-pre-incheon-top.md` (auditoria completa
   + temas-a-analizar en formato coach para los hallazgos dependientes de HW).
 
-### Resuelto 2026-05-25
-- **Verificado forensicamente que los XSHUT/LPn de los 4 TOFs NO están
-  ruteados en TOP rev 1.0** (NC flags explícitos en SCH, 0 nets en PCB
-  netlist). Implicancia: máximo 2 ToFs sin rework (1 por bus I²C).
-  `config_top.h:68` con `PIN_TOF_XSHUT[4] = {2,3,4,5}` documentado como
-  ficción heredada (banner agregado, código vivo no lo usa). Wishlist
-  de TOP rev 1.1 (post-Incheon) capturado con 7 items
-  (XSHUT + agujeros cámaras + reguladores fuera del borde + conectores
-  keyed + LEDs OK + voltímetro + STM32 integrado). Decisión Incheon
-  (2 ToFs vs 4 con bodge) escalada a TASK-033. Ver journal
-  `2026-05-25-top-xshut-no-routed-hallazgo-forense.md` + research
-  `research/in-progress/2026-05-25-top-board-rev-1.1-wishlist.md`.
+### Resuelto 2026-05-25 → SUPERADO por bodge 2026-05-30
+- **Verificado forensicamente que los XSHUT/LPn de los 4 TOFs NO estaban
+  ruteados en TOP rev 1.0 de fábrica** (NC flags explícitos en SCH, 0 nets en
+  PCB netlist). Implicancia de entonces: máximo 2 ToFs sin rework.
+  ⚠️ **SUPERADO el 2026-05-30**: el bodge manual de Enzo cableó los 4 LP a
+  pines del Teensy {9,10,11,12} y movió los 4 ToF a `Wire` — los 4 enumeran
+  (confirmado en banco). Ver el "Avance 2026-05-30" arriba. El wishlist de TOP
+  rev 1.1 (post-Incheon) sigue válido (rutear el XSHUT en el PCB elimina el
+  bodge frágil). Ver `journal/2026-05-30-top-tof-4-en-bus-unico-enumeracion-ok.md`.
 
 ### Deudas conocidas (resumen — la canónica está en `FUENTES-DE-VERDAD.md`)
 
-- **TOP rev 1.0 — XSHUT/LPn de los 4 slots ToF no ruteados.** Sin rework
-  hardware el máximo soportado es 2 ToFs (1 por bus I²C). Decisión
-  pendiente para Incheon: ver TASK-033 (2 ToFs sin rework vs 4 con bodge
-  de Enzo). Solución de fondo: TOP rev 1.1 post-Incheon
-  (`research/in-progress/2026-05-25-top-board-rev-1.1-wishlist.md`).
-- HAL Sprint B (extender sensors_tof.cpp para enumerar NUM_TOF_ACTIVE
-  TOFs con XSHUT secuencial al boot). Bloqueado por TASK-038
-  (confirmar pines reales del bodge).
+- ~~**TOP rev 1.0 — XSHUT/LPn de los 4 slots ToF no ruteados**~~ → **RESUELTO
+  por bodge de Enzo (2026-05-30)**: los 4 ToF enumeran en `Wire` (LP pines
+  {9,10,11,12}). TASK-033 (cuántos ToF) decidida por los hechos: 4. Solución de
+  fondo (rutear en PCB) queda para TOP rev 1.1 post-Incheon.
+- **HAL Sprint B**: extender `sensors_tof.cpp` para enumerar los 4 ToF al boot
+  (hoy lee 1). Ya NO bloqueado por TASK-038 (pines confirmados en banco). Falta:
+  el código de enumeración + confirmar ranging (`diag_top_tof_quad_live`) +
+  mapear dirección→posición física.
+- **Conflicto pin 10**: el bodge usa el pin 10 como LP de ToF, pero ese pin era
+  el dipswitch de rol → reubicar la lectura de rol (anotado en pinout_robot1.h).
 - HAL para CENTRAL (replicar el patrón en src/central/config_central.h).
   Sprint futuro.
 

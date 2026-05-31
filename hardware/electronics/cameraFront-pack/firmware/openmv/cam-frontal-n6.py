@@ -38,9 +38,9 @@ from pyb import UART
 # ============================================================================
 # ★ CONFIG — BRING-UP / CALIBRACIÓN ★
 # ============================================================================
-BRING_UP  = True        # True = autos ON (ver imagen para calibrar). False = competencia.
+BRING_UP = True        # True = autos ON (ver imagen para calibrar). False = competencia.
 
-CAM_ID    = 0           # 0 = FRONTAL (informativo; el TOP distingue por puerto UART)
+CAM_ID = 0           # 0 = FRONTAL (informativo; el TOP distingue por puerto UART)
 UART_PORT = 3           # ⚠️ CONFIRMAR en N6 — ¿cuál UART va al Serial3 del Teensy?
 UART_BAUD = 19200       # debe coincidir con cameras_runtime.cpp del TOP (no cambiar)
 
@@ -48,25 +48,25 @@ EXPOSURE_US = 37000     # ⚠️ solo se usa si BRING_UP=False. RE-MEDIR en la N
 
 # Montaje físico 180° (conector arriba) → HMIRROR+VFLIP=True compensa (verificar preview).
 HMIRROR = True
-VFLIP   = True
+VFLIP = True
 
 # ⚠️ RECALIBRAR H_MATRIX (4 puntos conocidos en el suelo). Placeholder de desarrollo.
 H_MATRIX = [
-    [ 4.49341044e-02, -9.48228474e-01,  7.78932109e+02],
+    [4.49341044e-02, -9.48228474e-01,  7.78932109e+02],
     [-2.39913185e+00, -5.65934886e-02,  3.91128921e+02],
     [-1.81344856e-03,  1.15408531e-01,  1.00000000e+00],
 ]
-CAM_HEIGHT_CM  = 18.7                    # ⚠️ MEDIR altura de la cámara sobre el suelo
+CAM_HEIGHT_CM = 18.7                    # ⚠️ MEDIR altura de la cámara sobre el suelo
 BALL_RADIUS_CM = 13.5 / (2 * math.pi)    # radio pelota = circunferencia / 2π
 
 # ⚠️ RECALIBRAR los 3 thresholds LAB en la N6 (sensor distinto al H7):
-NARANJA_THRESHOLD  = (21, 67, 18, 79, -32, 127)    # pelota naranja  → header 201
+NARANJA_THRESHOLD = (21, 67, 18, 79, -32, 127)    # pelota naranja  → header 201
 AMARILLO_THRESHOLD = (17, 70, -27, 14, 38, 111)    # arco amarillo   → header 202
-AZUL_THRESHOLD     = (4, 36, -13, 57, -64, -4)     # arco azul       → header 203
+AZUL_THRESHOLD = (4, 36, -13, 57, -64, -4)     # arco azul       → header 203
 
-NARANJA_PIXELS_MIN  = 20
+NARANJA_PIXELS_MIN = 20
 AMARILLO_PIXELS_MIN = 600
-AZUL_PIXELS_MIN     = 300
+AZUL_PIXELS_MIN = 300
 
 SENTINEL_X = 0
 SENTINEL_Y_CODED = 0    # → Y = 0-100 = -100 en el parser TOP → is_visible = False
@@ -96,7 +96,7 @@ clock = time.clock()
 # ============================================================================
 # TRANSFORMACIÓN pixel → coord física (con clamp anti-crash)
 # ============================================================================
-def transformar(u, v):
+def transformar(u,v):
     H = H_MATRIX
     denom = H[2][0] * u + H[2][1] * v + H[2][2]
     if abs(denom) < 1e-6:
@@ -113,10 +113,10 @@ def transformar(u, v):
     Y = max(-100, min(100, Y))
 
     Y_coded = int(Y) + 100                       # ∈ [0, 200]
-    X_int   = int(X)
+    X_int = int(X)
     if X_int == 0 and Y_coded == 0:              # no colisionar con el sentinel
         X_int = 1
-    X_int   = max(0, min(255, X_int))            # ⚠️ clamp uint8 final → anti-crash
+    X_int = max(0, min(255, X_int))            # ⚠️ clamp uint8 final → anti-crash
     Y_coded = max(0, min(255, Y_coded))
     return X_int, Y_coded
 
@@ -135,17 +135,11 @@ while True:
     clock.tick()
     img = sensor.snapshot()
 
-    naranja_blobs  = img.find_blobs([NARANJA_THRESHOLD],
-                                    pixels_threshold=NARANJA_PIXELS_MIN,
-                                    area_threshold=NARANJA_PIXELS_MIN, merge=True)
-    amarillo_blobs = img.find_blobs([AMARILLO_THRESHOLD],
-                                    pixels_threshold=AMARILLO_PIXELS_MIN,
-                                    area_threshold=AMARILLO_PIXELS_MIN, merge=True)
-    azul_blobs     = img.find_blobs([AZUL_THRESHOLD],
-                                    pixels_threshold=AZUL_PIXELS_MIN,
-                                    area_threshold=AZUL_PIXELS_MIN, merge=True)
+    naranja_blobs = img.find_blobs([NARANJA_THRESHOLD], pixels_threshold=NARANJA_PIXELS_MIN, area_threshold=NARANJA_PIXELS_MIN, merge=True)
+    amarillo_blobs = img.find_blobs([AMARILLO_THRESHOLD], pixels_threshold=AMARILLO_PIXELS_MIN, area_threshold = AMARILLO_PIXELS_MIN, merge=True)
+    azul_blobs = img.find_blobs([AZUL_THRESHOLD], pixels_threshold=AZUL_PIXELS_MIN, area_threshold = AZUL_PIXELS_MIN, merge = True)
 
-    Xp,  Ypc  = procesar_blob(naranja_blobs)
+    Xp, Ypc = procesar_blob(naranja_blobs)
     Xam, Yamc = procesar_blob(amarillo_blobs)
     Xaz, Yazc = procesar_blob(azul_blobs)
 

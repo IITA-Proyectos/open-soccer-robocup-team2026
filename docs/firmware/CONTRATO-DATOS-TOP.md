@@ -219,7 +219,7 @@ Frame completo TOP→CENTRAL: 27 + 7 overhead = **34 bytes**.
 ### 3.5 Frecuencia y timing
 
 - Frecuencia de emisión: **100 Hz** (`main_top.cpp:129`: `if (g_since_snapshot >= 10)`).
-- Enlace: Serial2 a **230400 baud, 8N1** (`comm_central.cpp:16`).
+- Enlace: **Serial5** a **230400 baud, 8N1** (`comm_central.cpp`). *(Corregido 2026-05-29: era Serial2 7/8 → TOP→CENTRAL es Serial5 20/21.)*
 - Tiempo de transmisión de un frame de 30 bytes a 230400 baud:
   `30 × 10 bits / 230400 bps ≈ 1.3 ms`.
 - SEQ: contador 0–255, envuelve; se puede usar para detectar pérdidas.
@@ -402,16 +402,16 @@ ocupar uno de los bits reservados de `flags` (bits 4-7) o incrementar
 setup():
   sensors_imu_init()      ← BLOQUEANTE ~3-5 s (calibración BNO055)
   sensors_tof_init()      ← no bloqueante (stub)
-  cameras_init()          ← abre Serial3 + Serial5
+  cameras_init()          ← abre Serial3 (cam frontal) + Serial7 (cam trasera)
   comm_down_init()        ← abre Serial1
   comm_arbiter_init()     ← abre Serial4
-  comm_central_init()     ← abre Serial2
+  comm_central_init()     ← abre Serial5  (TOP→CENTRAL; corregido, era Serial2)
 
 loop() (no tiene period fijo — corre tan rápido como puede):
   comm_down_tick()        ← drena Serial1, OTOS de DOWN
   comm_arbiter_tick()     ← drena Serial4, COMM/árbitros/partner
-  comm_central_tick()     ← drena Serial2, comandos de CENTRAL
-  cameras_tick()          ← drena Serial3 + Serial5, parsers OpenMV
+  comm_central_tick()     ← drena Serial5, comandos de CENTRAL
+  cameras_tick()          ← drena Serial3 + Serial7, parsers OpenMV
   if (every 10 ms) sensors_imu_tick()
   if (every 30 ms) sensors_tof_tick()
   if (every 10 ms) build_snapshot() + comm_central_send_snapshot()
@@ -429,12 +429,12 @@ loop() (no tiene period fijo — corre tan rápido como puede):
 | Fusión pose (cámara+IMU+OTOS) | NO EXISTE | **PURA (a crear)** | Debería vivir en `src/shared/` | EKF o filtro complementario. Ausente es el mayor gap de TOP. |
 | World snapshot builder | `main_top.cpp:43-83` | **HW-BOUND** | No (llama a getters de HW) | Candidato a refactorizar: extraer lógica de construcción a función pura que reciba structs. |
 | Watchdog de cámaras | `cameras_runtime.cpp` | **HW-BOUND** | No (usa `millis()`) | El `last_ms==0` guard está implementado (`cameras_runtime.cpp:47-48`). |
-| Wiring cámaras UART | `cameras_runtime.cpp` | **HW-BOUND** | No | `Serial3` / `Serial5`; cota 64 bytes/tick implementada. |
+| Wiring cámaras UART | `cameras_runtime.cpp` | **HW-BOUND** | No | `Serial3` (frontal) / `Serial7` (trasera, movida de Serial5); cota 64 bytes/tick implementada. |
 | IMU BNO055 dual | `sensors_imu.cpp` | **HW-BOUND** | No (usa Wire + Adafruit_BNO055) | Setup bloqueante (~5s); tick no bloqueante. |
 | ToF + HC-SR04 | `sensors_tof.cpp` | **HW-BOUND** | No | HC-SR04 usa `pulseIn` bloqueante (P0: TASK-014); 4 ToF I2C son stub. |
 | COMM arbiter | `comm_arbiter.cpp` | **HW-BOUND** | No (usa Serial4) | `guard last_ms==0` ausente en `comm_arbiter_partner_is_fresh()` (`comm_arbiter.cpp:107`): `millis()-0 < 500` → true al boot antes de recibir cualquier dato. |
 | Comm DOWN | `comm_down.cpp` | **HW-BOUND** | No (usa Serial1) | Mismo bug de guard: `fresh(0)` → true al boot. |
-| Comm CENTRAL | `comm_central.cpp` | **HW-BOUND** | No (usa Serial2) | Handler de `CENTRAL_RESET_TOP` recibido pero no procesado. |
+| Comm CENTRAL | `comm_central.cpp` | **HW-BOUND** | No (usa **Serial5**, era Serial2) | Handler de `CENTRAL_RESET_TOP` recibido pero no procesado. |
 
 **Módulos puros candidatos a mover a `src/shared/`** (hoy viven en `src/top/`):
 - `cameras.h/cpp` — `CameraParser` es 100% pura; sin `#include <Arduino.h>`.
@@ -489,7 +489,7 @@ loop() (no tiene period fijo — corre tan rápido como puede):
 - Convertir HC-SR04 a no-bloqueante.
 - Gatear `Serial.print` debug con flag de competición.
 - ~~Agregar `static_assert(sizeof(WorldSnapshot)==23)`~~ — **RESUELTO** (commit 2a9064e: `static_assert(sizeof==27)` presente, schema v2).
-- Confirmar mapeo físico de Serial2→CENTRAL con osciloscopio.
+- ~~Confirmar mapeo físico de Serial2→CENTRAL~~ → RESUELTO 2026-05-29: TOP→CENTRAL = **Serial5 (20/21)**.
 - Calibrar `CAMERA_UNIT_TO_MM` contra cancha real.
 
 **CENTRAL (receptor):**

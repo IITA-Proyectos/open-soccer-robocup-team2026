@@ -29,11 +29,11 @@ import sensor
 import time
 import math
 
-# --- UART: en N6 el estándar es machine.UART; pyb como fallback ---
-try:
-    from machine import UART
-except ImportError:
-    from pyb import UART
+# --- UART: pyb.UART (EXACTAMENTE lo que usa el generic que funciona en la N6) ---
+# machine.UART existe en la N6, pero UART(3, 19200) se comporta distinto y
+# crasheaba en uart.write (Traceback línea ~152). pyb.UART(3, 19200) es lo del
+# generic y transmite OK. (Igual que con `sensor` vs `csi`: usar lo probado.)
+from pyb import UART
 
 # ============================================================================
 # ★ CONFIG — BRING-UP / CALIBRACIÓN ★
@@ -152,4 +152,6 @@ while True:
     # Todos uint8 por el clamp → no crashea bytearray:
     packet = bytearray([201, Xp, Ypc, 202, Xam, Yamc, 203, Xaz, Yazc])
     uart.write(packet)
-    # SIN print() en producción (consume tiempo y baja los fps).
+    if BRING_UP:
+        print(list(packet))   # bring-up: ver en consola que salen paquetes válidos
+    # En competencia (BRING_UP=False) NO imprime — el print baja los fps.

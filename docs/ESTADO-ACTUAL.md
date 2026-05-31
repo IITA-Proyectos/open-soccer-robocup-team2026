@@ -45,7 +45,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - `src/central/imu_zircon.{h,cpp}` — BNO055 respaldo
 - `src/central/world_model.{h,cpp}` — espejo del WorldSnapshot
 - `src/central/comm_top.{h,cpp}` — recibe WorldSnapshot del TOP (Serial1)
-- `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 del DOWN (hoy `Serial2`). ⚠️ **Veredicto del conflicto 7/8 PENDIENTE de aislar** (Gustavo 2026-05-29: NO se aisló en banco si el motor del driver U17 usa 7/8). SI se confirma que 7/8 son del motor → migrar `Serial2` → `Serial7` acá. Por las dudas, el receiver de banco del link ya se hizo en **Serial7**: env `diag_central_comm_down` + [`docs/firmware/DIAG-CENTRAL-COMM-DOWN.md`](firmware/DIAG-CENTRAL-COMM-DOWN.md).
+- `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 del DOWN (hoy `Serial2` / pin 7). ⚠️ **Veredicto del conflicto 7/8 PENDIENTE de aislar** (Gustavo 2026-05-29: NO se aisló si el motor del driver U17 usa 7/8 — ver pruebas pendientes en `DIAG-CENTRAL-MOTORS.md`). El receiver de banco `diag_central_comm_down` está unificado en **Serial2 / pin 7** (el enlace validado por `diag_down_send1`/`recv1`; mismo UART que producción) — ver [`docs/firmware/DIAG-CENTRAL-COMM-DOWN.md`](firmware/DIAG-CENTRAL-COMM-DOWN.md). Migrar `Serial2 → Serial7` (acá y en el diag) **solo si** se confirma 7/8 = motor **y** se corren motores + comm juntos.
 
 ### TOP (Teensy 4.0)
 - `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (HC-SR04 + 1 VL53L7CX frontal U2 vivo, lib `Adafruit_VL53L7CX`. ⚠️ TOP rev 1.0 NO permite >1 ToF por bus sin rework — XSHUT/LPn de los 4 slots NO ruteados en el PCB, verificación forense 2026-05-25. Máximo soportado: 2 ToFs total. Ver journal 2026-05-24 + 2026-05-25), `comm_*`

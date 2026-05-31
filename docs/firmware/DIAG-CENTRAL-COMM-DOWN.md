@@ -25,27 +25,31 @@ DOWN ya emite, **antes** de sumar mensajes nuevos (los 32 sensores crudos son
 un 2do paso — ver final). Si esto anda, el canal físico + el protocolo quedan
 validados.
 
-## ⚠️ UART: Serial7 (RX7 = pin 28), NO Serial2
+## ⚠️ UART: Serial2 (RX2 = pin 7) — el enlace validado en banco
 
-Se usa Serial7 para **esquivar** el posible conflicto de pines 7/8: el motor 2
-(driver U17) usaría los pines **8/7**, que son también los de **Serial2** (RX2=7,
-TX2=8). El veredicto (¿el motor de U17 realmente gira con 7/8?) **quedó PENDIENTE
-de aislar en banco** (Gustavo 2026-05-29) → **TASK-036 sigue abierta** (la cierra
-el equipo, no Claude). Mientras tanto, usar Serial7 evita la pregunta por completo.
+Se usa **Serial2 (RX2 = pin 7, TX2 = pin 8)** porque es el **cableado ya
+validado**: el 2026-05-29 el par mínimo `diag_down_send1` / `diag_central_recv1`
+confirmó que el `'1'` llega por **pin 7**. Es además el mismo UART que usan
+`diag_central_recv1` y el `comm_down.cpp` de producción → **no hay que recablear
+entre tests**.
 
-➡️ Se usa **Serial7 → RX7 = pin 28, TX7 = pin 29** (libres según el pinout).
+**Sobre el conflicto 7/8 (motores):** el motor 2 (driver U17) usaría los pines
+**8/7** = los de Serial2. PERO el conflicto **solo aparece manejando motores**, y
+este receiver **NO los maneja** → pin 7 es seguro acá. El veredicto (¿el motor de
+U17 realmente gira con 7/8?) **quedó PENDIENTE de aislar** (Gustavo 2026-05-29) →
+**TASK-036 sigue abierta**. Solo si se confirma 7/8 = motor **y** se corren
+**motores + comunicación juntos**, recién ahí migrar a **Serial7 (28/29)** (acá y
+en `comm_down.cpp`). El veredicto 7/8 y demás pruebas de motores quedan pendientes
+— ver [`DIAG-CENTRAL-MOTORS.md`](DIAG-CENTRAL-MOTORS.md).
 
 **Cableado:**
 
 | DOWN (Teensy 4.0) | → | CENTRAL (Teensy 4.1) |
 |---|---|---|
-| TX1 = **pin 1** | → | RX7 = **pin 28** |
+| TX1 = **pin 1** | → | RX2 = **pin 7** |
 | GND | ↔ | GND |
 
 Baud: **230400** (igual que DOWN — `config_down.h` / `comm_central.cpp`).
-
-> Pendiente relacionado: el firmware de **producción** `src/central/comm_down.cpp`
-> todavía usa Serial2 — hay que migrarlo a Serial7. Flagueado, es scope CENTRAL.
 
 ## Procedimiento
 
@@ -53,7 +57,7 @@ Baud: **230400** (igual que DOWN — `config_down.h` / `comm_central.cpp`).
 
 - DOWN flasheado con su firmware (`pio run -e down -t upload`) y **enviando**
   (`comm_central_send_line_urgent` en su loop).
-- Cableado de la tabla de arriba hecho (pin 1 DOWN → pin 28 CENTRAL, GND común).
+- Cableado de la tabla de arriba hecho (pin 1 DOWN → pin 7 CENTRAL, GND común).
 - Ambas placas alimentadas.
 
 ### Correr
@@ -100,7 +104,7 @@ Si todavía no llegó ningún frame, el panel muestra **"ESPERANDO datos de DOWN
 ## Interpretación rápida
 
 - **`bytes=0` siempre** → no llega nada. Revisar: cable DOWN pin 1 → CENTRAL
-  **pin 28** (¡no 7!), GND común, DOWN realmente enviando, baud 230400.
+  **pin 7** (RX2), GND común, DOWN realmente enviando, baud 230400.
 - **`bytes` sube pero `frames=0` / `crc_err` alto** → llega señal pero corrupta:
   baud equivocado, TX/RX cruzados mal, o masa flotante.
 - **`frames` sube, `crc_err≈0`** → ✅ **link validado.** DOWN fuera de la línea:
@@ -136,3 +140,10 @@ bytes = 1/sensor, entra justo en el payload de 32 B del protocolo):
 - 2026-05-29 — creación. Sketch receiver + env `diag_central_comm_down` + doc.
   Usa Serial7 para esquivar el posible conflicto 7/8 con el motor 2 (veredicto sin aislar — TASK-036).
   Author: Claude Opus 4.7 (Anthropic). Requested-by: Viollaz.
+- 2026-05-29 (b) — **unificado el link de banco en Serial2 / pin 7** (el enlace
+  validado por `diag_down_send1`/`diag_central_recv1`; mismo UART que el
+  `comm_down.cpp` de producción → no se recablea entre tests). El Serial7
+  (motor-safe) queda documentado para cuando se corran **motores + comm juntos**
+  y se cierre el veredicto 7/8. Veredicto 7/8 + mapeo/orientación de motores:
+  **pendientes** (TASK-036 — ver `DIAG-CENTRAL-MOTORS.md`).
+  Author: Claude Opus 4.8 (Anthropic). Requested-by: Viollaz.

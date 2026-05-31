@@ -229,11 +229,21 @@ El sketch tenía dos bugs de banco, ya corregidos (host-verificados, compila):
 
 | # | Pendiente | Cómo se cierra |
 |---|---|---|
-| 1 | Convención global de giro (`+omega` = horario/antihorario) | `diag_central_drive` + IMU/heading (ver caja ⚠️ arriba) |
-| 2 | Confirmar `PIN_KICKER_SOL` (TASK-011) | Multímetro pin 23 ↔ compuerta del MOSFET. Test separado. |
-| 3 | Cinemática real (`WHEEL_ANGLES_DEG`, `WHEEL_RADIUS_MM`) — marcada **tentativa** en `config_central.h:62-69` | Sketch de movimientos vectoriales con los 3 motores ya identificados |
-| 4 | Saturación con los 3 motores simultáneos | Idem (movimientos vectoriales) |
-| 5 | Encoders | Fuera de scope Incheon |
+| 1 | **Veredicto pines 7/8 (TASK-036)** — ¿gira el motor del driver U17 (pines 7/8)? Decide si `Serial2` (link DOWN→CENTRAL) choca con el motor 2. **Gatea Serial2 vs Serial7 del link.** | Aislar en banco: energizar **solo** el motor 2 y ver si gira. El journal 2026-05-29 lo dejó en "(completar)". |
+| 2 | **Mapeo motor firmware → rueda física** (M1/M2/M3 = frente / izq / der) | Correr este diag y completar la tabla del Paso 4 (journal §1.1) |
+| 3 | **Orientación / `MOTOR_DIR` definitiva** | Robot 1 ya medido (`{+1,+1,+1}`, horario visto de arriba — ver "Resultados de calibración"). Confirmar en ambos robots + cargar a producción si hay que invertir algún signo |
+| 4 | Convención global de giro (`+omega` = horario/antihorario) | `diag_central_drive` + IMU/heading (ver caja ⚠️ arriba) |
+| 5 | Confirmar `PIN_KICKER_SOL` (TASK-011) | Multímetro pin 23 ↔ compuerta del MOSFET. Test separado |
+| 6 | Cinemática real (`WHEEL_ANGLES_DEG`, `WHEEL_RADIUS_MM`) — marcada **tentativa** en `config_central.h:62-69` | Sketch de movimientos vectoriales con los 3 motores identificados |
+| 7 | Saturación con los 3 motores simultáneos | Idem (movimientos vectoriales) |
+| 8 | Encoders | Fuera de scope Incheon |
+
+> **El #1 (veredicto 7/8) gatea el UART del link DOWN→CENTRAL.** Mientras siga
+> pendiente, el receiver `diag_central_comm_down` y el `comm_down.cpp` de
+> producción quedan en **Serial2 / pin 7** (enlace validado en banco, motores
+> apagados). Si el #1 confirma que 7/8 son del motor **y** se corren motores +
+> comm juntos, migrar el link a **Serial7 (28/29)**. Ver
+> [`DIAG-CENTRAL-COMM-DOWN.md`](DIAG-CENTRAL-COMM-DOWN.md).
 
 ## Documentación esperada (journal entry post-test)
 

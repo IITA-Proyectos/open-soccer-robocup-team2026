@@ -26,15 +26,20 @@
 // Por serial podes enviar (send_on_enter):
 //   '0'..'3'  -> mostrar SOLO ese ToF (0=frente,1=atras,2=der,3=izq)
 //   'a'       -> mostrar los 4 rotando
-// Default: rota los 4, uno por refresco.
+//   'c'       -> alternar vista CRUDA <-> CORREGIDA (aplica tof_zone_orient).
+// Default: rota los 4, vista CRUDA.
 //
 // Convencion de impresion: idx = fila*8 + col. Fila 0 arriba, col 0 a la
-// izquierda TAL CUAL los entrega la lib (sin reordenar). Asi lo que ves es la
-// orientacion REAL del sensor, no una "corregida".
+// izquierda. En vista CRUDA se imprime TAL CUAL lo entrega la lib (orientacion
+// real del sensor). En vista CORREGIDA se aplica tof_zone_orient.h, que rota
+// 180 grados SOLO al izquierdo (TOF3) para que los 4 queden consistentes entre
+// si (hallazgo de banco 2026-05-31: el izquierdo, de otro fabricante montado
+// mirando abajo, esta rotado 180 respecto a los otros 3).
 
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_VL53L7CX.h>
+#include "tof_zone_orient.h"   // src/shared — correccion de orientacion de zonas
 
 namespace {
 
@@ -54,6 +59,7 @@ VL53L7CX_ResultsData  g_res;
 bool                  g_ready[N_TOF] = {false,false,false,false};
 int                   g_show = -1;   // -1 = rotar todos; 0..3 = uno fijo
 uint8_t               g_rot  = 0;
+bool                  g_corrected = false;  // false=cruda, true=corregida
 
 bool acks(uint8_t a){ Wire.beginTransmission(a); return Wire.endTransmission()==0; }
 
@@ -90,24 +96,40 @@ void enumerate(){
     }
 }
 
+// Devuelve distance/status de la celda (row,col) de pantalla. En vista
+// corregida, lee la zona CRUDA que corresponde a esa celda canonica via
+// tof_zone_orient (rota 180 solo al izquierdo).
+void cell_at(uint8_t sensor, uint8_t row, uint8_t col, int16_t& mm, uint8_t& st){
+    int canon = row*W + col;
+    int raw = g_corrected
+        ? iitasoccer::tof_raw_zone_for_canonical(sensor, canon, W)
+        : canon;
+    mm = g_res.distance_mm[raw];
+    st = g_res.target_status[raw];
+}
+
 void print_grid(uint8_t i){
     if (!g_ready[i]){ Serial.print(LABEL[i]); Serial.println(": (off)"); return; }
     if (!g_tof[i].isDataReady() || !g_tof[i].getRangingData(&g_res)) return;
 
-    // Encontrar la zona valida mas cercana.
-    int best_idx=-1; int16_t best=32767;
-    for (uint8_t z=0; z<RES; z++){
-        uint8_t s=g_res.target_status[z]; int16_t mm=g_res.distance_mm[z];
-        if ((s==5||s==6||s==9) && mm>0 && mm<best){ best=mm; best_idx=z; }
+    // Encontrar la celda valida mas cercana (en el marco de la vista actual).
+    int best_canon=-1; int16_t best=32767;
+    for (uint8_t r=0;r<W;r++) for (uint8_t c=0;c<W;c++){
+        int16_t mm; uint8_t s; cell_at(i,r,c,mm,s);
+        if ((s==5||s==6||s==9) && mm>0 && mm<best){ best=mm; best_canon=r*W+c; }
     }
 
     Serial.print("==== ToF["); Serial.print(i); Serial.print("] ");
     Serial.print(LABEL[i]); Serial.print("  @0x"); Serial.print(ADDR[i],HEX);
-    Serial.print("  (idx = fila*8 + col; fila0 arriba, col0 izq, SIN reordenar)");
-    if (best_idx>=0){
+    if (g_corrected){
+        Serial.print(iitasoccer::tof_zone_needs_180(i)
+            ? "  [CORREGIDA: rot 180]" : "  [CORREGIDA: identidad]");
+    } else {
+        Serial.print("  [CRUDA: sin reordenar]");
+    }
+    if (best_canon>=0){
         Serial.print("  min="); Serial.print(best); Serial.print("mm @ fila ");
-        Serial.print(best_idx/W); Serial.print(" col "); Serial.print(best_idx%W);
-        Serial.print(" (idx "); Serial.print(best_idx); Serial.print(")");
+        Serial.print(best_canon/W); Serial.print(" col "); Serial.print(best_canon%W);
     }
     Serial.println();
 
@@ -117,11 +139,10 @@ void print_grid(uint8_t i){
     for (uint8_t row=0; row<W; row++){
         Serial.print("  fila "); Serial.print(row); Serial.print(": ");
         for (uint8_t c=0;c<W;c++){
-            uint8_t z=row*W+c;
-            uint8_t s=g_res.target_status[z]; int16_t mm=g_res.distance_mm[z];
+            int16_t mm; uint8_t s; cell_at(i,row,c,mm,s);
             bool valid=(s==5||s==6||s==9);
             char buf[8];
-            if (z==(uint8_t)best_idx){ snprintf(buf,sizeof(buf),"[%3d]", (valid&&mm>=0)?mm:0); }
+            if ((int)(row*W+c)==best_canon){ snprintf(buf,sizeof(buf),"[%3d]", (valid&&mm>=0)?mm:0); }
             else if (!valid || mm<0)  { snprintf(buf,sizeof(buf)," --- "); }
             else                      { snprintf(buf,sizeof(buf)," %3d ", mm); }
             Serial.print(buf);
@@ -136,6 +157,8 @@ void read_serial_cmd(){
         char c=Serial.read();
         if (c>='0'&&c<='3'){ g_show=c-'0'; Serial.print(">> mostrando solo ToF "); Serial.println(g_show); }
         else if (c=='a'||c=='A'){ g_show=-1; Serial.println(">> mostrando los 4 (rotando)"); }
+        else if (c=='c'||c=='C'){ g_corrected=!g_corrected;
+            Serial.print(">> vista "); Serial.println(g_corrected?"CORREGIDA":"CRUDA"); }
     }
 }
 
@@ -145,8 +168,9 @@ void setup(){
     Serial.begin(115200);
     uint32_t t0=millis(); while(!Serial && (millis()-t0)<3000){}
     Serial.println("\n===== TOP — Zonemap de los 4 ToF (orientacion interna) =====");
-    Serial.println("Comandos: 0=frente 1=atras 2=der 3=izq  a=todos");
+    Serial.println("Comandos: 0=frente 1=atras 2=der 3=izq  a=todos  c=cruda/corregida");
     Serial.println("Mové la mano arriba/abajo/izq/der de un sensor y mirá que fila/col se marca [###].");
+    Serial.println("Vista CORREGIDA (tecla c): rota 180 al izquierdo para que los 4 coincidan.");
     Wire.begin(); Wire.setClock(400000);
     Serial.print("BNO055 (0x28): "); Serial.println(acks(0x28)?"PRESENTE":"AUSENTE");
     recover();

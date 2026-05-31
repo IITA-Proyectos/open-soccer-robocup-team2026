@@ -99,11 +99,20 @@ Coherente con todo lo anterior:
 
 > ⚠️ **Orientación interna de las zonas ≠ posición del sensor.** Cada ToF
 > entrega una grilla 8×8; el orden de sus zonas depende de cómo está montado el
-> chip. El ToF IZQUIERDO es de otro fabricante y se montó mirando hacia abajo →
-> puede tener su grilla flippeada. Para el **barrido tipo lidar-360** hay que
-> verificar y, si hace falta, remapear las zonas de cada sensor para que
-> "columna izquierda de la grilla" = "más a la izquierda en el mundo". Ver
-> `diag_top_tof_zonemap` + TASK-203.
+> chip. **Verificado en banco (2026-05-31):**
+> - **TOF0/1/2 (frente/atrás/derecha)** comparten la misma orientación interna.
+> - **TOF3 (izquierdo)** es de otro fabricante, montado mirando abajo → su
+>   grilla está **rotada 180°** respecto a los otros 3 (arriba↔abajo y
+>   izq↔der). Se corrige invirtiendo fila y columna: `(fila,col)→(7-fila,7-col)`.
+>
+> La corrección vive en `src/shared/tof_zone_orient.h` (header puro, con
+> `test_tof_zone_orient` host-native, 7 tests) — **una sola fuente de verdad**
+> que usan el diag y el futuro firmware del lidar-360. Verificar visualmente con
+> `diag_top_tof_zonemap` tecla `c` (alterna vista cruda/corregida). TASK-203.
+>
+> (Nota: el marco común de TOF0/1/2 además tiene una rotación de ~90° respecto a
+> la grilla "cruda impresa"; eso se resuelve al mapear zona→azimut para el
+> lidar-360, no en `tof_zone_orient`, que solo iguala los 4 sensores entre sí.)
 
 ## 4. Quién usa qué (estado de cumplimiento)
 

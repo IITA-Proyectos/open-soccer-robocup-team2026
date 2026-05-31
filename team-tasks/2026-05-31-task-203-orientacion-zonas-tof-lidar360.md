@@ -14,6 +14,16 @@ tags: [hardware, top-board, tof, zonas, lidar, orientacion, hardware-test]
 
 # TASK-203 — Orientación interna de las zonas de los 4 ToF
 
+> **✅ ACTUALIZACIÓN 2026-05-31 — caracterización HECHA en banco (Gustavo).**
+> Resultado: **TOF0/1/2 (frente/atrás/derecha) comparten orientación**; el
+> **TOF3 (izquierdo)** está **rotado 180°** respecto a los otros 3. La
+> corrección quedó implementada en `src/shared/tof_zone_orient.h` (rota 180°
+> solo al izquierdo) + `test_tof_zone_orient` (7 tests host). El
+> `diag_top_tof_zonemap` ahora tiene vista corregida (tecla `c`) para confirmar
+> visualmente. **Lo que queda de esta task** (menor): correr el zonemap en vista
+> corregida y confirmar que los 4 sensores coinciden, y repetir la
+> caracterización en R2. Ver `journal/2026-05-31-top-tof-orientacion-zonas-izquierdo-180.md`.
+
 ## Por qué
 
 Los 4 ToF ya enumeran y tienen posición confirmada (TOF0=frente, TOF1=atrás,

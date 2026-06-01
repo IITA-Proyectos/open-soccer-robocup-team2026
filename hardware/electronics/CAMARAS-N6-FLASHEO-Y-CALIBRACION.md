@@ -40,7 +40,7 @@ area: vision
 > calibración vieja NO sirve. Hay que rehacer esto **por cámara**:
 
 1. **`UART_PORT`** — la N6 tiene 3 UART. Confirmar cuál mapea al pin cableado al
-   **Serial3** del Teensy (frontal, conector U8) / **Serial7** (trasera, conector U9).
+   **Serial3** del Teensy (frontal, conector U8) / **Serial5** (trasera, RX pin 21).
    Probar 1/2/3 y ver en el TOP cuál recibe paquetes (`diag`/contadores de `cameras_runtime`).
 2. **Thresholds LAB** (`NARANJA/AMARILLO/AZUL_THRESHOLD`) — **Tools → Machine Vision →
    Threshold Editor** sobre la pelota / cada arco, con la **luz real**. Sin esto no detecta bien.
@@ -60,7 +60,7 @@ area: vision
 ## D. Validar la cadena cámara → TOP
 
 - En el TOP, los paquetes llegan como 9 bytes `[201,X,Y+100, 202,X,Y+100, 203,X,Y+100]` a 19200
-  (frontal=Serial3, trasera=Serial7). El parser es `src/top/cameras.cpp`.
+  (frontal=Serial3, trasera=Serial5). El parser es `src/top/cameras.cpp`.
 - Chequeos: pelota tapada → **no** debe reportar pelota (sentinel ok, no "pelota fantasma");
   mover un objeto X muy a un costado → la cámara **no se cuelga** (clamp ok); cada color
   prende su LED de diagnóstico.

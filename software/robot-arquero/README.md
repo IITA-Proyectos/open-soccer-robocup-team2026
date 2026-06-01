@@ -4,7 +4,7 @@ Código del robot arquero para la temporada 2026.
 
 ## Punto de partida
 
-Ver el código del arquero 2025 en `legacy/2025-season/code/arquero/` como referencia base.
+Ver el código del arquero 2025 en `definitivo-arquero_6-9-2026` (este mismo directorio) como referencia base.
 
 ## Arquitectura
 

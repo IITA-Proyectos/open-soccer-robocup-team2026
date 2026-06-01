@@ -77,20 +77,20 @@ La placa ARRIBA es el módulo más complejo computacionalmente del robot. Su car
 > (**{9,10,11,12}, activo-alto**), y **enumeran a 0x2A/0x2B/0x2C/0x2D** (NO
 > 0x52..0x58). Esto **liberó `Wire1` (24/25) para la placa DOWN**. ⚠️ Las
 > direcciones I²C persisten con 3V3 → power-cycle obligatorio al enumerar.
-> El UART TOP→CENTRAL es **Serial5 (20/21)**, no Serial2 (corregido en `main`).
+> El UART TOP→CENTRAL es **Serial7 (28/29)**, swap 2026-05-31 (la trasera quedó en Serial5).
 > Pinout canónico: `hardware/electronics/top-board-pack/01-pinout-y-hardware.md`.
 > Detalle: `journal/2026-05-30-top-tof-4-en-bus-unico-enumeracion-ok.md`.
 
 | Componente | Cantidad | Conexión | Notas técnicas |
 |-----------|----------|----------|----------------|
 | MCU Teensy 4.0 | 1 | — | Cortex-M7 600 MHz, 1 MB RAM, 2 MB flash |
-| Cámaras OpenMV H7 / H7 Plus | 2 | UART (Serial3 frontal + Serial7 trasera) | 19200 baud, protocolo viejo 9 bytes/packet |
+| Cámaras OpenMV N6 (antes H7 Plus) | 2 | UART (Serial3 frontal + Serial5 trasera) | 19200 baud, protocolo viejo 9 bytes/packet |
 | BNO055 IMU | 2 | I2C dual (Wire + Wire1) | Wire1 remapeado a pines 24/25 (Q3 confirmado) |
 | Sensor ToF VL53L7CX | 4 fijos (plan: 6) | **TODOS en `Wire` (I²C0)**, LP individual por bodge | 8×8 SPAD multizona. Dir 0x2A..0x2D. Plan: +2 móviles para pelota |
-| Ultrasonido HC-SR04 | 1 | TRIG/ECHO pines 6/7 | Frontal, fallback de ToF, lectura bloqueante 25 ms |
+| Ultrasonido HC-SR04 | 1 | TRIG=pin 4 / ECHO=pin 3 | Frontal, fallback de ToF, lectura bloqueante 25 ms (banco 2026-05-31) |
 | Placa COMM (ESP32-C6) | 1 | UART (Serial4) | Bridge a árbitros + ESP-NOW partner |
 | Conector hacia DOWN | 1 | UART (Serial1) | Recibe ODOM_POSE/VEL de ABAJO |
-| Conector hacia CENTRAL | 1 | UART (**Serial5, pines 20/21**) | Envía WORLD_SNAPSHOT |
+| Conector hacia CENTRAL | 1 | UART (**Serial7, pines 28/29**) | Envía WORLD_SNAPSHOT (swap 2026-05-31) |
 | Conector Dean-T-F batería | 1 | 7.4V LiPo | Comparte con CENTRAL y ABAJO |
 | Reguladores MP1584-EN | 2 | 7.4V → 5V y 7.4V → 3.3V | Para sensores y MCU |
 | LED de estado | 1 | LED_BUILTIN (pin 13) | Diagnóstico humano |
@@ -100,10 +100,11 @@ La placa ARRIBA es el módulo más complejo computacionalmente del robot. Su car
 | Bus | SDA | SCL | Periféricos | Tráfico estimado |
 |-----|-----|-----|-------------|------------------|
 | Wire (I2C0) | 18 | 19 | BNO055 #1 (0x28) + **los 4 ToF** (0x2A/0x2B/0x2C/0x2D) | ~30 KHz transacciones |
-| Wire1 (I2C1) | 25 (remap) | 24 (remap) | BNO055 #2 (0x28) + **(libre para placa DOWN)** | ~30 KHz |
+| Wire1 (I2C1) | 25 (remap) | 24 (remap) | **(libre para placa DOWN)** — el 2do BNO se movió a `Wire` (0x29) el 2026-05-31 | ~30 KHz |
 
-Los 2 BNO055 comparten dirección I2C (0x28) por default — por eso obligatorio
-separarlos en buses distintos. Los **4 ToF cuelgan del mismo bus `Wire`**
+Los 2 BNO055 quedaron **ambos en el bus `Wire`** (18/19): LEFT=0x28 y RIGHT=0x29
+(pad ADR del 2do puenteado a 3V3, recableado 2026-05-31), lo que liberó `Wire1`
+(24/25) para la placa DOWN. Los **4 ToF cuelgan del mismo bus `Wire`**
 (recableado 2026-05-30) y se enumeran al boot por su pin **LP** (bodge):
 arrancan todos en 0x29, se duermen todos, se despierta uno por uno y a cada uno
 se le asigna **0x2A → 0x2B → 0x2C → 0x2D** (ninguno queda en 0x29). Pines LP
@@ -116,15 +117,16 @@ reset del Teensy no las borra).
 | Serial | TX | RX | Conectado a | Baud | Rol |
 |--------|----|----|-------------|------|-----|
 | Serial1 | 1 | 0 | conector U16 ← DOWN | 230400 | Recibe ODOM |
-| **Serial5** | **20** | **21** | conector U1 → CENTRAL | 230400 | **Envía WORLD_SNAPSHOT** (✅ corregido 2026-05-29: era "Serial2 7/8") |
-| Serial3 | 14 | 15 | conector U8 ↔ Cámara 1 | 19200 | Protocolo OpenMV |
+| **Serial5** | **20** | **21** | ← Cámara 2 (trasera) | 19200 | **Cámara trasera soldada acá** (✅ banco 2026-05-31, FORMATO OK) |
+| Serial3 | 14 | 15 | conector U8 ↔ Cámara 1 | 19200 | Protocolo OpenMV ✅ FORMATO OK |
 | Serial4 | 17 | 16 | conector U15 ↔ COMM | 115200 | Bridge árbitros + partner |
-| **Serial7** | **29** | **28** | conector U9 ↔ Cámara 2 | 19200 | Protocolo OpenMV (⚠️ movida de Serial5 → ahora CENTRAL) |
+| **Serial7** | **29** | **28** | → CENTRAL | 230400 | **Envía WORLD_SNAPSHOT** (TX7=pin 29; swap 2026-05-31, TASK-204) |
 
-> **✅ Corrección 2026-05-29 (vale para todo este doc):** el UART **TOP→CENTRAL es
-> Serial5 (pines 20/21)**, no Serial2 (7/8) — se leyó mal la numeración del diagrama
-> (vale la interna/GPIO). La cámara trasera pasó a Serial7. El pin 7 queda solo para
-> HC-SR04 ECHO (sin conflicto). Donde más abajo diga "Serial2 → CENTRAL", está superado.
+> **✅ Actualización 2026-05-31 (TASK-204, vale para todo este doc):** la **cámara
+> trasera** quedó soldada en **Serial5 (pin 21)** (confirmado en banco), así que el UART
+> **TOP→CENTRAL** se movió a **Serial7 (pines 28/29)**. El HC-SR04 quedó en **pines 4/3**
+> (TRIG/ECHO), no en 6/7 → el viejo conflicto del pin 7 ya no aplica. Donde más abajo
+> diga "Serial5 → CENTRAL", "cam trasera → Serial7" o "HC-SR04 en 6/7", está superado.
 
 Quedan libres Serial6 (BLOQUEADO por Wire1 remap, pines 24/25) y Serial7 (pines 28/29 disponibles para expansión).
 
@@ -749,7 +751,7 @@ ARRIBA usa la pose odométrica como **una observación más** en su EKF:
 
 ## 13. Comunicaciones UART
 
-### 13.1 Stream principal: WORLD_SNAPSHOT → CENTRAL (100 Hz, Serial2)
+### 13.1 Stream principal: WORLD_SNAPSHOT → CENTRAL (100 Hz, Serial7)
 
 Cada 10 ms, ARRIBA arma el snapshot completo y lo envía. Estructura del payload:
 
@@ -791,7 +793,7 @@ struct WorldSnapshot {
 - **Recepción desde ABAJO** (Serial1): `DOWN_OTOS_POSE/VEL` a 100 Hz para fusión EKF.
 - **Recepción desde COMM** (Serial4): `COMM_REFEREE_CMD`, `COMM_PARTNER_DATA`, `COMM_STATUS_REQ` (eventos).
 - **Envío a COMM** (Serial4): `TOP_PARTNER_DATA` a 10 Hz, `TOP_STATUS_REPLY` a demanda.
-- **Recepción desde CENTRAL** (Serial2): `CENTRAL_RESET_TOP`, `CENTRAL_TOP_CMD` (eventos).
+- **Recepción desde CENTRAL** (Serial7): `CENTRAL_RESET_TOP`, `CENTRAL_TOP_CMD` (eventos).
 
 ### 13.3 Heartbeat
 
@@ -824,7 +826,7 @@ loop():
     # RX (cada loop, no bloquea)
     comm_down_tick()        # ~50 µs (drena Serial1)
     comm_arbiter_tick()     # ~50 µs (drena Serial4)
-    comm_central_tick()     # ~50 µs (drena Serial2)
+    comm_central_tick()     # ~50 µs (drena Serial7)
     cameras_tick()          # ~100 µs (parsea Serial3 + Serial5)
 
     # Sensores periódicos
@@ -928,14 +930,14 @@ Imprime cada 1 segundo en NORMAL:
 | ToF | 4 × VL53L7CX en modo 4×4 SPAD |
 | Frecuencia ToF | 30 Hz por sensor |
 | Cobertura ToF | 360° (FOV 90° × 4 sensores cardinales) |
-| Cámaras | 2 × OpenMV H7/H7+ |
+| Cámaras | 2 × OpenMV N6 (antes H7 Plus) |
 | Frecuencia cámaras | ~30 Hz |
 | Protocolo cámaras | OpenMV viejo (9 bytes/packet) |
 | Fusión sensorial | EKF 6D (x, y, θ, vx, vy, ω) a 100 Hz |
 | Predicción pelota | Kalman 4D (x, y, vx, vy) con decay |
 | Confidence pose objetivo | > 70 en condiciones normales |
 | Comm partner | ESP-NOW vía COMM (ESP32-C6) a 10 Hz |
-| UART hacia CENTRAL | Serial2, 230400 baud, 100 Hz |
+| UART hacia CENTRAL | Serial7, 230400 baud, 100 Hz |
 | Latencia camera → snapshot | ~40 ms |
 | Latencia ToF → snapshot | ~55 ms peor caso |
 | Carga CPU estimada | ~45% (con Nivel 3 completo) |

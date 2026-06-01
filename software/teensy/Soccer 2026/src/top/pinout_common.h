@@ -16,9 +16,16 @@ namespace iitasoccer {
 constexpr int WIRE1_SCL_PIN = 24;
 constexpr int WIRE1_SDA_PIN = 25;
 
+// Recableado 2026-05-31 (confirmado en banco con diag_bno_addr_check):
+// los 2 BNO055 quedaron en el MISMO bus `Wire` (18/19), en direcciones
+// distintas. RIGHT tiene su pad ADR puenteado a 3V3 -> 0x29. Esto LIBERA
+// `Wire1` (24/25) para la comunicación con la placa DOWN.
+// OJO: 0x29 lo comparten el BNO RIGHT y la dirección de fábrica de los ToF;
+// por eso los ToF se enumeran a 0x2A..0x2D al boot (ver topología ToF abajo)
+// y nunca quedan en 0x29 una vez enumerados.
 constexpr uint8_t BNO055_LEFT_I2C_ADDR  = 0x28;
-constexpr uint8_t BNO055_RIGHT_I2C_ADDR = 0x28;
-constexpr uint8_t VL53L7CX_DEFAULT_I2C_ADDR = 0x29;
+constexpr uint8_t BNO055_RIGHT_I2C_ADDR = 0x29;  // ADR puenteado a 3V3
+constexpr uint8_t VL53L7CX_DEFAULT_I2C_ADDR = 0x29;  // de fábrica; se reasigna al enumerar
 
 // ============================================================
 // Topología ToF (recableado 2026-05-30, confirmado en banco)
@@ -40,16 +47,18 @@ constexpr uint8_t VL53L7CX_DEFAULT_I2C_ADDR = 0x29;
 // UARTs — pines fijos del Teensy 4.0
 // ============================================================
 constexpr long UART_FROM_DOWN_BAUD = 230400;   // Serial1
-constexpr long UART_TO_ZIRCON_BAUD = 230400;   // Serial2 — TENTATIVO
+constexpr long UART_TO_ZIRCON_BAUD = 230400;   // Serial7 (TX29/RX28) → CENTRAL/Zircon
 constexpr long UART_CAMERA1_BAUD   = 19200;    // Serial3
 constexpr long UART_TO_COMM_BAUD   = 115200;   // Serial4
-constexpr long UART_CAMERA2_BAUD   = 19200;    // Serial5
+constexpr long UART_CAMERA2_BAUD   = 19200;    // Serial5 (cámara trasera, soldada pin 21)
 
 // ============================================================
 // HC-SR04 ultrasonido frontal (idéntico ambos robots)
+// Cableado en banco 2026-05-31: TRIG=pin 4, ECHO=pin 3 (pines ex-XSHUT ToF, hoy
+// libres). Antes 6/7. Los pines 3/4 NO son UART → sin conflicto con ningún Serial.
 // ============================================================
-constexpr int PIN_HCSR04_TRIG = 6;
-constexpr int PIN_HCSR04_ECHO = 7;
+constexpr int PIN_HCSR04_TRIG = 4;
+constexpr int PIN_HCSR04_ECHO = 3;
 
 // ============================================================
 // LED de estado (LED_BUILTIN del Teensy)

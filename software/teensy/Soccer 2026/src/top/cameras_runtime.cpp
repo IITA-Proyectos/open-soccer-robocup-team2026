@@ -30,12 +30,12 @@ constexpr int MAX_BYTES_PER_TICK = 64;
 
 // === Estado ===
 
-CameraParser g_parser_front;    // Serial3 → conector U8 (cámara frontal)
-CameraParser g_parser_back;     // Serial7 → conector U9 (cámara trasera)
-// ⚠️ MOVIDA 2026-05-29 de Serial5 → Serial7 (pines 28/29, UART libre): Serial5
-// (pines 20/21) pasó a ser el UART hacia CENTRAL (WORLD_SNAPSHOT). Serial7 es el
-// candidato libre. CONFIRMAR con Enzo a qué pines del Teensy llega físicamente el
-// conector U9 de la cámara trasera (la placa TOP todavía no está armada).
+CameraParser g_parser_front;    // Serial3 (RX pin 15) → conector U8 (cámara frontal)
+CameraParser g_parser_back;     // Serial5 (RX pin 21) → cámara trasera (soldada acá)
+// ⚠️ SWAP 2026-05-31 (TASK-204): la trasera quedó SOLDADA en Serial5 (pin 21),
+// confirmado en banco con diag_top_cameras. Se revierte la movida del 2026-05-29
+// (que la había puesto en Serial7 asumiendo la placa sin armar). Serial7 (pines
+// 28/29) pasó a ser el link → CENTRAL (ver comm_central.cpp).
 
 uint32_t g_last_packet_ms_front = 0;
 uint32_t g_last_packet_ms_back  = 0;
@@ -89,7 +89,7 @@ void recompute_fused(uint32_t now_ms) {
 
 void cameras_init() {
     Serial3.begin(UART_CAMERA1_BAUD);
-    Serial7.begin(UART_CAMERA2_BAUD);
+    Serial5.begin(UART_CAMERA2_BAUD);
     g_parser_front.reset();
     g_parser_back.reset();
     g_last_packet_ms_front = 0;
@@ -112,10 +112,10 @@ void cameras_tick() {
         ++drained;
     }
 
-    // Drenar Serial7 (cámara trasera).
+    // Drenar Serial5 (cámara trasera, soldada en pin 21).
     drained = 0;
-    while (Serial7.available() && drained < MAX_BYTES_PER_TICK) {
-        const uint8_t byte = static_cast<uint8_t>(Serial7.read());
+    while (Serial5.available() && drained < MAX_BYTES_PER_TICK) {
+        const uint8_t byte = static_cast<uint8_t>(Serial5.read());
         if (g_parser_back.feed(byte)) {
             g_last_packet_ms_back = (now_ms == 0) ? 1 : now_ms;
         }

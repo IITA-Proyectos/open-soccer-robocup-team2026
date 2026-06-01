@@ -1,7 +1,7 @@
 // comm_central.h (TOP) — envía WORLD_SNAPSHOT al CENTRAL.
 //
-// Hardware: Serial2 del Teensy 4.0 (pines 7/8) — único UART libre en TOP
-// según schematic 04-12.
+// Hardware: Serial7 del Teensy 4.0 (TX7 = pin 29, RX7 = pin 28). SWAP 2026-05-31
+// (TASK-204): antes Serial5, pero ahí quedó soldada la cámara trasera.
 // Frecuencia: 100 Hz.
 
 #pragma once

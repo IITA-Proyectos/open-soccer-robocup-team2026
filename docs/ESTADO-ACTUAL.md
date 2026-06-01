@@ -42,10 +42,10 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - `src/central/main_central.cpp` — entry
 - `src/central/strategy.cpp` — FSM ATK + GK Nivel 2 (KICKOFF/SEARCH/POSITION/APPROACH + PATROL/INTERCEPT/CLEAR + LINE_AVOID). **El cerebro.**
 - `src/central/motors_zircon.{h,cpp}` — PWM 3 motores omni + kicker (ROBOT2)
-- `src/central/imu_zircon.{h,cpp}` — BNO055 respaldo
+- `src/central/imu_zircon.{h,cpp}` — BNO055 (⚠️ ya NO se conecta en CENTRAL desde 2026-05-31; compat gateado por `-DCENTRAL_HAS_LOCAL_BNO`, off; el heading viene de ARRIBA)
 - `src/central/world_model.{h,cpp}` — espejo del WorldSnapshot
 - `src/central/comm_top.{h,cpp}` — recibe WorldSnapshot del TOP (Serial1)
-- `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 del DOWN (hoy `Serial2`). ⚠️ **Veredicto del conflicto 7/8 PENDIENTE de aislar** (Gustavo 2026-05-29: NO se aisló en banco si el motor del driver U17 usa 7/8). SI se confirma que 7/8 son del motor → migrar `Serial2` → `Serial7` acá. Por las dudas, el receiver de banco del link ya se hizo en **Serial7**: env `diag_central_comm_down` + [`docs/firmware/DIAG-CENTRAL-COMM-DOWN.md`](firmware/DIAG-CENTRAL-COMM-DOWN.md).
+- `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 del DOWN (hoy `Serial2` / pin 7). ⚠️ **Veredicto del conflicto 7/8 PENDIENTE de aislar** (Gustavo 2026-05-29: NO se aisló si el motor del driver U17 usa 7/8 — ver pruebas pendientes en `DIAG-CENTRAL-MOTORS.md`). El receiver de banco `diag_central_comm_down` está unificado en **Serial2 / pin 7** (el enlace validado por `diag_down_send1`/`recv1`; mismo UART que producción) — ver [`docs/firmware/DIAG-CENTRAL-COMM-DOWN.md`](firmware/DIAG-CENTRAL-COMM-DOWN.md). Migrar `Serial2 → Serial7` (acá y en el diag) **solo si** se confirma 7/8 = motor **y** se corren motores + comm juntos. 📊 **Análisis profundo del link** (protocolo/CRC, buffers, timing, recuperación ante cortes, P0/P1 + checklist "primera instancia") → [`docs/firmware/ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md`](firmware/ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md).
 
 ### TOP (Teensy 4.0)
 - `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (4 ToF VL53L7CX en bus único `Wire`, lib `Adafruit_VL53L7CX`. ✅ Bodge de Enzo 2026-05-30: los 4 ToF con LP en pines {9,10,11,12} (activo-alto), enumeran a 0x2A..0x2D, confirmado en banco. `Wire1` liberado para DOWN. ⚠️ Probar ToF SIEMPRE con power-cycle (las direcciones I²C persisten). El firmware vivo `sensors_tof.cpp` todavía lee 1 ToF — extender a los 4 es HAL Sprint B. Plan: escalar a 6 ToF (4 fijos + 2 móviles para pelota). Ver journal 2026-05-30), `comm_*`
@@ -338,6 +338,10 @@ nativo, pero ya no es el único camino. Ver
   + temas-a-analizar en formato coach para los hallazgos dependientes de HW).
 
 ### Avance 2026-05-29 — corrección UART TOP→CENTRAL = Serial5 (no Serial2/7-8)
+> ⚠️ **SUPERSEDED 2026-05-31 (TASK-204):** la cámara trasera quedó **soldada en Serial5
+> (pin 21)** (confirmado en banco con `diag_top_cameras`), así que **TOP→CENTRAL se movió
+> a Serial7 (pin 29)** y la trasera se lee en Serial5. Además el **HC-SR04 quedó en pines
+> 4/3** (TRIG/ECHO), no 6/7. Lo de abajo es el registro histórico del 2026-05-29.
 - **Hallazgo (Gustavo, en banco):** el diagrama del Teensy tiene doble numeración
   (externa + interna); vale la **interna (GPIO)**. El conector del TOP hacia CENTRAL
   cae en los **pines 20/21 = Serial5**, NO en 7/8 (Serial2). Era mala lectura del diagrama.
@@ -360,7 +364,7 @@ nativo, pero ya no es el único camino. Ver
   mecánico/electrónico.
 - **Falta para cerrar la integración**: las 2 conexiones inter-placa hacia TOP —
   (1) **DOWN↔TOP** (DOWN Serial5 → TOP Serial1: odometría OTOS + LINE_STATUS),
-  (2) **CENTRAL↔TOP** (TOP Serial5 → CENTRAL Serial1: WorldSnapshot). Firmware listo
+  (2) **CENTRAL↔TOP** (TOP Serial7 → CENTRAL Serial1: WorldSnapshot). Firmware listo
   en ambas puntas; falta cablear + validar el stream por protocolo.
 - **Se DESTRABAN** (ya no bloqueadas por "TOP sin armar"): TASK-022 (cámara operativa),
   TASK-024 (rol/polaridad), TASK-032 (ToF U2 en HW), TASK-035 (localización),

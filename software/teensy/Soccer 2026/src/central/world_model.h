@@ -45,9 +45,15 @@ bool     world_model_line_detected();
 float    world_model_get_line_angle_deg();
 uint8_t  world_model_get_line_depth();
 bool     world_model_imminent_exit();
+bool     world_model_line_data_valid();   // data_valid del último frame (compuerta maestra)
+uint8_t  world_model_line_event_flags();  // EV_* del último frame (diagnóstico / observabilidad)
 
 // === Estado táctico (de WorldSnapshot.flags) ===
 bool world_model_match_running();
+// Override de arranque manual (F3, fail-safe de banco). Cuando es true,
+// world_model_match_running() devuelve true aunque no haya START de COMM.
+// Solo lo activa main_central bajo -DCENTRAL_ENABLE_MANUAL_START.
+void world_model_set_force_match_running(bool on);
 bool world_model_in_own_penalty_area();
 bool world_model_partner_alive();
 bool world_model_partner_sees_ball();

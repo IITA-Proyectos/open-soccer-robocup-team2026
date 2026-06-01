@@ -53,6 +53,10 @@ void setup() {
     pinMode(PIN_LED_STATUS, OUTPUT);
     digitalWrite(PIN_LED_STATUS, LOW);
 
+#ifdef CENTRAL_ENABLE_MANUAL_START
+    pinMode(PIN_MANUAL_START_BUTTON, INPUT_PULLUP);  // F3 fail-safe (solo banco)
+#endif
+
     Serial.begin(115200);
     delay(100);
     Serial.println("\n=========================================");
@@ -65,10 +69,18 @@ void setup() {
     motors_init();
     Serial.println("[CENTRAL] motors init OK");
 
+    // BNO055 local: la CENTRAL ya NO lleva BNO (2026-05-31). Los 2 BNO están en el
+    // TOP; el heading llega por WORLD_SNAPSHOT de ARRIBA. El módulo imu_zircon queda
+    // como compat — solo se inicializa con -DCENTRAL_HAS_LOCAL_BNO. Sin el flag no se
+    // toca el bus I2C ni se pierden ~3 s buscando un sensor ausente.
+#ifdef CENTRAL_HAS_LOCAL_BNO
     const bool imu_ok = imu_init();
     Serial.print("[CENTRAL] BNO055 local: ");
-    Serial.println(imu_ok ? "OK (respaldo del IMU dual de ARRIBA)"
-                          : "FAIL (continuando con IMU de ARRIBA por snapshot)");
+    Serial.println(imu_ok ? "OK (respaldo del heading de ARRIBA)"
+                          : "FAIL (sigue con el heading de ARRIBA por snapshot)");
+#else
+    Serial.println("[CENTRAL] BNO055 local: N/A (no instalado; heading viene de ARRIBA)");
+#endif
 
     world_model_init();
     strategy_init();
@@ -87,6 +99,26 @@ void loop() {
     // === RX: drenar ambos UARTs (no bloquea) ===
     comm_top_tick();    // aplica WorldSnapshot al world_model
     comm_down_tick();   // aplica LineStatusV2 al world_model
+
+#ifdef CENTRAL_ENABLE_MANUAL_START
+    // === F3 — Arranque manual fail-safe (SOLO banco, gateado) ===
+    // Si la placa COMM no manda START, forzar match_running con el pulsador
+    // (pin 9) o un ENTER por USB. Latch: una vez disparado, queda corriendo.
+    // Pre-start los motores estan detenidos -> sin ruido de motor en el pin.
+    {
+        static bool g_manual_started = false;
+        if (!g_manual_started) {
+            const bool btn = (digitalRead(PIN_MANUAL_START_BUTTON) == LOW);
+            bool ser = false;
+            while (Serial.available()) { if (Serial.read() == '\n') ser = true; }
+            if (btn || ser) {
+                g_manual_started = true;
+                world_model_set_force_match_running(true);
+                Serial.println("[CENTRAL] *** ARRANQUE MANUAL forzado (CENTRAL_ENABLE_MANUAL_START) ***");
+            }
+        }
+    }
+#endif
 
     // === EMERGENCY_LINE — bypass de FSM ===
     // Si ABAJO reporta línea inminente Y los datos son frescos, frenar AHORA.
@@ -129,6 +161,18 @@ void loop() {
         Serial.print(world_model_snapshot_is_fresh() ? "Y" : "N");
         Serial.print(" line_fresh=");
         Serial.print(world_model_line_is_fresh() ? "Y" : "N");
+        // Telemetria del link DOWN->CENTRAL: salud del enlace + estado del dato.
+        Serial.print(" down[rx=");
+        Serial.print(comm_down_get_frames_received());
+        Serial.print(" crc=");
+        Serial.print(comm_down_get_crc_errors());
+        Serial.print(" lost=");
+        Serial.print(comm_down_get_frames_lost());
+        Serial.print(" valid=");
+        Serial.print(world_model_line_data_valid() ? "Y" : "N");
+        Serial.print(" ev=0x");
+        Serial.print(world_model_line_event_flags(), HEX);
+        Serial.print("]");
         Serial.print(" match=");
         Serial.print(world_model_match_running() ? "RUN" : "STOP");
         Serial.print(" hdg=");

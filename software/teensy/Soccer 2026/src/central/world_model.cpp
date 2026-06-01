@@ -63,8 +63,14 @@ bool     world_model_line_detected()        { return lsv2_line_present(g_line); 
 float    world_model_get_line_angle_deg()   { return lsv2_line_angle_deg(g_line); }
 uint8_t  world_model_get_line_depth()       { return lsv2_penetration_u8(g_line); }
 bool     world_model_imminent_exit()        { return lsv2_imminent_exit(g_line); }
+bool     world_model_line_data_valid()      { return g_line.data_valid != 0; }
+uint8_t  world_model_line_event_flags()     { return g_line.event_flags; }
 
-bool world_model_match_running()        { return flag_set(g_snap.flags, 3); }
+// Override de arranque manual (F3). En competencia el flag de build esta OFF y
+// nadie llama al setter -> g_force_match_running queda false (sin efecto).
+static bool g_force_match_running = false;
+void world_model_set_force_match_running(bool on) { g_force_match_running = on; }
+bool world_model_match_running()        { return flag_set(g_snap.flags, 3) || g_force_match_running; }
 bool world_model_in_own_penalty_area()  { return flag_set(g_snap.flags, 0); }
 bool world_model_partner_alive()        { return flag_set(g_snap.flags, 1); }
 bool world_model_partner_sees_ball()    { return flag_set(g_snap.flags, 2); }

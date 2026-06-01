@@ -4,7 +4,7 @@ Código del robot delantero para la temporada 2026.
 
 ## Punto de partida
 
-Ver el código del delantero 2025 en `legacy/2025-season/code/delantero/` como referencia base.
+Ver el código del delantero 2025 en `definitivo-delantero.cpp` / `delantero-sin-zirconLib.cpp` (este mismo directorio) como referencia base.
 
 ## Arquitectura
 

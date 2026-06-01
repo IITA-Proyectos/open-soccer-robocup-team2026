@@ -1,5 +1,9 @@
 // imu_zircon.h — Wrapper del BNO055 con init robusto.
 //
+// ⚠️ 2026-05-31: la CENTRAL ya NO lleva BNO (los 2 BNO están en el TOP). Este módulo
+// queda como COMPAT; main_central solo llama imu_init() si se compila con
+// -DCENTRAL_HAS_LOCAL_BNO (default OFF). El heading del robot viene de ARRIBA.
+//
 // Aplica las lecciones de `docs/internal/giroscopo-bno055-analisis-tecnico.md`:
 //   - Modo IMUPLUS (acel + gyro, sin magnetómetro) → evita interferencia de motores.
 //   - Espera estabilización 1000ms post-init.

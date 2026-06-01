@@ -11,6 +11,14 @@ tags: [analisis, comunicacion, down, central, top, protocolo, buffers, timing, i
 ---
 # Analisis profundo — comunicacion DOWN<->CENTRAL (+TOP)
 
+> **Actualización 2026-05-31 (posterior al análisis, commit `bb298d4` / TASK-204):**
+> la cámara trasera quedó soldada en **Serial5**, así que el link **TOP→CENTRAL se
+> movió de Serial5 a Serial7** (ya implementado por el agente TOP). Donde más abajo
+> diga *"Serial5 → CENTRAL"* (p. ej. en "Cómo funciona hoy"), leer **Serial7 → CENTRAL**;
+> los hallazgos **TOP-CEN-01 y TOP-CEN-04** (Serial2/Serial5 stale) quedaron
+> **resueltos**. El **DOWN→TOP sí sigue en Serial5** (odometría OTOS) — eso no cambia.
+> El CENTRAL tampoco cambió (recibe el snapshot en Serial1 / pin 0).
+
 ## TL;DR (lo mas importante)
 
 - **El link DOWN→CENTRAL funciona en codigo y esta bien diseñado en su nucleo.** Framing (proto.h/cpp), CRC-16/CCITT-FALSE, baudios (230400 ambos lados) y backpressure del emisor estan solidos y testeados host-native. El problema NO es el protocolo: es (a) un bloqueante de hardware sin cerrar, (b) bugs de "frescura" que cargan trampas para mas adelante, y (c) el firmware de competencia que compila degradado.

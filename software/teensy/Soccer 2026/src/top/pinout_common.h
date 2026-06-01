@@ -16,9 +16,16 @@ namespace iitasoccer {
 constexpr int WIRE1_SCL_PIN = 24;
 constexpr int WIRE1_SDA_PIN = 25;
 
+// Recableado 2026-05-31 (confirmado en banco con diag_bno_addr_check):
+// los 2 BNO055 quedaron en el MISMO bus `Wire` (18/19), en direcciones
+// distintas. RIGHT tiene su pad ADR puenteado a 3V3 -> 0x29. Esto LIBERA
+// `Wire1` (24/25) para la comunicación con la placa DOWN.
+// OJO: 0x29 lo comparten el BNO RIGHT y la dirección de fábrica de los ToF;
+// por eso los ToF se enumeran a 0x2A..0x2D al boot (ver topología ToF abajo)
+// y nunca quedan en 0x29 una vez enumerados.
 constexpr uint8_t BNO055_LEFT_I2C_ADDR  = 0x28;
-constexpr uint8_t BNO055_RIGHT_I2C_ADDR = 0x28;
-constexpr uint8_t VL53L7CX_DEFAULT_I2C_ADDR = 0x29;
+constexpr uint8_t BNO055_RIGHT_I2C_ADDR = 0x29;  // ADR puenteado a 3V3
+constexpr uint8_t VL53L7CX_DEFAULT_I2C_ADDR = 0x29;  // de fábrica; se reasigna al enumerar
 
 // ============================================================
 // Topología ToF (recableado 2026-05-30, confirmado en banco)

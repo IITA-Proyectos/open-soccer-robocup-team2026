@@ -21,6 +21,8 @@
 #include <Arduino.h>
 #include "config_down.h"
 #include "line_ring.h"
+#include "line_calib.h"
+#include "eeprom_calib.h"
 #include "otos.h"
 #include "comm_top.h"
 #include "comm_central.h"
@@ -70,6 +72,21 @@ void setup() {
     // está vacía/inválida (primer arranque o tras ec_erase_calibration()).
     if (comm_central_load_persisted_calib()) {
         Serial.println("[DOWN] calib cargada de EEPROM (persistida)");
+        // IMPORTANTE: la linea anterior carga la calib en el DownModel, pero el
+        // line_ring (usado por line_ring_get_white y por el centroide
+        // cross_track_mm) tiene su PROPIA calib, que arriba quedo solo con el
+        // carpet recien medido y el blanco DEFAULT. Cargamos tambien el blanco
+        // real de EEPROM en el line_ring para que detecte bien (fix 2026-06).
+        SensorCalib cal[NUM_LINE_SENSORS];
+        if (ec_load_calibration(cal, NUM_LINE_SENSORS)) {
+            uint16_t carpet[NUM_LINE_SENSORS], white[NUM_LINE_SENSORS];
+            for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
+                carpet[i] = cal[i].carpet;
+                white[i]  = cal[i].white;
+            }
+            line_ring_set_calibration(carpet, white, NUM_LINE_SENSORS);
+            Serial.println("[DOWN] line_ring calibrado con blanco de EEPROM");
+        }
     } else {
         Serial.println("[DOWN] EEPROM sin calib valida — usando carpet recien medido");
     }

@@ -7,6 +7,7 @@
 #include "down_model.h"
 #include "down_encode.h"
 #include "eeprom_calib.h"
+#include "sensor_geometry.h"
 
 #include <Arduino.h>
 #include <string.h>
@@ -137,6 +138,39 @@ void comm_central_send_line_urgent() {
     }
 
 #ifdef DOWN_DEBUG_SERIAL
+    // --- BANCO (TASK seguidor Maria): calcular CENTROIDE Y de la linea + reenviar por U10 ---
+    // El cable hacia CENTRAL esta soldado en U10 (Serial5). Para el seguidor de
+    // arquero, CENTRAL necesita saber si la linea esta ADELANTE o ATRAS del centro
+    // del robot (para centrarse). Eso NO viene en el LineStatusV2 normal
+    // (cross_track_mm = N/A). Aca lo calculamos: promedio de la posicion Y de los
+    // sensores que ven blanco (sensor_geometry.h, +Y = adelante). Lo metemos en
+    // cross_track_mm: POSITIVO = linea adelante del centro, NEGATIVO = atras.
+    // Solo con -DDOWN_DEBUG_SERIAL; el firmware de competencia NO lo trae.
+    {
+        float sum_y = 0.0f;
+        int   n_white = 0;
+        for (int i = 0; i < NUM_LINE_SENSORS && i < SENSOR_COUNT; ++i) {
+            if (line_ring_get_white(static_cast<uint8_t>(i))) {
+                sum_y += SENSOR_POS[i].y_mm;
+                n_white++;
+            }
+        }
+        if (n_white > 0) {
+            float cy = sum_y / (float)n_white;   // centroide Y en mm
+            s.cross_track_mm = (int16_t)cy;      // + adelante / - atras
+        } else {
+            s.cross_track_mm = LSV2_NA_I16;      // sin linea -> N/A
+        }
+    }
+    // Re-codificar con el cross_track_mm actualizado y mandar por Serial5 (U10).
+    {
+        uint8_t buf5[PROTO_MAX_FRAME];
+        size_t nb5 = down_encode_line(s, g_send_seq, buf5, sizeof(buf5));
+        if (nb5 > 0 && Serial5.availableForWrite() >= (int)nb5) {
+            Serial5.write(buf5, nb5);
+        }
+    }
+
     // Debug de bring-up (TASK-301): imprime por el USB, a ~4 Hz, lo esencial que
     // DOWN tiene listo para CENTRAL: ¿HAY LINEA? (line_present del DownModel —
     // logica de linea ya probada) + la pose de los 2 OTOS + contadores de TX.

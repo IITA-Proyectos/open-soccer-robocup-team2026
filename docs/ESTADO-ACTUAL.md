@@ -17,9 +17,11 @@ tipo: indice-operacional
 > **TOP:** S1←DOWN · S3←cam frontal · S4↔COMM · S5←cam trasera · S7→CENTRAL.
 > **CENTRAL:** **S7 (pin 28)←TOP** (snapshot) · **S1 (pin 0)←DOWN** (línea) · **Serial2 (7/8)
 > LIBRE para el motor 2** → **conflicto 7/8 (TASK-036) RESUELTO**. HC-SR04 en pines 4/3.
-> CENTRAL **sin BNO** (los 2 BNO están en el TOP). Detalle único:
-> `hardware/electronics/MAPA-CONEXIONES-3-PLACAS.md`. Cualquier "conflicto 7/8 abierto" o
-> "Serial2 → CENTRAL" más abajo está **superado**.
+> CENTRAL **sin BNO** (los 2 BNO están en el TOP). **Los 4 ToF activos por default** en
+> top_robot1/2 (`TOP_ENABLE_MULTI_TOF`; boot del TOP ~40 s). **`Zircon.pdf`** (esquemático
+> del Zircon/CENTRAL, fuente Robomov) ya está en `hardware/electronics/`. Detalle único del
+> cableado: `hardware/electronics/MAPA-CONEXIONES-3-PLACAS.md`. Cualquier "conflicto 7/8
+> abierto" o "Serial2 → CENTRAL" más abajo está **superado**.
 
 ## 📦 Para programar un subsistema: usar los packs
 

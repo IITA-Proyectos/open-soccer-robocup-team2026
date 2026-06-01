@@ -409,8 +409,8 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 
 | Enlace | Pines (config) | Baud | Mensaje | Struct | Freq | Confirmado |
 |--------|----------------|------|---------|--------|------|------------|
-| ARRIBA → CENTRAL | TOP **Serial7** RX28/TX29 → CEN Serial1 RX0/TX1 | 230400 | `WORLD_SNAPSHOT` | `WorldSnapshot` (24 B) | 100 Hz | ✅ swap 2026-05-31 (TASK-204): la trasera quedó en Serial5 |
-| ABAJO → CENTRAL | DOWN Serial1 → CEN Serial2 (7/8) | ⚠️ s/d | `LINE_URGENT` | `LineStatus` | ~100 Hz | ⚠️ pines 7/8 de CEN comparten con Motor U17 — conflicto aparte, sin resolver |
+| ARRIBA → CENTRAL | TOP **Serial7** RX28/TX29 → CEN **Serial7** RX28/TX29 | 230400 | `WORLD_SNAPSHOT` | `WorldSnapshot` (24 B) | 100 Hz | ✅ 2026-05-31: CENTRAL en Serial7 (28/29) — cablear TOP pin 29 → CEN pin 28 |
+| ABAJO → CENTRAL | DOWN Serial1 → CEN **Serial1** (0/1) | 230400 | `LINE_URGENT` | `LineStatus` | ~100 Hz | ✅ reasignado 2026-05-31: CEN en Serial1 (0/1) → pines 7/8 libres para Motor U17 (conflicto RESUELTO) |
 | ABAJO → ARRIBA | DOWN Serial5 RX21/TX20 → TOP Serial1 | 230400 | odometría OTOS | pose/vel | 100 Hz | parcial (TASK-008 rewiring) |
 | cam1 → ARRIBA | TOP Serial3 RX15/TX14 | 19200 | blobs pelota/arco | proto viejo 9 B | ~30 Hz | OK |
 | cam2 → ARRIBA | TOP **Serial5** RX21/TX20 | 19200 | blobs pelota/arco | proto viejo 9 B | ~30 Hz | ✅ banco 2026-05-31 (FORMATO OK) |

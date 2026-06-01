@@ -47,11 +47,11 @@ programación — ya es independiente. (Teensy 4.0 tiene 7 UART y la 4.1 tiene 8
 | Puerto | RX | TX | Conecta con | Baud | Para qué |
 |--------|----|----|-------------|------|----------|
 | **`Serial`** (USB) | — | — | PC | — | flasheo + monitor (debug) |
-| **`Serial1`** | 0 | 1 | ← TOP | 230400 | recibe `WORLD_SNAPSHOT` |
-| **`Serial2`** | 7 | 8 | ← DOWN | 230400 | recibe `LINE_URGENT` / `LineStatusV2` |
+| **`Serial7`** | 28 | 29 | ← TOP | 230400 | recibe `WORLD_SNAPSHOT` |
+| **`Serial1`** | 0 | 1 | ← DOWN | 230400 | recibe `LINE_URGENT` / `LineStatusV2` |
 
 *Motores:* GPIO directo (INA/INB/PWM), **no UART**. *Kicker* (R2): GPIO pin 23 (placeholder, confirmar Enzo).
-*⚠️ Conflicto abierto (F8/TASK-036):* `Serial2` RX2=**pin 7** y TX2=**pin 8** comparten pines con el driver del **motor 2** (U17). Validar en banco motor 2 + Serial2 juntos; si se pisan, migrar este enlace a `Serial7` del CENTRAL (pin 28).
+*✅ Reasignado 2026-05-31 (decisión Gustavo, cableado en banco):* el link a **TOP usa `Serial7` (28/29)** y el de **DOWN usa `Serial1` (0/1)**. Así `Serial2` (pines 7/8) queda **LIBRE para el driver del motor 2 (U17)** → el viejo conflicto **F8/TASK-036 está RESUELTO** (ya no hay UART en 7/8).
 
 ### DOWN — Teensy 4.0 (sensores de piso: 32 línea + 2 OTOS)
 | Puerto | RX | TX | Conecta con | Baud | Para qué |
@@ -71,9 +71,9 @@ programación — ya es independiente. (Teensy 4.0 tiene 7 UART y la 4.1 tiene 8
 
 | Enlace | TX (placa · puerto · pin) | RX (placa · puerto · pin) | Baud | Estado |
 |--------|---------------------------|---------------------------|------|--------|
-| **TOP → CENTRAL** (snapshot) | TOP · `Serial7` · **pin 29** | CENTRAL · `Serial1` · **pin 0** | 230400 | ⚠️ sin cablear |
+| **TOP → CENTRAL** (snapshot) | TOP · `Serial7` · **pin 29** | CENTRAL · `Serial7` · **pin 28** | 230400 | ⚠️ sin cablear (pines 28/29 en ambas puntas) |
 | **DOWN → TOP** (odometría) | DOWN · `Serial5` · **pin 20** | TOP · `Serial1` · **pin 0** | 230400 | ⚠️ sin cablear |
-| **DOWN → CENTRAL** (línea) | DOWN · `Serial1` · **pin 1** | CENTRAL · `Serial2` · **pin 7** | 230400 | ✅ confirmado banco 2026-05-29 (sin motores) |
+| **DOWN → CENTRAL** (línea) | DOWN · `Serial1` · **pin 1** | CENTRAL · `Serial1` · **pin 0** | 230400 | ✅ cable validado 2026-05-29 (reasignado a Serial1) |
 | **TOP ↔ COMM** (árbitros) | TOP · `Serial4` · 16/17 | COMM (ESP32-C6) | 115200 | ⚠️ firmware COMM pendiente |
 | **cámara frontal → TOP** | cam · UART3 | TOP · `Serial3` · pin 15 | 19200 | ✅ FORMATO OK |
 | **cámara trasera → TOP** | cam · UART3 | TOP · `Serial5` · pin 21 | 19200 | ✅ FORMATO OK |
@@ -123,7 +123,7 @@ firmware queda como compat: si no hay sensor, `imu_init()` cae por timeout y no 
 
 - **I²C vs UART:** en ninguna placa se pisan (los buses I²C usan 16–19/24–25, los UART usan 0/1, 14/15, 20/21, 28/29 según placa).
 - **USB vs todo:** el USB (`Serial`) es independiente — nunca compite con UART ni I²C.
-- **Único conflicto real abierto:** CENTRAL `Serial2` (pin 7/8) vs **motor 2** (F8/TASK-036). Ver §1.
+- **✅ Conflicto 7/8 RESUELTO (2026-05-31):** el link DOWN→CENTRAL se movió a `Serial1` (0/1), así que `Serial2` (7/8) queda libre para el motor 2 (U17). **No quedan conflictos de UART abiertos.**
 
 ---
 

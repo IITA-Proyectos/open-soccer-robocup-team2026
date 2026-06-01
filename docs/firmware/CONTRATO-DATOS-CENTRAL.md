@@ -123,15 +123,15 @@ El transporte de TODOS los enlaces es **idéntico al definido en
 
 | Enlace | Serial | Pines Teensy | Dirección |
 |---|---|---|---|
-| TOP → CENTRAL | `Serial1` | RX1=0, TX1=1 | recibe `WORLD_SNAPSHOT` |
-| DOWN → CENTRAL | `Serial2` | RX2=7, TX2=8 | recibe `LINE_URGENT`, envía comandos |
+| TOP → CENTRAL | `Serial7` | RX7=28, TX7=29 | recibe `WORLD_SNAPSHOT` |
+| DOWN → CENTRAL | `Serial1` | RX1=0, TX1=1 | recibe `LINE_URGENT`, envía comandos |
 
-> **ADVERTENCIA CRÍTICA (P0):** Los comentarios de `config_central.h:79-82`
-> dicen "Serial1 RX1" para el enlace con TOP. Pero `comm_top.cpp:30` abre
-> `Serial1` y `comm_down.cpp:30` abre `Serial2`. Si el cableado físico TOP→
-> CENTRAL llega a los pines 7/8 (Serial2) en lugar de 0/1 (Serial1), **CENTRAL
-> nunca recibe snapshots y los motores quedan parados permanentemente**. El
-> mapeo físico está PENDIENTE DE VERIFICACIÓN CON OSCILOSCOPIO (TASK-008/014).
+> **✅ Reasignado 2026-05-31 (decisión Gustavo, cableado en banco):** el link
+> **TOP→CENTRAL usa `Serial7` (RX7=pin 28, TX7=pin 29)** y **DOWN→CENTRAL usa
+> `Serial1` (RX1=pin 0, TX1=pin 1)**. `comm_top.cpp` abre `Serial7`, `comm_down.cpp`
+> abre `Serial1`. Así `Serial2` (pines 7/8) queda libre para el driver del motor 2
+> (U17) → el viejo conflicto 7/8 (F8/TASK-036) está **RESUELTO**. Falta solo cablear
+> (TOP pin 29 → CENTRAL pin 28; DOWN pin 1 → CENTRAL pin 0) y validar el stream en banco.
 
 ---
 

@@ -49,8 +49,8 @@ liberarse en una futura Rev del PCB.
 
 | Serial | Pin Arduino RX | Pin Arduino TX | Conectado a | Baud | Rol |
 |---|---|---|---|---|---|
-| **`Serial1`** | **0** | **1** | placa **TOP** (master de cámaras) | 230400 | Recibe `WORLD_SNAPSHOT` @ 100 Hz |
-| **`Serial2`** | **7** | **8** | placa **DOWN** (sensores piso) | 230400 | **Recibe `LINE_URGENT` @ 200 Hz — bus de emergencia** |
+| **`Serial7`** | **28** | **29** | placa **TOP** (master de cámaras) | 230400 | Recibe `WORLD_SNAPSHOT` @ 100 Hz (reasignado 2026-05-31, antes Serial1) |
+| **`Serial1`** | **0** | **1** | placa **DOWN** (sensores piso) | 230400 | **Recibe `LINE_URGENT` @ 200 Hz** (reasignado 2026-05-31 desde Serial2/7-8 → libera 7/8 para el motor 2) |
 
 El Teensy 4.1 tiene 8 UARTs hardware (Serial1–Serial8); usamos solo 2.
 Los demás están reservados para depuración / futuro (encoders por UART, etc).
@@ -161,15 +161,15 @@ se desconecta el cable UART. La implementación vive en
 
 | Pin Arduino | Función | ROBOT1 (Arquero) | ROBOT2 (Delantero) | Confianza |
 |---|---|---|---|---|
-| 0 | RX1 (Serial1) | UART desde TOP | UART desde TOP | ✅ |
-| 1 | TX1 (Serial1) | UART hacia TOP | UART hacia TOP | ✅ |
+| 0 | RX1 (Serial1) | UART desde **DOWN** (reasig. 2026-05-31) | idem | ✅ |
+| 1 | TX1 (Serial1) | UART hacia **DOWN** | idem | ✅ |
 | 2 | GPIO | Motor 1 INA | Motor 3 INA | ✅ |
 | 3 | PWM | Motor 1 PWM | Motor 3 PWM | ✅ |
 | 4 | PWM | Motor 3 PWM | Motor 2 PWM | ✅ |
 | 5 | GPIO | Motor 1 INB | Motor 3 INB | ✅ |
 | 6 | PWM | Motor 2 PWM | Motor 1 PWM | ✅ |
-| 7 | RX2 (Serial2) **+ GPIO** | UART desde DOWN + Motor 2 INB | UART desde DOWN + Motor 1 INB | ⚠️ ¿conflict? |
-| 8 | TX2 (Serial2) **+ GPIO** | UART hacia DOWN + Motor 2 INA | UART hacia DOWN + Motor 1 INA | ⚠️ ¿conflict? |
+| 7 | GPIO (Motor) | Motor 2 INB | Motor 1 INB | ✅ (Serial2 liberado 2026-05-31) |
+| 8 | GPIO (Motor) | Motor 2 INA | Motor 1 INA | ✅ (Serial2 liberado 2026-05-31) |
 | 9 | GPIO | Botón 1 (legacy) | Botón 1 (legacy) | ✅ legacy |
 | 10 | GPIO | Botón 2 (legacy) | Botón 2 (legacy) | ✅ legacy |
 | 11 | GPIO | Motor 3 INA | Motor 2 INA | ✅ |
@@ -181,20 +181,14 @@ se desconecta el cable UART. La implementación vive en
 | 20–23 | Analógicos | Legacy IR pelota (no usados) | Legacy IR pelota (no usados) | ✅ legacy |
 | 23 | GPIO | — | Kicker solenoide | ⚠️ TENTATIVO |
 | 25–27 | Analógicos | Legacy Line1/2/3 (no usados) | Legacy Line1/2/3 (no usados) | ✅ legacy |
-| 24, 28–41 | GPIO | Libres para expansión | Libres para expansión | ✅ |
+| **28, 29** | RX7/TX7 (Serial7) | UART **desde/hacia TOP** (reasignado 2026-05-31) | idem | ✅ |
+| 24, 30–41 | GPIO | Libres para expansión | Libres para expansión | ✅ |
 
-> ⚠️ **Conflicto potencial pines 7/8**: el doc histórico del 2026-03-20 asigna
-> pines 7 y 8 a INB/INA de Motor 2 (ROBOT1) o Motor 1 (ROBOT2). PERO el firmware
-> nuevo (`config_central.h` líneas 81–82 + `comm_down.h:3`) los usa para **RX2 y
-> TX2 de Serial2** (UART hacia DOWN). **No pueden ser ambas cosas al mismo
-> tiempo**. Hay que confirmar con Enzo cuál es el cableado físico real del
-> Zircon Rev v15 y resolver:
->  - Opción A: los pines 7 y 8 nunca fueron de motores en el Zircon — el doc
->    del 2026-03-20 está mal (era el firmware viejo del 2025).
->  - Opción B: hay que cambiar el firmware nuevo para usar OTROS pines de UART
->    libres (Serial3/4/5/6/7/8).
->  - Opción C: el motor que usaba 7/8 ya no se conecta físicamente (en cuyo
->    caso documentarlo y dejar Serial2 ahí).
+> ✅ **Conflicto pines 7/8 RESUELTO (2026-05-31, Opción B):** se eligió mover los
+> UART a otros pines. El link **DOWN→CENTRAL pasó a `Serial1` (0/1)** y **TOP→CENTRAL
+> a `Serial7` (28/29)** (pines de expansión libres). Así los **pines 7/8 quedan solo
+> para el driver del motor 2 (U17)** — sin UART encima. Firmware ya actualizado
+> (`comm_down.cpp` → Serial1, `comm_top.cpp` → Serial7, `config_central.h`).
 
 ## 9. Pendientes humanos (NO bloquean uso del pack, pero hay que resolver)
 
@@ -202,7 +196,7 @@ se desconecta el cable UART. La implementación vive en
 |---|---|---|---|
 | 1 | Confirmar `PIN_KICKER_SOL` (¿es 23?) | Enzo | Patear pelota (TASK-011) |
 | 2 | Confirmar `WHEEL_ANGLES_DEG` y `WHEEL_RADIUS_MM` con montaje físico | Enzo + Virginia | Cinemática correcta (omni-3) |
-| 3 | **Resolver conflicto pines 7/8** (motores vs Serial2) | Enzo + revisor de firmware | Comunicación DOWN→CENTRAL real |
+| 3 | ✅ RESUELTO 2026-05-31: conflicto 7/8 cerrado moviendo los UART (DOWN→Serial1 0/1, TOP→Serial7 28/29); 7/8 quedan para el motor 2. | ✅ | — |
 | 4 | Confirmar que sensores legacy (8 IR + 3 línea) están físicamente en el PCB pero firmware no los lee | Enzo | Liberar esos pines en futura Rev del Zircon |
 | 5 | Encoders magnéticos (AS5600) — futuro | Equipo | PID closed-loop por motor (ver §10 del 02-funcionalidad.md) |
 

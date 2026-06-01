@@ -117,7 +117,7 @@ primero). El CRC viaja big-endian. No confundir.
 | **Serial5** | **RX=21, TX=20** | 19200 | ← **Cámara trasera** (OpenMV) | ✅ **banco 2026-05-31: trasera soldada acá (FORMATO OK, `diag_top_cameras`)** |
 | Serial3 | RX=15, TX=14 | 19200 | ← Cámara frontal (OpenMV) | Schematic U8 ✅ FORMATO OK |
 | Serial4 | RX=16, TX=17 | 115200 | ↔ COMM (árbitros + ESP-NOW) | Schematic U15 |
-| **Serial7** | **RX=28, TX=29** | 230400 | **→ CENTRAL (snapshot)** | swap 2026-05-31 (TASK-204): TX7=pin 29 → CENTRAL Serial1 |
+| **Serial7** | **RX=28, TX=29** | 230400 | **→ CENTRAL (snapshot)** | swap 2026-05-31 (TASK-204): TX7=pin 29 → CENTRAL **Serial7** (RX7=pin 28) |
 | ~~Serial2~~ (7/8) | — | — | NO usado como UART | pin 7 libre; el HC-SR04 está en pines 3/4 |
 
 > **✅ Actualizado 2026-05-31 (TASK-204):** la **cámara trasera** quedó soldada en

@@ -1,7 +1,7 @@
-// cameras_runtime.h — Wiring de los 2 CameraParser sobre Serial3 + Serial7.
+// cameras_runtime.h — Wiring de los 2 CameraParser sobre Serial3 + Serial5.
 //
 // Responsabilidad:
-//   • cameras_init()  : abre Serial3 (cam frontal) y Serial7 (cam trasera).
+//   • cameras_init()  : abre Serial3 (cam frontal) y Serial5 (cam trasera).
 //   • cameras_tick()  : drena ambos UARTs sin bloquear, alimenta los parsers,
 //                       y al cerrar un packet actualiza el snapshot fusionado.
 //   • Getters         : exponen el último valor fusionado (pelota + 2 arcos).

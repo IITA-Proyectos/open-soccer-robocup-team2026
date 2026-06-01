@@ -11,7 +11,7 @@
 //   • Comm árbitros + partner ESP-NOW (Serial4 → placa COMM)
 //
 // Outputs:
-//   • WORLD_SNAPSHOT a CENTRAL (Serial2) a 100 Hz.
+//   • WORLD_SNAPSHOT a CENTRAL (Serial7) a 100 Hz.
 //
 // Build:
 //   pio run -e top
@@ -116,7 +116,7 @@ void setup() {
     cameras_init();      // Serial3 + Serial5 ← OpenMV front + back
     comm_down_init();    // Serial1 ← odometría desde ABAJO
     comm_arbiter_init(); // Serial4 ↔ placa COMM
-    comm_central_init(); // Serial2 → snapshot a CENTRAL
+    comm_central_init(); // Serial7 → snapshot a CENTRAL
 
     digitalWrite(PIN_LED_STATUS, HIGH);
     Serial.println("[TOP] cerebro sensorial listo, enviando snapshots a CENTRAL");

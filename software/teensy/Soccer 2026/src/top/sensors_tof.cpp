@@ -46,17 +46,17 @@ VL53L7CX_ResultsData  g_tof_results;
 bool                  g_tof_init_logged = false;  // anti-spam del log de init
 
 #ifdef TOP_ENABLE_MULTI_TOF
-// ----- Enumeracion de los 4 ToF (bus unico Wire) — GATEADO, OFF por default -----
+// ----- Enumeracion de los 4 ToF (bus unico Wire) — ACTIVO POR DEFAULT (2026-06-01) -----
 // Portado de diag_top_tof_quad_live (validado en banco 2026-05-30). LP pins y
 // direcciones vienen de pinout_robotN.h: PIN_TOF_XSHUT[]={9,10,11,12} (ACTIVO-ALTO),
 // TOF_I2C_ADDR_ASSIGNED[]={0x2A..0x2D}.
-// >>> ANTES DE ACTIVAR (-DTOP_ENABLE_MULTI_TOF) <<<
-//   1) Enzo debe resolver el conflicto del PIN 10 (LP ToF[1] == dipswitch de rol):
-//      NO conectar un dipswitch fisico al pin 10 (aca se maneja como salida LP).
-//   2) Validar en banco con POWER-CYCLE + diag_pose_live (las direcciones I2C
-//      persisten con 3V3; un reset NO las borra).
-//   3) Boot: begin() carga ~85KB por ToF (~10s c/u) -> ~40s de arranque. OK en
-//      power-on (no se power-cyclea entre partidos), pero medirlo.
+// >>> ACTIVADO POR DEFAULT 2026-06-01 (top_robot1/2). Condiciones cumplidas: <<<
+//   1) PIN 10 (LP ToF[1]) LIBRE: el rol va por #define ROBOT1/ROBOT2; el TOP NO lee
+//      dipswitch en pin 10 -> sin conflicto (no conectar un dipswitch fisico ahi).
+//   2) Validado en banco (diag_top_tof_quad_live: los 4 enumeran a 0x2A..0x2D, posicion
+//      + orientacion mapeadas). Recordar POWER-CYCLE (las dir I2C persisten con 3V3).
+//   3) HEADS-UP boot: begin() carga ~85KB por ToF (~10s c/u) -> ~40s de arranque del TOP
+//      (vs ~10s con 1 ToF). Tolerable en power-on; conviene medirlo en cancha.
 Adafruit_VL53L7CX  g_tof_multi[NUM_TOF];
 constexpr uint8_t  LP_WAKE_LEVEL  = HIGH;   // activo-alto (banco 2026-05-30)
 constexpr uint8_t  LP_SLEEP_LEVEL = LOW;

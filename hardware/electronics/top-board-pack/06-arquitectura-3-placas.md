@@ -263,11 +263,11 @@ Los otros 5 UARTs del Teensy 4.0 (Serial2, 3, 4, 6, 7) no están cableados en la
 - **Serial4** (pines 16/17) — conector U15 "UART_COMM_OUT" → placa COMM (árbitros + ESP-NOW).
 - **Serial5** (pines 21/20) — conector U9 "UART-CAMERA2" → cámara 2.
 
-**Serial7** (pines 28/29) — `WORLD_SNAPSHOT` hacia CENTRAL (TX7=pin 29 → Serial1 del CENTRAL; swap 2026-05-31, TASK-204). Serial2 (pines 7/8) quedó libre.
+**Serial7** (pines 28/29) — `WORLD_SNAPSHOT` hacia CENTRAL (TX7=pin 29 → Serial7 del CENTRAL, RX7=pin 28; swap 2026-05-31, TASK-204). Serial2 (pines 7/8) quedó libre.
 
 **Placa CENTRAL (Teensy 4.1, Zircon Rev v15)** — capacidad para 8 UARTs hardware:
 - Serial1 → recibe del ARRIBA (`WORLD_SNAPSHOT`).
-- Serial2 → recibe del ABAJO (`LINE_URGENT`).
+- Serial1 → recibe del ABAJO (`LINE_URGENT`) — reasignado 2026-05-31 (antes Serial2).
 - Pines de motores ya cableados (no comparten con UARTs).
 | `DOWN_ODOM` | ABAJO → ARRIBA | 100 Hz | Pose odométrica OTOS (x, y, heading), velocidad, slip |
 | `MOTOR_COMMAND_*` | (interno CENTRAL) | 100 Hz | No UART — CENTRAL aplica directo |
@@ -401,7 +401,7 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
                           │  FSM + PIDs   │
                           └───────────────┘
                                   ▲
-            Serial2 (CENTRAL) ◄───┘  LINE_URGENT ~100 Hz
+            Serial1 (CENTRAL) ◄───┘  LINE_URGENT ~100 Hz
             bus de EMERGENCIA        LineStatus (ángulo+profundidad+imminent)
                                   ▲
                           ┌───────────────┐
@@ -416,7 +416,7 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 | Enlace | Pines (config) | Baud | Mensaje | Struct | Freq | Confirmado |
 |--------|----------------|------|---------|--------|------|------------|
 | ARRIBA → CENTRAL | TOP Serial7 TX29 → CEN Serial1 RX0 | 230400 | `WORLD_SNAPSHOT` | `WorldSnapshot` (24 B) | 100 Hz | ✅ TOP Serial7 (swap 2026-05-31, TASK-204) |
-| ABAJO → CENTRAL | CEN Serial2 | ⚠️ s/d | `LINE_URGENT` | `LineStatus` | ~100 Hz | ⚠️ baud no es constante en config_central.h |
+| ABAJO → CENTRAL | CEN Serial1 (0/1) | 230400 | `LINE_URGENT` | `LineStatus` | ~100 Hz | ✅ reasignado 2026-05-31 (antes Serial2/7-8 → libera motor 2) |
 | ABAJO → ARRIBA | DOWN Serial5 RX20/TX21 → TOP Serial1 | 230400 | odometría OTOS | pose/vel | 100 Hz | parcial (TASK-008 rewiring) |
 | cam1 → ARRIBA | TOP Serial3 RX15/TX14 | 19200 | blobs pelota/arco | proto viejo 9 B | ~30 Hz | OK |
 | cam2 → ARRIBA | TOP Serial5 RX21/TX20 | 19200 | blobs pelota/arco | proto viejo 9 B | ~30 Hz | OK |
@@ -426,9 +426,10 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 ### Gaps de flujo de datos sin cerrar (NO asumir resueltos)
 
 1. ✅ **RESUELTO 2026-05-31 (TASK-204) — TOP→CENTRAL = Serial7.** El enlace
-   principal ARRIBA→CENTRAL va por el **Serial7 del TOP** (TX = pin 29) → **Serial1
-   del CENTRAL** (RX pin 0), 230400 baud, confirmado en banco. Antes se creía Serial2;
-   se movió porque la cámara trasera quedó soldada en Serial5.
+   principal ARRIBA→CENTRAL va por el **Serial7 del TOP** (TX = pin 29) → **Serial7
+   del CENTRAL** (RX7 = pin 28), 230400 baud, confirmado en banco. (En el TOP se movió a
+   Serial7 porque la trasera quedó en Serial5; en la CENTRAL se eligió Serial7/28-29 para
+   liberar 7/8 del motor 2.)
 2. **Baud DOWN↔CENTRAL**: el bus de emergencia (lo más crítico para no
    salirse de cancha) no tiene constante de baud en `config_central.h`.
    Verificar que ambos extremos coincidan antes de integrar.

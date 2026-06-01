@@ -104,9 +104,9 @@ top-board-pack/
    muertos.
 
 3. ✅ **RESUELTO 2026-05-31 (TASK-204) — enlace TOP→CENTRAL confirmado.** El
-   `WORLD_SNAPSHOT` sale por el **Serial7 del TOP** (TX = pin 29) → **Serial1 del
-   CENTRAL** (RX pin 0), 230400 baud, verificado en banco. Antes se creía Serial2
-   (pines 7/8); se movió porque la cámara trasera quedó soldada en Serial5.
+   `WORLD_SNAPSHOT` sale por el **Serial7 del TOP** (TX = pin 29) → **Serial7 del
+   CENTRAL** (RX7 = pin 28), 230400 baud, verificado en banco. (CENTRAL usa Serial7/28-29;
+   los pines 7/8 quedan libres para el motor 2.)
 
 **Otros pendientes (no urgentes):**
 

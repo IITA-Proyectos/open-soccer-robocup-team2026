@@ -448,7 +448,7 @@ loop() (no tiene period fijo — corre tan rápido como puede):
 
 | ID | Gap | Archivo:línea | Risk-no-fix | Risk-fix | Tiempo est. |
 |----|-----|--------------|-------------|----------|-------------|
-| ~~G-TOP-01~~ | ~~**Serial2 (→CENTRAL) no confirmado en HW**~~ **RESUELTO 2026-05-31 (TASK-204):** el enlace **TOP→CENTRAL es Serial7** (TX7=pin 29 → CENTRAL Serial1), confirmado en banco. La trasera quedó soldada en Serial5, por eso el link se movió. Firmware: `comm_central.cpp` → Serial7. | `comm_central.cpp:16` | — | — | — |
+| ~~G-TOP-01~~ | ~~**Serial2 (→CENTRAL) no confirmado en HW**~~ **RESUELTO 2026-05-31 (TASK-204):** el enlace **TOP→CENTRAL es Serial7** (TX7=pin 29 → CENTRAL Serial7, RX7=pin 28), confirmado en banco. La trasera quedó soldada en Serial5, por eso el link se movió. Firmware: `comm_central.cpp` → Serial7. | `comm_central.cpp:16` | — | — | — |
 | G-TOP-02 | **Polaridad de arco hardcodeada** `yellow=opp` | `main_top.cpp:65` | En ~50% de partidos el robot ataca su propio arco | Leer `referee_cmd` para aplicar inversión; fácil una vez que COMM anda | 3h |
 | G-TOP-03 | **Rol no leído** (`PIN_ROLE_DIPSWITCH` sin `digitalRead`) | `config_top.h:87` + `main_top.cpp` (ausente) | Arquero y delantero son indistinguibles al boot; `TOP_STATUS_REPLY` manda rol=0 siempre | Agregar 1 línea en `setup()`, propagar rol | 1h |
 | G-TOP-04 | **`pulseIn` bloqueante en HC-SR04** en el loop | `sensors_tof.cpp:32` | Loop puede tardar hasta 25 ms en cada lectura → violación de loop timing → snapshot retrasado | Convertir a lectura no bloqueante con ISR o timer | 4h |

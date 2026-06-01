@@ -39,10 +39,12 @@ namespace {
 
 constexpr long DOWN_LINK_BAUD = 230400;   // mismo baud que DOWN
 
-// UART hacia DOWN. Serial7 = RX7 pin 28 / TX7 pin 29 (Teensy 4.1).
-// Serial7 esquiva el posible conflicto 7/8 con el motor 2 (sin aislar). Si algún
-// día se recablea / se aísla el veredicto, cambiar acá.
-#define DOWN_UART Serial7
+// UART hacia DOWN. Serial1 = RX1 pin 0 / TX1 pin 1 (Teensy 4.1).
+// Es el conector rotulado "UART" del Zircon (pines 0/1), donde esta soldado el
+// cable que viene de DOWN (conector U11 de DOWN, tambien Serial1). Es por donde
+// la CENTRAL ya leia el viernes. OJO: Serial1 es tambien el canal hacia el TOP
+// en el firmware de competencia — para banco sin TOP no hay conflicto.
+#define DOWN_UART Serial1
 
 // Cada cuánto se redibuja el panel (ms). 500 ms = legible, no satura.
 constexpr uint32_t PANEL_INTERVAL_MS = 500;

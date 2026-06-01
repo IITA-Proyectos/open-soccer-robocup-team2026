@@ -40,10 +40,10 @@ constexpr uint8_t VL53L7CX_DEFAULT_I2C_ADDR = 0x29;
 // UARTs — pines fijos del Teensy 4.0
 // ============================================================
 constexpr long UART_FROM_DOWN_BAUD = 230400;   // Serial1
-constexpr long UART_TO_ZIRCON_BAUD = 230400;   // Serial2 — TENTATIVO
+constexpr long UART_TO_ZIRCON_BAUD = 230400;   // Serial7 (TX29/RX28) → CENTRAL/Zircon
 constexpr long UART_CAMERA1_BAUD   = 19200;    // Serial3
 constexpr long UART_TO_COMM_BAUD   = 115200;   // Serial4
-constexpr long UART_CAMERA2_BAUD   = 19200;    // Serial5
+constexpr long UART_CAMERA2_BAUD   = 19200;    // Serial5 (cámara trasera, soldada pin 21)
 
 // ============================================================
 // HC-SR04 ultrasonido frontal (idéntico ambos robots)

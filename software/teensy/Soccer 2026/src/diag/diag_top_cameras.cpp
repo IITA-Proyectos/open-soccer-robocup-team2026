@@ -14,7 +14,7 @@
 //
 // Pines RX de cada UART en Teensy 4.0:
 //   Serial1=0  Serial2=7  Serial3=15 (FRONTAL/U8)  Serial4=16
-//   Serial5=21 (puerto viejo de la trasera)  Serial6=25  Serial7=28 (trasera/U9)
+//   Serial5=21 (CÁMARA TRASERA, soldada acá)  Serial6=25  Serial7=28 (→CENTRAL, es TX)
 //   + GND común entre cada cámara y el Teensy. Cámaras alimentadas + corriendo main.py.
 //
 // Uso:
@@ -46,15 +46,15 @@ struct Link {
     uint32_t        last_byte_ms = 0;
 };
 
-// LOS 7 UART del Teensy 4.0. Serial3 es la frontal (ya verificada).
+// LOS 7 UART del Teensy 4.0. Frontal=Serial3, Trasera=Serial5 (ambas verificadas).
 Link g_links[] = {
     { "Serial1 (RX pin 0 )",                 &Serial1 },
     { "Serial2 (RX pin 7 )",                 &Serial2 },
     { "Serial3 (RX pin 15) [FRONTAL / U8]",  &Serial3 },
     { "Serial4 (RX pin 16)",                 &Serial4 },
-    { "Serial5 (RX pin 21) [trasera vieja]", &Serial5 },
+    { "Serial5 (RX pin 21) [CAMARA TRASERA]",&Serial5 },
     { "Serial6 (RX pin 25)",                 &Serial6 },
-    { "Serial7 (RX pin 28) [trasera / U9]",  &Serial7 },
+    { "Serial7 (RX pin 28) [link CENTRAL/TX]",&Serial7 },
 };
 
 void drain(Link& c, uint32_t now) {

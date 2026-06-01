@@ -52,23 +52,18 @@ constexpr uint8_t TOF_RESOLUTION_ZONES = 16;  // 4x4
 constexpr uint8_t TOF_RANGING_FREQ_HZ  = 15;
 
 // ----------------------------------------------------------------------------
-// HC-SR04 — DESHABILITADO POR DEFAULT (conflicto de pin 7).
+// HC-SR04 — DESHABILITADO POR DEFAULT (pulseIn bloqueante; el ToF frontal lo cubre).
 // ----------------------------------------------------------------------------
-// PIN_HCSR04_ECHO = 7 (pinout_common.h) colisiona con Serial2 RX2 del Teensy
-// 4.0, que es el UART del WORLD_SNAPSHOT hacia CENTRAL (comm_central.cpp ->
-// Serial2.begin, pins 7/8). main_top arranca comm_central LAST, asi que en
-// runtime el pin 7 queda bajo control del periferico UART. Consecuencias del
-// pulseIn(7,...) sobre ese pin:
-//   1. Lectura basura -> min_obstacle_mm contaminado (puede disparar evasion
-//      espuria o enmascarar un obstaculo real frente al robot).
-//   2. pulseIn BLOQUEA hasta 25 ms esperando un echo que nunca llega bien
-//      (la linea RX idlea en HIGH porque CENTRAL no transmite a TOP). A ~90 ms
-//      de cadencia, eso roba 25 ms al loop y degrada el uplink de 100 Hz.
-// El ToF frontal U2 ya cubre la distancia frontal, asi que el HC-SR04 es
-// redundante. Para reactivarlo hay que primero MOVER el ECHO a un pin libre
-// (decision de hardware -> team-task) y recien ahi compilar con
-// -DTOP_ENABLE_HCSR04. Sin ese flag, el modulo no toca los pines 6/7 ni llama
-// a pulseIn, y sensors_hcsr04_get_distance_mm() devuelve TOF_NO_READING.
+// Cableado en banco 2026-05-31: TRIG=pin 4, ECHO=pin 3 (pines ex-XSHUT ToF, hoy
+// libres; NO son UART). Esto RESUELVE el viejo "conflicto de pin 7" (antes el ECHO
+// estaba en pin 7 = Serial2 RX2): el HC-SR04 ya no comparte pin con ningun Serial.
+// Aun asi queda gateado OFF por default por la OTRA razon, que sigue vigente:
+//   pulseIn() BLOQUEA hasta 25 ms esperando el echo. A ~90 ms de cadencia eso
+//   roba 25 ms al loop y degrada el uplink de 100 Hz (P0: TASK-014).
+// Ademas el ToF frontal ya aporta "distancia frontal", asi que el HC-SR04 es
+// redundante hoy. Para reactivarlo (ya sin riesgo de pin): compilar con
+// -DTOP_ENABLE_HCSR04, idealmente despues de hacerlo NO bloqueante. Sin ese flag,
+// el modulo no toca los pines ni llama a pulseIn, y devuelve TOF_NO_READING.
 #ifdef TOP_ENABLE_HCSR04
 // HC-SR04 — lectura bloqueante, simple (sin cambios desde el stub).
 uint16_t read_hcsr04() {
@@ -109,8 +104,8 @@ uint16_t mean_valid_zones(const VL53L7CX_ResultsData& r, uint8_t n_zones) {
 
 bool sensors_tof_init() {
 #ifdef TOP_ENABLE_HCSR04
-    // HC-SR04 frontal — solo si se reactivo explicitamente (ver nota del
-    // conflicto de pin 7 arriba). NO tocar pin 7 si Serial2 lo necesita.
+    // HC-SR04 frontal — solo si se reactivo explicitamente (ver nota arriba).
+    // Pines 4/3 (libres); el conflicto de pin 7 ya no aplica.
     pinMode(PIN_HCSR04_TRIG, OUTPUT);
     pinMode(PIN_HCSR04_ECHO, INPUT);
 #endif

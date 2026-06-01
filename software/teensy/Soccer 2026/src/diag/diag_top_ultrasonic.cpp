@@ -13,7 +13,7 @@
 // ║   • alimentar el HC-SR04 a 3.3 V (ECHO sale ~3.3 V, seguro; pierde alcance). ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 //
-// Pines (pinout_common.h §2.4): TRIG = pin 6, ECHO = pin 7. + VCC y GND comunes.
+// Pines (cableado 2026-05-31, pinout_common.h): TRIG = pin 4, ECHO = pin 3. + VCC y GND comunes.
 //
 // Uso:
 //   pio run -e diag_top_ultrasonic -t upload
@@ -23,8 +23,8 @@
 
 #include <Arduino.h>
 
-constexpr int      PIN_TRIG        = 6;          // = PIN_HCSR04_TRIG (pinout_common.h)
-constexpr int      PIN_ECHO        = 7;          // = PIN_HCSR04_ECHO (pinout_common.h)
+constexpr int      PIN_TRIG        = 4;          // = PIN_HCSR04_TRIG (pinout_common.h)
+constexpr int      PIN_ECHO        = 3;          // = PIN_HCSR04_ECHO (pinout_common.h)
 constexpr long     USB_BAUD        = 115200;
 constexpr uint32_t PERIOD_MS       = 100;        // ~10 Hz (HC-SR04 quiere >60 ms entre pulsos)
 constexpr uint32_t ECHO_TIMEOUT_US = 30000UL;    // ~5 m ida+vuelta (el HC-SR04 llega ~4 m)
@@ -55,7 +55,7 @@ void setup() {
 
     Serial.println();
     Serial.println("=============================================================");
-    Serial.println(" diag_top_ultrasonic — HC-SR04 frontal (TRIG=pin 6, ECHO=pin 7)");
+    Serial.println(" diag_top_ultrasonic — HC-SR04 frontal (TRIG=pin 4, ECHO=pin 3)");
     Serial.print  (" build: "); Serial.print(__DATE__); Serial.print(' '); Serial.println(__TIME__);
     Serial.println(" Baud 115200. ~10 Hz. dist_cm = eco_us / 58.");
     Serial.println(" [sin eco] = timeout (fuera de rango / cableado / sin energia).");

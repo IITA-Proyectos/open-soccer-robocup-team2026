@@ -47,9 +47,11 @@ constexpr long UART_CAMERA2_BAUD   = 19200;    // Serial5 (cámara trasera, sold
 
 // ============================================================
 // HC-SR04 ultrasonido frontal (idéntico ambos robots)
+// Cableado en banco 2026-05-31: TRIG=pin 4, ECHO=pin 3 (pines ex-XSHUT ToF, hoy
+// libres). Antes 6/7. Los pines 3/4 NO son UART → sin conflicto con ningún Serial.
 // ============================================================
-constexpr int PIN_HCSR04_TRIG = 6;
-constexpr int PIN_HCSR04_ECHO = 7;
+constexpr int PIN_HCSR04_TRIG = 4;
+constexpr int PIN_HCSR04_ECHO = 3;
 
 // ============================================================
 // LED de estado (LED_BUILTIN del Teensy)

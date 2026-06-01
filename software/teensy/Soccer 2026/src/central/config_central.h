@@ -78,11 +78,16 @@ constexpr int MAX_PWM           = 255;    // Arduino analogWrite range
 constexpr float MAX_SPEED_MM_S  = 1000.0f; // velocidad máxima estimada del robot
 
 // ============================================================
-// UART hacia TOP
+// UARTs inter-placa (reasignados 2026-05-31 — ver MAPA-CONEXIONES-3-PLACAS.md)
+//   • TOP→CENTRAL  (WORLD_SNAPSHOT): Serial7  RX7=pin 28, TX7=pin 29
+//   • DOWN→CENTRAL (LINE_URGENT):    Serial1  RX1=pin 0,  TX1=pin 1
+//   • Serial2 (7/8) queda LIBRE para el driver del motor 2 (U17) → conflicto F8 RESUELTO.
 // ============================================================
 constexpr long  UART_TOP_BAUD   = 230400;
-constexpr int   UART_TOP_RX     = 0;  // Serial1 RX1
-constexpr int   UART_TOP_TX     = 1;  // Serial1 TX1
+constexpr int   UART_TOP_RX     = 28;  // Serial7 RX7 (TOP→CENTRAL)
+constexpr int   UART_TOP_TX     = 29;  // Serial7 TX7
+constexpr int   UART_DOWN_RX    = 0;   // Serial1 RX1 (DOWN→CENTRAL)
+constexpr int   UART_DOWN_TX    = 1;   // Serial1 TX1
 
 // ============================================================
 // Watchdog

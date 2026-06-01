@@ -45,7 +45,7 @@ implementado todavía.
 | **ToF VL53L7CX** | 4 (HW) | ⚠️ HW OK (enumeran 0x2A..0x2D), firmware lee 1 (Sprint B pendiente) | `firmware/top/sensors_tof.{h,cpp}` |
 | Comm con COMM (Serial4) | 1 | ✅ vivo (arbiter) | `firmware/top/comm_arbiter.{h,cpp}` |
 | Comm con DOWN (Serial1) | 1 | ✅ vivo | `firmware/top/comm_down.{h,cpp}` |
-| Comm con CENTRAL (**Serial5**, ex-Serial2) | 1 | ✅ vivo | `firmware/top/comm_central.{h,cpp}` |
+| Comm con CENTRAL (**Serial7**, swap 2026-05-31) | 1 | ✅ vivo | `firmware/top/comm_central.{h,cpp}` |
 | **WorldSnapshot v2 con `ball_vx/vy`** | 2 | ⚠️ struct definido pero `cameras_runtime` no llena los campos (quedan en 0) | `firmware/shared/types.h` + tests `test_central_contract` |
 | EKF de pose absoluta | 3 | ⏳ futuro | — |
 | Kalman pelota (predicción cuando no se ve) | 3 | ⏳ futuro | — |
@@ -208,7 +208,7 @@ Detalles del workflow de calibración: ver skill `openmv-vision-tuning` del repo
 
 | ToF | Estado | Razón |
 |---|---|---|
-| HC-SR04 (frontal) | ⚠️ gateado OFF | `pulseIn` colisionaba con el pin del uplink; deshabilitado por `#ifdef TOP_ENABLE_HCSR04`. El ToF frontal lo reemplaza. |
+| HC-SR04 (frontal) | ⚠️ gateado OFF | Cableado en pines 4/3 (banco 2026-05-31; ya sin conflicto de pin). Sigue OFF por el `pulseIn` bloqueante (25 ms) — `#ifdef TOP_ENABLE_HCSR04`. El ToF frontal lo reemplaza. |
 | 4× VL53L7CX | ✅ HW enumera / ⏳ firmware lee 1 | Hardware: los 4 enumeran a 0x2A..0x2D (banco 2026-05-30, bodge LP pines {9,10,11,12} activo-alto). Firmware: `sensors_tof.cpp` todavía lee solo 1 ToF — extenderlo a los 4 es HAL Sprint B. |
 
 ### 7.2 Lo que falta en firmware (HAL Sprint B)
@@ -308,10 +308,10 @@ Diseño general de las 3 placas: [`05-protocolo-comunicaciones.md`](05-protocolo
 | Serial | Pines RX/TX | A quién | Qué pasa |
 |---|---|---|---|
 | Serial1 | 0/1 | ← DOWN | RX: DOWN_OTOS_POSE + DOWN_OTOS_VEL + LINE_STATUS @ 100 Hz |
-| **Serial5** | **20/21** | → CENTRAL | TX: **WORLD_SNAPSHOT @ 100 Hz** (✅ corregido 2026-05-29: era "Serial2 7/8") |
+| **Serial5** | **20/21** | ← cámara 2 (trasera) | RX: parser OpenMV (✅ banco 2026-05-31, FORMATO OK) |
 | Serial3 | 15/14 | ← cámara 1 | RX: parser OpenMV (9 bytes/packet) |
 | Serial4 | 16/17 | ↔ COMM | RX: comando árbitro + partner. TX: comandos al árbitro (futuro) |
-| **Serial7** | **28/29** | ← cámara 2 | RX: parser OpenMV (⚠️ provisional, movida de Serial5) |
+| **Serial7** | **28/29** | → CENTRAL | TX: **WORLD_SNAPSHOT @ 100 Hz** (swap 2026-05-31, TASK-204) |
 
 ### 10.2 Heartbeat / watchdogs
 

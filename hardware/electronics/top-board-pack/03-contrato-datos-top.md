@@ -114,16 +114,17 @@ primero). El CRC viaja big-endian. No confundir.
 | UART | Pines | Baud | Enlace | Confirmado |
 |------|-------|------|--------|-----------|
 | Serial1 | RX=0, TX=1 | 230400 | ← DOWN (odometría OTOS) | Inferido del schematic |
-| **Serial5** | **RX=21, TX=20** | 230400 | **→ CENTRAL (snapshot)** | ✅ **2026-05-29: el conector a CENTRAL está en pines 20/21 = Serial5, NO 7/8** |
-| Serial3 | RX=15, TX=14 | 19200 | ← Cámara frontal (OpenMV) | Schematic U8 |
+| **Serial5** | **RX=21, TX=20** | 19200 | ← **Cámara trasera** (OpenMV) | ✅ **banco 2026-05-31: trasera soldada acá (FORMATO OK, `diag_top_cameras`)** |
+| Serial3 | RX=15, TX=14 | 19200 | ← Cámara frontal (OpenMV) | Schematic U8 ✅ FORMATO OK |
 | Serial4 | RX=16, TX=17 | 115200 | ↔ COMM (árbitros + ESP-NOW) | Schematic U15 |
-| **Serial7** | **RX=28, TX=29** | 19200 | ← Cámara trasera (OpenMV) | ⚠️ provisional: movida de Serial5 (ahora CENTRAL); confirmar U9 |
-| ~~Serial2~~ (7/8) | — | — | NO usado (pin 7 = HC-SR04 ECHO) | — |
+| **Serial7** | **RX=28, TX=29** | 230400 | **→ CENTRAL (snapshot)** | swap 2026-05-31 (TASK-204): TX7=pin 29 → CENTRAL Serial1 |
+| ~~Serial2~~ (7/8) | — | — | NO usado | pin 7 libre; el HC-SR04 está en pines 3/4 |
 
-> **✅ Resuelto 2026-05-29:** el enlace TOP→CENTRAL usa **Serial5 (pines 20/21)**, no
-> Serial2 (7/8). El diagrama del Teensy tiene número externo + interno; vale el interno
-> (GPIO). Destraba el riesgo "el snapshot nunca llega" y resuelve el conflicto del pin 7
-> (HC-SR04 ECHO). Firmware corregido (`comm_central.cpp` → Serial5; cam trasera → Serial7).
+> **✅ Actualizado 2026-05-31 (TASK-204):** la **cámara trasera** quedó soldada en
+> **Serial5 (pin 21)** — confirmado en banco — así que el link **TOP→CENTRAL** se movió
+> a **Serial7 (TX29/RX28)**. Firmware corregido (`comm_central.cpp` → Serial7;
+> `cameras_runtime.cpp` lee la trasera en Serial5). El HC-SR04 quedó en pines 3/4 → el
+> viejo conflicto del pin 7 ya no aplica.
 
 ---
 

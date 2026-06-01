@@ -338,6 +338,10 @@ nativo, pero ya no es el único camino. Ver
   + temas-a-analizar en formato coach para los hallazgos dependientes de HW).
 
 ### Avance 2026-05-29 — corrección UART TOP→CENTRAL = Serial5 (no Serial2/7-8)
+> ⚠️ **SUPERSEDED 2026-05-31 (TASK-204):** la cámara trasera quedó **soldada en Serial5
+> (pin 21)** (confirmado en banco con `diag_top_cameras`), así que **TOP→CENTRAL se movió
+> a Serial7 (pin 29)** y la trasera se lee en Serial5. Además el **HC-SR04 quedó en pines
+> 4/3** (TRIG/ECHO), no 6/7. Lo de abajo es el registro histórico del 2026-05-29.
 - **Hallazgo (Gustavo, en banco):** el diagrama del Teensy tiene doble numeración
   (externa + interna); vale la **interna (GPIO)**. El conector del TOP hacia CENTRAL
   cae en los **pines 20/21 = Serial5**, NO en 7/8 (Serial2). Era mala lectura del diagrama.
@@ -360,7 +364,7 @@ nativo, pero ya no es el único camino. Ver
   mecánico/electrónico.
 - **Falta para cerrar la integración**: las 2 conexiones inter-placa hacia TOP —
   (1) **DOWN↔TOP** (DOWN Serial5 → TOP Serial1: odometría OTOS + LINE_STATUS),
-  (2) **CENTRAL↔TOP** (TOP Serial5 → CENTRAL Serial1: WorldSnapshot). Firmware listo
+  (2) **CENTRAL↔TOP** (TOP Serial7 → CENTRAL Serial1: WorldSnapshot). Firmware listo
   en ambas puntas; falta cablear + validar el stream por protocolo.
 - **Se DESTRABAN** (ya no bloqueadas por "TOP sin armar"): TASK-022 (cámara operativa),
   TASK-024 (rol/polaridad), TASK-032 (ToF U2 en HW), TASK-035 (localización),

@@ -17,7 +17,7 @@
 # ║  BRING_UP=True  → autos (WB/gain) ON: SE VE imagen para calibrar (AHORA).   ║
 # ║  BRING_UP=False → autos OFF + exposición fija (competencia, tras calibrar). ║
 # ╠══════════════════════════════════════════════════════════════════════════╣
-# ║ [UART]  UART_PORT: confirmar cuál UART de la N6 va al Serial7 del Teensy   ║
+# ║ [UART]  UART_PORT: confirmar cuál UART de la N6 va al Serial5 del Teensy   ║
 # ║         (trasera = conector U9). Probar 1/2/3.                             ║
 # ║ [LAB]   Recalibrar los 3 thresholds en la N6 (PAG7936 ≠ H7). SIN ESTO no detecta.║
 # ║ [HOMOG] H_MATRIX: la trasera necesita SU PROPIA H (4 puntos DETRÁS del robot)║
@@ -37,7 +37,7 @@ from pyb import UART
 BRING_UP  = True        # True = autos ON (ver imagen para calibrar). False = competencia.
 
 CAM_ID    = 1           # 1 = TRASERA (informativo; el TOP distingue por puerto UART)
-UART_PORT = 3           # ⚠️ CONFIRMAR en N6 — ¿cuál UART va al Serial7 del Teensy?
+UART_PORT = 3           # N6 manda por UART3 → entra al Serial5 del Teensy (pin 21) ✅
 UART_BAUD = 19200       # debe coincidir con cameras_runtime.cpp del TOP (no cambiar)
 
 EXPOSURE_US = 37000     # ⚠️ solo se usa si BRING_UP=False. RE-MEDIR en la N6.

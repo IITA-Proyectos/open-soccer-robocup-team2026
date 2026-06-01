@@ -71,13 +71,13 @@ top-board-pack/
 | Pregunta | Doc del pack |
 |---|---|
 | ¿Qué MCU y placa usa TOP? | `01-pinout-y-hardware.md` §1 (Teensy 4.0 master + PCB custom TOP) |
-| ¿Qué pines usa la UART hacia CENTRAL? | `01-pinout-y-hardware.md` §2.2 (Serial2, RX=7, TX=8 — ⚠️ tentativo + conflicto con HC-SR04 ECHO) |
+| ¿Qué pines usa la UART hacia CENTRAL? | `01-pinout-y-hardware.md` §2.2 (**Serial7, RX=28, TX=29** — swap 2026-05-31, TASK-204) |
 | ¿Qué pines usa la UART hacia DOWN? | `01-pinout-y-hardware.md` §2.2 (Serial1, RX=0, TX=1) |
 | ¿Qué pines usa la UART hacia COMM (ESP32-C6)? | `01-pinout-y-hardware.md` §2.2 (Serial4, RX=16, TX=17) |
 | ¿Qué pines usan las cámaras OpenMV? | `01-pinout-y-hardware.md` §2.2 (cam 1: Serial3 RX=15 TX=14; cam 2: Serial5 RX=21 TX=20) |
 | ¿Qué pines I²C usa cada BNO055? | `01-pinout-y-hardware.md` §2.1 (BNO055 izq: Wire 18/19; BNO055 der: Wire1 25/24 ⚠️ remap) |
 | ¿Cuál es la dirección I²C de cada BNO055? | `01-pinout-y-hardware.md` §2.1 (ambos 0x28 — por eso buses separados) |
-| ¿Qué pines XSHUT tienen los 4 ToF? | `01-pinout-y-hardware.md` §2.3 (pines 2, 3, 4, 5 — tentativos) |
+| ¿Cómo se enumeran los 4 ToF? | `01-pinout-y-hardware.md` §2.3 (LP por bodge en pines **{9,10,11,12}** activo-alto → 0x2A..0x2D; ya NO usan XSHUT en 2-5) |
 | ¿Qué hace la placa TOP? | `02-funcionalidad.md` §1 |
 | ¿Qué subsistemas están vivos y cuáles son stub/futuro? | `02-funcionalidad.md` §2 (tabla "vivo vs aspiracional") |
 | ¿Cómo funciona el IMU dual? | `02-funcionalidad.md` §5 + `firmware/top/sensors_imu.cpp` |
@@ -94,13 +94,10 @@ top-board-pack/
 
 **Los más urgentes — resolver antes de probar hardware:**
 
-1. **Conflicto pin 7 (HC-SR04 ECHO vs Serial2 RX2)** — `config_top.h` línea 39
-   asigna pin 7 a RX2 de Serial2 (UART hacia CENTRAL); línea 74 asigna el
-   mismo pin 7 a HC-SR04 ECHO. **No pueden ser ambas cosas a la vez**.
-   Opciones:
-   - (A) Mover HC-SR04 a otro pin libre (9, 11, 12, 22, 23, 26–33).
-   - (B) Mover Serial2 a otro UART (Serial7 está libre en pines 28/29).
-   - (C) Si el HC-SR04 nunca se conectó físicamente, dejarlo así y documentarlo.
+1. ✅ **RESUELTO 2026-05-31 — "conflicto pin 7" cerrado.** El HC-SR04 se cableó en
+   **TRIG=pin 4 / ECHO=pin 3** (pines ex-XSHUT ToF, libres) y el UART hacia CENTRAL
+   se movió a **Serial7 (28/29)**. Ya no hay pin compartido. ⚠️ Recordá el **divisor
+   de nivel en ECHO** (5 V → 3.3 V) antes de conectarlo al pin 3 (el Teensy no tolera 5 V).
 
 2. **Confirmar Wire1 remap a pines 24/25** (TASK-003) — si Enzo no lo
    confirma con multímetro, el bus I²C #1 no funciona → 1 BNO055 + 2 ToF
@@ -151,7 +148,7 @@ Estos pendientes viven en `team-tasks/` y `journal/`, no se duplican al pack.
 | Subsistemas vivos | Anillo línea + OTOS (lib pendiente) | FSM + PIDs + motores | IMU + cámaras + HC-SR04 + UARTs |
 | Subsistemas STUB / futuro | OTOS lib (TASK-012) | Encoders (futuro) | **ToF VL53** + EKF + Kalman pelota + partner ESP-NOW |
 | Tests | 8 suites (~138 tests) | 7 suites (79+ tests) | 2 suites (29 tests) |
-| Conflictos abiertos | 0 | 1 (pines 7/8 motores vs Serial2) | 2 (pin 7 HC-SR04 vs Serial2; Wire1 remap Q3) |
+| Conflictos abiertos | 0 | 1 (pines 7/8 motores vs Serial2) | 2 (pin 10 LP-ToF vs dipswitch rol; Wire1 remap Q3) |
 
 ## Cobertura completa: las 3 placas
 

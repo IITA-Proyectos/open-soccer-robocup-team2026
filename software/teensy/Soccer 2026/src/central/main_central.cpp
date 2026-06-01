@@ -129,6 +129,18 @@ void loop() {
         Serial.print(world_model_snapshot_is_fresh() ? "Y" : "N");
         Serial.print(" line_fresh=");
         Serial.print(world_model_line_is_fresh() ? "Y" : "N");
+        // Telemetria del link DOWN->CENTRAL: salud del enlace + estado del dato.
+        Serial.print(" down[rx=");
+        Serial.print(comm_down_get_frames_received());
+        Serial.print(" crc=");
+        Serial.print(comm_down_get_crc_errors());
+        Serial.print(" lost=");
+        Serial.print(comm_down_get_frames_lost());
+        Serial.print(" valid=");
+        Serial.print(world_model_line_data_valid() ? "Y" : "N");
+        Serial.print(" ev=0x");
+        Serial.print(world_model_line_event_flags(), HEX);
+        Serial.print("]");
         Serial.print(" match=");
         Serial.print(world_model_match_running() ? "RUN" : "STOP");
         Serial.print(" hdg=");

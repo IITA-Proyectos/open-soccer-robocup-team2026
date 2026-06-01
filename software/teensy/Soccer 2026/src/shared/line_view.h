@@ -18,13 +18,16 @@
 namespace iitasoccer {
 
 // Extrae un LineStatusV2 de un frame decodificado.
-// Retorna true sólo si el frame es LINE_URGENT con el payload del tamaño exacto
-// del contrato (16 bytes). Es el ÚNICO punto que valida el tamaño: si DOWN
-// cambia el schema, esto deja de matchear y el frame se ignora (fail-safe).
+// Retorna true sólo si el frame es LINE_URGENT, con el payload del tamaño exacto
+// del contrato (16 bytes) Y con schema_version == LSV2_SCHEMA. Valida tipo +
+// tamaño + versión: un schema futuro del MISMO tamaño (campos reordenados,
+// `reserved` reusado) se RECHAZA en vez de reinterpretarse como basura — clave
+// porque DOWN y CENTRAL se flashean en sesiones/worktrees distintas (fail-safe).
 inline bool lsv2_from_frame(const Frame& f, LineStatusV2& out) {
     if (f.type != MsgType::LINE_URGENT) return false;
     if (f.payload_len != sizeof(LineStatusV2)) return false;
     memcpy(&out, f.payload, sizeof(LineStatusV2));
+    if (out.schema_version != LSV2_SCHEMA) return false;
     return true;
 }
 

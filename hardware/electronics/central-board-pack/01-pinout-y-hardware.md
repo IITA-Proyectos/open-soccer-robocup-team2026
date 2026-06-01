@@ -25,7 +25,7 @@ fuentes:
 | MCU **Teensy 4.1** | 1 | Cortex-M7 a 600 MHz, 1 MB RAM, 8 MB flash, **8 UARTs hardware**, 480 KB PSRAM |
 | Placa **Zircon Rev v15** | 1 | Shield del Teensy 4.1, PCB que ganó el nacional 2025 |
 | H-bridges para motores omni-3 | 3 | Drivers Zircon U5, U7, U17. Cada uno: INA + INB + PWM |
-| **BNO055** IMU local del Zircon | 1 | I²C `Wire`, dirección **0x28** — respaldo si TOP cae |
+| ~~**BNO055** IMU local~~ | 0 | ⚠️ **YA NO se conecta (2026-05-31)** — los 2 BNO están en el TOP; el heading viene del snapshot de ARRIBA. `imu_zircon` queda como compat (`-DCENTRAL_HAS_LOCAL_BNO`, off). |
 | Solenoide / kicker (solo ROBOT2 delantero) | 1 | GPIO + MOSFET. ⚠️ pin a confirmar |
 | Dribbler (opcional, ROBOT2) | 1 | PWM. Si está montado físicamente |
 | Botones de programación | 2 | Pines 9, 10. Pull-up interno |

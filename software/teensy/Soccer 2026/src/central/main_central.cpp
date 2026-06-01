@@ -69,10 +69,18 @@ void setup() {
     motors_init();
     Serial.println("[CENTRAL] motors init OK");
 
+    // BNO055 local: la CENTRAL ya NO lleva BNO (2026-05-31). Los 2 BNO están en el
+    // TOP; el heading llega por WORLD_SNAPSHOT de ARRIBA. El módulo imu_zircon queda
+    // como compat — solo se inicializa con -DCENTRAL_HAS_LOCAL_BNO. Sin el flag no se
+    // toca el bus I2C ni se pierden ~3 s buscando un sensor ausente.
+#ifdef CENTRAL_HAS_LOCAL_BNO
     const bool imu_ok = imu_init();
     Serial.print("[CENTRAL] BNO055 local: ");
-    Serial.println(imu_ok ? "OK (respaldo del IMU dual de ARRIBA)"
-                          : "FAIL (continuando con IMU de ARRIBA por snapshot)");
+    Serial.println(imu_ok ? "OK (respaldo del heading de ARRIBA)"
+                          : "FAIL (sigue con el heading de ARRIBA por snapshot)");
+#else
+    Serial.println("[CENTRAL] BNO055 local: N/A (no instalado; heading viene de ARRIBA)");
+#endif
 
     world_model_init();
     strategy_init();

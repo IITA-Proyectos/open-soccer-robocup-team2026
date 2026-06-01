@@ -42,7 +42,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - `src/central/main_central.cpp` — entry
 - `src/central/strategy.cpp` — FSM ATK + GK Nivel 2 (KICKOFF/SEARCH/POSITION/APPROACH + PATROL/INTERCEPT/CLEAR + LINE_AVOID). **El cerebro.**
 - `src/central/motors_zircon.{h,cpp}` — PWM 3 motores omni + kicker (ROBOT2)
-- `src/central/imu_zircon.{h,cpp}` — BNO055 respaldo
+- `src/central/imu_zircon.{h,cpp}` — BNO055 (⚠️ ya NO se conecta en CENTRAL desde 2026-05-31; compat gateado por `-DCENTRAL_HAS_LOCAL_BNO`, off; el heading viene de ARRIBA)
 - `src/central/world_model.{h,cpp}` — espejo del WorldSnapshot
 - `src/central/comm_top.{h,cpp}` — recibe WorldSnapshot del TOP (Serial1)
 - `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 del DOWN (hoy `Serial2` / pin 7). ⚠️ **Veredicto del conflicto 7/8 PENDIENTE de aislar** (Gustavo 2026-05-29: NO se aisló si el motor del driver U17 usa 7/8 — ver pruebas pendientes en `DIAG-CENTRAL-MOTORS.md`). El receiver de banco `diag_central_comm_down` está unificado en **Serial2 / pin 7** (el enlace validado por `diag_down_send1`/`recv1`; mismo UART que producción) — ver [`docs/firmware/DIAG-CENTRAL-COMM-DOWN.md`](firmware/DIAG-CENTRAL-COMM-DOWN.md). Migrar `Serial2 → Serial7` (acá y en el diag) **solo si** se confirma 7/8 = motor **y** se corren motores + comm juntos. 📊 **Análisis profundo del link** (protocolo/CRC, buffers, timing, recuperación ante cortes, P0/P1 + checklist "primera instancia") → [`docs/firmware/ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md`](firmware/ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md).

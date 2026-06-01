@@ -50,7 +50,10 @@ namespace iitasoccer {
 #endif
 
 // ============================================================
-// BNO055 (idéntico en ambos robots)
+// BNO055 — ⚠️ YA NO SE CONECTA EN CENTRAL (2026-05-31).
+// Los 2 BNO están en el TOP; el heading llega por WORLD_SNAPSHOT de ARRIBA. Estas
+// constantes + el módulo imu_zircon quedan como compat: solo se usan si se compila
+// con -DCENTRAL_HAS_LOCAL_BNO (ver main_central.cpp). Default: OFF.
 // ============================================================
 constexpr int    BNO055_I2C_ADDR    = 0x28;
 constexpr int    BNO055_INIT_TIMEOUT_MS = 3000;

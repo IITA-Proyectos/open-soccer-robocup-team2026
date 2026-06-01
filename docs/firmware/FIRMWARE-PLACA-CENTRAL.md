@@ -91,7 +91,7 @@ Esta separación permite **tunear y debuggear cada capa por separado**:
 | MCU Teensy 4.1 | — | Cortex-M7 a 600 MHz, 1 MB RAM, 8 MB flash, 7 UARTs hardware, 480 KB de PSRAM |
 | Placa Zircon Rev v15 | shield del Teensy 4.1 | PCB que ganó el nacional 2025; mantenemos el cableado de motores |
 | 3 H-bridges para motores omni | PWM + INA + INB por motor | Pinout según ROBOT1/ROBOT2 (ver `mapa-pines-teensy-ambos-robots.md`) |
-| BNO055 local del Zircon | I2C (Wire) | Respaldo si ARRIBA cae — opcional |
+| ~~BNO055 local del Zircon~~ | — | ⚠️ **YA NO se conecta (2026-05-31)** — los 2 BNO están en el TOP; el heading viene del snapshot de ARRIBA. `imu_zircon` queda como compat (gateado por `-DCENTRAL_HAS_LOCAL_BNO`, off). |
 | Sensores de pelota IR (×8) | analógicos | Legacy del 2025 — opcional como respaldo de cámara |
 | Sensores de línea (×3, legacy) | A11, A12, A13 | Legacy del 2025 — opcional, redundante con ABAJO |
 | Solenoide / kicker (delantero) | GPIO + MOSFET | Si el robot delantero tiene kicker físico |

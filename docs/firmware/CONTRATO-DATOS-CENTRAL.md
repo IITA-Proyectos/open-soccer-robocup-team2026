@@ -518,14 +518,14 @@ actual):
 7. Ponderar PID lateral arquero por `quality` (`0..100`).
 8. Latch OR sobre `event_flags` en el drenado del buffer (EVENTO — no coalesce).
 
-### 4.3 IMU local (fallback BNO055 del Zircon)
+### 4.3 IMU local (BNO055 del Zircon) — ⚠️ YA NO SE CONECTA (2026-05-31)
 
-CENTRAL tiene un BNO055 local (`imu_zircon.cpp`). Se inicializa en `setup()`
-(`main_central.cpp:68-72`). Si falla → continúa con heading del snapshot.
-
-**Estado actual:** el IMU local **no se usa en ningún lugar de `strategy.cpp`
-ni `world_model.cpp`**. Solo se inicializa y se imprime en debug. `imu_get_heading()`
-existe pero no hay consumidor en el loop. Ver GAP-010.
+**La CENTRAL ya NO lleva BNO.** Los 2 BNO055 están en el TOP; el heading absoluto del
+robot llega por `WORLD_SNAPSHOT` de ARRIBA. El módulo `imu_zircon.cpp` queda como
+**compat**: `main_central` solo llama `imu_init()` si se compila con
+`-DCENTRAL_HAS_LOCAL_BNO` (default OFF), así que en el build normal no se toca el bus
+I2C ni se pierden ~3 s buscando un sensor ausente. Aun con el flag, `imu_get_heading()`
+no tiene consumidor en `strategy.cpp` / `world_model.cpp`. GAP-010 queda **obsoleto**.
 
 ---
 
@@ -668,7 +668,7 @@ línea → puede salir de cancha. Ver GAP-009.
 | GAP-007 | P1 | `CENTRAL_RESET_TOP` (0x61) y `CENTRAL_TOP_CMD` (0x62) definidos en `proto.h:51-52` pero NO implementados | `proto.h:51-52` | Implementar `comm_top_send_reset()` para la escalera de recuperación (TASK-021 Nivel 2) |
 | GAP-008 | P2 | `ball_confidence` no se valida en `world_model_ball_visible()` | `world_model.cpp:51` | `return g_snap.ball_visible != 0 && g_snap.ball_confidence > 0` |
 | GAP-009 | P0 | Si DOWN cae (LOST, `!line_is_fresh()`), CENTRAL sigue jugando sin protección de borde → puede salir de cancha | `main_central.cpp:104-116`, diseño comms §5.1 | Implementar modo borde conservador (velocidad limitada + vector prohibido hacia afuera) cuando `!line_is_fresh()` (TASK-016) |
-| GAP-010 | P2 | IMU local BNO055 del Zircon inicializado pero nunca usado como fallback de heading | `imu_zircon.cpp`, `strategy.cpp` | Integrar `imu_get_heading()` como fuente alternativa cuando `!snapshot_is_fresh()` |
+| ~~GAP-010~~ | — | ✅ **OBSOLETO 2026-05-31:** ya no hay BNO en CENTRAL (los 2 están en el TOP). `imu_zircon` gateado por `-DCENTRAL_HAS_LOCAL_BNO` (off); el heading viene del snapshot de ARRIBA. | — | — |
 | GAP-011 | P1 | `strategy_transitions.cpp` es una réplica de la FSM usada para los 35 tests de FSM, pero no es `strategy.cpp` el que corre en el robot; divergencias posibles son bugs silenciosos | `test/test_strategy/strategy_transitions.cpp` | Abstraer dependencia de `millis()` en `strategy.cpp` con función inyectable y testear `strategy.cpp` directamente |
 | GAP-012 | P0 | `strategy_set_attack_color()` definida (`strategy.h:46`) pero nunca llamada al inicio — arquero propio hardcodeado (inicial: `g_attack_color = AttackColor::MAGENTA`) | `strategy.cpp:40` | Leer polaridad del árbitro y llamar `strategy_set_attack_color()` antes del partido (TASK-024) |
 | GAP-013 | P0 | Rol del robot determinado por `#define ROBOT1/ROBOT2` en tiempo de compilación — no por dipswitch en runtime | `main_central.cpp:38-48`, `config_central.h:24` | Leer `PIN_ROLE_DIPSWITCH` en runtime para no requerir recompilación por rol (TASK-024) |

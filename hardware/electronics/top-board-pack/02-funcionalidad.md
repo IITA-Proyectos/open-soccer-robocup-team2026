@@ -363,7 +363,7 @@ loop():
 | Sensor detecta (cámara, OTOS, etc.) | (variable) |
 | Próximo tick del cameras_runtime / comm_down | < 10 ms |
 | Construcción del snapshot | < 1 ms |
-| TX UART Serial2 a 230400 (~31 bytes) | ~1.5 ms |
+| TX UART Serial7 a 230400 (~31 bytes) | ~1.5 ms |
 | Decode en CENTRAL | ~50 µs |
 | **Total TOP → CENTRAL** | **~13 ms** |
 

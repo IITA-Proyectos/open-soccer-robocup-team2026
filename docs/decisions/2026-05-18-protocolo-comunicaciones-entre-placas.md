@@ -14,6 +14,12 @@ related-tasks: [TASK-003, TASK-006, TASK-008]
 related: [docs/ARQUITECTURA-3-PLACAS-2026.md, software/teensy/Soccer 2026/src/shared/proto.h, journal/2026-05-18-analisis-comunicaciones-entre-placas.md]
 ---
 
+> ⚠️ **SUPERSEDED (2026-05-31):** las asignaciones de UART de las tablas de abajo (TOP Serial2
+> → CEN Serial1; DOWN Serial1 → CEN Serial2) son del diseño original y quedaron **obsoletas**.
+> Mapa vigente: **TOP→CENTRAL = TOP Serial7 (pin 29) → CEN Serial7 (pin 28)** · **DOWN→CENTRAL
+> = DOWN Serial1 (pin 1) → CEN Serial1 (pin 0)** · `Serial2` (7/8) libre para el motor 2.
+> Ver `hardware/electronics/MAPA-CONEXIONES-3-PLACAS.md`.
+
 # Comunicaciones entre placas — análisis profundo + diseño objetivo
 
 > ⚠️ **VERIFICACIÓN INDEPENDIENTE 2026-05-18 — LEER ANTES DE EJECUTAR.**

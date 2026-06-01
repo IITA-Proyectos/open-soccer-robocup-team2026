@@ -149,7 +149,7 @@ Estos pendientes viven en `team-tasks/` y `journal/`, no se duplican al pack.
 | Subsistemas vivos | Anillo línea + OTOS (lib pendiente) | FSM + PIDs + motores | IMU + cámaras + HC-SR04 + UARTs |
 | Subsistemas STUB / futuro | OTOS lib (TASK-012) | Encoders (futuro) | **ToF VL53** + EKF + Kalman pelota + partner ESP-NOW |
 | Tests | 8 suites (~138 tests) | 7 suites (79+ tests) | 2 suites (29 tests) |
-| Conflictos abiertos | 0 | 1 (pines 7/8 motores vs Serial2) | 2 (pin 10 LP-ToF vs dipswitch rol; Wire1 remap Q3) |
+| Conflictos abiertos | 0 | 0 (7/8 RESUELTO 2026-05-31: UART movido a Serial1/Serial7) | 2 (pin 10 LP-ToF vs dipswitch rol; Wire1 remap Q3) |
 
 ## Cobertura completa: las 3 placas
 

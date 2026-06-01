@@ -260,8 +260,8 @@ Los otros 5 UARTs del Teensy 4.0 (Serial2, 3, 4, 6, 7) no están cableados en la
 El **HC-SR04** se cableó en **TRIG=pin 4 / ECHO=pin 3** (banco 2026-05-31). El pin 7 queda libre (Serial2 RX2, sin uso) — el viejo "conflicto pin 7" ya no aplica.
 
 **Placa CENTRAL (Teensy 4.1, Zircon Rev v15)** — capacidad para 8 UARTs hardware:
-- Serial1 → recibe del ARRIBA (`WORLD_SNAPSHOT`).
-- Serial2 → recibe del ABAJO (`LINE_URGENT`).
+- **Serial7** (28/29) → recibe del ARRIBA (`WORLD_SNAPSHOT`).
+- **Serial1** (0/1) → recibe del ABAJO (`LINE_URGENT`). (Reasignado 2026-05-31; `Serial2` 7/8 queda libre para el motor 2.)
 - Pines de motores ya cableados (no comparten con UARTs).
 | `DOWN_ODOM` | ABAJO → ARRIBA | 100 Hz | Pose odométrica OTOS (x, y, heading), velocidad, slip |
 | `MOTOR_COMMAND_*` | (interno CENTRAL) | 100 Hz | No UART — CENTRAL aplica directo |
@@ -383,7 +383,7 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 ```
    OpenMV cam1 ──Serial3 19200──┐
    OpenMV cam2 ──Serial5 19200──┤
-   Placa COMM  ──Serial4 115200─┤        ┌── Serial1 230400 ──► CENTRAL
+   Placa COMM  ──Serial4 115200─┤        ┌── Serial7 230400 ──► CENTRAL
    (árbitros)                   ▼        │   WORLD_SNAPSHOT 100 Hz (24 B)
                           ┌───────────────┐
        DOWN ─Serial1─────►│  PLACA ARRIBA │── Serial7 ✅ ──► CENTRAL
@@ -395,7 +395,7 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
                           │  FSM + PIDs   │
                           └───────────────┘
                                   ▲
-            Serial2 (CENTRAL) ◄───┘  LINE_URGENT ~100 Hz
+            Serial1 (CENTRAL) ◄───┘  LINE_URGENT ~100 Hz
             bus de EMERGENCIA        LineStatus (ángulo+profundidad+imminent)
                                   ▲
                           ┌───────────────┐

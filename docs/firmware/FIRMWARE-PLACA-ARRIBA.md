@@ -751,7 +751,7 @@ ARRIBA usa la pose odométrica como **una observación más** en su EKF:
 
 ## 13. Comunicaciones UART
 
-### 13.1 Stream principal: WORLD_SNAPSHOT → CENTRAL (100 Hz, Serial2)
+### 13.1 Stream principal: WORLD_SNAPSHOT → CENTRAL (100 Hz, Serial7)
 
 Cada 10 ms, ARRIBA arma el snapshot completo y lo envía. Estructura del payload:
 
@@ -793,7 +793,7 @@ struct WorldSnapshot {
 - **Recepción desde ABAJO** (Serial1): `DOWN_OTOS_POSE/VEL` a 100 Hz para fusión EKF.
 - **Recepción desde COMM** (Serial4): `COMM_REFEREE_CMD`, `COMM_PARTNER_DATA`, `COMM_STATUS_REQ` (eventos).
 - **Envío a COMM** (Serial4): `TOP_PARTNER_DATA` a 10 Hz, `TOP_STATUS_REPLY` a demanda.
-- **Recepción desde CENTRAL** (Serial2): `CENTRAL_RESET_TOP`, `CENTRAL_TOP_CMD` (eventos).
+- **Recepción desde CENTRAL** (Serial7): `CENTRAL_RESET_TOP`, `CENTRAL_TOP_CMD` (eventos).
 
 ### 13.3 Heartbeat
 
@@ -826,7 +826,7 @@ loop():
     # RX (cada loop, no bloquea)
     comm_down_tick()        # ~50 µs (drena Serial1)
     comm_arbiter_tick()     # ~50 µs (drena Serial4)
-    comm_central_tick()     # ~50 µs (drena Serial2)
+    comm_central_tick()     # ~50 µs (drena Serial7)
     cameras_tick()          # ~100 µs (parsea Serial3 + Serial5)
 
     # Sensores periódicos
@@ -930,14 +930,14 @@ Imprime cada 1 segundo en NORMAL:
 | ToF | 4 × VL53L7CX en modo 4×4 SPAD |
 | Frecuencia ToF | 30 Hz por sensor |
 | Cobertura ToF | 360° (FOV 90° × 4 sensores cardinales) |
-| Cámaras | 2 × OpenMV H7/H7+ |
+| Cámaras | 2 × OpenMV N6 (antes H7 Plus) |
 | Frecuencia cámaras | ~30 Hz |
 | Protocolo cámaras | OpenMV viejo (9 bytes/packet) |
 | Fusión sensorial | EKF 6D (x, y, θ, vx, vy, ω) a 100 Hz |
 | Predicción pelota | Kalman 4D (x, y, vx, vy) con decay |
 | Confidence pose objetivo | > 70 en condiciones normales |
 | Comm partner | ESP-NOW vía COMM (ESP32-C6) a 10 Hz |
-| UART hacia CENTRAL | Serial2, 230400 baud, 100 Hz |
+| UART hacia CENTRAL | Serial7, 230400 baud, 100 Hz |
 | Latencia camera → snapshot | ~40 ms |
 | Latencia ToF → snapshot | ~55 ms peor caso |
 | Carga CPU estimada | ~45% (con Nivel 3 completo) |

@@ -49,7 +49,7 @@ top-board-pack/
 │   │   ├── sensors_imu.{h,cpp}       ← BNO055 dual con consistencia
 │   │   ├── sensors_tof.{h,cpp}       ← HC-SR04 vivo + VL53 STUB
 │   │   ├── comm_down.{h,cpp}         ← UART ← DOWN (Serial1)
-│   │   ├── comm_central.{h,cpp}      ← UART → CENTRAL (Serial2)
+│   │   ├── comm_central.{h,cpp}      ← UART → CENTRAL (Serial7, swap 2026-05-31)
 │   │   ├── comm_arbiter.{h,cpp}      ← UART ↔ COMM ESP32-C6 (Serial4)
 │   │   └── config_top.h
 │   └── shared/                       ← 5 archivos shared usados por TOP
@@ -103,9 +103,10 @@ top-board-pack/
    confirma con multímetro, el bus I²C #1 no funciona → 1 BNO055 + 2 ToF
    muertos.
 
-3. **Confirmar conector U1 → CENTRAL** (Serial2 RX_OUT/TX_OUT a pines 7/8) —
-   el comentario del config_top.h dice "TENTATIVO". Si U1 va a otros pines,
-   CENTRAL no recibe WORLD_SNAPSHOT y el robot no juega.
+3. ✅ **RESUELTO 2026-05-31 (TASK-204) — enlace TOP→CENTRAL confirmado.** El
+   `WORLD_SNAPSHOT` sale por el **Serial7 del TOP** (TX = pin 29) → **Serial1 del
+   CENTRAL** (RX pin 0), 230400 baud, verificado en banco. Antes se creía Serial2
+   (pines 7/8); se movió porque la cámara trasera quedó soldada en Serial5.
 
 **Otros pendientes (no urgentes):**
 

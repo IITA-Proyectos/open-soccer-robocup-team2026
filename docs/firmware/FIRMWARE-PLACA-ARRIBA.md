@@ -100,10 +100,11 @@ La placa ARRIBA es el módulo más complejo computacionalmente del robot. Su car
 | Bus | SDA | SCL | Periféricos | Tráfico estimado |
 |-----|-----|-----|-------------|------------------|
 | Wire (I2C0) | 18 | 19 | BNO055 #1 (0x28) + **los 4 ToF** (0x2A/0x2B/0x2C/0x2D) | ~30 KHz transacciones |
-| Wire1 (I2C1) | 25 (remap) | 24 (remap) | BNO055 #2 (0x28) + **(libre para placa DOWN)** | ~30 KHz |
+| Wire1 (I2C1) | 25 (remap) | 24 (remap) | **(libre para placa DOWN)** — el 2do BNO se movió a `Wire` (0x29) el 2026-05-31 | ~30 KHz |
 
-Los 2 BNO055 comparten dirección I2C (0x28) por default — por eso obligatorio
-separarlos en buses distintos. Los **4 ToF cuelgan del mismo bus `Wire`**
+Los 2 BNO055 quedaron **ambos en el bus `Wire`** (18/19): LEFT=0x28 y RIGHT=0x29
+(pad ADR del 2do puenteado a 3V3, recableado 2026-05-31), lo que liberó `Wire1`
+(24/25) para la placa DOWN. Los **4 ToF cuelgan del mismo bus `Wire`**
 (recableado 2026-05-30) y se enumeran al boot por su pin **LP** (bodge):
 arrancan todos en 0x29, se duermen todos, se despierta uno por uno y a cada uno
 se le asigna **0x2A → 0x2B → 0x2C → 0x2D** (ninguno queda en 0x29). Pines LP

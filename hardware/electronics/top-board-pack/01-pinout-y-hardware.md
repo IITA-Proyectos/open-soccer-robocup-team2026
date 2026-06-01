@@ -39,12 +39,12 @@ fuentes:
 |---|---|---|
 | MCU **Teensy 4.0** (U14) | 1 | Cortex-M7 a 600 MHz, 1 MB RAM, 2 MB flash, **7 UARTs hardware** |
 | Cámaras **OpenMV N6** (antes H7 Plus) | 2 | UART (Serial3 frontal + **Serial5** trasera), 19200 baud, protocolo viejo 9 bytes/packet |
-| **BNO055** IMU | 2 | I²C dual (`Wire` + `Wire1`). Ambos dirección 0x28, por eso buses separados |
+| **BNO055** IMU | 2 | Ambos en `Wire` (18/19): LEFT=0x28, RIGHT=0x29 (pad ADR a 3V3). Recableado 2026-05-31 → `Wire1` (24/25) libre para DOWN |
 | Sensor ToF **VL53L7CX** | 4 fijos (plan: 6) | TODOS en `Wire` (I²C0), LP individual por pin. Enumeran a 0x2A..0x2D. 8×8 SPAD multizona. Plan de escalado: +2 móviles para pelota |
 | Ultrasonido **HC-SR04** | 1 | TRIG=pin 4 / ECHO=pin 3 (banco 2026-05-31). Frontal, fallback de ToF |
 | Conector a placa **COMM** (ESP32-C6) | 1 | UART (Serial4). Bridge a árbitros + ESP-NOW partner |
 | Conector a placa **DOWN** (sensores piso) | 1 | UART (Serial1). Recibe DOWN_OTOS_POSE/VEL + LINE_STATUS |
-| Conector a placa **CENTRAL** (cerebro/motores) | 1 | UART (**Serial5, pines 20/21**). Envía `WORLD_SNAPSHOT` |
+| Conector a placa **CENTRAL** (cerebro/motores) | 1 | UART (**Serial7, pines 28/29**). Envía `WORLD_SNAPSHOT` (swap 2026-05-31) |
 | Dipswitch selección de rol | 1 | Pin 10 con pull-up. LOW = arquero, HIGH = delantero |
 | Conector Dean-T-F batería | 1 | 7.4 V LiPo (compartido con CENTRAL y DOWN) |
 | Reguladores MP1584-EN | 2 | 7.4 V → 5 V + 7.4 V → 3.3 V |
@@ -76,8 +76,8 @@ fuentes:
 
 | Bus | API Arduino | Pin Arduino SDA | Pin Arduino SCL | Periféricos | Dirección I²C |
 |---|---|---|---|---|---|
-| **I²C #0** | `Wire` | **18** | **19** | BNO055 izq (U10) + **los 4 ToF** (U2/U3/U5/U17) | BNO055=0x28; ToF=0x2A/0x2B/0x2C/0x2D (asignadas vía LP) |
-| **I²C #1** | `Wire1` | **25** ⚠️ remap | **24** ⚠️ remap | BNO055 der (U11) + **(libre para placa DOWN)** | BNO055=0x28 |
+| **I²C #0** | `Wire` | **18** | **19** | BNO055 izq (U10) + BNO055 der (U11) + **los 4 ToF** (U2/U3/U5/U17) | BNO izq=0x28, BNO der=0x29 (ADR a 3V3); ToF=0x2A/0x2B/0x2C/0x2D (vía LP) |
+| **I²C #1** | `Wire1` | **25** ⚠️ remap | **24** ⚠️ remap | **(libre para placa DOWN)** — el 2do BNO se movió a `Wire` (0x29) el 2026-05-31 | — |
 
 > **Remap crítico de `Wire1`** (Q3 confirmado por análisis PCB, 2026-05-10):
 > los pines default de `Wire1` en Teensy 4.0 son 16/17, pero esos están
@@ -90,8 +90,9 @@ fuentes:
 > ```
 > Pendiente físicamente confirmar con TASK-003.
 
-Los 2 BNO055 **comparten dirección 0x28** de fábrica → obligatorio en buses
-distintos. Los **4 ToF se enumeran al boot** en `Wire`: arrancan todos en 0x29
+Los 2 BNO055 son 0x28 de fábrica, pero el 2do tiene el **pad ADR puenteado a 3V3
+→ 0x29**, así que ambos conviven en `Wire` (recableado 2026-05-31; esto liberó
+`Wire1` para DOWN). Los **4 ToF se enumeran al boot** en `Wire`: arrancan todos en 0x29
 de fábrica, se duermen todos por LP, se despierta uno por uno y a cada uno se
 le asigna 0x2A → 0x2B → 0x2C → 0x2D. **Ninguno queda en 0x29.**
 
@@ -253,6 +254,6 @@ del pack DOWN).
 - Código vivo del firmware: [`firmware/top/`](firmware/top/) (especialmente `config_top.h`).
 - Schematic legible: [`ground-truth/Schematic_Roboliga2026_TOP_2026-04-12.pdf`](ground-truth/Schematic_Roboliga2026_TOP_2026-04-12.pdf).
 - BOM CSV (parcial — falta Pick&Place): [`ground-truth/BOM_Roboliga2026_TOP_2026-04-12.csv`](ground-truth/BOM_Roboliga2026_TOP_2026-04-12.csv).
-- Pinout del CENTRAL (la otra punta de Serial2): [`../central-board-pack/01-pinout-y-hardware.md`](../central-board-pack/01-pinout-y-hardware.md).
+- Pinout del CENTRAL (la otra punta del enlace, su Serial1): [`../central-board-pack/01-pinout-y-hardware.md`](../central-board-pack/01-pinout-y-hardware.md).
 - Pinout del DOWN (la otra punta de Serial1): [`../down-board-pack/01-pinout-y-posiciones.md`](../down-board-pack/01-pinout-y-posiciones.md).
 - Pinout del COMM (la otra punta de Serial4): `../comm-board/2026-05-17-placa-comm-componentes-y-circuito.md`.

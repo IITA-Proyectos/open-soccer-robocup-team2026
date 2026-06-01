@@ -434,7 +434,7 @@ loop() (no tiene period fijo — corre tan rápido como puede):
 | ToF + HC-SR04 | `sensors_tof.cpp` | **HW-BOUND** | No | HC-SR04 usa `pulseIn` bloqueante (P0: TASK-014); 4 ToF I2C son stub. |
 | COMM arbiter | `comm_arbiter.cpp` | **HW-BOUND** | No (usa Serial4) | `guard last_ms==0` ausente en `comm_arbiter_partner_is_fresh()` (`comm_arbiter.cpp:107`): `millis()-0 < 500` → true al boot antes de recibir cualquier dato. |
 | Comm DOWN | `comm_down.cpp` | **HW-BOUND** | No (usa Serial1) | Mismo bug de guard: `fresh(0)` → true al boot. |
-| Comm CENTRAL | `comm_central.cpp` | **HW-BOUND** | No (usa **Serial5**, era Serial2) | Handler de `CENTRAL_RESET_TOP` recibido pero no procesado. |
+| Comm CENTRAL | `comm_central.cpp` | **HW-BOUND** | No (usa **Serial7**, swap 2026-05-31) | Handler de `CENTRAL_RESET_TOP` recibido pero no procesado. |
 
 **Módulos puros candidatos a mover a `src/shared/`** (hoy viven en `src/top/`):
 - `cameras.h/cpp` — `CameraParser` es 100% pura; sin `#include <Arduino.h>`.
@@ -448,7 +448,7 @@ loop() (no tiene period fijo — corre tan rápido como puede):
 
 | ID | Gap | Archivo:línea | Risk-no-fix | Risk-fix | Tiempo est. |
 |----|-----|--------------|-------------|----------|-------------|
-| G-TOP-01 | **Serial2 (→CENTRAL) no confirmado en HW** | `config_top.h:40-42` | Snapshot nunca llega → CENTRAL en `motors_stop()` permanente → robot inerte | Medir con osciloscopio, posible swap de constantes | 2h |
+| ~~G-TOP-01~~ | ✅ **RESUELTO 2026-05-31:** TOP→CENTRAL = **Serial7 (TX pin 29)** (la trasera quedó soldada en Serial5). Falta solo cablear+validar en banco (ver journal auditoría §4 / L1) | `comm_central.cpp:34` | — | — |
 | G-TOP-02 | **Polaridad de arco hardcodeada** `yellow=opp` | `main_top.cpp:65` | En ~50% de partidos el robot ataca su propio arco | Leer `referee_cmd` para aplicar inversión; fácil una vez que COMM anda | 3h |
 | G-TOP-03 | **Rol no leído** (`PIN_ROLE_DIPSWITCH` sin `digitalRead`) | `config_top.h:87` + `main_top.cpp` (ausente) | Arquero y delantero son indistinguibles al boot; `TOP_STATUS_REPLY` manda rol=0 siempre | Agregar 1 línea en `setup()`, propagar rol | 1h |
 | G-TOP-04 | **`pulseIn` bloqueante en HC-SR04** en el loop | `sensors_tof.cpp:32` | Loop puede tardar hasta 25 ms en cada lectura → violación de loop timing → snapshot retrasado | Convertir a lectura no bloqueante con ISR o timer | 4h |

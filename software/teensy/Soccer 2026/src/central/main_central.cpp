@@ -53,6 +53,10 @@ void setup() {
     pinMode(PIN_LED_STATUS, OUTPUT);
     digitalWrite(PIN_LED_STATUS, LOW);
 
+#ifdef CENTRAL_ENABLE_MANUAL_START
+    pinMode(PIN_MANUAL_START_BUTTON, INPUT_PULLUP);  // F3 fail-safe (solo banco)
+#endif
+
     Serial.begin(115200);
     delay(100);
     Serial.println("\n=========================================");
@@ -87,6 +91,26 @@ void loop() {
     // === RX: drenar ambos UARTs (no bloquea) ===
     comm_top_tick();    // aplica WorldSnapshot al world_model
     comm_down_tick();   // aplica LineStatusV2 al world_model
+
+#ifdef CENTRAL_ENABLE_MANUAL_START
+    // === F3 — Arranque manual fail-safe (SOLO banco, gateado) ===
+    // Si la placa COMM no manda START, forzar match_running con el pulsador
+    // (pin 9) o un ENTER por USB. Latch: una vez disparado, queda corriendo.
+    // Pre-start los motores estan detenidos -> sin ruido de motor en el pin.
+    {
+        static bool g_manual_started = false;
+        if (!g_manual_started) {
+            const bool btn = (digitalRead(PIN_MANUAL_START_BUTTON) == LOW);
+            bool ser = false;
+            while (Serial.available()) { if (Serial.read() == '\n') ser = true; }
+            if (btn || ser) {
+                g_manual_started = true;
+                world_model_set_force_match_running(true);
+                Serial.println("[CENTRAL] *** ARRANQUE MANUAL forzado (CENTRAL_ENABLE_MANUAL_START) ***");
+            }
+        }
+    }
+#endif
 
     // === EMERGENCY_LINE — bypass de FSM ===
     // Si ABAJO reporta línea inminente Y los datos son frescos, frenar AHORA.

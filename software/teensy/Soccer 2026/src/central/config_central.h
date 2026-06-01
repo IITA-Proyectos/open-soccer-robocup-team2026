@@ -105,6 +105,15 @@ constexpr uint32_t COMMAND_TIMEOUT_MS = 200;
 #endif
 
 // ============================================================
+// Arranque manual fail-safe (F3) — SOLO banco, gateado por CENTRAL_ENABLE_MANUAL_START
+// ============================================================
+// Pulsador de arranque para cuando la placa COMM no manda START (bench testing).
+// ⚠️ Pin 9 ASUMIDO de diag_central_motors — CONFIRMAR que hay un pulsador cableado
+// al pin 9 (INPUT_PULLUP) en el Zircon; si no, usar ENTER por USB (backup). NUNCA
+// activar este flag en competencia (arrancar sin árbitro viola el protocolo RCJ).
+constexpr int PIN_MANUAL_START_BUTTON = 9;
+
+// ============================================================
 // LED de estado
 // ============================================================
 constexpr int PIN_LED_STATUS = 13;  // LED_BUILTIN del Teensy 4.1

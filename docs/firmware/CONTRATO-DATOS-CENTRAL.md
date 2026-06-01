@@ -55,11 +55,11 @@ CENTRAL **recibe** datos del mundo (vía TOP) y datos de emergencia de línea
                    (via Serial1 de CENTRAL)
 
      [DOWN] ←──── LINE_URGENT (EVENTO+STREAM, 200 Hz) ──►  [CENTRAL]
-                   (via Serial2 de CENTRAL)
+                   (via Serial1 de CENTRAL)
 
      [CENTRAL] ──► motors PWM + kicker GPIO  (LOCAL, no UART)
 
-     [CENTRAL] ──► CENTRAL_RESET_OTOS / CENTRAL_CALIB_LINE  (COMANDO, via Serial2 → DOWN)
+     [CENTRAL] ──► CENTRAL_RESET_OTOS / CENTRAL_CALIB_LINE  (COMANDO, via Serial1 → DOWN)
 
      [CENTRAL] ──► CENTRAL_RESET_TOP / CENTRAL_TOP_CMD       (COMANDO, via Serial? → TOP)
                    (anticipado en proto.h:51-52, NO implementado)
@@ -233,7 +233,7 @@ línea). Política: latch OR para eventos; coalesce para geometría.
 
 **Frecuencia:** 100–200 Hz (DOWN genera a 200 Hz según diseño).
 
-**Transporte:** Serial2 de CENTRAL (`comm_down.cpp:30`). Recibido en
+**Transporte:** Serial1 de CENTRAL (`comm_down.cpp`). Recibido en
 `comm_down_tick()` (`comm_down.cpp:34-43`).
 
 **Payload en protocolo objetivo (v2):** `struct LineStatusV2` de `types.h:126-140`.
@@ -308,7 +308,7 @@ END   = 55
 ```
 (CRC numérico: calcular con CRC-16/CCITT-FALSE sobre bytes `01 20 00 01`.)
 
-**Transporte:** `Serial2.write()` de CENTRAL (`comm_down.cpp:54`).
+**Transporte:** `Serial1.write()` de CENTRAL (`comm_down.cpp`).
 
 #### 3.1.2 `CENTRAL_CALIB_LINE` (TYPE `0x21`) — COMANDO
 
@@ -333,7 +333,7 @@ CRC16 = sobre [01 21 01 01]
 END   = 55
 ```
 
-**Transporte:** `Serial2.write()` de CENTRAL (`comm_down.cpp:63`).
+**Transporte:** `Serial1.write()` de CENTRAL (`comm_down.cpp`).
 
 ---
 
@@ -554,7 +554,7 @@ no tiene consumidor en `strategy.cpp` / `world_model.cpp`. GAP-010 queda **obsol
 │  src/central/strategy.cpp       — FSM + PIDs (usa millis())     │
 │  src/central/motors_zircon.cpp  — PWM + H-bridges + kicker GPIO │
 │  src/central/comm_top.cpp       — Serial1, FrameDecoder         │
-│  src/central/comm_down.cpp      — Serial2, FrameDecoder         │
+│  src/central/comm_down.cpp      — Serial1, FrameDecoder         │
 │  src/central/imu_zircon.cpp     — I2C BNO055 + delay() en setup │
 │  src/central/config_central.h   — pinout + constantes HW        │
 └─────────────────────────────────────────────────────────────────┘
@@ -571,7 +571,7 @@ no tiene consumidor en `strategy.cpp` / `world_model.cpp`. GAP-010 queda **obsol
 | World model | `src/central/world_model.cpp` | **HW-bound** (usa `millis()`) | NO |
 | Motors Zircon | `src/central/motors_zircon.cpp` | **HW-bound** (Arduino GPIO) | NO |
 | Comm TOP | `src/central/comm_top.cpp` | **HW-bound** (Serial1) | NO (proto.h sí testeado) |
-| Comm DOWN | `src/central/comm_down.cpp` | **HW-bound** (Serial2) | NO (proto.h sí testeado) |
+| Comm DOWN | `src/central/comm_down.cpp` | **HW-bound** (Serial1) | NO (proto.h sí testeado) |
 | IMU Zircon | `src/central/imu_zircon.cpp` | **HW-bound** (I2C + delay) | NO |
 
 **Qué hace testeable:** separar lógica de `strategy.cpp` que solo usa
@@ -837,7 +837,7 @@ MotorCommand: {vx≈intercept+pid_blend, vy=0, omega=0, kicker=0}
 - `software/teensy/Soccer 2026/src/central/world_model.cpp` (estado del mundo, líneas 1-73)
 - `software/teensy/Soccer 2026/src/central/motors_zircon.cpp` (PWM + kicker, líneas 1-170)
 - `software/teensy/Soccer 2026/src/central/comm_top.cpp` (Serial1 receptor, líneas 1-48)
-- `software/teensy/Soccer 2026/src/central/comm_down.cpp` (Serial2 emisor/receptor, líneas 1-71)
+- `software/teensy/Soccer 2026/src/central/comm_down.cpp` (Serial1 emisor/receptor, líneas 1-71)
 - `software/teensy/Soccer 2026/src/central/imu_zircon.cpp` (IMU fallback, líneas 1-89)
 - `software/teensy/Soccer 2026/src/central/config_central.h` (pinout + constantes, líneas 1-112)
 - `software/teensy/Soccer 2026/src/shared/proto.h` (framing, líneas 1-136)

@@ -210,6 +210,6 @@ se desconecta el cable UART. La implementación vive en
 
 - Código vivo del firmware: [`firmware/central/`](firmware/central/) (especialmente `config_central.h`).
 - Doc histórico del 2026-03-20: `hardware/electronics/mapa-pines-teensy-ambos-robots.md` (sigue siendo la única referencia textual del pinout del Zircon, coincide con `config_central.h` en motores y UART/I²C).
-- Esquemático del Zircon: `hardware/electronics/Zircon.pdf` (no incluido en este pack — pesado y binario).
+- Esquemático del Zircon: `hardware/electronics/Zircon.pdf` ✅ (en el repo desde 2026-05-31). **Fuente:** Robomov — https://robomov.net/pages/downloads (schematic público, KiCad/Eeschema; el Zircon es una placa comercial de Robomov). No se duplica dentro de este pack por ser binario pesado.
 - Librería del equipo del 2025: `software/libraries/zirconLib/zirconLib.cpp` (legacy, no usada en firmware nuevo).
 - Journal de motores arquero vs delantero: `journal/2026-03-20-diferencias-pines-motores-arquero-delantero.md` (historia).

@@ -420,7 +420,7 @@ la línea).
 Detalles byte-a-byte: [`03-contrato-datos.md`](03-contrato-datos.md).
 Diseño general: [`04-protocolo-comunicaciones.md`](04-protocolo-comunicaciones.md).
 
-### 9.1 Recepción desde TOP (Serial1) — `WORLD_SNAPSHOT`
+### 9.1 Recepción desde TOP (Serial7) — `WORLD_SNAPSHOT`
 
 - **Frame**: `WorldSnapshot` v2 (27 bytes payload con `ball_vx/vy`).
 - **Frecuencia**: 100 Hz.
@@ -428,7 +428,7 @@ Diseño general: [`04-protocolo-comunicaciones.md`](04-protocolo-comunicaciones.
 
 Implementación: [`firmware/central/comm_top.{h,cpp}`](firmware/central/comm_top.h).
 
-### 9.2 Recepción desde DOWN (Serial2) — `LINE_URGENT` (bus de emergencia)
+### 9.2 Recepción desde DOWN (Serial1) — `LINE_URGENT` (bus de emergencia)
 
 - **Frame**: `LineStatus` (5 bytes payload + 7 overhead = 12 bytes/frame).
 - **Frecuencia**: 200 Hz.
@@ -443,10 +443,10 @@ CENTRAL puede enviar comandos puntuales (no streams) a las otras placas:
 
 | Comando | Hacia | Cuándo |
 |---|---|---|
-| `CENTRAL_RESET_OTOS` | DOWN (Serial2) | Al inicio de cada partido (post `START`) |
-| `CENTRAL_CALIB_LINE` | DOWN (Serial2) | Antes del partido, recalibrar línea |
-| `CENTRAL_RESET_TOP` | TOP (Serial1) | Si pose del WorldModel se vuelve inconsistente |
-| `CENTRAL_TOP_CMD` | TOP (Serial1) | Comandos genéricos (recalibrar cámaras, reset IMU) |
+| `CENTRAL_RESET_OTOS` | DOWN (Serial1) | Al inicio de cada partido (post `START`) |
+| `CENTRAL_CALIB_LINE` | DOWN (Serial1) | Antes del partido, recalibrar línea |
+| `CENTRAL_RESET_TOP` | TOP (Serial7) | Si pose del WorldModel se vuelve inconsistente |
+| `CENTRAL_TOP_CMD` | TOP (Serial7) | Comandos genéricos (recalibrar cámaras, reset IMU) |
 
 ### 9.4 Heartbeat
 
@@ -475,7 +475,7 @@ automáticamente. Protege contra cuelgues por bugs en la FSM.
 ```
 loop():
     comm_top_tick()              # ~50 µs (drena Serial1)
-    comm_down_tick()             # ~50 µs (drena Serial2)
+    comm_down_tick()             # ~50 µs (drena Serial1)
                                  # — bus emergencia procesado AQUÍ alta prioridad
 
     if since_strategy_tick >= 10 ms:

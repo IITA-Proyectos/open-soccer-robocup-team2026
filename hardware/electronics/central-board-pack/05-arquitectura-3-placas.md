@@ -145,7 +145,7 @@ El Teensy 4.1 (Cortex-M7 a 600 MHz) tiene mucha capacidad libre para estrategia 
 
 ### Outputs
 
-- **CENTRAL (UART Serial1)**: `WORLD_SNAPSHOT` 100 Hz con todo lo percibido.
+- **CENTRAL (UART Serial7)**: `WORLD_SNAPSHOT` 100 Hz con todo lo percibido.
 - **Placa COMM (UART Serial4)**: status del robot + datos a enviar al partner.
 - **ABAJO (UART)**: comandos administrativos (reset, calibración).
 
@@ -256,12 +256,12 @@ Los otros 5 UARTs del Teensy 4.0 (Serial2, 3, 4, 6, 7) no están cableados en la
 - **Serial4** (pines 16/17) — conector U15 "UART_COMM_OUT" → placa COMM (árbitros + ESP-NOW).
 - **Serial5** (pines 21/20) — conector U9 "UART-CAMERA2" → cámara 2.
 
-Quedan libres: Serial2 (pines 7/8) — disponible para `WORLD_SNAPSHOT` hacia CENTRAL.
+El TOP envía `WORLD_SNAPSHOT` a CENTRAL por **Serial7** (pines 28/29). Serial2 (7/8) del TOP queda libre.
 
-**Placa CENTRAL (Teensy 4.1, Zircon Rev v15)** — capacidad para 8 UARTs hardware:
-- Serial1 → recibe del ARRIBA (`WORLD_SNAPSHOT`).
-- Serial2 → recibe del ABAJO (`LINE_URGENT`).
-- Pines de motores ya cableados (no comparten con UARTs).
+**Placa CENTRAL (Teensy 4.1, Zircon Rev v15)** — 8 UARTs hardware (reasignado 2026-05-31):
+- **Serial7** (28/29) → recibe del ARRIBA (`WORLD_SNAPSHOT`).
+- **Serial1** (0/1) → recibe del ABAJO (`LINE_URGENT`).
+- **Serial2** (7/8) → LIBRE para el driver del motor 2 (U17). Conflicto F8/TASK-036 RESUELTO.
 | `DOWN_ODOM` | ABAJO → ARRIBA | 100 Hz | Pose odométrica OTOS (x, y, heading), velocidad, slip |
 | `MOTOR_COMMAND_*` | (interno CENTRAL) | 100 Hz | No UART — CENTRAL aplica directo |
 | `RESET_OTOS` | CENTRAL → ABAJO | en eventos | Reset de pose odométrica |
@@ -382,11 +382,11 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 ```
    OpenMV cam1 ──Serial3 19200──┐
    OpenMV cam2 ──Serial5 19200──┤
-   Placa COMM  ──Serial4 115200─┤        ┌── Serial1 230400 ──► CENTRAL
+   Placa COMM  ──Serial4 115200─┤        ┌── Serial7 230400 ──► CENTRAL
    (árbitros)                   ▼        │   WORLD_SNAPSHOT 100 Hz (24 B)
                           ┌───────────────┐
-       DOWN ─Serial1─────►│  PLACA ARRIBA │── Serial2 ⚠️ ──► CENTRAL
-       odometría OTOS     │  (Teensy 4.0) │   (pin/baud SIN CONFIRMAR)
+       DOWN ─Serial5─────►│  PLACA ARRIBA │── Serial7 ──► CENTRAL
+       odometría OTOS     │  (Teensy 4.0) │   (TX7 pin 29 → CEN pin 28)
        100 Hz             └───────────────┘
                           ┌───────────────┐
                           │  PLACA CENTRAL│── PWM directo ──► 3 motores omni
@@ -394,7 +394,7 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
                           │  FSM + PIDs   │
                           └───────────────┘
                                   ▲
-            Serial2 (CENTRAL) ◄───┘  LINE_URGENT ~100 Hz
+            Serial1 (CENTRAL) ◄───┘  LINE_URGENT ~100 Hz
             bus de EMERGENCIA        LineStatus (ángulo+profundidad+imminent)
                                   ▲
                           ┌───────────────┐
@@ -408,8 +408,8 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 
 | Enlace | Pines (config) | Baud | Mensaje | Struct | Freq | Confirmado |
 |--------|----------------|------|---------|--------|------|------------|
-| ARRIBA → CENTRAL | CEN Serial1 RX0/TX1 | 230400 | `WORLD_SNAPSHOT` | `WorldSnapshot` (24 B) | 100 Hz | ⚠️ pin/baud de TOP Serial2 sin confirmar (TASK-008) |
-| ABAJO → CENTRAL | CEN Serial2 | ⚠️ s/d | `LINE_URGENT` | `LineStatus` | ~100 Hz | ⚠️ baud no es constante en config_central.h |
+| ARRIBA → CENTRAL | CEN Serial7 RX28/TX29 | 230400 | `WORLD_SNAPSHOT` | `WorldSnapshot` (24 B) | 100 Hz | ✅ 2026-05-31: CENTRAL en Serial7 (28/29); cablear TOP pin 29 → CEN pin 28 |
+| ABAJO → CENTRAL | CEN Serial1 (0/1) | 230400 | `LINE_URGENT` | `LineStatus` | ~100 Hz | ✅ reasignado 2026-05-31 (antes Serial2/7-8 → libera motor 2) |
 | ABAJO → ARRIBA | DOWN Serial5 RX20/TX21 → TOP Serial1 | 230400 | odometría OTOS | pose/vel | 100 Hz | parcial (TASK-008 rewiring) |
 | cam1 → ARRIBA | TOP Serial3 RX15/TX14 | 19200 | blobs pelota/arco | proto viejo 9 B | ~30 Hz | OK |
 | cam2 → ARRIBA | TOP Serial5 RX21/TX20 | 19200 | blobs pelota/arco | proto viejo 9 B | ~30 Hz | OK |
@@ -418,9 +418,9 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 
 ### Gaps de flujo de datos sin cerrar (NO asumir resueltos)
 
-1. **TOP Serial2 → CENTRAL**: `config_top.h` lo marca textual "NO CONFIRMADO
-   — falta validar con Enzo a qué pines del Teensy 4.0 van RX_OUT/TX_OUT del
-   conector U1". Bloquea el enlace principal ARRIBA→CENTRAL. → **TASK-008**.
+1. ✅ **RESUELTO 2026-05-31:** ARRIBA→CENTRAL = TOP `Serial7` (TX7 pin 29) →
+   CEN `Serial7` (RX7 pin 28); DOWN→CENTRAL = CEN `Serial1` (0/1). `Serial2` (7/8)
+   libre para el motor 2 (U17). Falta solo cablear + validar el stream en banco.
 2. **Baud DOWN↔CENTRAL**: el bus de emergencia (lo más crítico para no
    salirse de cancha) no tiene constante de baud en `config_central.h`.
    Verificar que ambos extremos coincidan antes de integrar.

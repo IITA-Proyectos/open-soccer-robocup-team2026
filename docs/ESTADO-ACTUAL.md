@@ -13,6 +13,14 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> **🔧 ÚLTIMO (2026-05-31 — vale sobre cualquier mención más abajo):** mapa UART final.
+> **TOP:** S1←DOWN · S3←cam frontal · S4↔COMM · S5←cam trasera · S7→CENTRAL.
+> **CENTRAL:** **S7 (pin 28)←TOP** (snapshot) · **S1 (pin 0)←DOWN** (línea) · **Serial2 (7/8)
+> LIBRE para el motor 2** → **conflicto 7/8 (TASK-036) RESUELTO**. HC-SR04 en pines 4/3.
+> CENTRAL **sin BNO** (los 2 BNO están en el TOP). Detalle único:
+> `hardware/electronics/MAPA-CONEXIONES-3-PLACAS.md`. Cualquier "conflicto 7/8 abierto" o
+> "Serial2 → CENTRAL" más abajo está **superado**.
+
 ## 📦 Para programar un subsistema: usar los packs
 
 Hay 5 packs autocontenidos en `hardware/electronics/` (uno por subsistema
@@ -341,7 +349,10 @@ nativo, pero ya no es el único camino. Ver
 > ⚠️ **SUPERSEDED 2026-05-31 (TASK-204):** la cámara trasera quedó **soldada en Serial5
 > (pin 21)** (confirmado en banco con `diag_top_cameras`), así que **TOP→CENTRAL se movió
 > a Serial7 (pin 29)** y la trasera se lee en Serial5. Además el **HC-SR04 quedó en pines
-> 4/3** (TRIG/ECHO), no 6/7. Lo de abajo es el registro histórico del 2026-05-29.
+> 4/3** (TRIG/ECHO), no 6/7. **En la CENTRAL** los UART se reasignaron: recibe el snapshot
+> en **Serial7 (pin 28)** y la línea del DOWN en **Serial1 (pin 0)** → **Serial2 (7/8) libre
+> para el motor 2; conflicto 7/8 (TASK-036) RESUELTO**. Lo de abajo es el registro histórico
+> del 2026-05-29 (donde diga "conflicto 7/8 abierto" o "Serial2 → CENTRAL", está superado).
 - **Hallazgo (Gustavo, en banco):** el diagrama del Teensy tiene doble numeración
   (externa + interna); vale la **interna (GPIO)**. El conector del TOP hacia CENTRAL
   cae en los **pines 20/21 = Serial5**, NO en 7/8 (Serial2). Era mala lectura del diagrama.
@@ -364,7 +375,7 @@ nativo, pero ya no es el único camino. Ver
   mecánico/electrónico.
 - **Falta para cerrar la integración**: las 2 conexiones inter-placa hacia TOP —
   (1) **DOWN↔TOP** (DOWN Serial5 → TOP Serial1: odometría OTOS + LINE_STATUS),
-  (2) **CENTRAL↔TOP** (TOP Serial7 → CENTRAL Serial1: WorldSnapshot). Firmware listo
+  (2) **CENTRAL↔TOP** (TOP Serial7 pin 29 → CENTRAL Serial7 pin 28: WorldSnapshot). Firmware listo
   en ambas puntas; falta cablear + validar el stream por protocolo.
 - **Se DESTRABAN** (ya no bloqueadas por "TOP sin armar"): TASK-022 (cámara operativa),
   TASK-024 (rol/polaridad), TASK-032 (ToF U2 en HW), TASK-035 (localización),

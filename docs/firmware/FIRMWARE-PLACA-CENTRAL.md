@@ -80,7 +80,7 @@ Esta separación permite **tunear y debuggear cada capa por separado**:
 - Si el motor no responde a PWM esperado → revisar capa baja (cableado, driver).
 - Si el robot toma decisiones tontas → revisar capa alta (FSM).
 
-**Adicionalmente**, CENTRAL atiende un **canal de emergencia** desde ABAJO (Serial2, 200 Hz). Cuando llega un flag `imminent_exit=1` el firmware **bypassa la capa alta** y frena los motores en < 15 ms — más rápido que esperar a que la FSM procese el snapshot completo.
+**Adicionalmente**, CENTRAL atiende un **canal de emergencia** desde ABAJO (Serial1, 200 Hz; reasignado 2026-05-31 desde Serial2). Cuando llega un flag `imminent_exit=1` el firmware **bypassa la capa alta** y frena los motores en < 15 ms — más rápido que esperar a que la FSM procese el snapshot completo.
 
 ---
 
@@ -104,8 +104,8 @@ Esta separación permite **tunear y debuggear cada capa por separado**:
 
 | Serial | TX | RX | Conectado a | Baud | Rol |
 |--------|----|----|-------------|------|-----|
-| Serial1 | 1 | 0 | desde ARRIBA | 230400 | Recibe `WORLD_SNAPSHOT` 100 Hz |
-| Serial2 | 8 | 7 | desde ABAJO | 230400 | **Recibe `LINE_URGENT` 200 Hz (bus emergencia)** |
+| Serial7 | 29 | 28 | desde ARRIBA | 230400 | Recibe `WORLD_SNAPSHOT` 100 Hz (reasignado 2026-05-31, antes Serial1) |
+| Serial1 | 1 | 0 | desde ABAJO | 230400 | **Recibe `LINE_URGENT` 200 Hz (bus emergencia)** (reasignado desde Serial2/7-8 → libera motor 2) |
 | Serial3+ | varios | varios | reservados | — | Para depuración + futuro |
 
 El Teensy 4.1 tiene **8 UARTs hardware** (Serial1-Serial8), así que sobran. CENTRAL no necesita comm con cámaras (eso es de ARRIBA) ni con árbitros (eso es de ARRIBA vía COMM).
@@ -814,14 +814,14 @@ void comm_top_tick() {
 }
 ```
 
-### 11.2 Recepción desde ABAJO (Serial2) — bus de emergencia
+### 11.2 Recepción desde ABAJO (Serial1) — bus de emergencia
 
 **Frame esperado**: `LINE_URGENT` (5 bytes payload + 7 overhead = 12 bytes/frame). Frecuencia: 200 Hz.
 
 ```cpp
 void comm_down_tick() {
-    while (Serial2.available()) {
-        uint8_t b = Serial2.read();
+    while (Serial1.available()) {
+        uint8_t b = Serial1.read();
         if (g_decoder_down.feed(b)) {
             const Frame& f = g_decoder_down.get_frame();
             if (f.type == MsgType::LINE_URGENT) {
@@ -845,8 +845,8 @@ CENTRAL puede enviar comandos a ARRIBA y ABAJO (eventos puntuales, no streams):
 
 | Comando | Hacia | Cuándo |
 |---------|-------|--------|
-| `CENTRAL_RESET_OTOS` | ABAJO (Serial2) | Al inicio de cada partido (post `START`) |
-| `CENTRAL_CALIB_LINE` | ABAJO (Serial2) | Antes del partido, recalibrar línea según iluminación |
+| `CENTRAL_RESET_OTOS` | ABAJO (Serial1) | Al inicio de cada partido (post `START`) |
+| `CENTRAL_CALIB_LINE` | ABAJO (Serial1) | Antes del partido, recalibrar línea según iluminación |
 | `CENTRAL_RESET_TOP` | ARRIBA (Serial1) | Si la pose del world model se vuelve inconsistente |
 | `CENTRAL_TOP_CMD` | ARRIBA (Serial1) | Comandos genéricos (recalibrar cámaras, reset IMU, etc.) |
 
@@ -915,7 +915,7 @@ Esto es **mejor que los 15 ms objetivo** del documento de arquitectura.
 ```
 loop():
     comm_top_tick()              # ~50 µs (drena Serial1)
-    comm_down_tick()             # ~50 µs (drena Serial2)
+    comm_down_tick()             # ~50 µs (drena Serial1)
                                  # — bus emergencia procesado AQUÍ con alta prioridad
 
     if since_strategy_tick >= 10 ms:
@@ -1040,7 +1040,7 @@ Vía USB Serial el operario puede:
 | Aspecto | Valor |
 |---------|-------|
 | MCU | Teensy 4.1 sobre Zircon Rev v15 |
-| UARTs activos | Serial1 (← ARRIBA), Serial2 (← ABAJO) |
+| UARTs activos | Serial7 (← ARRIBA), Serial1 (← ABAJO) — reasignado 2026-05-31 |
 | Frecuencia recepción | 100 Hz snapshot, 200 Hz línea |
 | Frecuencia FSM | 100 Hz |
 | Frecuencia PIDs capa media | 100 Hz |

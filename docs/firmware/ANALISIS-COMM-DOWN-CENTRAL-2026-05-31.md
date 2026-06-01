@@ -17,7 +17,13 @@ tags: [analisis, comunicacion, down, central, top, protocolo, buffers, timing, i
 > diga *"Serial5 → CENTRAL"* (p. ej. en "Cómo funciona hoy"), leer **Serial7 → CENTRAL**;
 > los hallazgos **TOP-CEN-01 y TOP-CEN-04** (Serial2/Serial5 stale) quedaron
 > **resueltos**. El **DOWN→TOP sí sigue en Serial5** (odometría OTOS) — eso no cambia.
-> El CENTRAL tampoco cambió (recibe el snapshot en Serial1 / pin 0).
+>
+> **Actualización adicional 2026-05-31 (decisión Gustavo):** la CENTRAL reasignó sus UART
+> → **recibe el snapshot del TOP en `Serial7` (pin 28)** y la línea del DOWN en **`Serial1`
+> (pin 0)**. Con eso **`Serial2` (7/8) queda libre para el driver del motor 2 (U17) → el P0
+> del conflicto 7/8 (TASK-036) que este análisis marcaba como bloqueante está RESUELTO**
+> (por reasignación de UART; no hizo falta aislar 7/8). Todo lo que sigue sobre "el
+> conflicto 7/8 bloquea el link" o "migrar/aislar Serial2 vs 7/8" quedó **superado**.
 
 ## TL;DR (lo mas importante)
 

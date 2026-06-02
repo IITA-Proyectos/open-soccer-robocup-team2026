@@ -55,6 +55,18 @@ inline float lsv2_line_angle_deg(const LineStatusV2& s) {
     return s.line_angle_centideg / 100.0f;
 }
 
+// Distancia perpendicular FIRMADA del centro del robot a la línea, en mm
+// (WP-3-DOWN / Capa 3). Espejo de lsv2_line_angle_deg: N/A ⇒ 0.0f.
+// Convención (ver down_model.cpp): + = línea adelante del centro (+Y),
+// - = atrás (-Y). El PID lateral del arquero la usa con setpoint 0 para
+// mantenerse centrado sobre la línea mientras hace strafe a lo largo de ella.
+// Honra la compuerta maestra: si data_valid==0, la geometría no es confiable.
+inline float lsv2_cross_track_mm(const LineStatusV2& s) {
+    if (s.data_valid == 0) return 0.0f;
+    if (s.cross_track_mm == LSV2_NA_I16) return 0.0f;
+    return static_cast<float>(s.cross_track_mm);
+}
+
 // Cantidad de sensores sobre la línea (0..32).
 inline uint8_t lsv2_sensors_on_line(const LineStatusV2& s) {
     return s.sensors_on_line;

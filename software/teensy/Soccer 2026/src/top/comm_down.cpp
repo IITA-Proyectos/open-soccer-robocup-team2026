@@ -1,6 +1,7 @@
 #include "comm_down.h"
 #include "config_top.h"
 #include "proto.h"
+#include "line_view.h"
 
 #include <Arduino.h>
 #include <string.h>
@@ -14,7 +15,7 @@ uint32_t g_frames_received = 0;
 uint8_t  g_send_seq = 0;
 
 // Estado más reciente.
-LineStatus  g_line{};
+LineStatusV2 g_line{};
 Pose2D      g_pose{};
 Velocity2D  g_vel{};
 
@@ -33,12 +34,14 @@ void handle_frame(const Frame& f) {
         // viene a ARRIBA — viaja por bus de emergencia directo DOWN → CENTRAL.
         // Lo procesamos acá solo si llegó por error (no romper si por ahora
         // DOWN sigue mandándolo en la transición).
-        case MsgType::LINE_URGENT:
-            if (f.payload_len == sizeof(LineStatus)) {
-                memcpy(&g_line, f.payload, sizeof(LineStatus));
+        case MsgType::LINE_URGENT: {
+            LineStatusV2 ls{};
+            if (lsv2_from_frame(f, ls)) {     // valida tipo + tamaño (16) + schema
+                g_line = ls;
                 g_line_last_rx_ms = millis();
             }
             break;
+        }
         case MsgType::DOWN_OTOS_POSE:
             if (f.payload_len == sizeof(Pose2D)) {
                 memcpy(&g_pose, f.payload, sizeof(Pose2D));
@@ -97,8 +100,8 @@ void comm_down_send_calib_line(bool white) {
     if (n > 0) Serial1.write(buf, n);
 }
 
-bool              comm_down_is_line_fresh() { return fresh(g_line_last_rx_ms); }
-const LineStatus& comm_down_get_line_status() { return g_line; }
+bool                comm_down_is_line_fresh() { return fresh(g_line_last_rx_ms); }
+const LineStatusV2& comm_down_get_line_status() { return g_line; }
 
 bool              comm_down_is_pose_fresh() { return fresh(g_pose_last_rx_ms); }
 const Pose2D&     comm_down_get_pose() { return g_pose; }

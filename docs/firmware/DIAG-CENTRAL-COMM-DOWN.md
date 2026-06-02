@@ -25,13 +25,13 @@ DOWN ya emite, **antes** de sumar mensajes nuevos (los 32 sensores crudos son
 un 2do paso — ver final). Si esto anda, el canal físico + el protocolo quedan
 validados.
 
-## ⚠️ UART: Serial2 (RX2 = pin 7) — el enlace validado en banco
+## ✅ UART: Serial1 (RX1 = pin 0) — reasignado 2026-05-31
 
-Se usa **Serial2 (RX2 = pin 7, TX2 = pin 8)** porque es el **cableado ya
-validado**: el 2026-05-29 el par mínimo `diag_down_send1` / `diag_central_recv1`
-confirmó que el `'1'` llega por **pin 7**. Es además el mismo UART que usan
-`diag_central_recv1` y el `comm_down.cpp` de producción → **no hay que recablear
-entre tests**.
+**Reasignado el 2026-05-31** (decisión Gustavo): el link DOWN→CENTRAL pasó de Serial2
+(7/8) a **Serial1 (RX1 = pin 0, TX1 = pin 1)**, para liberar los pines 7/8 del driver
+del motor 2 (U17) → **conflicto 7/8 (TASK-036) RESUELTO**. El `comm_down.cpp` de
+producción y este diag usan el mismo Serial1, así que coinciden. (El par de banco del
+2026-05-29 se había validado en pin 7; ahora el cable va al **pin 0**.)
 
 **Sobre el conflicto 7/8 (motores):** el motor 2 (driver U17) usaría los pines
 **8/7** = los de Serial2. PERO el conflicto **solo aparece manejando motores**, y
@@ -46,7 +46,7 @@ en `comm_down.cpp`). El veredicto 7/8 y demás pruebas de motores quedan pendien
 
 | DOWN (Teensy 4.0) | → | CENTRAL (Teensy 4.1) |
 |---|---|---|
-| TX1 = **pin 1** | → | RX2 = **pin 7** |
+| TX1 = **pin 1** | → | RX1 = **pin 0** |
 | GND | ↔ | GND |
 
 Baud: **230400** (igual que DOWN — `config_down.h` / `comm_central.cpp`).
@@ -133,7 +133,7 @@ bytes = 1/sensor, entra justo en el payload de 32 B del protocolo):
 - Helpers de interpretación: [`src/shared/line_view.h`](../../software/teensy/Soccer%202026/src/shared/line_view.h)
 - Emisor DOWN: [`src/down/comm_central.cpp`](../../software/teensy/Soccer%202026/src/down/comm_central.cpp)
 - Contrato canónico: [`docs/firmware/CONTRATO-DATOS-DOWN.md`](CONTRATO-DATOS-DOWN.md)
-- TASK-100 (validación ingest línea) · TASK-036 (pines 7/8, veredicto pendiente de aislar)
+- TASK-100 (validación ingest línea) · TASK-036 (pines 7/8 — ✅ RESUELTO 2026-05-31: UART movido a Serial1, 7/8 libres para el motor 2)
 
 ## Cambios
 

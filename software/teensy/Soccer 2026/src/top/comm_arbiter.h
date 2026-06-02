@@ -40,6 +40,11 @@ uint32_t       comm_arbiter_get_last_command_ms();
 // está habilitado a moverse.
 bool comm_arbiter_is_match_running();
 
+// Frames validos decodificados desde la placa COMM (salud del enlace Serial4).
+// Sube con CUALQUIER frame valido del COMM (referee cmd, status req, partner),
+// aunque todavia no haya START — sirve para confirmar que el enlace esta vivo.
+uint32_t comm_arbiter_get_frames_received();
+
 // Envía status al COMM (responde a COMM_STATUS_REQ o periódico).
 void comm_arbiter_send_status(uint8_t role, uint8_t error_flags,
                                uint16_t battery_mv);

@@ -48,12 +48,51 @@ bool     world_model_imminent_exit();
 bool     world_model_line_data_valid();   // data_valid del último frame (compuerta maestra)
 uint8_t  world_model_line_event_flags();  // EV_* del último frame (diagnóstico / observabilidad)
 
+// Distancia perpendicular FIRMADA del centro del robot a la recta de la línea,
+// en mm (WP-3-DOWN / Capa 3; computada en down_model con geometría real).
+// Convención de signo (ver down_model.cpp): + = línea ADELANTE del centro (+Y),
+// - = ATRÁS (-Y). El arquero la usa como señal de error del PID lateral para
+// mantener DISTANCIA PERPENDICULAR fija y desplazarse PARALELO a la línea
+// lateral (strafe). Devuelve 0.0f cuando no es confiable (ver más abajo) —
+// usar SIEMPRE junto con world_model_cross_track_valid() para distinguir
+// "centrado sobre la línea" (0 mm válido) de "sin señal" (N/A).
+float    world_model_get_cross_track_mm();
+
+// ¿El cross_track del último frame es una medición real y usable?
+// true sólo si data_valid==1 Y el campo no es el centinela N/A (LSV2_NA_I16).
+// Es la compuerta que usa el arquero (strategy goalkeeper_tick) para elegir
+// entre el control por cross_track (strafe paralelo, Capa 3) y el fallback
+// por profundidad (world_model_get_line_depth). NO confundir con line_fresh:
+// esto es validez del CAMPO dentro del frame; la frescura del frame es aparte.
+bool     world_model_cross_track_valid();
+
 // === Estado táctico (de WorldSnapshot.flags) ===
 bool world_model_match_running();
+// Override de arranque manual (F3, fail-safe de banco). Cuando es true,
+// world_model_match_running() devuelve true aunque no haya START de COMM.
+// Solo lo activa main_central bajo -DCENTRAL_ENABLE_MANUAL_START.
+void world_model_set_force_match_running(bool on);
 bool world_model_in_own_penalty_area();
 bool world_model_partner_alive();
 bool world_model_partner_sees_ball();
 
 uint8_t world_model_referee_cmd();
+
+// === OTOS directo de DOWN (Capa 1 broadcast) ===
+// La pose de cancha AUTORITATIVA sigue siendo la del WorldSnapshot del TOP
+// (world_model_get_my_*). El OTOS directo es SOLO para control de movimiento
+// (drive-straight / patear derecho), que se cablea en Capa 2.
+void world_model_apply_otos_pose(const Pose2D& pose);
+void world_model_apply_otos_vel(const Velocity2D& vel);
+bool world_model_otos_is_fresh();
+
+float   world_model_get_otos_x_mm();
+float   world_model_get_otos_y_mm();
+float   world_model_get_otos_heading_deg();
+float   world_model_get_otos_vx_mm_s();
+float   world_model_get_otos_vy_mm_s();
+float   world_model_get_otos_omega_deg_s();
+uint8_t world_model_get_otos_slip();
+uint8_t world_model_otos_pose_confidence();
 
 }  // namespace iitasoccer

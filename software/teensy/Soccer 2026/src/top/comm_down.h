@@ -1,7 +1,7 @@
 // comm_down.h — Lado TOP de la comunicación con la placa DOWN (slave de sensores).
 //
 // La placa DOWN envía cada 10 ms (100 Hz):
-//   • LineStatus  (ángulo línea, profundidad, flag salida inminente)
+//   • LineStatusV2 (ángulo línea, profundidad, flag salida inminente)
 //   • Pose2D      (pose fusionada de los 2 OTOS)
 //   • Velocity2D  (velocidad + slip_estimate)
 //
@@ -28,7 +28,7 @@ void comm_down_send_calib_line(bool white);  // false = carpet, true = white
 // Accesores al último estado conocido del DOWN.
 // is_*_fresh() retorna true si llegó dato hace menos de DOWN_HEARTBEAT_TIMEOUT_MS.
 bool             comm_down_is_line_fresh();
-const LineStatus& comm_down_get_line_status();
+const LineStatusV2& comm_down_get_line_status();
 
 bool             comm_down_is_pose_fresh();
 const Pose2D&    comm_down_get_pose();

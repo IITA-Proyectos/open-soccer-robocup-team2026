@@ -26,6 +26,7 @@
 #include "world_model.h"
 #include "pids.h"
 #include "behind_ball.h"
+#include "drive_straight.h"
 
 #include <Arduino.h>
 #include <cmath>
@@ -89,12 +90,33 @@ constexpr float ATK_POSITION_MAX_SPEED         = 500.0f;
 constexpr float ATK_KICKOFF_SPEED_MM_S         = 500.0f;
 constexpr uint32_t ATK_KICKOFF_DURATION_MS     = 250;      // boost inicial al frente al arrancar match
 
+// Drive-straight (WP-2A, Capa 2): refinamiento OPCIONAL del avance recto usando
+// la odometría OTOS directa de DOWN (baja latencia, sin round-trip por el TOP).
+// Solo se aplica si world_model_otos_is_fresh(); si no, fallback EXACTO al
+// comportamiento sin OTOS. Convención robot: +Y=frente, +X=derecha, omega CCW+.
+// El módulo drive_straight (src/shared) llama "vx/fwd_speed" al avance y "vy" a
+// la corrección lateral; acá los bindeamos a los ejes FÍSICOS del robot:
+//   • avance del robot  = +Y  -> drive_straight.in.fwd_speed ; out.vx_mm_s -> cmd.vy_mm_s
+//   • lateral del robot = +X  -> drive_straight.in.otos_vy = OTOS vx ; out.vy_mm_s -> cmd.vx_mm_s
+constexpr float DS_KP_HEADING = 3.0f;   // grados/s por grado (alineado con HeadingPID.kp)
+constexpr float DS_KP_LATERAL = 0.5f;   // amortigua ~media deriva lateral OTOS por tick
+
 // Arquero — Nivel 1
 constexpr float GK_PATROL_OSCILLATE_PERIOD_MS = 2000.0f;
 constexpr float GK_PATROL_SPEED_MM_S          = 150.0f;
 constexpr float GK_INTERCEPT_KP_VS_BALL_X     = 4.0f;
 constexpr float GK_LATERAL_SETPOINT_DEPTH     = 1.0f;
 constexpr float GK_LINE_RETREAT_SPEED         = 250.0f;
+
+// Arquero — Capa 3 (WP-3-GK): strafe PARALELO a la línea lateral usando el
+// cross_track REAL (distancia perpendicular firmada del centro del robot a la
+// recta de la línea, en mm; computado en down_model con geometría). El PID
+// lateral lleva cross_track -> setpoint (0 = pisar la línea, distancia
+// perpendicular nula) mientras la oscilación de PATROL / el seguimiento de bola
+// de INTERCEPT mueven al robot A LO LARGO de la línea => queda paralelo.
+// Setpoint 0 mm: el arquero se mantiene CENTRADO sobre la línea. (Si en banco se
+// quiere "flotar" a una distancia fija de la línea lateral, subir este valor.)
+constexpr float GK_CROSS_TRACK_SETPOINT_MM    = 0.0f;
 
 // Arquero — Nivel 2
 constexpr float GK_CLEAR_TRIGGER_MM           = 250.0f;    // pelota más cerca que esto → CLEAR
@@ -105,6 +127,41 @@ constexpr float GK_CLEAR_SPEED_MM_S           = 500.0f;
 
 inline bool line_data_fresh() {
     return world_model_line_is_fresh();
+}
+
+// Salida del PID lateral del arquero (mm/s sobre el eje +X del robot).
+//
+// WP-3-GK (Capa 3): si el frame de línea está fresco Y trae un cross_track REAL
+// (world_model_cross_track_valid()), el error del PID es la distancia
+// perpendicular firmada a la línea (cross_track) con setpoint
+// GK_CROSS_TRACK_SETPOINT_MM. Así el arquero mantiene distancia perpendicular
+// fija y, combinado con la oscilación de PATROL / el seguimiento de bola de
+// INTERCEPT (que mueven el eje X), se desplaza PARALELO a la línea lateral.
+//
+// FALLBACK EXACTO: si el cross_track es N/A (anillo parcial, sin blancos
+// validados, data_valid==0, o DOWN aún sin Capa 3), se usa la señal previa
+// basada en profundidad (depth) con setpoint GK_LATERAL_SETPOINT_DEPTH —
+// idéntico al comportamiento anterior a este WP. Si la línea no está fresca,
+// devuelve 0 (igual que antes: sin corrección lateral).
+//
+// Nota de signos: cross_track + = línea adelante (+Y); el PID lo mapea a una
+// velocidad lateral (+X) que anula el offset. depth es no-firmado (magnitud);
+// por eso son setpoints/escalas distintas y NO se mezclan. El caller pondera
+// esta salida igual que antes (×0.5 en PATROL, ×0.3 en INTERCEPT).
+inline float gk_lateral_pid_output(uint32_t now_ms) {
+    if (!line_data_fresh()) {
+        return 0.0f;
+    }
+    if (world_model_cross_track_valid()) {
+        // Capa 3: error = cross_track (mm perpendicular firmado) -> setpoint.
+        const float cross_track = world_model_get_cross_track_mm();
+        lateral_pid_set_target(g_lateral_pid_gk, GK_CROSS_TRACK_SETPOINT_MM);
+        return lateral_pid_tick(g_lateral_pid_gk, cross_track, now_ms);
+    }
+    // Fallback EXACTO al comportamiento previo (control por profundidad).
+    const float depth = static_cast<float>(world_model_get_line_depth());
+    lateral_pid_set_target(g_lateral_pid_gk, GK_LATERAL_SETPOINT_DEPTH);
+    return lateral_pid_tick(g_lateral_pid_gk, depth, now_ms);
 }
 
 void transition_atk(AtkState new_state) {
@@ -159,11 +216,30 @@ MotorCommand attacker_tick() {
             // Set play: boost recto al frente con heading hacia 0° absoluto
             // durante ATK_KICKOFF_DURATION_MS. Después transitions a SEARCH.
             const KickoffVelocity kv = compute_kickoff_velocity(ATK_KICKOFF_SPEED_MM_S);
-            cmd.vx_mm_s = static_cast<int16_t>(kv.vx_mm_s);
-            cmd.vy_mm_s = static_cast<int16_t>(kv.vy_mm_s);
             // Mantener heading actual — no queremos rotar durante el boost.
             heading_pid_set_target(g_heading_pid, heading);
-            cmd.omega_centideg_s = 0;
+
+            if (world_model_otos_is_fresh()) {
+                // Refinamiento WP-2A: patear/manejar DERECHO con OTOS directo.
+                // target = heading actual (mantener rumbo); avance = boost al
+                // frente (kv.vy); deriva lateral a cancelar = OTOS vx (eje +X).
+                DriveStraightIn ds_in;
+                ds_in.target_heading_deg = world_model_get_otos_heading_deg();
+                ds_in.cur_heading_deg    = world_model_get_otos_heading_deg();
+                ds_in.otos_vy_mm_s       = world_model_get_otos_vx_mm_s();  // lateral robot = +X
+                ds_in.fwd_speed_mm_s     = kv.vy_mm_s;                      // boost al frente
+                const DriveStraightCfg ds_cfg{DS_KP_HEADING, DS_KP_LATERAL};
+                const DriveStraightCmd ds = drive_straight_compute(ds_in, ds_cfg);
+                // Bind a ejes del robot: out.vx->frente(+Y)=cmd.vy ; out.vy->lateral(+X)=cmd.vx.
+                cmd.vy_mm_s = static_cast<int16_t>(ds.vx_mm_s);
+                cmd.vx_mm_s = static_cast<int16_t>(ds.vy_mm_s);
+                cmd.omega_centideg_s = static_cast<int16_t>(ds.omega_deg_s * 100.0f);
+            } else {
+                // Fallback EXACTO al comportamiento previo (sin OTOS).
+                cmd.vx_mm_s = static_cast<int16_t>(kv.vx_mm_s);
+                cmd.vy_mm_s = static_cast<int16_t>(kv.vy_mm_s);
+                cmd.omega_centideg_s = 0;
+            }
 
             if (now_ms - g_kickoff_started_ms >= ATK_KICKOFF_DURATION_MS) {
                 transition_atk(AtkState::SEARCH);
@@ -308,6 +384,23 @@ MotorCommand attacker_tick() {
                 cmd.vy_mm_s = static_cast<int16_t>(by / dist * speed);
             }
             cmd.omega_centideg_s = static_cast<int16_t>(omega * 100.0f);
+
+            // Refinamiento WP-2A: cancelar la deriva lateral (eje +X) medida por
+            // OTOS para que el empuje/pateo salga DERECHO. Aditivo y opcional —
+            // NO toca el heading (lo maneja el HeadingPID hacia la pelota) ni el
+            // avance hacia la pelota; solo suma una corrección lateral si el OTOS
+            // está fresco. Si no, el comando queda EXACTAMENTE como antes.
+            if (world_model_otos_is_fresh()) {
+                DriveStraightIn ds_in;
+                ds_in.target_heading_deg = 0.0f;   // omega lo controla el HeadingPID
+                ds_in.cur_heading_deg    = 0.0f;   // -> error 0 -> ds.omega = 0 (no se usa)
+                ds_in.otos_vy_mm_s       = world_model_get_otos_vx_mm_s();  // lateral robot = +X
+                ds_in.fwd_speed_mm_s     = 0.0f;
+                const DriveStraightCfg ds_cfg{DS_KP_HEADING, DS_KP_LATERAL};
+                const DriveStraightCmd ds = drive_straight_compute(ds_in, ds_cfg);
+                // ds.vy_mm_s = corrección lateral; se suma al eje +X del robot.
+                cmd.vx_mm_s = static_cast<int16_t>(static_cast<float>(cmd.vx_mm_s) + ds.vy_mm_s);
+            }
             return cmd;
         }
     }
@@ -351,13 +444,11 @@ MotorCommand goalkeeper_tick() {
 
         case GkState::PATROL: {
             g_state_name = "GK_PATROL";
-            // PID lateral mantiene el robot pisando línea de fondo.
-            float vx_lateral_pid = 0.0f;
-            if (line_data_fresh()) {
-                const float depth = static_cast<float>(world_model_get_line_depth());
-                lateral_pid_set_target(g_lateral_pid_gk, GK_LATERAL_SETPOINT_DEPTH);
-                vx_lateral_pid = lateral_pid_tick(g_lateral_pid_gk, depth, now_ms);
-            }
+            // PID lateral: WP-3-GK lo lleva por cross_track (distancia
+            // perpendicular a la línea) para que el arquero se mantenga PARALELO
+            // a la línea lateral; fallback EXACTO a profundidad si cross_track es
+            // N/A (ver gk_lateral_pid_output).
+            const float vx_lateral_pid = gk_lateral_pid_output(now_ms);
 
             // Oscilación lateral encima del PID — patrulla el área chica.
             static int direction = 1;
@@ -381,12 +472,9 @@ MotorCommand goalkeeper_tick() {
             const float by = world_model_get_ball_y_mm();
             const float dist = std::sqrt(bx * bx + by * by);
 
-            float vx_lateral_pid = 0.0f;
-            if (line_data_fresh()) {
-                const float depth = static_cast<float>(world_model_get_line_depth());
-                lateral_pid_set_target(g_lateral_pid_gk, GK_LATERAL_SETPOINT_DEPTH);
-                vx_lateral_pid = lateral_pid_tick(g_lateral_pid_gk, depth, now_ms);
-            }
+            // PID lateral por cross_track (paralelo a la línea), con fallback
+            // EXACTO a profundidad si es N/A — mismo helper que PATROL.
+            const float vx_lateral_pid = gk_lateral_pid_output(now_ms);
 
             const float vx_intercept = bx * GK_INTERCEPT_KP_VS_BALL_X;
             cmd.vx_mm_s = static_cast<int16_t>(vx_intercept + vx_lateral_pid * 0.3f);

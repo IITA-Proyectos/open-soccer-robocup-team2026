@@ -10,6 +10,12 @@ author: "Claude Opus 4.7 (Anthropic)"
 requested-by: "Gustavo Viollaz (@gviollaz)"
 ---
 
+> ✅ **Actualización 2026-05-31:** el "conflicto pines 7/8" (Serial2 vs motor 2) se
+> RESOLVIÓ moviendo los UART de la CENTRAL — DOWN→CENTRAL pasó a **Serial1** (0/1) y
+> TOP→CENTRAL a **Serial7** (28/29), dejando los pines 7/8 solo para el motor 2 (U17).
+> Lo que sigue sobre "aislar 7/8 / migrar Serial2" quedó **superado**; este diag sigue
+> siendo útil para **mapear motor N firmware → rueda física** y validar los 3 H-bridges.
+
 # `diag_central_motors` — Test individual de los 3 motores del Zircon
 
 ## Para qué sirve

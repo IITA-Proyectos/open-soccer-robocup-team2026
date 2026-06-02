@@ -4,6 +4,7 @@
 #include "otos.h"
 #include "proto.h"
 #include "types.h"
+#include "down_tx.h"
 
 #include <Arduino.h>
 #include <string.h>
@@ -14,9 +15,6 @@ namespace {
 
 FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
-uint32_t g_frames_sent = 0;
-uint32_t g_frames_dropped = 0;   // P1.6: frames descartados por TX buffer lleno
-uint8_t  g_send_seq = 0;
 
 void handle_frame(const Frame& f) {
     switch (f.type) {
@@ -34,30 +32,6 @@ void handle_frame(const Frame& f) {
         default:
             // Frames no relevantes para DOWN — ignorar silenciosamente.
             break;
-    }
-}
-
-template <typename T>
-void send_typed(MsgType type, const T& payload) {
-    Frame f{};
-    f.type = type;
-    f.seq = g_send_seq++;
-    f.payload_len = sizeof(T);
-    memcpy(f.payload, &payload, sizeof(T));
-
-    uint8_t buf[PROTO_MAX_FRAME];
-    size_t n = proto_encode(f, buf, sizeof(buf));
-    if (n > 0) {
-        // Backpressure (audit P1.6 — 2026-05-29): escribir solo si hay espacio
-        // en el TX buffer. Sin esto Serial5.write() bloquea (busy-wait) con el
-        // buffer lleno, robándole ciclos al line_ring de 1 kHz. La odometría
-        // tolera huecos: TOP fusiona la última pose válida, no acumula frames.
-        if (Serial5.availableForWrite() >= (int)n) {
-            Serial5.write(buf, n);
-            g_frames_sent++;
-        } else {
-            g_frames_dropped++;
-        }
     }
 }
 
@@ -94,7 +68,7 @@ void comm_top_send_status() {
     pose.confidence = (otos_is_left_ready() && otos_is_right_ready()) ? 100
                     : (otos_is_left_ready() || otos_is_right_ready()) ? 60
                     : 0;
-    send_typed(MsgType::DOWN_OTOS_POSE, pose);
+    down_tx_broadcast_pose(pose);
 
     // OTOS VEL — velocidades + slip_estimate (DOWN-specific).
     Velocity2D vel{};
@@ -105,12 +79,12 @@ void comm_top_send_status() {
         otos_get_omega_rad_s() * (18000.0f / 3.14159265f));
     vel.slip_estimate = static_cast<uint8_t>(
         otos_get_slip_estimate() > 255.0f ? 255 : otos_get_slip_estimate());
-    send_typed(MsgType::DOWN_OTOS_VEL, vel);
+    down_tx_broadcast_vel(vel);
 }
 
 uint32_t comm_top_get_frames_received() { return g_frames_received; }
-uint32_t comm_top_get_frames_sent()     { return g_frames_sent; }
-uint32_t comm_top_get_frames_dropped()  { return g_frames_dropped; }
+uint32_t comm_top_get_frames_sent()    { return down_tx_get_sent(1); }
+uint32_t comm_top_get_frames_dropped() { return down_tx_get_dropped(1); }
 uint32_t comm_top_get_crc_errors()      { return g_decoder.crc_errors(); }
 
 }  // namespace iitasoccer

@@ -18,31 +18,33 @@ fuentes:
 > está disponible en `ground-truth/` para correr el extractor automático del
 > pack DOWN si se quiere regenerar este doc desde el SCH JSON.
 
-> **🔧 CORRECCIÓN 2026-05-29 — UART TOP→CENTRAL (leer numeración INTERNA del Teensy).**
-> El enlace **TOP→CENTRAL** (`WORLD_SNAPSHOT`) **NO** va por Serial2 (pines 7/8):
-> va por **Serial5 (pines 20/21)** del Teensy 4.0. El diagrama del Teensy tiene
-> dos números por pin (uno externo, uno interno); vale el **interno (GPIO)**, y
-> el conector a CENTRAL cae en los pines internos 20/21 = Serial5. Consecuencias:
-> 1. La **cámara trasera** se movió de Serial5 a **Serial7 (pines 28/29)** —
->    provisional, confirmar el conector U9 con Enzo.
-> 2. El **"conflicto pin 7"** (HC-SR04 ECHO vs Serial2 RX2) queda **RESUELTO**:
->    Serial2 ya no se usa, el pin 7 es solo ECHO del HC-SR04.
-> Donde más abajo el doc diga "Serial2 / pines 7-8 → CENTRAL", está **superado**
-> por esta nota. Firmware ya corregido: `src/top/comm_central.cpp` (Serial5) +
-> `src/top/cameras_runtime.cpp` (cam2 → Serial7), compila OK.
+> **🔧 ACTUALIZACIÓN 2026-05-31 — swap UART + HC-SR04 (confirmado EN BANCO).**
+> Mapa UART vigente del TOP (Teensy 4.0): **S1=DOWN · S3=cámara frontal (U8) ·
+> S4=COMM · S5=cámara TRASERA · S7=CENTRAL (`WORLD_SNAPSHOT`)**.
+> 1. La **cámara trasera** quedó **soldada en Serial5 (RX pin 21)** — confirmado con
+>    `diag_top_cameras` (FORMATO OK). Por eso el link **TOP→CENTRAL** se movió a
+>    **Serial7 (TX29/RX28)** (TASK-204). Esto revierte el swap provisional del
+>    2026-05-29 (que asumía la placa sin armar). El lado CENTRAL recibe en su Serial1.
+> 2. El **HC-SR04** se cableó en **TRIG=pin 4 / ECHO=pin 3** (no 6/7). El viejo
+>    **"conflicto pin 7"** ya **no existe**: el pin 7 (Serial2 RX2) queda libre y
+>    Serial2 no se usa.
+> Firmware: `comm_central.cpp` (Serial7) + `cameras_runtime.cpp` (trasera Serial5) +
+> `pinout_common.h` (HC-SR04 4/3); compila OK (top_robot1/2 + 269 tests nativos).
+> Donde más abajo el doc diga "Serial5 → CENTRAL", "cam trasera → Serial7" o
+> "HC-SR04 en 6/7", está **superado** por esta nota.
 
 ## 1. Hardware sobre el que corre
 
 | Componente | Cantidad | Nota |
 |---|---|---|
 | MCU **Teensy 4.0** (U14) | 1 | Cortex-M7 a 600 MHz, 1 MB RAM, 2 MB flash, **7 UARTs hardware** |
-| Cámaras **OpenMV H7 / H7 Plus** | 2 | UART (Serial3 frontal + **Serial7** trasera), 19200 baud, protocolo viejo 9 bytes/packet |
-| **BNO055** IMU | 2 | I²C dual (`Wire` + `Wire1`). Ambos dirección 0x28, por eso buses separados |
+| Cámaras **OpenMV N6** (antes H7 Plus) | 2 | UART (Serial3 frontal + **Serial5** trasera), 19200 baud, protocolo viejo 9 bytes/packet |
+| **BNO055** IMU | 2 | Ambos en `Wire` (18/19): LEFT=0x28, RIGHT=0x29 (pad ADR a 3V3). Recableado 2026-05-31 → `Wire1` (24/25) libre para DOWN |
 | Sensor ToF **VL53L7CX** | 4 fijos (plan: 6) | TODOS en `Wire` (I²C0), LP individual por pin. Enumeran a 0x2A..0x2D. 8×8 SPAD multizona. Plan de escalado: +2 móviles para pelota |
-| Ultrasonido **HC-SR04** | 1 | TRIG/ECHO pines 6/7. Frontal, fallback de ToF |
+| Ultrasonido **HC-SR04** | 1 | TRIG=pin 4 / ECHO=pin 3 (banco 2026-05-31). Frontal, fallback de ToF |
 | Conector a placa **COMM** (ESP32-C6) | 1 | UART (Serial4). Bridge a árbitros + ESP-NOW partner |
 | Conector a placa **DOWN** (sensores piso) | 1 | UART (Serial1). Recibe DOWN_OTOS_POSE/VEL + LINE_STATUS |
-| Conector a placa **CENTRAL** (cerebro/motores) | 1 | UART (**Serial5, pines 20/21**). Envía `WORLD_SNAPSHOT` |
+| Conector a placa **CENTRAL** (cerebro/motores) | 1 | UART (**Serial7, pines 28/29**). Envía `WORLD_SNAPSHOT` (swap 2026-05-31) |
 | Dipswitch selección de rol | 1 | Pin 10 con pull-up. LOW = arquero, HIGH = delantero |
 | Conector Dean-T-F batería | 1 | 7.4 V LiPo (compartido con CENTRAL y DOWN) |
 | Reguladores MP1584-EN | 2 | 7.4 V → 5 V + 7.4 V → 3.3 V |
@@ -74,8 +76,8 @@ fuentes:
 
 | Bus | API Arduino | Pin Arduino SDA | Pin Arduino SCL | Periféricos | Dirección I²C |
 |---|---|---|---|---|---|
-| **I²C #0** | `Wire` | **18** | **19** | BNO055 izq (U10) + **los 4 ToF** (U2/U3/U5/U17) | BNO055=0x28; ToF=0x2A/0x2B/0x2C/0x2D (asignadas vía LP) |
-| **I²C #1** | `Wire1` | **25** ⚠️ remap | **24** ⚠️ remap | BNO055 der (U11) + **(libre para placa DOWN)** | BNO055=0x28 |
+| **I²C #0** | `Wire` | **18** | **19** | BNO055 izq (U10) + BNO055 der (U11) + **los 4 ToF** (U2/U3/U5/U17) | BNO izq=0x28, BNO der=0x29 (ADR a 3V3); ToF=0x2A/0x2B/0x2C/0x2D (vía LP) |
+| **I²C #1** | `Wire1` | **25** ⚠️ remap | **24** ⚠️ remap | **(libre para placa DOWN)** — el 2do BNO se movió a `Wire` (0x29) el 2026-05-31 | — |
 
 > **Remap crítico de `Wire1`** (Q3 confirmado por análisis PCB, 2026-05-10):
 > los pines default de `Wire1` en Teensy 4.0 son 16/17, pero esos están
@@ -88,8 +90,9 @@ fuentes:
 > ```
 > Pendiente físicamente confirmar con TASK-003.
 
-Los 2 BNO055 **comparten dirección 0x28** de fábrica → obligatorio en buses
-distintos. Los **4 ToF se enumeran al boot** en `Wire`: arrancan todos en 0x29
+Los 2 BNO055 son 0x28 de fábrica, pero el 2do tiene el **pad ADR puenteado a 3V3
+→ 0x29**, así que ambos conviven en `Wire` (recableado 2026-05-31; esto liberó
+`Wire1` para DOWN). Los **4 ToF se enumeran al boot** en `Wire`: arrancan todos en 0x29
 de fábrica, se duermen todos por LP, se despierta uno por uno y a cada uno se
 le asigna 0x2A → 0x2B → 0x2C → 0x2D. **Ninguno queda en 0x29.**
 
@@ -105,12 +108,12 @@ le asigna 0x2A → 0x2B → 0x2C → 0x2D. **Ninguno queda en 0x29.**
 | Serial | Pin RX | Pin TX | Conector PCB | Conectado a | Baud | Rol |
 |---|---|---|---|---|---|---|
 | **`Serial1`** | **0** | **1** | U16 "UART_COMM_IN" | placa **DOWN** | 230400 | Recibe ODOM_POSE/VEL del DOWN (100 Hz) |
-| ~~`Serial2`~~ | 7 | 8 | — | **NO usado como UART** | — | Pin 7 = HC-SR04 ECHO. Se creía que iba a CENTRAL — **mala lectura del diagrama**; CENTRAL está en Serial5 (abajo). |
-| **`Serial3`** | **15** | **14** | U8 "UART-CAMERA1" | OpenMV **cámara 1** (frontal) | 19200 | Protocolo viejo OpenMV (9 bytes/packet) |
+| ~~`Serial2`~~ | 7 | 8 | — | **NO usado como UART** | — | Pines 7/8 libres. (El HC-SR04 está en pines 3/4, no acá; CENTRAL está en Serial7.) |
+| **`Serial3`** | **15** | **14** | U8 "UART-CAMERA1" | OpenMV **cámara 1** (frontal) | 19200 | Protocolo viejo OpenMV (9 bytes/packet). ✅ FORMATO OK en banco. |
 | **`Serial4`** | **16** | **17** | U15 "UART_COMM_OUT" | placa **COMM** (ESP32-C6) | 115200 | Bridge árbitros + ESP-NOW partner |
-| **`Serial5`** | **21** | **20** | U1 "OUT1/OUT2/RX_OUT/TX_OUT" | placa **CENTRAL** | 230400 | **Envía `WORLD_SNAPSHOT` (100 Hz)**. ✅ Confirmado 2026-05-29: conector a CENTRAL en pines internos 20/21 = Serial5 (no 7/8). |
+| **`Serial5`** | **21** | **20** | (pin 21 — confirmar conector) | OpenMV **cámara 2** (trasera) | 19200 | **Cámara trasera soldada acá** (RX pin 21) — ✅ confirmado en banco 2026-05-31 (`diag_top_cameras`, FORMATO OK). Antes era el link a CENTRAL; se swapeó (TASK-204). |
 | Serial6 | ~~25~~ | ~~24~~ | — | **BLOQUEADO** | — | Pines tomados por `Wire1` remap |
-| **`Serial7`** | **28** | **29** | U9 "UART-CAMERA2" | OpenMV **cámara 2** (trasera) | 19200 | ⚠️ Provisional: cámara 2 reubicada acá porque Serial5 pasó a CENTRAL. Confirmar pines reales de U9 con Enzo. |
+| **`Serial7`** | **28** | **29** | (cable a pin 29) | placa **CENTRAL** | 230400 | **Envía `WORLD_SNAPSHOT` (100 Hz)** por TX7=pin 29. Swap 2026-05-31 (TASK-204): el link se movió acá porque la trasera quedó en Serial5. CENTRAL recibe en su Serial1. |
 
 ### 2.3 Sensores ToF — pines LP (bodge, confirmados en banco 2026-05-30)
 
@@ -155,13 +158,14 @@ para **ubicar la pelota** (complemento de la cámara). Colgarían del mismo bus
 
 | Pin Arduino | Función |
 |---|---|
-| **6** | TRIG (output, pulso 10 µs para iniciar medición) |
-| **7** | ECHO (input, ancho del pulso proporcional a distancia) ⚠️ |
+| **4** | TRIG (output, pulso 10 µs para iniciar medición) |
+| **3** | ECHO (input, ancho del pulso proporcional a distancia) ⚠️ 5 V → divisor |
 
-> ✅ **Conflicto pin 7 RESUELTO (2026-05-29)**: el UART hacia CENTRAL **NO** usa
-> Serial2 (7/8) — usa **Serial5 (pines 20/21)** (ver §2.2). El pin 7 queda libre
-> para el **ECHO del HC-SR04**, sin conflicto. La confusión venía de leer la
-> numeración externa del diagrama en lugar de la interna (GPIO) del Teensy 4.0.
+> ✅ **Cableado 2026-05-31:** el HC-SR04 quedó en **TRIG=pin 4 / ECHO=pin 3** (pines
+> ex-XSHUT ToF, hoy libres; no son UART). El viejo "conflicto pin 7" ya no aplica —
+> el HC-SR04 no usa el pin 7. ⚠️ **Nivel:** el ECHO del HC-SR04 sale a **5 V** y el
+> Teensy 4.0 **NO tolera 5 V** → usar divisor (1k+2k → 3.3 V) o alimentar el sensor
+> a 3.3 V antes de conectar ECHO al pin 3.
 
 Lectura bloqueante ~25 ms — usar fuera del loop crítico de fusión.
 
@@ -185,11 +189,11 @@ Pin Arduino **13** (LED_BUILTIN).
 | 0 | RX1 (Serial1) ← DOWN | ✅ |
 | 1 | TX1 (Serial1) → DOWN | ✅ |
 | 2 | libre (ya NO es XSHUT ToF) | ✅ |
-| 3 | libre (ya NO es XSHUT ToF) | ✅ |
-| 4 | libre (ya NO es XSHUT ToF) | ✅ |
+| 3 | **HC-SR04 ECHO** (cableado 2026-05-31) ⚠️ 5 V → divisor | ✅ banco |
+| 4 | **HC-SR04 TRIG** (cableado 2026-05-31) | ✅ banco |
 | 5 | libre (ya NO es XSHUT ToF) | ✅ |
-| 6 | HC-SR04 TRIG | ✅ |
-| 7 | HC-SR04 ECHO (Serial2 ya NO se usa para CENTRAL → sin conflicto) | ✅ 2026-05-29 |
+| 6 | libre (HC-SR04 movido a pin 4) | ✅ |
+| 7 | libre (Serial2 RX2, sin uso) | ✅ |
 | 8 | libre (TX2 de Serial2, sin uso) | ✅ |
 | 9 | **LP ToF[0] FRENTE** (bodge → 0x2A) | ✅ banco 2026-05-30 |
 | 10 | **LP ToF[1] ATRÁS** (bodge → 0x2B) ⚠️ colisiona con dipswitch rol | ⚠️ reubicar rol |
@@ -202,12 +206,12 @@ Pin Arduino **13** (LED_BUILTIN).
 | 17 | TX4 (Serial4) → COMM (= SDA1 default, NO usado para I²C) | ✅ |
 | 18 | SDA0 (Wire) — BNO055 + **los 4 ToF** (bus único, bodge 2026-05-30) | ✅ |
 | 19 | SCL0 (Wire) — BNO055 + **los 4 ToF** (bus único) | ✅ |
-| 20 | TX5 (Serial5) → **CENTRAL** (WORLD_SNAPSHOT) | ✅ 2026-05-29 |
-| 21 | RX5 (Serial5) ← **CENTRAL** | ✅ 2026-05-29 |
+| 20 | TX5 (Serial5) → cámara trasera (sin uso; la cam sólo transmite) | ✅ 2026-05-31 |
+| 21 | RX5 (Serial5) ← **cámara trasera** (datos, soldada 2026-05-31) | ✅ banco |
 | 22, 23 | libres (candidatos para reubicar el dipswitch de rol) | ✅ |
 | **24** | **SCL1 (Wire1 REMAP)** — BNO055 der + **libre para placa DOWN** (ya NO ToF, bodge 2026-05-30) | ⚠️ confirmar |
 | **25** | **SDA1 (Wire1 REMAP)** — BNO055 der + **libre para placa DOWN** (ya NO ToF) | ⚠️ confirmar |
-| 28, 29 | TX7/RX7 (Serial7) ↔ **cámara 2** (trasera, provisional — movida de Serial5) | ⚠️ confirmar U9 |
+| 28, 29 | TX7/RX7 (Serial7) → **CENTRAL** (WORLD_SNAPSHOT; TX7=pin 29, swap 2026-05-31) | ✅ |
 | 26–33 | libres | ✅ |
 
 ## 4. Pendientes humanos (NO bloquean uso del pack, pero hay que resolver)
@@ -215,9 +219,9 @@ Pin Arduino **13** (LED_BUILTIN).
 | # | Pendiente | Asignado | Bloqueante para |
 |---|---|---|---|
 | 1 | Confirmar `Wire1` remap a pines 24/25 con multímetro (TASK-003) | Enzo | I²C bus 1 funcionando → 1 BNO055 + 2 ToF |
-| 2 | ✅ RESUELTO 2026-05-29: el conector U1 (→CENTRAL) está en pines internos **20/21 = Serial5** (no 7/8). | Gustavo | — |
-| 3 | ✅ RESUELTO 2026-05-29: Serial2 no se usa para CENTRAL → pin 7 es solo HC-SR04 ECHO, sin conflicto. | — | — |
-| 3b | ⚠️ confirmar a qué pines llega el conector **U9** (cámara 2, hoy provisional en Serial7 28/29) | Enzo | Cámara trasera operativa |
+| 2 | ✅ Pines 20/21 (Serial5) = **cámara trasera** (confirmado en banco 2026-05-31). El link a CENTRAL pasó a **Serial7** (TASK-204). | ✅ | — |
+| 3 | ✅ HC-SR04 cableado en **pines 3/4** (banco 2026-05-31) → el "conflicto pin 7" ya no existe (pin 7 libre). | ✅ | — |
+| 3b | ✅ parcial: cámara trasera confirmada en **Serial5 (pin 21)** con FORMATO OK (2026-05-31). Falta validar el link a CENTRAL en **Serial7** (cable a pin 29 → CENTRAL Serial1). | Gustavo | snapshot a CENTRAL |
 | 4 | ✅ RESUELTO en banco 2026-05-30: LP de los 4 ToF = **{9,10,11,12}**, activo-alto, enumeran a 0x2A..0x2D (bus `Wire` único) | ✅ | — |
 | 5 | **Mapear dirección → posición física** (`diag_top_tof_quad_live`) + **reubicar dipswitch de rol** (pin 10 colisiona con LP ToF[1]) | Enzo + firmware | Localización por trilateración + lectura de rol confiable |
 | 6 | **Recuperar BOM y Pick&Place del proyecto EasyEDA TOP** (TASK-013) | Enzo | Trazabilidad de componentes para repuestos en Incheon |
@@ -250,6 +254,6 @@ del pack DOWN).
 - Código vivo del firmware: [`firmware/top/`](firmware/top/) (especialmente `config_top.h`).
 - Schematic legible: [`ground-truth/Schematic_Roboliga2026_TOP_2026-04-12.pdf`](ground-truth/Schematic_Roboliga2026_TOP_2026-04-12.pdf).
 - BOM CSV (parcial — falta Pick&Place): [`ground-truth/BOM_Roboliga2026_TOP_2026-04-12.csv`](ground-truth/BOM_Roboliga2026_TOP_2026-04-12.csv).
-- Pinout del CENTRAL (la otra punta de Serial2): [`../central-board-pack/01-pinout-y-hardware.md`](../central-board-pack/01-pinout-y-hardware.md).
+- Pinout del CENTRAL (la otra punta del enlace, su Serial1): [`../central-board-pack/01-pinout-y-hardware.md`](../central-board-pack/01-pinout-y-hardware.md).
 - Pinout del DOWN (la otra punta de Serial1): [`../down-board-pack/01-pinout-y-posiciones.md`](../down-board-pack/01-pinout-y-posiciones.md).
 - Pinout del COMM (la otra punta de Serial4): `../comm-board/2026-05-17-placa-comm-componentes-y-circuito.md`.

@@ -37,6 +37,14 @@ bool     line_ring_get_white(uint8_t sensor_idx);  // true si sensor i ve blanco
 void     line_ring_calibrate_carpet();             // bloquea ~500 ms tomando muestras
 void     line_ring_calibrate_white();              // idem
 
+// Carga calibracion por sensor desde afuera (ej: valores leidos de EEPROM),
+// SIN muestrear hardware. carpet[i]/white[i] en cuentas ADC; el umbral se
+// calcula como (carpet+white)/2. Resetea los filtros. n = cantidad de sensores
+// (se clamea a NUM_LINE_SENSORS). Usar en el boot tras cargar la calib
+// persistida, para que line_ring_get_white() use el blanco real calibrado y no
+// el default. Ver main_down.cpp.
+void     line_ring_set_calibration(const uint16_t* carpet, const uint16_t* white, int n);
+
 // Calibración por sensor — solo lectura, no modifica el muestreo.
 uint16_t line_ring_get_carpet_avg(uint8_t sensor_idx); // 0..NUM_LINE_SENSORS-1
 uint16_t line_ring_get_white_avg(uint8_t sensor_idx);  // 0..NUM_LINE_SENSORS-1

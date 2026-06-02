@@ -25,4 +25,4 @@ Hito 5 / post-mundial — ver TASK-006 sección "próximos pasos"._
 
 ## Referencia 2025
 
-Ver `legacy/2025-season/code/vision-openmv/` para el protocolo UART usado.
+Ver `software/vision/` para el protocolo UART usado.

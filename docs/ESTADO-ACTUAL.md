@@ -1,7 +1,7 @@
 ---
 title: "Estado actual del robot — vivo, 1 página"
 date: 2026-05-29
-last-updated-by: "Claude (coach, sesión 2026-05-29 — sync de frontmatter/calendario)"
+last-updated-by: "Claude (sesión 2026-06-02 — DOWN broadcast Capa 2+3 code-complete: drive-straight ATK + arquero por cross_track, fallback exacto)"
 status: vivo
 tipo: indice-operacional
 ---
@@ -12,6 +12,16 @@ tipo: indice-operacional
 > obligatoria** (después de `git pull`). Si lo que estás por hacer contradice
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
+
+> **🔧 ÚLTIMO (2026-05-31 — vale sobre cualquier mención más abajo):** mapa UART final.
+> **TOP:** S1←DOWN · S3←cam frontal · S4↔COMM · S5←cam trasera · S7→CENTRAL.
+> **CENTRAL:** **S7 (pin 28)←TOP** (snapshot) · **S1 (pin 0)←DOWN** (línea) · **Serial2 (7/8)
+> LIBRE para el motor 2** → **conflicto 7/8 (TASK-036) RESUELTO**. HC-SR04 en pines 4/3.
+> CENTRAL **sin BNO** (los 2 BNO están en el TOP). **Los 4 ToF activos por default** en
+> top_robot1/2 (`TOP_ENABLE_MULTI_TOF`; boot del TOP ~40 s). **`Zircon.pdf`** (esquemático
+> del Zircon/CENTRAL, fuente Robomov) ya está en `hardware/electronics/`. Detalle único del
+> cableado: `hardware/electronics/MAPA-CONEXIONES-3-PLACAS.md`. Cualquier "conflicto 7/8
+> abierto" o "Serial2 → CENTRAL" más abajo está **superado**.
 
 ## 📦 Para programar un subsistema: usar los packs
 
@@ -42,7 +52,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - `src/central/main_central.cpp` — entry
 - `src/central/strategy.cpp` — FSM ATK + GK Nivel 2 (KICKOFF/SEARCH/POSITION/APPROACH + PATROL/INTERCEPT/CLEAR + LINE_AVOID). **El cerebro.**
 - `src/central/motors_zircon.{h,cpp}` — PWM 3 motores omni + kicker (ROBOT2)
-- `src/central/imu_zircon.{h,cpp}` — BNO055 respaldo
+- `src/central/imu_zircon.{h,cpp}` — BNO055 (⚠️ ya NO se conecta en CENTRAL desde 2026-05-31; compat gateado por `-DCENTRAL_HAS_LOCAL_BNO`, off; el heading viene de ARRIBA)
 - `src/central/world_model.{h,cpp}` — espejo del WorldSnapshot
 - `src/central/comm_top.{h,cpp}` — recibe WorldSnapshot del TOP (Serial1)
 - `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 del DOWN (hoy `Serial2` / pin 7). ⚠️ **Veredicto del conflicto 7/8 PENDIENTE de aislar** (Gustavo 2026-05-29: NO se aisló si el motor del driver U17 usa 7/8 — ver pruebas pendientes en `DIAG-CENTRAL-MOTORS.md`). El receiver de banco `diag_central_comm_down` está unificado en **Serial2 / pin 7** (el enlace validado por `diag_down_send1`/`recv1`; mismo UART que producción) — ver [`docs/firmware/DIAG-CENTRAL-COMM-DOWN.md`](firmware/DIAG-CENTRAL-COMM-DOWN.md). Migrar `Serial2 → Serial7` (acá y en el diag) **solo si** se confirma 7/8 = motor **y** se corren motores + comm juntos. 📊 **Análisis profundo del link** (protocolo/CRC, buffers, timing, recuperación ante cortes, P0/P1 + checklist "primera instancia") → [`docs/firmware/ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md`](firmware/ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md).
@@ -64,6 +74,19 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - `src/down/main_down.cpp` → llama `line_ring.{h,cpp}` (cadena vieja, lectura cruda 1 kHz)
 - `src/down/comm_central.cpp` → llama cadena nueva: `down_model + line_geometry + line_tracker + line_calib + surface_monitor + down_encode` para armar `LineStatusV2` que va al CENTRAL
 - **NO archivar ni una ni otra antes de Incheon.** Decisión binaria post-Incheon (ver `FUENTES-DE-VERDAD.md` deudas).
+- **Broadcast simétrico (Capa 1, 2026-06-01):** DOWN ahora **difunde** los 3 frames
+  (`LineStatusV2` 0x10 + `Pose2D` 0x11 + `Velocity2D` 0x12) a **ambas** placas —
+  CENTRAL (`Serial1`) **y** TOP (`Serial5`) — vía el módulo nuevo `down_tx`
+  (SEQ monótono por enlace). Antes la línea iba solo a CENTRAL y el OTOS solo a TOP.
+  CENTRAL ingiere el OTOS directo (storage/accessors en `world_model`). Spec/plan:
+  `docs/superpowers/specs/2026-06-01-down-broadcast-simetrico-design.md` +
+  `docs/superpowers/plans/2026-06-01-down-broadcast-capa1.md`.
+- **Capa 2 + 3 (2026-06-02, code-complete + pusheadas):** CENTRAL **consume** el OTOS para
+  ir/patear derecho (`drive_straight` en ATK KICKOFF/APPROACH) y el arquero hace **strafe
+  paralelo a la línea** por `cross_track_mm` real (centroide-Y) que calcula DOWN. **Fallback
+  EXACTO** cuando OTOS/cross_track están en N/A (= hoy) → **no cambia la conducta actual**;
+  las conductas nuevas se activan recién con OTOS fluyendo + DOWN con Capa 3. Falta **banco**
+  (tunear gains + confirmar eje/signo del strafe del GK). Gate: 25 envs + 311 tests host.
 
 ### Shared (puro, testeado host-native)
 - `pids`, `kinematics`, `behind_ball`, `cameras_fusion`, `line_filters`, `crc16`, `proto`, `types`
@@ -115,7 +138,7 @@ nativo, pero ya no es el único camino. Ver
 **P0 hardware (asignar HOY a humanos, no a Claude):**
 - TASK-001 (Enzo): fix 10 nets DOWN PCB
 - TASK-002 (Enzo): DRC+ERC ambas placas
-- TASK-006 (Virginia/Elías): **flash firmware COMM ESP32-C6** (procedure del 17-may, NO el del 15-may que tiene banner)
+- ~~TASK-006 (Virginia/Elías): flash firmware COMM ESP32-C6~~ → ✅ **FLASHEADA 2026-06-01** (Gustavo). Falta validar E2E (TOP `Serial4` ↔ COMM, START/STOP del árbitro).
 - TASK-011 (Enzo): confirmar PIN_KICKER_SOL en Zircon
 - TASK-013 (Enzo): recuperar BOM placa TOP
 - TASK-025 (todos): excepción Avast en cada máquina → destraba PlatformIO
@@ -130,7 +153,7 @@ nativo, pero ya no es el único camino. Ver
 
 ## Bloqueantes Incheon (los 2 que importan)
 
-1. **COMM no flasheada** → robot no homologa (no recibe START/STOP árbitro). TASK-006.
+1. **COMM — firmware flasheado ✅ (2026-06-01) pero el E2E está BLOQUEADO (2026-06-02).** Hallazgo: el árbitro **NO viaja por UART**, señaliza como **NIVEL GPIO** (`OUT1`/`OUT2` del módulo → Teensy **pin 5 / pin 6** por el conector U1, confirmado en el netlist del PCB). El COMM responde (OLED prende/apaga) **pero la señal no togglea en el Teensy** (pin 6 fijo en 1, pin 5 en 0). El robot **todavía NO recibe START/STOP → NO homologa aún.** → **TASK-039** (Enzo: multímetro en OUT del módulo + continuidad). Además el firmware del TOP debe leer el árbitro por **pin digital**, no `Serial4` (`comm_arbiter` hoy escucha UART = mismatch). TASK-006/TASK-039.
 2. **Cámaras sin recalibrar para iluminación Incheon** → no ve la pelota. TASK-022.
 
 ### Resuelto 2026-05-24
@@ -239,7 +262,10 @@ nativo, pero ya no es el único camino. Ver
 ### Avance 2026-05-29 — DOWN↔CENTRAL bring-up (hallazgos verificados + tooling down_debug)
 - Sesión con María (banco, sin placa TOP). Verificado en código:
   - **DOWN→CENTRAL (Serial1→Serial2) lleva SOLO la línea** (`LineStatusV2`), no OTOS;
-    los OTOS van DOWN→TOP (`main_down.cpp:101/107`).
+    los OTOS van DOWN→TOP (`main_down.cpp:101/107`). ⚠️ **SUPERSEDED 2026-06-01
+    (broadcast simétrico Capa 1):** DOWN ahora difunde línea **+** OTOS a **ambas**
+    placas (CENTRAL `Serial1` + TOP `Serial5`) vía `down_tx`; CENTRAL ingiere el OTOS
+    directo. Ver la sección «DOWN» de Módulos VIVOS arriba.
   - **El "ir derecho" del sketch de manejo usa heading IMU/TOF, no OTOS**:
     `main_top.cpp::build_snapshot` toma `localization_runtime_get_pose()` (BNO+TOF);
     el pose OTOS llega al TOP pero NO entra al snapshot. "Manejar con OTOS" no está
@@ -340,6 +366,13 @@ nativo, pero ya no es el único camino. Ver
   + temas-a-analizar en formato coach para los hallazgos dependientes de HW).
 
 ### Avance 2026-05-29 — corrección UART TOP→CENTRAL = Serial5 (no Serial2/7-8)
+> ⚠️ **SUPERSEDED 2026-05-31 (TASK-204):** la cámara trasera quedó **soldada en Serial5
+> (pin 21)** (confirmado en banco con `diag_top_cameras`), así que **TOP→CENTRAL se movió
+> a Serial7 (pin 29)** y la trasera se lee en Serial5. Además el **HC-SR04 quedó en pines
+> 4/3** (TRIG/ECHO), no 6/7. **En la CENTRAL** los UART se reasignaron: recibe el snapshot
+> en **Serial7 (pin 28)** y la línea del DOWN en **Serial1 (pin 0)** → **Serial2 (7/8) libre
+> para el motor 2; conflicto 7/8 (TASK-036) RESUELTO**. Lo de abajo es el registro histórico
+> del 2026-05-29 (donde diga "conflicto 7/8 abierto" o "Serial2 → CENTRAL", está superado).
 - **Hallazgo (Gustavo, en banco):** el diagrama del Teensy tiene doble numeración
   (externa + interna); vale la **interna (GPIO)**. El conector del TOP hacia CENTRAL
   cae en los **pines 20/21 = Serial5**, NO en 7/8 (Serial2). Era mala lectura del diagrama.
@@ -362,7 +395,7 @@ nativo, pero ya no es el único camino. Ver
   mecánico/electrónico.
 - **Falta para cerrar la integración**: las 2 conexiones inter-placa hacia TOP —
   (1) **DOWN↔TOP** (DOWN Serial5 → TOP Serial1: odometría OTOS + LINE_STATUS),
-  (2) **CENTRAL↔TOP** (TOP Serial5 → CENTRAL Serial1: WorldSnapshot). Firmware listo
+  (2) **CENTRAL↔TOP** (TOP Serial7 pin 29 → CENTRAL Serial7 pin 28: WorldSnapshot). Firmware listo
   en ambas puntas; falta cablear + validar el stream por protocolo.
 - **Se DESTRABAN** (ya no bloqueadas por "TOP sin armar"): TASK-022 (cámara operativa),
   TASK-024 (rol/polaridad), TASK-032 (ToF U2 en HW), TASK-035 (localización),

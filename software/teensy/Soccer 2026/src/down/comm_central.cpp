@@ -6,7 +6,9 @@
 #include "types.h"
 #include "down_model.h"
 #include "down_encode.h"
+#include "down_tx.h"
 #include "eeprom_calib.h"
+#include "sensor_geometry.h"
 
 #include <Arduino.h>
 #include <string.h>
@@ -17,9 +19,6 @@ namespace {
 
 FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
-uint32_t g_frames_sent = 0;
-uint32_t g_frames_dropped = 0;   // P1.6: frames descartados por TX buffer lleno
-uint8_t  g_send_seq = 0;
 
 DownModel g_dm;
 DownModelCfg g_dmcfg = {
@@ -118,25 +117,34 @@ void comm_central_send_line_urgent() {
     uint32_t age_ms = (micros() - line_ring_get_last_tick_us()) / 1000u;
     s.sample_age_ms = (age_ms > 255u) ? 255u : (uint8_t)age_ms;
 
-    // Serializar y enviar.
-    uint8_t buf[PROTO_MAX_FRAME];
-    size_t nb = down_encode_line(s, g_send_seq++, buf, sizeof(buf));
-    if (nb > 0) {
-        // Backpressure (audit P1.6 — 2026-05-29): escribir solo si hay espacio
-        // en el TX buffer del UART. Serial.write() del core Teensy hace
-        // busy-wait cuando el buffer está lleno — a 200 Hz eso le robaría
-        // ciclos al line_ring de 1 kHz. Si no hay espacio dropeamos el frame:
-        // CENTRAL tolera huecos (siempre actúa sobre el measurement más
-        // reciente, no acumula). El contador permite diagnosticar saturación.
-        if (Serial1.availableForWrite() >= (int)nb) {
-            Serial1.write(buf, nb);
-            g_frames_sent++;
-        } else {
-            g_frames_dropped++;
-        }
-    }
+    // Difundir la línea a AMBAS placas (CENTRAL + TOP) con SEQ por enlace.
+    down_tx_broadcast_line(s);
 
 #ifdef DOWN_DEBUG_SERIAL
+    // --- BANCO (TASK seguidor Maria): calcular CENTROIDE Y de la linea + reenviar por U10 ---
+    // El cable hacia CENTRAL esta soldado en U10 (Serial5). Para el seguidor de
+    // arquero, CENTRAL necesita saber si la linea esta ADELANTE o ATRAS del centro
+    // del robot (para centrarse). Eso NO viene en el LineStatusV2 normal
+    // (cross_track_mm = N/A). Aca lo calculamos: promedio de la posicion Y de los
+    // sensores que ven blanco (sensor_geometry.h, +Y = adelante). Lo metemos en
+    // cross_track_mm: POSITIVO = linea adelante del centro, NEGATIVO = atras.
+    // Solo con -DDOWN_DEBUG_SERIAL; el firmware de competencia NO lo trae.
+    {
+        float sum_y = 0.0f;
+        int   n_white = 0;
+        for (int i = 0; i < NUM_LINE_SENSORS && i < SENSOR_COUNT; ++i) {
+            if (line_ring_get_white(static_cast<uint8_t>(i))) {
+                sum_y += SENSOR_POS[i].y_mm;
+                n_white++;
+            }
+        }
+        if (n_white > 0) {
+            float cy = sum_y / (float)n_white;   // centroide Y en mm
+            s.cross_track_mm = (int16_t)cy;      // + adelante / - atras
+        } else {
+            s.cross_track_mm = LSV2_NA_I16;      // sin linea -> N/A
+        }
+    }
     // Debug de bring-up (TASK-301): imprime por el USB, a ~4 Hz, lo esencial que
     // DOWN tiene listo para CENTRAL: ¿HAY LINEA? (line_present del DownModel —
     // logica de linea ya probada) + la pose de los 2 OTOS + contadores de TX.
@@ -161,8 +169,8 @@ void comm_central_send_line_urgent() {
         Serial.print(" hdg=");        Serial.print(otos_get_heading_deg(), 1);
         Serial.print(" [L=");         Serial.print(otos_is_left_ready()  ? "ok" : "--");
         Serial.print(" R=");          Serial.print(otos_is_right_ready() ? "ok" : "--");
-        Serial.print("]  | tx_ok=");  Serial.print(g_frames_sent);
-        Serial.print(" drop=");       Serial.print(g_frames_dropped);
+        Serial.print("]  | tx_ok=");  Serial.print(down_tx_get_sent(0));
+        Serial.print(" drop=");       Serial.print(down_tx_get_dropped(0));
         Serial.println();
     }
 #endif
@@ -181,8 +189,8 @@ bool comm_central_load_persisted_calib() {
 }
 
 uint32_t comm_central_get_frames_received() { return g_frames_received; }
-uint32_t comm_central_get_frames_sent()     { return g_frames_sent; }
-uint32_t comm_central_get_frames_dropped()  { return g_frames_dropped; }
+uint32_t comm_central_get_frames_sent()    { return down_tx_get_sent(0); }
+uint32_t comm_central_get_frames_dropped() { return down_tx_get_dropped(0); }
 uint32_t comm_central_get_crc_errors()      { return g_decoder.crc_errors(); }
 
 }  // namespace iitasoccer

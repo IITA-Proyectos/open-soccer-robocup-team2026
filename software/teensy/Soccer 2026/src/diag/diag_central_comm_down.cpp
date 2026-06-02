@@ -11,17 +11,14 @@
 //   DOWN ya emite, ANTES de sumar mensajes nuevos (los 32 sensores crudos son
 //   un 2do paso — necesitan un mensaje nuevo que DOWN tiene que mandar).
 //
-// ⚠️ UART — Serial2 (RX2 = pin 7, TX2 = pin 8) del Teensy 4.1.
-//    Pin 7 es el cableado YA VALIDADO en banco (2026-05-29: el par minimo
-//    diag_down_send1 / diag_central_recv1 confirmo el enlace en pin 7). Es el
-//    mismo UART que usan el comm_down de produccion y el test de enlace, asi
-//    que NO hay que recablear entre tests.
-//    OJO (motores): el motor 2 (driver U17) usaria los pines 8/7; el conflicto
-//    SOLO aparece manejando motores, y este receiver NO los maneja -> pin 7 es
-//    seguro aca. Si se confirma 7/8 = motor Y se corren motores + comm juntos,
-//    migrar a Serial7 (pines 28/29). Veredicto 7/8 PENDIENTE de aislar (TASK-036).
+// ⚠️ UART — Serial1 (RX1 = pin 0, TX1 = pin 1) del Teensy 4.1.
+//    REASIGNADO 2026-05-31: el link DOWN→CENTRAL se movió de Serial2 (7/8) a
+//    Serial1 (0/1). Motivo: los pines 7/8 son del driver del motor 2 (U17); al
+//    moverlo a Serial1 (0/1, conector libre del Zircon) el CONFLICTO 7/8 queda
+//    RESUELTO (F8/TASK-036) y el motor 2 se queda con 7/8 para sí solo. El
+//    comm_down de produccion también usa Serial1, así que coincide.
 //    Cableado:
-//        DOWN  TX1 (pin 1)   ->   CENTRAL  RX2 (pin 7)
+//        DOWN  TX1 (pin 1)   ->   CENTRAL  RX1 (pin 0)
 //        DOWN  GND           <->  CENTRAL  GND
 //    Baud: 230400 (igual que DOWN — config_down.h / comm_central.cpp).
 //
@@ -45,12 +42,10 @@ namespace {
 
 constexpr long DOWN_LINK_BAUD = 230400;   // mismo baud que DOWN
 
-// UART hacia DOWN. Serial2 = RX2 pin 7 / TX2 pin 8 (Teensy 4.1) — el enlace
-// validado en banco (pin 7), mismo UART que comm_down de produccion. El conflicto
-// 7/8 con el motor 2 solo importa al manejar motores (este receiver no los
-// maneja). Si se corren motores + comm juntos y 7/8 resulta del motor, migrar a
-// Serial7 (28/29) acá.
-#define DOWN_UART Serial2
+// UART hacia DOWN. Serial1 = RX1 pin 0 / TX1 pin 1 (Teensy 4.1). Reasignado
+// 2026-05-31 desde Serial2 (7/8) para liberar los pines del motor 2 (U17) —
+// conflicto 7/8 RESUELTO. Mismo UART que comm_down de produccion.
+#define DOWN_UART Serial1
 
 // Cada cuánto se redibuja el panel (ms). 500 ms = legible, no satura.
 constexpr uint32_t PANEL_INTERVAL_MS = 500;
@@ -184,7 +179,7 @@ void print_panel() {
         Serial.println(g_decoder.bytes_received());
         if (g_decoder.bytes_received() == 0) {
             Serial.println(F(" -> No llega NADA. Revisar:"));
-            Serial.println(F("    cable DOWN TX1(pin 1) -> CENTRAL RX2(pin 7),"));
+            Serial.println(F("    cable DOWN TX1(pin 1) -> CENTRAL RX1(pin 0),"));
             Serial.println(F("    GND comun, DOWN flasheado y enviando, baud 230400."));
         } else {
             Serial.println(F(" -> Llegan bytes pero ningun frame valido todavia."));
@@ -274,9 +269,9 @@ void setup() {
     Serial.println(F("=================================================="));
     Serial.println(F("  diag_central_comm_down  -  link DOWN -> CENTRAL"));
     Serial.println(F("=================================================="));
-    Serial.println(F(" UART: Serial2 (RX2 = pin 7) @ 230400  (enlace validado en banco)"));
-    Serial.println(F(" Cablear: DOWN TX1(pin 1) -> CENTRAL RX2(pin 7), GND comun."));
-    Serial.println(F(" (Motores apagados -> pin 7 seguro. Ver doc si corres motores+comm.)"));
+    Serial.println(F(" UART: Serial1 (RX1 = pin 0) @ 230400  (reasignado 2026-05-31 desde Serial2/7-8)"));
+    Serial.println(F(" Cablear: DOWN TX1(pin 1) -> CENTRAL RX1(pin 0), GND comun."));
+    Serial.println(F(" (Serial1/pin 0 -> sin conflicto con motores; 7/8 quedan para el motor 2.)"));
     Serial.println(F(" Panel cada 500 ms abajo:"));
 }
 

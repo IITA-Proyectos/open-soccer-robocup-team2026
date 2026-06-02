@@ -24,9 +24,14 @@ int normalize_angle_deg(int angle) {
 //   [135, 225) → SOUTH (pared -Y)
 //   [225, 315) → EAST  (pared +X)
 //
-// IMPORTANTE: esto asume que el BNO da heading positivo = giro CCW (sentido
-// antihorario visto desde arriba). Si el BNO del proyecto da heading CW
-// positivo, hay que invertir el signo en la suma.
+// IMPORTANTE: esto asume heading positivo = giro CCW (antihorario visto desde
+// arriba), o sea girar a la IZQUIERDA SUBE el heading.
+// El BNO055 fisico de la placa entrega CW-positivo (medido en banco 2026-05-31,
+// diag_top_bno: girar a la derecha -> +90). Esa inversion YA SE HACE EN LA
+// FUENTE: sensors_imu.cpp aplica HEADING_SIGN = -1 antes de exponer el heading.
+// => Cuando este codigo recibe robot_heading_deg, YA viene en convencion CCW.
+// NO volver a invertir aca (seria doble inversion). Si algun dia el heading
+// llega invertido, arreglar el signo en sensors_imu.cpp, no aca.
 Wall classify_wall(int16_t robot_heading_deg, uint16_t mount_angle_deg) {
     int world_angle = normalize_angle_deg(
         static_cast<int>(robot_heading_deg) + static_cast<int>(mount_angle_deg)

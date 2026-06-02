@@ -27,9 +27,10 @@ void handle_frame(const Frame& f) {
 // UART hacia CENTRAL = Serial7 (Teensy 4.0: TX7 = pin 29, RX7 = pin 28).
 // SWAP 2026-05-31 (TASK-204): la cámara trasera quedó SOLDADA en Serial5 (pin 21),
 // confirmado en banco con diag_top_cameras, así que el link a CENTRAL se movió de
-// Serial5 a Serial7 (pines 28/29, el UART libre). Sigue sin usarse Serial2 (pin 7 =
-// HC-SR04 ECHO). Lado CENTRAL: recibe en su Serial1 (pin 0) sin cambio de firmware;
-// sólo el cable del TOP sale ahora por pin 29 en vez de pin 20.
+// Serial5 a Serial7 (pines 28/29, el UART libre). El Serial2 del TOP (pin 7) queda sin
+// uso (el HC-SR04 está en pines 4/3, no en 7). Lado CENTRAL: recibe en su Serial7
+// (RX7 = pin 28); el cable del TOP sale por pin 29 (TX7). El Serial1/pin 0 del CENTRAL
+// quedó para la línea del DOWN.
 void comm_central_init() {
     Serial7.begin(UART_BAUD);
 }

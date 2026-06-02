@@ -65,7 +65,7 @@ este repo, por eso no tiene un pack del mismo tipo que los otros 5.
 El equipo 2025 desarrolló una PCB custom llamada "Zircon" (la que el equipo
 2026 reutiliza como **placa CENTRAL**) con librería Arduino propia
 (`zirconLib`). El código original del 2025 se preserva en
-`legacy/2025-season/code/libraries/`. El firmware nuevo del 2026 NO usa
+`software/libraries/zirconLib/`. El firmware nuevo del 2026 NO usa
 `zirconLib` — implementa su propio driver de motores en
 `software/teensy/Soccer 2026/src/central/motors_zircon.{h,cpp}` (vivo, incluido
 en el pack CENTRAL).

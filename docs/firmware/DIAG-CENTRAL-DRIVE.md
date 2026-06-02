@@ -10,6 +10,11 @@ requested-by: "Gustavo Viollaz (@gviollaz)"
 hermanos: [DIAG-CENTRAL-MOTORS.md]
 ---
 
+> ✅ **Actualización 2026-05-31:** el "conflicto pines 7/8" (Serial2 vs motor 2) está
+> **RESUELTO** — la CENTRAL reasignó sus UART: snapshot del TOP en **Serial7** (pin 28) y
+> línea del DOWN en **Serial1** (pin 0), dejando 7/8 solo para el motor 2. Donde abajo
+> diga "conflicto 7/8 / bypass por Serial2 bloqueado", leerlo como superado.
+
 # `diag_central_drive_straight` — Avance recto con PID heading
 
 ## Para qué sirve

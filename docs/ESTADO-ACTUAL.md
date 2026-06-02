@@ -1,7 +1,7 @@
 ---
 title: "Estado actual del robot — vivo, 1 página"
 date: 2026-05-29
-last-updated-by: "Claude (coach, sesión 2026-06-01 — COMM flasheada: bloqueante Incheon #1 levantado)"
+last-updated-by: "Claude (WP-1E, sesión 2026-06-01 — docs sync: DOWN broadcast simétrico línea+OTOS a CENTRAL+TOP, Capa 1)"
 status: vivo
 tipo: indice-operacional
 ---
@@ -72,6 +72,14 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - `src/down/main_down.cpp` → llama `line_ring.{h,cpp}` (cadena vieja, lectura cruda 1 kHz)
 - `src/down/comm_central.cpp` → llama cadena nueva: `down_model + line_geometry + line_tracker + line_calib + surface_monitor + down_encode` para armar `LineStatusV2` que va al CENTRAL
 - **NO archivar ni una ni otra antes de Incheon.** Decisión binaria post-Incheon (ver `FUENTES-DE-VERDAD.md` deudas).
+- **Broadcast simétrico (Capa 1, 2026-06-01):** DOWN ahora **difunde** los 3 frames
+  (`LineStatusV2` 0x10 + `Pose2D` 0x11 + `Velocity2D` 0x12) a **ambas** placas —
+  CENTRAL (`Serial1`) **y** TOP (`Serial5`) — vía el módulo nuevo `down_tx`
+  (SEQ monótono por enlace). Antes la línea iba solo a CENTRAL y el OTOS solo a TOP.
+  CENTRAL ingiere el OTOS directo (storage/accessors en `world_model`); su consumo
+  en strategy (drive-straight) es Capa 2. Spec/plan:
+  `docs/superpowers/specs/2026-06-01-down-broadcast-simetrico-design.md` +
+  `docs/superpowers/plans/2026-06-01-down-broadcast-capa1.md`.
 
 ### Shared (puro, testeado host-native)
 - `pids`, `kinematics`, `behind_ball`, `cameras_fusion`, `line_filters`, `crc16`, `proto`, `types`
@@ -247,7 +255,10 @@ nativo, pero ya no es el único camino. Ver
 ### Avance 2026-05-29 — DOWN↔CENTRAL bring-up (hallazgos verificados + tooling down_debug)
 - Sesión con María (banco, sin placa TOP). Verificado en código:
   - **DOWN→CENTRAL (Serial1→Serial2) lleva SOLO la línea** (`LineStatusV2`), no OTOS;
-    los OTOS van DOWN→TOP (`main_down.cpp:101/107`).
+    los OTOS van DOWN→TOP (`main_down.cpp:101/107`). ⚠️ **SUPERSEDED 2026-06-01
+    (broadcast simétrico Capa 1):** DOWN ahora difunde línea **+** OTOS a **ambas**
+    placas (CENTRAL `Serial1` + TOP `Serial5`) vía `down_tx`; CENTRAL ingiere el OTOS
+    directo. Ver la sección «DOWN» de Módulos VIVOS arriba.
   - **El "ir derecho" del sketch de manejo usa heading IMU/TOF, no OTOS**:
     `main_top.cpp::build_snapshot` toma `localization_runtime_get_pose()` (BNO+TOF);
     el pose OTOS llega al TOP pero NO entra al snapshot. "Manejar con OTOS" no está

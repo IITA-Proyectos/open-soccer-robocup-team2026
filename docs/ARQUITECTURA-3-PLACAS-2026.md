@@ -198,8 +198,18 @@ Margen amplio para integrar EKF de pose o filtros Kalman de pelota en 2027.
 
 ### Outputs
 
-- **ARRIBA (UART)**: odometría OTOS para que ARRIBA pueda fusionar con sus sensores.
-- **CENTRAL (UART, canal de emergencia)**: `LINE_URGENT` 100-200 Hz con ángulo línea, profundidad signed (mm), flag `imminent_exit`. CENTRAL usa la profundidad como measurement de su PID lateral cuando está en modo arquero.
+ABAJO **difunde (broadcast)** los mismos 3 frames a **ambas** placas (Capa 1 del
+broadcast simétrico): cada UART de salida lleva la **unión** de línea + odometría
+OTOS, no un subconjunto.
+
+- **ARRIBA (UART Serial5)**: línea (`LINE_URGENT` / `LineStatusV2`) + odometría OTOS
+  (`Pose2D` / `Velocity2D`). ARRIBA usa la odometría para su fusión sensorial; la
+  línea la recibe y cachea pero todavía no la consume.
+- **CENTRAL (UART Serial1, canal de emergencia)**: `LINE_URGENT` 100-200 Hz con
+  ángulo línea, profundidad signed (mm), flag `imminent_exit` **+** odometría OTOS
+  (`Pose2D` / `Velocity2D`) @100 Hz. CENTRAL usa la profundidad como measurement de
+  su PID lateral cuando está en modo arquero; el OTOS directo queda disponible para
+  control de movimiento (drive-straight) — su consumo en strategy es Capa 2.
 
 ### Carga estimada
 
@@ -221,16 +231,17 @@ Suficiente margen para subir el polling a 2 kHz si hace falta más resolución t
 ```
                        ARRIBA  ←─UART administrativa─→  CENTRAL
                           ▲
-                          │ UART 100 Hz: odometría OTOS
-                          │ (para fusión sensorial completa)
+                          │ UART 100-200 Hz (Serial5): línea + odometría OTOS
+                          │ (broadcast simétrico — ARRIBA usa OTOS para fusión)
                           │
-                        ABAJO  ──UART 100-200 Hz───►  CENTRAL
+                        ABAJO  ──UART 100-200 Hz (Serial1)──►  CENTRAL
                                   bus de emergencia
-                          measurement línea + imminent_exit
+                          línea + imminent_exit + odometría OTOS
 ```
 
+ABAJO **difunde (broadcast) los mismos 3 frames a las DOS placas**: tanto el enlace
+a ARRIBA (Serial5) como el de CENTRAL (Serial1) llevan línea + odometría OTOS.
 ARRIBA habla con CENTRAL (snapshot completo) y con COMM (árbitros).
-ABAJO habla con ARRIBA (odometría) y con CENTRAL (emergencia).
 CENTRAL es el único que controla motores.
 
 ### Protocolo de mensajes
@@ -240,7 +251,12 @@ Todos los mensajes usan el frame estándar definido en `src/shared/proto.h` con 
 | Mensaje | Sentido | Frecuencia | Contenido |
 |---------|---------|------------|-----------|
 | `WORLD_SNAPSHOT` | ARRIBA → CENTRAL | 100 Hz | Pose propia (x, y, heading, confianza), pelota (x, y, visible), arcos (ángulo, distancia), obstáculo mínimo, datos partner, comando árbitro, flag área chica |
-| `LINE_URGENT` | ABAJO → CENTRAL | 100-200 Hz | Ángulo línea (centideg), profundidad signed (mm), flag `imminent_exit`. CENTRAL deriva el error de su PID lateral arquero a partir de la profundidad. |
+| `LINE_URGENT` | ABAJO → CENTRAL **y ARRIBA** | 100-200 Hz | Ángulo línea (centideg), profundidad signed (mm), flag `imminent_exit`. Difundido a ambas placas. CENTRAL deriva el error de su PID lateral arquero a partir de la profundidad; ARRIBA la cachea sin consumirla aún. |
+| `DOWN_OTOS_POSE` / `DOWN_OTOS_VEL` | ABAJO → CENTRAL **y ARRIBA** | 100 Hz | Pose odométrica OTOS (x, y, heading) + velocidad + slip. Difundido a ambas placas (broadcast simétrico). ARRIBA la usa para fusión sensorial; CENTRAL la deja disponible para control de movimiento (Capa 2). |
+
+> **Broadcast simétrico (Capa 1):** ABAJO difunde los 3 frames (`LINE_URGENT` +
+> `DOWN_OTOS_POSE` + `DOWN_OTOS_VEL`) a **ambos** enlaces (Serial1→CENTRAL y
+> Serial5→ARRIBA) con **SEQ monótono propio por enlace** (módulo `down_tx`).
 
 ### Asignación física de UARTs en cada placa
 

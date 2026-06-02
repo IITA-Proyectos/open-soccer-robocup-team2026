@@ -57,6 +57,9 @@ CENTRAL **recibe** datos del mundo (vía TOP) y datos de emergencia de línea
      [DOWN] ←──── LINE_URGENT (EVENTO+STREAM, 200 Hz) ──►  [CENTRAL]
                    (via Serial1 de CENTRAL)
 
+     [DOWN] ←──── DOWN_OTOS_POSE + DOWN_OTOS_VEL (STREAM, 100 Hz) ──►  [CENTRAL]
+                   (via Serial1 de CENTRAL — broadcast simétrico, Capa 1)
+
      [CENTRAL] ──► motors PWM + kicker GPIO  (LOCAL, no UART)
 
      [CENTRAL] ──► CENTRAL_RESET_OTOS / CENTRAL_CALIB_LINE  (COMANDO, via Serial1 → DOWN)
@@ -97,7 +100,7 @@ precedencia. `config_central.h` debe ser corregido (ver §6, GAP-004).
 | Aplicación de PWM a motores y kicker | **CENTRAL** (hardware directo) |
 | Protección de borde (EMERGENCY_LINE) | **CENTRAL** (bypass de FSM) |
 | Pose absoluta en cancha | **TOP** (dentro del snapshot) |
-| Odometría OTOS | **DOWN → TOP** |
+| Odometría OTOS (broadcast Capa 1) | **DOWN → TOP y CENTRAL** (la pose de cancha autoritativa sigue siendo el WorldSnapshot del TOP; el OTOS directo en CENTRAL es solo para control de movimiento — Capa 2) |
 
 ---
 
@@ -812,6 +815,8 @@ MotorCommand: {vx≈intercept+pid_blend, vy=0, omega=0, kicker=0}
 |---|---|---|---|---|---|---|
 | TOP → CENTRAL | `0x60` | `WORLD_SNAPSHOT` | `WorldSnapshot` (27 B, schema v2) | STREAM | 100 Hz | Implementado (`comm_top.cpp`) |
 | DOWN → CENTRAL | `0x10` | `LINE_URGENT` | `LineStatus` v1 (5 B) / objetivo v2 (16 B) | EVENTO+STREAM | 200 Hz | Implementado v1 (`comm_down.cpp`) |
+| DOWN → CENTRAL | `0x11` | `DOWN_OTOS_POSE` | `Pose2D` (7 B) | STREAM | 100 Hz | Implementado (Capa 1 broadcast): ingerido en `comm_down.cpp` → `world_model_apply_otos_pose()`. **Solo para control de movimiento (Capa 2); la pose de cancha autoritativa sigue siendo el WorldSnapshot del TOP.** |
+| DOWN → CENTRAL | `0x12` | `DOWN_OTOS_VEL` | `Velocity2D` (7 B) | STREAM | 100 Hz | Implementado (Capa 1 broadcast): ingerido en `comm_down.cpp` → `world_model_apply_otos_vel()`. Mismo criterio: control de movimiento, no localización de cancha. |
 | CENTRAL → DOWN | `0x20` | `CENTRAL_RESET_OTOS` | `uint8` (1 B) | COMANDO | Evento | Implementado (sin llamador) |
 | CENTRAL → DOWN | `0x21` | `CENTRAL_CALIB_LINE` | `uint8` (1 B, 0/1/2) | COMANDO | Evento | Implementado (sin llamador) |
 | CENTRAL → TOP | `0x61` | `CENTRAL_RESET_TOP` | TBD | COMANDO | Evento | **NO implementado** |

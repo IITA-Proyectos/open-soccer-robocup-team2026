@@ -60,9 +60,13 @@ publicar. **NO decide estrategia. NO controla motores.**
   clasificación en quien tiene todo el contexto (CENTRAL). Ver contrato DOWN §0.
 - NO aplica lógica de estrategia: ni approach, ni kick, ni GK. CENTRAL consume el
   snapshot y decide.
-- NO recibe `LINE_URGENT` para control: ese mensaje viaja por bus de emergencia
-  DOWN→CENTRAL directo. TOP lo acepta si llega (código de transición en
-  `comm_down.cpp:45-50`) pero no lo expone en el snapshot.
+- NO consume `LINE_URGENT` para control. Desde el broadcast simétrico (Capa 1)
+  ese mensaje es un **entrante oficial del TOP** además del bus de emergencia
+  DOWN→CENTRAL: DOWN lo difunde a ambas placas. TOP lo recibe y lo cachea como
+  `LineStatusV2` (`comm_down.cpp`, vía `lsv2_from_frame`), pero **todavía no lo
+  consume** porque no hay world_model en TOP — la clasificación de línea sigue
+  siendo responsabilidad de CENTRAL (que tiene heading). No se expone en el
+  snapshot. Ver contrato DOWN §0 y §5.
 
 ---
 
@@ -106,6 +110,7 @@ primero). El CRC viaja big-endian. No confundir.
 | TOP ← COMM | `0x31` | `COMM_STATUS_REQ` | vacío | pedido | COMM pide status — recibido, handler devuelve sin responder automáticamente (`comm_arbiter.cpp:44-48`) |
 | TOP ← COMM | `0x40` | `COMM_PARTNER_DATA` | `PartnerSnapshot` (12 B) | ~10 Hz | Snapshot del robot partner vía ESP-NOW (§4) |
 | TOP → COMM | `0x41` | `TOP_PARTNER_DATA` | `PartnerSnapshot` (12 B) | app | Mi snapshot al partner vía COMM/ESP-NOW (§4) |
+| TOP ← DOWN | `0x10` | `LINE_URGENT` | `LineStatusV2` (16 B) | 200 Hz | Línea + eventos — **entrante OFICIAL del TOP** desde el broadcast simétrico (Capa 1). TOP la recibe y cachea (`comm_down.cpp`, `lsv2_from_frame`) pero todavía NO la consume (no hay world_model en TOP). Ver §5. |
 | TOP ← DOWN | `0x11` | `DOWN_OTOS_POSE` | `Pose2D` (7 B) | 100 Hz | Odometría OTOS — recibida pero NO fusionada en snapshot (§5) |
 | TOP ← DOWN | `0x12` | `DOWN_OTOS_VEL` | `Velocity2D` (7 B) | 100 Hz | Velocidad OTOS — recibida, no expuesta en snapshot actual |
 
@@ -320,9 +325,24 @@ partner no está conectada al loop principal. Gap.
 
 ---
 
-## 5. Datos recibidos desde DOWN — Serial1 (`0x11` / `0x12`)
+## 5. Datos recibidos desde DOWN — Serial1 (`0x10` / `0x11` / `0x12`)
 
-Referencia completa: `docs/firmware/CONTRATO-DATOS-DOWN.md` §4.
+Referencia completa: `docs/firmware/CONTRATO-DATOS-DOWN.md` §3 (línea) y §4 (OTOS).
+
+Desde el **broadcast simétrico (Capa 1)**, DOWN difunde sus 3 frames a **ambas**
+placas. TOP recibe por `Serial1`: `LineStatusV2` (TYPE `0x10`, 16 B) @200 Hz +
+`Pose2D` (TYPE `0x11`, 7 B) y `Velocity2D` (TYPE `0x12`, 7 B) @100 Hz.
+
+### Línea (`LINE_URGENT` / `LineStatusV2`, TYPE `0x10`) — entrante oficial
+
+`LINE_URGENT` es ahora un **entrante oficial del TOP** (ya no "legacy / no
+debería llegar"). El handler valida tipo + tamaño (16 B) + schema con
+`lsv2_from_frame` y cachea el último `LineStatusV2` en `comm_down.cpp`. **TOP la
+recibe y la cachea pero todavía no la consume**: no hay world_model en TOP y la
+clasificación de línea (lateral/fondo/frente) es responsabilidad de CENTRAL, que
+tiene el heading. No se expone en el `WorldSnapshot`.
+
+### OTOS (`Pose2D` / `Velocity2D`, TYPE `0x11` / `0x12`)
 
 TOP recibe `Pose2D` (TYPE `0x11`, 7 B) y `Velocity2D` (TYPE `0x12`, 7 B) de
 DOWN a 100 Hz. Comportamiento actual:

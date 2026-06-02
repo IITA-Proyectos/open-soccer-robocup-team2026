@@ -35,7 +35,7 @@ programación — ya es independiente. (Teensy 4.0 tiene 7 UART y la 4.1 tiene 8
 | Puerto | RX | TX | Conecta con | Baud | Para qué |
 |--------|----|----|-------------|------|----------|
 | **`Serial`** (USB) | — | — | PC | — | flasheo + monitor (debug) |
-| **`Serial1`** | 0 | 1 | ← DOWN | 230400 | recibe odometría OTOS (pose + vel) |
+| **`Serial1`** | 0 | 1 | ← DOWN | 230400 | recibe odometría OTOS (pose + vel) + línea (`LineStatusV2`, broadcast; cacheada, no consumida aún) |
 | **`Serial3`** | 15 | 14 | ← cámara **frontal** (U8) | 19200 | blobs pelota/arcos (9 bytes) |
 | **`Serial4`** | 16 | 17 | ↔ COMM (ESP32-C6) | 115200 | árbitros + partner ESP-NOW |
 | **`Serial5`** | 21 | 20 | ← cámara **trasera** | 19200 | blobs pelota/arcos (9 bytes) |
@@ -48,7 +48,7 @@ programación — ya es independiente. (Teensy 4.0 tiene 7 UART y la 4.1 tiene 8
 |--------|----|----|-------------|------|----------|
 | **`Serial`** (USB) | — | — | PC | — | flasheo + monitor (debug) |
 | **`Serial7`** | 28 | 29 | ← TOP | 230400 | recibe `WORLD_SNAPSHOT` |
-| **`Serial1`** | 0 | 1 | ← DOWN | 230400 | recibe `LINE_URGENT` / `LineStatusV2` |
+| **`Serial1`** | 0 | 1 | ← DOWN | 230400 | recibe `LINE_URGENT` / `LineStatusV2` + odometría OTOS (`Pose2D`/`Velocity2D`, broadcast; OTOS para control de movimiento — Capa 2) |
 
 *Motores:* GPIO directo (INA/INB/PWM), **no UART**. *Kicker* (R2): GPIO pin 23 (placeholder, confirmar Enzo).
 *✅ Reasignado 2026-05-31 (decisión Gustavo, cableado en banco):* el link a **TOP usa `Serial7` (28/29)** y el de **DOWN usa `Serial1` (0/1)**. Así `Serial2` (pines 7/8) queda **LIBRE para el driver del motor 2 (U17)** → el viejo conflicto **F8/TASK-036 está RESUELTO** (ya no hay UART en 7/8).
@@ -57,8 +57,8 @@ programación — ya es independiente. (Teensy 4.0 tiene 7 UART y la 4.1 tiene 8
 | Puerto | RX | TX | Conecta con | Baud | Para qué |
 |--------|----|----|-------------|------|----------|
 | **`Serial`** (USB) | — | — | PC | — | flasheo + monitor (debug) |
-| **`Serial1`** | 0 | 1 | → CENTRAL | 230400 | envía `LINE_URGENT` / línea |
-| **`Serial5`** | 21 | 20 | → TOP | 230400 | envía odometría OTOS |
+| **`Serial1`** | 0 | 1 | → CENTRAL | 230400 | difunde línea (`LineStatusV2`) + odometría OTOS (broadcast) |
+| **`Serial5`** | 21 | 20 | → TOP | 230400 | difunde línea (`LineStatusV2`) + odometría OTOS (broadcast) |
 
 ---
 
@@ -72,8 +72,8 @@ programación — ya es independiente. (Teensy 4.0 tiene 7 UART y la 4.1 tiene 8
 | Enlace | TX (placa · puerto · pin) | RX (placa · puerto · pin) | Baud | Estado |
 |--------|---------------------------|---------------------------|------|--------|
 | **TOP → CENTRAL** (snapshot) | TOP · `Serial7` · **pin 29** | CENTRAL · `Serial7` · **pin 28** | 230400 | ⚠️ sin cablear (pines 28/29 en ambas puntas) |
-| **DOWN → TOP** (odometría) | DOWN · `Serial5` · **pin 20** | TOP · `Serial1` · **pin 0** | 230400 | ⚠️ sin cablear |
-| **DOWN → CENTRAL** (línea) | DOWN · `Serial1` · **pin 1** | CENTRAL · `Serial1` · **pin 0** | 230400 | ✅ cable validado 2026-05-29 (reasignado a Serial1) |
+| **DOWN → TOP** (línea + odometría OTOS) | DOWN · `Serial5` · **pin 20** | TOP · `Serial1` · **pin 0** | 230400 | ⚠️ sin cablear |
+| **DOWN → CENTRAL** (línea + odometría OTOS) | DOWN · `Serial1` · **pin 1** | CENTRAL · `Serial1` · **pin 0** | 230400 | ✅ cable validado 2026-05-29 (reasignado a Serial1) |
 | **TOP ↔ COMM** (árbitros) | TOP · `Serial4` · 16/17 | COMM (ESP32-C6) | 115200 | ⚠️ firmware COMM pendiente |
 | **cámara frontal → TOP** | cam · UART3 | TOP · `Serial3` · pin 15 | 19200 | ✅ FORMATO OK |
 | **cámara trasera → TOP** | cam · UART3 | TOP · `Serial5` · pin 21 | 19200 | ✅ FORMATO OK |

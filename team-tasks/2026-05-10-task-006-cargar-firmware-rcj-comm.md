@@ -2,16 +2,22 @@
 id: TASK-006
 title: "Cargar firmware oficial RCJ en la placa COMM"
 date_created: 2026-05-10
-date_updated: 2026-05-17
+date_updated: 2026-06-01
 assigned: [mariaviollaz, elias]
 priority: P0
-status: pending
+status: done
 estimated_hours: 3
 blocks: [Hito 5 — integración COMM, homologación Incheon]
 tags: [firmware, comm-board, rcj, arbitros, esp32, esp32c6]
 ---
 
 # TASK-006 — Cargar firmware oficial RCJ en placa COMM
+
+> ✅ **RESUELTA 2026-06-01 — firmware COMM FLASHEADO** (reporte de Gustavo). El bloqueante
+> de Incheon "COMM no flasheada" queda **levantado**. **Pendiente de validación E2E** (no
+> bloquea el flasheo en sí, sí la homologación): confirmar en banco que el **TOP recibe
+> START/STOP del árbitro** por `Serial4` (pines 16/17) ↔ COMM y que `referee_cmd` llega al
+> `WorldSnapshot`. Quedan por tildar los tests de display/BLE/OUTPUT del "Criterio de cierre".
 
 > **⚠️ CORRECCIÓN 2026-05-17 — LEER ANTES DE EJECUTAR.**
 > El "Procedure descubierto 2026-05-15" de abajo y el pinout en "Notas /
@@ -207,3 +213,7 @@ investigación completa, links a foro RCJ, repo oficial y diagnóstico paso a pa
   como históricos. Fuente de verdad movida a
   `hardware/electronics/comm-board/`. Análisis completo en journal 2026-05-17.
   Status sigue `pending` (falta ejecutar el flasheo con el procedure correcto).
+- 2026-06-01: **FLASHEADA** — Gustavo reporta el firmware COMM cargado en la placa
+  ESP32-C6. Status → `done`. Bloqueante Incheon #1 levantado. Queda validación E2E
+  (TOP `Serial4` ↔ COMM, recepción de START/STOP del árbitro y `referee_cmd` en el
+  `WorldSnapshot`) — ver banner arriba.

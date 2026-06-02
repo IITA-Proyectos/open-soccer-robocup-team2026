@@ -1,7 +1,7 @@
 ---
 title: "Estado actual del robot — vivo, 1 página"
 date: 2026-05-29
-last-updated-by: "Claude (coach, sesión 2026-05-29 — sync de frontmatter/calendario)"
+last-updated-by: "Claude (coach, sesión 2026-06-01 — COMM flasheada: bloqueante Incheon #1 levantado)"
 status: vivo
 tipo: indice-operacional
 ---
@@ -123,7 +123,7 @@ nativo, pero ya no es el único camino. Ver
 **P0 hardware (asignar HOY a humanos, no a Claude):**
 - TASK-001 (Enzo): fix 10 nets DOWN PCB
 - TASK-002 (Enzo): DRC+ERC ambas placas
-- TASK-006 (Virginia/Elías): **flash firmware COMM ESP32-C6** (procedure del 17-may, NO el del 15-may que tiene banner)
+- ~~TASK-006 (Virginia/Elías): flash firmware COMM ESP32-C6~~ → ✅ **FLASHEADA 2026-06-01** (Gustavo). Falta validar E2E (TOP `Serial4` ↔ COMM, START/STOP del árbitro).
 - TASK-011 (Enzo): confirmar PIN_KICKER_SOL en Zircon
 - TASK-013 (Enzo): recuperar BOM placa TOP
 - TASK-025 (todos): excepción Avast en cada máquina → destraba PlatformIO
@@ -138,7 +138,7 @@ nativo, pero ya no es el único camino. Ver
 
 ## Bloqueantes Incheon (los 2 que importan)
 
-1. **COMM no flasheada** → robot no homologa (no recibe START/STOP árbitro). TASK-006.
+1. ~~**COMM no flasheada**~~ → ✅ **COMM FLASHEADA 2026-06-01** (Gustavo). Bloqueante de flasheo levantado; queda **validar E2E** que el TOP recibe START/STOP por `Serial4` (16/17) ↔ COMM y que `referee_cmd` llega al `WorldSnapshot`. TASK-006.
 2. **Cámaras sin recalibrar para iluminación Incheon** → no ve la pelota. TASK-022.
 
 ### Resuelto 2026-05-24

@@ -155,7 +155,7 @@ uint16_t mean_valid_zones(const VL53L7CX_ResultsData& r, uint8_t n_zones) {
 void sensors_tof_predim_lp() {
 #ifdef TOP_ENABLE_MULTI_TOF
     Wire.begin();
-    Wire.setClock(100000);  // 100 kHz: bus marginal (ver sensors_imu.cpp).
+    Wire.setClock(400000);  // 400 kHz: bus sano sin el 2do BNO fallado (ver sensors_imu.cpp).
     for (int i = 0; i < NUM_TOF; ++i) {
         pinMode(PIN_TOF_XSHUT[i], OUTPUT);
         digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);
@@ -180,7 +180,7 @@ void sensors_tof_scan_wire() {
 
 bool sensors_tof_init() {
     Wire.begin();
-    Wire.setClock(100000);   // idempotente; 100 kHz (bus marginal, ver predim/imu).
+    Wire.setClock(400000);   // idempotente; 400 kHz (bus sano, ver predim/imu).
 #ifdef TOP_ENABLE_HCSR04
     // HC-SR04 frontal — solo si se reactivo explicitamente (ver nota arriba).
     // Pines 4/3 (libres); el conflicto de pin 7 ya no aplica.
@@ -225,7 +225,7 @@ bool sensors_tof_init() {
             digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);  // LP no controla este ToF
             continue;
         }
-        if (!g_tof_multi[i].begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, 100000)) continue;  // 100 kHz: bus marginal
+        if (!g_tof_multi[i].begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, 400000)) continue;  // 400 kHz: bus sano (quad_live = 4/4)
         if (!g_tof_multi[i].setAddress(TOF_I2C_ADDR_ASSIGNED[i]))           continue;
         g_tof_multi[i].setResolution(TOF_RESOLUTION_ZONES);
         g_tof_multi[i].setRangingFrequency(TOF_RANGING_FREQ_HZ);

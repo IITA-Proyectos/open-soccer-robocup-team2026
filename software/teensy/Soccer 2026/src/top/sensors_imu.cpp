@@ -161,8 +161,9 @@ bool sensors_imu_init() {
     // validada en diag_pose_live: dim ToF -> init BNO -> enumerar ToF). (2026-06-02)
     // Wire1 ya NO se usa aca (recableado 2026-05-31).
     Wire.begin();
-    Wire.setClock(100000);  // 100 kHz (fix bus marginal 2026-06-02): mas tolerante a
-                            // pull-ups debiles / cables largos del bodge que 400 kHz.
+    Wire.setClock(400000);  // 400 kHz: el bus quedo SANO al sacar el 2do BNO fallado
+                            // (0x28 bueno + 4 ToF conviven; validado en banco 2026-06-02:
+                            // diag_top_tof_quad_live = 4/4 @ 400 kHz). Revertido de 100 kHz.
 
     imu_fusion_init(g_fusion);
     g_fcfg = imu_fusion_default_cfg();

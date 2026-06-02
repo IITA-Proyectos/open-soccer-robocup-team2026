@@ -123,8 +123,10 @@ nativo, pero ya no es el único camino. Ver
 1. **Árbitro no llega al Teensy del TOP** → ~~COMM no flasheada~~ **COMM YA
    FLASHEADA (TASK-006 cerrada 2026-06-02)**, pero el START/STOP todavía no
    llega al firmware: la COMM lo entrega como NIVEL en OUT_1/OUT_2 y el TOP lo
-   escucha por UART. Falta verificar pines (TASK-204) + adaptar `comm_arbiter.cpp`
-   a leer niveles. Ver journal `2026-06-02-arbitro-gap-y-ultrasonido-top.md`.
+   escucha por UART. Falta verificar pines (**TASK-039**, canónica: netlist da
+   OUT1→pin5/GPIO5, OUT2→pin6/GPIO6) + adaptar `comm_arbiter.cpp` a leer
+   niveles. Ver journal `2026-06-02-arbitro-gap-y-ultrasonido-top.md`.
+   (TASK-204 quedó como duplicada de la 039.)
 2. **Cámaras sin recalibrar para iluminación Incheon** → no ve la pelota. TASK-022.
 
 ### Resuelto 2026-05-24

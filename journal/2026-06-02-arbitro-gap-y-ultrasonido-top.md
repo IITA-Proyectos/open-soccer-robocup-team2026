@@ -19,8 +19,9 @@ tipo: hallazgo
 > en OUT_1/OUT_2 (3.3V=GO, 0V=STOP), pero el firmware del TOP lo escucha por
 > **UART** esperando un frame binario que la COMM nunca emite. Resultado: con
 > el firmware actual, **aunque la COMM esté flasheada, el robot no se entera de
-> cuándo arranca/para el partido**. → TASK-204 (Enzo confirma pines) + adaptar
-> `comm_arbiter.cpp` a leer niveles. **(2) Ultrasonido HC-SR04 ANDANDO** en
+> cuándo arranca/para el partido**. → TASK-039 (Enzo confirma pines; netlist:
+> OUT1→pin5/GPIO5, OUT2→pin6/GPIO6) + adaptar `comm_arbiter.cpp` a leer
+> niveles. **(2) Ultrasonido HC-SR04 ANDANDO** en
 > banco, cableado real **TRIG=pin4, ECHO=pin3** (no 6/7 del PCB), sin divisor
 > de tensión en el ECHO.
 
@@ -73,11 +74,14 @@ partido (o peor, no homologa).
 **Risk-fix.** Bajo. Leer 2 GPIO es trivial y no toca el firmware certificado de
 la COMM (que NO se debe modificar). Único cuidado: confirmar que OUT1/OUT2 son
 3.3V (lo son, level shifter TXS0102 en la COMM) — el Teensy 4.0 no tolera 5V.
-**Tiempo.** ~1 h una vez confirmados los pines (TASK-204).
+**Tiempo.** ~1 h una vez confirmados los pines (TASK-039).
 
 **Plan.**
-1. **TASK-204 (Enzo):** multímetro, continuidad OUT_1/OUT_2 (U3_1/U3_2 de la
-   COMM) → pin del Teensy. La doc sugiere 23 y 26 pero están SIN verificar.
+1. **TASK-039 (Enzo, canónica):** multímetro, continuidad OUT_1/OUT_2 de la
+   COMM → pin del Teensy. El netlist del PCB (que la TASK-039 incorporó) ya da
+   **OUT1 → pad 27 / GPIO 5** y **OUT2 → pad 26 / GPIO 6**; falta confirmar que
+   togglean en el módulo y que el camino al Teensy tiene continuidad.
+   (TASK-204, creada en paralelo en agente/top, quedó como duplicada de la 039.)
 2. Adaptar `comm_arbiter.cpp`: leer 2 entradas digitales (PLAY=ambos HIGH,
    STOP=ambos LOW, OUT_2 como verificación redundante, debounce ~20-50 ms).
    Mantener el path UART para el partner/ESP-NOW si en el futuro se usa.
@@ -142,7 +146,9 @@ o un módulo level-shifter. 10 min de soldadura.
 > obligatorio. Decidir si vale la pena el pin extra o si el ToF frontal alcanza.
 
 ## Archivos / acciones de esta sesión
-- `team-tasks/2026-06-02-task-204-*.md` — **nueva**, Enzo confirma pines OUT1/OUT2.
+- `team-tasks/2026-06-02-task-204-*.md` — creada acá, luego marcada **duplicada
+  de TASK-039** (otra sesión, sobre `main`, creó la misma tarea en paralelo).
+  La canónica del árbitro es **TASK-039**.
 - Este journal.
 - (Pendientes para cuando Enzo confirme pines): adaptar `comm_arbiter.cpp` a
   leer niveles + diag `diag_top_arbitro`; actualizar `PIN_HCSR04_*` a 4/3 +

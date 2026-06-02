@@ -1,93 +1,48 @@
 ---
 id: TASK-204
-title: "Multímetro: pines OUT1/OUT2 de la COMM (árbitro START/STOP) → pin Teensy del TOP"
+title: "[DUPLICADA → TASK-039] Verificar pines OUT1/OUT2 del árbitro COMM→TOP"
 date_created: 2026-06-02
-date_due: 2026-06-07
-assigned: [Enzo]
+date_updated: 2026-06-02
+assigned: [enzo]
 priority: P0
-status: pending
-estimated_hours: 0.5
-blocks: [integrar-arbitro-en-firmware-top]
-blocked_by: []
-tags: [hardware, top-board, comm, arbitro, referee, multimetro, homologacion]
+status: duplicada
+duplicada_por: TASK-039
+tags: [comm-board, arbitros, hardware, top-board, multimetro, homologacion, duplicada]
 ---
 
-# TASK-204 — Confirmar a qué pines del Teensy llegan OUT1/OUT2 de la COMM
+# TASK-204 — DUPLICADA, usar TASK-039
 
-## Por qué importa (P0 — homologación)
+> **⚠️ ESTA TASK ES DUPLICADA. La canónica es
+> [`TASK-039`](2026-06-02-task-039-comm-arbitro-out1out2-no-llega-al-teensy.md).**
+>
+> Creada en `agente/top` el 2026-06-02 para el mismo problema del árbitro
+> (OUT1/OUT2 no llegan al Teensy). En paralelo, otra sesión (CENTRAL, sobre
+> `main`) creó **TASK-039** con el MISMO diagnóstico — los dos llegamos a la
+> misma conclusión por caminos separados (la COMM entrega NIVEL en OUT1/OUT2,
+> el TOP escucha UART). Al sincronizar branches se detectó el solape y se
+> consolidó acá: **TASK-039 es la fuente de verdad.**
+>
+> **TASK-039 es más completa** — incluye el ground-truth del netlist del PCB
+> (no estaba en esta): **OUT1 → pad 27 / GPIO 5**, **OUT2 → pad 26 / GPIO 6**,
+> un probe ya commiteado en `main_top.cpp` (`refprobe[...]`), y datos medidos
+> (pin 6 fijo en 1, pin 5 fijo en 0, no togglean con la app). Ir directo a esa.
 
-Verificamos en código que **el START/STOP del árbitro NO le llega hoy al
-Teensy del TOP**. Hay un desajuste de protocolo entre las dos placas:
+## Qué se conserva de acá (ya está cubierto en TASK-039)
 
-- **La COMM (firmware oficial RCJ) entrega el árbitro como NIVEL de tensión**,
-  no por UART. Confirmado en el firmware oficial (`state_machine.cpp`:
-  `digitalWrite(OUTPUT1/2, HIGH/LOW)`) y en la doc de la placa
-  (`hardware/electronics/comm-board/2026-05-17-...md`, sección 5):
-  **OUT_1 / OUT_2 = 3.3 V → GO (PLAY), 0 V → STOP**. OUT_2 es espejo de OUT_1.
-- **El firmware del TOP escucha el árbitro por UART** (`comm_arbiter.cpp`,
-  Serial4) esperando un frame binario `COMM_REFEREE_CMD` con CRC que **la COMM
-  oficial nunca emite**.
+- El plan de firmware (leer el árbitro como pin digital en `comm_arbiter.cpp`)
+  coincide con el §6 de TASK-039.
+- El análisis del gap COMM(nivel) vs TOP(UART) está en mi journal
+  `journal/2026-06-02-arbitro-gap-y-ultrasonido-top.md` (sigue válido como
+  registro; no se duplica con TASK-039).
+- La nota del HC-SR04 sin divisor (5 V al pin 3 del Teensy, riesgo P1) está en
+  ese mismo journal — TASK-039 también menciona el HC-SR04 como nota secundaria.
 
-Resultado: aunque la COMM esté flasheada y reciba bien el árbitro por
-Bluetooth, **el robot no se entera de cuándo arranca o para el partido**. Sin
-esto el robot no compite. Por eso es P0.
+## Cierre
 
-La solución de firmware (Opción A, alineada con el diseño oficial RCJ) es que
-el TOP **lea OUT1/OUT2 como 2 entradas digitales** en vez de esperar el UART.
-Pero para programarlo necesito saber **a qué 2 pines del Teensy llegan
-físicamente** esos niveles — y la documentación los marca como TENTATIVOS.
-
-## Qué dice la documentación (sin verificar físicamente)
-
-El conector de la COMM (`U3`, header 6P) mate-ea con el conector `U1`
-("PINES MODULO") del TOP. El `mapa-pines-placas-nuevas.md` sugiere:
-
-| Señal COMM | Pin Teensy (TENTATIVO, con "?") | Silk |
-|---|---|---|
-| OUT_1 (U3_1) | **23** | "OUT1C" |
-| OUT_2 (U3_2) | **26** | "OUT1D" |
-| RX_OUT (U3_3) | 25 (RX2) | — |
-| TX_OUT (U3_4) | 24 (TX2) | — |
-
-⚠️ Esos pines están marcados con `"¿PWM motor?"` y signos de interrogación en
-la propia doc — **no están verificados**. Además el pin 23 lo usamos como
-candidato en los barridos de ToF, así que hay que confirmarlo sí o sí antes de
-que el firmware lo lea.
-
-## Qué necesito (medir con multímetro, placa alimentada)
-
-Para cada salida del header de la COMM, continuidad hasta el pin del Teensy:
-
-| Señal | Pad en header COMM (U3) | ¿A qué pin del Teensy llega? |
-|---|---|---|
-| OUT_1 | U3_1 |  |
-| OUT_2 | U3_2 |  |
-
-### Cómo medir
-1. Continuidad (pitido) desde **U3_1 (OUT_1)** de la COMM, recorriendo los
-   pines del Teensy del TOP hasta que pite. Anotar el número.
-2. Igual con **U3_2 (OUT_2)**.
-3. **Verificación funcional (opcional, muy útil)**: con la app del árbitro
-   mandando PLAY, medir tensión en U3_1/U3_2 → debe dar **~3.3 V**; con STOP →
-   **0 V**. Confirma que la COMM realmente cambia el nivel.
-
-## Criterio de cierre
-- Los 2 números de pin (OUT_1 → pin __, OUT_2 → pin __).
-- (Opcional) confirmado que cambian 3.3V/0V con PLAY/STOP de la app.
-- Pasarme los pines → escribo la adaptación de `comm_arbiter.cpp` para leer
-  START/STOP como nivel digital (con OUT_2 como verificación redundante) + un
-  diag `diag_top_arbitro` que imprima PLAY/STOP en vivo.
-- Journal entry con los números.
-
-## Nota de diseño (para cuando programe)
-- Leer 2 pines como `INPUT`. PLAY = ambos HIGH, STOP = ambos LOW. Si difieren
-  (uno HIGH, otro LOW) → glitch/cable: mantener el último estado estable +
-  marcar flag de error. Debounce ~20-50 ms.
-- El nivel de OUT1/OUT2 ya viene en dominio 3.3 V (level shifter TXS0102 en la
-  COMM), compatible con el Teensy. **Confirmar que NO son 5 V** antes de
-  conectar (el Teensy 4.0 NO tolera 5 V en sus GPIO).
+No ejecutar esta TASK. Trabajar sobre **TASK-039**. Esta queda como registro
+del solape para que no se pierda la trazabilidad de por qué hay dos números.
 
 ## Cambios de estado
-- 2026-06-02: creada por Claude (Opus 4.8) tras verificar en código el
-  desajuste de protocolo COMM(niveles) vs TOP(UART) del árbitro, a pedido de
-  Gustavo Viollaz. Ver journal `2026-06-02-arbitro-gap-y-ultrasonido-top.md`.
+- 2026-06-02: creada en agente/top.
+- 2026-06-02: marcada **duplicada** de TASK-039 (consolidación al sincronizar
+  con main), a pedido de Gustavo Viollaz.

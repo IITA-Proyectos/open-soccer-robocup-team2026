@@ -11,6 +11,7 @@ namespace {
 
 FrameDecoder g_decoder;
 uint8_t      g_send_seq = 0;
+uint32_t     g_frames_received = 0;   // frames validos decodificados desde COMM (salud del enlace)
 
 RefereeCommand g_last_cmd = RefereeCommand::UNKNOWN;
 uint32_t       g_last_cmd_ms = 0;
@@ -69,6 +70,7 @@ int comm_arbiter_tick() {
         const uint8_t b = static_cast<uint8_t>(Serial4.read());
         if (g_decoder.feed(b)) {
             handle_frame(g_decoder.get_frame());
+            g_frames_received++;
             processed++;
         }
     }
@@ -78,6 +80,7 @@ int comm_arbiter_tick() {
 RefereeCommand comm_arbiter_get_last_command()      { return g_last_cmd; }
 uint32_t       comm_arbiter_get_last_command_ms()   { return g_last_cmd_ms; }
 bool           comm_arbiter_is_match_running()      { return g_match_running; }
+uint32_t       comm_arbiter_get_frames_received()   { return g_frames_received; }
 
 void comm_arbiter_send_status(uint8_t role, uint8_t error_flags, uint16_t battery_mv) {
     struct StatusReply {

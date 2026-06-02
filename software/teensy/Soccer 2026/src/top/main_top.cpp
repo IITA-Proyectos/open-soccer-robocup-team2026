@@ -187,6 +187,18 @@ void loop() {
         Serial.print(comm_down_is_pose_fresh() ? "Y" : "N");
         Serial.print("/");
         Serial.print(comm_down_is_vel_fresh() ? "Y" : "N");
+        // COMM (arbitros, Serial4): ref = ultimo comando (0=STOP 1=START 2=HALFTIME
+        // 3=RESET 255=ninguno), match = habilitado a moverse, age = ms desde el ultimo
+        // comando, rx = frames recibidos del COMM (sube si el enlace esta vivo).
+        Serial.print(" arb[ref=");
+        Serial.print(static_cast<int>(comm_arbiter_get_last_command()));
+        Serial.print(" match=");
+        Serial.print(comm_arbiter_is_match_running() ? "Y" : "N");
+        Serial.print(" age=");
+        Serial.print(millis() - comm_arbiter_get_last_command_ms());
+        Serial.print("ms rx=");
+        Serial.print(comm_arbiter_get_frames_received());
+        Serial.print("]");
         Serial.print(" resync=");
         Serial.println(cameras_resyncs_total());
     }

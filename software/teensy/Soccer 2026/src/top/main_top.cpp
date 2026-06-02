@@ -183,6 +183,10 @@ void loop() {
         Serial.print(cameras_packets_front());
         Serial.print("/");
         Serial.print(cameras_packets_back());
+        Serial.print(" down_pose/vel=");
+        Serial.print(comm_down_is_pose_fresh() ? "Y" : "N");
+        Serial.print("/");
+        Serial.print(comm_down_is_vel_fresh() ? "Y" : "N");
         Serial.print(" resync=");
         Serial.println(cameras_resyncs_total());
     }

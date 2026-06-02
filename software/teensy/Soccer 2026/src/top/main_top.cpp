@@ -155,6 +155,16 @@ void loop() {
     // === Debug ===
     if (g_since_debug >= 500) {
         g_since_debug = 0;
+        // TEMP probe (bring-up COMM 2026-06-02): el arbitro llega como NIVEL
+        // (OUT1/OUT2 del modulo via conector U1), no por UART. Probamos candidatos
+        // para identificar el pin real con la app (PLAY -> 2 pines adyacentes pasan
+        // a 1). Se reemplaza por el read final una vez confirmado.
+        static bool s_ref_probe_init = false;
+        if (!s_ref_probe_init) {
+            const uint8_t probe_pins[] = {5, 6, 7, 8, 26, 27};
+            for (uint8_t p : probe_pins) pinMode(p, INPUT_PULLDOWN);
+            s_ref_probe_init = true;
+        }
         Serial.print("[TOP] loop=");
         Serial.print(g_loop_count);
         Serial.print(" hdg=");
@@ -198,6 +208,13 @@ void loop() {
         Serial.print(millis() - comm_arbiter_get_last_command_ms());
         Serial.print("ms rx=");
         Serial.print(comm_arbiter_get_frames_received());
+        Serial.print("]");
+        Serial.print(" refprobe[5=");  Serial.print(digitalRead(5));
+        Serial.print(" 6=");  Serial.print(digitalRead(6));
+        Serial.print(" 7=");  Serial.print(digitalRead(7));
+        Serial.print(" 8=");  Serial.print(digitalRead(8));
+        Serial.print(" 26="); Serial.print(digitalRead(26));
+        Serial.print(" 27="); Serial.print(digitalRead(27));
         Serial.print("]");
         Serial.print(" resync=");
         Serial.println(cameras_resyncs_total());

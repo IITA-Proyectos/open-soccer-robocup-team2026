@@ -74,6 +74,15 @@ bool     world_model_imminent_exit()        { return lsv2_imminent_exit(g_line);
 bool     world_model_line_data_valid()      { return g_line.data_valid != 0; }
 uint8_t  world_model_line_event_flags()     { return g_line.event_flags; }
 
+// cross_track perpendicular firmado (mm). Delegamos en el helper PURO de
+// line_view.h (lsv2_cross_track_mm) que ya honra la compuerta data_valid y el
+// centinela N/A devolviendo 0.0f. La VALIDEZ va aparte porque 0.0f es ambiguo
+// (robot centrado sobre la línea == 0 mm, igual que "sin señal"); el arquero
+// necesita distinguirlos para elegir control-por-cross_track vs fallback-por-depth.
+float    world_model_get_cross_track_mm()   { return lsv2_cross_track_mm(g_line); }
+bool     world_model_cross_track_valid()    { return g_line.data_valid != 0
+                                                  && g_line.cross_track_mm != LSV2_NA_I16; }
+
 // Override de arranque manual (F3). En competencia el flag de build esta OFF y
 // nadie llama al setter -> g_force_match_running queda false (sin efecto).
 static bool g_force_match_running = false;

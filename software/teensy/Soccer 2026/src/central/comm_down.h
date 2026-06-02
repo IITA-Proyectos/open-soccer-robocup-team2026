@@ -1,10 +1,10 @@
 // comm_down.h (CENTRAL) — recibe LINE_URGENT de la placa ABAJO (bus emergencia).
 //
-// Hardware: Serial2 del Teensy 4.1 (pines 7/8), 230400 baud.
-// ⚠️ Conflicto 7/8 PENDIENTE de aislar (TASK-036): los pines 7/8 son también el
-//    driver del motor 2 (U17). Solo importa moviendo motores. Si se confirma 7/8
-//    = motor Y se corren motores + comm juntos, migrar a Serial7 (28/29).
-//    Ver docs/firmware/ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md.
+// Hardware: Serial1 del Teensy 4.1 (RX1 = pin 0, TX1 = pin 1), 230400 baud.
+// Reasignado 2026-05-31: antes Serial2 (7/8), pero esos pines son del driver del
+//    motor 2 (U17) → se movió a Serial1 (0/1, conector libre del Zircon). El viejo
+//    conflicto 7/8 (TASK-036) quedó RESUELTO: 7/8 libre para el motor 2.
+//    Ver hardware/electronics/MAPA-CONEXIONES-3-PLACAS.md.
 // Frecuencia: 100-200 Hz.
 // Watchdog: si no llega en 500 ms, world_model_line_is_fresh() = false.
 

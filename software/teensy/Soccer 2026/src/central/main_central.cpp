@@ -1,8 +1,8 @@
 // main_central.cpp — Firmware master del robot (Teensy 4.1 sobre Zircon Rev v15).
 //
 // Responsabilidad: decidir qué hacer y ejecutarlo.
-//   • Recibe WORLD_SNAPSHOT desde ARRIBA (Serial1) a 100 Hz.
-//   • Recibe LINE_URGENT desde ABAJO (Serial2) a 100-200 Hz.
+//   • Recibe WORLD_SNAPSHOT desde ARRIBA (Serial7, pin 28) a 100 Hz.
+//   • Recibe LINE_URGENT desde ABAJO (Serial1, pin 0) a 100-200 Hz.
 //   • Corre la FSM principal (strategy).
 //   • Corre todos los PIDs (heading + lateral arquero + approach).
 //   • Aplica cinemática inversa omni-3 y PWM directo a los 3 motores del Zircon.
@@ -85,8 +85,8 @@ void setup() {
     world_model_init();
     strategy_init();
 
-    comm_top_init();    // recibe WORLD_SNAPSHOT (Serial1)
-    comm_down_init();   // recibe LINE_URGENT (Serial2)
+    comm_top_init();    // recibe WORLD_SNAPSHOT (Serial7, pin 28)
+    comm_down_init();   // recibe LINE_URGENT (Serial1, pin 0)
     Serial.println("[CENTRAL] UARTs ARRIBA y ABAJO OK");
 
     digitalWrite(PIN_LED_STATUS, HIGH);

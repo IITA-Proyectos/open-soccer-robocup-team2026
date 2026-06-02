@@ -1,7 +1,7 @@
 // config_central.h — Constantes del firmware del Zircon (motor server)
 //
 // El Zircon Rev v15 con Teensy 4.1 ejecuta el firmware "motor server":
-//   - Recibe MotorCommand por Serial1 desde la placa TOP.
+//   - Recibe WORLD_SNAPSHOT por Serial7 (pin 28) desde la placa TOP.
 //   - Aplica cinemática inversa omni-3.
 //   - Aplica PWM a los 3 drivers H-bridge.
 //   - Reporta status básico al TOP.

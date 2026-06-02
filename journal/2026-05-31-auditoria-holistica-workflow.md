@@ -14,6 +14,15 @@ alcance: "read-only: coherencia de docs, oportunidades de mejora, líneas de com
 
 # Auditoría holística — Soccer 2026 (2026-05-31)
 
+> ⚠️ **NOTA POSTERIOR (2026-05-31, después de esta auditoría): el UART del CENTRAL se
+> reasignó.** Donde la auditoría dice "TOP→CENTRAL en Serial1/pin0" y "DOWN→CENTRAL en
+> Serial2/pin7" (tablas y checklist de §4) y trata el **conflicto 7/8 (F8/TASK-036) como
+> abierto** (§2, §6), el código vivo + el mapa canónico ya usan: **TOP→CENTRAL = CENTRAL
+> Serial7 (RX7 = pin 28)**, **DOWN→CENTRAL = CENTRAL Serial1 (RX1 = pin 0)**, con **Serial2
+> (7/8) LIBRE para el motor 2 → F8/TASK-036 RESUELTO**. Para cablear seguí
+> [`MAPA-CONEXIONES-3-PLACAS.md`](../hardware/electronics/MAPA-CONEXIONES-3-PLACAS.md). El
+> resto de la auditoría (visión, F1/F2/F3/F6/F4, ultrasonido) sigue vigente.
+
 ## 1. Resumen ejecutivo
 
 - **El firmware compila y la arquitectura es sólida** (FSM dual + PIDs en CENTRAL, fusión sensorial en TOP, anillo de línea + OTOS en DOWN, 23 suites de tests host), pero **el robot todavía NO juega**: hay un cluster de gaps código-vs-hardware-real que lo dejan sin localizar, viendo mal la línea, o sin arrancar.

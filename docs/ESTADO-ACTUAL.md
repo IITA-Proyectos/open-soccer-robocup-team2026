@@ -146,7 +146,7 @@ nativo, pero ya no es el único camino. Ver
 
 ## Bloqueantes Incheon (los 2 que importan)
 
-1. ~~**COMM no flasheada**~~ → ✅ **COMM FLASHEADA 2026-06-01** (Gustavo). Bloqueante de flasheo levantado; queda **validar E2E** que el TOP recibe START/STOP por `Serial4` (16/17) ↔ COMM y que `referee_cmd` llega al `WorldSnapshot`. TASK-006.
+1. **COMM — firmware flasheado ✅ (2026-06-01) pero el E2E está BLOQUEADO (2026-06-02).** Hallazgo: el árbitro **NO viaja por UART**, señaliza como **NIVEL GPIO** (`OUT1`/`OUT2` del módulo → Teensy **pin 5 / pin 6** por el conector U1, confirmado en el netlist del PCB). El COMM responde (OLED prende/apaga) **pero la señal no togglea en el Teensy** (pin 6 fijo en 1, pin 5 en 0). El robot **todavía NO recibe START/STOP → NO homologa aún.** → **TASK-039** (Enzo: multímetro en OUT del módulo + continuidad). Además el firmware del TOP debe leer el árbitro por **pin digital**, no `Serial4` (`comm_arbiter` hoy escucha UART = mismatch). TASK-006/TASK-039.
 2. **Cámaras sin recalibrar para iluminación Incheon** → no ve la pelota. TASK-022.
 
 ### Resuelto 2026-05-24

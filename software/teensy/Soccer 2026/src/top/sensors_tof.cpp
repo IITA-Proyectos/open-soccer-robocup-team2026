@@ -148,7 +148,39 @@ uint16_t mean_valid_zones(const VL53L7CX_ResultsData& r, uint8_t n_zones) {
 
 }  // namespace
 
+// Duerme los 4 ToF (LP low) para dejar el bus I2C limpio ANTES de iniciar el BNO.
+// Receta validada en diag_pose_live: (1) dim ToF -> (2) init BNO -> (3) enumerar ToF.
+// Sin esto, el BNO se inicia con los ToF DESPIERTOS en 0x29 (misma dir que el BNO
+// derecho) -> el/los BNO no aparecen. Llamar en setup() ANTES de sensors_imu_init().
+void sensors_tof_predim_lp() {
+#ifdef TOP_ENABLE_MULTI_TOF
+    Wire.begin();
+    Wire.setClock(100000);  // 100 kHz: bus marginal (ver sensors_imu.cpp).
+    for (int i = 0; i < NUM_TOF; ++i) {
+        pinMode(PIN_TOF_XSHUT[i], OUTPUT);
+        digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);
+    }
+    delay(LP_SETTLE_MS);
+#endif
+}
+
+void sensors_tof_scan_wire() {
+    // OJO: NO llamar Wire.begin() aca. El bus ya viene levantado por sensors_imu_init;
+    // un Wire.begin() extra resetea el periferico y hace FALLAR el primer probe -> falso
+    // "nada responde". Probamos sobre el bus YA operativo (igual que i2c_present del loop).
+    Serial.print(F("[i2c-scan Wire, ToF dormidos] ACK en:"));
+    int n = 0;
+    for (uint8_t a = 0x08; a <= 0x77; ++a) {
+        Wire.beginTransmission(a);
+        if (Wire.endTransmission() == 0) { Serial.print(F(" 0x")); Serial.print(a, HEX); ++n; }
+    }
+    if (n == 0) Serial.print(F(" (nada responde!)"));
+    Serial.println();
+}
+
 bool sensors_tof_init() {
+    Wire.begin();
+    Wire.setClock(100000);   // idempotente; 100 kHz (bus marginal, ver predim/imu).
 #ifdef TOP_ENABLE_HCSR04
     // HC-SR04 frontal — solo si se reactivo explicitamente (ver nota arriba).
     // Pines 4/3 (libres); el conflicto de pin 7 ya no aplica.
@@ -193,7 +225,7 @@ bool sensors_tof_init() {
             digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);  // LP no controla este ToF
             continue;
         }
-        if (!g_tof_multi[i].begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, 400000)) continue;
+        if (!g_tof_multi[i].begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, 100000)) continue;  // 100 kHz: bus marginal
         if (!g_tof_multi[i].setAddress(TOF_I2C_ADDR_ASSIGNED[i]))           continue;
         g_tof_multi[i].setResolution(TOF_RESOLUTION_ZONES);
         g_tof_multi[i].setRangingFrequency(TOF_RANGING_FREQ_HZ);

@@ -108,8 +108,17 @@ void setup() {
     Serial.println("  Cerebro sensorial (Teensy 4.0)");
     Serial.println("=========================================");
 
-    sensors_imu_init();
-    sensors_tof_init();
+    // ORDEN CRITICO (fix 2026-06-02, receta validada en diag_pose_live): los 4 VL53L7CX
+    // arrancan en 0x29 = misma dir que el BNO DERECHO en el bus Wire. Para que NO choquen:
+    //   (1) dormir los ToF (LP low) -> bus limpio;
+    //   (2) iniciar los BNO (0x28 + 0x29, sin ToF en el bus);
+    //   (3) recien ahi enumerar los ToF (despertar de a uno -> 0x2A..0x2D).
+    // Bug anterior: el BNO se iniciaba con los ToF DESPIERTOS en 0x29 -> imu_R=N (o ambos)
+    // + enumeracion ToF confundida -> min_obst=65535.
+    sensors_tof_predim_lp();  // (1) dormir ToF (LP low) -> bus limpio para el BNO
+    sensors_imu_init();       // (2) BNO 0x28 + 0x29 con los ToF dormidos
+    sensors_tof_scan_wire();  // DIAG 2026-06-02: con ToF dormidos, que BNO responde? 0x28? 0x29?
+    sensors_tof_init();       // (3) enumerar ToF a 0x2A..0x2D
     // OJO: el robot DEBE apuntar al arco rival (+Y) al boot — esta llamada
     // calibra bno_offset_centideg leyendo el heading actual.
     iitasoccer::localization_runtime_init();

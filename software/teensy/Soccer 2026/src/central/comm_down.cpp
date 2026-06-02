@@ -3,6 +3,7 @@
 #include "proto.h"
 #include "types.h"
 #include "line_view.h"
+#include "pose_view.h"
 
 #include <Arduino.h>
 
@@ -33,9 +34,11 @@ void handle_frame(const Frame& f) {
     g_have_last_seq = true;
 
     LineStatusV2 ls{};
-    if (lsv2_from_frame(f, ls)) {
-        world_model_apply_line(ls);
-    }
+    if (lsv2_from_frame(f, ls)) { world_model_apply_line(ls); return; }
+    Pose2D pose{};
+    if (pose_from_frame(f, pose)) { world_model_apply_otos_pose(pose); return; }
+    Velocity2D vel{};
+    if (vel_from_frame(f, vel)) { world_model_apply_otos_vel(vel); return; }
 }
 
 }  // namespace

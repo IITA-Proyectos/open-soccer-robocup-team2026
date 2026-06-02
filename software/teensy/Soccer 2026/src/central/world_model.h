@@ -60,4 +60,21 @@ bool world_model_partner_sees_ball();
 
 uint8_t world_model_referee_cmd();
 
+// === OTOS directo de DOWN (Capa 1 broadcast) ===
+// La pose de cancha AUTORITATIVA sigue siendo la del WorldSnapshot del TOP
+// (world_model_get_my_*). El OTOS directo es SOLO para control de movimiento
+// (drive-straight / patear derecho), que se cablea en Capa 2.
+void world_model_apply_otos_pose(const Pose2D& pose);
+void world_model_apply_otos_vel(const Velocity2D& vel);
+bool world_model_otos_is_fresh();
+
+float   world_model_get_otos_x_mm();
+float   world_model_get_otos_y_mm();
+float   world_model_get_otos_heading_deg();
+float   world_model_get_otos_vx_mm_s();
+float   world_model_get_otos_vy_mm_s();
+float   world_model_get_otos_omega_deg_s();
+uint8_t world_model_get_otos_slip();
+uint8_t world_model_otos_pose_confidence();
+
 }  // namespace iitasoccer

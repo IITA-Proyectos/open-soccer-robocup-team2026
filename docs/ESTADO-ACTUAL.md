@@ -1,7 +1,7 @@
 ---
 title: "Estado actual del robot — vivo, 1 página"
 date: 2026-05-29
-last-updated-by: "Claude (WP-1E, sesión 2026-06-01 — docs sync: DOWN broadcast simétrico línea+OTOS a CENTRAL+TOP, Capa 1)"
+last-updated-by: "Claude (sesión 2026-06-02 — DOWN broadcast Capa 2+3 code-complete: drive-straight ATK + arquero por cross_track, fallback exacto)"
 status: vivo
 tipo: indice-operacional
 ---
@@ -76,10 +76,15 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
   (`LineStatusV2` 0x10 + `Pose2D` 0x11 + `Velocity2D` 0x12) a **ambas** placas —
   CENTRAL (`Serial1`) **y** TOP (`Serial5`) — vía el módulo nuevo `down_tx`
   (SEQ monótono por enlace). Antes la línea iba solo a CENTRAL y el OTOS solo a TOP.
-  CENTRAL ingiere el OTOS directo (storage/accessors en `world_model`); su consumo
-  en strategy (drive-straight) es Capa 2. Spec/plan:
+  CENTRAL ingiere el OTOS directo (storage/accessors en `world_model`). Spec/plan:
   `docs/superpowers/specs/2026-06-01-down-broadcast-simetrico-design.md` +
   `docs/superpowers/plans/2026-06-01-down-broadcast-capa1.md`.
+- **Capa 2 + 3 (2026-06-02, code-complete + pusheadas):** CENTRAL **consume** el OTOS para
+  ir/patear derecho (`drive_straight` en ATK KICKOFF/APPROACH) y el arquero hace **strafe
+  paralelo a la línea** por `cross_track_mm` real (centroide-Y) que calcula DOWN. **Fallback
+  EXACTO** cuando OTOS/cross_track están en N/A (= hoy) → **no cambia la conducta actual**;
+  las conductas nuevas se activan recién con OTOS fluyendo + DOWN con Capa 3. Falta **banco**
+  (tunear gains + confirmar eje/signo del strafe del GK). Gate: 25 envs + 311 tests host.
 
 ### Shared (puro, testeado host-native)
 - `pids`, `kinematics`, `behind_ball`, `cameras_fusion`, `line_filters`, `crc16`, `proto`, `types`

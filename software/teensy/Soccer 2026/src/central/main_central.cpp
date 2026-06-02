@@ -159,6 +159,17 @@ void loop() {
         Serial.print(strategy_get_state_name());
         Serial.print(" snap_fresh=");
         Serial.print(world_model_snapshot_is_fresh() ? "Y" : "N");
+        // DIAG link TOP->CENTRAL (Serial7): rxB=bytes crudos, fr=frames OK, crc=errores CRC.
+        //   rxB=0         -> no llega NADA por Serial7 (cable TOP pin17/TX4 -> 28/RX7 / GND / TOP apagado).
+        //   rxB sube,fr=0 -> llegan bytes pero no forma frames (baud/ruido).
+        //   fr sube       -> link OK (snap_fresh deberia ser Y).
+        Serial.print(" top[rxB=");
+        Serial.print(comm_top_get_bytes_received());
+        Serial.print(" fr=");
+        Serial.print(comm_top_get_frames_received());
+        Serial.print(" crc=");
+        Serial.print(comm_top_get_crc_errors());
+        Serial.print("]");
         Serial.print(" line_fresh=");
         Serial.print(world_model_line_is_fresh() ? "Y" : "N");
         // Telemetria del link DOWN->CENTRAL: salud del enlace + estado del dato.

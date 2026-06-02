@@ -13,12 +13,12 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
-> **🔧 ÚLTIMO (2026-05-31 — vale sobre cualquier mención más abajo):** mapa UART final.
-> **TOP:** S1←DOWN · S3←cam frontal · S4↔COMM · S5←cam trasera · S7→CENTRAL.
-> **CENTRAL:** **S7 (pin 28)←TOP** (snapshot) · **S1 (pin 0)←DOWN** (línea) · **Serial2 (7/8)
-> LIBRE para el motor 2** → **conflicto 7/8 (TASK-036) RESUELTO**. HC-SR04 en pines 4/3.
+> **🔧 ÚLTIMO (2026-06-02 — vale sobre cualquier mención más abajo):** mapa UART final.
+> **TOP (Teensy 4.0):** S1←DOWN · **S2 (7/8)↔COMM** · S3←cam frontal · **S4 (16/17)→CENTRAL** · S5←cam trasera.
+> ⚠️ **El 4.0 NO expone S7 (28/29) en el borde** (back-pads) → el enlace a CENTRAL va por **S4**, no S7 (fix 2026-06-02: antes estaba en S7 y el TOP nunca le llegaba a la CENTRAL).
+> **CENTRAL (Teensy 4.1):** **S7 (pin 28)←TOP** (el cable sale del TOP pin 17/TX4) · **S1 (pin 0)←DOWN** · **pines 7/8 LIBRES para el motor 2** → **conflicto 7/8 (TASK-036) RESUELTO**. HC-SR04 en pines 4/3.
 > CENTRAL **sin BNO** (los 2 BNO están en el TOP). **Los 4 ToF activos por default** en
-> top_robot1/2 (`TOP_ENABLE_MULTI_TOF`; boot del TOP ~40 s). **`Zircon.pdf`** (esquemático
+> top_robot1/2 (`TOP_ENABLE_MULTI_TOF`; I²C 400 kHz, boot del TOP ~10 s). **`Zircon.pdf`** (esquemático
 > del Zircon/CENTRAL, fuente Robomov) ya está en `hardware/electronics/`. Detalle único del
 > cableado: `hardware/electronics/MAPA-CONEXIONES-3-PLACAS.md`. Cualquier "conflicto 7/8
 > abierto" o "Serial2 → CENTRAL" más abajo está **superado**.

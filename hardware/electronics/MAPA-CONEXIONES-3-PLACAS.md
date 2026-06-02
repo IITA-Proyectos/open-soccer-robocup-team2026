@@ -1,6 +1,6 @@
 ---
 title: "Mapa único de conexiones — las 3 placas (UART + I²C + USB)"
-date: 2026-05-31
+date: 2026-06-02
 status: vigente
 area: hardware / firmware
 tipo: referencia-consolidada
@@ -36,12 +36,18 @@ programación — ya es independiente. (Teensy 4.0 tiene 7 UART y la 4.1 tiene 8
 |--------|----|----|-------------|------|----------|
 | **`Serial`** (USB) | — | — | PC | — | flasheo + monitor (debug) |
 | **`Serial1`** | 0 | 1 | ← DOWN | 230400 | recibe odometría OTOS (pose + vel) + línea (`LineStatusV2`, broadcast; cacheada, no consumida aún) |
+| **`Serial2`** | 7 | 8 | ↔ COMM (ESP32-C6) | 115200 | árbitros + partner ESP-NOW |
 | **`Serial3`** | 15 | 14 | ← cámara **frontal** (U8) | 19200 | blobs pelota/arcos (9 bytes) |
-| **`Serial4`** | 16 | 17 | ↔ COMM (ESP32-C6) | 115200 | árbitros + partner ESP-NOW |
+| **`Serial4`** | 16 | 17 | → CENTRAL | 230400 | envía `WORLD_SNAPSHOT` (100 Hz) |
 | **`Serial5`** | 21 | 20 | ← cámara **trasera** | 19200 | blobs pelota/arcos (9 bytes) |
-| **`Serial7`** | 28 | 29 | → CENTRAL | 230400 | envía `WORLD_SNAPSHOT` (100 Hz) |
 
-*Libres:* `Serial2` (pines 7/8) sin uso · `Serial6` (24/25) no se usa como UART (esos pines los toma `Wire1`).
+> **⚠️ FIX 2026-06-02 (Gustavo, banco):** el Teensy 4.0 del TOP **NO expone `Serial7` (28/29)
+> en el borde** — son pads SMD traseros, no cableables con header. TASK-204 había puesto el
+> enlace a CENTRAL en `Serial7` por error y el TOP **nunca le llegaba** a la CENTRAL
+> (`snap_fresh=N`). Mapeo REAL del TOP: **`Serial2` (7/8) = COMM**, **`Serial4` (16/17) =
+> CENTRAL**. El lado CENTRAL (Teensy **4.1**) SÍ tiene 28/29 en el borde → su `Serial7` queda igual.
+
+*Libres:* `Serial6` (24/25) no se usa como UART (esos pines los toma `Wire1`) · `Serial7` (28/29) = pads traseros del 4.0, **no usables**.
 
 ### CENTRAL — Teensy 4.1 sobre Zircon Rev v15 (cerebro: FSM + PIDs + motores)
 | Puerto | RX | TX | Conecta con | Baud | Para qué |
@@ -71,10 +77,10 @@ programación — ya es independiente. (Teensy 4.0 tiene 7 UART y la 4.1 tiene 8
 
 | Enlace | TX (placa · puerto · pin) | RX (placa · puerto · pin) | Baud | Estado |
 |--------|---------------------------|---------------------------|------|--------|
-| **TOP → CENTRAL** (snapshot) | TOP · `Serial7` · **pin 29** | CENTRAL · `Serial7` · **pin 28** | 230400 | ⚠️ sin cablear (pines 28/29 en ambas puntas) |
+| **TOP → CENTRAL** (snapshot) | TOP · `Serial4` · **pin 17** (TX4) | CENTRAL · `Serial7` · **pin 28** (RX7) | 230400 | 🔧 fix 2026-06-02 (era `Serial7` en el TOP, inexistente en el borde del 4.0) |
 | **DOWN → TOP** (línea + odometría OTOS) | DOWN · `Serial5` · **pin 20** | TOP · `Serial1` · **pin 0** | 230400 | ⚠️ sin cablear |
-| **DOWN → CENTRAL** (línea + odometría OTOS) | DOWN · `Serial1` · **pin 1** | CENTRAL · `Serial1` · **pin 0** | 230400 | ✅ cable validado 2026-05-29 (reasignado a Serial1) |
-| **TOP ↔ COMM** (árbitros) | TOP · `Serial4` · 16/17 | COMM (ESP32-C6) | 115200 | ⚠️ firmware COMM pendiente |
+| **DOWN → CENTRAL** (línea + odometría OTOS) | DOWN · `Serial1` · **pin 1** | CENTRAL · `Serial1` · **pin 0** | 230400 | ✅ cable validado (DOWN→CENTRAL OK en banco 2026-06-02) |
+| **TOP ↔ COMM** (árbitros) | TOP · `Serial2` · **7/8** | COMM (ESP32-C6) | 115200 | 🔧 fix 2026-06-02 (era `Serial4`) |
 | **cámara frontal → TOP** | cam · UART3 | TOP · `Serial3` · pin 15 | 19200 | ✅ FORMATO OK |
 | **cámara trasera → TOP** | cam · UART3 | TOP · `Serial5` · pin 21 | 19200 | ✅ FORMATO OK |
 
@@ -121,9 +127,10 @@ firmware queda como compat: si no hay sensor, `imu_init()` cae por timeout y no 
 
 ## 4. ¿Hay algún pin compartido problemático?
 
-- **I²C vs UART:** en ninguna placa se pisan (los buses I²C usan 16–19/24–25, los UART usan 0/1, 14/15, 20/21, 28/29 según placa).
+- **I²C vs UART:** en ninguna placa se pisan. TOP: I²C en 18/19 (+24/25 `Wire1`), UART en 0/1·7/8·14/15·16/17·20/21. DOWN: I²C en 18/19 + 16/17 (`Wire1`), UART en 0/1·20/21. CENTRAL: sin I²C.
 - **USB vs todo:** el USB (`Serial`) es independiente — nunca compite con UART ni I²C.
-- **✅ Conflicto 7/8 RESUELTO (2026-05-31):** el link DOWN→CENTRAL se movió a `Serial1` (0/1), así que `Serial2` (7/8) queda libre para el motor 2 (U17). **No quedan conflictos de UART abiertos.**
+- **✅ Conflicto 7/8 RESUELTO (2026-05-31):** en la **CENTRAL**, el link DOWN→CENTRAL se movió a `Serial1` (0/1), así que los pines 7/8 quedan para el motor 2 (U17). ⚠️ Ojo: el "7/8" del **TOP** es otra cosa — ahí `Serial2` (7/8) = COMM; son placas distintas, no colisionan.
+- **🔧 FIX UART TOP (2026-06-02):** el Teensy 4.0 del TOP no expone `Serial7` (28/29 = back-pads). Mapeo corregido: **COMM → `Serial2` (7/8)**, **CENTRAL → `Serial4` (16/17)**. **No quedan conflictos de UART abiertos.**
 
 ---
 

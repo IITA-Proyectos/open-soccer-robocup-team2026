@@ -8,10 +8,10 @@
 //   • 2 BNO055 IMU (I2C Wire + Wire1 remap 24/25)
 //   • 4 ToF + 1 HC-SR04 (I2C dual + GPIO)
 //   • Odometría OTOS desde ABAJO (Serial1)
-//   • Comm árbitros + partner ESP-NOW (Serial4 → placa COMM)
+//   • Comm árbitros + partner ESP-NOW (Serial2 7/8 → placa COMM)
 //
 // Outputs:
-//   • WORLD_SNAPSHOT a CENTRAL (Serial7) a 100 Hz.
+//   • WORLD_SNAPSHOT a CENTRAL (Serial4 16/17) a 100 Hz.
 //
 // Build:
 //   pio run -e top
@@ -124,8 +124,8 @@ void setup() {
     iitasoccer::localization_runtime_init();
     cameras_init();      // Serial3 + Serial5 ← OpenMV front + back
     comm_down_init();    // Serial1 ← odometría desde ABAJO
-    comm_arbiter_init(); // Serial4 ↔ placa COMM
-    comm_central_init(); // Serial7 → snapshot a CENTRAL
+    comm_arbiter_init(); // Serial2 (7/8) ↔ placa COMM
+    comm_central_init(); // Serial4 (16/17) → snapshot a CENTRAL
 
     digitalWrite(PIN_LED_STATUS, HIGH);
     Serial.println("[TOP] cerebro sensorial listo, enviando snapshots a CENTRAL");
@@ -206,7 +206,7 @@ void loop() {
         Serial.print(comm_down_is_pose_fresh() ? "Y" : "N");
         Serial.print("/");
         Serial.print(comm_down_is_vel_fresh() ? "Y" : "N");
-        // COMM (arbitros, Serial4): ref = ultimo comando (0=STOP 1=START 2=HALFTIME
+        // COMM (arbitros, Serial2 7/8): ref = ultimo comando (0=STOP 1=START 2=HALFTIME
         // 3=RESET 255=ninguno), match = habilitado a moverse, age = ms desde el ultimo
         // comando, rx = frames recibidos del COMM (sube si el enlace esta vivo).
         Serial.print(" arb[ref=");

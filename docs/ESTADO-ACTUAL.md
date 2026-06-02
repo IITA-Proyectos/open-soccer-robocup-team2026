@@ -105,7 +105,7 @@ nativo, pero ya no es el único camino. Ver
 **P0 hardware (asignar HOY a humanos, no a Claude):**
 - TASK-001 (Enzo): fix 10 nets DOWN PCB
 - TASK-002 (Enzo): DRC+ERC ambas placas
-- TASK-006 (Virginia/Elías): **flash firmware COMM ESP32-C6** (procedure del 17-may, NO el del 15-may que tiene banner)
+- ~~TASK-006 (Virginia/Elías): **flash firmware COMM ESP32-C6**~~ → **DONE 2026-06-02** (COMM flasheada, confirmado por Gustavo). Pendiente del árbitro pasa a TASK-204 (pines OUT1/OUT2 → Teensy).
 - TASK-011 (Enzo): confirmar PIN_KICKER_SOL en Zircon
 - TASK-013 (Enzo): recuperar BOM placa TOP
 - TASK-025 (todos): excepción Avast en cada máquina → destraba PlatformIO
@@ -120,7 +120,11 @@ nativo, pero ya no es el único camino. Ver
 
 ## Bloqueantes Incheon (los 2 que importan)
 
-1. **COMM no flasheada** → robot no homologa (no recibe START/STOP árbitro). TASK-006.
+1. **Árbitro no llega al Teensy del TOP** → ~~COMM no flasheada~~ **COMM YA
+   FLASHEADA (TASK-006 cerrada 2026-06-02)**, pero el START/STOP todavía no
+   llega al firmware: la COMM lo entrega como NIVEL en OUT_1/OUT_2 y el TOP lo
+   escucha por UART. Falta verificar pines (TASK-204) + adaptar `comm_arbiter.cpp`
+   a leer niveles. Ver journal `2026-06-02-arbitro-gap-y-ultrasonido-top.md`.
 2. **Cámaras sin recalibrar para iluminación Incheon** → no ve la pelota. TASK-022.
 
 ### Resuelto 2026-05-24

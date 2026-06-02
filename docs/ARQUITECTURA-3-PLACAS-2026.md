@@ -136,17 +136,17 @@ El Teensy 4.1 (Cortex-M7 a 600 MHz) tiene mucha capacidad libre para estrategia 
 
 ### Inputs
 
-- 2 OpenMV cámaras (UART Serial3 frontal + Serial5 trasera — la trasera quedó soldada en Serial5; el link a CENTRAL se movió a Serial7).
+- 2 OpenMV cámaras (UART Serial3 frontal + Serial5 trasera — la trasera quedó soldada en Serial5; el link a CENTRAL va por Serial4, pines 16/17).
 - 2 BNO055 (ambos en `Wire`: 0x28 + 0x29).
 - 4 ToF VL53L7CX (todos en `Wire`, LP por bodge → 0x2A..0x2D).
 - 1 HC-SR04 ultrasonido (GPIO TRIG/ECHO).
-- Placa COMM (UART Serial4) — comandos árbitros + datos partner.
+- Placa COMM (UART Serial2, pines 7/8) — comandos árbitros + datos partner. (fix 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde; COMM=Serial2 7/8, CENTRAL=Serial4 16/17)
 - ABAJO (UART) — odometría OTOS para fusión.
 
 ### Outputs
 
-- **CENTRAL (UART Serial1)**: `WORLD_SNAPSHOT` 100 Hz con todo lo percibido.
-- **Placa COMM (UART Serial4)**: status del robot + datos a enviar al partner.
+- **CENTRAL (UART Serial4, pines 16/17)**: `WORLD_SNAPSHOT` 100 Hz con todo lo percibido. (fix 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde; COMM=Serial2 7/8, CENTRAL=Serial4 16/17)
+- **Placa COMM (UART Serial2, pines 7/8)**: status del robot + datos a enviar al partner.
 - **ABAJO (UART)**: comandos administrativos (reset, calibración).
 
 ### Carga estimada
@@ -266,14 +266,16 @@ Todos los mensajes usan el frame estándar definido en `src/shared/proto.h` con 
 
 Los otros 5 UARTs del Teensy 4.0 (Serial2, 3, 4, 6, 7) no están cableados en la placa DOWN. Suficiente para los 2 streams necesarios.
 
-**Placa ARRIBA (Teensy 4.0)** — UARTs cableados según PCB 04-12 (corregido 2026-05-29):
+**Placa ARRIBA (Teensy 4.0)** — UARTs cableados según PCB 04-12 (corregido 2026-06-02):
 - **Serial1** (pines 0/1) — conector U16 "UART_COMM_IN" → recibe odometría desde ABAJO.
+- **Serial2** (RX pin 7 / TX pin 8) — placa COMM (árbitros + partner ESP-NOW), baud 115200.
 - **Serial3** (pines 15/14) — conector U8 "UART-CAMERA1" → cámara 1.
-- **Serial4** (pines 16/17) — conector U15 "UART_COMM_OUT" → placa COMM (árbitros + ESP-NOW).
+- **Serial4** (RX pin 16 / TX pin 17) — → **CENTRAL** (`WORLD_SNAPSHOT`, TX4=pin 17), baud 230400. Cablear TOP pin 17 → CENTRAL pin 28 (RX7) + GND común.
 - **Serial5** (pines 20/21) — cámara 2 (**trasera**), soldada acá (RX pin 21). ✅ confirmado en banco 2026-05-31 (`diag_top_cameras`, FORMATO OK).
-- **Serial7** (pines 28/29) — → **CENTRAL** (`WORLD_SNAPSHOT`, TX7=pin 29). Swap 2026-05-31 (TASK-204): el link se movió acá porque la trasera quedó en Serial5.
 
-El **HC-SR04** se cableó en **TRIG=pin 4 / ECHO=pin 3** (banco 2026-05-31). El pin 7 queda libre (Serial2 RX2, sin uso) — el viejo "conflicto pin 7" ya no aplica.
+> **fix 2026-06-02 (verificado en banco):** el Teensy 4.0 **no expone Serial7 (28/29) en el borde** — son pads SMD traseros, no cableables con header. Por eso el link a CENTRAL pasó a **Serial4 (16/17)** y el módulo COMM, que estaba en Serial4, pasó a **Serial2 (7/8)**. El lado CENTRAL (Teensy 4.1) sí tiene 28/29 en el borde → sigue recibiendo en su Serial7 (RX7 = pin 28); no se cambia.
+
+El **HC-SR04** se cableó en **TRIG=pin 4 / ECHO=pin 3** (banco 2026-05-31).
 
 **Placa CENTRAL (Teensy 4.1, Zircon Rev v15)** — capacidad para 8 UARTs hardware:
 - **Serial7** (28/29) → recibe del ARRIBA (`WORLD_SNAPSHOT`).
@@ -399,11 +401,11 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 ```
    OpenMV cam1 ──Serial3 19200──┐
    OpenMV cam2 ──Serial5 19200──┤
-   Placa COMM  ──Serial4 115200─┤        ┌── Serial7 230400 ──► CENTRAL
-   (árbitros)                   ▼        │   WORLD_SNAPSHOT 100 Hz (24 B)
+   Placa COMM  ──Serial2 115200─┤        ┌── Serial4 230400 ──► CENTRAL
+   (árbitros, 7/8)              ▼        │   WORLD_SNAPSHOT 100 Hz (24 B)
                           ┌───────────────┐
-       DOWN ─Serial1─────►│  PLACA ARRIBA │── Serial7 ✅ ──► CENTRAL
-       odometría OTOS     │  (Teensy 4.0) │   (TX7=pin 29, 230400)
+       DOWN ─Serial1─────►│  PLACA ARRIBA │── Serial4 ✅ ──► CENTRAL
+       odometría OTOS     │  (Teensy 4.0) │   (TX4=pin 17 → CEN pin 28, 230400)
        100 Hz             └───────────────┘
                           ┌───────────────┐
                           │  PLACA CENTRAL│── PWM directo ──► 3 motores omni
@@ -425,12 +427,12 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 
 | Enlace | Pines (config) | Baud | Mensaje | Struct | Freq | Confirmado |
 |--------|----------------|------|---------|--------|------|------------|
-| ARRIBA → CENTRAL | TOP **Serial7** RX28/TX29 → CEN **Serial7** RX28/TX29 | 230400 | `WORLD_SNAPSHOT` | `WorldSnapshot` (24 B) | 100 Hz | ✅ 2026-05-31: CENTRAL en Serial7 (28/29) — cablear TOP pin 29 → CEN pin 28 |
+| ARRIBA → CENTRAL | TOP **Serial4** RX16/TX17 → CEN **Serial7** RX28/TX29 | 230400 | `WORLD_SNAPSHOT` | `WorldSnapshot` (24 B) | 100 Hz | ✅ 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde → TOP usa Serial4 (16/17); cablear TOP pin 17 → CEN pin 28 (RX7). CENTRAL sigue en Serial7 (Teensy 4.1). |
 | ABAJO → CENTRAL | DOWN Serial1 → CEN **Serial1** (0/1) | 230400 | `LINE_URGENT` | `LineStatus` | ~100 Hz | ✅ reasignado 2026-05-31: CEN en Serial1 (0/1) → pines 7/8 libres para Motor U17 (conflicto RESUELTO) |
 | ABAJO → ARRIBA | DOWN Serial5 RX21/TX20 → TOP Serial1 | 230400 | odometría OTOS | pose/vel | 100 Hz | parcial (TASK-008 rewiring) |
 | cam1 → ARRIBA | TOP Serial3 RX15/TX14 | 19200 | blobs pelota/arco | proto viejo 9 B | ~30 Hz | OK |
 | cam2 → ARRIBA | TOP **Serial5** RX21/TX20 | 19200 | blobs pelota/arco | proto viejo 9 B | ~30 Hz | ✅ banco 2026-05-31 (FORMATO OK) |
-| COMM ↔ ARRIBA | TOP Serial4 RX16/TX17 | 115200 | start/stop/partner | RCJ proto | evento | ⚠️ firmware COMM pendiente (TASK-006) |
+| COMM ↔ ARRIBA | TOP **Serial2** RX7/TX8 | 115200 | start/stop/partner | RCJ proto | evento | ⚠️ firmware COMM pendiente (TASK-006). (fix 2026-06-02: COMM se movió de Serial4 a Serial2 7/8 porque Serial4 16/17 pasó al link a CENTRAL) |
 | CENTRAL → motores | GPIO directo (no UART) | — | PWM + INA/INB | `MotorCommand` interno | 100 Hz | OK |
 
 ### Gaps de flujo de datos sin cerrar (NO asumir resueltos)
@@ -440,6 +442,10 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
    **TOP→CENTRAL se movió a Serial7 (TX29/RX28)**. Firmware corregido
    (`comm_central.cpp` → Serial7; `cameras_runtime.cpp` → trasera en Serial5).
    Falta validar el stream a CENTRAL con el cable del TOP en pin 29.
+   > **fix 2026-06-02 (verificado en banco):** el Teensy 4.0 del TOP **no expone
+   > Serial7 28/29 en el borde** (son pads SMD traseros). El link a CENTRAL del lado
+   > TOP quedó en **Serial4 (16/17)**: cablear TOP pin 17 (TX4) → CENTRAL pin 28 (RX7).
+   > El lado CENTRAL (Teensy 4.1) sigue en Serial7. NO cablear pin 29 del TOP.
 2. **Baud DOWN↔CENTRAL**: el bus de emergencia (lo más crítico para no
    salirse de cancha) no tiene constante de baud en `config_central.h`.
    Verificar que ambos extremos coincidan antes de integrar.

@@ -12,6 +12,12 @@ area: electronica
 tipo: referencia
 ---
 
+> **⚠️ NOTA 2026-06-02 (vale sobre el cuerpo de abajo):** este doc es una **extracción forense
+> del schematic (draft 2026-05-10)** con varios "a verificar". El **mapeo UART vigente** del TOP
+> (Teensy 4.0, confirmado en banco) está en **`MAPA-CONEXIONES-3-PLACAS.md`**: **COMM = `Serial2`
+> (7/8)**, **CENTRAL = `Serial4` (16/17)**. ⚠️ El Teensy 4.0 **NO expone `Serial7` (28/29)** en el
+> borde (son pads SMD traseros). Donde abajo diga "Serial4 → COMM", quedó **superado**.
+
 # Mapa de pines — Placas TOP y DOWN del robot 2026
 
 > **🚨 DOCUMENTO SUPERADO (2026-05-19, ampliado 2026-05-24).** Este doc fue un

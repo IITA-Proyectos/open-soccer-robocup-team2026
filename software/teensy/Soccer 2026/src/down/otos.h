@@ -15,8 +15,10 @@
 // Fusión central (pose del robot en el centro):
 //   x_robot      = (x_otos_izq + x_otos_der) / 2
 //   y_robot      = (y_otos_izq + y_otos_der) / 2
-//   heading      = atan2(otos_der.y - otos_izq.y, OTOS_SEPARATION_MM)
-//                  (porque ambos OTOS se mueven distinto si el robot rota)
+//   heading      = promedio VECTORIAL de los headings absolutos de las 2 IMUs
+//                  (atan2(senL+senR, cosL+cosR), ver otos_fusion.h — audit 2026-06-03 #7).
+//                  (El cálculo viejo atan2(Δy, separación) saturaba en ±90° y sólo
+//                   valía para giros chicos; descartaba el heading absoluto del OTOS.)
 //
 // Modo single-OTOS (degradación, p.ej. placa 04-12 con solo SDA2/SCL2 ruteado):
 //   Se usa el OTOS disponible como única fuente de pose. No hay diferencial.
@@ -43,14 +45,22 @@ float otos_get_omega_rad_s();
 // Análisis diferencial:
 //   Retorna la magnitud del slip detectado (mm/s de diferencia entre los OTOS
 //   menos lo esperable por la rotación pura). 0 = sin slip.
+//   Implementación pura en otos_fusion.h (otos_slip_estimate): trabaja sobre
+//   VELOCIDADES y resta |ω|·separación. Sólo se computa en modo 2-OTOS.
+//   ⚠️ Todavía NO debe usarse para decisiones de control sin validar en HW que
+//   los OTOS reales se comportan así (audit 2026-06-03 #20 / TASK-004 separación).
 float otos_get_slip_estimate();
 
 // Reset de la pose acumulada a (0, 0, 0).
 void  otos_reset();
 
-// Diagnóstico:
-bool     otos_is_left_ready();   // OTOS izquierdo (Wire / I2C bus 1) responde
-bool     otos_is_right_ready();  // OTOS derecho (Wire2 / I2C bus 2) responde
+// Salud / diagnóstico:
+//   Los flags ready ahora reflejan la SALUD ACTUAL del OTOS (lecturas I²C OK),
+//   no sólo la detección de boot (audit 2026-06-03 #6/#15). Si un OTOS deja de
+//   responder N ticks seguidos, su flag cae (latch) y la confidence emitida baja.
+//   Re-armar un OTOS caído requiere otos_reset() (CENTRAL_RESET_OTOS) o reboot.
+bool     otos_is_left_ready();   // OTOS izquierdo (U5 → Wire / I2C bus 0) sano (lecturas OK)
+bool     otos_is_right_ready();  // OTOS derecho  (U6 → Wire1 / I2C bus 1) sano (lecturas OK)
 uint32_t otos_get_tick_count();
 
 }  // namespace iitasoccer

@@ -67,3 +67,22 @@ fases F0–F6, cada una reversible y con paridad contra UART antes de cortar nad
 
 - F0: sketch PoC CAN entre 2 Teensy con ruido de motores (no bloqueante).
 - Si se aprueba, abrir TASKs de migración F1–F5 en `team-tasks/`.
+
+## Addendum (mismo día) — extensión inter-robot del gateway
+
+A pedido de Gustavo, análisis de si los **2 robots** pueden compartir datos por
+el **mismo gateway** del bus CAN. Documentado en el doc del bus **§7-bis**.
+Conclusiones:
+
+- **CAN no cruza entre robots** (cableado) ⇒ inter-robot es wireless sí o sí; el
+  gateway es un **puente selectivo CAN↔aire**, no un tunel transparente. Se
+  publica un `TeamShare` curado (pelota, pose, rol, intención) y se **inyecta en
+  el CAN del otro robot** como `0x230` ⇒ el compañero aparece como un CAN frame.
+- Los **3 roles** del gateway (inter-robot / telemetría / flasheo) son
+  **temporalmente exclusivos por reglamento** (solo inter-robot es de partido) ⇒
+  **un mismo ESP32-S3 puede hacer los tres** con un **gate de modo** manejado por
+  el `match_running` del árbitro (telemetría/flasheo hard-OFF en partido).
+- **NO** usar la placa COMM (C6) para esto: es el módulo árbitro obligatorio
+  (= Opción C ya rechazada). El gateway es un **ESP32-S3 separado**.
+- **No cambia** la decisión `2026-05-17` (Opción A: inter-robot diferido); §7-bis
+  es la arquitectura concreta de la **Opción B** para post-Incheon.

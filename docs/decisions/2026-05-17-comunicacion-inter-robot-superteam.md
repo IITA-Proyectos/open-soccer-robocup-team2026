@@ -94,7 +94,11 @@ mesa.
   en SuperTeam (aceptable: el reglamento no las exige y las difiere al futuro).
 - **Capitalizable a 2027:** si el comité libera la extensión oficial
   (UART/I²C del módulo) o si se decide invertir, **Opción B** queda como camino
-  recomendado y este registro deja la base técnica + reglamentaria lista.
+  recomendado y este registro deja la base técnica + reglamentaria lista. La
+  arquitectura concreta de la Opción B (gateway ESP32-S3 colgado del bus CAN,
+  con gate de modo por el `match_running` del árbitro) está detallada en
+  `docs/decisions/2026-06-03-bus-can-general-y-flasheo-por-can.md` §7-bis (es
+  forward-looking; NO cambia esta decisión: inter-robot sigue diferido).
 - `TASK-006` "próximos pasos" (evaluar ESP-NOW post-mundial) queda subordinado a
   esta decisión: no se trabaja para Incheon.
 - El playbook `skills/communication-module-integration.md` describe un

@@ -356,6 +356,95 @@ respaldo y bajo el gate de mantenimiento).
 
 ---
 
+## 7-bis. Extensión: el gateway como nodo inter-robot (SuperTeam, post-Incheon)
+
+> Analiza si los **dos robots** del SuperTeam pueden compartir datos usando el
+> **mismo gateway** del bus CAN. **NO cambia** la decisión vigente
+> [`2026-05-17-comunicacion-inter-robot-superteam.md`](2026-05-17-comunicacion-inter-robot-superteam.md)
+> (Opción A: NO implementar inter-robot para Incheon). Es la **arquitectura
+> concreta de la Opción B**, para cuando el equipo decida invertir o el comité
+> libere la extensión oficial.
+
+### 7-bis.1 Principio: CAN no cruza entre robots
+CAN es cableado y **se corta en el borde del robot**. Dos robots que se mueven no
+pueden compartir un bus físico ⇒ **el inter-robot es inherentemente wireless**. El
+gateway **no** extiende el bus: es un **puente selectivo CAN↔aire**.
+
+Patrón correcto (**NO** tunelizar todo el bus — el bus local hace miles de
+frames/s y B no debe ver los comandos de motor de A):
+- GW-A **lee** del CAN local un set chico y curado (`TeamShare`: pelota, mi pose,
+  rol, intención) y lo manda por **ESP-NOW** a GW-B.
+- GW-B **inyecta** eso como un **mensaje CAN local** nuevo (`TEAMMATE_STATE`,
+  ID `0x230`). Los Teensy consumen al compañero **como un CAN frame más**.
+
+```
+ROBOT A bus CAN ──TeamShare──► GW-A (ESP-NOW 2.4GHz ≤100mW) ≈≈► GW-B ──inyecta 0x230──► bus CAN ROBOT B
+```
+⇒ *Localmente* "todo es un mensaje CAN"; el **salto entre robots** es best-effort.
+**Nunca control hard cross-robot**: se comparte **percepción e intención**, no
+comandos de motor (justo lo que el reglamento espera).
+
+### 7-bis.2 El reglamento separa partido y banco (los 3 roles son exclusivos)
+| Rol del gateway | ¿Partido? | ¿Banco? | Canal |
+|---|---|---|---|
+| **Inter-robot** (`TeamShare`) | ✅ sí (robot↔robot) | ✅ | ESP-NOW 2.4 GHz **≤100 mW EIRP** |
+| **Telemetría a PC** | ❌ no | ✅ | ESP-NOW / WiFi |
+| **Flasheo** (§7) | ❌ no | ✅ | WiFi → CAN |
+
+Como **solo el inter-robot es de partido** y telemetría/flasheo son **solo de
+banco**, los tres roles son **temporalmente exclusivos** ⇒ sin contención
+real-time. Un **mismo gateway** puede hacer los tres, con un **gate de modo**:
+- `match_running = true` (**PARTIDO**) ⇒ **solo** TX inter-robot ≤100 mW;
+  telemetría y flasheo **hard-OFF** (compile-gate + runtime assert + LED). El
+  `match_running` ya viaja en el `WorldSnapshot` (origen: árbitro→COMM→GPIO TOP)
+  ⇒ el gateway lo lee del bus, sin cableado nuevo.
+- `match_running = false` (**BANCO**) ⇒ todo habilitado.
+- Refuerzo físico: el gateway es **plug-in** ⇒ para partidos oficiales se puede
+  **desenchufar** (el robot es autónomo sin él).
+
+### 7-bis.3 NO usar la placa COMM (ESP32-C6) para esto
+La COMM es el **módulo oficial OBLIGATORIO** del árbitro (BLE → OUT_1/OUT_2). No
+expone CAN y sobrecargarla = la **Opción C ya rechazada** en
+`2026-05-17-...superteam.md` (riesgo de romper la función obligatoria +
+homologación). **La COMM queda dedicada al árbitro.** El gateway es un
+**ESP32-S3 separado** colgado del bus CAN.
+
+### 7-bis.4 Compartir un gateway vs radio dedicada
+| | Gateway compartido (3 roles) | Radio inter-robot dedicada |
+|---|---|---|
+| Peso / partes | ✅ menos (1 board, 1 antena) | ❌ más (3 radios con la COMM) |
+| **Compliance** | ⚠️ depende del gate de modo (un bug = violación) | ✅ blindado por separación física |
+| Robustez | ⚠️ punto único (pero inter-robot es best-effort) | ✅ aislado |
+
+### 7-bis.5 Mensaje `TeamShare` / `TEAMMATE_STATE` (boceto)
+Payload ESP-NOW curado (≤ ~32 B), inyectado en el CAN del receptor como `0x230`:
+
+| Campo | Bytes | Nota |
+|---|---|---|
+| `sender_id` | 1 | qué robot |
+| `seq` | 1 | salud del enlace |
+| `ball_seen` | 1 | flag |
+| `ball_x, ball_y` | 4 | pelota en marco de cancha (cm) |
+| `self_x, self_y` | 4 | mi pose (cm) |
+| `self_heading` | 2 | grados |
+| `role` | 1 | arquero / defensor / delantero |
+| `intent` | 1 | ej. "voy a la pelota" / "cubro" |
+
+A 10–30 Hz ⇒ **<1 KB/s** por aire. Best-effort (STREAM): si se pierde, el
+siguiente reemplaza. Inyectado como CAN `0x230`, la FSM táctica lo trata como
+otro stream (misma taxonomía STREAM/EVENTO/COMANDO del diseño vivo).
+
+### 7-bis.6 Recomendación
+1. **COMM intocable** (árbitro).
+2. **Construir hoy el gateway bench-only** (telemetría + flasheo), radio-OFF /
+   desenchufado en partido. **Ya compatible** con la decisión vigente (Opción A).
+3. **Inter-robot: diferido.** Cuando se active (Opción B): diseñar el gateway
+   **capaz** de inter-robot pero como **modo aislado y hard-gated** que arranca
+   apagado; si la homologación preocupa, ir a **radio dedicada**. Coordinación
+   **best-effort by design** (percepción + intención, no control).
+
+---
+
 ## 8. Plan de implementación por fases (aditivo, sin romper lo vivo)
 
 > CAN entra **en paralelo** al UART actual. En cada fase el robot queda

@@ -364,7 +364,7 @@ MotorCommand attacker_tick() {
                 // sigue avanzando hacia la pelota (abajo) para empujarla por
                 // inercia. Conservamos el chequeo para documentar el punto de
                 // empuje alineado por si en el futuro se cuelga una conducta.
-                (void)is_aligned_to_shoot(bx, by, goal_angle,
+                (void)is_aligned_to_push(bx, by, goal_angle,
                                           ATK_KICK_DIST_MM, ATK_KICK_ANGLE_DEG);
             }
 

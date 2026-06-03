@@ -19,7 +19,6 @@ TofHoldParams tof_hold_default_params() {
     p.kp = 2.0f;              // mm/s por mm de error.
     p.max_speed_mm_s = 400.0f;
     p.deadband_mm = 15.0f;
-    p.stop_if_invalid = true; // backup seguro: sin lectura, no se mueve a ciegas.
     return p;
 }
 
@@ -30,13 +29,8 @@ TofHoldCmd tof_hold_update(float cur_dist_mm, float target_dist_mm,
     c.arrived = false;
     c.valid = false;
 
-    // Sin lectura ToF confiable: frenar y marcar inválido (fail-safe).
+    // Sin lectura ToF confiable: c ya está en {0, false, false} → fail-safe.
     if (!dist_valid) {
-        if (p.stop_if_invalid) {
-            c.v_mm_s = 0.0f;
-            c.arrived = false;
-            c.valid = false;
-        }
         return c;
     }
 

@@ -50,7 +50,7 @@ void  otos_reset();
 
 // Diagnóstico:
 bool     otos_is_left_ready();   // OTOS izquierdo (Wire / I2C bus 1) responde
-bool     otos_is_right_ready();  // OTOS derecho (Wire2 / I2C bus 2) responde
+bool     otos_is_right_ready();  // OTOS derecho (Wire1 / I2C bus 2) responde
 uint32_t otos_get_tick_count();
 
 }  // namespace iitasoccer

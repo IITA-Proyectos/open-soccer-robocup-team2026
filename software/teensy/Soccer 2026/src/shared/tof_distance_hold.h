@@ -14,7 +14,7 @@
 //       • cur < target (estoy cerca)  -> error < 0 -> v < 0 (retrocedo, me alejo).
 //
 // ── Ley de control ──────────────────────────────────────────────────────────
-//   • !dist_valid && stop_if_invalid -> v=0, arrived=false, valid=false (seguro:
+//   • !dist_valid                    -> v=0, arrived=false, valid=false (fail-safe:
 //     sin lectura confiable, el backup NO se mueve a ciegas).
 //   • |error| <= deadband_mm         -> arrived=true,  v=0,  valid=true.
 //   • si no                           -> v = clamp(-max, max, kp*error),
@@ -30,7 +30,6 @@ struct TofHoldParams {
     float kp;               // mm/s de comando por mm de error de distancia.
     float max_speed_mm_s;   // saturación de la velocidad (ambos signos).
     float deadband_mm;      // |error| <= deadband -> se considera "llegó".
-    bool  stop_if_invalid;  // sin lectura ToF: true -> frenar (backup seguro).
 };
 
 // Comando de salida.
@@ -40,7 +39,7 @@ struct TofHoldCmd {
     bool  valid;    // el comando es confiable (hubo lectura usable).
 };
 
-// Defaults sanos: kp=2.0, max=400 mm/s, deadband=15 mm, stop_if_invalid=true.
+// Defaults sanos: kp=2.0, max=400 mm/s, deadband=15 mm. Sin lectura ToF → frena (fail-safe).
 TofHoldParams tof_hold_default_params();
 
 // Computa el comando de mantenimiento de distancia (función PURA, sin estado).

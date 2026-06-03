@@ -13,7 +13,7 @@
 //       • cur < target (estoy cerca)  -> error < 0 -> v < 0 (retrocedo).
 //
 //   Lógica:
-//     • !dist_valid && stop_if_invalid -> v=0, arrived=false, valid=false (seguro).
+//     • !dist_valid -> v=0, arrived=false, valid=false (fail-safe).
 //     • |error| <= deadband           -> arrived=true,  v=0,  valid=true.
 //     • si no                          -> v = clamp(-max, max, kp*error),
 //                                          arrived=false, valid=true.
@@ -32,7 +32,6 @@ static TofHoldParams make_params() {
     p.kp = 2.0f;
     p.max_speed_mm_s = 400.0f;
     p.deadband_mm = 15.0f;
-    p.stop_if_invalid = true;
     return p;
 }
 
@@ -128,7 +127,6 @@ void test_default_params_are_sane(void) {
     TEST_ASSERT_TRUE(p.kp > 0.0f);
     TEST_ASSERT_TRUE(p.max_speed_mm_s > 0.0f);
     TEST_ASSERT_TRUE(p.deadband_mm > 0.0f);
-    TEST_ASSERT_TRUE(p.stop_if_invalid);   // backup seguro por defecto
 }
 
 // Sanidad extra: con defaults, una lectura clara lejos de la pared manda avanzar.

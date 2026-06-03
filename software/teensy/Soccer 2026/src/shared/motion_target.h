@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 namespace iitasoccer {
-enum MotionIntent { MI_STOP=0, MI_ESCAPE=1, MI_GOTO_BALL=2, MI_KICK=3, MI_HOLD=4 };
+enum MotionIntent { MI_STOP=0, MI_ESCAPE=1, MI_GOTO_BALL=2, MI_HOLD=3 };
 struct MotionIn {
     MotionIntent intent;
     int16_t      escape_angle_centideg;
@@ -13,7 +13,6 @@ struct MotionCmd {
     int16_t vx_mm_s;
     int16_t vy_mm_s;
     int16_t omega_centideg_s;   // placeholder: 0 (rotacion la maneja la capa superior / Plan 2)
-    uint8_t kicker;
 };
 MotionCmd mt_compute(const MotionIn& in);
 }  // namespace iitasoccer

@@ -60,8 +60,8 @@ OtosMoveCmd otos_move_update(const OtosMoveTarget& t, const OtosMoveParams& p,
     const float remaining = sqrtf(ex_world * ex_world + ey_world * ey_world);
     c.remaining_mm = remaining;
 
-    // Llegada (también cubre target inactivo + tol no nula sólo si remaining<tol;
-    // si está inactivo el caller no debería llamar, pero degradamos a "quieto").
+    // Llegada: remaining < tol → quieto/arrived. NOTA: no se chequea t.active acá;
+    // el contrato es que el caller sólo llama con un target activo (set_target).
     if (remaining < p.arrive_tol_mm) {
         c.arrived = true;
         return c;

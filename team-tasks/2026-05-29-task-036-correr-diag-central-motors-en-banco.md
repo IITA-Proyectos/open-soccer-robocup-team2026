@@ -12,6 +12,11 @@ tags: [hardware, central-board, motors, pinout, conflicto-pines-7-8, diag]
 related: [team-tasks/2026-05-15-task-011-confirmar-pin-kicker-solenoide-zircon.md, hardware/electronics/central-board-pack/01-pinout-y-hardware.md]
 ---
 
+> **🔧 SUPERADA EN PARTE (2026-05-31).** El **"conflicto pines 7/8"** ya está **RESUELTO** por
+> reasignación de UART en la CENTRAL (DOWN→**Serial1** pin0, TOP→**Serial7** pin28; los pines 7/8
+> quedan libres para el motor 2). Esta tarea queda **SOLO** para mapear motor firmware (1/2/3) →
+> rueda física. Ignorar el framing de "aislar/migrar Serial2↔Serial7" y los Casos A/B de cierre por 7/8.
+
 # TASK-036 — Correr `diag_central_motors` en banco
 
 ## Resumen

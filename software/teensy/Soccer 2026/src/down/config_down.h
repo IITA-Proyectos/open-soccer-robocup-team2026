@@ -72,8 +72,8 @@ constexpr uint8_t MUX_CH_FOR_SENSOR[8] = { 3, 0, 1, 2, 5, 7, 6, 4 };
 // ============================================================
 // SparkFun OTOS (I2C dual)
 // ============================================================
-// OTOS U5 → I2C bus 1 (Wire1 en Teensy 4.0)
-// OTOS U6 → I2C bus 2 (Wire2 en Teensy 4.0)
+// OTOS U5 → I2C bus 1 (Wire  en Teensy 4.0: SDA=18, SCL=19)
+// OTOS U6 → I2C bus 2 (Wire1 en Teensy 4.0: SDA=17, SCL=16)
 // Ambos comparten dirección I2C por default (no se pueden poner en el mismo bus).
 constexpr uint8_t OTOS_I2C_ADDR = 0x17;  // SparkFun default
 

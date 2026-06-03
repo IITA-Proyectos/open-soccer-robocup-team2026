@@ -7,6 +7,15 @@
 // las 3 placas conectadas, que la cadena de comunicacion funciona end-to-end y que los
 // campos llegan bien decodificados.
 //
+// VEREDICTO DE COMPLETITUD: ademas del volcado campo-por-campo, el panel cierra con
+// un bloque que responde de frente "¿la CENTRAL recibe TODA la info de TOP y DOWN?":
+//   - [OK]/[STALE]/[FALTA] + tasa Hz por cada mensaje esperado
+//     (DOWN: LINEA + OTOS pose + OTOS vel ; TOP: SNAPSHOT),
+//   - salud de cada enlace (CRC + huecos de SEQ),
+//   - una linea final  >>> CENTRAL recibe TODO de DOWN+TOP: SI/NO (falta: ...) <<<.
+//   El LED de la CENTRAL queda FIJO solo si TODO llega completo y fresco.
+//   Completo = los 4 mensajes frescos (<500 ms) + ambos enlaces sin CRC err / sin seqGap.
+//
 // Enlaces (Teensy 4.1 de la CENTRAL):
 //   • DOWN -> CENTRAL : Serial1 (RX1 = pin 0).  DOWN difunde por su Serial1 (TX1 = pin 1).
 //       Mensajes: LINE_URGENT 0x10 (LineStatusV2 16B) + DOWN_OTOS_POSE 0x11 (Pose2D 7B)
@@ -63,6 +72,15 @@ Velocity2D   g_vel{};   uint32_t g_vel_n  = 0;  uint32_t g_vel_ms  = 0;  bool g_
 WorldSnapshot g_snap{}; uint32_t g_snap_n = 0;  uint32_t g_snap_ms = 0;  bool g_have_snap = false;
 uint32_t g_down_other = 0;   // frames validos de DOWN que no son 0x10/0x11/0x12
 uint32_t g_top_other  = 0;   // frames validos de TOP que no son 0x60
+
+// Tasa (Hz) por mensaje — recalculada en cada panel sobre la ventana transcurrida.
+// Sirve para distinguir "llego UN frame suelto" de "el stream fluye continuo".
+uint32_t g_lsv2_prev = 0, g_pose_prev = 0, g_vel_prev = 0, g_snap_prev = 0;
+uint32_t g_last_panel_ms = 0;
+float    g_lsv2_hz = 0, g_pose_hz = 0, g_vel_hz = 0, g_snap_hz = 0;
+
+// Un mensaje se considera FRESCO (llegando) si su ultimo frame tiene < 500 ms.
+constexpr uint32_t FRESH_MS = 500;
 
 elapsedMillis g_since_panel;
 
@@ -212,11 +230,95 @@ void print_top_section() {
     if (g_top_other) { Serial.print(F(" (otros frames TOP no-0x60: ")); Serial.print(g_top_other); Serial.println(')'); }
 }
 
+// ---- Veredicto de completitud ----------------------------------------------
+// Responde de frente: "¿la CENTRAL recibe TODA la info de TOP y DOWN?"
+
+bool fresh(bool have, uint32_t last_ms) { return have && (millis() - last_ms) < FRESH_MS; }
+
+// Un enlace esta "limpio" si decodifico frames, sin errores de CRC y sin huecos
+// de SEQ (= sin frames perdidos / corruptos).
+bool link_clean(const LinkStats& lk) {
+    return lk.dec.frames_decoded() > 0 && lk.dec.crc_errors() == 0 && lk.seq_gaps == 0;
+}
+
+// Una linea del veredicto: [OK]/[STALE]/[FALTA] + label + contador + Hz + edad.
+// label debe venir pre-paddeado a 9 chars para que las columnas queden alineadas.
+void print_stream(const char* label, uint32_t n, bool have, uint32_t last_ms, float hz) {
+    if      (fresh(have, last_ms)) Serial.print(F("   [OK]    "));
+    else if (have)                 Serial.print(F("   [STALE] "));
+    else                           Serial.print(F("   [FALTA] "));
+    Serial.print(label);
+    Serial.print(F("  #")); Serial.print(n);
+    Serial.print(F("  "));
+    if (have) { Serial.print(hz, 1); Serial.print(F(" Hz")); } else Serial.print(F("--    "));
+    Serial.print(F("  ")); print_age(have, last_ms);
+    Serial.println();
+}
+
+void print_verdict_section() {
+    const bool down_link_ok = link_clean(g_down);
+    const bool top_link_ok  = link_clean(g_top);
+
+    Serial.println(F("+--- VEREDICTO DE COMPLETITUD ----------------------------------+"));
+
+    Serial.print(F(" DOWN (Serial1):  enlace ")); Serial.print(down_link_ok ? F("[OK]") : F("[REVISAR]"));
+    Serial.print(F("  (crc=")); Serial.print(g_down.dec.crc_errors());
+    Serial.print(F(" seqGap=")); Serial.print(g_down.seq_gaps); Serial.println(F(")"));
+    print_stream("LINEA    ", g_lsv2_n, g_have_lsv2, g_lsv2_ms, g_lsv2_hz);
+    print_stream("OTOS pose", g_pose_n, g_have_pose, g_pose_ms, g_pose_hz);
+    print_stream("OTOS vel ", g_vel_n,  g_have_vel,  g_vel_ms,  g_vel_hz);
+
+    Serial.print(F(" TOP  (Serial7):  enlace ")); Serial.print(top_link_ok ? F("[OK]") : F("[REVISAR]"));
+    Serial.print(F("  (crc=")); Serial.print(g_top.dec.crc_errors());
+    Serial.print(F(" seqGap=")); Serial.print(g_top.seq_gaps); Serial.println(F(")"));
+    print_stream("SNAPSHOT ", g_snap_n, g_have_snap, g_snap_ms, g_snap_hz);
+
+    const bool down_complete = fresh(g_have_lsv2, g_lsv2_ms) && fresh(g_have_pose, g_pose_ms)
+                             && fresh(g_have_vel, g_vel_ms) && down_link_ok;
+    const bool top_complete  = fresh(g_have_snap, g_snap_ms) && top_link_ok;
+    const bool all_complete  = down_complete && top_complete;
+
+    Serial.println(F(" ---------------------------------------------------------------"));
+    Serial.print(F(" >>> CENTRAL recibe TODO de DOWN+TOP:  "));
+    Serial.print(all_complete ? F("SI") : F("NO"));
+    if (!all_complete) {
+        Serial.print(F("   (falta:"));
+        if (!fresh(g_have_lsv2, g_lsv2_ms)) Serial.print(F(" LINEA"));
+        if (!fresh(g_have_pose, g_pose_ms)) Serial.print(F(" OTOS-pose"));
+        if (!fresh(g_have_vel,  g_vel_ms))  Serial.print(F(" OTOS-vel"));
+        if (!fresh(g_have_snap, g_snap_ms)) Serial.print(F(" SNAPSHOT"));
+        if (!down_link_ok)                  Serial.print(F(" DOWN-link"));
+        if (!top_link_ok)                   Serial.print(F(" TOP-link"));
+        Serial.print(F(" )"));
+    }
+    Serial.println(F(" <<<"));
+    // Pista: si LINEA llega pero OTOS-pose/vel no, casi siempre es DOWN que no esta
+    // difundiendo el OTOS (env sin broadcast, o OTOS sin alimentacion de bateria),
+    // NO un problema de la CENTRAL.
+    if (fresh(g_have_lsv2, g_lsv2_ms) && !(fresh(g_have_pose, g_pose_ms) && fresh(g_have_vel, g_vel_ms))) {
+        Serial.println(F("     (LINEA si / OTOS no -> revisar broadcast+bateria en DOWN, no la CENTRAL)"));
+    }
+    Serial.println(F("+---------------------------------------------------------------+"));
+}
+
 void print_panel() {
+    // Recalcular tasas (Hz) sobre la ventana desde el ultimo panel.
+    const uint32_t now = millis();
+    const uint32_t dt  = (g_last_panel_ms == 0) ? 0 : (now - g_last_panel_ms);
+    if (dt > 0) {
+        g_lsv2_hz = (g_lsv2_n - g_lsv2_prev) * 1000.0f / dt;
+        g_pose_hz = (g_pose_n - g_pose_prev) * 1000.0f / dt;
+        g_vel_hz  = (g_vel_n  - g_vel_prev ) * 1000.0f / dt;
+        g_snap_hz = (g_snap_n - g_snap_prev) * 1000.0f / dt;
+    }
+    g_lsv2_prev = g_lsv2_n; g_pose_prev = g_pose_n; g_vel_prev = g_vel_n; g_snap_prev = g_snap_n;
+    g_last_panel_ms = now;
+
     Serial.println();
     Serial.println(F("================ CENTRAL RX (DOWN + TOP) ================"));
     print_down_section();
     print_top_section();
+    print_verdict_section();
     Serial.println(F("========================================================"));
 }
 
@@ -246,11 +348,14 @@ void loop() {
     drain(DOWN_UART, g_down, on_down_frame);
     drain(TOP_UART,  g_top,  on_top_frame);
 
-    // LED fijo si AMBOS enlaces frescos (<500 ms); si no, parpadea.
-    const bool down_fresh = g_have_lsv2 && (millis() - g_lsv2_ms) < 500;
-    const bool top_fresh  = g_have_snap && (millis() - g_snap_ms) < 500;
-    if (down_fresh && top_fresh) digitalWrite(LED_BUILTIN, HIGH);
-    else                         digitalWrite(LED_BUILTIN, (millis() / 250) % 2);
+    // LED fijo SOLO si la CENTRAL recibe TODO completo: los 4 mensajes frescos
+    // (<500 ms) Y ambos enlaces limpios (sin CRC err / sin seqGap). Si falta
+    // cualquiera, parpadea. Asi el LED es un indicador de completitud de un vistazo.
+    const bool all_fresh = fresh(g_have_lsv2, g_lsv2_ms) && fresh(g_have_pose, g_pose_ms)
+                         && fresh(g_have_vel, g_vel_ms) && fresh(g_have_snap, g_snap_ms)
+                         && link_clean(g_down) && link_clean(g_top);
+    if (all_fresh) digitalWrite(LED_BUILTIN, HIGH);
+    else           digitalWrite(LED_BUILTIN, (millis() / 250) % 2);
 
     if (g_since_panel >= PANEL_INTERVAL_MS) {
         g_since_panel = 0;

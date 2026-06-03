@@ -100,6 +100,14 @@ constexpr uint16_t TOF_MOUNT_ANGLE_DEG[4] = { 0, 180, 270, 90 };
 // Umbral default para descarte de outliers en localización
 constexpr uint16_t LOCALIZATION_OUTLIER_THRESHOLD_MM = 300;
 
+// Radio del robot para F1a: distancia del plano de los sensores ToF al CENTRO
+// geométrico del robot, en mm. Se SUMA a la lectura cruda del ToF antes de
+// proyectar (los sensores están en el borde, no en el centro). Con 1 solo
+// sensor por eje esta corrección es crítica (no hay opuesto que la cancele).
+// ⚠️ PLACEHOLDER: medir en HW con cinta (plano-sensor → centro) y validar en
+// banco (TASK del equipo) antes de dar este valor por bueno. Típico ~90-100 mm.
+constexpr uint16_t TOF_OFFSET_MM = 95;
+
 // ============================================================
 // Loop timing del TOP
 // ============================================================

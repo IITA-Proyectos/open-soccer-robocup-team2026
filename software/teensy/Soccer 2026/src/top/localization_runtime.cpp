@@ -38,6 +38,9 @@ void localization_runtime_init() {
     g_config.field_width_mm       = FIELD_WIDTH_MM;
     g_config.field_height_mm      = FIELD_HEIGHT_MM;
     g_config.outlier_threshold_mm = LOCALIZATION_OUTLIER_THRESHOLD_MM;
+    // F1a: radio del robot (plano-sensor ToF -> centro). Valor PLACEHOLDER en
+    // pinout_common.h; medir en HW y validar en banco (TASK del equipo).
+    g_config.tof_offset_mm = TOF_OFFSET_MM;
     for (int i = 0; i < NUM_TOF; ++i) {
         g_config.tof_mount_angle_deg[i] = TOF_MOUNT_ANGLE_DEG[i];
     }

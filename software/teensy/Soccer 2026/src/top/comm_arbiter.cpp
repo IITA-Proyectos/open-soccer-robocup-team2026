@@ -24,17 +24,18 @@ bool g_match_running = false;
 
 // === Arbitro = NIVEL GPIO (no UART). CONFIRMADO EN BANCO 2026-06-02 (TASK-039). ===
 // El modulo COMM oficial RCJ entrega el estado de juego como NIVEL LOGICO en 2 pines del
-// TOP: pin 5 = OUT1 (PLAY/STOP) y pin 6 = OUT2 (ESPEJO de OUT1). 0 = PARADO, 1 = EN CURSO (3.3V).
-// En operacion normal los 2 van JUNTOS (mirror). match_running = (pin5 Y pin6) en alto ->
-// conservador: si uno queda pegado, falla a STOP (el robot NO se mueve). El sintoma viejo
-// era pin6 pegado en 1; con AND eso NO da un falso PLAY. INPUT_PULLDOWN: si el cable del
-// COMM se desconecta, leen 0 -> match_running=false (FAIL-SAFE). El debug del TOP imprime
-// p5/p6 por separado. El UART (Serial2) queda solo para partner ESP-NOW/status.
-constexpr uint8_t PIN_REFEREE_A = 5;   // OUT1 (PLAY/STOP)
-constexpr uint8_t PIN_REFEREE_B = 6;   // OUT2 (espejo de OUT1)
+// TOP: pin 5 = OUT1 y pin 6 = OUT2. 0 = PARADO, 1 = EN CURSO (3.3V).
+// match_running = (pin5 O pin6) en alto  ->  *** OR ***  (probado en banco 2026-06-02,
+// Gustavo): en PLAY sube SOLO UNO de los dos pines (el otro queda en 0), asi que con AND
+// nunca daba GO. Con OR, si CUALQUIERA dice PLAY, el robot juega; en STOP los dos quedan
+// en 0 -> STOP. INPUT_PULLDOWN: si el cable del COMM se desconecta, ambos leen 0 ->
+// match_running=false (FAIL-SAFE). El debug del TOP imprime p5/p6 por separado. El UART
+// (Serial2) queda solo para partner ESP-NOW/status.
+constexpr uint8_t PIN_REFEREE_A = 5;   // OUT1
+constexpr uint8_t PIN_REFEREE_B = 6;   // OUT2
 
 void read_referee_gpio() {
-    const bool go = (digitalRead(PIN_REFEREE_A) == HIGH) &&
+    const bool go = (digitalRead(PIN_REFEREE_A) == HIGH) ||
                     (digitalRead(PIN_REFEREE_B) == HIGH);
     const RefereeCommand cmd = go ? RefereeCommand::START : RefereeCommand::STOP;
     if (cmd != g_last_cmd) {        // sella el instante del ultimo CAMBIO de estado

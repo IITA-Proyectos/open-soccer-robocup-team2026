@@ -53,6 +53,9 @@ constexpr uint32_t STABILIZE_MS    = 1000;
 constexpr uint32_t GYRO_CALIB_MS   = 2000;
 constexpr int      HEADING_SAMPLES = 10;
 
+// Band-aid contención BNO+ToF (2026-06-02): leer el BNO a ~20 Hz (50 ms), no a 100 Hz.
+constexpr uint32_t BNO_READ_INTERVAL_MS = 50;
+
 // Signo del heading. MEDIDO EN BANCO 2026-05-31: el chip da yaw CRECIENTE al
 // girar a la DERECHA (CW). La convención del firmware es CCW-positiva. Lo
 // invertimos ACÁ, en la fuente, para TODO el firmware. Igual al gyroZ.
@@ -225,13 +228,18 @@ bool sensors_imu_init() {
 
 void sensors_imu_tick() {
     const uint32_t now = millis();
+    // Band-aid contención BNO+ToF (2026-06-02): leer el BNO a ~20 Hz, NO a 100 Hz. Leerlo muy
+    // seguido lo hace chocar con los reads de los ToF en `Wire` y el read multi-byte del BNO
+    // se corrompe -> yaw CONGELADO. Bajando la frecuencia caen las colisiones. (Fix de fondo:
+    // BNO a Wire1, bus aparte.)
+    if (now - g_last_tick_ms < BNO_READ_INTERVAL_MS) return;
     float dt_s = (now - g_last_tick_ms) / 1000.0f;
     g_last_tick_ms = now;
     if (dt_s <= 0.0f || dt_s > 1.0f) dt_s = 0.01f;  // clamp arranque/saltos
 
     ImuSample in[IMU_FUSION_N];
     for (int i = 0; i < IMU_FUSION_N; ++i) {
-        const bool present = g_ready[i] && i2c_present(g_addr[i]);
+        const bool present = g_ready[i];  // band-aid: sin ping i2c_present (1 transaccion I2C menos por sensor)
         if (present) {
             in[i].present     = true;
             in[i].heading_deg = heading_no_mount(i, read_raw_yaw(*g_bno[i]));

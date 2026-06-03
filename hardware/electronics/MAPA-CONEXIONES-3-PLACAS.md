@@ -59,7 +59,7 @@ El comando del árbitro RCJ (PLAY/STOP del partido) llega al TOP como **nivel di
 | **5** | OUT1 (PLAY/STOP) | **0 = juego PARADO · 1 = juego EN CURSO (3.3 V)** |
 | **6** | OUT2 (espejo de OUT1) | igual que OUT1 |
 
-- Firmware (`src/top/comm_arbiter.cpp`): `read_referee_gpio()` lee los pines 5/6 con `INPUT_PULLDOWN`; `match_running = (pin5 Y pin6)` en alto (**AND** → *fail-safe* a STOP si se desconecta).
+- Firmware (`src/top/comm_arbiter.cpp`): `read_referee_gpio()` lee los pines 5/6 con `INPUT_PULLDOWN`; `match_running = (pin5 O pin6)` en alto (**OR**). En PLAY el COMM sube **solo uno** de los dos pines (5 *o* 6) y el otro queda en 0 (probado en banco 2026-06-02, Gustavo): por eso el viejo AND nunca daba GO y el OR sí. Sigue siendo *fail-safe*: si se desconecta el cable del COMM, ambos pines leen 0 por el `INPUT_PULLDOWN` → `match_running=false` (STOP).
 - El `Serial2` (7/8) del enlace a COMM queda **SOLO para partner ESP-NOW / status**; el viejo frame `COMM_REFEREE_CMD` por UART quedó **obsoleto**.
 - ⚠️ **El cambio es solo la FUENTE en el TOP.** El `match_running` / `referee_cmd` sigue viajando **dentro del `WORLD_SNAPSHOT`** que el TOP manda a la CENTRAL; la CENTRAL y la strategy lo consumen igual que antes.
 

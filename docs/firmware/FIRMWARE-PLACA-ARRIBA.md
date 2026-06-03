@@ -801,7 +801,7 @@ struct WorldSnapshot {
 
 - **Recepción desde ABAJO** (Serial1): `DOWN_OTOS_POSE/VEL` a 100 Hz para fusión EKF.
 - **Recepción desde COMM** (Serial2, 7/8): `COMM_PARTNER_DATA`, `COMM_STATUS_REQ` (eventos). El viejo `COMM_REFEREE_CMD` quedó **obsoleto**: el árbitro ya NO llega por UART (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART).
-- **Lectura del árbitro (GPIO, pines 5/6)**: el TOP lee `read_referee_gpio()` (pin 5 = OUT1, pin 6 = OUT2 espejo) con `INPUT_PULLDOWN`. `match_running = (pin5 AND pin6)` en alto → AND con fail-safe a STOP si se desconecta. El resultado se vuelca al `referee_cmd`/`flags.match_running` del snapshot.
+- **Lectura del árbitro (GPIO, pines 5/6)**: el TOP lee `read_referee_gpio()` (pin 5 = OUT1, pin 6 = OUT2) con `INPUT_PULLDOWN`. `match_running = (pin5 OR pin6)` en alto → en PLAY el árbitro RCJ sube **solo uno** de los dos pines (probado en banco 2026-06-02), el otro queda en 0; por eso la lógica es **OR** (con AND nunca daba GO). Sigue siendo **fail-safe**: si el cable del COMM se desconecta, ambos pines leen 0 (`INPUT_PULLDOWN`) → `match_running=false` (STOP); en STOP también quedan los dos en 0 → OR=STOP. El resultado se vuelca al `referee_cmd`/`flags.match_running` del snapshot.
 - **Envío a COMM** (Serial2, 7/8): `TOP_PARTNER_DATA` a 10 Hz, `TOP_STATUS_REPLY` a demanda.
 - **Recepción desde CENTRAL** (Serial4, 16/17): `CENTRAL_RESET_TOP`, `CENTRAL_TOP_CMD` (eventos).
 
@@ -824,7 +824,7 @@ struct WorldSnapshot {
 | UART hacia CENTRAL | No se puede TX (raro) | LED parpadea, intentar reiniciar Serial |
 | UART desde ABAJO | Timeout 500 ms | Confianza pose baja, sigue con cámara+ToF+IMU |
 | UART desde COMM | Timeout 500 ms | Marcar partner_alive=false (NO afecta árbitro: el árbitro es GPIO pines 5/6, independiente del UART COMM — fix 2026-06-02 / TASK-039) |
-| Árbitro GPIO (pines 5/6) | Pin 5 o pin 6 caen / se desconectan | `match_running = pin5 AND pin6` → fail-safe a STOP (juego PARADO) |
+| Árbitro GPIO (pines 5/6) | Pin 5 y pin 6 caen / se desconectan | `match_running = pin5 OR pin6` → ambos en 0 (INPUT_PULLDOWN) → fail-safe a STOP (juego PARADO) |
 
 ---
 

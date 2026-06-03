@@ -207,7 +207,7 @@ Frame completo TOP→CENTRAL: 27 + 7 overhead = **34 bytes**.
 | 0 | `0x01` | `in_own_penalty_area` | **NO implementado** (`main_top.cpp:78`: "requiere pose absoluta — Nivel 2") | El robot está dentro de su propia área. Necesita fusión cámara+pose. |
 | 1 | `0x02` | `partner_alive` | **REAL** — `comm_arbiter_partner_is_fresh()` con timeout 500 ms (`comm_arbiter.cpp:107`) | El robot partner respondió hace menos de 500 ms. |
 | 2 | `0x04` | `partner_sees_ball` | **NO implementado** (`main_top.cpp:79`: "requiere parseo del partner snapshot — futuro") | El partner detectó la pelota. |
-| 3 | `0x08` | `match_running` | **REAL** — `comm_arbiter_is_match_running()` (`comm_arbiter.cpp`); deriva del **nivel GPIO en pines 5/6 del TOP**: `match_running = (pin5 AND pin6) en alto` (AND → fail-safe a STOP si se desconecta) *(fix 2026-06-02 / TASK-039: el arbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)* | El árbitro tiene el juego EN CURSO (pin5 Y pin6 en alto). CENTRAL/strategy lo consumen desde el `WORLD_SNAPSHOT` (no cambia). |
+| 3 | `0x08` | `match_running` | **REAL** — `comm_arbiter_is_match_running()` (`comm_arbiter.cpp`); deriva del **nivel GPIO en pines 5/6 del TOP**: `match_running = (pin5 OR pin6) en alto` (en PLAY sube SOLO uno de los dos → OR; sigue fail-safe a STOP si se desconecta, ambos quedan en 0) *(fix 2026-06-02 / TASK-039: el arbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)* | El árbitro tiene el juego EN CURSO (pin5 O pin6 en alto). CENTRAL/strategy lo consumen desde el `WORLD_SNAPSHOT` (no cambia). |
 | 4-7 | `0xF0` | reservados | — | Escribir 0; receptor ignora. |
 
 ### 3.4 Convención de ángulos (sin ambigüedad)
@@ -293,9 +293,12 @@ UART**. Pines del TOP (Teensy 4.0):
 | **pin 6** | **OUT2 (espejo de OUT1)** | id. | Redundancia: espejo de OUT1 |
 
 Firmware (`src/top/comm_arbiter.cpp`): `read_referee_gpio()` lee los pines 5/6 con
-`INPUT_PULLDOWN`; `match_running = (pin5 AND pin6) en alto` (**AND → fail-safe a
-STOP si se desconecta** cualquiera de las dos líneas). El probe temporal se removió
-de `main_top.cpp`.
+`INPUT_PULLDOWN`; `match_running = (pin5 OR pin6) en alto`. **Probado en banco
+2026-06-02 (Gustavo): en PLAY sube SOLO UNO de los dos pines (5 o 6); el otro
+queda en 0.** Por eso el AND nunca daba GO y el OR sí. En STOP ambos pines quedan
+en 0 → OR = STOP. **Sigue siendo FAIL-SAFE:** si el cable del COMM se desconecta,
+ambos pines leen 0 (por `INPUT_PULLDOWN`) → `match_running = false` (STOP). El
+probe temporal se removió de `main_top.cpp`.
 
 El campo `referee_cmd` del `WORLD_SNAPSHOT` refleja el último estado leído del GPIO.
 Arranca en `0xFF=UNKNOWN`.
@@ -308,8 +311,8 @@ quedó **obsoleto**. Ya no se usa para recibir el árbitro.
 > manda el TOP. Lo único que cambió es la **fuente en el TOP** (de UART a GPIO en
 > pines 5/6), no cómo se consume aguas abajo.
 
-**Sin señal de árbitro válida:** por el AND con fail-safe, el TOP reporta STOP, y
-la FSM de CENTRAL queda en `WAIT_START` indefinidamente (bloqueante). Es un P0 para
+**Sin señal de árbitro válida:** por el OR con fail-safe (ambos pines en 0), el TOP
+reporta STOP, y la FSM de CENTRAL queda en `WAIT_START` indefinidamente (bloqueante). Es un P0 para
 Incheon (TASK-006/TASK-024: cableado correcto del árbitro a pines 5/6 o fallback
 manual antes de la primera competencia).
 
@@ -414,7 +417,7 @@ del robot son los dos ceros.
 | `goal_opp_visible`, `goal_own_visible` | MEDIA PERO polaridad incorrecta | Solo confiable luego de implementar lectura de `referee_cmd` para corrección de polaridad (TASK-024) |
 | `min_obstacle_mm` | BAJA — solo HC-SR04 frontal | Usar con precaución; 0xFFFF = sin datos (ignorar para decisiones críticas) |
 | `referee_cmd` | ALTA si el árbitro está cableado a los pines 5/6 del TOP | Confiable si el GPIO del árbitro (pines 5/6) está conectado *(fix 2026-06-02 / TASK-039: el arbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)*. CENTRAL lo sigue leyendo del `WORLD_SNAPSHOT`. |
-| `flags.match_running` (bit 3) | ALTA si el árbitro está cableado a los pines 5/6 del TOP | Depende del GPIO del árbitro (pines 5/6, AND con fail-safe a STOP). CENTRAL lo sigue leyendo del `WORLD_SNAPSHOT`. |
+| `flags.match_running` (bit 3) | ALTA si el árbitro está cableado a los pines 5/6 del TOP | Depende del GPIO del árbitro (pines 5/6, OR con fail-safe a STOP: en PLAY sube solo uno). CENTRAL lo sigue leyendo del `WORLD_SNAPSHOT`. |
 | `flags.partner_alive` (bit 1) | ALTA | Confiable |
 
 ### 6.2 Qué campos son N/A hoy (NUNCA usar para decisiones)

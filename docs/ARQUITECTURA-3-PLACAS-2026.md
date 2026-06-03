@@ -123,7 +123,7 @@ El Teensy 4.1 (Cortex-M7 a 600 MHz) tiene mucha capacidad libre para estrategia 
 | Visión multi-cámara | Procesa 2 OpenMV H7/H7+ via UART. Cada cámara reporta blobs (pelota, arco propio, arco rival). ARRIBA fusiona ambas vistas. |
 | IMU dual (heading absoluto) | 2 BNO055 **ambos en el bus `Wire` (18/19)**: LEFT=0x28, RIGHT=0x29 (pad ADR puenteado a 3V3). Modo IMUPLUS para evitar interferencia magnética de motores. Si uno falla, sigue el otro. Esto liberó `Wire1` (24/25) para la placa DOWN. |
 | Obstáculos cercanos | 4 sensores ToF VL53L7CX **todos en el bus `Wire`** (LP por bodge {9,10,11,12} → 0x2A..0x2D) + 1 HC-SR04 frontal (gateado off). Reporta distancia mínima en cada cuadrante. |
-| Recepción del árbitro (START/STOP) | El comando del árbitro RCJ llega al ARRIBA como **nivel GPIO (no UART)**: pin 5 = OUT1 (PLAY/STOP) y pin 6 = OUT2 (espejo de OUT1), leídos con `INPUT_PULLDOWN`. Nivel 0 = juego PARADO, nivel 1 (3.3V) = juego EN CURSO. `match_running = (pin5 AND pin6)` → fail-safe a STOP si el cable se desconecta. ARRIBA inyecta `match_running` en el `WORLD_SNAPSHOT`. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART) |
+| Recepción del árbitro (START/STOP) | El comando del árbitro RCJ llega al ARRIBA como **nivel GPIO (no UART)**: pin 5 = OUT1 (PLAY/STOP) y pin 6 = OUT2 (espejo de OUT1), leídos con `INPUT_PULLDOWN`. Nivel 0 = juego PARADO, nivel 1 (3.3V) = juego EN CURSO. `match_running = (pin5 OR pin6)` → en PLAY sube SOLO UNO de los dos pines (probado en banco 2026-06-02, Gustavo); por eso se usa OR. Sigue siendo fail-safe a STOP: si el cable se desconecta, ambos pines leen 0 (`INPUT_PULLDOWN`) → `match_running=false`. ARRIBA inyecta `match_running` en el `WORLD_SNAPSHOT`. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART) |
 | Comunicación con partner | ESP-NOW transparente vía placa COMM. Recibe pose y pelota del robot compañero, lo agrega al world snapshot. |
 | Fusión sensorial → pose | Calcula pose propia (x, y, heading) combinando IMU + odometría OTOS (recibida desde ABAJO) + visión de arcos cuando son visibles. |
 | Detección de área chica | Cuando la pose estimada cae dentro del rectángulo del área chica propia, reporta el flag al CENTRAL. |
@@ -140,7 +140,7 @@ El Teensy 4.1 (Cortex-M7 a 600 MHz) tiene mucha capacidad libre para estrategia 
 - 2 BNO055 (ambos en `Wire`: 0x28 + 0x29).
 - 4 ToF VL53L7CX (todos en `Wire`, LP por bodge → 0x2A..0x2D).
 - 1 HC-SR04 ultrasonido (GPIO TRIG/ECHO).
-- Árbitro RCJ (GPIO) — pin 5 = OUT1 (PLAY/STOP) + pin 6 = OUT2 (espejo), `INPUT_PULLDOWN`. 0 = parado, 1 (3.3V) = en curso; `match_running = pin5 AND pin6` (fail-safe a STOP). (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)
+- Árbitro RCJ (GPIO) — pin 5 = OUT1 (PLAY/STOP) + pin 6 = OUT2, `INPUT_PULLDOWN`. 0 = parado, 1 (3.3V) = en curso; `match_running = pin5 OR pin6` (en PLAY sube solo uno; sigue fail-safe a STOP: ambos en 0 si se desconecta). (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)
 - Placa COMM (UART Serial2, pines 7/8) — **solo** datos partner ESP-NOW + status (el árbitro ya NO viene por acá). (fix 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde; COMM=Serial2 7/8, CENTRAL=Serial4 16/17)
 - ABAJO (UART) — odometría OTOS para fusión.
 
@@ -366,7 +366,7 @@ Tres razones:
 2. El comando del árbitro (start/stop) viaja naturalmente con el resto del world snapshot — es un input perceptual más.
 3. El ESP-NOW partner es lógicamente parte de "lo que sé del mundo", como las cámaras y los ToF. Va con la percepción.
 
-ARRIBA lee el árbitro RCJ como **nivel GPIO en los pines 5/6** (OUT1/OUT2, `INPUT_PULLDOWN`, `match_running = pin5 AND pin6`, fail-safe a STOP) y recibe los datos del partner por la placa COMM (ESP-NOW vía Serial2). CENTRAL recibe `match_running` como flag dentro del snapshot, sin leer GPIO ni parsear la placa COMM. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART; el UART de COMM queda solo para partner ESP-NOW / status)
+ARRIBA lee el árbitro RCJ como **nivel GPIO en los pines 5/6** (OUT1/OUT2, `INPUT_PULLDOWN`, `match_running = pin5 OR pin6` — en PLAY sube solo uno, fail-safe a STOP si ambos quedan en 0) y recibe los datos del partner por la placa COMM (ESP-NOW vía Serial2). CENTRAL recibe `match_running` como flag dentro del snapshot, sin leer GPIO ni parsear la placa COMM. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART; el UART de COMM queda solo para partner ESP-NOW / status)
 
 ---
 
@@ -402,7 +402,7 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 ```
    OpenMV cam1 ──Serial3 19200──┐
    OpenMV cam2 ──Serial5 19200──┤
-   Árbitro RCJ ──GPIO pin 5/6 ──┤        (nivel: 0=STOP, 1=PLAY; match_running=p5 AND p6)
+   Árbitro RCJ ──GPIO pin 5/6 ──┤        (nivel: 0=STOP, 1=PLAY; match_running=p5 OR p6)
    Placa COMM  ──Serial2 115200─┤        ┌── Serial4 230400 ──► CENTRAL
    (partner, 7/8)               ▼        │   WORLD_SNAPSHOT 100 Hz (24 B)
                           ┌───────────────┐

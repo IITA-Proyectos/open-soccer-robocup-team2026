@@ -33,14 +33,11 @@ del motor 2 (U17) → **conflicto 7/8 (TASK-036) RESUELTO**. El `comm_down.cpp` 
 producción y este diag usan el mismo Serial1, así que coinciden. (El par de banco del
 2026-05-29 se había validado en pin 7; ahora el cable va al **pin 0**.)
 
-**Sobre el conflicto 7/8 (motores):** el motor 2 (driver U17) usaría los pines
-**8/7** = los de Serial2. PERO el conflicto **solo aparece manejando motores**, y
-este receiver **NO los maneja** → pin 7 es seguro acá. El veredicto (¿el motor de
-U17 realmente gira con 7/8?) **quedó PENDIENTE de aislar** (Gustavo 2026-05-29) →
-**TASK-036 sigue abierta**. Solo si se confirma 7/8 = motor **y** se corren
-**motores + comunicación juntos**, recién ahí migrar a **Serial7 (28/29)** (acá y
-en `comm_down.cpp`). El veredicto 7/8 y demás pruebas de motores quedan pendientes
-— ver [`DIAG-CENTRAL-MOTORS.md`](DIAG-CENTRAL-MOTORS.md).
+**Conflicto 7/8: RESUELTO (2026-05-31).** Antes el link estaba en Serial2 (7/8),
+que choca con el driver del motor 2 (U17). Al mover el link a **Serial1 (0/1)** los
+pines 7/8 quedan exclusivos del motor 2 → ya no hay conflicto (TASK-036 cerrada por
+reasignación de UART). El mapeo motor↔rueda + orientación siguen siendo pendientes
+de banco — ver [`DIAG-CENTRAL-MOTORS.md`](DIAG-CENTRAL-MOTORS.md).
 
 **Cableado:**
 
@@ -57,7 +54,7 @@ Baud: **230400** (igual que DOWN — `config_down.h` / `comm_central.cpp`).
 
 - DOWN flasheado con su firmware (`pio run -e down -t upload`) y **enviando**
   (`comm_central_send_line_urgent` en su loop).
-- Cableado de la tabla de arriba hecho (pin 1 DOWN → pin 7 CENTRAL, GND común).
+- Cableado de la tabla de arriba hecho (pin 1 DOWN → pin 0 CENTRAL, GND común).
 - Ambas placas alimentadas.
 
 ### Correr
@@ -104,7 +101,7 @@ Si todavía no llegó ningún frame, el panel muestra **"ESPERANDO datos de DOWN
 ## Interpretación rápida
 
 - **`bytes=0` siempre** → no llega nada. Revisar: cable DOWN pin 1 → CENTRAL
-  **pin 7** (RX2), GND común, DOWN realmente enviando, baud 230400.
+  **pin 0** (RX1), GND común, DOWN realmente enviando, baud 230400.
 - **`bytes` sube pero `frames=0` / `crc_err` alto** → llega señal pero corrupta:
   baud equivocado, TX/RX cruzados mal, o masa flotante.
 - **`frames` sube, `crc_err≈0`** → ✅ **link validado.** DOWN fuera de la línea:

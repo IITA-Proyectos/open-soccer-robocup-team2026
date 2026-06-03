@@ -1,3 +1,7 @@
+// motion_target.h — ⚠️ MÓDULO PLACEHOLDER (Plan 1), SIN callers en producción.
+// mt_compute() sólo lo usa test_central_motion; strategy.cpp NO lo invoca (usa
+// behind_ball + drive_straight + ball_predict). Conservado como esqueleto
+// forward-looking; eliminar junto a su test cuando se confirme que no se usará.
 #pragma once
 #include <stdint.h>
 namespace iitasoccer {

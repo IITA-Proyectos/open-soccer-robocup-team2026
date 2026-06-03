@@ -307,7 +307,7 @@ void sensors_tof_tick() {
 #ifdef TOP_ENABLE_HCSR04
     // HC-SR04 — lectura bloqueante. Corremos solo cada N ticks para no
     // saturar el loop (cada lectura puede tomar hasta 25ms).
-    // OJO: deshabilitado por default — conflicto pin 7 con Serial2 (ver arriba).
+    // HC-SR04 ACTIVO en top_robot1/2 (TRIG=4 / ECHO=3, sin conflicto con UARTs).
     static uint32_t last_hc = 0;
     if (g_tick_count - last_hc >= 3) {
         g_hcsr04_mm = read_hcsr04();

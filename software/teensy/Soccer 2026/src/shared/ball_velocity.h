@@ -7,8 +7,10 @@
 // decidir si la pelota va al arco propio/rival. Antes `build_snapshot()` en el
 // TOP los dejaba en 0 (siempre BT_STILL). Este módulo deriva la velocidad de la
 // posición fusionada y la mete en el snapshot, dejándola lista para esa cadena.
-// ⚠️ Falta el último eslabón: CENTRAL aún NO consume ball_vx/vy (no hay getter
-// en world_model ni llamada a bt_classify en strategy) — pendiente de cablear.
+// Estado del cableado (2026-06-03): CENTRAL YA consume la velocidad — los getters
+// world_model_get_ball_vx/vy_mm_s() la exponen desde el snapshot y strategy.cpp la
+// usa vía ball_predict() para que el arquero ANTICIPE (GK_INTERCEPT). Lo que SIGUE
+// pendiente es `bt_classify` (clasificación de trayectoria), aún sin llamar en strategy.
 // Ver journal/2026-05-31-analisis-vision-n6-deteccion-protocolo.md §4.
 //
 // Diseño (MVP, host-testeable, sin Arduino)

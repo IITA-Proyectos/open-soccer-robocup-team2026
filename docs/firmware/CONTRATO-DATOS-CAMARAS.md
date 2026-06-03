@@ -267,17 +267,16 @@ Los arcos se reportan como ángulo + distancia (no como x, y):
 ```
 angle_centideg = atan2(x_mm, y_mm) × (18000/π)
                  cero = frente del robot
-                 +90° = izquierda
-                 -90° = derecha
+                 +90° = DERECHA
+                 -90° = izquierda
 ```
 
-Fuente: `cameras_fusion.cpp:99-100`.
+Fuente: `cameras_fusion.cpp:97-100` (+x = DERECHA).
 
-> **Inconsistencia de signo lateral**: la convención en `cameras_fusion.h:40`
-> dice "+x lateral", y `atan2(x, y)` con +y=frente da:
-> - +x a la derecha → atan2(+x, +y) > 0 para objeto a la derecha.
-> Pero el comentario dice "+90° = izquierda". Verificar con test en hardware.
-> NO implementado el test de este signo.
+> **✅ Signo RESUELTO (2026-05-31):** `+x = DERECHA`, `atan2(x, y)` con +y=frente ⇒
+> **+90° = arco/pelota a la DERECHA del robot**. Coincide con `cameras_fusion.cpp:97-99`
+> ("=> +90° = arco a la derecha") y con `docs/CONVENCION-EJES-ROBOT.md`. La nota vieja
+> ("+90°=izquierda, verificar") quedó SUPERADA — el código ya está corregido.
 
 ---
 

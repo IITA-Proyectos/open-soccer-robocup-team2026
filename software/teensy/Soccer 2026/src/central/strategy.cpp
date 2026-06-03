@@ -8,7 +8,8 @@
 //
 // Nivel 2 (este archivo agrega):
 //   • DELANTERO: KICKOFF (set play inicial) + POSITION (behind-the-ball) +
-//                disparo de kicker cuando alineado a arco rival.
+//                empuje cuando alineado al arco rival (sin kicker físico:
+//                el robot empuja la pelota por inercia, no dispara nada).
 //   • ARQUERO:   CLEAR (despeje cuando pelota llega cerca).
 //
 // Modo EMERGENCY_LINE bypassa la FSM (se maneja en main_central.cpp directo,
@@ -84,8 +85,8 @@ constexpr float ATK_LINE_RETREAT_SPEED   = 400.0f;
 constexpr float ATK_BEHIND_BALL_GAP_MM         = 120.0f;   // separación robot–pelota cuando POSITION
 constexpr float ATK_ATTACK_LINE_TOL_DEG        = 30.0f;    // si ángulo ball ↔ goal < este → ya alineado
 constexpr float ATK_POSITION_REACHED_MM        = 80.0f;    // distancia target POSITION para pasar a APPROACH
-constexpr float ATK_KICK_DIST_MM               = 80.0f;    // cuando pelota más cerca que esto + alineado → kick
-constexpr float ATK_KICK_ANGLE_DEG             = 12.0f;    // tolerancia angular para disparar
+constexpr float ATK_KICK_DIST_MM               = 80.0f;    // pelota más cerca que esto + alineado → comprometer EMPUJE (sin kicker físico)
+constexpr float ATK_KICK_ANGLE_DEG             = 12.0f;    // tolerancia angular para considerarse alineado al arco (empuje)
 constexpr float ATK_POSITION_MAX_SPEED         = 500.0f;
 constexpr float ATK_KICKOFF_SPEED_MM_S         = 500.0f;
 constexpr uint32_t ATK_KICKOFF_DURATION_MS     = 250;      // boost inicial al frente al arrancar match
@@ -358,11 +359,13 @@ MotorCommand attacker_tick() {
                     transition_atk(AtkState::POSITION);
                     return cmd;
                 }
-                // Estamos alineados — ¿ya alcanza para patear?
-                if (is_aligned_to_shoot(bx, by, goal_angle,
-                                         ATK_KICK_DIST_MM, ATK_KICK_ANGLE_DEG)) {
-                    cmd.kicker_fire = 1;   // motors_zircon hace el pulso + cooldown
-                }
+                // Geometría de alineación para empuje (sin kicker físico): aquí
+                // el robot ya está cerca y apuntando al arco. No dispara nada —
+                // sigue avanzando hacia la pelota (abajo) para empujarla por
+                // inercia. Conservamos el chequeo para documentar el punto de
+                // empuje alineado por si en el futuro se cuelga una conducta.
+                (void)is_aligned_to_shoot(bx, by, goal_angle,
+                                          ATK_KICK_DIST_MM, ATK_KICK_ANGLE_DEG);
             }
 
             // Heading target: orientar el frente hacia la pelota.

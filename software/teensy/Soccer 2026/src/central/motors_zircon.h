@@ -12,8 +12,8 @@ namespace iitasoccer {
 // Inicializa los pines de motor según la macro ROBOT1/ROBOT2 (config_central.h).
 void motors_init();
 
-// Aplica un MotorCommand del protocolo (vx, vy, omega + kicker_fire).
-// El kicker se ignora si el robot es arquero (sin kicker físico — futuro).
+// Aplica un MotorCommand del protocolo (vx, vy, omega).
+// El robot no tiene kicker físico — el delantero empuja la pelota por inercia.
 void motors_apply_command(const MotorCommand& cmd);
 
 // Frena los 3 motores en modo libre (PWM = 0, INA/INB = 0).

@@ -56,7 +56,7 @@ La placa CENTRAL **es la que juega al fútbol**. Recibe percepción ya digerida 
 │  ATAQUE_BUSCAR / ATAQUE_PERSEGUIR / ATAQUE_PATEAR          │
 │  GK_PATRULLA / GK_INTERCEPTAR / GK_DESPEJAR              │
 └────────────────────┬────────────────────────────────────┘
-                     │ produce: (target_pose | target_vector, kicker_fire)
+                     │ produce: (target_pose | target_vector)
                      ▼
 ┌─────────────────────────────────────────────────────────┐
 │  CAPA MEDIA — Lazos de control (PIDs)                    │
@@ -94,7 +94,7 @@ Esta separación permite **tunear y debuggear cada capa por separado**:
 | ~~BNO055 local del Zircon~~ | — | ⚠️ **YA NO se conecta (2026-05-31)** — los 2 BNO están en el TOP; el heading viene del snapshot de ARRIBA. `imu_zircon` queda como compat (gateado por `-DCENTRAL_HAS_LOCAL_BNO`, off). |
 | Sensores de pelota IR (×8) | analógicos | Legacy del 2025 — opcional como respaldo de cámara |
 | Sensores de línea (×3, legacy) | A11, A12, A13 | Legacy del 2025 — opcional, redundante con ABAJO |
-| Solenoide / kicker (delantero) | GPIO + MOSFET | Si el robot delantero tiene kicker físico |
+| ~~Solenoide / kicker (delantero)~~ | — | **El robot NO tiene kicker físico** — el delantero empuja la pelota por inercia |
 | Dribbler (delantero) | PWM | Si el robot delantero tiene dribbler |
 | **Encoders magnéticos (opcional, FUTURO)** | I2C (AS5600) o quadrature | Para PID closed-loop por motor — ver §10 |
 | Botones de programación | Pines 9, 10 | Iniciar / debug |
@@ -134,7 +134,7 @@ La arquitectura del firmware sigue el principio **"separar política de mecanism
 
 | Capa | Frecuencia | Input | Output | Acoplamiento |
 |------|------------|-------|--------|--------------|
-| **ALTA** — Estrategia (FSM) | 100 Hz | `WorldSnapshot` + `LineStatus` | "ir a (target_x, target_y) a velocidad V" o "patear" | Solo lee la capa media |
+| **ALTA** — Estrategia (FSM) | 100 Hz | `WorldSnapshot` + `LineStatus` | "ir a (target_x, target_y) a velocidad V" o "empujar la pelota" | Solo lee la capa media |
 | **MEDIA** — PIDs | 100 Hz | target del FSM + observación actual | `(vx, vy, omega)` deseados | Solo llama a la capa baja |
 | **BAJA** — Motores | 100 Hz (o 1 kHz si hay encoders) | `(vx, vy, omega)` | PWM por motor | No conoce nada arriba |
 
@@ -162,7 +162,7 @@ Beneficio práctico: si se cambia la cinemática del robot (4 ruedas en vez de 3
 | R14 | Saturación proporcional (mantener dirección si excede max) | BAJA | 100 Hz |
 | R15 | PID por motor con encoders (cuando hay) | BAJA | 1 kHz |
 | R16 | Aplicar PWM al H-bridge | BAJA | 100 Hz / 1 kHz |
-| R17 | Control de kicker y dribbler (delantero) | BAJA | evento |
+| R17 | Control de dribbler (delantero) — sin kicker físico | BAJA | evento |
 | R18 | Bypass de FSM al recibir `imminent_exit=1` | EMERGENCIA | latencia < 15 ms |
 | R19 | Watchdog motor: si CENTRAL se cuelga, motores se detienen solos | hardware | continuo |
 | R20 | Diagnóstico + LED + USB debug | meta | 1 Hz |
@@ -266,28 +266,22 @@ void apply_motor_pwm(int motor_idx, int pwm_signed) {
 
 `motors_brake()` para de inmediato pero estresa los drivers. Solo usarlo en emergencia real.
 
-### 6.6 Kicker y dribbler (delantero)
+### 6.6 Dribbler (delantero) — sin kicker físico
+
+> **El robot NO tiene kicker físico.** No hay solenoide ni MOSFET de disparo: el
+> delantero empuja la pelota por inercia avanzando hacia el arco rival. El campo
+> `kicker_fire` y el pin `PIN_KICKER_SOL` fueron eliminados del firmware vivo
+> (`MotorCommand`, `motors_zircon.cpp`, `config_central.h`).
 
 ```cpp
-void kicker_fire() {
-    // Solenoide controlado por MOSFET. Pulso corto (50-100 ms) carga
-    // y dispara. Después delay de recarga (capacitor, ~1 s).
-    digitalWrite(PIN_KICKER, HIGH);
-    delay(50);  // solenoide energizado 50 ms
-    digitalWrite(PIN_KICKER, LOW);
-    g_kicker_recharge_until_ms = millis() + 1000;
-}
-
-bool kicker_ready() {
-    return millis() > g_kicker_recharge_until_ms;
-}
-
 void dribbler_set_speed(uint8_t pwm) {
     analogWrite(PIN_DRIBBLER, pwm);
 }
 ```
 
-El kicker solo se activa cuando la FSM detecta que la pelota está alineada con el arco rival y a distancia óptima (calibrable, ~50-80 mm frontal).
+La FSM conserva la geometría de alineación (`is_aligned_to_shoot`, en
+`behind_ball`) para saber cuándo el robot está cerca y apuntando al arco rival;
+en ese momento sigue avanzando para empujar la pelota, sin disparar nada.
 
 ---
 
@@ -435,7 +429,7 @@ void strategy_transition_to(State new_state) {
 > | Nivel | Qué | Estado |
 > |-------|-----|--------|
 > | **1** | ATK: WAIT_START/SEARCH/APPROACH. GK: WAIT_START/PATROL/INTERCEPT. | ✅ implementado |
-> | **2** | ATK: + KICKOFF (set play inicial) + POSITION (behind-the-ball relativo) + kicker en APPROACH. GK: + CLEAR con histéresis. LINE_AVOID como estado explícito. | ✅ implementado |
+> | **2** | ATK: + KICKOFF (set play inicial) + POSITION (behind-the-ball relativo) + empuje alineado en APPROACH (sin kicker físico). GK: + CLEAR con histéresis. LINE_AVOID como estado explícito. | ✅ implementado |
 > | **3+** | Pose absoluta (EKF), orbit suave continuo, set plays KICKOFF_OWN/ADV, coordinación partner, modelo del rival. | ⏳ futuro |
 >
 > **Caracterización testeable**: el árbol de transiciones está replicado fiel
@@ -469,9 +463,9 @@ void strategy_transition_to(State new_state) {
    alineada o   ▼                  ▼  (o sin arco visible)
    sin arco  ┌─────────────┐   ┌──────────────────────┐
              │ ATK_POSITION│   │  ATK_APPROACH        │
-             │ behind-the- │──▶│  va a la pelota +    │
-             │ ball: target│   │  si alineado+cerca:  │
-             │ detrás de   │◀──│  cmd.kicker_fire=1   │
+             │ behind-the- │──▶│  va a la pelota y la │
+             │ ball: target│   │  empuja por inercia  │
+             │ detrás de   │◀──│  (sin kicker físico) │
              │ la pelota   │   │  (histéresis ±10°)   │
              └─────────────┘   └──────────┬───────────┘
                                           │ ball_lost / dist<1mm
@@ -502,14 +496,15 @@ void strategy_transition_to(State new_state) {
 | POSITION → SEARCH | `!ball_visible` |
 | APPROACH → POSITION | `goal_visible` y pelota fuera de ±40° (histéresis +10°) |
 | APPROACH → SEARCH | `!ball_visible` o `ball_dist < 1 mm` |
-| APPROACH: `cmd.kicker_fire=1` | `goal_visible` y alineada y `ball_dist ≤ 80 mm` y `|ángulo_arco| ≤ 12°` |
+| APPROACH: alineado para empujar | `goal_visible` y alineada y `ball_dist ≤ 80 mm` y `|ángulo_arco| ≤ 12°` (sin kicker físico: solo geometría de alineación, el robot sigue empujando) |
 | cualquiera → WAIT_START | `!match_running` |
 | cualquiera → LINE_AVOID | `imminent_exit && line_fresh` |
 
-> **Diferencia vs diseño original**: no hay estado `PUSH_KICK` separado — el
-> disparo del kicker es una salida dentro de `APPROACH`. El split a `POSITION`
-> es por ángulo (`ball_is_in_attack_line`), no por la distancia `<250 mm` del
-> diseño viejo. Constantes de tuning en `strategy.cpp` líneas ~76-83.
+> **Diferencia vs diseño original**: no hay estado `PUSH_KICK` separado ni kicker
+> físico — el empuje es la conducta default dentro de `APPROACH` (el robot avanza
+> hacia la pelota y la empuja por inercia). El split a `POSITION` es por ángulo
+> (`ball_is_in_attack_line`), no por la distancia `<250 mm` del diseño viejo.
+> Constantes de tuning en `strategy.cpp` líneas ~76-83.
 
 ### 8.2 FSM del ARQUERO (GOALKEEPER) — Nivel 1+2 implementado
 
@@ -1030,7 +1025,6 @@ Vía USB Serial el operario puede:
 - `stop` — frena todos los motores.
 - `cal_line` — envía CALIB_LINE al ABAJO.
 - `reset_otos` — envía RESET_OTOS al ABAJO.
-- `kick` — dispara el kicker (delantero).
 - `dump` — dump completo de world model + PIDs + motor states.
 
 ---
@@ -1075,7 +1069,7 @@ Vía USB Serial el operario puede:
 
 - Nivel 1 + behind-the-ball del delantero.
 - Orbit cuando el robot está del lado equivocado de la pelota.
-- Kicker activado cuando alineado con arco rival.
+- Empuje alineado cuando apunta al arco rival (sin kicker físico).
 - Set play KICKOFF básico.
 - FSM arquero con GK_INTERCEPT + GK_CLEAR.
 - Recovery automático en EMERGENCY_LINE.

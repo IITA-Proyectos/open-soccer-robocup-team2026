@@ -32,7 +32,7 @@ la estrategia y frena los motores en < 15 ms.
 │  ATK_KICKOFF/SEARCH/POSITION/APPROACH/LINE_AVOID          │
 │  GK_PATROL/INTERCEPT/CLEAR/LINE_AVOID                     │
 └────────────────────┬────────────────────────────────────┘
-                     │ produce: (target_pose | target_vector, kicker_fire)
+                     │ produce: (target_pose | target_vector)
                      ▼
 ┌─────────────────────────────────────────────────────────┐
 │  CAPA MEDIA — Lazos de control (PIDs)                    │
@@ -53,7 +53,7 @@ enteran.
 
 | Capa | Frecuencia | Input | Output | Acoplamiento |
 |---|---|---|---|---|
-| **ALTA — Estrategia (FSM)** | 100 Hz | `WorldSnapshot` + `LineStatus` | "ir a (target_x, target_y) a V" o "patear" | Solo lee la capa media |
+| **ALTA — Estrategia (FSM)** | 100 Hz | `WorldSnapshot` + `LineStatus` | "ir a (target_x, target_y) a V" o "empujar la pelota" | Solo lee la capa media |
 | **MEDIA — PIDs** | 100 Hz | target del FSM + observación actual | `(vx, vy, omega)` deseados | Solo llama a la capa baja |
 | **BAJA — Motores** | 100 Hz (o 1 kHz con encoders) | `(vx, vy, omega)` | PWM por motor | No conoce nada arriba |
 
@@ -77,7 +77,7 @@ enteran.
 | R14 | Saturación proporcional | BAJA | 100 Hz |
 | R15 | PID por motor con encoders (FUTURO) | BAJA | 1 kHz |
 | R16 | Aplicar PWM al H-bridge | BAJA | 100 Hz |
-| R17 | Control de kicker (solo ROBOT2 delantero) | BAJA | evento |
+| R17 | ~~Control de kicker~~ — eliminado (sin kicker físico; el delantero empuja por inercia) | — | — |
 | R18 | **Bypass FSM al recibir `imminent_exit=1`** | EMERGENCIA | latencia < 15 ms |
 | R19 | Watchdog motor: 200 ms sin MotorCommand → motores stop | hardware | continuo |
 | R20 | Diagnóstico + LED + USB debug | meta | 1 Hz |
@@ -178,12 +178,12 @@ Implementación: [`firmware/central/motors_zircon.{h,cpp}`](firmware/central/mot
 | `motors_brake()` | **EMERGENCY_LINE** | PWM 0, INA=INB=1 (corto en H-bridge, **freno activo**) |
 | `motors_coast()` | Final de partido | Igual que stop |
 
-### 5.6 Kicker (solo ROBOT2 delantero)
+### 5.6 Kicker — NO EXISTE
 
-- Pin: ⚠️ tentativo `PIN_KICKER_SOL = 23` (TASK-011 pendiente).
-- Pulso: 80 ms.
-- Cooldown mínimo entre disparos: **1500 ms** (protege al solenoide de
-  recargas seguidas que lo queman físicamente).
+El robot **NO tiene kicker físico**: no hay solenoide ni MOSFET. El delantero
+empuja la pelota por inercia avanzando hacia el arco rival. El pin
+`PIN_KICKER_SOL` y las constantes `KICKER_*` fueron eliminados del firmware
+(2026-06-03). **TASK-011 cancelada.**
 
 ## 6. CAPA MEDIA — Lazos de control (PIDs)
 
@@ -252,7 +252,7 @@ arrastrar bias al nuevo target. Cada PID expone `reset_integral()`.
 | Nivel | Qué | Estado |
 |---|---|---|
 | **1** | ATK: WAIT_START/SEARCH/APPROACH. GK: WAIT_START/PATROL/INTERCEPT | ✅ implementado |
-| **2** | ATK: + KICKOFF + POSITION (behind-the-ball relativo) + kicker en APPROACH. GK: + CLEAR con histéresis. LINE_AVOID explícito | ✅ implementado |
+| **2** | ATK: + KICKOFF + POSITION (behind-the-ball relativo) + empuje alineado en APPROACH (sin kicker físico). GK: + CLEAR con histéresis. LINE_AVOID explícito | ✅ implementado |
 | **3+** | Pose absoluta (EKF), orbit suave continuo, KICKOFF_OWN/ADV, coordinación partner, modelo del rival | ⏳ futuro |
 
 ### 7.1 FSM del DELANTERO (ATTACKER)
@@ -279,9 +279,9 @@ arrastrar bias al nuevo target. Cada PID expone `reset_integral()`.
    alineada o   ▼                  ▼  (o sin arco visible)
    sin arco  ┌─────────────┐   ┌──────────────────────┐
              │ ATK_POSITION│   │  ATK_APPROACH        │
-             │ behind-the- │──▶│  va a la pelota +    │
-             │ ball: target│   │  si alineado+cerca:  │
-             │ detrás de   │◀──│  cmd.kicker_fire=1   │
+             │ behind-the- │──▶│  va a la pelota y la │
+             │ ball: target│   │  empuja por inercia  │
+             │ detrás de   │◀──│  (sin kicker físico) │
              │ la pelota   │   │  (histéresis ±10°)   │
              └─────────────┘   └──────────┬───────────┘
                                           │ ball_lost / dist<1mm
@@ -304,7 +304,7 @@ arrastrar bias al nuevo target. Cada PID expone `reset_integral()`.
 | POSITION → SEARCH | `!ball_visible` |
 | APPROACH → POSITION | `goal_visible` y pelota fuera de ±40° (histéresis +10°) |
 | APPROACH → SEARCH | `!ball_visible` o `ball_dist < 1 mm` |
-| APPROACH: `cmd.kicker_fire=1` | `goal_visible` y alineada y `ball_dist ≤ 80 mm` y `|ángulo_arco| ≤ 12°` |
+| APPROACH: alineado para empujar | `goal_visible` y alineada y `ball_dist ≤ 80 mm` y `|ángulo_arco| ≤ 12°` (sin kicker físico: solo geometría; el robot sigue empujando) |
 | cualquiera → WAIT_START | `!match_running` |
 | cualquiera → LINE_AVOID | `imminent_exit && line_fresh` |
 
@@ -547,7 +547,6 @@ Vía USB Serial el operario puede mandar texto para probar:
 - `set_role gk` / `set_role atk` — forzar rol en runtime (debug).
 - `dump_world` — imprime el WorldModel.
 - `dump_pids` — imprime estado de cada PID.
-- `kick` — dispara kicker (solo ROBOT2).
 - `stats` — contadores.
 
 ## 13. Encoders magnéticos (FUTURO, no implementado)
@@ -594,7 +593,7 @@ Nada más.
 | Nivel | Qué cubre | Plazo razonable |
 |---|---|---|
 | **Nivel 1 — Incheon MÍNIMO** | ATK/GK con SEARCH/APPROACH/PATROL/INTERCEPT | ✅ implementado |
-| **Nivel 2 — Incheon IDEAL** | + KICKOFF + POSITION (behind-the-ball relativo) + CLEAR con histéresis + LINE_AVOID + kicker en delantero | ✅ implementado |
+| **Nivel 2 — Incheon IDEAL** | + KICKOFF + POSITION (behind-the-ball relativo) + CLEAR con histéresis + LINE_AVOID + empuje alineado en delantero (sin kicker físico) | ✅ implementado |
 | **Nivel 3 — Roboliga Nov 2026** | EKF pose absoluta, orbit suave, KICKOFF_OWN/ADV, coordinación partner | 4–6 semanas post-Incheon |
 | **Nivel 4 — Mundial 2027** | Modelo del rival, set plays avanzadas, encoders magnéticos | 4–8 semanas pre-Mundial |
 | **Nivel 5 — largo plazo** | Estrategia adaptativa / ML simple sobre observaciones | 2027+ |

@@ -139,7 +139,6 @@ void apply_strafe(float dir_sign) {
     cmd.vx_mm_s          = static_cast<int16_t>(dir_sign * STRAFE_SPEED_MM_S);
     cmd.vy_mm_s          = 0;
     cmd.omega_centideg_s = 0;   // sin corrección de heading (no hay sensor en CENTRAL)
-    cmd.kicker_fire      = 0;
     cmd.dribbler_pwm     = 0;
     motors_apply_command(cmd);
 }

@@ -13,7 +13,7 @@ El equipo construye y programa **2 robots autónomos** (un arquero y un delanter
 - **Visión**: 2× cámaras OpenMV (H7 / H7 Plus) con MicroPython — frontal + trasera
 - **Comunicación**: UART entre placas (CENTRAL↔TOP↔DOWN) y OpenMV↔Teensy; ESP32-C6 para árbitros
 - **Sensores**: línea (anillo de 32 sensores ópticos), 2× OTOS (odometría), IMU/giróscopo (BNO055), ToF VL53L7CX, ultrasonido HC-SR04
-- **Actuadores**: motores TT con drivers H-bridge (base omni-3), dribbler, solenoide (kicker)
+- **Actuadores**: motores TT con drivers H-bridge (base omni-3), dribbler (opcional). **Sin kicker físico**: el delantero empuja la pelota por inercia.
 - **Estructura**: impresión 3D (Tinkercad/OpenSCAD) + construcción manual
 - **Placa custom**: PCB "Zircon" (CENTRAL) con librería propia (zirconLib)
 

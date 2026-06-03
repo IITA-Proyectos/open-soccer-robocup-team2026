@@ -51,7 +51,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 ### CENTRAL (Teensy 4.1, Zircon Rev v15)
 - `src/central/main_central.cpp` — entry
 - `src/central/strategy.cpp` — FSM ATK + GK Nivel 2 (KICKOFF/SEARCH/POSITION/APPROACH + PATROL/INTERCEPT/CLEAR + LINE_AVOID). **El cerebro.**
-- `src/central/motors_zircon.{h,cpp}` — PWM 3 motores omni + kicker (ROBOT2)
+- `src/central/motors_zircon.{h,cpp}` — PWM 3 motores omni (sin kicker físico: el robot empuja la pelota por inercia)
 - `src/central/imu_zircon.{h,cpp}` — BNO055 (⚠️ ya NO se conecta en CENTRAL desde 2026-05-31; compat gateado por `-DCENTRAL_HAS_LOCAL_BNO`, off; el heading viene de ARRIBA)
 - `src/central/world_model.{h,cpp}` — espejo del WorldSnapshot
 - `src/central/comm_top.{h,cpp}` — recibe WorldSnapshot del TOP (Serial1)
@@ -101,7 +101,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 | `test_proto` | 13 | CRC, frame, marker |
 | `test_line_filters` | 39 | temporal + hysteresis + spatial + centroide + lifted + saturación todo-blanco |
 | `test_cameras_fusion` | 16 | rot 180°, fuse front+back, watchdog |
-| `test_behind_ball` | 16 | target detrás, aligned-to-shoot, attack-line, kickoff |
+| `test_behind_ball` | 16 | target detrás, alineación para empujar, attack-line, kickoff |
 | `test_strategy_transitions` | 35 | árbol decisión ATK + GK (caracterización) |
 | `test_localization` | 14 | trilateracion + outliers + rotaciones + edge cases |
 | `test_calib_storage` | 19 | persistencia de calibración (`calib_storage`) |
@@ -145,7 +145,7 @@ nativo, pero ya no es el único camino. Ver
 - TASK-001 (Enzo): fix 10 nets DOWN PCB
 - TASK-002 (Enzo): DRC+ERC ambas placas
 - ~~TASK-006 (Virginia/Elías): flash firmware COMM ESP32-C6~~ → ✅ **FLASHEADA 2026-06-01** (Gustavo). E2E del árbitro **RESUELTO 2026-06-02 (TASK-039)**: el START/STOP del árbitro llega al TOP como **NIVEL GPIO en pines 5/6** (`OUT1`/`OUT2`), no por UART (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART). El `Serial2` (pines 7/8) del COMM queda SOLO para partner ESP-NOW / status.
-- TASK-011 (Enzo): confirmar PIN_KICKER_SOL en Zircon
+- ~~TASK-011 (Enzo): confirmar PIN_KICKER_SOL en Zircon~~ → **CANCELADA**: el robot NO tiene kicker físico (el delantero empuja la pelota por inercia); no se cablea solenoide.
 - TASK-013 (Enzo): recuperar BOM placa TOP
 - TASK-025 (todos): excepción Avast en cada máquina → destraba PlatformIO
 

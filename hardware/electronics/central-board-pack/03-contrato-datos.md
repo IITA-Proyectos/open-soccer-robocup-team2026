@@ -41,12 +41,13 @@ related:
 ### 0.1 Qué ES CENTRAL
 
 CENTRAL es el **master decisor del robot**. Corre en el **Teensy 4.1 montado
-sobre la placa Zircon Rev v15**. Es la única placa que toca los motores y el
-kicker directamente.
+sobre la placa Zircon Rev v15**. Es la única placa que toca los motores
+directamente. El robot NO tiene kicker físico — el delantero empuja la pelota
+por inercia.
 
 CENTRAL **recibe** datos del mundo (vía TOP) y datos de emergencia de línea
 (vía DOWN), **ejecuta** la FSM + PIDs, y **actúa** sobre los actuadores
-(motores PWM, kicker GPIO) sin intermediario.
+(motores PWM) sin intermediario.
 
 **Diagrama de posición en el sistema:**
 
@@ -57,7 +58,7 @@ CENTRAL **recibe** datos del mundo (vía TOP) y datos de emergencia de línea
      [DOWN] ←──── LINE_URGENT (EVENTO+STREAM, 200 Hz) ──►  [CENTRAL]
                    (via Serial1 de CENTRAL)
 
-     [CENTRAL] ──► motors PWM + kicker GPIO  (LOCAL, no UART)
+     [CENTRAL] ──► motors PWM  (LOCAL, no UART)
 
      [CENTRAL] ──► CENTRAL_RESET_OTOS / CENTRAL_CALIB_LINE  (COMANDO, via Serial1 → DOWN)
 
@@ -94,7 +95,7 @@ precedencia. `config_central.h` debe ser corregido (ver §6, GAP-004).
 | FSM táctica (SEARCH/APPROACH/PATROL/INTERCEPT…) | **CENTRAL** |
 | PIDs de heading, lateral (arquero) y aproximación | **CENTRAL** |
 | Cinemática inversa omni-3 | **CENTRAL** |
-| Aplicación de PWM a motores y kicker | **CENTRAL** (hardware directo) |
+| Aplicación de PWM a motores | **CENTRAL** (hardware directo) |
 | Protección de borde (EMERGENCY_LINE) | **CENTRAL** (bypass de FSM) |
 | Pose absoluta en cancha | **TOP** (dentro del snapshot) |
 | Odometría OTOS | **DOWN → TOP** |
@@ -199,7 +200,8 @@ Heredada del marco del robot (igual que en DOWN):
 - Rango `(-18000, +18000]` centidegrees.
 
 `goal_opp_angle_centideg` es **relativo al frente del robot** (no absoluto de
-cancha). CENTRAL lo usa directamente en la FSM para alinear el kicker.
+cancha). CENTRAL lo usa directamente en la FSM para alinearse al arco rival y
+empujar la pelota.
 
 `my_heading_centideg` es **absoluto en cancha** (referencia: orientación al
 inicio del partido). CENTRAL lo usa para los PIDs de heading y para clasificar
@@ -368,8 +370,8 @@ los H-bridges del Zircon. No hay frame de protocolo aquí.
 ```
 strategy_tick()           (strategy.cpp:455-457)
      │
-     └── retorna MotorCommand {vx_mm_s, vy_mm_s, omega_centideg_s, kicker_fire, dribbler_pwm}
-                              (types.h:59-65)
+     └── retorna MotorCommand {vx_mm_s, vy_mm_s, omega_centideg_s, dribbler_pwm}
+                              (types.h:59-64)
      │
      ▼
 motors_apply_command(cmd) (motors_zircon.cpp:113-138)
@@ -390,20 +392,16 @@ motors_apply_command(cmd) (motors_zircon.cpp:113-138)
      │           pwm < 0: INA=0, INB=1, analogWrite(PWM, -pwm)
      │           pwm = 0: INA=0, INB=0, analogWrite(PWM, 0)  [libre, no frena]
      │
-     └── kicker_update(cmd.kicker_fire)    [solo ROBOT2 — delantero]
-             fire=1 + cooldown_ok → GPIO PIN_KICKER_SOL HIGH durante 80 ms
-             luego LOW + cooldown 1500 ms antes del próximo disparo
-             (motors_zircon.cpp:48-69, config_central.h:102-104)
+     └── (sin kicker físico — el delantero empuja la pelota por inercia)
 ```
 
-#### 3.3.2 Estructura `MotorCommand` (`types.h:59-65`)
+#### 3.3.2 Estructura `MotorCommand` (`types.h:59-64`)
 
 | Campo | Tipo | Unidad | Rango | Significado |
 |---|---|---|---|---|
 | `vx_mm_s` | i16 | mm/s | −32767..+32767 | Velocidad lateral (+ = derecha del robot) |
 | `vy_mm_s` | i16 | mm/s | −32767..+32767 | Velocidad longitudinal (+ = frente del robot) |
 | `omega_centideg_s` | i16 | centideg/s | −36000..+36000 | Vel. angular (+ = CCW visto desde arriba) |
-| `kicker_fire` | u8 | — | 0 / 1 | 1 = disparar kicker. Solo delantero (ROBOT2). |
 | `dribbler_pwm` | u8 | — | 0..255 | **Futuro** — no implementado. Siempre 0. |
 
 **Saturation real:** `MAX_SPEED_MM_S = 1000.0f` mm/s (`config_central.h:75`).
@@ -417,7 +415,6 @@ motors_apply_command(cmd) (motors_zircon.cpp:113-138)
 | Motor 0 | INA=2, INB=5, PWM=3 | INA=8, INB=7, PWM=6 |
 | Motor 1 | INA=8, INB=7, PWM=6 | INA=11, INB=12, PWM=4 |
 | Motor 2 | INA=11, INB=12, PWM=4 | INA=2, INB=5, PWM=3 |
-| Kicker | — | PIN=23 (⚠️ A CONFIRMAR ENZO) |
 
 Fuente: `config_central.h:24-35` (ROBOT1) y `:37-47` (ROBOT2).
 
@@ -428,7 +425,6 @@ Fuente: `config_central.h:24-35` (ROBOT1) y `:37-47` (ROBOT2).
 | Normal | `motors_apply_command(cmd)` | Strategy tick OK | INA/INB por dirección + analogWrite |
 | Free-stop | `motors_stop()` | Watchdog TOP (500 ms) | INA=0, INB=0, PWM=0 — frena por fricción |
 | Brake activo | `motors_brake()` | `imminent_exit` detectado | INA=1, INB=1, PWM=0 — corto H-bridge |
-| Kicker force-off | en `motors_stop()` y `motors_brake()` | Con cualquier parada | GPIO kicker → LOW inmediatamente |
 
 **Precedencia de actuación en el loop** (`main_central.cpp:84-116`):
 1. Si `imminent_exit && line_is_fresh` → `motors_brake()` + `return` (bypassa FSM).
@@ -552,7 +548,7 @@ no tiene consumidor en `strategy.cpp` / `world_model.cpp`. GAP-010 queda **obsol
 │  src/central/main_central.cpp   — setup/loop, watchdogs, LED    │
 │  src/central/world_model.cpp    — estado del mundo (+ millis()) │
 │  src/central/strategy.cpp       — FSM + PIDs (usa millis())     │
-│  src/central/motors_zircon.cpp  — PWM + H-bridges + kicker GPIO │
+│  src/central/motors_zircon.cpp  — PWM + H-bridges (3 motores)   │
 │  src/central/comm_top.cpp       — Serial1, FrameDecoder         │
 │  src/central/comm_down.cpp      — Serial1, FrameDecoder         │
 │  src/central/imu_zircon.cpp     — I2C BNO055 + delay() en setup │
@@ -596,7 +592,8 @@ los tests de FSM reales (en lugar de la réplica).
               ▼                                                   │
          [APPROACH] ◄──── ball visible + (no goal OR alineado) ───┘
               │
-          kicker_fire=1 cuando dist < 80mm + aligned < 12°
+          alineado para empujar cuando dist < 80mm + aligned < 12°
+          (sin kicker físico: el robot empuja la pelota por inercia)
               │
        ball perdido──► [SEARCH]
        desalineado──► [POSITION]
@@ -638,10 +635,10 @@ Fuente: `strategy.cpp:319-441`.
 
 ```
 Prioridad 1 (máxima): imminent_exit && line_is_fresh
-    → motors_brake()  [corto H-bridge + kicker OFF]  (main_central.cpp:95-101)
+    → motors_brake()  [corto H-bridge]               (main_central.cpp:95-101)
 
 Prioridad 2: !snapshot_is_fresh  (TOP LOST)
-    → motors_stop()   [libre + kicker OFF]            (main_central.cpp:108-110)
+    → motors_stop()   [libre]                         (main_central.cpp:108-110)
 
 Prioridad 3: match_running = false  (árbitro STOP)
     → FSM → WAIT_START → MotorCommand{} (ceros → motors_stop implícito)
@@ -729,9 +726,9 @@ Flujo CENTRAL:
     vx = 200/360 × 380 ≈ 211 mm/s
     vy = 300/360 × 380 ≈ 317 mm/s
     is_aligned_to_shoot(200, 300, 20.0°, 80mm, 12°): dist=360 > 80 → false
-    cmd.kicker_fire = 0
+    (no alineado para empujar — sigue avanzando hacia la pelota)
 
-MotorCommand: {vx≈211, vy≈317, omega=PID(heading,0°), kicker_fire=0}
+MotorCommand: {vx≈211, vy≈317, omega=PID(heading,0°)}
 motors_apply_command → kinematics → PWM a 3 ruedas
 ```
 
@@ -801,7 +798,7 @@ Flujo GK INTERCEPT:
   cmd.vx = 320 + vx_lateral_pid × 0.3   (mezcla intercept + PID lateral)
   dist = sqrt(80² + 150²) ≈ 170 mm > 250 mm (GK_CLEAR_TRIGGER) → sigue en INTERCEPT
 
-MotorCommand: {vx≈intercept+pid_blend, vy=0, omega=0, kicker=0}
+MotorCommand: {vx≈intercept+pid_blend, vy=0, omega=0}
 ```
 
 ---
@@ -816,7 +813,7 @@ MotorCommand: {vx≈intercept+pid_blend, vy=0, omega=0, kicker=0}
 | CENTRAL → DOWN | `0x21` | `CENTRAL_CALIB_LINE` | `uint8` (1 B, 0/1/2) | COMANDO | Evento | Implementado (sin llamador) |
 | CENTRAL → TOP | `0x61` | `CENTRAL_RESET_TOP` | TBD | COMANDO | Evento | **NO implementado** |
 | CENTRAL → TOP | `0x62` | `CENTRAL_TOP_CMD` | TBD | COMANDO | Evento | **NO implementado** |
-| CENTRAL → Motores | — | PWM/GPIO | MotorCommand → 3×PWM + kicker | LOCAL | 100 Hz | Implementado |
+| CENTRAL → Motores | — | PWM | MotorCommand → 3×PWM | LOCAL | 100 Hz | Implementado |
 
 ---
 
@@ -835,7 +832,7 @@ MotorCommand: {vx≈intercept+pid_blend, vy=0, omega=0, kicker=0}
 - `software/teensy/Soccer 2026/src/central/main_central.cpp` (setup/loop, watchdogs)
 - `software/teensy/Soccer 2026/src/central/strategy.cpp` (FSM + PIDs, líneas 1-465)
 - `software/teensy/Soccer 2026/src/central/world_model.cpp` (estado del mundo, líneas 1-73)
-- `software/teensy/Soccer 2026/src/central/motors_zircon.cpp` (PWM + kicker, líneas 1-170)
+- `software/teensy/Soccer 2026/src/central/motors_zircon.cpp` (PWM 3 motores)
 - `software/teensy/Soccer 2026/src/central/comm_top.cpp` (Serial1 receptor, líneas 1-48)
 - `software/teensy/Soccer 2026/src/central/comm_down.cpp` (Serial1 emisor/receptor, líneas 1-71)
 - `software/teensy/Soccer 2026/src/central/imu_zircon.cpp` (IMU fallback, líneas 1-89)

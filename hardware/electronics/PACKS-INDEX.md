@@ -25,7 +25,7 @@ abrir el pack del subsistema y empezar por su `README.md`.
 | Subsistema | Pack | Hardware | Archivos | Tamaño | Estado |
 |---|---|---|---|---|---|
 | **DOWN** — sensores piso | [`down-board-pack/`](down-board-pack/) | Teensy 4.0 + 32 ALS-PT19 + 4 CD4051 + 2 SparkFun OTOS | 47 | 2.4 MB | Pinout completo extraído del SCH JSON automáticamente |
-| **CENTRAL** — cerebro motor | [`central-board-pack/`](central-board-pack/) | Teensy 4.1 + Zircon Rev v15 + 3 motores omni + kicker (ROBOT2) — **sin BNO** (está en el TOP) | 40 | 362 KB | Sin schematic JSON disponible, 1 conflicto pendiente |
+| **CENTRAL** — cerebro motor | [`central-board-pack/`](central-board-pack/) | Teensy 4.1 + Zircon Rev v15 + 3 motores omni (sin kicker físico: empuja por inercia) — **sin BNO** (está en el TOP) | 40 | 362 KB | Sin schematic JSON disponible, 1 conflicto pendiente |
 | **TOP** — cerebro sensorial | [`top-board-pack/`](top-board-pack/) | Teensy 4.0 master + 2 BNO055 + 4 ToF + HC-SR04 + 5 UARTs | 34 | 725 KB | Con SCH JSON, 2 conflictos detectados |
 | **Cámara FRONTAL** | [`cameraFront-pack/`](cameraFront-pack/) | OpenMV H7 / H7 Plus (mira +Y del robot) | 16 | 152 KB | Hay 1 script genérico actual; el objetivo es split en `cam_frontal.py` |
 | **Cámara TRASERA** | [`cameraBack-pack/`](cameraBack-pack/) | OpenMV H7 / H7 Plus (mira −Y del robot) | 16 | 156 KB | Hay 1 script genérico actual; el objetivo es split en `cam_trasera.py` |
@@ -44,7 +44,6 @@ abrir el pack del subsistema y empezar por su `README.md`.
 | Tunear PIDs (heading, lateral, approach) | `central-board-pack/` |
 | Modificar la cinemática inversa omni-3 | `central-board-pack/` |
 | Configurar pinout de motores (arquero vs delantero) | `central-board-pack/` |
-| Programar el kicker (solenoide) | `central-board-pack/` |
 | Programar el watchdog de motor / EMERGENCY_LINE | `central-board-pack/` |
 | Programar el parser de cámaras del lado Teensy | `top-board-pack/` |
 | Programar el IMU dual (BNO055 × 2) | `top-board-pack/` |

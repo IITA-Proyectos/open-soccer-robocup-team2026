@@ -26,7 +26,7 @@ fuentes:
 | Placa **Zircon Rev v15** | 1 | Shield del Teensy 4.1, PCB que ganó el nacional 2025 |
 | H-bridges para motores omni-3 | 3 | Drivers Zircon U5, U7, U17. Cada uno: INA + INB + PWM |
 | ~~**BNO055** IMU local~~ | 0 | ⚠️ **YA NO se conecta (2026-05-31)** — los 2 BNO están en el TOP; el heading viene del snapshot de ARRIBA. `imu_zircon` queda como compat (`-DCENTRAL_HAS_LOCAL_BNO`, off). |
-| Solenoide / kicker (solo ROBOT2 delantero) | 1 | GPIO + MOSFET. ⚠️ pin a confirmar |
+| ~~Solenoide / kicker~~ | 0 | **El robot NO tiene kicker físico** — el delantero empuja la pelota por inercia. Eliminado del firmware (2026-06-03). |
 | Dribbler (opcional, ROBOT2) | 1 | PWM. Si está montado físicamente |
 | Botones de programación | 2 | Pines 9, 10. Pull-up interno |
 | LED de estado | 1 | LED_BUILTIN (pin 13) |
@@ -88,10 +88,12 @@ Build: `pio run -e zircon_robot1`.
 | **Motor 2** | pin **8** | pin **7** | pin **6** | U17 |
 | **Motor 3** | pin **11** | pin **12** | pin **4** | U7 |
 
-### Kicker / dribbler
+### Dribbler
 
-El arquero **NO tiene kicker** (regla: solo el delantero patea). El bloque
-`PIN_KICKER_SOL` en `config_central.h` está envuelto en `#if defined(ROBOT2)`.
+El robot **NO tiene kicker físico** — ningún robot (arquero ni delantero) lleva
+solenoide. El delantero empuja la pelota por inercia. El bloque
+`PIN_KICKER_SOL` y las constantes `KICKER_*` fueron eliminados de
+`config_central.h` (2026-06-03).
 
 ## 4. Pinout ROBOT2 — DELANTERO (#define ROBOT2)
 
@@ -105,15 +107,14 @@ Build: `pio run -e zircon_robot2`.
 | **Motor 2** | pin **11** | pin **12** | pin **4** | U7 |
 | **Motor 3** | pin **2** | pin **5** | pin **3** | U5 |
 
-### Kicker (solenoide)
+### Kicker (solenoide) — NO EXISTE
 
-| Atributo | Valor | Confianza |
-|---|---|---|
-| Pin de control | **23** (`PIN_KICKER_SOL`) | ⚠️ **TENTATIVO** — pendiente confirmar con Enzo qué GPIO del Zircon está cableado al MOSFET del solenoide |
-| Duración del pulso | 80 ms (`KICKER_PULSE_MS`) | ✅ |
-| Cooldown mínimo entre disparos | 1500 ms (`KICKER_COOLDOWN_MS`) | ✅ protege al solenoide de recargas seguidas que lo queman |
+El robot **NO tiene kicker físico**: no hay solenoide ni MOSFET de disparo. El
+delantero empuja la pelota por inercia avanzando hacia el arco rival. El pin
+`PIN_KICKER_SOL` y las constantes `KICKER_PULSE_MS` / `KICKER_COOLDOWN_MS`
+fueron eliminados del firmware (2026-06-03).
 
-> **Ver TASK-011** en `team-tasks/2026-05-15-task-011-confirmar-pin-kicker-solenoide-zircon.md`.
+> **TASK-011 CANCELADA** (`team-tasks/2026-05-15-task-011-confirmar-pin-kicker-solenoide-zircon.md`): no se cablea solenoide.
 
 ## 5. Equivalencia de motores ARQUERO ↔ DELANTERO
 
@@ -179,7 +180,7 @@ se desconecta el cable UART. La implementación vive en
 | 18 | SDA0 (Wire) | I²C BNO055 | I²C BNO055 | ✅ |
 | 19 | SCL0 (Wire) | I²C BNO055 | I²C BNO055 | ✅ |
 | 20–23 | Analógicos | Legacy IR pelota (no usados) | Legacy IR pelota (no usados) | ✅ legacy |
-| 23 | GPIO | — | Kicker solenoide | ⚠️ TENTATIVO |
+| 23 | GPIO | — | — (libre; sin kicker físico) | ✅ |
 | 25–27 | Analógicos | Legacy Line1/2/3 (no usados) | Legacy Line1/2/3 (no usados) | ✅ legacy |
 | **28, 29** | RX7/TX7 (Serial7) | UART **desde/hacia TOP** (reasignado 2026-05-31) | idem | ✅ |
 | 24, 30–41 | GPIO | Libres para expansión | Libres para expansión | ✅ |
@@ -194,7 +195,7 @@ se desconecta el cable UART. La implementación vive en
 
 | # | Pendiente | Asignado | Bloqueante para |
 |---|---|---|---|
-| 1 | Confirmar `PIN_KICKER_SOL` (¿es 23?) | Enzo | Patear pelota (TASK-011) |
+| 1 | ~~Confirmar `PIN_KICKER_SOL` (¿es 23?)~~ → **CANCELADO**: el robot NO tiene kicker físico (empuja por inercia). TASK-011 cancelada. | — | — |
 | 2 | Confirmar `WHEEL_ANGLES_DEG` y `WHEEL_RADIUS_MM` con montaje físico | Enzo + Virginia | Cinemática correcta (omni-3) |
 | 3 | ✅ RESUELTO 2026-05-31: conflicto 7/8 cerrado moviendo los UART (DOWN→Serial1 0/1, TOP→Serial7 28/29); 7/8 quedan para el motor 2. | ✅ | — |
 | 4 | Confirmar que sensores legacy (8 IR + 3 línea) están físicamente en el PCB pero firmware no los lee | Enzo | Liberar esos pines en futura Rev del Zircon |

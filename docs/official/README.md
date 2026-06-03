@@ -15,7 +15,7 @@ Documento técnico que describe el robot, la estrategia y el proceso de desarrol
 
 **Secciones típicas:**
 - Introducción y descripción del equipo
-- Diseño mecánico (chasis, ruedas, dribbler, kicker)
+- Diseño mecánico (chasis, ruedas, dribbler — el robot NO tiene kicker físico; empuja la pelota por inercia)
 - Electrónica (PCB Zircon, sensores, actuadores)
 - Software (arquitectura, algoritmos, visión)
 - Estrategia de juego (arquero, delantero, coordinación)

@@ -88,7 +88,11 @@ GkTuning  gk_tuning_default();
 // === Resultado de una decisión de transición ===
 struct AtkDecision {
     AtkPhase next_phase;
-    bool     kicker_fire;        // ¿este tick se emite cmd.kicker_fire=1?
+    // El robot NO tiene kicker físico. Este flag ya no dispara nada: marca el
+    // "punto de empuje alineado" (pelota cerca + apuntando al arco), que es
+    // pura geometría de alineación. Se conserva como red de caracterización de
+    // strategy.cpp; el robot sigue empujando la pelota por inercia.
+    bool     kicker_fire;        // ¿este tick el robot está alineado para empujar?
     bool     start_kickoff_timer;// ¿el caller debe guardar now como kickoff_started?
 };
 

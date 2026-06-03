@@ -101,7 +101,7 @@ central-board-pack/
 | ¿Por qué hay un bus de emergencia separado a DOWN? | `04-protocolo-comunicaciones.md` (latencia <15 ms) |
 | ¿Cuál es el rol de CENTRAL en el contexto de 3 placas? | `05-arquitectura-3-placas.md` |
 | ¿Cómo se selecciona arquero vs delantero? | `01-pinout` §3/§4 + `02-funcionalidad` §4 (compile-time `#define ROBOT1` / `ROBOT2`) |
-| ¿El kicker en qué pin está? | `01-pinout-y-hardware.md` §4 (⚠️ tentativo, pin 23 a confirmar — TASK-011) |
+| ¿El kicker en qué pin está? | NO existe — el robot no tiene kicker físico (empuja por inercia). Ver `01-pinout-y-hardware.md` §4. |
 
 ## ⚠️ Pendientes humanos importantes (NO bloquean uso del pack)
 
@@ -114,7 +114,7 @@ central-board-pack/
 
 **Otros pendientes (no urgentes):**
 
-2. **Confirmar `PIN_KICKER_SOL`** — ¿es el pin 23? (TASK-011 en `team-tasks/`)
+2. ~~**Confirmar `PIN_KICKER_SOL`**~~ — **CANCELADO**: el robot no tiene kicker físico (empuja por inercia); TASK-011 cancelada.
 3. **Confirmar cinemática física** — `WHEEL_ANGLES_DEG` y `WHEEL_RADIUS_MM` con regla en el robot armado.
 4. **Sensores legacy del Zircon 2025** (8 IR pelota + 3 línea analógicos) están físicamente
    en el PCB pero el firmware nuevo no los lee — confirmar antes de liberar esos pines en una futura rev.

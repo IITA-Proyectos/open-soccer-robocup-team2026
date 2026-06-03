@@ -54,7 +54,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - `src/central/motors_zircon.{h,cpp}` — PWM 3 motores omni (sin kicker físico: el robot empuja la pelota por inercia)
 - `src/central/imu_zircon.{h,cpp}` — BNO055 (⚠️ ya NO se conecta en CENTRAL desde 2026-05-31; compat gateado por `-DCENTRAL_HAS_LOCAL_BNO`, off; el heading viene de ARRIBA)
 - `src/central/world_model.{h,cpp}` — espejo del WorldSnapshot
-- `src/central/comm_top.{h,cpp}` — recibe WorldSnapshot del TOP (Serial1)
+- `src/central/comm_top.{h,cpp}` — recibe WorldSnapshot del TOP por **`Serial7` (RX7 = pin 28)** (reasignado 2026-05-31: antes Serial1, se movió a Serial7 cuando el link a DOWN tomó Serial1)
 - `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 + OTOS (Pose2D/Velocity2D) del DOWN por **`Serial1` (pin 0)**. ✅ Conflicto 7/8 **RESUELTO** (2026-05-31: UART movido a Serial1; los pines 7/8 quedan para el motor 2). Receiver de banco: `diag_central_comm_down` ([doc](firmware/DIAG-CENTRAL-COMM-DOWN.md)). 📊 **Análisis profundo del link** (protocolo/CRC, buffers, timing, recuperación ante cortes, P0/P1 + checklist "primera instancia") → [`docs/firmware/ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md`](firmware/ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md).
 
 - **Diags de banco (CENTRAL, `src/diag/`):** `diag_central_motors` (motores + `MOTOR_DIR`), **`diag_central_strafe`** (patrulla lateral del arquero — **open-loop**, omega=0, sin BNO en CENTRAL; ahora que el OTOS llega a CENTRAL por broadcast se le puede sumar heading-hold = v2 — [doc](firmware/DIAG-CENTRAL-STRAFE.md)), `diag_central_drive_straight` (+Y con heading del TOP), `diag_central_comm_down` (link DOWN→CENTRAL), `diag_central_rx_all` (decodifica DOWN+TOP juntos).

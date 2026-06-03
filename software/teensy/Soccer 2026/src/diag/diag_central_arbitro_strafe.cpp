@@ -143,8 +143,7 @@ void apply_strafe(float dir_sign) {
     cmd.vx_mm_s          = static_cast<int16_t>(dir_sign * STRAFE_SPEED_MM_S);
     cmd.vy_mm_s          = 0;
     cmd.omega_centideg_s = 0;
-    cmd.kicker_fire      = 0;
-    cmd.dribbler_pwm     = 0;
+    cmd.dribbler_pwm     = 0;   // (el robot no tiene kicker; kicker_fire fue removido de MotorCommand)
     motors_apply_command(cmd);
 }
 

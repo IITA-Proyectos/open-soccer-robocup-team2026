@@ -161,9 +161,12 @@ bool sensors_imu_init() {
     // validada en diag_pose_live: dim ToF -> init BNO -> enumerar ToF). (2026-06-02)
     // Wire1 ya NO se usa aca (recableado 2026-05-31).
     Wire.begin();
-    Wire.setClock(400000);  // 400 kHz: el bus quedo SANO al sacar el 2do BNO fallado
-                            // (0x28 bueno + 4 ToF conviven; validado en banco 2026-06-02:
-                            // diag_top_tof_quad_live = 4/4 @ 400 kHz). Revertido de 100 kHz.
+    Wire.setClock(100000);  // 100 kHz: el BNO055 y los VL53L7CX NO coexisten a 400 kHz — con
+                            // los ToF rangeando, el read multi-byte del BNO se corrompe y el
+                            // yaw queda CONGELADO (banco 2026-06-02). A 100 kHz coexisten OK
+                            // (diag_bno_tof_slow: yaw sigue el giro con los 4 ToF activos).
+                            // 400 kHz solo servia con ToF-solo (quad_live) o BNO-solo
+                            // (diag_bno_left). Costo: boot ~40 s (carga firmware de los 4 ToF).
 
     imu_fusion_init(g_fusion);
     g_fcfg = imu_fusion_default_cfg();

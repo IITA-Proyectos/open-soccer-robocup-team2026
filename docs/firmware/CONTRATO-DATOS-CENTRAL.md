@@ -55,11 +55,14 @@ CENTRAL **recibe** datos del mundo (vía TOP) y datos de emergencia de línea
                    (via Serial1 de CENTRAL)
 
      [DOWN] ←──── LINE_URGENT (EVENTO+STREAM, 200 Hz) ──►  [CENTRAL]
-                   (via Serial2 de CENTRAL)
+                   (via Serial1 de CENTRAL)
+
+     [DOWN] ←──── DOWN_OTOS_POSE + DOWN_OTOS_VEL (STREAM, 100 Hz) ──►  [CENTRAL]
+                   (via Serial1 de CENTRAL — broadcast simétrico, Capa 1)
 
      [CENTRAL] ──► motors PWM + kicker GPIO  (LOCAL, no UART)
 
-     [CENTRAL] ──► CENTRAL_RESET_OTOS / CENTRAL_CALIB_LINE  (COMANDO, via Serial2 → DOWN)
+     [CENTRAL] ──► CENTRAL_RESET_OTOS / CENTRAL_CALIB_LINE  (COMANDO, via Serial1 → DOWN)
 
      [CENTRAL] ──► CENTRAL_RESET_TOP / CENTRAL_TOP_CMD       (COMANDO, via Serial? → TOP)
                    (anticipado en proto.h:51-52, NO implementado)
@@ -97,7 +100,7 @@ precedencia. `config_central.h` debe ser corregido (ver §6, GAP-004).
 | Aplicación de PWM a motores y kicker | **CENTRAL** (hardware directo) |
 | Protección de borde (EMERGENCY_LINE) | **CENTRAL** (bypass de FSM) |
 | Pose absoluta en cancha | **TOP** (dentro del snapshot) |
-| Odometría OTOS | **DOWN → TOP** |
+| Odometría OTOS (broadcast Capa 1) | **DOWN → TOP y CENTRAL** (la pose de cancha autoritativa sigue siendo el WorldSnapshot del TOP; el OTOS directo en CENTRAL es solo para control de movimiento — Capa 2) |
 
 ---
 
@@ -123,15 +126,15 @@ El transporte de TODOS los enlaces es **idéntico al definido en
 
 | Enlace | Serial | Pines Teensy | Dirección |
 |---|---|---|---|
-| TOP → CENTRAL | `Serial1` | RX1=0, TX1=1 | recibe `WORLD_SNAPSHOT` |
-| DOWN → CENTRAL | `Serial2` | RX2=7, TX2=8 | recibe `LINE_URGENT`, envía comandos |
+| TOP → CENTRAL | `Serial7` | RX7=28, TX7=29 | recibe `WORLD_SNAPSHOT` |
+| DOWN → CENTRAL | `Serial1` | RX1=0, TX1=1 | recibe `LINE_URGENT`, envía comandos |
 
-> **ADVERTENCIA CRÍTICA (P0):** Los comentarios de `config_central.h:79-82`
-> dicen "Serial1 RX1" para el enlace con TOP. Pero `comm_top.cpp:30` abre
-> `Serial1` y `comm_down.cpp:30` abre `Serial2`. Si el cableado físico TOP→
-> CENTRAL llega a los pines 7/8 (Serial2) en lugar de 0/1 (Serial1), **CENTRAL
-> nunca recibe snapshots y los motores quedan parados permanentemente**. El
-> mapeo físico está PENDIENTE DE VERIFICACIÓN CON OSCILOSCOPIO (TASK-008/014).
+> **✅ Reasignado 2026-05-31 (decisión Gustavo, cableado en banco):** el link
+> **TOP→CENTRAL usa `Serial7` (RX7=pin 28, TX7=pin 29)** y **DOWN→CENTRAL usa
+> `Serial1` (RX1=pin 0, TX1=pin 1)**. `comm_top.cpp` abre `Serial7`, `comm_down.cpp`
+> abre `Serial1`. Así `Serial2` (pines 7/8) queda libre para el driver del motor 2
+> (U17) → el viejo conflicto 7/8 (F8/TASK-036) está **RESUELTO**. Falta solo cablear
+> (TOP pin 29 → CENTRAL pin 28; DOWN pin 1 → CENTRAL pin 0) y validar el stream en banco.
 
 ---
 
@@ -233,7 +236,7 @@ línea). Política: latch OR para eventos; coalesce para geometría.
 
 **Frecuencia:** 100–200 Hz (DOWN genera a 200 Hz según diseño).
 
-**Transporte:** Serial2 de CENTRAL (`comm_down.cpp:30`). Recibido en
+**Transporte:** Serial1 de CENTRAL (`comm_down.cpp`). Recibido en
 `comm_down_tick()` (`comm_down.cpp:34-43`).
 
 **Payload en protocolo objetivo (v2):** `struct LineStatusV2` de `types.h:126-140`.
@@ -308,7 +311,7 @@ END   = 55
 ```
 (CRC numérico: calcular con CRC-16/CCITT-FALSE sobre bytes `01 20 00 01`.)
 
-**Transporte:** `Serial2.write()` de CENTRAL (`comm_down.cpp:54`).
+**Transporte:** `Serial1.write()` de CENTRAL (`comm_down.cpp`).
 
 #### 3.1.2 `CENTRAL_CALIB_LINE` (TYPE `0x21`) — COMANDO
 
@@ -333,7 +336,7 @@ CRC16 = sobre [01 21 01 01]
 END   = 55
 ```
 
-**Transporte:** `Serial2.write()` de CENTRAL (`comm_down.cpp:63`).
+**Transporte:** `Serial1.write()` de CENTRAL (`comm_down.cpp`).
 
 ---
 
@@ -518,14 +521,14 @@ actual):
 7. Ponderar PID lateral arquero por `quality` (`0..100`).
 8. Latch OR sobre `event_flags` en el drenado del buffer (EVENTO — no coalesce).
 
-### 4.3 IMU local (fallback BNO055 del Zircon)
+### 4.3 IMU local (BNO055 del Zircon) — ⚠️ YA NO SE CONECTA (2026-05-31)
 
-CENTRAL tiene un BNO055 local (`imu_zircon.cpp`). Se inicializa en `setup()`
-(`main_central.cpp:68-72`). Si falla → continúa con heading del snapshot.
-
-**Estado actual:** el IMU local **no se usa en ningún lugar de `strategy.cpp`
-ni `world_model.cpp`**. Solo se inicializa y se imprime en debug. `imu_get_heading()`
-existe pero no hay consumidor en el loop. Ver GAP-010.
+**La CENTRAL ya NO lleva BNO.** Los 2 BNO055 están en el TOP; el heading absoluto del
+robot llega por `WORLD_SNAPSHOT` de ARRIBA. El módulo `imu_zircon.cpp` queda como
+**compat**: `main_central` solo llama `imu_init()` si se compila con
+`-DCENTRAL_HAS_LOCAL_BNO` (default OFF), así que en el build normal no se toca el bus
+I2C ni se pierden ~3 s buscando un sensor ausente. Aun con el flag, `imu_get_heading()`
+no tiene consumidor en `strategy.cpp` / `world_model.cpp`. GAP-010 queda **obsoleto**.
 
 ---
 
@@ -554,7 +557,7 @@ existe pero no hay consumidor en el loop. Ver GAP-010.
 │  src/central/strategy.cpp       — FSM + PIDs (usa millis())     │
 │  src/central/motors_zircon.cpp  — PWM + H-bridges + kicker GPIO │
 │  src/central/comm_top.cpp       — Serial1, FrameDecoder         │
-│  src/central/comm_down.cpp      — Serial2, FrameDecoder         │
+│  src/central/comm_down.cpp      — Serial1, FrameDecoder         │
 │  src/central/imu_zircon.cpp     — I2C BNO055 + delay() en setup │
 │  src/central/config_central.h   — pinout + constantes HW        │
 └─────────────────────────────────────────────────────────────────┘
@@ -571,7 +574,7 @@ existe pero no hay consumidor en el loop. Ver GAP-010.
 | World model | `src/central/world_model.cpp` | **HW-bound** (usa `millis()`) | NO |
 | Motors Zircon | `src/central/motors_zircon.cpp` | **HW-bound** (Arduino GPIO) | NO |
 | Comm TOP | `src/central/comm_top.cpp` | **HW-bound** (Serial1) | NO (proto.h sí testeado) |
-| Comm DOWN | `src/central/comm_down.cpp` | **HW-bound** (Serial2) | NO (proto.h sí testeado) |
+| Comm DOWN | `src/central/comm_down.cpp` | **HW-bound** (Serial1) | NO (proto.h sí testeado) |
 | IMU Zircon | `src/central/imu_zircon.cpp` | **HW-bound** (I2C + delay) | NO |
 
 **Qué hace testeable:** separar lógica de `strategy.cpp` que solo usa
@@ -668,8 +671,8 @@ línea → puede salir de cancha. Ver GAP-009.
 | GAP-007 | P1 | `CENTRAL_RESET_TOP` (0x61) y `CENTRAL_TOP_CMD` (0x62) definidos en `proto.h:51-52` pero NO implementados | `proto.h:51-52` | Implementar `comm_top_send_reset()` para la escalera de recuperación (TASK-021 Nivel 2) |
 | GAP-008 | P2 | `ball_confidence` no se valida en `world_model_ball_visible()` | `world_model.cpp:51` | `return g_snap.ball_visible != 0 && g_snap.ball_confidence > 0` |
 | GAP-009 | P0 | Si DOWN cae (LOST, `!line_is_fresh()`), CENTRAL sigue jugando sin protección de borde → puede salir de cancha | `main_central.cpp:104-116`, diseño comms §5.1 | Implementar modo borde conservador (velocidad limitada + vector prohibido hacia afuera) cuando `!line_is_fresh()` (TASK-016) |
-| GAP-010 | P2 | IMU local BNO055 del Zircon inicializado pero nunca usado como fallback de heading | `imu_zircon.cpp`, `strategy.cpp` | Integrar `imu_get_heading()` como fuente alternativa cuando `!snapshot_is_fresh()` |
-| GAP-011 | P1 | `strategy_transitions.cpp` es una réplica de la FSM usada para los 35 tests de FSM, pero no es `strategy.cpp` el que corre en el robot; divergencias posibles son bugs silenciosos | `test/test_strategy/strategy_transitions.cpp` | Abstraer dependencia de `millis()` en `strategy.cpp` con función inyectable y testear `strategy.cpp` directamente |
+| ~~GAP-010~~ | — | ✅ **OBSOLETO 2026-05-31:** ya no hay BNO en CENTRAL (los 2 están en el TOP). `imu_zircon` gateado por `-DCENTRAL_HAS_LOCAL_BNO` (off); el heading viene del snapshot de ARRIBA. | — | — |
+| GAP-011 | P1 | `strategy_transitions.cpp` es una réplica de la FSM usada para los 35 tests de FSM, pero no es `strategy.cpp` el que corre en el robot; divergencias posibles son bugs silenciosos | `src/shared/strategy_transitions.cpp` (test en `test/test_strategy_transitions/`) | Abstraer dependencia de `millis()` en `strategy.cpp` con función inyectable y testear `strategy.cpp` directamente |
 | GAP-012 | P0 | `strategy_set_attack_color()` definida (`strategy.h:46`) pero nunca llamada al inicio — arquero propio hardcodeado (inicial: `g_attack_color = AttackColor::MAGENTA`) | `strategy.cpp:40` | Leer polaridad del árbitro y llamar `strategy_set_attack_color()` antes del partido (TASK-024) |
 | GAP-013 | P0 | Rol del robot determinado por `#define ROBOT1/ROBOT2` en tiempo de compilación — no por dipswitch en runtime | `main_central.cpp:38-48`, `config_central.h:24` | Leer `PIN_ROLE_DIPSWITCH` en runtime para no requerir recompilación por rol (TASK-024) |
 | GAP-014 | P1 | No hay WDT (watchdog de hardware) en CENTRAL — si el loop se cuelga, CENTRAL queda inerte sin autorecuperación | ausente | Habilitar WDT del Teensy 4.1 (TASK-021 Nivel 1) |
@@ -812,6 +815,8 @@ MotorCommand: {vx≈intercept+pid_blend, vy=0, omega=0, kicker=0}
 |---|---|---|---|---|---|---|
 | TOP → CENTRAL | `0x60` | `WORLD_SNAPSHOT` | `WorldSnapshot` (27 B, schema v2) | STREAM | 100 Hz | Implementado (`comm_top.cpp`) |
 | DOWN → CENTRAL | `0x10` | `LINE_URGENT` | `LineStatus` v1 (5 B) / objetivo v2 (16 B) | EVENTO+STREAM | 200 Hz | Implementado v1 (`comm_down.cpp`) |
+| DOWN → CENTRAL | `0x11` | `DOWN_OTOS_POSE` | `Pose2D` (7 B) | STREAM | 100 Hz | Implementado (Capa 1 broadcast): ingerido en `comm_down.cpp` → `world_model_apply_otos_pose()`. **Solo para control de movimiento (Capa 2); la pose de cancha autoritativa sigue siendo el WorldSnapshot del TOP.** |
+| DOWN → CENTRAL | `0x12` | `DOWN_OTOS_VEL` | `Velocity2D` (7 B) | STREAM | 100 Hz | Implementado (Capa 1 broadcast): ingerido en `comm_down.cpp` → `world_model_apply_otos_vel()`. Mismo criterio: control de movimiento, no localización de cancha. |
 | CENTRAL → DOWN | `0x20` | `CENTRAL_RESET_OTOS` | `uint8` (1 B) | COMANDO | Evento | Implementado (sin llamador) |
 | CENTRAL → DOWN | `0x21` | `CENTRAL_CALIB_LINE` | `uint8` (1 B, 0/1/2) | COMANDO | Evento | Implementado (sin llamador) |
 | CENTRAL → TOP | `0x61` | `CENTRAL_RESET_TOP` | TBD | COMANDO | Evento | **NO implementado** |
@@ -837,7 +842,7 @@ MotorCommand: {vx≈intercept+pid_blend, vy=0, omega=0, kicker=0}
 - `software/teensy/Soccer 2026/src/central/world_model.cpp` (estado del mundo, líneas 1-73)
 - `software/teensy/Soccer 2026/src/central/motors_zircon.cpp` (PWM + kicker, líneas 1-170)
 - `software/teensy/Soccer 2026/src/central/comm_top.cpp` (Serial1 receptor, líneas 1-48)
-- `software/teensy/Soccer 2026/src/central/comm_down.cpp` (Serial2 emisor/receptor, líneas 1-71)
+- `software/teensy/Soccer 2026/src/central/comm_down.cpp` (Serial1 emisor/receptor, líneas 1-71)
 - `software/teensy/Soccer 2026/src/central/imu_zircon.cpp` (IMU fallback, líneas 1-89)
 - `software/teensy/Soccer 2026/src/central/config_central.h` (pinout + constantes, líneas 1-112)
 - `software/teensy/Soccer 2026/src/shared/proto.h` (framing, líneas 1-136)

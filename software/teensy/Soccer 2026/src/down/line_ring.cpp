@@ -181,6 +181,17 @@ void line_ring_calibrate_white() {
     reset_filter_state();
 }
 
+void line_ring_set_calibration(const uint16_t* carpet, const uint16_t* white, int n) {
+    if (carpet == nullptr || white == nullptr) return;
+    if (n > NUM_LINE_SENSORS) n = NUM_LINE_SENSORS;
+    for (int i = 0; i < n; ++i) {
+        g_carpet_avg[i] = carpet[i];
+        g_white_avg[i]  = white[i];
+        g_threshold[i]  = static_cast<uint16_t>((g_carpet_avg[i] + g_white_avg[i]) / 2);
+    }
+    reset_filter_state();
+}
+
 uint16_t line_ring_get_carpet_avg(uint8_t sensor_idx) {
     if (sensor_idx >= NUM_LINE_SENSORS) return 0;
     return g_carpet_avg[sensor_idx];

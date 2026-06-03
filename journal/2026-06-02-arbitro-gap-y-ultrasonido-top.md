@@ -14,6 +14,14 @@ tipo: hallazgo
 
 # TOP — Árbitro no llega al Teensy + ultrasonido andando
 
+> **✅ ACTUALIZACIÓN 2026-06-02 (post-merge con main).** Este journal documenta
+> el HALLAZGO del gap del árbitro. Al sincronizar con `main` se confirmó que el
+> tema **ya quedó RESUELTO** (TASK-039, otra sesión, en paralelo): el árbitro
+> llega al TOP como **NIVEL GPIO en pines 5/6** y `comm_arbiter.cpp` ya los lee
+> con `match_running = pin5 OR pin6` (en PLAY sube SOLO UNO de los dos pines —
+> por eso OR y no AND; probado en banco). El robot ya recibe START/STOP → árbitro
+> homologado. Lo de abajo queda como registro del diagnóstico, no como pendiente.
+
 > **TL;DR.** Dos cosas esta sesión. **(1) Hallazgo P0 del árbitro:** la placa
 > COMM (firmware oficial RCJ) entrega el START/STOP como **nivel de tensión**
 > en OUT_1/OUT_2 (3.3V=GO, 0V=STOP), pero el firmware del TOP lo escucha por

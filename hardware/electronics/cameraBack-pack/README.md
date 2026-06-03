@@ -85,7 +85,7 @@ cameraBack-pack/
 | Pregunta | Doc del pack |
 |---|---|
 | ¿Qué modelo OpenMV es la cámara trasera? | `01-hardware-y-conexion.md` §1 (H7 / H7 Plus, confirmar con TASK-013) |
-| ¿En qué Serial del Teensy 4.0 entra la cámara trasera? | `01-hardware-y-conexion.md` §2 (**Serial5**, RX=21, TX=20, conector U9) |
+| ¿En qué Serial del Teensy 4.0 entra la cámara trasera? | `01-hardware-y-conexion.md` §2 (**Serial5**, RX=21, TX=20 — soldada ahí, confirmado en banco 2026-05-31; el link a CENTRAL pasó a Serial7) |
 | ¿A qué baud rate habla la cámara con el TOP? | `01-hardware-y-conexion.md` §2 (**19200 8N1**) |
 | ¿Dónde está montada físicamente la cámara trasera? | `01-hardware-y-conexion.md` §3 (mira hacia −Y del robot) |
 | ¿Por qué la cámara trasera necesita rotación 180°? | `02-funcionalidad.md` §6 (la cámara reporta en SU propio frame; la fusión la rota al frame del robot) |
@@ -147,7 +147,7 @@ Los 2 packs son casi idénticos en estructura pero difieren en:
 
 | Aspecto | cameraFront-pack/ | cameraBack-pack/ |
 |---|---|---|
-| Serial del Teensy 4.0 | Serial3 (RX=15, TX=14) | **Serial5** (RX=21, TX=20) |
+| Serial del Teensy 4.0 | Serial3 (RX=15, TX=14) | **Serial5** (RX=21, TX=20 — soldada ahí, banco 2026-05-31) |
 | Conector en PCB TOP | U8 "UART-CAMERA1" | **U9** "UART-CAMERA2" |
 | Constante de baud | `UART_CAMERA1_BAUD` | **`UART_CAMERA2_BAUD`** |
 | Dirección a la que mira físicamente | +Y del robot (adelante) | **−Y del robot (atrás)** |

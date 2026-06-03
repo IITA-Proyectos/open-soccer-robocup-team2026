@@ -53,6 +53,9 @@ constexpr uint32_t STABILIZE_MS    = 1000;
 constexpr uint32_t GYRO_CALIB_MS   = 2000;
 constexpr int      HEADING_SAMPLES = 10;
 
+// Band-aid contención BNO+ToF (2026-06-02): leer el BNO a ~20 Hz (50 ms), no a 100 Hz.
+constexpr uint32_t BNO_READ_INTERVAL_MS = 50;
+
 // Signo del heading. MEDIDO EN BANCO 2026-05-31: el chip da yaw CRECIENTE al
 // girar a la DERECHA (CW). La convención del firmware es CCW-positiva. Lo
 // invertimos ACÁ, en la fuente, para TODO el firmware. Igual al gyroZ.
@@ -111,6 +114,17 @@ bool i2c_present(uint8_t addr) {
     return Wire.endTransmission() == 0;
 }
 
+// Lee 1 byte de un registro (repeated-start). true si pudo leer. Sirve para
+// distinguir un BNO (CHIP_ID reg 0x00 = 0xA0) de un ToF u otro chip en la misma dir.
+bool read_reg(uint8_t addr, uint8_t reg, uint8_t& out) {
+    Wire.beginTransmission(addr);
+    Wire.write(reg);
+    if (Wire.endTransmission(false) != 0) return false;
+    if (Wire.requestFrom((int)addr, 1) != 1) return false;
+    out = Wire.read();
+    return true;
+}
+
 float norm180(float h) {
     while (h > 180.0f) h -= 360.0f;
     while (h < -180.0f) h += 360.0f;
@@ -145,7 +159,17 @@ bool init_one_bno(Adafruit_BNO055& bno) {
 }  // namespace
 
 bool sensors_imu_init() {
-    Wire.begin();  // Wire1 ya NO se usa acá (recableado 2026-05-31)
+    // Bus I2C. Los ToF ya fueron DORMIDOS (LP low) por sensors_tof_predim_lp() ANTES
+    // de esta llamada, asi que 0x28 y 0x29 quedan limpios para los 2 BNO (receta
+    // validada en diag_pose_live: dim ToF -> init BNO -> enumerar ToF). (2026-06-02)
+    // Wire1 ya NO se usa aca (recableado 2026-05-31).
+    Wire.begin();
+    Wire.setClock(100000);  // 100 kHz: el BNO055 y los VL53L7CX NO coexisten a 400 kHz — con
+                            // los ToF rangeando, el read multi-byte del BNO se corrompe y el
+                            // yaw queda CONGELADO (banco 2026-06-02). A 100 kHz coexisten OK
+                            // (diag_bno_tof_slow: yaw sigue el giro con los 4 ToF activos).
+                            // 400 kHz solo servia con ToF-solo (quad_live) o BNO-solo
+                            // (diag_bno_left). Costo: boot ~40 s (carga firmware de los 4 ToF).
 
     imu_fusion_init(g_fusion);
     g_fcfg = imu_fusion_default_cfg();
@@ -155,9 +179,35 @@ bool sensors_imu_init() {
     g_ready[0] = init_one_bno(g_bno_left);
     Serial.println(g_ready[0] ? "[IMU] LEFT OK" : "[IMU] LEFT FAIL (continuando)");
 
-    Serial.println("[IMU] Init BNO055 RIGHT (Wire @ 0x29)...");
-    g_ready[1] = init_one_bno(g_bno_right);
-    Serial.println(g_ready[1] ? "[IMU] RIGHT OK" : "[IMU] RIGHT FAIL (continuando)");
+    // GUARD anti-cuelgue (fix 2026-06-02): el begin() del RIGHT reintenta 3 s; si 0x29
+    // esta fantasma/marginal (puente ADR->3V3 flojo, 2do BNO sin alim), ese begin CUELGA
+    // el bus I2C entero y se lleva puesto al LEFT (deja de leerse, hdg clavado) y a los
+    // ToF (enumeracion 0/4). diag_pose_live nunca tuvo esto porque solo usa el LEFT.
+    // Por eso: solo iniciamos el RIGHT si 0x29 HACE ACK (con los ToF ya dormidos por
+    // predim, en 0x29 solo puede estar el 2do BNO). Si no contesta, lo salteamos y el
+    // bus queda sano -> LEFT + ToF funcionan (degradado a 1 BNO). Cuando se arregle el
+    // puente, 0x29 ACKea y el RIGHT entra solo.
+    // 0x29 puede ser el 2do BNO (puente ADR) O un ToF que no se durmio (default 0x29,
+    // p.ej. por el conflicto pin 10 = LP ToF[1] + dipswitch de rol). Leemos CHIP_ID:
+    // BNO055 = 0xA0. SOLO iniciamos el RIGHT si es un BNO real; si no, salteamos (un
+    // begin() de BNO sobre un ToF/chip raro CUELGA el bus y mata LEFT + ToF).
+    uint8_t id29 = 0;
+    const bool ack29  = i2c_present(BNO055_RIGHT_I2C_ADDR);
+    const bool read29 = ack29 && read_reg(BNO055_RIGHT_I2C_ADDR, 0x00, id29);
+    Serial.print("[IMU] Sondeo 0x29 -> ACK=");
+    Serial.print(ack29 ? "SI" : "NO");
+    if (ack29) { Serial.print(" chip_id=0x"); Serial.print(id29, HEX); }
+    Serial.println();
+    if (read29 && id29 == 0xA0) {
+        Serial.println("[IMU] 0x29 es BNO real (0xA0). Init BNO055 RIGHT...");
+        g_ready[1] = init_one_bno(g_bno_right);
+        Serial.println(g_ready[1] ? "[IMU] RIGHT OK" : "[IMU] RIGHT FAIL (continuando)");
+    } else {
+        g_ready[1] = false;
+        Serial.println("[IMU] 0x29 NO es un BNO sano -> SALTEO (no cuelgo el bus).");
+        Serial.println("      -> chip_id != 0xA0: hay un ToF SIN DORMIR en 0x29 (revisar"
+                       " LP del ToF[1] / dipswitch en pin 10). ACK=NO: 2do BNO ausente/puente.");
+    }
 
     // EEPROM (Capa 2): restaurar perfil de calibración de cada chip si existe.
     for (int i = 0; i < IMU_FUSION_N; ++i) {
@@ -178,13 +228,18 @@ bool sensors_imu_init() {
 
 void sensors_imu_tick() {
     const uint32_t now = millis();
+    // Band-aid contención BNO+ToF (2026-06-02): leer el BNO a ~20 Hz, NO a 100 Hz. Leerlo muy
+    // seguido lo hace chocar con los reads de los ToF en `Wire` y el read multi-byte del BNO
+    // se corrompe -> yaw CONGELADO. Bajando la frecuencia caen las colisiones. (Fix de fondo:
+    // BNO a Wire1, bus aparte.)
+    if (now - g_last_tick_ms < BNO_READ_INTERVAL_MS) return;
     float dt_s = (now - g_last_tick_ms) / 1000.0f;
     g_last_tick_ms = now;
     if (dt_s <= 0.0f || dt_s > 1.0f) dt_s = 0.01f;  // clamp arranque/saltos
 
     ImuSample in[IMU_FUSION_N];
     for (int i = 0; i < IMU_FUSION_N; ++i) {
-        const bool present = g_ready[i] && i2c_present(g_addr[i]);
+        const bool present = g_ready[i];  // band-aid: sin ping i2c_present (1 transaccion I2C menos por sensor)
         if (present) {
             in[i].present     = true;
             in[i].heading_deg = heading_no_mount(i, read_raw_yaw(*g_bno[i]));

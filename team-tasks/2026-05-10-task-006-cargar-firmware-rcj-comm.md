@@ -11,18 +11,19 @@ blocks: [Hito 5 — integración COMM, homologación Incheon]
 tags: [firmware, comm-board, rcj, arbitros, esp32, esp32c6]
 ---
 
-> **✅ CERRADA 2026-06-02 — COMM FLASHEADA.** Gustavo confirmó que la placa
-> COMM ya tiene el firmware oficial RCJ cargado (flasheada "hace rato"). Como
-> es el humano que tiene la placa en la mano, su confirmación cierra esta TASK
-> de hardware. **El flasheo del módulo ya NO es bloqueante para Incheon.**
+> **✅ CERRADA 2026-06-01/02 — COMM FLASHEADA.** Gustavo confirmó que la placa
+> COMM ya tiene el firmware oficial RCJ cargado. Como es el humano que tiene la
+> placa en la mano, su confirmación cierra esta TASK de hardware. **El flasheo
+> del módulo ya NO es bloqueante para Incheon.**
 >
-> **Lo que SÍ queda pendiente** (NO es parte de esta TASK, se movió a su
-> propia tarea): verificar a qué pines del Teensy del TOP llegan las salidas
-> **OUT_1/OUT_2** del árbitro y adaptar el firmware del TOP para leerlas. Hoy
-> el TOP escucha el árbitro por UART, pero la COMM lo entrega como NIVEL de
-> tensión → **el START/STOP no le llega al Teensy todavía**. Eso lo trackea
-> **TASK-204** (`2026-06-02-task-204-verificar-pines-arbitro-comm-top.md`) +
-> journal `2026-06-02-arbitro-gap-y-ultrasonido-top.md`.
+> **Lo que SÍ queda pendiente** (NO es parte de esta TASK — tarea propia): que
+> el START/STOP del árbitro **llegue al Teensy del TOP**. El árbitro oficial NO
+> viaja por UART: la COMM lo entrega como **NIVEL GPIO en los pines 5/6 del TOP**
+> (`OUT1`/`OUT2`; netlist confirmado). Falta verificar continuidad + adaptar
+> `comm_arbiter.cpp` a leer ese nivel. Eso lo trackea **TASK-039**
+> (`2026-06-02-task-039-comm-arbitro-out1out2-no-llega-al-teensy.md`).
+> Journal del lado TOP: `2026-06-02-arbitro-gap-y-ultrasonido-top.md`.
+> (TASK-204, creada en paralelo en agente/top, quedó como duplicada de la 039.)
 
 # TASK-006 — Cargar firmware oficial RCJ en placa COMM
 
@@ -220,8 +221,10 @@ investigación completa, links a foro RCJ, repo oficial y diagnóstico paso a pa
   como históricos. Fuente de verdad movida a
   `hardware/electronics/comm-board/`. Análisis completo en journal 2026-05-17.
   Status sigue `pending` (falta ejecutar el flasheo con el procedure correcto).
-- 2026-06-02: **CERRADA (done)** — Gustavo confirmó que la COMM ya está
-  flasheada con el firmware oficial RCJ. Cierre ordenado por el humano que
-  tiene la placa (a pedido suyo en esta sesión). El único pendiente del
-  árbitro pasa a **TASK-204** (verificar pines OUT_1/OUT_2 → Teensy del TOP
-  + adaptar `comm_arbiter.cpp` a leer niveles). Ver journal 2026-06-02.
+- 2026-06-01: **FLASHEADA** — Gustavo reporta el firmware COMM cargado en la
+  placa ESP32-C6. Status → `done`. Bloqueante Incheon #1 (flasheo) levantado.
+- 2026-06-02: **CERRADA (done)** confirmada por Gustavo (humano con la placa).
+  El único pendiente del árbitro pasa a **TASK-039**: que el START/STOP llegue
+  al Teensy del TOP. El E2E NO es por UART (Serial4) sino por **NIVEL GPIO en
+  pines 5/6** del TOP — verificar continuidad + adaptar `comm_arbiter.cpp`.
+  Ver journal 2026-06-02. (TASK-204 quedó como duplicada de la 039.)

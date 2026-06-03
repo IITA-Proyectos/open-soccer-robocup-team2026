@@ -12,6 +12,12 @@ tags: [comm-board, arbitros, hardware, top-board, multimetro, homologacion, dupl
 
 # TASK-204 — DUPLICADA, usar TASK-039
 
+> **✅ UPDATE 2026-06-02 (post-merge con main):** el tema del árbitro YA SE
+> RESOLVIÓ en `main` (TASK-039). El árbitro llega al TOP como **NIVEL GPIO en
+> pines 5/6** y `comm_arbiter.cpp` ya los lee (`match_running = pin5 OR pin6`,
+> probado en banco). O sea: esta TASK-204 no solo es duplicada — el problema
+> que planteaba ya está cerrado. No hacer nada acá.
+
 > **⚠️ ESTA TASK ES DUPLICADA. La canónica es
 > [`TASK-039`](2026-06-02-task-039-comm-arbitro-out1out2-no-llega-al-teensy.md).**
 >

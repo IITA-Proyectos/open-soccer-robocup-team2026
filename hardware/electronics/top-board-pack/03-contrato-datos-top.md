@@ -114,14 +114,18 @@ primero). El CRC viaja big-endian. No confundir.
 | UART | Pines | Baud | Enlace | Confirmado |
 |------|-------|------|--------|-----------|
 | Serial1 | RX=0, TX=1 | 230400 | ← DOWN (odometría OTOS) | Inferido del schematic |
-| Serial2 | RX=7, TX=8 | 230400 | → CENTRAL (snapshot) | **NO CONFIRMADO** (`config_top.h:40-42`) |
-| Serial3 | RX=15, TX=14 | 19200 | ← Cámara frontal (OpenMV) | Schematic U8 |
-| Serial4 | RX=16, TX=17 | 115200 | ↔ COMM (árbitros + ESP-NOW) | Schematic U15 |
-| Serial5 | RX=21, TX=20 | 19200 | ← Cámara trasera (OpenMV) | Schematic U9 |
+| **Serial5** | **RX=21, TX=20** | 19200 | ← **Cámara trasera** (OpenMV) | ✅ **banco 2026-05-31: trasera soldada acá (FORMATO OK, `diag_top_cameras`)** |
+| Serial3 | RX=15, TX=14 | 19200 | ← Cámara frontal (OpenMV) | Schematic U8 ✅ FORMATO OK |
+| **Serial2** | **RX=7, TX=8** | 115200 | ↔ COMM (árbitros + ESP-NOW) | ✅ **banco 2026-06-02** (fix: el Teensy 4.0 no expone Serial7 28/29 en el borde; COMM=Serial2 7/8) |
+| **Serial4** | **RX=16, TX=17** | 230400 | **→ CENTRAL (snapshot)** | ✅ **banco 2026-06-02**: TX4=pin 17 → CENTRAL pin 28 (RX7) + GND común |
 
-> **Crítico:** el mapeo de Serial2 (→CENTRAL) no está confirmado en hardware.
-> Si el cableado físico cruza Serial1 y Serial2, CENTRAL nunca recibe el snapshot
-> → motores parados siempre. Verificar con osciloscopio antes de confiar (TASK-008/014).
+> **✅ Actualizado 2026-06-02 (fix de cableado en banco):** el **Teensy 4.0 NO expone
+> Serial7 (pines 28/29) en el borde** — son pads SMD traseros, no cableables con header.
+> Por eso el mapeo real del TOP es: **COMM = Serial2 (RX pin 7 / TX pin 8)** y el enlace
+> **TOP→CENTRAL = Serial4 (RX pin 16 / TX pin 17)**. Cable TOP→CENTRAL: TOP pin 17 (TX4) →
+> **CENTRAL pin 28 (RX7)** + GND común. **Ojo:** la CENTRAL es un Teensy 4.1, que SÍ tiene
+> 28/29 en el borde → la CENTRAL **sigue recibiendo en su Serial7** (no cambia). La cámara
+> trasera quedó soldada en Serial5 (pin 21), confirmado en banco. El HC-SR04 está en pines 3/4.
 
 ---
 
@@ -216,7 +220,7 @@ Frame completo TOP→CENTRAL: 27 + 7 overhead = **34 bytes**.
 ### 3.5 Frecuencia y timing
 
 - Frecuencia de emisión: **100 Hz** (`main_top.cpp:129`: `if (g_since_snapshot >= 10)`).
-- Enlace: Serial2 a **230400 baud, 8N1** (`comm_central.cpp:16`).
+- Enlace: **Serial4 (RX pin 16 / TX pin 17)** a **230400 baud, 8N1** (`comm_central.cpp:16`; fix 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde; CENTRAL=Serial4 16/17). TOP pin 17 (TX4) → CENTRAL pin 28 (RX7).
 - Tiempo de transmisión de un frame de 30 bytes a 230400 baud:
   `30 × 10 bits / 230400 bps ≈ 1.3 ms`.
 - SEQ: contador 0–255, envuelve; se puede usar para detectar pérdidas.
@@ -258,7 +262,10 @@ provee valor numérico aquí porque SEQ varía.)
 
 ---
 
-## 4. Mensajes con COMM (placa árbitros + partner) — Serial4
+## 4. Mensajes con COMM (placa árbitros + partner) — Serial2 (RX pin 7 / TX pin 8)
+
+> **(fix 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde; COMM=Serial2 7/8, CENTRAL=Serial4 16/17.)**
+
 
 ### 4.1 `COMM_REFEREE_CMD` — COMM → TOP (TYPE `0x30`)
 
@@ -401,13 +408,13 @@ setup():
   sensors_tof_init()      ← no bloqueante (stub)
   cameras_init()          ← abre Serial3 + Serial5
   comm_down_init()        ← abre Serial1
-  comm_arbiter_init()     ← abre Serial4
-  comm_central_init()     ← abre Serial2
+  comm_arbiter_init()     ← abre Serial2  (COMM, RX pin 7 / TX pin 8)
+  comm_central_init()     ← abre Serial4  (→ CENTRAL, RX pin 16 / TX pin 17)
 
 loop() (no tiene period fijo — corre tan rápido como puede):
   comm_down_tick()        ← drena Serial1, OTOS de DOWN
-  comm_arbiter_tick()     ← drena Serial4, COMM/árbitros/partner
-  comm_central_tick()     ← drena Serial2, comandos de CENTRAL
+  comm_arbiter_tick()     ← drena Serial2, COMM/árbitros/partner
+  comm_central_tick()     ← drena Serial4, comandos de CENTRAL
   cameras_tick()          ← drena Serial3 + Serial5, parsers OpenMV
   if (every 10 ms) sensors_imu_tick()
   if (every 30 ms) sensors_tof_tick()
@@ -429,9 +436,9 @@ loop() (no tiene period fijo — corre tan rápido como puede):
 | Wiring cámaras UART | `cameras_runtime.cpp` | **HW-BOUND** | No | `Serial3` / `Serial5`; cota 64 bytes/tick implementada. |
 | IMU BNO055 dual | `sensors_imu.cpp` | **HW-BOUND** | No (usa Wire + Adafruit_BNO055) | Setup bloqueante (~5s); tick no bloqueante. |
 | ToF + HC-SR04 | `sensors_tof.cpp` | **HW-BOUND** | No | HC-SR04 usa `pulseIn` bloqueante (P0: TASK-014); 4 ToF I2C son stub. |
-| COMM arbiter | `comm_arbiter.cpp` | **HW-BOUND** | No (usa Serial4) | `guard last_ms==0` ausente en `comm_arbiter_partner_is_fresh()` (`comm_arbiter.cpp:107`): `millis()-0 < 500` → true al boot antes de recibir cualquier dato. |
+| COMM arbiter | `comm_arbiter.cpp` | **HW-BOUND** | No (usa Serial2, RX pin 7 / TX pin 8) | `guard last_ms==0` ausente en `comm_arbiter_partner_is_fresh()` (`comm_arbiter.cpp:107`): `millis()-0 < 500` → true al boot antes de recibir cualquier dato. |
 | Comm DOWN | `comm_down.cpp` | **HW-BOUND** | No (usa Serial1) | Mismo bug de guard: `fresh(0)` → true al boot. |
-| Comm CENTRAL | `comm_central.cpp` | **HW-BOUND** | No (usa Serial2) | Handler de `CENTRAL_RESET_TOP` recibido pero no procesado. |
+| Comm CENTRAL | `comm_central.cpp` | **HW-BOUND** | No (usa Serial4, RX pin 16 / TX pin 17) | Handler de `CENTRAL_RESET_TOP` recibido pero no procesado. |
 
 **Módulos puros candidatos a mover a `src/shared/`** (hoy viven en `src/top/`):
 - `cameras.h/cpp` — `CameraParser` es 100% pura; sin `#include <Arduino.h>`.
@@ -445,7 +452,7 @@ loop() (no tiene period fijo — corre tan rápido como puede):
 
 | ID | Gap | Archivo:línea | Risk-no-fix | Risk-fix | Tiempo est. |
 |----|-----|--------------|-------------|----------|-------------|
-| G-TOP-01 | **Serial2 (→CENTRAL) no confirmado en HW** | `config_top.h:40-42` | Snapshot nunca llega → CENTRAL en `motors_stop()` permanente → robot inerte | Medir con osciloscopio, posible swap de constantes | 2h |
+| ~~G-TOP-01~~ | ~~**Serial2 (→CENTRAL) no confirmado en HW**~~ **RESUELTO 2026-05-31 (TASK-204):** el enlace **TOP→CENTRAL es Serial7** (TX7=pin 29 → CENTRAL Serial7, RX7=pin 28), confirmado en banco. La trasera quedó soldada en Serial5, por eso el link se movió. Firmware: `comm_central.cpp` → Serial7. **(SUPERSEDIDO — fix 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde (pads SMD traseros); el enlace TOP→CENTRAL real es Serial4 16/17 — TOP pin 17/TX4 → CENTRAL pin 28/RX7. La CENTRAL, Teensy 4.1, sigue recibiendo en su Serial7.)** | `comm_central.cpp:16` | — | — | — |
 | G-TOP-02 | **Polaridad de arco hardcodeada** `yellow=opp` | `main_top.cpp:65` | En ~50% de partidos el robot ataca su propio arco | Leer `referee_cmd` para aplicar inversión; fácil una vez que COMM anda | 3h |
 | G-TOP-03 | **Rol no leído** (`PIN_ROLE_DIPSWITCH` sin `digitalRead`) | `config_top.h:87` + `main_top.cpp` (ausente) | Arquero y delantero son indistinguibles al boot; `TOP_STATUS_REPLY` manda rol=0 siempre | Agregar 1 línea en `setup()`, propagar rol | 1h |
 | G-TOP-04 | **`pulseIn` bloqueante en HC-SR04** en el loop | `sensors_tof.cpp:32` | Loop puede tardar hasta 25 ms en cada lectura → violación de loop timing → snapshot retrasado | Convertir a lectura no bloqueante con ISR o timer | 4h |
@@ -486,7 +493,7 @@ loop() (no tiene period fijo — corre tan rápido como puede):
 - Convertir HC-SR04 a no-bloqueante.
 - Gatear `Serial.print` debug con flag de competición.
 - ~~Agregar `static_assert(sizeof(WorldSnapshot)==23)`~~ — **RESUELTO** (commit 2a9064e: `static_assert(sizeof==27)` presente, schema v2).
-- Confirmar mapeo físico de Serial2→CENTRAL con osciloscopio.
+- ~~Confirmar mapeo físico de Serial2→CENTRAL con osciloscopio.~~ ~~**RESUELTO 2026-05-31 (TASK-204): TOP→CENTRAL = Serial7 (TX29), confirmado en banco.**~~ **CORREGIDO 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde; el enlace TOP→CENTRAL real es Serial4 16/17 (TOP pin 17/TX4 → CENTRAL pin 28/RX7) y COMM=Serial2 7/8. La CENTRAL (Teensy 4.1) sigue recibiendo en su Serial7.**
 - Calibrar `CAMERA_UNIT_TO_MM` contra cancha real.
 
 **CENTRAL (receptor):**

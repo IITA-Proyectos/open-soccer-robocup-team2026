@@ -1,6 +1,99 @@
 #include "down_model.h"
 #include "sensor_geometry.h"   // TEMA 3 P1 — SENSOR_POS[32] geometría real
+#include <math.h>              // sqrtf, lroundf (WP-3-DOWN — cross_track/penetration mm)
 namespace iitasoccer {
+
+// ============================================================================
+// WP-3-DOWN (Capa 3) — cross_track_mm y penetration_mm REALES desde geometría.
+//
+// Ambos se derivan del centroide y los radios de los sensores en blanco usando
+// las posiciones físicas reales SENSOR_POS[] (sensor_geometry.h). Por eso SÓLO
+// se computan cuando n == SENSOR_COUNT (32): con un anillo parcial (n<32) la LUT
+// no mapea a los sensores presentes (ver la nota larga sobre lg_compute_xy más
+// abajo) y emitir un número sería mentir → quedan en N/A.
+//
+// Convención de signo (fija, espeja al seguidor diag_central_line_sweep.cpp y a
+// la glue DOWN comm_central.cpp que ya calculaba el centroide Y bajo debug):
+//
+//   cross_track_mm = centroide Y (mm) de los sensores en blanco.
+//       +  => línea ADELANTE del centro del robot (+Y).
+//       -  => línea ATRÁS (-Y).
+//   Es la distancia perpendicular FIRMADA del centro (0,0) a la recta de la
+//   línea en el caso de uso del arquero (línea lateral/de fondo que corre
+//   left-right bajo el robot): ahí la recta es ~horizontal en el marco robot y
+//   su distancia perpendicular al origen es exactamente su offset en Y. En
+//   general es la proyección del centroide sobre el eje delantero/trasero, que
+//   es la señal que el PID lateral del arquero necesita (setpoint=0 ⇒ mantiene
+//   la línea bajo su eje). NOTA: la "recta" geométrica pura a través del
+//   centroide tiene como normal la dirección del centroide mismo (= line_angle),
+//   por lo que su distancia al origen degenera a |centroide| (sin signo); por
+//   eso fijamos el eje de referencia (Y, delantero/trasero) para obtener una
+//   señal firmada útil, en línea con el contrato §3.4 (referencia = borde/centro
+//   del robot, no la propia normal de la línea).
+//
+//   penetration_mm = R_OUTER - min(radio de los sensores en blanco), clamp >=0.
+//       R_OUTER = radio máximo del anillo (≈89.8 mm, sensor más externo).
+//       0  => recién tocando (sólo el anillo externo ve blanco).
+//       crece cuando sensores más internos (R menor) ven blanco ⇒ el robot está
+//       más adentro de la zona de línea. Es mm reales derivados de la geometría,
+//       NO el conteo de sensores (proxy viejo).
+//
+// `validated[]` que recibe esta función es EXACTAMENTE el mismo array (post
+// salud + saturación) que alimenta lg_compute_xy, así el centroide aquí coincide
+// con el que produjo line_angle (consistencia interna del frame).
+// ============================================================================
+namespace {
+
+// Radio máximo del anillo (sensor más externo). Cacheado en la primera llamada;
+// se deriva de SENSOR_POS[] para no hardcodear y seguir la geometría si cambia.
+float dm_outer_radius_mm() {
+    static float cached = -1.0f;
+    if (cached < 0.0f) {
+        float mx = 0.0f;
+        for (int i = 0; i < SENSOR_COUNT; ++i) {
+            const float x = SENSOR_POS[i].x_mm, y = SENSOR_POS[i].y_mm;
+            const float r = sqrtf(x*x + y*y);
+            if (r > mx) mx = r;
+        }
+        cached = mx;
+    }
+    return cached;
+}
+
+struct LineMetrics {
+    bool     have;            // true si hubo >=1 sensor validado en blanco
+    int16_t  cross_track_mm;  // centroide Y (mm), firmado (+adelante/-atrás)
+    uint16_t penetration_mm;  // R_OUTER - min_radio_blanco, clamp >=0
+};
+
+// Calcula cross_track/penetration sobre las posiciones reales. Requiere n==32
+// (las posiciones de SENSOR_POS[i] sólo corresponden con el anillo completo).
+LineMetrics dm_line_metrics(const bool* validated, int n) {
+    LineMetrics out{false, LSV2_NA_I16, LSV2_NA_U16};
+    if (n != SENSOR_COUNT) return out;   // anillo parcial: geometría no mapea
+    double sum_y = 0.0;
+    float  min_r = 1e9f;
+    int    cnt = 0;
+    for (int i = 0; i < SENSOR_COUNT; ++i) {
+        if (!validated[i]) continue;
+        ++cnt;
+        sum_y += SENSOR_POS[i].y_mm;
+        const float x = SENSOR_POS[i].x_mm, y = SENSOR_POS[i].y_mm;
+        const float r = sqrtf(x*x + y*y);
+        if (r < min_r) min_r = r;
+    }
+    if (cnt == 0) return out;            // sin blancos validados → N/A
+    out.have = true;
+    const double cy = sum_y / (double)cnt;
+    out.cross_track_mm = (int16_t)lroundf((float)cy);
+    float pen = dm_outer_radius_mm() - min_r;
+    if (pen < 0.0f) pen = 0.0f;          // clamp: nunca negativo
+    out.penetration_mm = (uint16_t)lroundf(pen);
+    return out;
+}
+
+}  // namespace
+
 LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
                         const uint16_t* raw, int n, uint32_t now_ms){
     if(n>DM_MAX_SENSORS) n=DM_MAX_SENSORS;
@@ -38,6 +131,19 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
         if (!sh_is_healthy(m.sensor_health, i)) validated[i] = false;
     }
 
+    // TEMA P1.5 — rechazo de saturación "todo blanco" (audit 2026-05-29).
+    // Si >= 7/8 del anillo lee blanco NO es una línea real (una franja
+    // enciende a lo sumo ~15/32 sensores). Es falla: calib rota, superficie
+    // toda-brillante o luz ambiente saturando. Zeroeamos validated[] para que
+    // la geometría produzca line_present=0 de forma natural (sin sprinkling de
+    // !saturated por toda la salida) y NO adaptamos calib en este tick (no
+    // queremos "aprender" valores saturados como baseline). Umbral 7/8 espeja
+    // al detector de lifted (su opuesto: lifted = ~todo OSCURO).
+    const bool saturated = lf_all_white(white, n, (n * 7) / 8);
+    if (saturated) {
+        for (int i = 0; i < n; ++i) validated[i] = false;
+    }
+
     // TEMA 3 P1 — geometría REAL del PCB cuando n == SENSOR_COUNT (32).
     // Cuando n == 32 usamos lg_compute_xy con las coordenadas (x, y) reales
     // del schematic (validadas empíricamente 2026-05-24). Es más correcto
@@ -64,8 +170,13 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
         g = g_ang;
     }
 
-    for(int i=0;i<n;++i)
-        lc_adapt_carpet(m.calib[i], filt[i], validated[i], cfg.adapt_alpha);
+    // No adaptar calib en ticks saturados: validated[] ya está en cero y
+    // adaptar nudgearía el carpet hacia los valores blancos (corrompería el
+    // baseline). Saltamos el drift mientras dura la falla.
+    if (!saturated) {
+        for(int i=0;i<n;++i)
+            lc_adapt_carpet(m.calib[i], filt[i], validated[i], cfg.adapt_alpha);
+    }
     bool suspect = lc_is_suspect(m.calib, n, cfg.calib_min_margin);
     bool lifted  = sm_update(m.surface, filt, carpet, n, now_ms,
                              cfg.lifted_debounce_ms,
@@ -82,14 +193,18 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
 
     LineStatusV2 s{};
     s.schema_version = LSV2_SCHEMA;
-    s.data_valid = sm_data_valid(lifted, suspect) && !any_mux_dead ? 1 : 0;
+    s.data_valid = (sm_data_valid(lifted, suspect) && !any_mux_dead && !saturated) ? 1 : 0;
     s.line_present = g.line_present ? 1 : 0;
     s.sensors_on_line = g.sensors_on_line;
     if(g.line_present){
         s.line_angle_centideg   = g.line_angle_centideg;
         s.escape_angle_centideg = g.escape_angle_centideg;
-        s.penetration_mm = (uint16_t)(g.sensors_on_line); // PROXY: conteo, NO mm — geometria real diferida a Plan 3
-        s.cross_track_mm = LSV2_NA_I16;                    // requiere ref-edge fisico — Plan 3
+        // WP-3-DOWN: cross_track/penetration REALES en mm desde la geometría
+        // (mismo `validated[]` que alimentó lg_compute_xy). N/A si n!=32 (anillo
+        // parcial) o si no quedó ningún sensor validado. Ver dm_line_metrics().
+        const LineMetrics lm = dm_line_metrics(validated, n);
+        s.penetration_mm = lm.have ? lm.penetration_mm : LSV2_NA_U16;
+        s.cross_track_mm = lm.have ? lm.cross_track_mm : LSV2_NA_I16;
     } else {
         s.line_angle_centideg=LSV2_NA_I16; s.escape_angle_centideg=LSV2_NA_I16;
         s.penetration_mm=LSV2_NA_U16; s.cross_track_mm=LSV2_NA_I16;
@@ -99,7 +214,7 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     if(g.corner)   ev|=EV_CORNER;
     if(line_end)   ev|=EV_LINE_END;
     if(lifted)     ev|=EV_LIFTED;
-    if(suspect)    ev|=EV_CALIB_SUSPECT;
+    if(suspect || saturated) ev|=EV_CALIB_SUSPECT;  // saturación todo-blanco reusa este flag (sin bit libre en el contrato de 16 bytes)
     if(any_mux_dead) ev|=EV_MUX_DEAD;   // TEMA 1 P0 — 2026-05-29 (cacheado arriba)
     if(sh_any_unhealthy(m.sensor_health, n)) ev|=EV_SENSOR_NOISY;  // TEMA 4 P1 — 2026-05-29
     if(n<32)       ev|=EV_DEGRADED_GEOMETRY;  // anillo parcial: mux muerto o rig reducido

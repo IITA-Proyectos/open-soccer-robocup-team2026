@@ -6,6 +6,9 @@
 #include "types.h"
 #include "down_model.h"
 #include "down_encode.h"
+#include "down_tx.h"
+#include "eeprom_calib.h"
+#include "sensor_geometry.h"
 
 #include <Arduino.h>
 #include <string.h>
@@ -16,8 +19,6 @@ namespace {
 
 FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
-uint32_t g_frames_sent = 0;
-uint8_t  g_send_seq = 0;
 
 DownModel g_dm;
 DownModelCfg g_dmcfg = {
@@ -31,6 +32,18 @@ DownModelCfg g_dmcfg = {
 };
 bool g_dm_init = false;
 
+// Deriva la calib por-sensor de g_dm desde los promedios actuales del line_ring
+// y la marca como inicializada. Usada por el lazy-init del send y por el handler
+// de recalibración. (DRY: una sola fuente de la derivación.)
+void derive_calib_from_line_ring() {
+    for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
+        lc_set_static(g_dm.calib[i],
+                      line_ring_get_carpet_avg(static_cast<uint8_t>(i)),
+                      line_ring_get_white_avg(static_cast<uint8_t>(i)));
+    }
+    g_dm_init = true;
+}
+
 void handle_frame(const Frame& f) {
     switch (f.type) {
         case MsgType::CENTRAL_RESET_OTOS:
@@ -38,10 +51,24 @@ void handle_frame(const Frame& f) {
             break;
         case MsgType::CENTRAL_CALIB_LINE:
             if (f.payload_len >= 1) {
-                if (f.payload[0] == 0) line_ring_calibrate_carpet();
-                else if (f.payload[0] == 1) line_ring_calibrate_white();
+                if (f.payload[0] == 0) {
+                    // Paso 1 (carpet): re-derivar en el proximo send. Aun falta
+                    // el blanco — todavia no persistimos (calib incompleta).
+                    line_ring_calibrate_carpet();
+                    g_dm_init = false;
+                } else if (f.payload[0] == 1) {
+                    // Paso 2 (white): calib completa (carpet previo + blanco
+                    // ahora). Derivar ya mismo y PERSISTIR en EEPROM para que
+                    // sobreviva al power cycle (audit P0.2 — 2026-05-29).
+                    line_ring_calibrate_white();
+                    derive_calib_from_line_ring();
+                    if (ec_save_calibration(g_dm.calib, NUM_LINE_SENSORS)) {
+                        Serial.println("[DOWN] calib persistida en EEPROM");
+                    } else {
+                        Serial.println("[DOWN] WARN: fallo guardar calib en EEPROM");
+                    }
+                }
             }
-            g_dm_init = false;  // recalibrar: forzar reload de calib en el proximo send
             break;
         default:
             // Comandos no esperados se ignoran.
@@ -70,14 +97,10 @@ int comm_central_tick() {
 }
 
 void comm_central_send_line_urgent() {
-    // Inicialización lazy: cargar calibración por sensor desde line_ring la primera vez.
+    // Inicialización lazy: derivar calib desde line_ring la primera vez (salvo
+    // que ya esté cargada de EEPROM por comm_central_load_persisted_calib()).
     if (!g_dm_init) {
-        for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
-            lc_set_static(g_dm.calib[i],
-                          line_ring_get_carpet_avg(static_cast<uint8_t>(i)),
-                          line_ring_get_white_avg(static_cast<uint8_t>(i)));
-        }
-        g_dm_init = true;
+        derive_calib_from_line_ring();
     }
 
     // Leer valores crudos del anillo de sensores.
@@ -94,17 +117,80 @@ void comm_central_send_line_urgent() {
     uint32_t age_ms = (micros() - line_ring_get_last_tick_us()) / 1000u;
     s.sample_age_ms = (age_ms > 255u) ? 255u : (uint8_t)age_ms;
 
-    // Serializar y enviar.
-    uint8_t buf[PROTO_MAX_FRAME];
-    size_t nb = down_encode_line(s, g_send_seq++, buf, sizeof(buf));
-    if (nb > 0) {
-        Serial1.write(buf, nb);
-        g_frames_sent++;
+    // Difundir la línea a AMBAS placas (CENTRAL + TOP) con SEQ por enlace.
+    down_tx_broadcast_line(s);
+
+#ifdef DOWN_DEBUG_SERIAL
+    // --- BANCO (TASK seguidor Maria): calcular CENTROIDE Y de la linea + reenviar por U10 ---
+    // El cable hacia CENTRAL esta soldado en U10 (Serial5). Para el seguidor de
+    // arquero, CENTRAL necesita saber si la linea esta ADELANTE o ATRAS del centro
+    // del robot (para centrarse). Eso NO viene en el LineStatusV2 normal
+    // (cross_track_mm = N/A). Aca lo calculamos: promedio de la posicion Y de los
+    // sensores que ven blanco (sensor_geometry.h, +Y = adelante). Lo metemos en
+    // cross_track_mm: POSITIVO = linea adelante del centro, NEGATIVO = atras.
+    // Solo con -DDOWN_DEBUG_SERIAL; el firmware de competencia NO lo trae.
+    {
+        float sum_y = 0.0f;
+        int   n_white = 0;
+        for (int i = 0; i < NUM_LINE_SENSORS && i < SENSOR_COUNT; ++i) {
+            if (line_ring_get_white(static_cast<uint8_t>(i))) {
+                sum_y += SENSOR_POS[i].y_mm;
+                n_white++;
+            }
+        }
+        if (n_white > 0) {
+            float cy = sum_y / (float)n_white;   // centroide Y en mm
+            s.cross_track_mm = (int16_t)cy;      // + adelante / - atras
+        } else {
+            s.cross_track_mm = LSV2_NA_I16;      // sin linea -> N/A
+        }
     }
+    // Debug de bring-up (TASK-301): imprime por el USB, a ~4 Hz, lo esencial que
+    // DOWN tiene listo para CENTRAL: ¿HAY LINEA? (line_present del DownModel —
+    // logica de linea ya probada) + la pose de los 2 OTOS + contadores de TX.
+    // Se activa SOLO con -DDOWN_DEBUG_SERIAL (ver [env:down_debug]); el firmware
+    // de competencia no lo trae. Reemplaza el volcado de 32 sensores crudos (eso
+    // vive en diag_down).
+    // NOTA: line_present YA se transmite a CENTRAL en LineStatusV2 (arriba). La
+    // pose OTOS por ahora NO se transmite a CENTRAL (va al TOP por Serial5);
+    // mandarla a CENTRAL requiere destrabar los pines 7/8 (TASK-036). Aca se
+    // muestra por USB para validar que el dato existe y responde.
+    static elapsedMillis dbg_since;
+    if (dbg_since >= 250) {
+        dbg_since = 0;
+        Serial.print("[DOWN] LINEA=");
+        Serial.print(s.line_present ? "SI" : "NO");
+        if (s.line_present && s.line_angle_centideg != LSV2_NA_I16) {
+            Serial.print(" ang=");
+            Serial.print(s.line_angle_centideg / 100.0f, 1);
+        }
+        Serial.print("  | OTOS x=");  Serial.print(otos_get_x_mm(), 1);
+        Serial.print(" y=");          Serial.print(otos_get_y_mm(), 1);
+        Serial.print(" hdg=");        Serial.print(otos_get_heading_deg(), 1);
+        Serial.print(" [L=");         Serial.print(otos_is_left_ready()  ? "ok" : "--");
+        Serial.print(" R=");          Serial.print(otos_is_right_ready() ? "ok" : "--");
+        Serial.print("]  | tx_ok=");  Serial.print(down_tx_get_sent(0));
+        Serial.print(" drop=");       Serial.print(down_tx_get_dropped(0));
+        Serial.println();
+    }
+#endif
+}
+
+bool comm_central_load_persisted_calib() {
+    // EEPROM gana sobre la derivación boot-time del line_ring: trae una
+    // referencia de BLANCO real (medida en una calibración manual previa), que
+    // el boot no tiene (solo capturó carpet). El carpet ligeramente stale se
+    // auto-corrige por lc_adapt_carpet en los primeros segundos de operación.
+    if (ec_load_calibration(g_dm.calib, NUM_LINE_SENSORS)) {
+        g_dm_init = true;   // bloquea la calib: no re-derivar desde line_ring
+        return true;
+    }
+    return false;           // EEPROM vacía/inválida → lazy-init fallback
 }
 
 uint32_t comm_central_get_frames_received() { return g_frames_received; }
-uint32_t comm_central_get_frames_sent()     { return g_frames_sent; }
+uint32_t comm_central_get_frames_sent()    { return down_tx_get_sent(0); }
+uint32_t comm_central_get_frames_dropped() { return down_tx_get_dropped(0); }
 uint32_t comm_central_get_crc_errors()      { return g_decoder.crc_errors(); }
 
 }  // namespace iitasoccer

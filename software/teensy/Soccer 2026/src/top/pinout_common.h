@@ -47,16 +47,22 @@ constexpr uint8_t VL53L7CX_DEFAULT_I2C_ADDR = 0x29;  // de fábrica; se reasigna
 // UARTs — pines fijos del Teensy 4.0
 // ============================================================
 constexpr long UART_FROM_DOWN_BAUD = 230400;   // Serial1
-constexpr long UART_TO_ZIRCON_BAUD = 230400;   // Serial2 — TENTATIVO
+constexpr long UART_TO_ZIRCON_BAUD = 230400;   // Serial4 (RX16/TX17) → CENTRAL/Zircon
+                                               // (FIX 2026-06-02: el Teensy 4.0 NO expone
+                                               // Serial7 28/29 en el borde — back-pads. El enlace
+                                               // a CENTRAL va por Serial4 (Serial2 7/8 = COMM).
+                                               // Cable: TOP pin 17 TX4 → CENTRAL pin 28 RX7 del 4.1.)
 constexpr long UART_CAMERA1_BAUD   = 19200;    // Serial3
-constexpr long UART_TO_COMM_BAUD   = 115200;   // Serial4
-constexpr long UART_CAMERA2_BAUD   = 19200;    // Serial5
+constexpr long UART_TO_COMM_BAUD   = 115200;   // Serial2 (RX7/TX8) ↔ COMM (ESP32-C6)
+constexpr long UART_CAMERA2_BAUD   = 19200;    // Serial5 (cámara trasera, soldada pin 21)
 
 // ============================================================
 // HC-SR04 ultrasonido frontal (idéntico ambos robots)
+// Cableado en banco 2026-05-31: TRIG=pin 4, ECHO=pin 3 (pines ex-XSHUT ToF, hoy
+// libres). Antes 6/7. Los pines 3/4 NO son UART → sin conflicto con ningún Serial.
 // ============================================================
-constexpr int PIN_HCSR04_TRIG = 6;
-constexpr int PIN_HCSR04_ECHO = 7;
+constexpr int PIN_HCSR04_TRIG = 4;
+constexpr int PIN_HCSR04_ECHO = 3;
 
 // ============================================================
 // LED de estado (LED_BUILTIN del Teensy)

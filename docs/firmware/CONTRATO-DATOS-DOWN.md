@@ -66,25 +66,31 @@ multibyte del payload es little-endian** (byte menos significativo primero).
 El CRC, en cambio, va big-endian. No confundir.
 
 **Enlace físico:** UART **230400 baud, 8N1**, sin control de flujo.
-- DOWN → CENTRAL: `Serial1` de DOWN → (conector U11) → `Serial?` de CENTRAL.
-  **El mapeo físico de UART está pendiente de verificación (TASK-008/014):
-  medir con osciloscopio antes de confiar.**
-- DOWN → TOP: `Serial5` de DOWN → `Serial1` de TOP.
+DOWN **difunde (broadcast)** los 3 frames a **ambas** placas: cada UART de salida
+lleva la **unión** del tráfico (línea `LineStatusV2` @200 Hz + odometría `Pose2D`/
+`Velocity2D` @100 Hz), no un subconjunto. El módulo `down_tx` (`src/down/down_tx.cpp`)
+escribe en los dos enlaces con **SEQ monótono propio por enlace** (el contador de
+SEQ es independiente en CENTRAL y en TOP, compartido entre los 3 tipos, para que la
+detección de pérdida por SEQ del receptor sea correcta al intercalar tipos).
+- DOWN → CENTRAL: `Serial1` de DOWN (TX1=pin 1) → `Serial1` de CENTRAL (RX1=pin 0).
+  Lleva línea + OTOS.
+- DOWN → TOP: `Serial5` de DOWN (TX5=pin 20) → `Serial1` de TOP (RX1=pin 0).
+  Lleva línea + OTOS.
 
 ## 2. Catálogo de mensajes que DOWN emite y recibe
 
 | Dir | TYPE | Nombre | Payload | Frecuencia | Propósito |
 |---|---|---|---|---|---|
-| DOWN→CENTRAL | `0x10` | `LINE_URGENT` | `LineStatusV2` (16 B) | 200 Hz | Bus de emergencia: línea + eventos (§3) |
-| DOWN→TOP | `0x11` | `DOWN_OTOS_POSE` | `Pose2D` (7 B) | 100 Hz | Odometría OTOS (§4) |
-| DOWN→TOP | `0x12` | `DOWN_OTOS_VEL` | `Velocity2D` (7 B) | 100 Hz | Velocidades + slip (§4) |
+| DOWN→CENTRAL **+ TOP** | `0x10` | `LINE_URGENT` | `LineStatusV2` (16 B) | 200 Hz | Bus de emergencia: línea + eventos (§3). Difundido a ambas placas. |
+| DOWN→CENTRAL **+ TOP** | `0x11` | `DOWN_OTOS_POSE` | `Pose2D` (7 B) | 100 Hz | Odometría OTOS (§4). Difundido a ambas placas. |
+| DOWN→CENTRAL **+ TOP** | `0x12` | `DOWN_OTOS_VEL` | `Velocity2D` (7 B) | 100 Hz | Velocidades + slip (§4). Difundido a ambas placas. |
 | CENTRAL→DOWN | `0x20` | `CENTRAL_RESET_OTOS` | `uint8` | evento | Reset odometría |
 | CENTRAL→DOWN | `0x21` | `CENTRAL_CALIB_LINE` | `uint8` (0=carpet,1=white,2=auto) | evento | Disparar calibración |
 
 > El contrato cubre lo que DOWN **emite** (foco del pedido) y los comandos que
 > **recibe** (para que CENTRAL sepa cómo pedir calibración/reset).
 
-## 3. `LineStatusV2` — DOWN → CENTRAL (TYPE 0x10), 16 bytes
+## 3. `LineStatusV2` — DOWN → CENTRAL + TOP (TYPE 0x10), 16 bytes
 
 **Reemplaza el `LineStatus` v1 de 5 bytes** (insuficiente: no llevaba escape,
 corner, fin-de-línea, cross-track ni penetración en mm reales). 16 B ≪ 32 B.
@@ -215,7 +221,7 @@ payload `02`(schema=2) `01`(valid) `94 11`(LE → 0x1194 = 4500 = +45.00°)
 `F8 FF`(LE → 0xFFF8 = -8 mm) `01`(present) `04`(4 sensores) `00`(sin eventos)
 `58`(q=88) `01`(age=1 ms) `00`(reserved) → `DF BF`(CRC16=0xDFBF) `55`(end).
 
-## 4. `Pose2D` / `Velocity2D` — DOWN → TOP (TYPE 0x11 / 0x12)
+## 4. `Pose2D` / `Velocity2D` — DOWN → CENTRAL + TOP (TYPE 0x11 / 0x12)
 
 OTOS es **opcional**. Sin OTOS, DOWN sigue 100% funcional para línea; igual
 emite estos mensajes para que TOP sepa que DOWN está vivo, pero con

@@ -45,6 +45,52 @@ Adafruit_VL53L7CX     g_tof_frontal;
 VL53L7CX_ResultsData  g_tof_results;
 bool                  g_tof_init_logged = false;  // anti-spam del log de init
 
+#ifdef TOP_ENABLE_MULTI_TOF
+// ----- Enumeracion de los 4 ToF (bus unico Wire) — ACTIVO POR DEFAULT (2026-06-01) -----
+// Portado de diag_top_tof_quad_live (validado en banco 2026-05-30). LP pins y
+// direcciones vienen de pinout_robotN.h: PIN_TOF_XSHUT[]={9,10,11,12} (ACTIVO-ALTO),
+// TOF_I2C_ADDR_ASSIGNED[]={0x2A..0x2D}.
+// >>> ACTIVADO POR DEFAULT 2026-06-01 (top_robot1/2). Condiciones cumplidas: <<<
+//   1) PIN 10 (LP ToF[1]) LIBRE: el rol va por #define ROBOT1/ROBOT2; el TOP NO lee
+//      dipswitch en pin 10 -> sin conflicto (no conectar un dipswitch fisico ahi).
+//   2) Validado en banco (diag_top_tof_quad_live: los 4 enumeran a 0x2A..0x2D, posicion
+//      + orientacion mapeadas). Recordar POWER-CYCLE (las dir I2C persisten con 3V3).
+//   3) HEADS-UP boot: begin() carga ~85KB por ToF (~10s c/u) -> ~40s de arranque del TOP
+//      (vs ~10s con 1 ToF). Tolerable en power-on; conviene medirlo en cancha.
+Adafruit_VL53L7CX  g_tof_multi[NUM_TOF];
+constexpr uint8_t  LP_WAKE_LEVEL  = HIGH;   // activo-alto (banco 2026-05-30)
+constexpr uint8_t  LP_SLEEP_LEVEL = LOW;
+constexpr uint32_t LP_SETTLE_MS   = 120;
+
+inline bool tof_i2c_acks(uint8_t addr) {
+    Wire.beginTransmission(addr);
+    return Wire.endTransmission() == 0;
+}
+inline void tof_set_all_lp(uint8_t level) {
+    for (int i = 0; i < NUM_TOF; ++i) digitalWrite(PIN_TOF_XSHUT[i], level);
+}
+// Cambio de direccion de bajo nivel (no requiere firmware cargado) — para recover.
+bool tof_raw_change_addr(uint8_t cur, uint8_t next) {
+    Wire.beginTransmission(cur);
+    Wire.write(0x7F); Wire.write(0xFF); Wire.write(0x00);
+    if (Wire.endTransmission() != 0) return false;
+    Wire.beginTransmission(cur);
+    Wire.write(0x00); Wire.write(0x04); Wire.write(next);
+    if (Wire.endTransmission() != 0) return false;
+    delay(5);
+    return tof_i2c_acks(next);
+}
+// Junta cualquier ToF disperso (de corridas previas) de vuelta a 0x29.
+void tof_recover_to_default() {
+    tof_set_all_lp(LP_WAKE_LEVEL);
+    delay(60);
+    const uint8_t dispersed[] = {0x2A, 0x2B, 0x2C, 0x2D, 0x60};
+    for (uint8_t k = 0; k < sizeof(dispersed); ++k)
+        for (uint8_t t = 0; t < 4 && tof_i2c_acks(dispersed[k]); ++t)
+            tof_raw_change_addr(dispersed[k], VL53L7CX_DEFAULT_ADDRESS);
+}
+#endif  // TOP_ENABLE_MULTI_TOF
+
 // Resolucion 4x4 = 16 zonas. Mas liviano que 8x8 y suficiente para un solo
 // sensor que aporta "distancia frontal promedio" al firmware del TOP. Si en
 // el futuro se quiere usar el array completo para evasion fina, subir a 64.
@@ -52,25 +98,19 @@ constexpr uint8_t TOF_RESOLUTION_ZONES = 16;  // 4x4
 constexpr uint8_t TOF_RANGING_FREQ_HZ  = 15;
 
 // ----------------------------------------------------------------------------
-// HC-SR04 — DESHABILITADO POR DEFAULT (conflicto de pin 7).
+// HC-SR04 ultrasonido frontal — ACTIVO en top_robot1/2 (flag -DTOP_ENABLE_HCSR04).
 // ----------------------------------------------------------------------------
-// PIN_HCSR04_ECHO = 7 (pinout_common.h) colisiona con Serial2 RX2 del Teensy
-// 4.0, que es el UART del WORLD_SNAPSHOT hacia CENTRAL (comm_central.cpp ->
-// Serial2.begin, pins 7/8). main_top arranca comm_central LAST, asi que en
-// runtime el pin 7 queda bajo control del periferico UART. Consecuencias del
-// pulseIn(7,...) sobre ese pin:
-//   1. Lectura basura -> min_obstacle_mm contaminado (puede disparar evasion
-//      espuria o enmascarar un obstaculo real frente al robot).
-//   2. pulseIn BLOQUEA hasta 25 ms esperando un echo que nunca llega bien
-//      (la linea RX idlea en HIGH porque CENTRAL no transmite a TOP). A ~90 ms
-//      de cadencia, eso roba 25 ms al loop y degrada el uplink de 100 Hz.
-// El ToF frontal U2 ya cubre la distancia frontal, asi que el HC-SR04 es
-// redundante. Para reactivarlo hay que primero MOVER el ECHO a un pin libre
-// (decision de hardware -> team-task) y recien ahi compilar con
-// -DTOP_ENABLE_HCSR04. Sin ese flag, el modulo no toca los pines 6/7 ni llama
-// a pulseIn, y sensors_hcsr04_get_distance_mm() devuelve TOF_NO_READING.
+// Cableado CONFIRMADO en banco (Gustavo 2026-06-02): TRIG=pin 4, ECHO=pin 3 (pines
+// ex-XSHUT ToF, libres; NO son UART) -> sin conflicto con ningun Serial (el viejo lio
+// del pin 7 ya no aplica). Aporta "distancia frontal" al min_obstacle del snapshot
+// (redundante con el ToF frontal, util como respaldo).
+// TRADE-OFF (aceptado): pulseIn() es BLOQUEANTE. Para acotar el impacto en el uplink de
+// 100 Hz: (a) timeout reducido a 12 ms (~2 m, cubre la cancha) en vez de 25 ms; (b) se
+// lee solo cada 3 ticks de ToF (~90 ms) en sensors_tof_tick(). Mejora futura: hacerlo NO
+// bloqueante (trigger + medir echo por interrupcion). Sin el flag, el modulo no toca los
+// pines ni llama a pulseIn y devuelve TOF_NO_READING.
 #ifdef TOP_ENABLE_HCSR04
-// HC-SR04 — lectura bloqueante, simple (sin cambios desde el stub).
+// HC-SR04 — lectura bloqueante con timeout acotado (~2 m) para no robar tanto al loop.
 uint16_t read_hcsr04() {
     digitalWrite(PIN_HCSR04_TRIG, LOW);
     delayMicroseconds(2);
@@ -78,8 +118,8 @@ uint16_t read_hcsr04() {
     delayMicroseconds(10);
     digitalWrite(PIN_HCSR04_TRIG, LOW);
 
-    // pulseIn con timeout — si no llega echo, retorna 0.
-    const uint32_t duration_us = pulseIn(PIN_HCSR04_ECHO, HIGH, 25000UL);  // 25ms = ~4m
+    // pulseIn con timeout — si no llega echo (nada a <~2 m), retorna 0.
+    const uint32_t duration_us = pulseIn(PIN_HCSR04_ECHO, HIGH, 12000UL);  // 12ms = ~2m (cubre la cancha)
     if (duration_us == 0) return TOF_NO_READING;
     // Velocidad del sonido: 343 m/s = 0.343 mm/µs. Duracion es ida + vuelta.
     return static_cast<uint16_t>((duration_us * 343UL) / 2000UL);
@@ -107,10 +147,43 @@ uint16_t mean_valid_zones(const VL53L7CX_ResultsData& r, uint8_t n_zones) {
 
 }  // namespace
 
+// Duerme los 4 ToF (LP low) para dejar el bus I2C limpio ANTES de iniciar el BNO.
+// Receta validada en diag_pose_live: (1) dim ToF -> (2) init BNO -> (3) enumerar ToF.
+// Sin esto, el BNO se inicia con los ToF DESPIERTOS en 0x29 (misma dir que el BNO
+// derecho) -> el/los BNO no aparecen. Llamar en setup() ANTES de sensors_imu_init().
+void sensors_tof_predim_lp() {
+#ifdef TOP_ENABLE_MULTI_TOF
+    Wire.begin();
+    Wire.setClock(100000);  // 100 kHz: coexistencia BNO055 + VL53L7CX (a 400 kHz el yaw del
+                            // BNO se congela con los ToF activos). Ver sensors_imu.cpp.
+    for (int i = 0; i < NUM_TOF; ++i) {
+        pinMode(PIN_TOF_XSHUT[i], OUTPUT);
+        digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);
+    }
+    delay(LP_SETTLE_MS);
+#endif
+}
+
+void sensors_tof_scan_wire() {
+    // OJO: NO llamar Wire.begin() aca. El bus ya viene levantado por sensors_imu_init;
+    // un Wire.begin() extra resetea el periferico y hace FALLAR el primer probe -> falso
+    // "nada responde". Probamos sobre el bus YA operativo (igual que i2c_present del loop).
+    Serial.print(F("[i2c-scan Wire, ToF dormidos] ACK en:"));
+    int n = 0;
+    for (uint8_t a = 0x08; a <= 0x77; ++a) {
+        Wire.beginTransmission(a);
+        if (Wire.endTransmission() == 0) { Serial.print(F(" 0x")); Serial.print(a, HEX); ++n; }
+    }
+    if (n == 0) Serial.print(F(" (nada responde!)"));
+    Serial.println();
+}
+
 bool sensors_tof_init() {
+    Wire.begin();
+    Wire.setClock(100000);   // idempotente; 100 kHz (coexistencia BNO+ToF, ver predim/imu).
 #ifdef TOP_ENABLE_HCSR04
-    // HC-SR04 frontal — solo si se reactivo explicitamente (ver nota del
-    // conflicto de pin 7 arriba). NO tocar pin 7 si Serial2 lo necesita.
+    // HC-SR04 frontal — solo si se reactivo explicitamente (ver nota arriba).
+    // Pines 4/3 (libres); el conflicto de pin 7 ya no aplica.
     pinMode(PIN_HCSR04_TRIG, OUTPUT);
     pinMode(PIN_HCSR04_ECHO, INPUT);
 #endif
@@ -132,6 +205,43 @@ bool sensors_tof_init() {
     // 400 kHz = Adafruit default tambien). Si se setea aca y otro modulo
     // del TOP necesita otro clock, se pisan.
 
+#ifdef TOP_ENABLE_MULTI_TOF
+    // === Enumeracion de los 4 ToF (bus unico Wire, LP por bodge) ===
+    // Secuencia validada en banco (diag_top_tof_quad_live, 2026-05-30):
+    // dormir todos los LP -> despertar de a uno -> begin() en 0x29 ->
+    // setAddress(0x2A..0x2D) -> configurar -> rangear. Tolerante a fallos:
+    // si un ToF no responde, se saltea y el resto sigue.
+    for (int i = 0; i < NUM_TOF; ++i) {
+        pinMode(PIN_TOF_XSHUT[i], OUTPUT);
+        digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);
+    }
+    tof_recover_to_default();           // limpiar direcciones de corridas previas
+    tof_set_all_lp(LP_SLEEP_LEVEL);
+    delay(LP_SETTLE_MS);
+    for (int i = 0; i < NUM_TOF; ++i) {
+        digitalWrite(PIN_TOF_XSHUT[i], LP_WAKE_LEVEL);
+        delay(LP_SETTLE_MS);
+        if (!tof_i2c_acks(VL53L7CX_DEFAULT_ADDRESS)) {
+            digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);  // LP no controla este ToF
+            continue;
+        }
+        if (!g_tof_multi[i].begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, 100000)) continue;  // 100 kHz: coexistencia BNO+ToF
+        if (!g_tof_multi[i].setAddress(TOF_I2C_ADDR_ASSIGNED[i]))           continue;
+        g_tof_multi[i].setResolution(TOF_RESOLUTION_ZONES);
+        g_tof_multi[i].setRangingFrequency(TOF_RANGING_FREQ_HZ);
+        if (!g_tof_multi[i].startRanging())                                 continue;
+        g_ready[i] = true;              // queda despierto (retiene dir + rangea)
+    }
+    {
+        int n_ok = 0;
+        for (int i = 0; i < NUM_TOF; ++i) if (g_ready[i]) ++n_ok;
+        Serial.print(F("[sensors_tof] multi-ToF (TOP_ENABLE_MULTI_TOF): "));
+        Serial.print(n_ok);
+        Serial.println(F(" de 4 midiendo."));
+    }
+    g_tof_init_logged = true;
+    return true;
+#else
     // Init del ToF frontal U2 (unico instalado fisicamente al 2026-05-24).
     // begin() devuelve bool. Internamente carga ~85 KB de firmware blob por
     // I2C, puede tardar hasta ~10 s.
@@ -161,6 +271,7 @@ bool sensors_tof_init() {
                      "(4x4 @ 15 Hz, lib Adafruit)."));
     g_tof_init_logged = true;
     return true;
+#endif  // TOP_ENABLE_MULTI_TOF
 }
 
 void sensors_tof_tick() {
@@ -169,6 +280,17 @@ void sensors_tof_tick() {
     // ToF frontal U2: polling no bloqueante. isDataReady() es un read I2C
     // chico (~milisegundos en 400 kHz); si hay frame nuevo, getRangingData
     // lo trae y promediamos las zonas validas.
+#ifdef TOP_ENABLE_MULTI_TOF
+    // Poll de los 4 ToF enumerados (no bloqueante).
+    for (int i = 0; i < NUM_TOF; ++i) {
+        if (!g_ready[i]) continue;
+        if (g_tof_multi[i].isDataReady() &&
+            g_tof_multi[i].getRangingData(&g_tof_results)) {
+            g_distances_mm[i] = mean_valid_zones(g_tof_results, TOF_RESOLUTION_ZONES);
+        }
+        // si getRangingData() devuelve false, mantenemos el ultimo valor cacheado.
+    }
+#else
     if (g_ready[TOF_FRONTAL_IDX]) {
         if (g_tof_frontal.isDataReady()) {
             if (g_tof_frontal.getRangingData(&g_tof_results)) {
@@ -180,6 +302,7 @@ void sensors_tof_tick() {
             // que dispare evasion espuria por un frame perdido.
         }
     }
+#endif  // TOP_ENABLE_MULTI_TOF
 
 #ifdef TOP_ENABLE_HCSR04
     // HC-SR04 — lectura bloqueante. Corremos solo cada N ticks para no

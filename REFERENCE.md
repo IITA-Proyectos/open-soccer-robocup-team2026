@@ -28,12 +28,19 @@
 
 ## Hardware y datasheets
 
-| Componente | Link | Uso |
-|-----------|------|-----|
-| Teensy (PJRC) | [pjrc.com/teensy](https://www.pjrc.com/teensy/) | Microcontrolador principal |
-| BNO055 (Adafruit) | [Adafruit BNO055](https://learn.adafruit.com/adafruit-bno055-absolute-orientation-sensor) | Giróscopo / IMU |
-| OpenMV H7 | [openmv.io](https://openmv.io/) | Cámara de visión |
-| PCB Zircon (custom) | Ver `hardware/electronics/` | Placa custom del equipo |
+> Arquitectura completa: [`docs/ARQUITECTURA-3-PLACAS-2026.md`](docs/ARQUITECTURA-3-PLACAS-2026.md). Specs de firmware por placa en [`docs/firmware/`](docs/firmware/).
+
+| Componente | Link | Uso en el robot |
+|-----------|------|-----------------|
+| Teensy 4.1 (PJRC) | [pjrc.com/teensy](https://www.pjrc.com/teensy/) | Micro de la placa **CENTRAL** (FSM táctica + PIDs + motores) |
+| Teensy 4.0 (PJRC) | [pjrc.com/teensy](https://www.pjrc.com/teensy/) | Micro de placas **TOP** y **DOWN** (2× por robot) |
+| ESP32-C6 (Espressif) | [espressif.com/.../esp32-c6](https://www.espressif.com/en/products/socs/esp32-c6) | Placa **COMM**: señales de árbitro RCJ (START/STOP) + partner |
+| OpenMV H7 / H7 Plus | [openmv.io](https://openmv.io/) | Cámaras de visión frontal + trasera (MicroPython) |
+| BNO055 (Adafruit) | [Adafruit BNO055](https://learn.adafruit.com/adafruit-bno055-absolute-orientation-sensor) | IMU / giróscopo (orientación, placa TOP) |
+| SparkFun OTOS (Qwiic) | [Arduino Library](https://github.com/sparkfun/SparkFun_Qwiic_OTOS_Arduino_Library) | 2× odometría óptica (placa DOWN) |
+| ST VL53L7CX (ToF multizona) | Ver [`docs/firmware/FIRMWARE-PLACA-ARRIBA.md`](docs/firmware/FIRMWARE-PLACA-ARRIBA.md) | Distancia/obstáculos multizona (placa TOP) |
+| Anillo 32 sensores de línea | Ver [`hardware/electronics/down-board-pack/`](hardware/electronics/down-board-pack/) | Detección de línea de borde (placa DOWN) |
+| PCB Zircon (custom) | Ver [`hardware/electronics/central-board-pack/`](hardware/electronics/central-board-pack/) | Placa custom CENTRAL del equipo (+ `zirconLib`) |
 
 ## Equipos referencia Soccer Open
 

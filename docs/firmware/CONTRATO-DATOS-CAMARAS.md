@@ -68,17 +68,18 @@ por cámara, porque la homografía, el mirror y el FOV son distintos.
 
 | Parámetro | Cámara frontal (cam 1) | Cámara trasera (cam 2) |
 |-----------|------------------------|------------------------|
-| Puerto Teensy | Serial3 | Serial5 |
-| Pines Teensy 4.0 | RX=15, TX=14 | RX=21, TX=20 |
-| Conector en PCB TOP | U8 "UART-CAMERA1" | U9 "UART-CAMERA2" |
+| Puerto Teensy | Serial3 | **Serial5** (soldada ahí, banco 2026-05-31) |
+| Pines Teensy 4.0 | RX=15, TX=14 | **RX=21, TX=20** |
+| Conector en PCB TOP | U8 "UART-CAMERA1" | (pin 21 — confirmar conector con Enzo) |
 | Baud rate | 19200 8N1 | 19200 8N1 |
 | Constante firmware | `UART_CAMERA1_BAUD = 19200` | `UART_CAMERA2_BAUD = 19200` |
 
-Fuente: `config_top.h:43,45,53,55`.
+Fuente: `src/top/cameras_runtime.cpp` (código vivo).
 
-> **Nota de calibración pendiente (TASK-008):** el wiring físico entre conectores
-> PCB y UARTs Teensy NO está confirmado. Hay que medir con osciloscopio antes
-> de confiar en estas asignaciones. Ver `config_top.h:39-42` ("NO CONFIRMADO").
+> **✅ Actualizado 2026-05-31 (TASK-204):** la cámara trasera quedó **soldada en
+> Serial5 (RX pin 21)** — confirmado en banco (`diag_top_cameras`, FORMATO OK).
+> Por eso el UART **TOP→CENTRAL** se movió a **Serial7 (28/29)**. Firmware:
+> `cameras_runtime.cpp` lee la trasera en `Serial5`; `comm_central.cpp` usa `Serial7`.
 
 ### 1.2 Protocolo actual — 9 bytes raw
 

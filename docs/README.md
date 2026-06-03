@@ -8,10 +8,23 @@ status: active
 
 Toda la documentación del equipo IITA Salta para RoboCup Junior Soccer Open 2026.
 
+> **Empezá por los índices vivos** (se actualizan en cada sesión de trabajo):
+> - ⭐ **[`ESTADO-ACTUAL.md`](ESTADO-ACTUAL.md)** — estado vivo del robot: módulos que corren, TASKs bloqueantes, deudas.
+> - ⭐ **[`FUENTES-DE-VERDAD.md`](FUENTES-DE-VERDAD.md)** — qué doc/módulo es canónico por tema (clave: hay docs superados que **NO** deben usarse como guía).
+>
+> Para entender el robot: **[`ARQUITECTURA-3-PLACAS-2026.md`](ARQUITECTURA-3-PLACAS-2026.md)** + las specs por placa en [`firmware/`](firmware/).
+
 ## Estructura
 
 ```
 docs/
+├── ESTADO-ACTUAL.md      # ⭐ Estado vivo del robot (1ª lectura obligatoria)
+├── FUENTES-DE-VERDAD.md  # ⭐ Doc/módulo canónico por tema
+├── ARQUITECTURA-3-PLACAS-2026.md  # Arquitectura del robot 2026
+├── firmware/          # Specs de firmware y contratos de datos por placa
+├── decisions/         # Decisiones de diseño (fechadas)
+├── superpowers/       # Planes y specs de sprints (plans/ + specs/)
+├── coach-system/      # Diseño del sistema de coach
 ├── official/          # Documentación para presentar en competencia
 │   ├── es/            # Versiones en español
 │   └── en/            # Versiones en inglés (para internacional)

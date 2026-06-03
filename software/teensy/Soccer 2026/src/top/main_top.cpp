@@ -8,10 +8,10 @@
 //   • 2 BNO055 IMU (I2C Wire + Wire1 remap 24/25)
 //   • 4 ToF + 1 HC-SR04 (I2C dual + GPIO)
 //   • Odometría OTOS desde ABAJO (Serial1)
-//   • Comm árbitros + partner ESP-NOW (Serial4 → placa COMM)
+//   • Comm árbitros + partner ESP-NOW (Serial2 7/8 → placa COMM)
 //
 // Outputs:
-//   • WORLD_SNAPSHOT a CENTRAL (Serial2) a 100 Hz.
+//   • WORLD_SNAPSHOT a CENTRAL (Serial4 16/17) a 100 Hz.
 //
 // Build:
 //   pio run -e top
@@ -108,15 +108,24 @@ void setup() {
     Serial.println("  Cerebro sensorial (Teensy 4.0)");
     Serial.println("=========================================");
 
-    sensors_imu_init();
-    sensors_tof_init();
+    // ORDEN CRITICO (fix 2026-06-02, receta validada en diag_pose_live): los 4 VL53L7CX
+    // arrancan en 0x29 = misma dir que el BNO DERECHO en el bus Wire. Para que NO choquen:
+    //   (1) dormir los ToF (LP low) -> bus limpio;
+    //   (2) iniciar los BNO (0x28 + 0x29, sin ToF en el bus);
+    //   (3) recien ahi enumerar los ToF (despertar de a uno -> 0x2A..0x2D).
+    // Bug anterior: el BNO se iniciaba con los ToF DESPIERTOS en 0x29 -> imu_R=N (o ambos)
+    // + enumeracion ToF confundida -> min_obst=65535.
+    sensors_tof_predim_lp();  // (1) dormir ToF (LP low) -> bus limpio para el BNO
+    sensors_imu_init();       // (2) BNO 0x28 + 0x29 con los ToF dormidos
+    sensors_tof_scan_wire();  // DIAG 2026-06-02: con ToF dormidos, que BNO responde? 0x28? 0x29?
+    sensors_tof_init();       // (3) enumerar ToF a 0x2A..0x2D
     // OJO: el robot DEBE apuntar al arco rival (+Y) al boot — esta llamada
     // calibra bno_offset_centideg leyendo el heading actual.
     iitasoccer::localization_runtime_init();
     cameras_init();      // Serial3 + Serial5 ← OpenMV front + back
     comm_down_init();    // Serial1 ← odometría desde ABAJO
-    comm_arbiter_init(); // Serial4 ↔ placa COMM
-    comm_central_init(); // Serial2 → snapshot a CENTRAL
+    comm_arbiter_init(); // Serial2 (7/8) ↔ placa COMM
+    comm_central_init(); // Serial4 (16/17) → snapshot a CENTRAL
 
     digitalWrite(PIN_LED_STATUS, HIGH);
     Serial.println("[TOP] cerebro sensorial listo, enviando snapshots a CENTRAL");
@@ -183,6 +192,24 @@ void loop() {
         Serial.print(cameras_packets_front());
         Serial.print("/");
         Serial.print(cameras_packets_back());
+        Serial.print(" down_pose/vel=");
+        Serial.print(comm_down_is_pose_fresh() ? "Y" : "N");
+        Serial.print("/");
+        Serial.print(comm_down_is_vel_fresh() ? "Y" : "N");
+        // ARBITRO = NIVEL GPIO en pines 5/6 (0=parado, 1=jugando; TASK-039, banco 2026-06-02).
+        // ref = comando derivado (0=STOP 1=START), match = habilitado a moverse,
+        // p5/6 = lectura cruda de los 2 pines del arbitro, rx = frames partner por UART (Serial2).
+        Serial.print(" arb[ref=");
+        Serial.print(static_cast<int>(comm_arbiter_get_last_command()));
+        Serial.print(" match=");
+        Serial.print(comm_arbiter_is_match_running() ? "Y" : "N");
+        Serial.print(" p5/6=");
+        Serial.print(digitalRead(5));
+        Serial.print("/");
+        Serial.print(digitalRead(6));
+        Serial.print(" rx=");
+        Serial.print(comm_arbiter_get_frames_received());
+        Serial.print("]");
         Serial.print(" resync=");
         Serial.println(cameras_resyncs_total());
     }

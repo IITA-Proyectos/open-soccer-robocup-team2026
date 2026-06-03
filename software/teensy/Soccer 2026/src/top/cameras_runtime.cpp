@@ -30,8 +30,12 @@ constexpr int MAX_BYTES_PER_TICK = 64;
 
 // === Estado ===
 
-CameraParser g_parser_front;    // Serial3 → conector U8 (cámara frontal)
-CameraParser g_parser_back;     // Serial5 → conector U9 (cámara trasera)
+CameraParser g_parser_front;    // Serial3 (RX pin 15) → conector U8 (cámara frontal)
+CameraParser g_parser_back;     // Serial5 (RX pin 21) → cámara trasera (soldada acá)
+// ⚠️ SWAP 2026-05-31 (TASK-204): la trasera quedó SOLDADA en Serial5 (pin 21),
+// confirmado en banco con diag_top_cameras. Se revierte la movida del 2026-05-29
+// (que la había puesto en Serial7 asumiendo la placa sin armar). Serial7 (pines
+// 28/29) pasó a ser el link → CENTRAL (ver comm_central.cpp).
 
 uint32_t g_last_packet_ms_front = 0;
 uint32_t g_last_packet_ms_back  = 0;
@@ -108,7 +112,7 @@ void cameras_tick() {
         ++drained;
     }
 
-    // Drenar Serial5 (cámara trasera).
+    // Drenar Serial5 (cámara trasera, soldada en pin 21).
     drained = 0;
     while (Serial5.available() && drained < MAX_BYTES_PER_TICK) {
         const uint8_t byte = static_cast<uint8_t>(Serial5.read());

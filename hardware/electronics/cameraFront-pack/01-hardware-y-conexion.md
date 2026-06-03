@@ -11,18 +11,17 @@ parte-de: cameraFront-pack
 
 | Atributo | Valor | Confianza |
 |---|---|---|
-| Familia | **OpenMV H7** o **H7 Plus** | ⚠️ confirmar con TASK-013 (recuperar BOM) |
-| Procesador | STM32H7 a 480 MHz (H7) o 400 MHz (H7 Plus con extra RAM) | ✅ |
-| Sensor de imagen | OV5640 (H7 Plus) u OV7725 (H7 básico) | ⚠️ depende del modelo |
+| Familia | **OpenMV N6** | ✅ confirmado en banco 2026-05-31 |
+| Procesador | STM32N6 (Cortex-M55 + Neural-ART NPU) | ✅ |
+| Sensor de imagen | **PAG7936** | ✅ |
 | Resolución usada | **QVGA (320×240) RGB565** | ✅ por código |
 | Frame rate efectivo | **~30 Hz** (limitado por procesamiento de blobs) | ✅ estimación |
 | Lente | Lente standard ~2.8 mm (FOV ~70° horizontal) | ⚠️ confirmar con Enzo |
 | Firmware | MicroPython (script en `firmware/openmv/`) | ✅ |
 
-> 📌 La diferencia entre H7 y H7 Plus afecta principalmente el sensor (5 MP vs
-> 0.3 MP) y la RAM (32 MB SDRAM vs 1 MB), pero **el código del repo es el
-> mismo** porque solo usa QVGA. Si Enzo confirma que son H7 Plus, eventualmente
-> se podría subir a VGA o QQVGA con mejores LAB.
+> 📌 Las cámaras son **OpenMV N6** (sensor PAG7936), confirmado en banco
+> 2026-05-31. El código del repo usa QVGA; el N6 da margen amplio para subir
+> resolución o usar la NPU en el futuro.
 
 ## 2. Conexión con la placa TOP
 
@@ -87,12 +86,12 @@ Por convención del TOP:
 | **GND** | Masa común | GND del Teensy / PCB TOP |
 | **VIN o 3V3** | Alimentación | desde el regulador 5V del PCB TOP (vía MP1584-EN) |
 
-> Los OpenMV H7 aceptan 3.3 V y 5 V en VIN. Confirmar con Enzo qué pin de
+> Los OpenMV N6 aceptan 3.3 V y 5 V en VIN. Confirmar con Enzo qué pin de
 > alimentación está usando en el cableado real para evitar dañar el módulo.
 
-## 6. LEDs de diagnóstico (built-in del OpenMV H7)
+## 6. LEDs de diagnóstico (built-in del OpenMV N6)
 
-El OpenMV H7 tiene 3 LEDs (rojo, verde, azul). El script actual los usa así:
+El OpenMV N6 tiene 3 LEDs (rojo, verde, azul). El script actual los usa así:
 
 | LED | Indica |
 |---|---|
@@ -104,7 +103,7 @@ El OpenMV H7 tiene 3 LEDs (rojo, verde, azul). El script actual los usa así:
 
 ## 7. Pendientes de hardware específicos (no bloquean uso del pack)
 
-1. **Confirmar modelo OpenMV** — H7 vs H7 Plus (TASK-013).
+1. ✅ **RESUELTO 2026-05-31** — modelo confirmado: **OpenMV N6 (sensor PAG7936)**.
 2. **Medir altura `h` real** de la cámara frontal sobre el suelo (placeholder 18.7 cm).
 3. **Medir ángulo de inclinación** y distancia al centro del robot (para Nivel 3+ EKF).
 4. **Verificar wiring U8 ↔ Serial3 Teensy** con osciloscopio (TASK-008).

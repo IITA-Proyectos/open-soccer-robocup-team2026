@@ -47,8 +47,8 @@ central-board-pack/
 │   │   ├── motors_zircon.{h,cpp}     ← driver de los 3 motores
 │   │   ├── imu_zircon.{h,cpp}        ← BNO055 wrapper
 │   │   ├── world_model.{h,cpp}       ← espejo del WorldSnapshot
-│   │   ├── comm_top.{h,cpp}          ← UART ← TOP (Serial1)
-│   │   ├── comm_down.{h,cpp}         ← UART ← DOWN (Serial2, emergencia)
+│   │   ├── comm_top.{h,cpp}          ← UART ← TOP (Serial7, 28/29)
+│   │   ├── comm_down.{h,cpp}         ← UART ← DOWN (Serial1, 0/1, emergencia)
 │   │   └── config_central.h          ← pinout + constantes (ROBOT1/ROBOT2)
 │   └── shared/                       ← 13 archivos compartidos usados por CENTRAL
 │       ├── strategy_transitions.{h,cpp}  ← caracterización pura de la FSM (35 tests)
@@ -82,7 +82,7 @@ central-board-pack/
 | ¿Qué pin del Teensy va a qué motor? | `01-pinout-y-hardware.md` §3 (ROBOT1) o §4 (ROBOT2) |
 | ¿Cuál es la diferencia de pinout entre arquero y delantero? | `01-pinout-y-hardware.md` §5 |
 | ¿Qué pines usa la UART hacia TOP? | `01-pinout-y-hardware.md` §2.1 (Serial1, RX=0, TX=1) |
-| ¿Qué pines usa la UART hacia DOWN? | `01-pinout-y-hardware.md` §2.1 (Serial2, RX=7, TX=8 — ⚠️ conflicto pendiente) |
+| ¿Qué pines usa la UART hacia DOWN? | `01-pinout-y-hardware.md` §2.1 (**Serial1, RX=0, TX=1** — reasignado 2026-05-31; antes Serial2/7-8, conflicto resuelto) |
 | ¿Qué pines usa el BNO055 y qué dirección I²C? | `01-pinout-y-hardware.md` §2.2 (Wire, SDA=18, SCL=19, 0x28) |
 | ¿Cómo es la cinemática del robot? | `01-pinout-y-hardware.md` §6 + `02-funcionalidad.md` §5.1 + `firmware/shared/kinematics.{h,cpp}` |
 | ¿Qué hace la placa CENTRAL? | `02-funcionalidad.md` §1, §3 |
@@ -107,13 +107,10 @@ central-board-pack/
 
 **El más urgente — resolver pronto antes de probar hardware:**
 
-1. **Conflicto pines 7/8** — el doc histórico del 2026-03-20 (`mapa-pines-teensy-ambos-robots`)
-   asigna pin 7 (INB) y pin 8 (INA) a Motor 2 (ROBOT1) o Motor 1 (ROBOT2). Pero el firmware
-   nuevo (`config_central.h` + `comm_down.h`) los usa para **RX2 y TX2 de Serial2** (UART
-   hacia DOWN). **No pueden ser ambas cosas a la vez**. Tres opciones:
-   - (A) El doc del 2026-03-20 está mal (era del firmware del 2025) → confirmar con Enzo.
-   - (B) Cambiar firmware nuevo a OTRO UART (Serial3/4/5 — el Teensy 4.1 tiene 8).
-   - (C) El motor que usaba 7/8 ya no se conecta físicamente → documentarlo.
+1. ✅ **Conflicto pines 7/8 RESUELTO (2026-05-31, Opción B):** se movieron los UART.
+   El link **DOWN→CENTRAL pasó a `Serial1` (0/1)** y **TOP→CENTRAL a `Serial7` (28/29)**.
+   Los **pines 7/8 quedan solo para el driver del motor 2 (U17)** — sin UART encima.
+   Firmware actualizado (`comm_down.cpp`→Serial1, `comm_top.cpp`→Serial7, `config_central.h`).
 
 **Otros pendientes (no urgentes):**
 
@@ -147,7 +144,7 @@ Estos pendientes viven en `team-tasks/`, no se duplican en el pack.
 | Cantidad de robots cubiertos | 1 (la placa DOWN) | 2 (ROBOT1 arquero + ROBOT2 delantero, mismo Zircon distinto cableado de motores) |
 | Capas funcionales | 1 (sensor inteligente puro) | 3 (FSM + PIDs + motores) |
 | Tests | 8 suites (138 tests aprox) | 7 suites (79+ tests confirmados) |
-| Conflictos abiertos | 0 | 1 (pines 7/8 motores vs Serial2) |
+| Conflictos abiertos | 0 | 0 (conflicto 7/8 RESUELTO 2026-05-31: DOWN→Serial1, TOP→Serial7) |
 
 ## Atribución
 

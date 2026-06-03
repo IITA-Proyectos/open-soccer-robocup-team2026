@@ -1,7 +1,7 @@
 // config_central.h — Constantes del firmware del Zircon (motor server)
 //
 // El Zircon Rev v15 con Teensy 4.1 ejecuta el firmware "motor server":
-//   - Recibe MotorCommand por Serial1 desde la placa TOP.
+//   - Recibe WORLD_SNAPSHOT por Serial7 (pin 28) desde la placa TOP.
 //   - Aplica cinemática inversa omni-3.
 //   - Aplica PWM a los 3 drivers H-bridge.
 //   - Reporta status básico al TOP.
@@ -50,7 +50,10 @@ namespace iitasoccer {
 #endif
 
 // ============================================================
-// BNO055 (idéntico en ambos robots)
+// BNO055 — ⚠️ YA NO SE CONECTA EN CENTRAL (2026-05-31).
+// Los 2 BNO están en el TOP; el heading llega por WORLD_SNAPSHOT de ARRIBA. Estas
+// constantes + el módulo imu_zircon quedan como compat: solo se usan si se compila
+// con -DCENTRAL_HAS_LOCAL_BNO (ver main_central.cpp). Default: OFF.
 // ============================================================
 constexpr int    BNO055_I2C_ADDR    = 0x28;
 constexpr int    BNO055_INIT_TIMEOUT_MS = 3000;
@@ -75,11 +78,16 @@ constexpr int MAX_PWM           = 255;    // Arduino analogWrite range
 constexpr float MAX_SPEED_MM_S  = 1000.0f; // velocidad máxima estimada del robot
 
 // ============================================================
-// UART hacia TOP
+// UARTs inter-placa (reasignados 2026-05-31 — ver MAPA-CONEXIONES-3-PLACAS.md)
+//   • TOP→CENTRAL  (WORLD_SNAPSHOT): Serial7  RX7=pin 28, TX7=pin 29
+//   • DOWN→CENTRAL (LINE_URGENT):    Serial1  RX1=pin 0,  TX1=pin 1
+//   • Serial2 (7/8) queda LIBRE para el driver del motor 2 (U17) → conflicto F8 RESUELTO.
 // ============================================================
 constexpr long  UART_TOP_BAUD   = 230400;
-constexpr int   UART_TOP_RX     = 0;  // Serial1 RX1
-constexpr int   UART_TOP_TX     = 1;  // Serial1 TX1
+constexpr int   UART_TOP_RX     = 28;  // Serial7 RX7 (TOP→CENTRAL)
+constexpr int   UART_TOP_TX     = 29;  // Serial7 TX7
+constexpr int   UART_DOWN_RX    = 0;   // Serial1 RX1 (DOWN→CENTRAL)
+constexpr int   UART_DOWN_TX    = 1;   // Serial1 TX1
 
 // ============================================================
 // Watchdog
@@ -103,6 +111,15 @@ constexpr uint32_t COMMAND_TIMEOUT_MS = 200;
     constexpr uint32_t KICKER_PULSE_MS    = 80;    // duración del pulso al MOSFET
     constexpr uint32_t KICKER_COOLDOWN_MS = 1500;  // tiempo mínimo entre disparos
 #endif
+
+// ============================================================
+// Arranque manual fail-safe (F3) — SOLO banco, gateado por CENTRAL_ENABLE_MANUAL_START
+// ============================================================
+// Pulsador de arranque para cuando la placa COMM no manda START (bench testing).
+// ⚠️ Pin 9 ASUMIDO de diag_central_motors — CONFIRMAR que hay un pulsador cableado
+// al pin 9 (INPUT_PULLUP) en el Zircon; si no, usar ENTER por USB (backup). NUNCA
+// activar este flag en competencia (arrancar sin árbitro viola el protocolo RCJ).
+constexpr int PIN_MANUAL_START_BUTTON = 9;
 
 // ============================================================
 // LED de estado

@@ -98,20 +98,19 @@ constexpr uint8_t TOF_RESOLUTION_ZONES = 16;  // 4x4
 constexpr uint8_t TOF_RANGING_FREQ_HZ  = 15;
 
 // ----------------------------------------------------------------------------
-// HC-SR04 — DESHABILITADO POR DEFAULT (pulseIn bloqueante; el ToF frontal lo cubre).
+// HC-SR04 ultrasonido frontal — ACTIVO en top_robot1/2 (flag -DTOP_ENABLE_HCSR04).
 // ----------------------------------------------------------------------------
-// Cableado en banco 2026-05-31: TRIG=pin 4, ECHO=pin 3 (pines ex-XSHUT ToF, hoy
-// libres; NO son UART). Esto RESUELVE el viejo "conflicto de pin 7" (antes el ECHO
-// estaba en pin 7 = Serial2 RX2): el HC-SR04 ya no comparte pin con ningun Serial.
-// Aun asi queda gateado OFF por default por la OTRA razon, que sigue vigente:
-//   pulseIn() BLOQUEA hasta 25 ms esperando el echo. A ~90 ms de cadencia eso
-//   roba 25 ms al loop y degrada el uplink de 100 Hz (P0: TASK-014).
-// Ademas el ToF frontal ya aporta "distancia frontal", asi que el HC-SR04 es
-// redundante hoy. Para reactivarlo (ya sin riesgo de pin): compilar con
-// -DTOP_ENABLE_HCSR04, idealmente despues de hacerlo NO bloqueante. Sin ese flag,
-// el modulo no toca los pines ni llama a pulseIn, y devuelve TOF_NO_READING.
+// Cableado CONFIRMADO en banco (Gustavo 2026-06-02): TRIG=pin 4, ECHO=pin 3 (pines
+// ex-XSHUT ToF, libres; NO son UART) -> sin conflicto con ningun Serial (el viejo lio
+// del pin 7 ya no aplica). Aporta "distancia frontal" al min_obstacle del snapshot
+// (redundante con el ToF frontal, util como respaldo).
+// TRADE-OFF (aceptado): pulseIn() es BLOQUEANTE. Para acotar el impacto en el uplink de
+// 100 Hz: (a) timeout reducido a 12 ms (~2 m, cubre la cancha) en vez de 25 ms; (b) se
+// lee solo cada 3 ticks de ToF (~90 ms) en sensors_tof_tick(). Mejora futura: hacerlo NO
+// bloqueante (trigger + medir echo por interrupcion). Sin el flag, el modulo no toca los
+// pines ni llama a pulseIn y devuelve TOF_NO_READING.
 #ifdef TOP_ENABLE_HCSR04
-// HC-SR04 — lectura bloqueante, simple (sin cambios desde el stub).
+// HC-SR04 — lectura bloqueante con timeout acotado (~2 m) para no robar tanto al loop.
 uint16_t read_hcsr04() {
     digitalWrite(PIN_HCSR04_TRIG, LOW);
     delayMicroseconds(2);
@@ -119,8 +118,8 @@ uint16_t read_hcsr04() {
     delayMicroseconds(10);
     digitalWrite(PIN_HCSR04_TRIG, LOW);
 
-    // pulseIn con timeout — si no llega echo, retorna 0.
-    const uint32_t duration_us = pulseIn(PIN_HCSR04_ECHO, HIGH, 25000UL);  // 25ms = ~4m
+    // pulseIn con timeout — si no llega echo (nada a <~2 m), retorna 0.
+    const uint32_t duration_us = pulseIn(PIN_HCSR04_ECHO, HIGH, 12000UL);  // 12ms = ~2m (cubre la cancha)
     if (duration_us == 0) return TOF_NO_READING;
     // Velocidad del sonido: 343 m/s = 0.343 mm/µs. Duracion es ida + vuelta.
     return static_cast<uint16_t>((duration_us * 343UL) / 2000UL);

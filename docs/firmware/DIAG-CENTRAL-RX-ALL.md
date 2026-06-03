@@ -93,8 +93,9 @@ parpadea, falta algo (mirar la línea `falta: ...`).
 | `bytes` sube pero `frames=0` / `crc` alto | baud o TX/RX cruzados / masa flotante | revisar cableado y masa |
 | `LINEA [OK]` pero `OTOS pose/vel [FALTA]` | **DOWN no difunde el OTOS** (env sin broadcast / OTOS sin batería) | **es DOWN, no la CENTRAL** — flashear `down` con `down_tx` + power-cycle con batería (ver ESTADO-ACTUAL "CÓMO ENCENDER LOS OTOS") |
 | `SNAPSHOT [FALTA]` | TOP no emite / cable al pin 28 | confirmar TOP corriendo + cable TX4(pin17)→pin28 |
-| `seqGap` sube | frames perdidos (buffer / backpressure) | anotar cuántos; ver `ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md` |
-| todo `[OK]`, LED fijo | ✅ **CENTRAL recibe la info completa** | listo para integrar |
+| `seqGap` sube en DOWN, 0 CRC | frames que DOWN **dropea por backpressure** (`down_tx.cpp:25` sube el SEQ aunque descarte el frame, `:32-37`) → cada drop = 1 gap. Visto ~33% en banco 2026-06-03 | dato fresco igual (~100 Hz); confirmar con `down_tx_get_dropped(0)` de DOWN |
+| un campo **llega pero NO cambia** (ej. `SNAPSHOT hdg` clavado mientras x/y varían) | el dato llega fresco pero está **congelado en origen** (banco 2026-06-03: yaw del BNO del TOP se congeló por contención BNO+ToF, `sensors_imu.cpp:167`). ⚠️ **el veredicto lo marca `[OK]`** (el frame llega) — no detecta "campo estático" | es problema de la placa de origen (TOP), no del link; ver journal `2026-06-03-banco-resultados-arbitro-strafe-y-bno-freeze.md` |
+| todo `[OK]`, LED fijo | ✅ **CENTRAL recibe la info completa** | listo para integrar (ojo: `[OK]` = el frame llega, no garantiza que el campo no esté congelado — ver fila de arriba) |
 
 ## Documentación esperada (journal post-test)
 

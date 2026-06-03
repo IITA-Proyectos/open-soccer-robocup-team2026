@@ -11,6 +11,13 @@ requested-by: "Gustavo Viollaz (@gviollaz)"
 
 # `diag_central_arbitro_strafe` — Patrulla del arquero con START/STOP del árbitro
 
+> **🔬 Resultado de banco 2026-06-03:** ✅ **el gate del árbitro ANDA** (START/STOP
+> mueve/frena la CENTRAL). ⚠️ **Al moverse solo gira el motor 1**: por la cinemática
+> `{60,-60,180}` un lateral puro da **M3=0 (esperado**, rueda trasera kiwi) y
+> M1=M2=±0.866·vx, pero a `vx=150`/`MAX_SPEED=1000` el PWM es ~13% → M1 raspa, **M2
+> stalled (deadzone)**. **Primer test: subir velocidad** `-DDIAG_ARB_SPEED_MM_S=600`.
+> Detalle: journal `2026-06-03-banco-resultados-arbitro-strafe-y-bno-freeze.md` + TASK-101.
+
 ## Qué hace (lo pedido)
 
 - **Espera el START** del árbitro.

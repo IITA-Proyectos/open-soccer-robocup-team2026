@@ -42,8 +42,8 @@
 // Convención (kinematics.h): +X = derecha, +Y = frente. Lateral = vx (vy=0).
 //   IZQUIERDA = -vx, DERECHA = +vx.  (Invertible con -DDIAG_ARB_INVERT_LR.)
 //
-// Seguridad: velocidad lenta (150 mm/s default). SUJETAR el robot o ruedas al aire
-//   en el primer run. Batería cargada (los H-bridges NO van por USB).
+// Seguridad: 400 mm/s default (subido de 150, que iba muy lento). SUJETAR el robot
+//   o ruedas al aire en el primer run. Batería cargada (los H-bridges NO van por USB).
 //
 // Build:
 //   pio run -e diag_central_arbitro_strafe_robot1 -t upload   (arquero)
@@ -51,7 +51,7 @@
 //   pio device monitor -b 115200
 //
 // Flags:
-//   -DDIAG_ARB_SPEED_MM_S=200     velocidad lateral (default 150)
+//   -DDIAG_ARB_SPEED_MM_S=600     velocidad lateral (default 400; subí/bajá para tunear potencia)
 //   -DDIAG_ARB_DISTANCE_MM=400    distancia por tramo (default 300 = 30 cm)
 //   -DDIAG_ARB_PAUSE_MS=3000      pausa entre tramos (default 3000 = 3 s)
 //   -DDIAG_ARB_INVERT_LR          invierte izquierda/derecha
@@ -75,7 +75,7 @@ namespace {
 constexpr int PIN_LED = 13;   // LED_BUILTIN
 
 #ifndef DIAG_ARB_SPEED_MM_S
-  constexpr float STRAFE_SPEED_MM_S = 150.0f;
+  constexpr float STRAFE_SPEED_MM_S = 400.0f;  // subido de 150 (2026-06-03): a 150 iba muy lento (~13% PWM en las ruedas activas); 400 ≈ 35%.
 #else
   constexpr float STRAFE_SPEED_MM_S = DIAG_ARB_SPEED_MM_S;
 #endif

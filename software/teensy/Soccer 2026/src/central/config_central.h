@@ -52,11 +52,14 @@ namespace iitasoccer {
     constexpr int PIN_INB3 = 5;
     constexpr int PIN_PWM3 = 3;
 
-    // ⚠️ ROBOT2 (delantero) NO testeado en banco. En el delantero el driver U17
-    // (8/7/6) es el MOTOR 1 (índice 0). Si la inversión de U17 es del driver/PCB
-    // (como apunta el banco del arquero), acá iría { -1, +1, +1 }. Se deja en
-    // neutro hasta confirmar con diag_central_motors en el delantero (no inventar HW).
-    constexpr int MOTOR_INVERT[3] = { +1, +1, +1 };
+    // Sentido por motor — por ahora IGUAL que ROBOT1 (decisión 2026-06-03).
+    // ⚠️ FALTA VERIFICAR EN BANCO si el delantero se comporta igual que el arquero:
+    // correr diag_central_motors en el delantero y confirmar si esto es así o no.
+    // OJO: en el delantero los pines están ROTADOS → el índice 1 de este array es
+    // el driver U7 (11/12/4), NO el U17. Si la inversión real es del driver U17
+    // (que en el delantero es el índice 0), el array correcto sería { -1, +1, +1 }.
+    // El banco lo dirime.
+    constexpr int MOTOR_INVERT[3] = { +1, -1, +1 };  // = ROBOT1, sin validar en delantero
 #else
     #error "Debe definirse ROBOT1 (arquero) o ROBOT2 (delantero) en build_flags"
 #endif

@@ -19,29 +19,36 @@ uint32_t       g_last_cmd_ms = 0;
 PartnerSnapshot g_partner{};
 uint32_t        g_partner_last_rx_ms = 0;
 
-// El "match running" se mantiene true desde un START hasta un STOP/HALFTIME/RESET.
+// El "match running" refleja el NIVEL GPIO del arbitro (ver read_referee_gpio).
 bool g_match_running = false;
 
-void apply_referee_command(RefereeCommand cmd) {
-    g_last_cmd = cmd;
-    g_last_cmd_ms = millis();
-    switch (cmd) {
-        case RefereeCommand::START:    g_match_running = true; break;
-        case RefereeCommand::STOP:
-        case RefereeCommand::HALFTIME:
-        case RefereeCommand::RESET:    g_match_running = false; break;
-        case RefereeCommand::UNKNOWN:  break;
+// === Arbitro = NIVEL GPIO (no UART). CONFIRMADO EN BANCO 2026-06-02 (TASK-039). ===
+// El modulo COMM oficial RCJ entrega el estado de juego como NIVEL LOGICO en 2 pines del
+// TOP: pin 5 = OUT1 (PLAY/STOP) y pin 6 = OUT2 (ESPEJO de OUT1). 0 = PARADO, 1 = EN CURSO (3.3V).
+// En operacion normal los 2 van JUNTOS (mirror). match_running = (pin5 Y pin6) en alto ->
+// conservador: si uno queda pegado, falla a STOP (el robot NO se mueve). El sintoma viejo
+// era pin6 pegado en 1; con AND eso NO da un falso PLAY. INPUT_PULLDOWN: si el cable del
+// COMM se desconecta, leen 0 -> match_running=false (FAIL-SAFE). El debug del TOP imprime
+// p5/p6 por separado. El UART (Serial2) queda solo para partner ESP-NOW/status.
+constexpr uint8_t PIN_REFEREE_A = 5;   // OUT1 (PLAY/STOP)
+constexpr uint8_t PIN_REFEREE_B = 6;   // OUT2 (espejo de OUT1)
+
+void read_referee_gpio() {
+    const bool go = (digitalRead(PIN_REFEREE_A) == HIGH) &&
+                    (digitalRead(PIN_REFEREE_B) == HIGH);
+    const RefereeCommand cmd = go ? RefereeCommand::START : RefereeCommand::STOP;
+    if (cmd != g_last_cmd) {        // sella el instante del ultimo CAMBIO de estado
+        g_last_cmd    = cmd;
+        g_last_cmd_ms = millis();
     }
+    g_match_running = go;
 }
 
 void handle_frame(const Frame& f) {
     switch (f.type) {
-        case MsgType::COMM_REFEREE_CMD:
-            if (f.payload_len >= 1) {
-                const uint8_t code = f.payload[0];
-                apply_referee_command(static_cast<RefereeCommand>(code));
-            }
-            break;
+        // NOTA (TASK-039): el arbitro (START/STOP) NO viene por UART — es NIVEL GPIO en
+        // los pines 5/6 (ver read_referee_gpio). El viejo COMM_REFEREE_CMD por UART quedo
+        // obsoleto; ya no se procesa aca.
         case MsgType::COMM_STATUS_REQ:
             // El caller responderá con comm_arbiter_send_status();
             // este módulo no tiene la info de estado interna.
@@ -61,7 +68,10 @@ void handle_frame(const Frame& f) {
 }  // namespace
 
 void comm_arbiter_init() {
-    Serial2.begin(UART_TO_COMM_BAUD);
+    Serial2.begin(UART_TO_COMM_BAUD);           // UART = solo partner ESP-NOW / status
+    pinMode(PIN_REFEREE_A, INPUT_PULLDOWN);     // arbitro = nivel GPIO (TASK-039)
+    pinMode(PIN_REFEREE_B, INPUT_PULLDOWN);
+    read_referee_gpio();                         // estado inicial
 }
 
 int comm_arbiter_tick() {
@@ -74,6 +84,7 @@ int comm_arbiter_tick() {
             processed++;
         }
     }
+    read_referee_gpio();   // arbitro por GPIO (autoritativo, se lee cada tick)
     return processed;
 }
 

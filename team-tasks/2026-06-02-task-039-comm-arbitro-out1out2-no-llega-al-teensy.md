@@ -5,7 +5,7 @@ date_created: 2026-06-02
 date_updated: 2026-06-02
 assigned: [enzo, gustavo]
 priority: P0
-status: pending
+status: resolved
 estimated_hours: 2
 blocks: [homologación Incheon — el robot no recibe START/STOP del árbitro]
 relacionado: [TASK-006]
@@ -14,8 +14,16 @@ tags: [comm-board, arbitros, hardware, top-board, multimetro, homologacion]
 
 # TASK-039 — El START/STOP del árbitro (OUT1/OUT2) no llega al Teensy
 
-> **Para Enzo (banco, mañana).** Diagnóstico hecho con Gustavo el 2026-06-02. Necesita
-> **multímetro** + la **app de árbitro RefMate** conectada al módulo COMM.
+> **✅ RESUELTO 2026-06-02 (Gustavo, banco).** El árbitro **SÍ llega como NIVEL GPIO** a los
+> pines **5 (OUT1) y 6 (OUT2, espejo)** del Teensy del TOP: **0 = parado, 1 = jugando** (3.3 V) —
+> probado en banco, togglea con PLAY/STOP. **Firmware actualizado:** `comm_arbiter.cpp`
+> (`read_referee_gpio()` lee pines 5/6 con `INPUT_PULLDOWN`; `match_running = pin5 Y pin6`,
+> fail-safe a STOP si se desconecta) + probe temporal removido de `main_top.cpp` (queda
+> `arb[... p5/6=..]` en el debug). El UART (Serial2, 7/8) queda solo para partner ESP-NOW.
+> **Cierra el E2E del árbitro que TASK-006 había dejado pendiente.** El detalle de abajo es el
+> diagnóstico que llevó hasta acá.
+>
+> *(Para Enzo — diagnóstico original, ya superado:)* Necesitaba multímetro + app RefMate.
 
 ## Síntoma
 

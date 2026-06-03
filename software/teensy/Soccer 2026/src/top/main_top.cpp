@@ -164,16 +164,6 @@ void loop() {
     // === Debug ===
     if (g_since_debug >= 500) {
         g_since_debug = 0;
-        // TEMP probe (bring-up COMM 2026-06-02): el arbitro llega como NIVEL
-        // (OUT1/OUT2 del modulo via conector U1), no por UART. Probamos candidatos
-        // para identificar el pin real con la app (PLAY -> 2 pines adyacentes pasan
-        // a 1). Se reemplaza por el read final una vez confirmado.
-        static bool s_ref_probe_init = false;
-        if (!s_ref_probe_init) {
-            const uint8_t probe_pins[] = {5, 6, 7, 8, 26, 27};
-            for (uint8_t p : probe_pins) pinMode(p, INPUT_PULLDOWN);
-            s_ref_probe_init = true;
-        }
         Serial.print("[TOP] loop=");
         Serial.print(g_loop_count);
         Serial.print(" hdg=");
@@ -206,24 +196,19 @@ void loop() {
         Serial.print(comm_down_is_pose_fresh() ? "Y" : "N");
         Serial.print("/");
         Serial.print(comm_down_is_vel_fresh() ? "Y" : "N");
-        // COMM (arbitros, Serial2 7/8): ref = ultimo comando (0=STOP 1=START 2=HALFTIME
-        // 3=RESET 255=ninguno), match = habilitado a moverse, age = ms desde el ultimo
-        // comando, rx = frames recibidos del COMM (sube si el enlace esta vivo).
+        // ARBITRO = NIVEL GPIO en pines 5/6 (0=parado, 1=jugando; TASK-039, banco 2026-06-02).
+        // ref = comando derivado (0=STOP 1=START), match = habilitado a moverse,
+        // p5/6 = lectura cruda de los 2 pines del arbitro, rx = frames partner por UART (Serial2).
         Serial.print(" arb[ref=");
         Serial.print(static_cast<int>(comm_arbiter_get_last_command()));
         Serial.print(" match=");
         Serial.print(comm_arbiter_is_match_running() ? "Y" : "N");
-        Serial.print(" age=");
-        Serial.print(millis() - comm_arbiter_get_last_command_ms());
-        Serial.print("ms rx=");
+        Serial.print(" p5/6=");
+        Serial.print(digitalRead(5));
+        Serial.print("/");
+        Serial.print(digitalRead(6));
+        Serial.print(" rx=");
         Serial.print(comm_arbiter_get_frames_received());
-        Serial.print("]");
-        Serial.print(" refprobe[5=");  Serial.print(digitalRead(5));
-        Serial.print(" 6=");  Serial.print(digitalRead(6));
-        Serial.print(" 7=");  Serial.print(digitalRead(7));
-        Serial.print(" 8=");  Serial.print(digitalRead(8));
-        Serial.print(" 26="); Serial.print(digitalRead(26));
-        Serial.print(" 27="); Serial.print(digitalRead(27));
         Serial.print("]");
         Serial.print(" resync=");
         Serial.println(cameras_resyncs_total());

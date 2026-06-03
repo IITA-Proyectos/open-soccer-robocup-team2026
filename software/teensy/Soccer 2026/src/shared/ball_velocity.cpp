@@ -30,7 +30,7 @@ void ball_velocity_reset(BallVelocityState& s) {
 void ball_velocity_update(BallVelocityState& s,
                           const BallVelocityParams& p,
                           int16_t x_mm, int16_t y_mm,
-                          bool visible, uint32_t sample_ms) {
+                          bool visible, uint32_t sample_ms, uint32_t now_ms) {
     // Sin pelota → reset (al reaparecer se descarta el primer frame).
     if (!visible) {
         ball_velocity_reset(s);
@@ -49,8 +49,18 @@ void ball_velocity_update(BallVelocityState& s,
         return;
     }
 
-    // Sin dato nuevo (el packet no avanzó): mantener la última estimación.
+    // Sin dato nuevo (el packet no avanzó): mantener la última estimación,
+    // pero EXPIRAR por tiempo si lleva demasiado sin muestra fresca. Esto evita
+    // que una velocidad vieja persista como `valid` mientras la cámara sigue
+    // reportando `visible` por su watchdog (~1 s) pero los packets se cortaron.
     if (sample_ms <= s.last_ms) {
+        if (s.valid && (now_ms - s.last_ms) > p.max_gap_ms) {
+            s.valid   = false;
+            s.vx_mm_s = 0.0f;
+            s.vy_mm_s = 0.0f;
+            // Conservamos last_x/y/ms y has_point: en cuanto vuelva una muestra
+            // nueva con dt razonable, re-derivamos sin perder el punto de ref.
+        }
         return;
     }
 

@@ -25,6 +25,12 @@
 //   • Re-siembra si el gap entre muestras supera `max_gap_ms` (un stall dentro
 //     del watchdog de cámara no debe generar una velocidad falsa enorme).
 //   • Suaviza derivadas sucesivas con un EMA (`ema_alpha`).
+//   • EXPIRA por tiempo: aunque la pelota siga `visible`, si los packets se
+//     cortan (no llega muestra nueva) y `now_ms - last_ms > max_gap_ms`, la
+//     velocidad se invalida (vx/vy=0). Sin esto, una estimación vieja persistiría
+//     como `valid` hasta el watchdog de cámara (~1 s) y bt/anticipación usarían
+//     una velocidad fantasma. Conserva last_x/y/ms (y has_point) para re-derivar
+//     en cuanto vuelva el dato.
 //
 // Convención de ejes: la posición fusionada viene en marco robot (+y = frente,
 // +x = derecha), así que la velocidad sale en el mismo marco.
@@ -59,10 +65,13 @@ void ball_velocity_reset(BallVelocityState& s);
 //   x_mm,y_mm : posición de la pelota en marco robot (de cameras_fusion).
 //   visible   : la pelota está visible este frame (fusión).
 //   sample_ms : timestamp del packet más nuevo que produjo esta muestra.
+//   now_ms    : reloj actual (millis()). Sirve para EXPIRAR la velocidad por
+//               tiempo aunque `sample_ms` no avance: si los packets se cortan y
+//               now_ms - last_ms > max_gap_ms, la estimación se invalida.
 void ball_velocity_update(BallVelocityState& s,
                           const BallVelocityParams& p,
                           int16_t x_mm, int16_t y_mm,
-                          bool visible, uint32_t sample_ms);
+                          bool visible, uint32_t sample_ms, uint32_t now_ms);
 
 // Velocidad lista para el WorldSnapshot: 0 si no es válida, clampeada a int16.
 int16_t ball_velocity_vx_mm_s(const BallVelocityState& s);

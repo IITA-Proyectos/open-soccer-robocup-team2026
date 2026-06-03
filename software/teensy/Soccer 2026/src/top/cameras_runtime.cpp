@@ -134,12 +134,14 @@ void cameras_tick() {
     // Derivar velocidad de la pelota. Le pasamos como `sample_ms` el timestamp
     // del packet más nuevo (cualquiera de las 2 cámaras): el estimador sólo
     // deriva cuando ese timestamp avanza, así que correr esto cada tick (~100 Hz)
-    // no diluye la velocidad pese a que los datos llegan a ~30 Hz.
+    // no diluye la velocidad pese a que los datos llegan a ~30 Hz. Además le
+    // pasamos `now_ms` (millis()) para que EXPIRE la velocidad por tiempo si los
+    // packets se cortan aunque la cámara siga reportando la pelota visible.
     const uint32_t sample_ms = (g_last_packet_ms_front > g_last_packet_ms_back)
                                    ? g_last_packet_ms_front
                                    : g_last_packet_ms_back;
     ball_velocity_update(g_ball_vel, g_ball_vel_params,
-                         g_ball.x_mm, g_ball.y_mm, g_ball.visible, sample_ms);
+                         g_ball.x_mm, g_ball.y_mm, g_ball.visible, sample_ms, now_ms);
 }
 
 // === Getters ===

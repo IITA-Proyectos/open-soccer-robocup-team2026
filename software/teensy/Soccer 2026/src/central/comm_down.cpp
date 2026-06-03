@@ -88,5 +88,6 @@ void comm_down_send_calib_line(bool white) {
 uint32_t comm_down_get_frames_received() { return g_frames_received; }
 uint32_t comm_down_get_crc_errors()      { return g_decoder.crc_errors(); }
 uint32_t comm_down_get_frames_lost()     { return g_frames_lost; }
+uint32_t comm_down_get_resync_events()   { return g_decoder.resync_events(); }
 
 }  // namespace iitasoccer

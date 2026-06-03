@@ -169,6 +169,8 @@ void loop() {
         Serial.print(comm_top_get_frames_received());
         Serial.print(" crc=");
         Serial.print(comm_top_get_crc_errors());
+        Serial.print(" rsy=");
+        Serial.print(comm_top_get_resync_events());  // #25: resyncs = byte-slip/ruido del link
         Serial.print("]");
         Serial.print(" line_fresh=");
         Serial.print(world_model_line_is_fresh() ? "Y" : "N");
@@ -179,6 +181,8 @@ void loop() {
         Serial.print(comm_down_get_crc_errors());
         Serial.print(" lost=");
         Serial.print(comm_down_get_frames_lost());
+        Serial.print(" rsy=");
+        Serial.print(comm_down_get_resync_events());  // #25
         Serial.print(" valid=");
         Serial.print(world_model_line_data_valid() ? "Y" : "N");
         Serial.print(" ev=0x");

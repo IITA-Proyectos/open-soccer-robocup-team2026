@@ -49,8 +49,12 @@ inline bool lsv2_line_present(const LineStatusV2& s) {
     return s.data_valid != 0 && s.line_present != 0;
 }
 
-// Ángulo de la línea en grados. Si el campo es N/A, devuelve 0.
+// Ángulo de la línea en grados. Honra la compuerta maestra: si data_valid==0,
+// el ángulo no es confiable (LINE_AVOID lo usa para el vector de retroceso, y
+// con data_valid=0 un ángulo basura residual mandaría al robot a una dirección
+// arbitraria). Si el campo es N/A, devuelve 0.
 inline float lsv2_line_angle_deg(const LineStatusV2& s) {
+    if (s.data_valid == 0) return 0.0f;
     if (s.line_angle_centideg == LSV2_NA_I16) return 0.0f;
     return s.line_angle_centideg / 100.0f;
 }
@@ -73,8 +77,11 @@ inline uint8_t lsv2_sensors_on_line(const LineStatusV2& s) {
 }
 
 // Penetración en la línea, clampeada a uint8 para compat con el accessor viejo
-// `world_model_get_line_depth()`. N/A ⇒ 0; >255 mm ⇒ 255.
+// `world_model_get_line_depth()`. Honra la compuerta maestra: si data_valid==0,
+// la profundidad no es confiable (el fallback por profundidad del PID lateral
+// del arquero la usa, y strafearía con dato inválido). N/A ⇒ 0; >255 mm ⇒ 255.
 inline uint8_t lsv2_penetration_u8(const LineStatusV2& s) {
+    if (s.data_valid == 0) return 0;
     if (s.penetration_mm == LSV2_NA_U16) return 0;
     return s.penetration_mm > 255u ? 255u
                                    : static_cast<uint8_t>(s.penetration_mm);

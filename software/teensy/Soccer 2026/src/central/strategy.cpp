@@ -233,7 +233,7 @@ MotorCommand attacker_tick() {
                 // Bind a ejes del robot: out.vx->frente(+Y)=cmd.vy ; out.vy->lateral(+X)=cmd.vx.
                 cmd.vy_mm_s = static_cast<int16_t>(ds.vx_mm_s);
                 cmd.vx_mm_s = static_cast<int16_t>(ds.vy_mm_s);
-                cmd.omega_centideg_s = static_cast<int16_t>(ds.omega_deg_s * 100.0f);
+                cmd.omega_centideg_s = omega_degps_to_centideg(ds.omega_deg_s);  // #9
             } else {
                 // Fallback EXACTO al comportamiento previo (sin OTOS).
                 cmd.vx_mm_s = static_cast<int16_t>(kv.vx_mm_s);
@@ -265,7 +265,7 @@ MotorCommand attacker_tick() {
             g_state_name = "ATK_SEARCH";
             // Recorrer cancha con avance lento + rotación.
             cmd.vy_mm_s = static_cast<int16_t>(ATK_SEARCH_VY_MM_S);
-            cmd.omega_centideg_s = static_cast<int16_t>(ATK_SEARCH_OMEGA_DEG_S * 100.0f);
+            cmd.omega_centideg_s = omega_degps_to_centideg(ATK_SEARCH_OMEGA_DEG_S);  // #9
             if (world_model_ball_visible()) {
                 // Si vemos arco rival y la pelota NO está alineada, primero
                 // POSITION (orbit). Si está alineada o no vemos arco, APPROACH
@@ -324,7 +324,7 @@ MotorCommand attacker_tick() {
                 cmd.vx_mm_s = static_cast<int16_t>(tx / tdist * speed);
                 cmd.vy_mm_s = static_cast<int16_t>(ty / tdist * speed);
             }
-            cmd.omega_centideg_s = static_cast<int16_t>(omega * 100.0f);
+            cmd.omega_centideg_s = omega_degps_to_centideg(omega);  // satura int16 (anti sign-flip, #9)
 
             // Transición a APPROACH: llegué al target Y estoy alineado a la
             // línea pelota–arco.
@@ -383,7 +383,7 @@ MotorCommand attacker_tick() {
                 cmd.vx_mm_s = static_cast<int16_t>(bx / dist * speed);
                 cmd.vy_mm_s = static_cast<int16_t>(by / dist * speed);
             }
-            cmd.omega_centideg_s = static_cast<int16_t>(omega * 100.0f);
+            cmd.omega_centideg_s = omega_degps_to_centideg(omega);  // satura int16 (anti sign-flip, #9)
 
             // Refinamiento WP-2A: cancelar la deriva lateral (eje +X) medida por
             // OTOS para que el empuje/pateo salga DERECHO. Aditivo y opcional —
@@ -520,7 +520,7 @@ MotorCommand goalkeeper_tick() {
             const float omega = heading_pid_tick(g_heading_pid,
                                                   world_model_get_my_heading_deg(),
                                                   now_ms);
-            cmd.omega_centideg_s = static_cast<int16_t>(omega * 100.0f);
+            cmd.omega_centideg_s = omega_degps_to_centideg(omega);  // satura int16 (anti sign-flip, #9)
             return cmd;
         }
     }

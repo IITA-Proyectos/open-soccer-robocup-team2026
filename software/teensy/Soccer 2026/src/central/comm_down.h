@@ -23,5 +23,6 @@ void comm_down_send_calib_line(bool white);  // false=carpet, true=white
 uint32_t comm_down_get_frames_received();
 uint32_t comm_down_get_crc_errors();
 uint32_t comm_down_get_frames_lost();    // SEQ gaps acumulados (frames perdidos en el enlace)
+uint32_t comm_down_get_resync_events();  // DIAG: resyncs del decoder (byte-slip/ruido, #25)
 
 }  // namespace iitasoccer

@@ -105,11 +105,45 @@ void test_line_angle_na(void) {
 }
 
 // Penetración: clamp a 255, N/A ⇒ 0, valor normal pasa.
+// data_valid=1 para ejercitar la lógica de clamp/N-A (el data path), no la
+// compuerta maestra — esa se cubre en test_angle_and_penetration_gated_by_data_valid.
 void test_penetration_clamp_and_na(void) {
     LineStatusV2 s{};
+    s.data_valid = 1;
     s.penetration_mm = 500;            TEST_ASSERT_EQUAL_UINT8(255, lsv2_penetration_u8(s));
     s.penetration_mm = LSV2_NA_U16;    TEST_ASSERT_EQUAL_UINT8(0,   lsv2_penetration_u8(s));
     s.penetration_mm = 200;            TEST_ASSERT_EQUAL_UINT8(200, lsv2_penetration_u8(s));
+}
+
+// --- Compuerta maestra para ángulo y penetración (fixes #13 y #5).
+// data_valid==0 PERO con valores residuales NO-N/A (penetración=50,
+// ángulo=45°). La regla maestra (line_view.h:9) dice: si data_valid==0,
+// NADA del frame es confiable. Hoy ambos helpers solo chequean el centinela
+// N/A y devuelven la basura residual:
+//   - lsv2_line_angle_deg ⇒ LINE_AVOID retrocede hacia dirección arbitraria.
+//   - lsv2_penetration_u8 ⇒ fallback del PID lateral del arquero strafea
+//     con dato inválido.
+// Espejo de lsv2_cross_track_mm (line_view.h:65), que SÍ honra la compuerta.
+void test_angle_and_penetration_gated_by_data_valid(void) {
+    LineStatusV2 s{};
+    s.schema_version = LSV2_SCHEMA;
+    s.data_valid = 0;                  // compuerta maestra: nada se confía
+    s.penetration_mm = 50;             // valor residual NO-N/A
+    s.line_angle_centideg = 4500;      // 45°, NO es LSV2_NA_I16
+    TEST_ASSERT_EQUAL_UINT8(0, lsv2_penetration_u8(s));
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, lsv2_line_angle_deg(s));
+}
+
+// Camino feliz (data_valid==1): los MISMOS valores SIGUEN saliendo normales.
+// Guard de regresión: el gate de data_valid no debe romper el caso válido.
+void test_angle_and_penetration_pass_when_valid(void) {
+    LineStatusV2 s{};
+    s.schema_version = LSV2_SCHEMA;
+    s.data_valid = 1;
+    s.penetration_mm = 50;
+    s.line_angle_centideg = 4500;      // 45°
+    TEST_ASSERT_EQUAL_UINT8(50, lsv2_penetration_u8(s));
+    TEST_ASSERT_EQUAL_FLOAT(45.0f, lsv2_line_angle_deg(s));
 }
 
 // Guard de regresión del P0: un payload del tamaño VIEJO (LineStatus, 5 bytes)
@@ -150,6 +184,8 @@ int main(int, char**) {
     RUN_TEST(test_data_valid_master_gate);
     RUN_TEST(test_line_angle_na);
     RUN_TEST(test_penetration_clamp_and_na);
+    RUN_TEST(test_angle_and_penetration_gated_by_data_valid);
+    RUN_TEST(test_angle_and_penetration_pass_when_valid);
     RUN_TEST(test_old_size_payload_rejected);
     RUN_TEST(test_wrong_type_rejected);
     RUN_TEST(test_wrong_schema_rejected);

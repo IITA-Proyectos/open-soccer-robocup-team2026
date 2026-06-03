@@ -51,5 +51,6 @@ int comm_top_tick() {
 uint32_t comm_top_get_frames_received() { return g_frames_received; }
 uint32_t comm_top_get_crc_errors()      { return g_decoder.crc_errors(); }
 uint32_t comm_top_get_bytes_received()  { return g_bytes_received; }
+uint32_t comm_top_get_resync_events()   { return g_decoder.resync_events(); }
 
 }  // namespace iitasoccer

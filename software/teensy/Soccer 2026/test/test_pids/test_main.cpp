@@ -109,6 +109,108 @@ void test_heading_pid_first_tick_no_derivative_kick(void) {
 }
 
 // ============================================================================
+// Anti-windup real / conditional integration (fix #29)
+// ============================================================================
+
+void test_heading_pid_no_windup_when_output_saturated(void) {
+    // Error grande y sostenido que SATURA el output (kp*180 = 540 > clamp 360).
+    // Con conditional integration, el integral NO debe crecer hacia integral_clamp
+    // mientras el error empuje en la misma dirección de la saturación.
+    // (Antes: el integral llegaba a +50 = integral_clamp -> overshoot al volver.)
+    HeadingPID pid;
+    pid.setpoint_deg = 180.0f;
+    uint32_t t = 0;
+    for (int i = 0; i < 200; ++i) {
+        heading_pid_tick(pid, 0.0f, t);  // error = +180 (wrapped), satura
+        t += 10;
+    }
+    // El integral queda acotado cerca de 0 (no se cargó), muy por debajo de 50.
+    TEST_ASSERT_TRUE(std::abs(pid.integral) < 5.0f);
+}
+
+void test_heading_pid_integral_accumulates_when_not_saturated(void) {
+    // REGRESION: error chico no-saturante (kp*10 = 30 << clamp 360).
+    // El integral DEBE seguir acumulando como antes (comportamiento idéntico).
+    HeadingPID pid;
+    pid.setpoint_deg = 10.0f;
+    uint32_t t = 0;
+    for (int i = 0; i < 50; ++i) {
+        heading_pid_tick(pid, 0.0f, t);  // error = +10, output ~30..., no satura
+        t += 10;
+    }
+    // error*dt = 10*0.01 = 0.1 por tick * 50 = 5.0 (sin clamp de integral todavía).
+    TEST_ASSERT_TRUE(pid.integral > 4.0f);
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, 5.0f, pid.integral);
+}
+
+void test_lateral_pid_no_windup_when_output_saturated(void) {
+    // Error grande sostenido que satura el output lateral.
+    LateralPID pid;
+    pid.setpoint = 1.0f;
+    pid.kp = 1000.0f;          // ganancia alta -> satura facil
+    pid.output_clamp = 800.0f;
+    uint32_t t = 0;
+    for (int i = 0; i < 200; ++i) {
+        lateral_pid_tick(pid, 100.0f, t);  // error = -99, kp*error = -99000, satura
+        t += 10;
+    }
+    // El integral NO se cargó hasta integral_clamp (20). Queda acotado cerca de 0.
+    TEST_ASSERT_TRUE(std::abs(pid.integral) < 2.0f);
+}
+
+void test_lateral_pid_integral_accumulates_when_not_saturated(void) {
+    // REGRESION: error chico no-saturante. El integral acumula como antes.
+    LateralPID pid;
+    pid.setpoint = 1.0f;
+    pid.kp = 1.0f;             // ganancia baja -> no satura
+    pid.ki = 5.0f;
+    pid.output_clamp = 800.0f;
+    uint32_t t = 0;
+    for (int i = 0; i < 10; ++i) {
+        lateral_pid_tick(pid, 2.0f, t);  // error = -1, output pequeño, no satura
+        t += 10;
+    }
+    // error*dt = -1*0.01 = -0.01 por tick * 10 = -0.1 (sin clamp todavía).
+    TEST_ASSERT_TRUE(pid.integral < -0.05f);
+    TEST_ASSERT_FLOAT_WITHIN(0.02f, -0.1f, pid.integral);
+}
+
+// ============================================================================
+// omega_degps_to_centideg (fix #9 — saturación de omega, evitar overflow int16)
+// ============================================================================
+
+void test_omega_centideg_max_saturates(void) {
+    // 360 deg/s -> 36000 centideg/s, fuera del rango int16 (+-32767).
+    // DEBE saturar a +32767, NUNCA envolver a ~-29536 (sign-flip = gira al reves).
+    int16_t out = omega_degps_to_centideg(360.0f);
+    TEST_ASSERT_EQUAL_INT16(32767, out);
+}
+
+void test_omega_centideg_min_saturates(void) {
+    int16_t out = omega_degps_to_centideg(-360.0f);
+    TEST_ASSERT_EQUAL_INT16(-32767, out);
+}
+
+void test_omega_centideg_normal_value_rounds_and_keeps_sign(void) {
+    // Valor normal dentro de rango: 12.34 deg/s -> 1234 centideg/s.
+    TEST_ASSERT_EQUAL_INT16(1234, omega_degps_to_centideg(12.34f));
+    // Conserva signo en valor negativo normal.
+    TEST_ASSERT_EQUAL_INT16(-1234, omega_degps_to_centideg(-12.34f));
+}
+
+void test_omega_centideg_zero(void) {
+    TEST_ASSERT_EQUAL_INT16(0, omega_degps_to_centideg(0.0f));
+}
+
+void test_omega_centideg_no_sign_flip_above_327deg(void) {
+    // REGRESION del bug exacto: con > 327.67 deg/s, (int16_t)(omega*100) envolvia
+    // y cambiaba de signo (positivo -> negativo). El helper NUNCA cambia de signo.
+    int16_t out = omega_degps_to_centideg(350.0f);  // 35000 > 32767
+    TEST_ASSERT_TRUE(out > 0);          // sigue siendo positivo (NO sign-flip)
+    TEST_ASSERT_EQUAL_INT16(32767, out);  // saturado al tope
+}
+
+// ============================================================================
 // LateralPID
 // ============================================================================
 
@@ -183,6 +285,19 @@ int main(int, char**) {
     RUN_TEST(test_heading_pid_reset_zeros_state);
     RUN_TEST(test_heading_pid_handles_wrap_around);
     RUN_TEST(test_heading_pid_first_tick_no_derivative_kick);
+
+    // Anti-windup real / conditional integration (fix #29)
+    RUN_TEST(test_heading_pid_no_windup_when_output_saturated);
+    RUN_TEST(test_heading_pid_integral_accumulates_when_not_saturated);
+    RUN_TEST(test_lateral_pid_no_windup_when_output_saturated);
+    RUN_TEST(test_lateral_pid_integral_accumulates_when_not_saturated);
+
+    // omega_degps_to_centideg (fix #9)
+    RUN_TEST(test_omega_centideg_max_saturates);
+    RUN_TEST(test_omega_centideg_min_saturates);
+    RUN_TEST(test_omega_centideg_normal_value_rounds_and_keeps_sign);
+    RUN_TEST(test_omega_centideg_zero);
+    RUN_TEST(test_omega_centideg_no_sign_flip_above_327deg);
 
     // LateralPID
     RUN_TEST(test_lateral_pid_zero_error_zero_output);

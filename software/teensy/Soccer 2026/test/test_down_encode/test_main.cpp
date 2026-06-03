@@ -39,10 +39,41 @@ void test_encode_matches_contract_example_B(void){
     TEST_ASSERT_EQUAL_UINT8_ARRAY(exp, out, sizeof(exp));
 }
 
+// === lsv2_sample_age_ms (audit 2026-06-03 #2) ===
+// Antes el campo sample_age_ms viajaba pegado en 255 porque comm_central restaba
+// la DURACIÓN del tick (no el timestamp). El helper puro hace resta unsigned +
+// clamp; comm_central lo llama con (micros(), line_ring_get_last_sample_us()).
+void test_sample_age_zero_when_now_equals_sample(void){
+    TEST_ASSERT_EQUAL_UINT8(0, lsv2_sample_age_ms(123456u, 123456u));
+}
+void test_sample_age_5ms(void){
+    TEST_ASSERT_EQUAL_UINT8(5, lsv2_sample_age_ms(5000u + 200u, 200u));
+}
+void test_sample_age_truncates_to_ms(void){
+    // 254999 us -> 254 ms (división entera, sin redondeo). No satura.
+    TEST_ASSERT_EQUAL_UINT8(254, lsv2_sample_age_ms(254999u, 0u));
+}
+void test_sample_age_clamps_at_255(void){
+    TEST_ASSERT_EQUAL_UINT8(255, lsv2_sample_age_ms(300000u, 0u));     // 300 ms
+    TEST_ASSERT_EQUAL_UINT8(255, lsv2_sample_age_ms(0xFFFFFFFFu, 0u)); // enorme
+}
+void test_sample_age_handles_micros_wrap(void){
+    // sample_us cerca del overflow de micros(), now_us ya envolvió: la resta
+    // unsigned da el delta REAL (pocos ms), NO 255. Antes del fix esto rompía.
+    const uint32_t sample = 0xFFFFFF00u;  // ~4.29e9, a 256 us del wrap
+    const uint32_t now    = sample + 3000u;  // +3 ms (envuelve a ~2756)
+    TEST_ASSERT_EQUAL_UINT8(3, lsv2_sample_age_ms(now, sample));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_linestatusv2_is_16_bytes);
     RUN_TEST(test_linestatusv2_constants);
     RUN_TEST(test_encode_matches_contract_example_B);
+    RUN_TEST(test_sample_age_zero_when_now_equals_sample);
+    RUN_TEST(test_sample_age_5ms);
+    RUN_TEST(test_sample_age_truncates_to_ms);
+    RUN_TEST(test_sample_age_clamps_at_255);
+    RUN_TEST(test_sample_age_handles_micros_wrap);
     return UNITY_END();
 }

@@ -8,7 +8,8 @@
 #include "down_encode.h"
 #include "down_tx.h"
 #include "eeprom_calib.h"
-#include "sensor_geometry.h"
+// (sensor_geometry.h ya no se incluye: el bloque debug que usaba SENSOR_POS para
+//  recalcular cross_track era código muerto y se borró — audit 2026-06-03 #9/#11.)
 
 #include <Arduino.h>
 #include <string.h>
@@ -20,7 +21,11 @@ namespace {
 FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
 
-DownModel g_dm;
+// Value-init explícito ({}): garantiza por CÓDIGO el estado-limpio de TODA la
+// DownModel (watchdogs mw/sh, histéresis was_white[], tracker, surface, filtros,
+// calib) en vez de depender del zero-init de .bss. Sobrevive si alguien mueve
+// g_dm a miembro/heap/stack o agrega un campo no-cero. Audit 2026-06-03 #10.
+DownModel g_dm{};
 DownModelCfg g_dmcfg = {
     /* imminent_depth        */ 6,
     /* adapt_alpha           */ 0.02f,
@@ -60,6 +65,15 @@ void handle_frame(const Frame& f) {
                     // Paso 2 (white): calib completa (carpet previo + blanco
                     // ahora). Derivar ya mismo y PERSISTIR en EEPROM para que
                     // sobreviva al power cycle (audit P0.2 — 2026-05-29).
+                    //
+                    // BLOQUEO (audit 2026-06-03 #18): line_ring_calibrate_white()
+                    // bloquea ~320ms (32 muestras × delay(10)) y ec_save_calibration
+                    // hace un write a EEPROM emulada en flash (worst case decenas de
+                    // ms con IRQ deshabilitada si toca borrado de sector). Durante
+                    // ese lapso NO corre el muestreo de 1kHz ni los envíos. Es
+                    // ACEPTABLE porque la calibración es operación de BANCO/ADMIN con
+                    // el robot QUIETO: NUNCA se calibra en vivo durante un partido
+                    // (nadie emite 0x21 en juego). No mover este write al hot-loop.
                     line_ring_calibrate_white();
                     derive_calib_from_line_ring();
                     if (ec_save_calibration(g_dm.calib, NUM_LINE_SENSORS)) {
@@ -114,48 +128,29 @@ void comm_central_send_line_urgent() {
 
     // Edad real de la muestra física (raw del line_ring) para que CENTRAL
     // detecte enlace/datos stale (contrato §3.5). Clamp a 0..255 ms.
-    uint32_t age_ms = (micros() - line_ring_get_last_tick_us()) / 1000u;
-    s.sample_age_ms = (age_ms > 255u) ? 255u : (uint8_t)age_ms;
+    // Audit 2026-06-03 #2: usar el TIMESTAMP del último muestreo
+    // (line_ring_get_last_sample_us), NO la duración del tick — antes el campo
+    // viajaba saturado en 255 porque restaba una duración chica de micros().
+    s.sample_age_ms = lsv2_sample_age_ms(micros(), line_ring_get_last_sample_us());
 
     // Difundir la línea a AMBAS placas (CENTRAL + TOP) con SEQ por enlace.
     down_tx_broadcast_line(s);
 
 #ifdef DOWN_DEBUG_SERIAL
-    // --- BANCO (TASK seguidor Maria): calcular CENTROIDE Y de la linea + reenviar por U10 ---
-    // El cable hacia CENTRAL esta soldado en U10 (Serial5). Para el seguidor de
-    // arquero, CENTRAL necesita saber si la linea esta ADELANTE o ATRAS del centro
-    // del robot (para centrarse). Eso NO viene en el LineStatusV2 normal
-    // (cross_track_mm = N/A). Aca lo calculamos: promedio de la posicion Y de los
-    // sensores que ven blanco (sensor_geometry.h, +Y = adelante). Lo metemos en
-    // cross_track_mm: POSITIVO = linea adelante del centro, NEGATIVO = atras.
-    // Solo con -DDOWN_DEBUG_SERIAL; el firmware de competencia NO lo trae.
-    {
-        float sum_y = 0.0f;
-        int   n_white = 0;
-        for (int i = 0; i < NUM_LINE_SENSORS && i < SENSOR_COUNT; ++i) {
-            if (line_ring_get_white(static_cast<uint8_t>(i))) {
-                sum_y += SENSOR_POS[i].y_mm;
-                n_white++;
-            }
-        }
-        if (n_white > 0) {
-            float cy = sum_y / (float)n_white;   // centroide Y en mm
-            s.cross_track_mm = (int16_t)cy;      // + adelante / - atras
-        } else {
-            s.cross_track_mm = LSV2_NA_I16;      // sin linea -> N/A
-        }
-    }
     // Debug de bring-up (TASK-301): imprime por el USB, a ~4 Hz, lo esencial que
     // DOWN tiene listo para CENTRAL: ¿HAY LINEA? (line_present del DownModel —
-    // logica de linea ya probada) + la pose de los 2 OTOS + contadores de TX.
+    // logica de linea ya probada) + cross_track + la pose de los 2 OTOS + TX.
     // Se activa SOLO con -DDOWN_DEBUG_SERIAL (ver [env:down_debug]); el firmware
     // de competencia no lo trae. Reemplaza el volcado de 32 sensores crudos (eso
     // vive en diag_down).
-    // NOTA: line_present YA se transmite a CENTRAL en LineStatusV2 (arriba). La
-    // pose OTOS TAMBIEN se transmite a CENTRAL: el broadcast simetrico la difunde
-    // por down_tx a CENTRAL (Serial1/pin0) y a TOP (Serial5). El conflicto pines
-    // 7/8 (TASK-036) esta RESUELTO (CENTRAL recibe por Serial1, no Serial2). Aca
-    // se muestra por USB para diagnostico local.
+    // NOTA: line_present y cross_track YA se transmiten a CENTRAL en LineStatusV2
+    // (arriba, down_tx_broadcast_line). cross_track_mm sale del DownModel
+    // (dm_update -> dm_line_metrics, geometria real, host-testeado); + adelante /
+    // - atras. La pose OTOS TAMBIEN se difunde por down_tx a CENTRAL (Serial1) y
+    // a TOP (Serial5). Aca solo lo MOSTRAMOS por USB (leyendo el `s` ya difundido,
+    // sin recalcular nada). Audit 2026-06-03 #9: se borro un re-calculo de
+    // cross_track que corria DESPUES del broadcast (codigo muerto, nunca se enviaba)
+    // y daba un centroide-Y crudo distinto al de produccion.
     static elapsedMillis dbg_since;
     if (dbg_since >= 250) {
         dbg_since = 0;
@@ -164,6 +159,11 @@ void comm_central_send_line_urgent() {
         if (s.line_present && s.line_angle_centideg != LSV2_NA_I16) {
             Serial.print(" ang=");
             Serial.print(s.line_angle_centideg / 100.0f, 1);
+        }
+        if (s.cross_track_mm != LSV2_NA_I16) {
+            Serial.print(" cross=");
+            Serial.print(s.cross_track_mm);
+            Serial.print("mm");
         }
         Serial.print("  | OTOS x=");  Serial.print(otos_get_x_mm(), 1);
         Serial.print(" y=");          Serial.print(otos_get_y_mm(), 1);

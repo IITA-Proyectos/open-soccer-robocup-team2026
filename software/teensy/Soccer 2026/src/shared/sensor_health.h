@@ -53,7 +53,11 @@ struct SensorHealth {
 // Inicializa todos los campos a estado limpio (todo healthy, ventana sin iniciar).
 void sh_init(SensorHealth& s);
 
-// Update por tick. Tiene que llamarse cada vez que line_ring tickea (1 kHz).
+// Update por tick. Se llama AL RITMO DE dm_update — hoy 200 Hz, NO 1 kHz.
+// (TEMA #26, audit 2026-06-03: el call-site real es comm_central_send_line_urgent
+//  → dm_update, a LINE_URGENT_INTERVAL_MS=5ms=200Hz. line_ring_tick corre a 1 kHz
+//  pero NO llama sh_update; solo refresca el buffer raw que dm_update muestrea.)
+//
 //   raw       = array de n_sensors valores ADC crudos.
 //   is_white  = array de n_sensors flags post-hysteresis.
 //   n_sensors = cuántos sensores hay (≤ SH_MAX_SENSORS).
@@ -64,6 +68,16 @@ void sh_init(SensorHealth& s);
 //   - Mide tiempo con el MISMO raw exacto por sensor.
 //   - Cada SH_WINDOW_MS (1s), evalúa si cada sensor excede sus límites,
 //     actualiza `unhealthy[i]` y resetea contadores.
+//
+// Sobre la frecuencia: las VENTANAS son wall-clock (delta de now_ms), así que los
+// umbrales de TIEMPO (1s ruido, 5s stuck) son INDEPENDIENTES del rate de llamada
+// — un sensor genuinamente stuck (5s) o un mux muerto (100ms) se detectan igual a
+// 200 Hz que a 1 kHz. Lo único que escala con el rate es el TECHO de transiciones
+// observables: a 200 Hz alternar cada llamada da ~100 transiciones/seg, muy por
+// encima del umbral de 20, así que el ruido del modo-de-falla objetivo
+// (soldadura intermitente, vibración, LED desencajado: típicamente <100 Hz) se
+// sigue detectando. Solo oscilación > Nyquist (rate/2 = 100 Hz a 200 Hz) aliasa y
+// puede escapar al conteo — limitación conocida y aceptada.
 void sh_update(SensorHealth& s,
                const uint16_t* raw,
                const bool* is_white,

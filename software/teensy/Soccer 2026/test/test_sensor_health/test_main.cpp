@@ -242,6 +242,91 @@ void test_sh_n_sensors_clamped_to_max(void) {
 }
 
 // ============================================================================
+// TEMA #26 (audit 2026-06-03): sh_update corre al ritmo de dm_update (200 Hz),
+// no 1 kHz. Las ventanas son wall-clock (now_ms) → los umbrales de tiempo son
+// rate-independientes; el detector de ruido SIGUE funcionando al rate real.
+// ============================================================================
+
+// A 200 Hz (pasos de 5 ms), un sensor que oscila a ~33 transiciones/seg (toggle
+// cada 3er tick = período 30 ms) supera el umbral de 20/seg → unhealthy. Prueba
+// que el detector de ruido funciona al rate REAL del firmware, no solo a 1 kHz.
+void test_sh_noisy_at_200hz_marked_unhealthy(void) {
+    SensorHealth s;
+    sh_init(s);
+    uint16_t raw[32];
+    bool white[32] = {false};
+    // 1.1 s a 200 Hz = ticks t=0,5,10,... ms. Sensor 9 togglea cada 3 ticks.
+    int tick = 0;
+    for (uint32_t t = 0; t <= 1100; t += 5, ++tick) {
+        for (int i = 0; i < 32; ++i) raw[i] = (uint16_t)(300 + ((i + tick) % 10));
+        white[9] = ((tick / 3) % 2) != 0;   // ~33 transiciones/seg
+        sh_update(s, raw, white, 32, t);
+    }
+    TEST_ASSERT_FALSE(sh_is_healthy(s, 9));
+}
+
+// A 200 Hz, un sensor stuck (mismo raw EXACTO) >5s se sigue detectando: la
+// ventana de 5s es wall-clock, independiente del rate. Confirma que bajar de
+// 1 kHz a 200 Hz NO afecta el umbral de stuck.
+void test_sh_stuck_at_200hz_still_detected(void) {
+    SensorHealth s;
+    sh_init(s);
+    uint16_t raw[32];
+    bool white[32] = {false};
+    int tick = 0;
+    for (uint32_t t = 0; t <= 6000; t += 5, ++tick) {  // 6 s > 5 s, a 200 Hz
+        for (int i = 0; i < 32; ++i) raw[i] = (uint16_t)(300 + ((i + tick) % 10));
+        raw[14] = 256;   // stuck
+        sh_update(s, raw, white, 32, t);
+    }
+    TEST_ASSERT_FALSE(sh_is_healthy(s, 14));
+}
+
+// ============================================================================
+// TEMA #28 (audit 2026-06-03): CARACTERIZACIÓN (no fix). Documenta que, al boot
+// con la placa quieta, un raw ADC EXACTAMENTE constante >5s marca al sensor como
+// stuck/unhealthy. En hardware real el ruido del ADC casi siempre jitterea >=1
+// LSB y resetea el reloj, así que esto rara vez dispara; pero el test PINNEA el
+// comportamiento actual para que cualquier cambio futuro (p.ej. exigir varianza
+// en vez de igualdad exacta) sea una decisión consciente y no rompa la detección
+// del modo legítimo (sensor muerto pegado a un valor). Confianza del hallazgo:
+// 62% — recomendación del audit: won't-fix pre-Incheon (CENTRAL ignora
+// EV_SENSOR_NOISY y no baja data_valid; el único efecto es exclusión transitoria
+// de 1 sensor del centroide de 32).
+void test_sh_constant_raw_quiet_bench_is_characterized_as_stuck(void) {
+    SensorHealth s;
+    sh_init(s);
+    uint16_t raw[32];
+    bool white[32] = {false};
+    // TODOS los sensores con raw EXACTAMENTE constante (sin jitter) por >6s.
+    for (int i = 0; i < 32; ++i) raw[i] = (uint16_t)(200 + i);  // valores medios, no extremos
+    for (uint32_t t = 0; t <= 6000; ++t) {
+        sh_update(s, raw, white, 32, t);   // raw NO cambia nunca
+    }
+    // Comportamiento ACTUAL caracterizado: raw constante exacto >5s → stuck.
+    // (Si un día se mitiga exigiendo varianza, este assert cambia conscientemente.)
+    TEST_ASSERT_TRUE(sh_any_unhealthy(s, 32));
+    TEST_ASSERT_FALSE(sh_is_healthy(s, 0));
+}
+
+// Contraparte que confirma el escenario REAL de hardware: con jitter de >=1 LSB
+// (ADC vivo), el reloj de stuck se resetea y el sensor NO se marca — el caso que
+// hace al hallazgo #28 mayormente inerte en la placa real.
+void test_sh_jittery_raw_not_marked_stuck(void) {
+    SensorHealth s;
+    sh_init(s);
+    uint16_t raw[32];
+    bool white[32] = {false};
+    for (uint32_t t = 0; t <= 6000; ++t) {
+        // Cada sensor jitterea +-1 LSB cada ~7 ticks (ruido térmico típico).
+        for (int i = 0; i < 32; ++i)
+            raw[i] = (uint16_t)(200 + i + ((t / 7 + i) % 2));
+        sh_update(s, raw, white, 32, t);
+    }
+    TEST_ASSERT_FALSE(sh_any_unhealthy(s, 32));
+}
+
+// ============================================================================
 // MAIN
 // ============================================================================
 
@@ -259,5 +344,11 @@ int main(int, char**) {
     RUN_TEST(test_sh_noisy_then_clean_recovers);
     RUN_TEST(test_sh_null_inputs_safe);
     RUN_TEST(test_sh_n_sensors_clamped_to_max);
+    // TEMA #26 — detector funciona al rate real (200 Hz)
+    RUN_TEST(test_sh_noisy_at_200hz_marked_unhealthy);
+    RUN_TEST(test_sh_stuck_at_200hz_still_detected);
+    // TEMA #28 — caracterización del stuck con raw constante + escenario real
+    RUN_TEST(test_sh_constant_raw_quiet_bench_is_characterized_as_stuck);
+    RUN_TEST(test_sh_jittery_raw_not_marked_stuck);
     return UNITY_END();
 }

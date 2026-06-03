@@ -1,4 +1,7 @@
 // pio test -e test_native -f test_central_motion
+// ⚠️ NOTA: caracteriza mt_compute (motion_target), un módulo PLACEHOLDER SIN callers en el
+// firmware (strategy usa behind_ball + drive_straight + ball_predict). NO es cobertura de la
+// conducta desplegada — es red para si algún día se cablea motion_target.
 #include <unity.h>
 #include "motion_target.h"
 using namespace iitasoccer;

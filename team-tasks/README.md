@@ -40,7 +40,7 @@ Sistema de tareas asignadas a miembros del equipo para Incheon 2026.
 | [TASK-003](2026-05-10-task-003-confirmar-wire1-remap-top.md) | Confirmar Wire1 remap a pines 24/25 en TOP | Enzo | P0 | pending |
 | [TASK-004](2026-05-10-task-004-confirmar-montaje-otos.md) | Confirmar montaje físico de los 2 OTOS | Elías + Enzo | P1 | pending |
 | [TASK-005](2026-05-10-task-005-exportar-gerbers.md) | Exportar Gerbers de TOP y DOWN | Enzo | P1 | pending |
-| [TASK-006](2026-05-10-task-006-cargar-firmware-rcj-comm.md) | Cargar firmware oficial RCJ en placa COMM | Virginia o Elías | **P0** | pending |
+| [TASK-006](2026-05-10-task-006-cargar-firmware-rcj-comm.md) | Cargar firmware oficial RCJ en placa COMM | Virginia o Elías | **P0** | done ✅ (2026-06-01/02; árbitro queda en TASK-039) |
 | [TASK-007](2026-05-10-task-007-verificar-bugs-p0-codigo-viejo.md) | Verificar si bugs P0 del código viejo se fixearon | Virginia + Elías | P1 | pending |
 | [TASK-008](2026-05-10-task-008-rewiring-fisico-uart-robot.md) | Rewiring UART: OpenMV → TOP, TOP → Zircon | Enzo + Elías | P1 | pending |
 | [TASK-009](2026-05-10-task-009-pcb-json-04-20.md) | Subir PCB JSON + Schematic JSON del 2026-04-20 | Enzo | P0 | pending |

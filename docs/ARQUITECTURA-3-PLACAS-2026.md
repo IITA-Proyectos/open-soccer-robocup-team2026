@@ -1,7 +1,7 @@
 ---
 title: "Arquitectura distribuida de 3 placas — Robot 2026"
 date: 2026-05-11
-status: propuesta
+status: vigente
 audience: equipo IITA Soccer Open (Director, Coach, Competidores)
 tags: [arquitectura, hardware, software, top-board, down-board, central, distribuida]
 ---

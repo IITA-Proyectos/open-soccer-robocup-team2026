@@ -19,6 +19,10 @@ uint8_t  g_send_seq = 0;
 bool     g_have_last_seq = false;
 uint8_t  g_last_seq      = 0;
 uint32_t g_frames_lost   = 0;
+// ⚠️ g_frames_lost cuenta HUECOS DE SEQ: incluye tanto pérdida de cable como frames que el
+// FrameDecoder descartó (CRC malo, LEN>32/resync, END malo) — esos NO llegan a handle_frame y su
+// SEQ queda como hueco. Para distinguir, mirar crc_errors() + resync_events() (este último aún sin
+// exponer en la telemetría). El "lost enorme con crc=0" de la memoria = resync, NO pérdida de cable.
 
 constexpr long UART_BAUD = 230400;
 

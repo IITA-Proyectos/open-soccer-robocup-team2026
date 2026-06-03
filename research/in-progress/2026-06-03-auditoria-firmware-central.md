@@ -20,9 +20,19 @@ tags: [audit, riesgo, firmware-central, fsm, control, comunicacion, motion, pre-
 
 # Auditoría del firmware CENTRAL — Etapa 1 (análisis)
 
-> **Esto es Etapa 1: ANÁLISIS.** No se implementó ni se cambió nada de producción.
-> La Etapa 2 (decidir qué implementar) es del coach + equipo. No se crearon TASKs
-> todavía (se crean al elegir, regla 6 CLAUDE.md).
+> **Esto es Etapa 1: ANÁLISIS.** La Etapa 2 (decidir qué implementar) es del coach + equipo.
+
+> **✅ ACTUALIZACIÓN Etapa 2 — 2026-06-03.** Se implementaron los ítems Tier-1
+> **host-testeables y sin intervención humana** (workflow TDD + integración central,
+> commit `f545810`): **#9** (helper saturante de omega, anti sign-flip), **#29**
+> (anti-windup real), **#5** y **#13** (gates `data_valid` en `line_view.h`), **#25**
+> (surface `resync_events`), **#15** (constante muerta) y **#17** (pines UART
+> informativos). Verificado: **suite host 322 tests / 0 fallos** + `central_robot1/2`
+> compilan. **PENDIENTE DE BANCO** (regla 1): #9 y #29 cambian conducta → validar que
+> el robot no gira al revés / no sobrepasa → **TASK-102**. Detalle:
+> `journal/2026-06-03-etapa2-tier1-fixes-central-host-tested.md`.
+> El resto (Tier-2 + #1 cross-board + #21/#23 sin test host) sigue pendiente — ver
+> "Recomendación para Etapa 2" abajo.
 
 ## Cómo se hizo
 

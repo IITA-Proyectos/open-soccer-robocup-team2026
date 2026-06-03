@@ -75,10 +75,14 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - `src/down/comm_central.cpp` → llama cadena nueva: `down_model + line_geometry + line_tracker + line_calib + surface_monitor + down_encode` para armar `LineStatusV2` que va al CENTRAL
 - **NO archivar ni una ni otra antes de Incheon.** Decisión binaria post-Incheon (ver `FUENTES-DE-VERDAD.md` deudas).
 - **Broadcast simétrico (Capa 1, 2026-06-01):** DOWN ahora **difunde** los 3 frames
-  (`LineStatusV2` 0x10 + `Pose2D` 0x11 + `Velocity2D` 0x12) a **ambas** placas —
-  CENTRAL (`Serial1`) **y** TOP (`Serial5`) — vía el módulo nuevo `down_tx`
-  (SEQ monótono por enlace). Antes la línea iba solo a CENTRAL y el OTOS solo a TOP.
-  CENTRAL ingiere el OTOS directo (storage/accessors en `world_model`). Spec/plan:
+  a **ambas** placas — CENTRAL (`Serial1`) **y** TOP (`Serial5`) — vía el módulo
+  nuevo `down_tx` (SEQ monótono por enlace), con estas **tasas** (no todas 100 Hz):
+  `LineStatusV2` 0x10 **@200 Hz** + `Pose2D` 0x11 **@100 Hz** + `Velocity2D` 0x12 **@100 Hz**.
+  ⚠️ TOP **recibe** la línea (0x10) pero **no la consume** (sólo necesita la odometría
+  OTOS); la línea es el bus de emergencia que CENTRAL usa para frenar en el borde.
+  Antes la línea iba solo a CENTRAL y el OTOS solo a TOP.
+  CENTRAL ingiere el OTOS directo (storage/accessors en `world_model`). Contrato
+  canónico de tasas/tamaños: `docs/firmware/CONTRATO-DATOS-DOWN.md` §2. Spec/plan:
   `docs/superpowers/specs/2026-06-01-down-broadcast-simetrico-design.md` +
   `docs/superpowers/plans/2026-06-01-down-broadcast-capa1.md`.
 - **Capa 2 + 3 (2026-06-02, code-complete + pusheadas):** CENTRAL **consume** el OTOS para

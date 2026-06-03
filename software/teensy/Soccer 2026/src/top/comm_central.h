@@ -1,7 +1,8 @@
 // comm_central.h (TOP) — envía WORLD_SNAPSHOT al CENTRAL.
 //
-// Hardware: Serial7 del Teensy 4.0 (TX7 = pin 29, RX7 = pin 28). SWAP 2026-05-31
-// (TASK-204): antes Serial5, pero ahí quedó soldada la cámara trasera.
+// Hardware: Serial4 del Teensy 4.0 (RX4 = pin 16, TX4 = pin 17). FIX 2026-06-02:
+// el 4.0 NO expone Serial7 (28/29) en el borde (back-pads); el enlace a CENTRAL va
+// por Serial4. Cable: TOP pin 17 (TX4) -> CENTRAL pin 28 (RX7, Serial7 del 4.1).
 // Frecuencia: 100 Hz.
 
 #pragma once

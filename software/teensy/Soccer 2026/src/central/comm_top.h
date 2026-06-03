@@ -16,5 +16,6 @@ int  comm_top_tick();   // drena UART, aplica snapshots a world_model
 
 uint32_t comm_top_get_frames_received();
 uint32_t comm_top_get_crc_errors();
+uint32_t comm_top_get_bytes_received();  // DIAG: bytes crudos en Serial7 (link TOP)
 
 }  // namespace iitasoccer

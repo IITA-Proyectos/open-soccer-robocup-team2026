@@ -64,6 +64,8 @@ Módulo en Robot B  →  OUT1 = 3.3V (GO) o 0V (STOP)
 
 El robot DEBE obedecer esta señal. Si OUT1 = 0V, el robot debe detenerse completamente.
 
+> **Cómo lo recibe el TOP (fix 2026-06-02 / TASK-039):** el árbitro RCJ llega al TOP (Teensy 4.0) como **NIVEL GPIO, no UART**: **pin 5 = OUT1 (PLAY/STOP)** y **pin 6 = OUT2 (espejo de OUT1)**, con `0 = juego PARADO`, `1 = juego EN CURSO (3.3V)`. El firmware (`src/top/comm_arbiter.cpp`, `read_referee_gpio()`) lee ambos pines con `INPUT_PULLDOWN` y toma `match_running = (pin5 O pin6 en alto)` (OR). En PLAY sube SOLO UNO de los dos pines (5 o 6) y el otro queda en 0 (probado en banco 2026-06-02, Gustavo); por eso el AND nunca daba GO y el OR sí. En STOP ambos pines quedan en 0 → OR = STOP. Sigue siendo **fail-safe**: si el cable del COMM se desconecta, ambos pines leen 0 por el `INPUT_PULLDOWN` → `match_running = false` (STOP). El antiguo camino por UART (`COMM_REFEREE_CMD` por el Serial del módulo COMM) quedó **obsoleto**: el UART del COMM (TOP Serial2, pines 7/8) se usa SOLO para partner ESP-NOW / status. El CENTRAL y la strategy NO cambian: siguen consumiendo `referee_cmd` / `match_running` DENTRO del `WORLD_SNAPSHOT` que manda el TOP; lo único que cambió es la FUENTE en el TOP.
+
 ### 2.2 Penalización con countdown
 
 Cuando el árbitro penaliza un robot (ej: pushed out, damage), el módulo muestra un countdown en el display. El equipo puede recolocar al robot cuando el timer llega a cero.
@@ -257,8 +259,10 @@ Para IITA 2026, usar el módulo como canal secundario de comunicación:
 
 ```
 Canal primario: ESP-NOW propio (baja latencia, 10Hz, mundo compartido)
-Canal secundario: UART del módulo oficial (backup, SuperTeam, start/stop)
+Canal secundario: UART del módulo oficial (backup, SuperTeam)
 ```
+
+> **Nota (fix 2026-06-02 / TASK-039):** el start/stop del árbitro NO viaja por el UART del módulo. En el TOP el árbitro es **NIVEL GPIO en los pines 5/6** (OUT1/OUT2), no UART; ver la nota en §2.1.
 
 El ESP-NOW propio sigue siendo mejor para el WorldModel completo entre arquero y delantero. Pero el módulo es esencial para:
 - Start/stop del árbitro (obligatorio)

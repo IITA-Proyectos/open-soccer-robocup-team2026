@@ -80,16 +80,17 @@ En `src/top/` quedó (mejoras que conviene mantener):
   **1 BNO + ToF** (jugable: el heading sale del LEFT).
 - **Diagnósticos temporales** (sacar cuando se resuelva): `sensors_tof_scan_wire()` (escáner
   I²C al boot), `refprobe[...]` (pines del COMM, TASK-039) en el print del TOP.
-- ⚠️ **I²C a 100 kHz** (`Wire.setClock(100000)` + ToF `begin(...,100000)`): fue un
-  experimento que NO ayudó. **Volver a 400 kHz** cuando se arregle el bus (el boot a 100 kHz
-  es ~2× más lento). Está en `sensors_imu.cpp` + `sensors_tof.cpp`.
+- ✅ **I²C QUEDA en 100 kHz** (`Wire.setClock(100000)` + ToF `begin(...,100000)`): **NO volver a
+  400 kHz** — el BNO055 y los VL53L7CX **no coexisten** a 400 kHz (con los ToF rangeando, el read
+  multi-byte del BNO se congela; bisect `diag_bno_tof` 2026-06-02). A 100 kHz andan los dos.
+  Costo: boot ~40 s. Está en `sensors_imu.cpp` + `sensors_tof.cpp`.
 
 ## Criterio de cierre
 - [ ] Leído el `chip_id` de 0x29 → causa identificada (BNO fallado vs ToF/pin-10).
 - [ ] Bus I²C estable: `[IMU] LEFT OK` + (`RIGHT OK` si se arregla el 2º BNO) **consistente**
       en varios power-cycles.
 - [ ] `[sensors_tof] 4 de 4 midiendo` + `hdg` se mueve al girar + `min_obst` baja con la mano.
-- [ ] Coach: revertir I²C a 400 kHz, sacar diagnósticos temporales, dejar firmware limpio.
+- [x] Coach: I²C queda en **100 kHz** (NO 400: BNO+ToF no coexisten). Falta sacar diagnósticos temporales (scan_wire) + dejar firmware limpio.
 
 ## Referencias
 - Firmware: `src/top/sensors_imu.cpp`, `src/top/sensors_tof.{h,cpp}`, `src/top/main_top.cpp`.

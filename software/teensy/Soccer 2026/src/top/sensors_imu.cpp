@@ -53,6 +53,9 @@ constexpr uint32_t STABILIZE_MS    = 1000;
 constexpr uint32_t GYRO_CALIB_MS   = 2000;
 constexpr int      HEADING_SAMPLES = 10;
 
+// Band-aid contención BNO+ToF (2026-06-02): leer el BNO a ~20 Hz (50 ms), no a 100 Hz.
+constexpr uint32_t BNO_READ_INTERVAL_MS = 50;
+
 // Signo del heading. MEDIDO EN BANCO 2026-05-31: el chip da yaw CRECIENTE al
 // girar a la DERECHA (CW). La convención del firmware es CCW-positiva. Lo
 // invertimos ACÁ, en la fuente, para TODO el firmware. Igual al gyroZ.
@@ -161,8 +164,12 @@ bool sensors_imu_init() {
     // validada en diag_pose_live: dim ToF -> init BNO -> enumerar ToF). (2026-06-02)
     // Wire1 ya NO se usa aca (recableado 2026-05-31).
     Wire.begin();
-    Wire.setClock(100000);  // 100 kHz (fix bus marginal 2026-06-02): mas tolerante a
-                            // pull-ups debiles / cables largos del bodge que 400 kHz.
+    Wire.setClock(100000);  // 100 kHz: el BNO055 y los VL53L7CX NO coexisten a 400 kHz — con
+                            // los ToF rangeando, el read multi-byte del BNO se corrompe y el
+                            // yaw queda CONGELADO (banco 2026-06-02). A 100 kHz coexisten OK
+                            // (diag_bno_tof_slow: yaw sigue el giro con los 4 ToF activos).
+                            // 400 kHz solo servia con ToF-solo (quad_live) o BNO-solo
+                            // (diag_bno_left). Costo: boot ~40 s (carga firmware de los 4 ToF).
 
     imu_fusion_init(g_fusion);
     g_fcfg = imu_fusion_default_cfg();
@@ -221,13 +228,18 @@ bool sensors_imu_init() {
 
 void sensors_imu_tick() {
     const uint32_t now = millis();
+    // Band-aid contención BNO+ToF (2026-06-02): leer el BNO a ~20 Hz, NO a 100 Hz. Leerlo muy
+    // seguido lo hace chocar con los reads de los ToF en `Wire` y el read multi-byte del BNO
+    // se corrompe -> yaw CONGELADO. Bajando la frecuencia caen las colisiones. (Fix de fondo:
+    // BNO a Wire1, bus aparte.)
+    if (now - g_last_tick_ms < BNO_READ_INTERVAL_MS) return;
     float dt_s = (now - g_last_tick_ms) / 1000.0f;
     g_last_tick_ms = now;
     if (dt_s <= 0.0f || dt_s > 1.0f) dt_s = 0.01f;  // clamp arranque/saltos
 
     ImuSample in[IMU_FUSION_N];
     for (int i = 0; i < IMU_FUSION_N; ++i) {
-        const bool present = g_ready[i] && i2c_present(g_addr[i]);
+        const bool present = g_ready[i];  // band-aid: sin ping i2c_present (1 transaccion I2C menos por sensor)
         if (present) {
             in[i].present     = true;
             in[i].heading_deg = heading_no_mount(i, read_raw_yaw(*g_bno[i]));

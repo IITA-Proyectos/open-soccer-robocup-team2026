@@ -43,9 +43,9 @@ implementado todavía.
 | BNO055 dual (lectura + consistencia) | 2 | ✅ vivo | `firmware/top/sensors_imu.{h,cpp}` |
 | HC-SR04 (frontal) | 1 | ✅ vivo (bloqueante 25 ms) | `firmware/top/sensors_tof.{h,cpp}` |
 | **ToF VL53L7CX** | 4 (HW) | ⚠️ HW OK (enumeran 0x2A..0x2D), firmware lee 1 (Sprint B pendiente) | `firmware/top/sensors_tof.{h,cpp}` |
-| Comm con COMM (Serial4) | 1 | ✅ vivo (arbiter) | `firmware/top/comm_arbiter.{h,cpp}` |
+| Comm con COMM (Serial2) | 1 | ✅ vivo (arbiter) | `firmware/top/comm_arbiter.{h,cpp}` |
 | Comm con DOWN (Serial1) | 1 | ✅ vivo | `firmware/top/comm_down.{h,cpp}` |
-| Comm con CENTRAL (**Serial7**, swap 2026-05-31) | 1 | ✅ vivo | `firmware/top/comm_central.{h,cpp}` |
+| Comm con CENTRAL (**Serial4**, fix 2026-06-02) | 1 | ✅ vivo | `firmware/top/comm_central.{h,cpp}` |
 | **WorldSnapshot v2 con `ball_vx/vy`** | 2 | ⚠️ struct definido pero `cameras_runtime` no llena los campos (quedan en 0) | `firmware/shared/types.h` + tests `test_central_contract` |
 | EKF de pose absoluta | 3 | ⏳ futuro | — |
 | Kalman pelota (predicción cuando no se ve) | 3 | ⏳ futuro | — |
@@ -100,7 +100,7 @@ implementado todavía.
 Cada BNO055:
 - **Modo IMUPLUS** (recomendado): fusión accel + gyro sin magnetómetro. Inmune a interferencia magnética de motores. Heading **relativo** (no Norte magnético).
 - **Frecuencia interna**: 100 Hz.
-- **Latencia I²C** (400 kHz): ~300 µs por lectura.
+- **Latencia I²C** (100 kHz — BNO055+ToF no coexisten a 400 kHz): ~1.2 ms por lectura.
 
 Polling del firmware: **100 Hz**.
 
@@ -281,12 +281,12 @@ comm_central_send(snap);
 - **Estimación de rivales**: usar obstáculos ToF + cámaras filtrados (no son
   pelota ni partner).
 
-## 9. Comunicación con la placa COMM (Serial4)
+## 9. Comunicación con la placa COMM (Serial2)
 
 La placa COMM es un módulo ESP32-C6 separado que:
 - Recibe comandos del árbitro por **BLE**.
 - Mantiene **ESP-NOW** con el robot partner (futuro).
-- Sirve de bridge a TOP por UART (Serial4, 115200 baud).
+- Sirve de bridge a TOP por UART (Serial2, RX pin 7 / TX pin 8, 115200 baud).
 
 Implementación: [`firmware/top/comm_arbiter.{h,cpp}`](firmware/top/comm_arbiter.h).
 
@@ -310,8 +310,10 @@ Diseño general de las 3 placas: [`05-protocolo-comunicaciones.md`](05-protocolo
 | Serial1 | 0/1 | ← DOWN | RX: DOWN_OTOS_POSE + DOWN_OTOS_VEL + LINE_STATUS @ 100 Hz |
 | **Serial5** | **20/21** | ← cámara 2 (trasera) | RX: parser OpenMV (✅ banco 2026-05-31, FORMATO OK) |
 | Serial3 | 15/14 | ← cámara 1 | RX: parser OpenMV (9 bytes/packet) |
-| Serial4 | 16/17 | ↔ COMM | RX: comando árbitro + partner. TX: comandos al árbitro (futuro) |
-| **Serial7** | **28/29** | → CENTRAL | TX: **WORLD_SNAPSHOT @ 100 Hz** (swap 2026-05-31, TASK-204) |
+| **Serial2** | **7/8** | ↔ COMM | RX: comando árbitro + partner. TX: comandos al árbitro (futuro). 115200 baud |
+| **Serial4** | **16/17** | → CENTRAL | TX: **WORLD_SNAPSHOT @ 100 Hz** a 230400 baud (fix 2026-06-02, TASK-204) |
+
+> (fix 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde —son pads SMD traseros, no cableables con header—; COMM=Serial2 7/8, CENTRAL=Serial4 16/17. Cable TOP→CENTRAL: TOP pin 17 (TX4) → CENTRAL pin 28 (RX7, su Serial7) + GND común. El lado CENTRAL es un Teensy 4.1 que SÍ tiene 28/29 en el borde, así que su Serial7 no cambia.)
 
 ### 10.2 Heartbeat / watchdogs
 
@@ -363,7 +365,7 @@ loop():
 | Sensor detecta (cámara, OTOS, etc.) | (variable) |
 | Próximo tick del cameras_runtime / comm_down | < 10 ms |
 | Construcción del snapshot | < 1 ms |
-| TX UART Serial7 a 230400 (~31 bytes) | ~1.5 ms |
+| TX UART Serial4 a 230400 (~31 bytes) | ~1.5 ms |
 | Decode en CENTRAL | ~50 µs |
 | **Total TOP → CENTRAL** | **~13 ms** |
 

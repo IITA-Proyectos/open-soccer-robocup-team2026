@@ -13,12 +13,12 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
-> **🔧 ÚLTIMO (2026-05-31 — vale sobre cualquier mención más abajo):** mapa UART final.
-> **TOP:** S1←DOWN · S3←cam frontal · S4↔COMM · S5←cam trasera · S7→CENTRAL.
-> **CENTRAL:** **S7 (pin 28)←TOP** (snapshot) · **S1 (pin 0)←DOWN** (línea) · **Serial2 (7/8)
-> LIBRE para el motor 2** → **conflicto 7/8 (TASK-036) RESUELTO**. HC-SR04 en pines 4/3.
+> **🔧 ÚLTIMO (2026-06-02 — vale sobre cualquier mención más abajo):** mapa UART final.
+> **TOP (Teensy 4.0):** S1←DOWN · **S2 (7/8)↔COMM** · S3←cam frontal · **S4 (16/17)→CENTRAL** · S5←cam trasera.
+> ⚠️ **El 4.0 NO expone S7 (28/29) en el borde** (back-pads) → el enlace a CENTRAL va por **S4**, no S7 (fix 2026-06-02: antes estaba en S7 y el TOP nunca le llegaba a la CENTRAL).
+> **CENTRAL (Teensy 4.1):** **S7 (pin 28)←TOP** (el cable sale del TOP pin 17/TX4) · **S1 (pin 0)←DOWN** · **pines 7/8 LIBRES para el motor 2** → **conflicto 7/8 (TASK-036) RESUELTO**. HC-SR04 en pines 4/3.
 > CENTRAL **sin BNO** (los 2 BNO están en el TOP). **Los 4 ToF activos por default** en
-> top_robot1/2 (`TOP_ENABLE_MULTI_TOF`; boot del TOP ~40 s). **`Zircon.pdf`** (esquemático
+> top_robot1/2 (`TOP_ENABLE_MULTI_TOF`; **I²C 100 kHz** — el BNO055 + ToF NO coexisten a 400 kHz, boot ~40 s). **`Zircon.pdf`** (esquemático
 > del Zircon/CENTRAL, fuente Robomov) ya está en `hardware/electronics/`. Detalle único del
 > cableado: `hardware/electronics/MAPA-CONEXIONES-3-PLACAS.md`. Cualquier "conflicto 7/8
 > abierto" o "Serial2 → CENTRAL" más abajo está **superado**.
@@ -138,7 +138,7 @@ nativo, pero ya no es el único camino. Ver
 **P0 hardware (asignar HOY a humanos, no a Claude):**
 - TASK-001 (Enzo): fix 10 nets DOWN PCB
 - TASK-002 (Enzo): DRC+ERC ambas placas
-- ~~TASK-006 (Virginia/Elías): flash firmware COMM ESP32-C6~~ → ✅ **FLASHEADA 2026-06-01** (Gustavo). Falta validar E2E (TOP `Serial4` ↔ COMM, START/STOP del árbitro).
+- ~~TASK-006 (Virginia/Elías): flash firmware COMM ESP32-C6~~ → ✅ **FLASHEADA 2026-06-01** (Gustavo). E2E del árbitro **RESUELTO 2026-06-02 (TASK-039)**: el START/STOP del árbitro llega al TOP como **NIVEL GPIO en pines 5/6** (`OUT1`/`OUT2`), no por UART (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART). El `Serial2` (pines 7/8) del COMM queda SOLO para partner ESP-NOW / status.
 - TASK-011 (Enzo): confirmar PIN_KICKER_SOL en Zircon
 - TASK-013 (Enzo): recuperar BOM placa TOP
 - TASK-025 (todos): excepción Avast en cada máquina → destraba PlatformIO
@@ -153,7 +153,7 @@ nativo, pero ya no es el único camino. Ver
 
 ## Bloqueantes Incheon (los 2 que importan)
 
-1. **COMM — firmware flasheado ✅ (2026-06-01) pero el E2E está BLOQUEADO (2026-06-02).** Hallazgo: el árbitro **NO viaja por UART**, señaliza como **NIVEL GPIO** (`OUT1`/`OUT2` del módulo → Teensy **pin 5 / pin 6** por el conector U1, confirmado en el netlist del PCB). El COMM responde (OLED prende/apaga) **pero la señal no togglea en el Teensy** (pin 6 fijo en 1, pin 5 en 0). El robot **todavía NO recibe START/STOP → NO homologa aún.** → **TASK-039** (Enzo: multímetro en OUT del módulo + continuidad). Además el firmware del TOP debe leer el árbitro por **pin digital**, no `Serial4` (`comm_arbiter` hoy escucha UART = mismatch). TASK-006/TASK-039.
+1. **COMM — firmware flasheado ✅ (2026-06-01); E2E del árbitro RESUELTO ✅ (2026-06-02, TASK-039).** El árbitro RCJ **NO viaja por UART**: señaliza como **NIVEL GPIO** hacia el TOP (Teensy 4.0) en **pin 5 = OUT1 (PLAY/STOP)** y **pin 6 = OUT2 (PLAY/STOP)** (en la práctica, en PLAY sube SOLO UNO de los dos —no son espejo—). Nivel: **0 = juego PARADO, 1 = juego EN CURSO (3.3 V)**. Firmware: `src/top/comm_arbiter.cpp::read_referee_gpio()` lee los pines 5/6 con `INPUT_PULLDOWN` y `match_running = (pin5 OR pin6)` (en PLAY sube SOLO UNO de los dos pines —el otro queda en 0— por eso AND nunca daba GO y OR sí; probado en banco 2026-06-02, Gustavo. Sigue siendo fail-safe: si se desconecta el cable del COMM, ambos pines leen 0 con `INPUT_PULLDOWN` → `match_running=false` → STOP). El probe temporal se removió de `main_top.cpp`. El **UART del módulo COMM (TOP `Serial2`, pines 7/8) queda SOLO para partner ESP-NOW / status** — el viejo `COMM_REFEREE_CMD` por UART quedó **obsoleto**. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART). El robot ya recibe START/STOP por GPIO → homologa el árbitro. TASK-006/TASK-039.
 2. **Cámaras sin recalibrar para iluminación Incheon** → no ve la pelota. TASK-022.
 
 ### Resuelto 2026-05-24

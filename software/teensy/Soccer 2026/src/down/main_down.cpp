@@ -106,7 +106,20 @@ void loop() {
         line_ring_tick();
     }
 
-    // OTOS: 100 Hz.
+    // Send línea urgente a CENTRAL: 200 Hz (Serial1, bus emergencia).
+    // Audit 2026-06-03 #24: va ANTES de otos_tick. otos_tick hace I2C bloqueante
+    // (~3-4 ms los 2 OTOS); si corriera primero, le agregaría esa latencia al
+    // frame de línea, que es el path de SEGURIDAD de borde (lo más sensible al
+    // tiempo). El send es no-bloqueante (backpressure en down_tx), así sale ya.
+    if (g_since_central_send >= LINE_URGENT_INTERVAL_MS) {
+        g_since_central_send = 0;
+        comm_central_send_line_urgent();
+    }
+
+    // OTOS: 100 Hz. Lectura I2C BLOQUEANTE (~3-4 ms) — por eso va DESPUÉS del
+    // send de línea (audit #24). El bloqueo igual le roba ticks al muestreo de
+    // 1 kHz del line_ring (mitigación completa = bajar las tx I2C del OTOS, otro
+    // bucket); este reorden al menos protege la latencia del frame de línea.
     if (g_since_otos_tick >= OTOS_TICK_INTERVAL_MS) {
         g_since_otos_tick = 0;
         otos_tick();
@@ -116,11 +129,5 @@ void loop() {
     if (g_since_top_send >= COMM_SEND_INTERVAL_MS) {
         g_since_top_send = 0;
         comm_top_send_status();
-    }
-
-    // Send línea urgente a CENTRAL: 200 Hz (Serial1, bus emergencia).
-    if (g_since_central_send >= LINE_URGENT_INTERVAL_MS) {
-        g_since_central_send = 0;
-        comm_central_send_line_urgent();
     }
 }

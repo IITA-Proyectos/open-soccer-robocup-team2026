@@ -87,7 +87,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
   (tunear gains + confirmar eje/signo del strafe del GK). Gate: 25 envs + 311 tests host.
 
 ### Shared (puro, testeado host-native)
-- `pids`, `kinematics`, `behind_ball`, `cameras_fusion`, `line_filters`, `crc16`, `proto`, `types`
+- `pids`, `kinematics`, `behind_ball`, `cameras_fusion`, `ball_velocity` (velocidad pelota → enciende `bt_classify`; vivo en `build_snapshot`), `line_filters`, `crc16`, `proto`, `types`
 - `strategy_transitions` (caracterización pura de `strategy.cpp` con 35 tests — no conectado, mantener como red)
 
 ## Tests host-native
@@ -114,7 +114,13 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 | `test_down_model` | 7 | cadena DOWN: model |
 | `test_down_surface` | 5 | cadena DOWN: surface |
 | `test_down_tracker` | 3 | cadena DOWN: tracker |
+| `test_ball_velocity` | 13 | velocidad pelota (EMA + reset al perder + clamp int16) |
 | **Total (20 envs)** | **262** | **0 fallos** |
+
+> ⚠️ La tabla de arriba es snapshot 2026-05-29. **Número vivo (2026-06-03):
+> 324 tests / 26 envs / 0 fallos** vía `scripts/run-host-tests.sh` (la tabla no
+> incluye los tests sumados después: broadcast, drive_straight, imu_fusion,
+> tof_zone_orient, otos_ingest, gk_cross_track, ball_velocity).
 
 **Estado (2026-05-29, post-merge 3 agentes):** ✅ **262 tests / 20 envs / 0 fallos** —
 verificado con `pio test -e test_native` tras mergear central+top+down a `main`
@@ -153,6 +159,31 @@ nativo, pero ya no es el único camino. Ver
 
 1. **COMM — firmware flasheado ✅ (2026-06-01); E2E del árbitro RESUELTO ✅ (2026-06-02, TASK-039).** El árbitro RCJ **NO viaja por UART**: señaliza como **NIVEL GPIO** hacia el TOP (Teensy 4.0) en **pin 5 = OUT1 (PLAY/STOP)** y **pin 6 = OUT2 (PLAY/STOP)** (en la práctica, en PLAY sube SOLO UNO de los dos —no son espejo—). Nivel: **0 = juego PARADO, 1 = juego EN CURSO (3.3 V)**. Firmware: `src/top/comm_arbiter.cpp::read_referee_gpio()` lee los pines 5/6 con `INPUT_PULLDOWN` y `match_running = (pin5 OR pin6)` (en PLAY sube SOLO UNO de los dos pines —el otro queda en 0— por eso AND nunca daba GO y OR sí; probado en banco 2026-06-02, Gustavo. Sigue siendo fail-safe: si se desconecta el cable del COMM, ambos pines leen 0 con `INPUT_PULLDOWN` → `match_running=false` → STOP). El probe temporal se removió de `main_top.cpp`. El **UART del módulo COMM (TOP `Serial2`, pines 7/8) queda SOLO para partner ESP-NOW / status** — el viejo `COMM_REFEREE_CMD` por UART quedó **obsoleto**. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART). El robot ya recibe START/STOP por GPIO → homologa el árbitro. TASK-006/TASK-039.
 2. **Cámaras sin recalibrar para iluminación Incheon** → no ve la pelota. TASK-022.
+   La migración H7→N6 y los bugs P0 ya están resueltos; **lo único que falta es
+   calibración de banco** (LAB + UART + exposición + H). Kit + procedimiento listos
+   (2026-06-03): `calib-lab-n6.py` en ambos packs + [`docs/firmware/CALIBRACION-VISION-N6.md`](firmware/CALIBRACION-VISION-N6.md).
+   El item #6 del análisis (velocidad de pelota en el TOP) **ya está hecho** (ver Avance 2026-06-03).
+
+### Avance 2026-06-03 — Visión TASK-022: velocidad de pelota (firmware) + kit de calibración
+- **Pieza A — estimador de velocidad de la pelota (DONE, host-testeado).** `build_snapshot()`
+  llenaba `ball_x/y/confidence` pero dejaba `ball_vx/vy` en **0** → toda la cadena
+  `bt_classify` (ball_trajectory, 7 tests) estaba dormida (siempre `BT_STILL`). Nuevo
+  módulo puro `src/shared/ball_velocity.{h,cpp}`: deriva velocidad (mm/s, marco robot) por
+  diferencias finitas sobre la posición fusionada, **sólo al llegar packet nuevo** (sample_ms),
+  EMA (α=0.4), **reset al perder la pelota** (descarta el 1er frame al reaparecer), re-siembra
+  si el gap > 200 ms, getter con clamp int16. Cableado en `cameras_runtime` (estado +
+  `cameras_get_ball_vx/vy_mm_s`) + 2 líneas en `main_top.cpp::build_snapshot`.
+- **Verificación:** TDD (13 tests nuevos `test_ball_velocity`, RED→GREEN). Suite host
+  completa **324 tests / 26 envs / 0 fallos** (`run-host-tests.sh`). Compilan **top_robot1,
+  top_robot2 y diag_top_all** (SUCCESS). El cableado de runtime es glue Arduino (compile-only,
+  como el resto del runtime); la lógica real está 100% bajo test.
+- **Pieza B — kit de calibración (para banco/Incheon).** `calib-lab-n6.py` (standalone, en
+  ambos packs de cámara): muestra una sonda central, imprime el LAB real del objeto + un tuple
+  sugerido y dibuja los blobs que agarra el threshold actual. NO toca el script de competencia.
+  Procedimiento de 1 página: [`docs/firmware/CALIBRACION-VISION-N6.md`](firmware/CALIBRACION-VISION-N6.md).
+- **Pendiente humano (Virginia):** la calibración de banco en sí (LAB + UART + exposición + H)
+  — Claude no cierra TASK-022 (es hardware). ⚠️ El `calib-lab-n6.py` usa API OpenMV estándar
+  (`get_statistics`/`draw_*`) pero **no pude probarlo en la N6**: confirmar en banco.
 
 ### Resuelto 2026-05-24
 - ~~**DOWN — pinout Teensy↔mux NO confirmado**~~ → **VALIDADO EMPÍRICAMENTE.**

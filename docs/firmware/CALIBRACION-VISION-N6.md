@@ -1,0 +1,138 @@
+---
+title: "Calibración de visión OpenMV N6 — procedimiento de banco (TASK-022)"
+date: 2026-06-03
+status: vivo
+audiencia: "Virginia — operativa en el banco / Incheon"
+firmware-source: >
+  hardware/electronics/cameraFront-pack/firmware/openmv/{cam-frontal-n6.py, calib-lab-n6.py}
+  hardware/electronics/cameraBack-pack/firmware/openmv/{cam-trasera-n6.py, calib-lab-n6.py}
+environment: "OpenMV IDE (versión que liste 'OpenMV N6') → USB-C → ▶ Run"
+author: "Claude Opus 4.8 (Anthropic), vía Claude Code"
+requested-by: "Gustavo Viollaz (@gviollaz)"
+---
+
+# Calibrar las cámaras N6 para que el robot VEA — TASK-022
+
+> **Esto es el bloqueante #1 real para Incheon.** Las 2 cámaras ya muestran color
+> y transmiten los 9 bytes (migración H7→N6 resuelta, bugs P0 corregidos). Lo
+> ÚNICO que falta es **calibrar el color con la cámara en la mano y la luz real**.
+> Sin esto, las cámaras mandan datos pero no detectan la pelota.
+
+> ⚠️ **Hay que rehacer esto en Incheon** bajo la luz del venue (los thresholds LAB
+> dependen de la iluminación). Por eso el objetivo es un proceso de ~15 min
+> repetible, no una odisea. El kit `calib-lab-n6.py` está para eso.
+
+## Antes de empezar (1 vez por cámara)
+
+- OpenMV IDE actualizado (que liste "OpenMV N6") + firmware oficial N6 por DFU/USB-C.
+- Cámara alimentada y con preview a color (init del módulo `sensor`, ya verificado).
+- Hacé la calibración **con la cámara montada en el robot** (mismo ángulo/altura/luz
+  que en partido). Calibrar en la mano y después montar = thresholds que no sirven.
+- **Cada cámara se calibra por separado** (sensores e iluminación distintos).
+
+---
+
+## Paso 1 — Confirmar el UART (¿la N6 le llega al Teensy?)
+
+Objetivo: saber qué `UART_PORT` de la N6 sale al `Serial` correcto del Teensy.
+
+- Frontal → debe entrar al **Serial3** del TOP (conector U8).
+- Trasera → debe entrar al **Serial5** del TOP (conector U9, pin 21).
+
+1. Abrí el script de producción de esa cámara (`cam-frontal-n6.py` / `cam-trasera-n6.py`),
+   `BRING_UP=True`, ▶ Run. En la consola del IDE tienen que salir paquetes
+   `[201, X, Ypc, 202, ...]`.
+2. Con el TOP flasheado (`diag_top_all` o `top_robot1`) mirando por USB, confirmá
+   que el TOP cuenta packets de esa cámara (`cameras_packets_front/back`).
+3. Si el TOP NO recibe: probá `UART_PORT = 1`, luego `2`, luego `3` (re-Run cada vez)
+   hasta que el contador del TOP suba. **Anotá el valor que funcionó** en el script.
+   - La trasera viene anotada como UART3→Serial5 ✅; confirmá igual.
+
+> Si la imagen sale espejada/al revés, ajustá `HMIRROR` / `VFLIP` hasta que en el
+> preview la pelota arriba esté arriba. (El flip puede diferir entre las 2 cámaras.)
+
+---
+
+## Paso 2 — Calibrar los 3 thresholds LAB (el corazón de TASK-022)
+
+Herramienta: **`calib-lab-n6.py`** (NO transmite, no toca el script de competencia).
+
+1. Abrí `calib-lab-n6.py` → ▶ Run (corre de RAM; **no** lo guardes como main.py).
+2. En el framebuffer aparece un **cuadro blanco central** (la "sonda").
+3. Por cada color (`TARGET = "naranja"`, luego `"amarillo"`, luego `"azul"` — re-Run):
+   a. Poné el objeto (pelota / arco) **llenando el cuadro central**.
+   b. Leé en la consola el `TUPLE sugerido` (es el LAB real del objeto + margen).
+   c. Pegá ese tuple en `THRESHOLDS[TARGET]` (en el mismo `calib-lab-n6.py`), re-Run.
+   d. Mirá el framebuffer: el **recuadro verde** tiene que rodear **SÓLO el objeto**
+      y nada del fondo. Si agarra fondo → subí el threshold (achicá rangos / subí
+      `MARGEN` al revés); si NO agarra el objeto → aflojá (ampliá rangos).
+   e. Confirmá en consola: "threshold actual agarra: 1 blobs, mayor = N px" con N
+      cómodamente por encima de `PIXELS_MIN` (pelota ≥20, amarillo ≥600, azul ≥300).
+4. Cuando los 3 quedan limpios, **copiá los 3 tuples finales** a las constantes
+   `NARANJA_THRESHOLD` / `AMARILLO_THRESHOLD` / `AZUL_THRESHOLD` del script de
+   **producción** de esa cámara.
+
+> Alternativa equivalente: el **Threshold Editor** del IDE (Tools → Machine Vision →
+> Threshold Editor) sobre un frame en vivo. El kit es más rápido porque te da el
+> tuple ya calculado y el feedback de blobs en el mismo loop.
+
+---
+
+## Paso 3 — Fijar exposición para competencia
+
+Con autos ON la luz cambia y rompe los LAB. Para partido va todo fijo.
+
+1. En el script de **producción**, pasá `BRING_UP = False`.
+2. Ajustá `EXPOSURE_US` hasta que la imagen quede igual de buena que con autos
+   (empezá en ~37000 y subí/bajá). Re-Run y verificá que los 3 colores SIGUEN
+   detectándose con los thresholds del Paso 2.
+3. Si al fijar exposición cambió el color → re-tocá los thresholds (Paso 2) **con
+   `BRING_UP=False`**, así quedan calibrados para la condición real de partido.
+
+---
+
+## Paso 4 — Homografía (Y ≈ distancia)  [si hay tiempo]
+
+Esto convierte pixeles a cm y hace que la `Y` sea ~la distancia a la pelota.
+
+1. Poné 4 puntos de posición conocida en el suelo (frente para la frontal, detrás
+   para la trasera) y leé sus pixeles → calculá `H_MATRIX` (4 correspondencias).
+   Cada cámara tiene **su propia** H.
+2. Medí la altura real de la cámara → `CAM_HEIGHT_CM`.
+3. Validá: pelota a 30 / 50 / 80 / 100 cm reales → la `Y` reportada tiene que dar
+   esas distancias con **<10% de error**. Ajustá `CAMERA_UNIT_TO_MM` en el TOP
+   (`src/top/cameras_runtime.cpp`, hoy placeholder = 10.0) contra la cancha.
+
+> El Paso 4 es "calidad de distancia". Para que el robot **vea y persiga** la
+> pelota alcanza con los Pasos 1–3; priorizá esos si el tiempo aprieta.
+
+---
+
+## Paso 5 — Guardar en la cámara
+
+Cuando el script de producción detecta bien con `BRING_UP=False`:
+
+- `Tools → Save open script to OpenMV Cam (as main.py)` → corre solo al energizar.
+- Power-cycle y confirmá que arranca y transmite sin la IDE conectada.
+
+---
+
+## Qué es "calibrado OK" (criterios de aceptación)
+
+- [ ] El TOP cuenta packets de **ambas** cámaras (Paso 1).
+- [ ] Con `BRING_UP=False` (exposición fija), las 3 detecciones (pelota/amarillo/azul)
+      salen estables al mover el objeto por el campo de visión.
+- [ ] El recuadro verde rodea sólo el objeto correcto, sin falsos del fondo.
+- [ ] (Opcional) Y ≈ distancia con <10% error a 30/50/80/100 cm.
+- [ ] `main.py` guardado en ambas N6; arrancan y transmiten tras power-cycle.
+
+> Claude **no cierra TASK-022** (es hardware/banco). Cuando se cumplan estos
+> criterios, lo cierra el equipo y se actualiza `docs/ESTADO-ACTUAL.md`.
+
+## Archivos
+
+- Kit de calibración: `cameraFront-pack|cameraBack-pack/firmware/openmv/calib-lab-n6.py`
+- Producción: `.../cam-frontal-n6.py`, `.../cam-trasera-n6.py`
+- Contrato del protocolo cámara↔Teensy: [`CONTRATO-DATOS-CAMARAS.md`](CONTRATO-DATOS-CAMARAS.md)
+- Análisis de fondo: `journal/2026-05-31-analisis-vision-n6-deteccion-protocolo.md`
+- Memoria del bring-up N6: ver `vision-openmv-n6` (reglas `sensor`/`pyb.UART`).

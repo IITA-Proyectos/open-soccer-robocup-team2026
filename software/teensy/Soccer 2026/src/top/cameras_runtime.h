@@ -28,6 +28,12 @@ int16_t cameras_get_ball_x_mm();
 int16_t cameras_get_ball_y_mm();
 uint8_t cameras_get_ball_confidence();
 
+// Velocidad de la pelota (mm/s, marco robot) derivada de la posición fusionada.
+// 0 cuando no hay estimación válida (pelota recién aparecida, perdida, o stall).
+// Lógica pura host-testeada en src/shared/ball_velocity.{h,cpp}.
+int16_t cameras_get_ball_vx_mm_s();
+int16_t cameras_get_ball_vy_mm_s();
+
 // === Arco amarillo ===
 bool    cameras_goal_yellow_visible();
 int16_t cameras_get_goal_yellow_angle_centideg();

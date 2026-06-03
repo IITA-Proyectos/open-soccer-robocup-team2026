@@ -91,8 +91,6 @@ void line_ring_init() {
 }
 
 void line_ring_tick() {
-    const uint32_t t_start = micros();
-
     // 1. Lectura hardware: 32 sensores via muxes.
     sample_all_sensors_hardware();
 
@@ -125,7 +123,9 @@ void line_ring_tick() {
     // imminent_exit: depth alto Y robot NO está levantado (sino son datos basura).
     g_imminent_exit = (g_depth >= IMMINENT_EXIT_DEPTH) && !g_lifted_state.is_lifted;
 
-    g_last_tick_us = micros() - t_start;
+    g_last_tick_us = micros();   // TIMESTAMP de fin de tick (NO la duración). comm_central lo usa
+                                 // como base de sample_age_ms = (micros()-este)/1000. Antes guardaba
+                                 // (micros()-t_start)=duración → age daba ~uptime y saturaba a 255 (bug eval 2026-06-03).
     g_tick_count++;
 }
 

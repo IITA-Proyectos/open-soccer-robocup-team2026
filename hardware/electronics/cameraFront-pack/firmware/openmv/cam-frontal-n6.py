@@ -68,6 +68,22 @@ NARANJA_PIXELS_MIN = 20
 AMARILLO_PIXELS_MIN = 600
 AZUL_PIXELS_MIN = 300
 
+# --- Filtro de FORMA (solo pelota naranja) — menos false positives del fondo ---
+# La pelota es redonda; los falsos del fondo suelen ser alargados/dispersos.
+# Estos NO son valores de hardware: son umbrales de forma TUNEABLES en banco.
+# Defaults conservadores. Los arcos (amarillo/azul) NO usan este filtro (solo área).
+# Si BALL_SHAPE_FILTER=False → comportamiento EXACTO al de hoy (poder apagarlo es requisito).
+BALL_SHAPE_FILTER = True
+BALL_MIN_DENSITY = 0.45      # density = pixels / area del bounding box; < esto = rechazar
+BALL_ASPECT_MIN = 0.5       # w()/h() mínimo (redondo ≈ 1); fuera de rango = rechazar
+BALL_ASPECT_MAX = 2.0       # w()/h() máximo
+
+# ROI OPCIONAL de pelota — DESACTIVADO por default (frame completo).
+# Un ROI que recorte la parte superior puede excluir horizonte/público y bajar
+# false positives, PERO depende del montaje físico de la cámara. ⚠️ VERIFICAR en
+# banco antes de activar; NO poner números que recorten el FOV real. Dejar en None.
+BALL_ROI = None
+
 SENTINEL_X = 0
 SENTINEL_Y_CODED = 0    # → Y = 0-100 = -100 en el parser TOP → is_visible = False
 # ============================================================================
@@ -128,14 +144,52 @@ def procesar_blob(blobs):
     return transformar(blob.cx(), blob.cy())
 
 
+def is_ball_like(b):
+    # La pelota es redonda → rechaza blobs alargados/dispersos (fondo, líneas,
+    # reflejos). Usa atributos universales de OpenMV (w/h, density); son umbrales
+    # de FORMA tuneables en banco, NO valores de hardware.
+    # Fail-open: si algún atributo no existe en esta N6 (misma cautela que
+    # csi/machine.UART/pyb.LED), NO filtra — mejor ver la pelota que crashear.
+    try:
+        h = b.h()
+        if h <= 0:
+            return False
+        aspect = b.w() / h
+        if aspect < BALL_ASPECT_MIN or aspect > BALL_ASPECT_MAX:
+            return False
+        if b.density() < BALL_MIN_DENSITY:
+            return False
+        return True
+    except Exception:
+        return True
+
+
+def detectar_naranja(img):
+    # Pelota: find_blobs (con ROI opcional) + filtro de forma opcional.
+    if BALL_ROI is not None:
+        blobs = img.find_blobs([NARANJA_THRESHOLD], roi=BALL_ROI,
+                               pixels_threshold=NARANJA_PIXELS_MIN,
+                               area_threshold=NARANJA_PIXELS_MIN, merge=True)
+    else:
+        blobs = img.find_blobs([NARANJA_THRESHOLD],
+                               pixels_threshold=NARANJA_PIXELS_MIN,
+                               area_threshold=NARANJA_PIXELS_MIN, merge=True)
+    if BALL_SHAPE_FILTER:
+        blobs = [b for b in blobs if is_ball_like(b)]
+    return blobs
+
+
 # ============================================================================
 # LOOP PRINCIPAL — detección + 9 bytes por UART
+# Objetivo de frame rate: ≥25 Hz sostenido en QVGA (doc 04 #5) — confirmar en banco.
 # ============================================================================
 while True:
     clock.tick()
     img = sensor.snapshot()
 
-    naranja_blobs = img.find_blobs([NARANJA_THRESHOLD], pixels_threshold=NARANJA_PIXELS_MIN, area_threshold=NARANJA_PIXELS_MIN, merge=True)
+    # Pelota: ROI opcional + filtro de forma (anti false-positives del fondo).
+    naranja_blobs = detectar_naranja(img)
+    # Arcos: solo por área (son rectangulares — NO se les aplica filtro de forma).
     amarillo_blobs = img.find_blobs([AMARILLO_THRESHOLD], pixels_threshold=AMARILLO_PIXELS_MIN, area_threshold = AMARILLO_PIXELS_MIN, merge=True)
     azul_blobs = img.find_blobs([AZUL_THRESHOLD], pixels_threshold=AZUL_PIXELS_MIN, area_threshold = AZUL_PIXELS_MIN, merge = True)
 
@@ -147,5 +201,6 @@ while True:
     packet = bytearray([201, Xp, Ypc, 202, Xam, Yamc, 203, Xaz, Yazc])
     uart.write(packet)
     if BRING_UP:
-        print(list(packet))   # bring-up: ver en consola que salen paquetes válidos
+        # bring-up: ver paquetes válidos + fps (medir ≥25 Hz). NO en competencia.
+        print(list(packet), "fps", round(clock.fps()))
     # En competencia (BRING_UP=False) NO imprime — el print baja los fps.

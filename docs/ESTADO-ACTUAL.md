@@ -120,9 +120,9 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 | **Total (20 envs)** | **262** | **0 fallos** |
 
 > ⚠️ La tabla de arriba es snapshot 2026-05-29. **Número vivo (2026-06-03):
-> 324 tests / 26 envs / 0 fallos** vía `scripts/run-host-tests.sh` (la tabla no
+> 403 tests / 33 envs / 0 fallos** vía `scripts/run-host-tests.sh` (la tabla no
 > incluye los tests sumados después: broadcast, drive_straight, imu_fusion,
-> tof_zone_orient, otos_ingest, gk_cross_track, ball_velocity).
+> tof_zone_orient, otos_ingest, gk_cross_track, ball_velocity, **cameras_parser**).
 
 **Estado (2026-05-29, post-merge 3 agentes):** ✅ **262 tests / 20 envs / 0 fallos** —
 verificado con `pio test -e test_native` tras mergear central+top+down a `main`
@@ -165,6 +165,24 @@ nativo, pero ya no es el único camino. Ver
    calibración de banco** (LAB + UART + exposición + H). Kit + procedimiento listos
    (2026-06-03): `calib-lab-n6.py` en ambos packs + [`docs/firmware/CALIBRACION-VISION-N6.md`](firmware/CALIBRACION-VISION-N6.md).
    El item #6 del análisis (velocidad de pelota en el TOP) **ya está hecho** (ver Avance 2026-06-03).
+
+### Avance 2026-06-03 (pt.3) — Visión P1 [CÓDIGO]: tests del parser + robustez detección + kit calib + análisis eje X
+- **Agente de visión**, ítems [CÓDIGO] que NO necesitan banco (los P0 de higiene ya estaban hechos).
+- **Parser de cámara con red de seguridad (Gap 7):** nuevo `test/test_cameras_parser/` (10 tests)
+  para `src/top/cameras.cpp` (sentinel, **caracterización del bug fantasma**, resync, header-como-dato,
+  reset). Unity-build (`#include` del .cpp) → corre en `run-host-tests.sh` sin tocar harness ni mover a shared.
+- **Robustez de detección (cam-frontal/trasera-n6.py):** filtro de **forma** solo para la pelota
+  (`is_ball_like` por aspect/density, **fail-open**, flag `BALL_SHAPE_FILTER`), ROI opcional en `None`
+  (verificar montaje en banco), fps en bring-up. Arcos sin filtro de forma. Contrato de 9 bytes INTACTO.
+- **Kit `calib-lab-n6.py`** (×2, sincronizados): cicla 3 colores sin re-Run, `draw_string`, márgenes por
+  canal, try/except anti-crash. Para recalibración <5 min en Incheon.
+- **Tests borde:** `test_cameras_fusion` 16→19, `test_ball_velocity` 16→17.
+- **Análisis eje X (sin tocar código/contrato):** `research/in-progress/2026-06-03-eje-x-codificacion-asimetrica-vision.md`
+  — X se codifica SIN offset (Y sí lo tiene) y el clamp uint8 aplasta la izquierda a 0 → pelota a la
+  izquierda se lee "al frente". Más profundo que TASK-202 (representabilidad). **Decisión pendiente +
+  coordinar con agente TOP** (toca el contrato).
+- **Gate:** host **403 tests / 33 envs / 0 fallos**; `py_compile` OK en los 4 scripts. **NO se cierra
+  TASK-022 ni TASK-202** (son banco). Journal: `journal/2026-06-03-vision-p1-codigo-parser-tests-robustez.md`.
 
 ### Avance 2026-06-03 (pt.2) — arquero anticipa + robustez velocidad + OTOS heading/slip + merges de agentes
 - **Merges a main:** se trajeron a `main` los trabajos de los agentes **down** (`comm_top` = Serial7 en

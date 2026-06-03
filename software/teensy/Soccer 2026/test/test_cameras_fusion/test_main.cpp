@@ -191,6 +191,44 @@ void test_fuse_ignores_dead_camera_with_visible_packet(void) {
 }
 
 // ============================================================================
+// Edge cases adicionales (ítem E del backlog de visión)
+// ============================================================================
+
+void test_fuse_goal_left_is_negative_angle(void) {
+    // Arco a la IZQUIERDA pura (x negativo, y=0) → ángulo -90° (-9000 centideg).
+    // Convención: +x=DERECHA → -x=IZQUIERDA → atan2(-x, 0) < 0. Conecta con el
+    // análisis del eje X (research/in-progress/2026-06-03-eje-x-...).
+    CamObs f = cam_obs_to_robot_frame(-50, 0, true, 0, UNIT_TO_MM);  // → (-500, 0)
+    CamObs b = cam_obs_to_robot_frame(0, 0, false, 1, UNIT_TO_MM);
+    GoalFused out = fuse_goal_dual(f, b, true, false);
+    TEST_ASSERT_TRUE(out.visible);
+    TEST_ASSERT_INT16_WITHIN(10, -9000, out.angle_centideg);
+    TEST_ASSERT_INT16_WITHIN(5, 500, out.distance_mm);
+}
+
+void test_fuse_ball_both_visible_distinct_points_true_average(void) {
+    // Front ve (200, 300); back (rotado) apunta a (100, 100). Promedio → (150, 200).
+    CamObs f = cam_obs_to_robot_frame(20, 30, true, 0, UNIT_TO_MM);    // → (200, 300)
+    CamObs b = cam_obs_to_robot_frame(-10, -10, true, 1, UNIT_TO_MM);  // → (100, 100)
+    BallFused out = fuse_ball_dual(f, b, true, true);
+    TEST_ASSERT_TRUE(out.visible);
+    TEST_ASSERT_EQUAL_INT16(150, out.x_mm);
+    TEST_ASSERT_EQUAL_INT16(200, out.y_mm);
+}
+
+void test_fuse_ball_confidence_single_80_consensus_95(void) {
+    // Una sola cámara → confidence exacta 80. Dos coincidiendo → 95.
+    CamObs f = cam_obs_to_robot_frame(20, 30, true, 0, UNIT_TO_MM);
+    CamObs b_off = cam_obs_to_robot_frame(0, 0, false, 1, UNIT_TO_MM);
+    BallFused single = fuse_ball_dual(f, b_off, true, true);
+    TEST_ASSERT_EQUAL_UINT8(80, single.confidence);
+
+    CamObs b_on = cam_obs_to_robot_frame(-20, -30, true, 1, UNIT_TO_MM);  // → (200,300)
+    BallFused consensus = fuse_ball_dual(f, b_on, true, true);
+    TEST_ASSERT_EQUAL_UINT8(95, consensus.confidence);
+}
+
+// ============================================================================
 // Runner
 // ============================================================================
 
@@ -220,6 +258,11 @@ int main(int, char**) {
 
     // Watchdog
     RUN_TEST(test_fuse_ignores_dead_camera_with_visible_packet);
+
+    // Edge cases adicionales (ítem E)
+    RUN_TEST(test_fuse_goal_left_is_negative_angle);
+    RUN_TEST(test_fuse_ball_both_visible_distinct_points_true_average);
+    RUN_TEST(test_fuse_ball_confidence_single_80_consensus_95);
 
     return UNITY_END();
 }

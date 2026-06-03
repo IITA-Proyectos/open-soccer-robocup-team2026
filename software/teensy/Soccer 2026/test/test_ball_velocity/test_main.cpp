@@ -185,9 +185,19 @@ void test_reseed_after_expiry_derives_again(void) {
     TEST_ASSERT_EQUAL_INT16(1000, ball_velocity_vx_mm_s(s));
 }
 
+// --- diagonal: vx y vy simultáneos, ambos correctos ----------------------
+void test_diagonal_velocity_both_axes(void) {
+    ball_velocity_update(s, P, 0,   0,   true, 0,   0);
+    ball_velocity_update(s, P, 100, 200, true, 100, 100);   // +100/+200 mm en 100 ms
+    TEST_ASSERT_TRUE(s.valid);
+    TEST_ASSERT_EQUAL_INT16(1000, ball_velocity_vx_mm_s(s));
+    TEST_ASSERT_EQUAL_INT16(2000, ball_velocity_vy_mm_s(s));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_first_visible_sample_not_valid);
+    RUN_TEST(test_diagonal_velocity_both_axes);
     RUN_TEST(test_two_samples_x_velocity);
     RUN_TEST(test_two_samples_y_velocity);
     RUN_TEST(test_negative_velocity);

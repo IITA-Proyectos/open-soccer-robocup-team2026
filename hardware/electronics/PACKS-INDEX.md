@@ -29,8 +29,9 @@ abrir el pack del subsistema y empezar por su `README.md`.
 | **TOP** — cerebro sensorial | [`top-board-pack/`](top-board-pack/) | Teensy 4.0 master + 2 BNO055 + 4 ToF + HC-SR04 + 5 UARTs | 34 | 725 KB | Con SCH JSON, 2 conflictos detectados |
 | **Cámara FRONTAL** | [`cameraFront-pack/`](cameraFront-pack/) | OpenMV H7 / H7 Plus (mira +Y del robot) | 16 | 152 KB | Hay 1 script genérico actual; el objetivo es split en `cam_frontal.py` |
 | **Cámara TRASERA** | [`cameraBack-pack/`](cameraBack-pack/) | OpenMV H7 / H7 Plus (mira −Y del robot) | 16 | 156 KB | Hay 1 script genérico actual; el objetivo es split en `cam_trasera.py` |
+| **VISIÓN — optimización** | [`vision-optimization-pack/`](vision-optimization-pack/) | workspace del **agente de visión** (las 2 N6) | 7 | — | **No duplica código** — misión + pipeline + backlog + `experiments/`; apunta a los scripts canónicos |
 
-**Total**: 5 packs, 153 archivos, ≈3.8 MB.
+**Total**: 5 packs de subsistema (153 archivos, ≈3.8 MB) + 1 **pack de optimización de visión** (`vision-optimization-pack/`) — workspace del agente que optimiza el reconocimiento de imágenes; apunta al código canónico, no lo duplica.
 
 ## Qué pack abrir según la tarea
 
@@ -55,6 +56,8 @@ abrir el pack del subsistema y empezar por su `README.md`.
 | Calibrar / programar la cámara que mira hacia atrás | `cameraBack-pack/` |
 | Ajustar thresholds LAB de los colores | el pack de la cámara correspondiente |
 | Calibrar homografía de una cámara | el pack de la cámara correspondiente |
+| **Optimizar el reconocimiento de imágenes** (LAB, blobs, exposición, frame rate, false positives) | `vision-optimization-pack/` |
+| Trabajar como **agente dedicado a mejorar la visión** | `vision-optimization-pack/` |
 
 ## Estructura común de los packs
 

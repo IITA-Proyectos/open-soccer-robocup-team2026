@@ -235,7 +235,7 @@ El sketch tenía dos bugs de banco, ya corregidos (host-verificados, compila):
 
 | # | Pendiente | Cómo se cierra |
 |---|---|---|
-| 1 | **Veredicto pines 7/8 (TASK-036)** — ¿gira el motor del driver U17 (pines 7/8)? Decide si `Serial2` (link DOWN→CENTRAL) choca con el motor 2. **Gatea Serial2 vs Serial7 del link.** | Aislar en banco: energizar **solo** el motor 2 y ver si gira. El journal 2026-05-29 lo dejó en "(completar)". |
+| 1 | ~~**Veredicto pines 7/8 (TASK-036)**~~ → ✅ **RESUELTO 2026-05-31 por reasignación de UART** (no por aislar el motor): el link DOWN→CENTRAL se movió a **Serial1 (0/1)** y TOP→CENTRAL a **Serial7 (28/29)**, dejando los pines **7/8 exclusivos del motor 2 (U17)**. Ya no hay que decidir Serial2 vs Serial7 — el link es **Serial1**. | Cerrado. |
 | 2 | **Mapeo motor firmware → rueda física** (M1/M2/M3 = frente / izq / der) | Correr este diag y completar la tabla del Paso 4 (journal §1.1) |
 | 3 | **Orientación / `MOTOR_DIR` definitiva** | Robot 1 ya medido (`{+1,+1,+1}`, horario visto de arriba — ver "Resultados de calibración"). Confirmar en ambos robots + cargar a producción si hay que invertir algún signo |
 | 4 | Convención global de giro (`+omega` = horario/antihorario) | `diag_central_drive` + IMU/heading (ver caja ⚠️ arriba) |
@@ -244,11 +244,11 @@ El sketch tenía dos bugs de banco, ya corregidos (host-verificados, compila):
 | 7 | Saturación con los 3 motores simultáneos | Idem (movimientos vectoriales) |
 | 8 | Encoders | Fuera de scope Incheon |
 
-> **El #1 (veredicto 7/8) gatea el UART del link DOWN→CENTRAL.** Mientras siga
-> pendiente, el receiver `diag_central_comm_down` y el `comm_down.cpp` de
-> producción quedan en **Serial2 / pin 7** (enlace validado en banco, motores
-> apagados). Si el #1 confirma que 7/8 son del motor **y** se corren motores +
-> comm juntos, migrar el link a **Serial7 (28/29)**. Ver
+> ✅ **El #1 ya está resuelto (2026-05-31).** El link DOWN→CENTRAL es **Serial1
+> (RX1 = pin 0)** — tanto en `diag_central_comm_down` como en el `comm_down.cpp` de
+> producción (verificado en código 2026-06-03). Los pines **7/8 quedan exclusivos
+> del motor 2 (U17)**. ⚠️ **NO cablear el link a pin 7** (era el mapeo viejo
+> Serial2, ya superado — ahí ahora va señal de motor). Ver
 > [`DIAG-CENTRAL-COMM-DOWN.md`](DIAG-CENTRAL-COMM-DOWN.md).
 
 ## Documentación esperada (journal entry post-test)

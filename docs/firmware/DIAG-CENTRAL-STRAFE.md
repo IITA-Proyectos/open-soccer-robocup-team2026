@@ -71,6 +71,21 @@ Telemetría cada 250 ms: `state | vx`.
 > **Robot SUJETO o ruedas al aire** al principio (puede salir disparado). Batería
 > cargada (los H-bridges NO van por USB).
 
+> ⚠️⚠️ **LEER ANTES DE INTERPRETAR LA DERIVA (FASE B).** Este sketch mueve los
+> motores vía `motors_apply_command()` → `inverse_kinematics()` con
+> `WHEEL_ANGLES_DEG={60,-60,180}` (marcado **TENTATIVO**, sin medir — `config_central.h:72`).
+> La sesión de banco del **2026-06-01** ([journal](../../journal/2026-06-01-arquero-seguidor-linea-y-calibracion.md))
+> ya encontró que **la cinemática genérica da CÍRCULOS** y que en ese robot el
+> **motor M2 tiene la polaridad INA/INB invertida por hardware** — y
+> `motors_zircon.cpp` **no** tiene inversión por motor. Por eso el movimiento
+> lateral puede salir **en diagonal / rotando por la cinemática**, no sólo por la
+> deriva open-loop. **Si pasa eso, la "deriva" de FASE B está dominada por la
+> cinemática, no por la falta de heading-hold** — y la conclusión "hace falta v2"
+> sería un falso positivo. El arquero que **sí** anduvo en banco
+> (`diag_central_line_sweep`) usa **control directo** de motores, no esta
+> cinemática. **Reconciliar el substrato de movimiento antes de concluir sobre v2**
+> (ver "Riesgos" en el reporte coach 2026-06-03 / journal del día).
+
 **FASE A — Movimiento lateral + dirección.**
 - Apretás el botón → el robot se mueve **de costado** (NO adelante/atrás), **izquierda primero**.
 - Si va a la derecha → recompilar con `-DDIAG_STRAFE_INVERT_LR`.

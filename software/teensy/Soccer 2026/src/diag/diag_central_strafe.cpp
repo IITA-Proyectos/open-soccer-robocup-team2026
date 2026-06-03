@@ -11,13 +11,28 @@
 //
 // ⚠️ SIN realimentación de heading (open-loop). Por qué:
 //   - El CENTRAL **NO tiene BNO055** (el heading viene del TOP, que acá NO se usa).
-//   - Los OTOS están en la base (DOWN) y su pose va **DOWN→TOP**, NO a CENTRAL.
 //   Entonces este test comanda **omega = 0**: para un omni-3 con ruedas parejas y
 //   bien calibradas, eso es **traslación pura SIN rotar** → el robot "mira al
 //   frente" mientras se mueve de costado. Cualquier rotación residual es DERIVA
-//   y NO se corrige acá (no hay sensor de heading en CENTRAL).
-//   [FUTURO v2 = heading-hold real con los OTOS de la base → requiere que DOWN
-//    mande la pose/heading OTOS a CENTRAL (mensaje nuevo). Ver doc, "Próximos pasos".]
+//   y NO se corrige acá.
+//   [v2 = heading-hold real. YA VIABLE Y LOCAL EN CENTRAL: el OTOS de la base
+//    llega a CENTRAL por broadcast simétrico de DOWN (2026-06-01, Serial1) y está
+//    en world_model (world_model_get_otos_heading_deg / _otos_is_fresh). v2 = sumar
+//    un HeadingPID sobre ese heading. NO requiere mensaje nuevo ni placa TOP.]
+//
+// ⚠️⚠️ CAVEAT DE CINEMÁTICA (leer ANTES de interpretar la deriva — FASE B):
+//   Este sketch comanda vx vía motors_apply_command() → inverse_kinematics() con
+//   WHEEL_ANGLES_DEG={60,-60,180}, marcado TENTATIVO en config_central.h:72 (sin
+//   medir con Enzo). La sesión de banco del 2026-06-01 (María) encontró que la
+//   cinemática genérica da CÍRCULOS y que en ese robot el motor M2 tiene la
+//   polaridad INA/INB INVERTIDA por hardware — y motors_zircon.cpp NO tiene
+//   inversión por motor. Resultado esperado: el movimiento lateral puede salir en
+//   diagonal / rotando por la cinemática, NO sólo por la deriva open-loop. Si pasa
+//   eso, la "deriva" de FASE B estaría dominada por la cinemática, no por la falta
+//   de heading-hold. El arquero que SÍ anduvo en banco (diag_central_line_sweep)
+//   usa CONTROL DIRECTO de motores (M1/M2 contrarios + M3 acompaña), no esta
+//   cinemática. Reconciliar el substrato de movimiento ANTES de concluir sobre v2.
+//   Ver journal/2026-06-01-arquero-seguidor-linea-y-calibracion.md.
 //
 // ⚠️ DISTANCIA OPEN-LOOP (aproximada):
 //   CENTRAL no recibe odometría. La distancia se hace por TIEMPO: a S mm/s, 30 cm

@@ -152,9 +152,10 @@ void comm_central_send_line_urgent() {
     // de competencia no lo trae. Reemplaza el volcado de 32 sensores crudos (eso
     // vive en diag_down).
     // NOTA: line_present YA se transmite a CENTRAL en LineStatusV2 (arriba). La
-    // pose OTOS por ahora NO se transmite a CENTRAL (va al TOP por Serial5);
-    // mandarla a CENTRAL requiere destrabar los pines 7/8 (TASK-036). Aca se
-    // muestra por USB para validar que el dato existe y responde.
+    // pose OTOS TAMBIEN se transmite a CENTRAL: el broadcast simetrico la difunde
+    // por down_tx a CENTRAL (Serial1/pin0) y a TOP (Serial5). El conflicto pines
+    // 7/8 (TASK-036) esta RESUELTO (CENTRAL recibe por Serial1, no Serial2). Aca
+    // se muestra por USB para diagnostico local.
     static elapsedMillis dbg_since;
     if (dbg_since >= 250) {
         dbg_since = 0;

@@ -4,13 +4,20 @@ title: "Confirmar PIN_KICKER_SOL del solenoide en la placa Zircon (ROBOT2)"
 date_created: 2026-05-15
 assigned: [enzzo195]
 priority: P1
-status: pending
+status: cancelled
 estimated_hours: 1
-blocks: [firmware CENTRAL Nivel 2 — kicker funcional]
+blocks: []
 tags: [hardware, zircon, robot2-delantero, kicker, firmware-central]
 ---
 
-# TASK-011 — Confirmar PIN_KICKER_SOL en Zircon (ROBOT2)
+# TASK-011 — Confirmar PIN_KICKER_SOL en Zircon (ROBOT2) — CANCELADA
+
+> **CANCELADA (2026-06-03):** El robot **NO tiene kicker físico**. No se cablea
+> solenoide; el delantero empuja la pelota por inercia avanzando hacia el arco
+> rival. El campo `kicker_fire` (struct `MotorCommand`), el driver del solenoide
+> (`motors_zircon.cpp`) y el pin/constantes (`PIN_KICKER_SOL`, `KICKER_PULSE_MS`,
+> `KICKER_COOLDOWN_MS` en `config_central.h`) fueron eliminados del firmware vivo.
+> Esta task queda sin objeto. El texto de abajo se conserva como registro histórico.
 
 ## Resumen
 
@@ -95,3 +102,6 @@ _(actualizar cuando se ejecute)_
 
 - 2026-05-15: creado por Claude tras quedar el placeholder en el commit `b10c66d`
   del firmware CENTRAL Nivel 2 (behind-the-ball + kicker + KICKOFF + GK_CLEAR).
+- 2026-06-03: **CANCELADA**. Decisión de equipo: el robot no lleva kicker físico
+  (el delantero empuja la pelota por inercia). Se eliminó todo el código y la
+  configuración del kicker del firmware vivo. La task queda sin objeto.

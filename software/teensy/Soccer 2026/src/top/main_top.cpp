@@ -69,6 +69,12 @@ WorldSnapshot build_snapshot() {
     s.ball_x_mm       = cameras_get_ball_x_mm();
     s.ball_y_mm       = cameras_get_ball_y_mm();
     s.ball_confidence = cameras_get_ball_confidence();
+    // Velocidad de la pelota (mm/s, marco robot). Ahora viaja en el snapshot a
+    // CENTRAL (antes entraba 0 fijo). 0 = sin estimación válida.
+    // ⚠️ PENDIENTE: CENTRAL todavía NO la consume — falta getter en world_model
+    // + llamar bt_classify en strategy. El dato está listo para cablear.
+    s.ball_vx_mm_s    = cameras_get_ball_vx_mm_s();
+    s.ball_vy_mm_s    = cameras_get_ball_vy_mm_s();
 
     // Arcos — mapping de colores → opp/own.
     // TODO: este mapping (yellow=opp, blue=own) está hardcoded. La polaridad

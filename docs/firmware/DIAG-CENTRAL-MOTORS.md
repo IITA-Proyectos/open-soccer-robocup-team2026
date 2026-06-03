@@ -239,7 +239,7 @@ El sketch tenía dos bugs de banco, ya corregidos (host-verificados, compila):
 | 2 | **Mapeo motor firmware → rueda física** (M1/M2/M3 = frente / izq / der) | Correr este diag y completar la tabla del Paso 4 (journal §1.1) |
 | 3 | **Orientación / `MOTOR_DIR` definitiva** | Robot 1 ya medido (`{+1,+1,+1}`, horario visto de arriba — ver "Resultados de calibración"). Confirmar en ambos robots + cargar a producción si hay que invertir algún signo |
 | 4 | Convención global de giro (`+omega` = horario/antihorario) | `diag_central_drive` + IMU/heading (ver caja ⚠️ arriba) |
-| 5 | Confirmar `PIN_KICKER_SOL` (TASK-011) | Multímetro pin 23 ↔ compuerta del MOSFET. Test separado |
+| 5 | ~~Confirmar `PIN_KICKER_SOL` (TASK-011)~~ — **CANCELADO**: el robot no tiene kicker físico (empuja por inercia); TASK-011 cancelada. | — |
 | 6 | Cinemática real (`WHEEL_ANGLES_DEG`, `WHEEL_RADIUS_MM`) — marcada **tentativa** en `config_central.h:62-69` | Sketch de movimientos vectoriales con los 3 motores identificados |
 | 7 | Saturación con los 3 motores simultáneos | Idem (movimientos vectoriales) |
 | 8 | Encoders | Fuera de scope Incheon |

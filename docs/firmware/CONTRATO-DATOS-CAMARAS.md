@@ -78,8 +78,13 @@ Fuente: `src/top/cameras_runtime.cpp` (código vivo).
 
 > **✅ Actualizado 2026-05-31 (TASK-204):** la cámara trasera quedó **soldada en
 > Serial5 (RX pin 21)** — confirmado en banco (`diag_top_cameras`, FORMATO OK).
-> Por eso el UART **TOP→CENTRAL** se movió a **Serial7 (28/29)**. Firmware:
-> `cameras_runtime.cpp` lee la trasera en `Serial5`; `comm_central.cpp` usa `Serial7`.
+> `cameras_runtime.cpp` lee la trasera en `Serial5`.
+>
+> **🔧 Fix 2026-06-02 (vale sobre lo de arriba):** el UART **TOP→CENTRAL** NO va por
+> Serial7. El Teensy 4.0 NO expone Serial7 (28/29) en el borde (son pads SMD traseros);
+> ponerlo ahí dejaba al TOP sin llegar a la CENTRAL. El enlace real es **Serial4 (16/17)**:
+> `src/top/comm_central.cpp` usa **`Serial4`** (cable TOP pin17/TX4 → CENTRAL pin28/RX7,
+> que en el 4.1 sí es Serial7). En el TOP, Serial2 (7/8) = módulo COMM (árbitro).
 
 ### 1.2 Protocolo actual — 9 bytes raw
 

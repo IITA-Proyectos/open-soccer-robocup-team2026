@@ -1,6 +1,7 @@
 #include "cameras_runtime.h"
 #include "cameras.h"
 #include "cameras_fusion.h"
+#include "ball_velocity.h"
 #include "config_top.h"
 
 #include <Arduino.h>
@@ -43,6 +44,10 @@ uint32_t g_last_packet_ms_back  = 0;
 BallFused  g_ball{};
 GoalFused  g_goal_yellow{};
 GoalFused  g_goal_blue{};
+
+// Estimador de velocidad de la pelota (módulo puro host-testeado).
+BallVelocityState        g_ball_vel{};
+const BallVelocityParams g_ball_vel_params = ball_velocity_default_params();
 
 // === Helpers ===
 
@@ -97,6 +102,7 @@ void cameras_init() {
     g_ball = BallFused{};
     g_goal_yellow = GoalFused{};
     g_goal_blue = GoalFused{};
+    ball_velocity_reset(g_ball_vel);
 }
 
 void cameras_tick() {
@@ -124,6 +130,18 @@ void cameras_tick() {
 
     // Recalcular el snapshot fusionado en cada tick — barato (~µs).
     recompute_fused(now_ms);
+
+    // Derivar velocidad de la pelota. Le pasamos como `sample_ms` el timestamp
+    // del packet más nuevo (cualquiera de las 2 cámaras): el estimador sólo
+    // deriva cuando ese timestamp avanza, así que correr esto cada tick (~100 Hz)
+    // no diluye la velocidad pese a que los datos llegan a ~30 Hz. Además le
+    // pasamos `now_ms` (millis()) para que EXPIRE la velocidad por tiempo si los
+    // packets se cortan aunque la cámara siga reportando la pelota visible.
+    const uint32_t sample_ms = (g_last_packet_ms_front > g_last_packet_ms_back)
+                                   ? g_last_packet_ms_front
+                                   : g_last_packet_ms_back;
+    ball_velocity_update(g_ball_vel, g_ball_vel_params,
+                         g_ball.x_mm, g_ball.y_mm, g_ball.visible, sample_ms, now_ms);
 }
 
 // === Getters ===
@@ -132,6 +150,8 @@ bool    cameras_ball_visible()        { return g_ball.visible; }
 int16_t cameras_get_ball_x_mm()       { return g_ball.x_mm; }
 int16_t cameras_get_ball_y_mm()       { return g_ball.y_mm; }
 uint8_t cameras_get_ball_confidence() { return g_ball.confidence; }
+int16_t cameras_get_ball_vx_mm_s()    { return ball_velocity_vx_mm_s(g_ball_vel); }
+int16_t cameras_get_ball_vy_mm_s()    { return ball_velocity_vy_mm_s(g_ball_vel); }
 
 bool    cameras_goal_yellow_visible()              { return g_goal_yellow.visible; }
 int16_t cameras_get_goal_yellow_angle_centideg()   { return g_goal_yellow.angle_centideg; }

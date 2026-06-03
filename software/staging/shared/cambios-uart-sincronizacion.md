@@ -1,3 +1,8 @@
+> ⚠️ **STAGING CONGELADO (2026-06-03) — NO subir más material a `software/staging/`.**
+> Antes de tocar o agregar algo, leé **`software/staging/up_board/00-LEER-PRIMERO-recomendaciones-reuso.md`**.
+> Este scratch repite bugs ya resueltos. Usá el stack de PRODUCCIÓN testeado en
+> `software/teensy/Soccer 2026/src/` (ver el "mapa de reúso" del documento).
+
 ---
 title: "Fix UART: Sincronización robusta del protocolo OpenMV-Teensy"
 date: 2026-03-20

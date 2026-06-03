@@ -11,6 +11,13 @@ flagged_by: "sesión CENTRAL (agente/central) — coordinación cross-placa. Eje
 tags: [top, uart, camaras, comunicacion, central, hardware-truth]
 ---
 
+> **🔧 PARCIALMENTE SUPERADA (fix 2026-06-02 / TASK-039).** La mitad **"cámara trasera → Serial5"**
+> se confirmó y está en firmware ✅. La mitad **"link TOP→CENTRAL → Serial7"** quedó **OBSOLETA**:
+> el Teensy 4.0 **NO expone Serial7 (28/29)** en el borde (son pads SMD traseros), así que el enlace
+> va por **Serial4 (16/17)** — `src/top/comm_central.cpp` usa `Serial4` (cable TOP pin17/TX4 →
+> CENTRAL pin28/RX7). En el TOP, **Serial2 (7/8) = módulo COMM (árbitro)**; ignorar las menciones del
+> cuerpo a "Serial4 = COMM" y "Serial2 = HC-SR04 ECHO" (el HC-SR04 está en pines 4/3).
+
 ## Resumen
 
 La **cámara trasera quedó soldada en los pines de Serial5 (RX5 = pin 21)** de la

@@ -51,11 +51,13 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 ### CENTRAL (Teensy 4.1, Zircon Rev v15)
 - `src/central/main_central.cpp` — entry
 - `src/central/strategy.cpp` — FSM ATK + GK Nivel 2 (KICKOFF/SEARCH/POSITION/APPROACH + PATROL/INTERCEPT/CLEAR + LINE_AVOID). **El cerebro.**
-- `src/central/motors_zircon.{h,cpp}` — PWM 3 motores omni + kicker (ROBOT2)
+- `src/central/motors_zircon.{h,cpp}` — PWM 3 motores omni (sin kicker físico: el robot empuja la pelota por inercia)
 - `src/central/imu_zircon.{h,cpp}` — BNO055 (⚠️ ya NO se conecta en CENTRAL desde 2026-05-31; compat gateado por `-DCENTRAL_HAS_LOCAL_BNO`, off; el heading viene de ARRIBA)
 - `src/central/world_model.{h,cpp}` — espejo del WorldSnapshot
-- `src/central/comm_top.{h,cpp}` — recibe WorldSnapshot del TOP (Serial1)
-- `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 del DOWN (hoy `Serial2` / pin 7). ⚠️ **Veredicto del conflicto 7/8 PENDIENTE de aislar** (Gustavo 2026-05-29: NO se aisló si el motor del driver U17 usa 7/8 — ver pruebas pendientes en `DIAG-CENTRAL-MOTORS.md`). El receiver de banco `diag_central_comm_down` está unificado en **Serial2 / pin 7** (el enlace validado por `diag_down_send1`/`recv1`; mismo UART que producción) — ver [`docs/firmware/DIAG-CENTRAL-COMM-DOWN.md`](firmware/DIAG-CENTRAL-COMM-DOWN.md). Migrar `Serial2 → Serial7` (acá y en el diag) **solo si** se confirma 7/8 = motor **y** se corren motores + comm juntos. 📊 **Análisis profundo del link** (protocolo/CRC, buffers, timing, recuperación ante cortes, P0/P1 + checklist "primera instancia") → [`docs/firmware/ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md`](firmware/ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md).
+- `src/central/comm_top.{h,cpp}` — recibe WorldSnapshot del TOP por **`Serial7` (RX7 = pin 28)** (reasignado 2026-05-31: antes Serial1, se movió a Serial7 cuando el link a DOWN tomó Serial1)
+- `src/central/comm_down.{h,cpp}` — recibe LineStatusV2 + OTOS (Pose2D/Velocity2D) del DOWN por **`Serial1` (pin 0)**. ✅ Conflicto 7/8 **RESUELTO** (2026-05-31: UART movido a Serial1; los pines 7/8 quedan para el motor 2). Receiver de banco: `diag_central_comm_down` ([doc](firmware/DIAG-CENTRAL-COMM-DOWN.md)). 📊 **Análisis profundo del link** (protocolo/CRC, buffers, timing, recuperación ante cortes, P0/P1 + checklist "primera instancia") → [`docs/firmware/ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md`](firmware/ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md).
+
+- **Diags de banco (CENTRAL, `src/diag/`):** `diag_central_motors` (motores + `MOTOR_DIR`), **`diag_central_strafe`** (patrulla lateral del arquero — **open-loop**, omega=0, sin BNO en CENTRAL; ahora que el OTOS llega a CENTRAL por broadcast se le puede sumar heading-hold = v2 — [doc](firmware/DIAG-CENTRAL-STRAFE.md)), `diag_central_drive_straight` (+Y con heading del TOP), `diag_central_comm_down` (link DOWN→CENTRAL), `diag_central_rx_all` (decodifica DOWN+TOP juntos).
 
 ### TOP (Teensy 4.0)
 - `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (4 ToF VL53L7CX en bus único `Wire`, lib `Adafruit_VL53L7CX`. ✅ Bodge de Enzo 2026-05-30: los 4 ToF con LP en pines {9,10,11,12} (activo-alto), enumeran a 0x2A..0x2D, confirmado en banco. `Wire1` liberado para DOWN. ⚠️ Probar ToF SIEMPRE con power-cycle (las direcciones I²C persisten). El firmware vivo `sensors_tof.cpp` todavía lee 1 ToF — extender a los 4 es HAL Sprint B. Plan: escalar a 6 ToF (4 fijos + 2 móviles para pelota). Ver journal 2026-05-30), `comm_*`
@@ -87,7 +89,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
   (tunear gains + confirmar eje/signo del strafe del GK). Gate: 25 envs + 311 tests host.
 
 ### Shared (puro, testeado host-native)
-- `pids`, `kinematics`, `behind_ball`, `cameras_fusion`, `line_filters`, `crc16`, `proto`, `types`
+- `pids`, `kinematics`, `behind_ball`, `cameras_fusion`, `ball_velocity` (velocidad pelota → enciende `bt_classify`; vivo en `build_snapshot`), `line_filters`, `crc16`, `proto`, `types`
 - `strategy_transitions` (caracterización pura de `strategy.cpp` con 35 tests — no conectado, mantener como red)
 
 ## Tests host-native
@@ -99,7 +101,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 | `test_proto` | 13 | CRC, frame, marker |
 | `test_line_filters` | 39 | temporal + hysteresis + spatial + centroide + lifted + saturación todo-blanco |
 | `test_cameras_fusion` | 16 | rot 180°, fuse front+back, watchdog |
-| `test_behind_ball` | 16 | target detrás, aligned-to-shoot, attack-line, kickoff |
+| `test_behind_ball` | 16 | target detrás, alineación para empujar, attack-line, kickoff |
 | `test_strategy_transitions` | 35 | árbol decisión ATK + GK (caracterización) |
 | `test_localization` | 14 | trilateracion + outliers + rotaciones + edge cases |
 | `test_calib_storage` | 19 | persistencia de calibración (`calib_storage`) |
@@ -114,7 +116,13 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 | `test_down_model` | 7 | cadena DOWN: model |
 | `test_down_surface` | 5 | cadena DOWN: surface |
 | `test_down_tracker` | 3 | cadena DOWN: tracker |
+| `test_ball_velocity` | 13 | velocidad pelota (EMA + reset al perder + clamp int16) |
 | **Total (20 envs)** | **262** | **0 fallos** |
+
+> ⚠️ La tabla de arriba es snapshot 2026-05-29. **Número vivo (2026-06-03):
+> 324 tests / 26 envs / 0 fallos** vía `scripts/run-host-tests.sh` (la tabla no
+> incluye los tests sumados después: broadcast, drive_straight, imu_fusion,
+> tof_zone_orient, otos_ingest, gk_cross_track, ball_velocity).
 
 **Estado (2026-05-29, post-merge 3 agentes):** ✅ **262 tests / 20 envs / 0 fallos** —
 verificado con `pio test -e test_native` tras mergear central+top+down a `main`
@@ -137,7 +145,7 @@ nativo, pero ya no es el único camino. Ver
 - TASK-001 (Enzo): fix 10 nets DOWN PCB
 - TASK-002 (Enzo): DRC+ERC ambas placas
 - ~~TASK-006 (Virginia/Elías): flash firmware COMM ESP32-C6~~ → ✅ **FLASHEADA 2026-06-01** (Gustavo). E2E del árbitro **RESUELTO 2026-06-02 (TASK-039)**: el START/STOP del árbitro llega al TOP como **NIVEL GPIO en pines 5/6** (`OUT1`/`OUT2`), no por UART (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART). El `Serial2` (pines 7/8) del COMM queda SOLO para partner ESP-NOW / status.
-- TASK-011 (Enzo): confirmar PIN_KICKER_SOL en Zircon
+- ~~TASK-011 (Enzo): confirmar PIN_KICKER_SOL en Zircon~~ → **CANCELADA**: el robot NO tiene kicker físico (el delantero empuja la pelota por inercia); no se cablea solenoide.
 - TASK-013 (Enzo): recuperar BOM placa TOP
 - TASK-025 (todos): excepción Avast en cada máquina → destraba PlatformIO
 
@@ -153,6 +161,49 @@ nativo, pero ya no es el único camino. Ver
 
 1. **COMM — firmware flasheado ✅ (2026-06-01); E2E del árbitro RESUELTO ✅ (2026-06-02, TASK-039).** El árbitro RCJ **NO viaja por UART**: señaliza como **NIVEL GPIO** hacia el TOP (Teensy 4.0) en **pin 5 = OUT1 (PLAY/STOP)** y **pin 6 = OUT2 (PLAY/STOP)** (en la práctica, en PLAY sube SOLO UNO de los dos —no son espejo—). Nivel: **0 = juego PARADO, 1 = juego EN CURSO (3.3 V)**. Firmware: `src/top/comm_arbiter.cpp::read_referee_gpio()` lee los pines 5/6 con `INPUT_PULLDOWN` y `match_running = (pin5 OR pin6)` (en PLAY sube SOLO UNO de los dos pines —el otro queda en 0— por eso AND nunca daba GO y OR sí; probado en banco 2026-06-02, Gustavo. Sigue siendo fail-safe: si se desconecta el cable del COMM, ambos pines leen 0 con `INPUT_PULLDOWN` → `match_running=false` → STOP). El probe temporal se removió de `main_top.cpp`. El **UART del módulo COMM (TOP `Serial2`, pines 7/8) queda SOLO para partner ESP-NOW / status** — el viejo `COMM_REFEREE_CMD` por UART quedó **obsoleto**. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART). El robot ya recibe START/STOP por GPIO → homologa el árbitro. TASK-006/TASK-039.
 2. **Cámaras sin recalibrar para iluminación Incheon** → no ve la pelota. TASK-022.
+   La migración H7→N6 y los bugs P0 ya están resueltos; **lo único que falta es
+   calibración de banco** (LAB + UART + exposición + H). Kit + procedimiento listos
+   (2026-06-03): `calib-lab-n6.py` en ambos packs + [`docs/firmware/CALIBRACION-VISION-N6.md`](firmware/CALIBRACION-VISION-N6.md).
+   El item #6 del análisis (velocidad de pelota en el TOP) **ya está hecho** (ver Avance 2026-06-03).
+
+### Avance 2026-06-03 (pt.2) — arquero anticipa + robustez velocidad + OTOS heading/slip + merges de agentes
+- **Merges a main:** se trajeron a `main` los trabajos de los agentes **down** (`comm_top` = Serial7 en
+  ESTADO), **central** (prep banco mitad-inferior + review GK + TASK-101 + caveat cinemática del strafe)
+  y **top** (solo el journal histórico del árbitro; sus ediciones a TASK-006/204 quedaron afuera por
+  estar superadas por TASK-039).
+- **`ball_velocity` expira por tiempo (M4):** `ball_velocity_update` recibe `now_ms`; si los packets se
+  cortan pero la cámara sigue `visible`, invalida la velocidad (no sirve fantasmas). 16 tests.
+- **Arquero ANTICIPA (nuevo módulo VIVO `src/shared/ball_predict`):** el GK INTERCEPT apunta a la **X
+  predicha** de la pelota (`pos + v·lookahead`, clamp) en vez de la X actual. Getters `world_model_get_ball_vx/vy_mm_s`.
+  **Fallback automático**: con pelota quieta o velocidad N/A (vx=vy=0) la conducta es **idéntica** a hoy.
+  9 tests. ⚠️ **Cambio de conducta → validar en banco** (tunear `lookahead_s`/`max_lead_mm`).
+- **OTOS heading/slip (M2/M3):** heading dual por **promedio circular** de los headings absolutos (cubre
+  ±180, antes saturaba a ±90); slip por **diferencia de velocidad** menos rotación esperada (antes era
+  diferencia de posición integrada, monótona). Sin cambio de conducta (nadie consume hoy; heading bueno = BNO).
+  ⚠️ **Validar en banco con 2 OTOS** (signo/eje, `OTOS_SEPARATION_MM` real).
+- **Gate:** host **354 tests / 29 envs / 0 fallos**; compilan `down`, `central_robot1/2`, `top_robot1/2`.
+  Los cambios de conducta (arquero) y los de OTOS están **gateados/sin consumidor** → no rompen lo de hoy.
+
+### Avance 2026-06-03 — Visión TASK-022: velocidad de pelota (firmware) + kit de calibración
+- **Pieza A — estimador de velocidad de la pelota (DONE, host-testeado).** `build_snapshot()`
+  llenaba `ball_x/y/confidence` pero dejaba `ball_vx/vy` en **0** → toda la cadena
+  `bt_classify` (ball_trajectory, 7 tests) estaba dormida (siempre `BT_STILL`). Nuevo
+  módulo puro `src/shared/ball_velocity.{h,cpp}`: deriva velocidad (mm/s, marco robot) por
+  diferencias finitas sobre la posición fusionada, **sólo al llegar packet nuevo** (sample_ms),
+  EMA (α=0.4), **reset al perder la pelota** (descarta el 1er frame al reaparecer), re-siembra
+  si el gap > 200 ms, getter con clamp int16. Cableado en `cameras_runtime` (estado +
+  `cameras_get_ball_vx/vy_mm_s`) + 2 líneas en `main_top.cpp::build_snapshot`.
+- **Verificación:** TDD (13 tests nuevos `test_ball_velocity`, RED→GREEN). Suite host
+  completa **324 tests / 26 envs / 0 fallos** (`run-host-tests.sh`). Compilan **top_robot1,
+  top_robot2 y diag_top_all** (SUCCESS). El cableado de runtime es glue Arduino (compile-only,
+  como el resto del runtime); la lógica real está 100% bajo test.
+- **Pieza B — kit de calibración (para banco/Incheon).** `calib-lab-n6.py` (standalone, en
+  ambos packs de cámara): muestra una sonda central, imprime el LAB real del objeto + un tuple
+  sugerido y dibuja los blobs que agarra el threshold actual. NO toca el script de competencia.
+  Procedimiento de 1 página: [`docs/firmware/CALIBRACION-VISION-N6.md`](firmware/CALIBRACION-VISION-N6.md).
+- **Pendiente humano (Virginia):** la calibración de banco en sí (LAB + UART + exposición + H)
+  — Claude no cierra TASK-022 (es hardware). ⚠️ El `calib-lab-n6.py` usa API OpenMV estándar
+  (`get_statistics`/`draw_*`) pero **no pude probarlo en la N6**: confirmar en banco.
 
 ### Resuelto 2026-05-24
 - ~~**DOWN — pinout Teensy↔mux NO confirmado**~~ → **VALIDADO EMPÍRICAMENTE.**

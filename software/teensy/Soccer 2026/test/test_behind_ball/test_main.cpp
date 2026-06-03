@@ -58,32 +58,32 @@ void test_target_goal_behind_robot_pulls_target_forward(void) {
 }
 
 // ============================================================================
-// is_aligned_to_shoot
+// is_aligned_to_push
 // ============================================================================
 
 void test_aligned_close_and_front_returns_true(void) {
     // Pelota a 50 mm al frente, arco al frente → alineado.
-    TEST_ASSERT_TRUE(is_aligned_to_shoot(0.0f, 50.0f, 0.0f, /*kick_dist=*/80.0f, /*kick_ang=*/12.0f));
+    TEST_ASSERT_TRUE(is_aligned_to_push(0.0f, 50.0f, 0.0f, /*kick_dist=*/80.0f, /*kick_ang=*/12.0f));
 }
 
 void test_aligned_too_far_returns_false(void) {
     // Pelota a 200 mm — más lejos que kick_dist=80.
-    TEST_ASSERT_FALSE(is_aligned_to_shoot(0.0f, 200.0f, 0.0f, 80.0f, 12.0f));
+    TEST_ASSERT_FALSE(is_aligned_to_push(0.0f, 200.0f, 0.0f, 80.0f, 12.0f));
 }
 
 void test_aligned_goal_off_axis_returns_false(void) {
     // Pelota cerca (50 mm) pero arco a 30° → no alineado para patear.
-    TEST_ASSERT_FALSE(is_aligned_to_shoot(0.0f, 50.0f, 30.0f, 80.0f, 12.0f));
+    TEST_ASSERT_FALSE(is_aligned_to_push(0.0f, 50.0f, 30.0f, 80.0f, 12.0f));
 }
 
 void test_aligned_at_threshold_passes(void) {
     // Exactamente en el threshold (angle=12, dist=80).
-    TEST_ASSERT_TRUE(is_aligned_to_shoot(0.0f, 80.0f, 12.0f, 80.0f, 12.0f));
+    TEST_ASSERT_TRUE(is_aligned_to_push(0.0f, 80.0f, 12.0f, 80.0f, 12.0f));
 }
 
 void test_aligned_negative_angle_uses_abs(void) {
     // Arco a -10° → dentro de tolerancia ±12°.
-    TEST_ASSERT_TRUE(is_aligned_to_shoot(20.0f, 50.0f, -10.0f, 80.0f, 12.0f));
+    TEST_ASSERT_TRUE(is_aligned_to_push(20.0f, 50.0f, -10.0f, 80.0f, 12.0f));
 }
 
 // ============================================================================
@@ -146,7 +146,7 @@ int main(int, char**) {
     RUN_TEST(test_target_zero_gap_returns_ball_position);
     RUN_TEST(test_target_goal_behind_robot_pulls_target_forward);
 
-    // is_aligned_to_shoot
+    // is_aligned_to_push
     RUN_TEST(test_aligned_close_and_front_returns_true);
     RUN_TEST(test_aligned_too_far_returns_false);
     RUN_TEST(test_aligned_goal_off_axis_returns_false);

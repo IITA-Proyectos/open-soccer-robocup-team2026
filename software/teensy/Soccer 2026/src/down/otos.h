@@ -15,10 +15,14 @@
 // Fusión central (pose del robot en el centro):
 //   x_robot      = (x_otos_izq + x_otos_der) / 2
 //   y_robot      = (y_otos_izq + y_otos_der) / 2
-//   heading      = atan2(otos_der.y - otos_izq.y, OTOS_SEPARATION_MM)
-//                  (porque ambos OTOS se mueven distinto si el robot rota)
+//   heading      = PROMEDIO CIRCULAR de los headings ABSOLUTOS de cada OTOS:
+//                    atan2( sin(h_izq)+sin(h_der), cos(h_izq)+cos(h_der) )
+//                  (cubre todo el rango ±180° y maneja el wrap; ver M2 en otos.cpp)
+//   ⚠️ NO usar atan2(otos_der.y - otos_izq.y, OTOS_SEPARATION_MM) como heading:
+//      satura a (-90,+90) y descarta el heading absoluto. Queda SOLO como
+//      diagnóstico (otos_get_heading_diag_deg()).
 //
-// Stub si solo un OTOS funciona (placa 04-12 con solo SDA2/SCL2 ruteado):
+// Modo single-OTOS (degradación, p.ej. placa 04-12 con solo SDA2/SCL2 ruteado):
 //   Se usa el OTOS disponible como única fuente de pose. No hay diferencial.
 
 #pragma once
@@ -41,8 +45,11 @@ float otos_get_vy_mm_s();
 float otos_get_omega_rad_s();
 
 // Análisis diferencial:
-//   Retorna la magnitud del slip detectado (mm/s de diferencia entre los OTOS
-//   menos lo esperable por la rotación pura). 0 = sin slip.
+//   Retorna la magnitud del slip lateral detectado, en mm/s: la diferencia de
+//   velocidad lateral entre los 2 OTOS que NO se explica por la rotación del cuerpo:
+//     slip = | (vx_der - vx_izq) - g_omega * OTOS_SEPARATION_MM |   [mm/s]
+//   Se computa desde VELOCIDADES (no posición integrada), por lo que está ACOTADO
+//   y NO es monótono: vuelve a ~0 cuando cesa el patinaje. 0 = sin slip. (Ver M3.)
 float otos_get_slip_estimate();
 
 // Reset de la pose acumulada a (0, 0, 0).
@@ -50,7 +57,11 @@ void  otos_reset();
 
 // Diagnóstico:
 bool     otos_is_left_ready();   // OTOS izquierdo (Wire / I2C bus 1) responde
-bool     otos_is_right_ready();  // OTOS derecho (Wire2 / I2C bus 2) responde
+bool     otos_is_right_ready();  // OTOS derecho (Wire1 / I2C bus 2) responde
 uint32_t otos_get_tick_count();
+
+// Diagnóstico (solo modo dual): heading inferido de atan2(dy, sep), saturado a
+// (-90,+90). NO es el heading autoritativo (ese es otos_get_heading_deg()).
+float    otos_get_heading_diag_deg();
 
 }  // namespace iitasoccer

@@ -56,19 +56,13 @@ constexpr uint8_t LINE_FLAG_MUX_DEAD            = 0x02;
 constexpr uint8_t LINE_FLAG_CALIBRATION_INVALID = 0x04;
 
 // Comando de motor desde TOP al Zircon (motor server).
+// El robot NO tiene kicker físico: el delantero empuja la pelota por inercia,
+// así que el struct sólo lleva velocidades (sin flag de disparo).
 struct MotorCommand {
     int16_t vx_mm_s;              // velocidad lineal X deseada
     int16_t vy_mm_s;              // velocidad lineal Y deseada
     int16_t omega_centideg_s;     // velocidad angular deseada
-    uint8_t kicker_fire;          // 0 = no, 1 = patear (solo delantero)
     uint8_t dribbler_pwm;         // 0-255 (futuro)
-} __attribute__((packed));
-
-// Estado reportado por el Zircon al TOP.
-struct ZirconStatus {
-    uint8_t motors_ok;            // bitmask: bit 0=motor1, 1=motor2, 2=motor3
-    uint8_t kicker_ready;         // 0/1
-    uint16_t battery_mv;          // mV
 } __attribute__((packed));
 
 // Observación de pelota desde cámara.

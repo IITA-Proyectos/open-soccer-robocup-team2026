@@ -87,7 +87,7 @@ La placa ARRIBA es el módulo más complejo computacionalmente del robot. Su car
 |-----------|----------|----------|----------------|
 | MCU Teensy 4.0 | 1 | — | Cortex-M7 600 MHz, 1 MB RAM, 2 MB flash |
 | Cámaras OpenMV N6 (antes H7 Plus) | 2 | UART (Serial3 frontal + Serial5 trasera) | 19200 baud, protocolo viejo 9 bytes/packet |
-| BNO055 IMU | 2 | I2C dual (Wire + Wire1) | Wire1 remapeado a pines 24/25 (Q3 confirmado) |
+| BNO055 IMU | 2 | I2C: **ambos en Wire (18/19)** | LEFT=0x28, RIGHT=0x29 (ADR a 3V3). Wire1 (24/25) quedó LIBRE para DOWN (recableado 2026-05-31; ver §Buses I2C + sensors_imu.cpp) |
 | Sensor ToF VL53L7CX | 4 fijos (plan: 6) | **TODOS en `Wire` (I²C0)**, LP individual por bodge | 8×8 SPAD multizona. Dir 0x2A..0x2D. Plan: +2 móviles para pelota |
 | Ultrasonido HC-SR04 | 1 | TRIG=pin 4 / ECHO=pin 3 | Frontal, fallback de ToF, lectura bloqueante 25 ms (banco 2026-05-31) |
 | Árbitro RCJ (START/STOP) | — | **GPIO: pin 5 = OUT1 (PLAY/STOP), pin 6 = OUT2 (espejo de OUT1)** | Nivel 0 = juego PARADO, 1 = juego EN CURSO (3.3V). NO viene por UART (fix 2026-06-02 / TASK-039) |

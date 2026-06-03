@@ -24,7 +24,11 @@ uint32_t g_pose_last_rx_ms = 0;
 uint32_t g_vel_last_rx_ms  = 0;
 
 bool fresh(uint32_t last_ms) {
-    return (millis() - last_ms) < DOWN_HEARTBEAT_TIMEOUT_MS;
+    // last_ms == 0 → todavía no llegó ningún frame de ese tipo. Sin este guard,
+    // millis()-0 da "fresco" los primeros DOWN_HEARTBEAT_TIMEOUT_MS post-boot y
+    // expone el struct cero-inicializado como dato real. (Mismo patrón que
+    // central/world_model.cpp.)
+    return last_ms != 0 && (millis() - last_ms) < DOWN_HEARTBEAT_TIMEOUT_MS;
 }
 
 void handle_frame(const Frame& f) {

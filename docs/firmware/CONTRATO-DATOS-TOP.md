@@ -189,7 +189,7 @@ commit 2a9064e: GAP-001 / G-TOP-12 cerrado).
 | 12 | `ball_confidence` | u8 | — | 0..100 | **REAL** — ponderado por consenso dual (`cameras_fusion.cpp`) | Calidad de la detección de la pelota. 100 = ambas cámaras concuerdan. |
 | 13 | `ball_vx_mm_s` | i16 | mm/s | −32767..+32767; **`(0,0)` = N/A** | **STUB — siempre 0** (TOP lo llena en Nivel 2) | Velocidad de la pelota eje X en marco robot (mm/s). `0,0` = N/A. CENTRAL la usa para clasificar trayectoria (dejar circular / interceptar / desviar). |
 | 15 | `ball_vy_mm_s` | i16 | mm/s | id. | **STUB — siempre 0** (TOP lo llena en Nivel 2) | Velocidad de la pelota eje Y en marco robot (mm/s). El par `(ball_vx_mm_s, ball_vy_mm_s) = (0,0)` indica N/A. |
-| 17 | `goal_opp_angle_centideg` | i16 | centideg | −18000..+18000 | **REAL** pero escala sin calibrar | Ángulo del arco rival respecto al frente del robot. Convención: atan2(x_mm, y_mm), 0° = frente, +90° = izquierda. |
+| 17 | `goal_opp_angle_centideg` | i16 | centideg | −18000..+18000 | **REAL** pero escala sin calibrar | Ángulo del arco rival respecto al frente del robot. Convención: atan2(x_mm, y_mm), 0° = frente, **+90° = DERECHA** (ver `cameras_fusion.cpp:97` + CONVENCION-EJES-ROBOT.md). |
 | 19 | `goal_opp_distance_mm` | i16 | mm | 0..32767 | **REAL** pero escala sin calibrar | Distancia estimada al arco rival. Precision baja hasta calibrar `CAMERA_UNIT_TO_MM`. |
 | 21 | `goal_opp_visible` | u8 | — | 0 / 1 | **REAL**; polaridad **HARDCODEADA** `yellow=opp` (`main_top.cpp:65`) | 1 = el arco rival está visible. Polaridad incorrecta en ~50% de partidos hasta leer el comando de árbitro. |
 | 22 | `goal_own_visible` | u8 | — | 0 / 1 | **REAL**; polaridad **HARDCODEADA** `blue=own` (`main_top.cpp:69`) | 1 = el arco propio está visible. Mismo problema de polaridad. |
@@ -224,9 +224,11 @@ Frame completo TOP→CENTRAL: 27 + 7 overhead = **34 bytes**.
 
 - **Heading** (`my_heading_centideg`): ángulo de orientación del robot en el
   marco cancha. 0 = orientación al momento del boot (no necesariamente norte).
-  Positivo = horario visto desde arriba.
+  Positivo = **CCW (antihorario)** visto desde arriba (el heading se expone ya con
+  `HEADING_SIGN=-1` en sensors_imu; coincide con CONVENCION-EJES y con `+omega=CCW`
+  de kinematics/MotorCommand).
 - **Ball / goal angles**: ángulo en marco ROBOT, `atan2(x_mm, y_mm)`.
-  0° = frente del robot, +90° = izquierda del robot.
+  0° = frente del robot, **+90° = DERECHA** del robot (coincide con el diagrama de arriba).
 - **`ball_x_mm`, `ball_y_mm`**: vector pelota en marco robot (mm).
   `+y` = frente, `+x` = lateral derecho.
 - **Unidades**: todos los ángulos en **centidegrees** (grados × 100).

@@ -1,17 +1,15 @@
 // sensors_tof.h — 4 slots ToF (VL53L7CX) + 1 HC-SR04 ultrasonido.
 //
-// Hardware (schematic TOP):
-//   • U2, U3 → Wire   (I2C bus 0, compartiendo bus con BNO055 LEFT)
-//   • U5, U17 → Wire1 (I2C bus 1, compartiendo bus con BNO055 RIGHT, REMAP 24/25)
-//   • U6 HC-SR04 → TRIG (pin 6) y ECHO (pin 7)
+// Hardware (estado vivo, banco 2026-05-30 — supera el esquema viejo de abajo):
+//   • Los 4 ToF VL53L7CX cuelgan del bus ÚNICO Wire (I2C0, 18/19) y enumeran a
+//     0x2A..0x2D vía las patas LP {9,10,11,12} (bodge de Enzo; TOP_ENABLE_MULTI_TOF).
+//   • Wire1 (24/25) quedó LIBRE para la placa DOWN.
+//   • HC-SR04 → TRIG=pin 4, ECHO=pin 3 (NO 6/7; ver pinout_common.h).
+//   ⚠️ Probar SIEMPRE con power-cycle (las direcciones I2C de los VL53L7CX persisten).
+//   Lib usada: Adafruit_VL53L7CX (la STM32duino tiene bug en Teensy 4.0).
 //
-// Estado al 2026-05-24 (ver journal/2026-05-24-hardware-up-top-tof-frontal-resuelto.md):
-//   • Solo U2 (frontal, Wire @ 0x29) esta fisicamente instalado y operativo.
-//     Lib usada: Adafruit_VL53L7CX (la STM32duino tiene bug en Teensy 4.0).
-//   • U3 / U5 / U17 son slots vacios — get_distance_mm(1..3) retorna
-//     TOF_NO_READING permanente hasta que lleguen los modulos. Cuando lleguen,
-//     toca agregar enumeracion XSHUT (cambio de address I2C) en sensors_tof.cpp.
-//   • HC-SR04 frontal funciona desde el dia 1.
+// (Histórico previo al bodge 2026-05-30: U2/U3 en Wire; U5/U17 en Wire1 24/25;
+//  HC-SR04 en TRIG6/ECHO7; solo U2 instalado. Superado — no usar.)
 //
 // API publica estable: no cambio con la migracion stub -> Adafruit.
 

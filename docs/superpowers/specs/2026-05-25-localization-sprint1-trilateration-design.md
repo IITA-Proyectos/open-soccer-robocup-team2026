@@ -200,6 +200,14 @@ LocalizationPose localization_runtime_get_pose();
 
 ### 4.1 Sistema de referencia
 
+> ⚠️ **CORRECCIÓN 2026-06-03 (ejes invertidos).** Los dos bullets de abajo
+> asignan +X al lado **largo** (243 cm) y +Y al lado **corto** (182 cm) — está
+> **INVERTIDO**. Lo correcto (verificado contra el field spec oficial RCJ 2026):
+> **+Y = arco-a-arco = lado LARGO = 2430 mm pared-a-pared** y **+X = lateral =
+> lado CORTO = 1820 mm**. El firmware (`pinout_common.h`) y la convención
+> canónica (`docs/CONVENCION-EJES-ROBOT.md §2`) ya están corregidos. Este texto
+> histórico se deja como registro de diseño.
+
 - **Origen**: esquina inferior-izquierda de la cancha (cuando se mira desde el
   arco propio hacia el rival).
 - **Eje +X**: paralelo al lado largo de la cancha (243 cm), apuntando al lateral

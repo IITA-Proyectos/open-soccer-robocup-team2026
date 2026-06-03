@@ -28,6 +28,9 @@ bool  g_right_ready = false;
 float g_x_mm = 0.0f;
 float g_y_mm = 0.0f;
 float g_heading_deg = 0.0f;
+// Heading inferido de la diferencia Y entre OTOS (atan2(dy, sep)). SOLO diagnóstico:
+// saturado a (-90,+90); NO se usa como heading autoritativo. Ver M2 en otos_tick().
+float g_heading_diag_deg = 0.0f;
 float g_vx = 0.0f, g_vy = 0.0f, g_omega = 0.0f;
 float g_slip = 0.0f;
 
@@ -37,11 +40,10 @@ uint32_t g_tick_count = 0;
 float g_left_x = 0.0f,  g_left_y = 0.0f,  g_left_h = 0.0f;
 float g_right_x = 0.0f, g_right_y = 0.0f, g_right_h = 0.0f;
 
-// Última velocidad de cada OTOS. Mientras la lib SparkFun esté comentada,
-// quedan en 0 → los getters de velocidad retornan 0 (igual que antes).
-// Cuando se descomente TODO_OTOS_LIB, el bloque de otos_tick las llena y la
-// fusión de abajo computa g_vx/g_vy/g_omega. Esto cierra el bug latente:
-// antes g_vx/g_vy/g_omega NUNCA se asignaban ni con la lib activa.
+// Última velocidad de cada OTOS. La lib SparkFun YA está activa (TASK-012,
+// 2026-05-24): otos_tick() lee getVelocity() y llena estos campos, y la fusión
+// de abajo computa g_vx/g_vy/g_omega con datos reales. (Antes, con la lib
+// comentada, quedaban en 0 — bug latente ya cerrado.)
 float g_left_vx = 0.0f,  g_left_vy = 0.0f,  g_left_w = 0.0f;
 float g_right_vx = 0.0f, g_right_vy = 0.0f, g_right_w = 0.0f;
 
@@ -100,22 +102,56 @@ void otos_tick() {
         g_x_mm = (g_left_x + g_right_x) * 0.5f;
         g_y_mm = (g_left_y + g_right_y) * 0.5f;
 
-        // Heading inferido de la diferencia Y entre OTOS izq y der separados por
-        // OTOS_SEPARATION_MM (configurable).
-        const float dy = g_right_y - g_left_y;
-        g_heading_deg = std::atan2(dy, OTOS_SEPARATION_MM) * (180.0f / M_PI);
+        // --- M2: Heading dual por PROMEDIO CIRCULAR de los headings ABSOLUTOS ---
+        // Cada OTOS tiene su propio heading absoluto (g_left_h / g_right_h, en grados,
+        // wrap ±180) medido por su IMU interna. El método viejo
+        //   atan2(g_right_y - g_left_y, OTOS_SEPARATION_MM)
+        // estaba MAL por dos razones:
+        //   (1) saturaba a (-90°, +90°) → no podía representar heading completo ±180°,
+        //   (2) descartaba el heading absoluto que cada OTOS ya entrega.
+        // Fix: promedio circular de los dos headings absolutos. El promedio circular
+        // maneja el wrap ±180° correctamente (p.ej. promediar +170° y -170° da ±180°,
+        // no 0° como haría un promedio aritmético):
+        //   h = atan2(sin(hl)+sin(hr), cos(hl)+cos(hr))
+        const float hl_rad = g_left_h  * (M_PI / 180.0f);
+        const float hr_rad = g_right_h * (M_PI / 180.0f);
+        const float sin_sum = std::sin(hl_rad) + std::sin(hr_rad);
+        const float cos_sum = std::cos(hl_rad) + std::cos(hr_rad);
+        g_heading_deg = std::atan2(sin_sum, cos_sum) * (180.0f / M_PI);  // ∈ (-180, 180]
 
-        // Velocidad del centro = promedio de los 2 (0 mientras la lib esté
-        // comentada → comportamiento actual idéntico).
+        // DIAGNÓSTICO ÚNICAMENTE (NO es el heading): el ángulo inferido de la
+        // diferencia Y entre los OTOS separados por OTOS_SEPARATION_MM. Saturado a
+        // (-90°, +90°). Útil solo para chequear coherencia con g_heading_deg en banco.
+        g_heading_diag_deg =
+            std::atan2(g_right_y - g_left_y, OTOS_SEPARATION_MM) * (180.0f / M_PI);
+
+        // Velocidad del centro = promedio de los 2 (la lib SparkFun ya está
+        // activa, así que estos son valores reales de getVelocity()).
         g_vx = (g_left_vx + g_right_vx) * 0.5f;
         g_vy = (g_left_vy + g_right_vy) * 0.5f;
         g_omega = (g_left_w + g_right_w) * 0.5f;
 
-        // Slip estimate: diferencia X esperada por la rotación es
-        // |omega| * radio_a_otos. Si la diferencia X observada es mayor, hay slip.
-        // Para una estimación simple sin omega instantáneo: usar diff_x / dt como
-        // proxy en el firmware más completo. Por ahora, slip = |diff_x|.
-        g_slip = std::abs(g_right_x - g_left_x);
+        // --- M3: Slip estimate desde VELOCIDADES (NO desde posición integrada) ---
+        // El método viejo, g_slip = |g_right_x - g_left_x|, usaba POSICIÓN integrada:
+        // esa diferencia crece monótona con la deriva de cada OTOS y se satura a 255
+        // (clamp de abajo) → inservible.
+        //
+        // Físico: si el robot rota a ω (rad/s), los dos OTOS (separados D = OTOS_
+        // SEPARATION_MM, uno a cada costado) ven velocidades laterales (eje X local)
+        // que difieren por la rotación pura en:
+        //   Δvx_esperado = ω * D            [rad/s * mm = mm/s]
+        // (right está a +D/2 del centro y left a -D/2; la contribución relativa de la
+        // rotación a vx_right - vx_left es ω·D). Lo que NO se explica por esa rotación
+        // es slip lateral (ruedas patinando, p.ej. al patear):
+        //   slip = | (g_right_vx - g_left_vx) - ω * D |     [mm/s]
+        // Usamos g_omega (rad/s, ya promediado arriba) como estimador de ω del cuerpo.
+        //
+        // Propiedades: ACOTADO (depende de velocidades instantáneas, no integra) →
+        // NO es monótono, vuelve a ~0 cuando cesa el patinaje. Unidad: mm/s.
+        // Signo/eje: se asume eje X local = lateral y que +ω·D corresponde al término
+        // de (right - left); CONFIRMAR EN BANCO el signo real (ver validación).
+        const float dvx_rotation = g_omega * OTOS_SEPARATION_MM;  // mm/s esperados por rotación
+        g_slip = std::abs((g_right_vx - g_left_vx) - dvx_rotation);
     } else if (g_left_ready) {
         g_x_mm = g_left_x; g_y_mm = g_left_y; g_heading_deg = g_left_h;
         g_vx = g_left_vx; g_vy = g_left_vy; g_omega = g_left_w;
@@ -148,5 +184,10 @@ void otos_reset() {
 bool     otos_is_left_ready()   { return g_left_ready; }
 bool     otos_is_right_ready()  { return g_right_ready; }
 uint32_t otos_get_tick_count()  { return g_tick_count; }
+
+// Diagnóstico: heading inferido de la diferencia Y (atan2(dy, sep)), saturado a
+// (-90,+90). NO es el heading autoritativo (ese es otos_get_heading_deg, promedio
+// circular). Útil en banco para contrastar contra el heading real con 2 OTOS.
+float    otos_get_heading_diag_deg() { return g_heading_diag_deg; }
 
 }  // namespace iitasoccer

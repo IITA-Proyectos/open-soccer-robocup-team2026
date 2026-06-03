@@ -122,11 +122,11 @@ AtkDecision atk_decide_transition(AtkPhase current,
                     phase = AtkPhase::POSITION;
                     break;
                 }
-                // Alineados — ¿alcanza para patear?
-                if (is_aligned_to_shoot(w.ball_x_mm, w.ball_y_mm,
-                                        w.goal_angle_deg,
-                                        t.kick_dist_mm, t.kick_angle_deg)) {
-                    d.kicker_fire = true;
+                // Alineados al arco — punto de empuje (sin kicker físico).
+                if (is_aligned_to_push(w.ball_x_mm, w.ball_y_mm,
+                                       w.goal_angle_deg,
+                                       t.kick_dist_mm, t.kick_angle_deg)) {
+                    d.kicker_fire = true;   // mirror de caracterización: "alineado para empujar"
                 }
             }
             break;

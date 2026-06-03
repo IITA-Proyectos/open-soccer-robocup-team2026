@@ -34,8 +34,8 @@ bool     line_ring_is_lifted();         // true si robot está en aire (datos no
 // Acceso a lecturas crudas y calibración.
 uint16_t line_ring_get_raw(uint8_t sensor_idx);    // 0..NUM_LINE_SENSORS-1
 bool     line_ring_get_white(uint8_t sensor_idx);  // true si sensor i ve blanco
-void     line_ring_calibrate_carpet();             // bloquea ~500 ms tomando muestras
-void     line_ring_calibrate_white();              // idem
+void     line_ring_calibrate_carpet();             // bloquea ~320 ms (32 × delay(10) + muestreo)
+void     line_ring_calibrate_white();              // idem (~320 ms)
 
 // Carga calibracion por sensor desde afuera (ej: valores leidos de EEPROM),
 // SIN muestrear hardware. carpet[i]/white[i] en cuentas ADC; el umbral se

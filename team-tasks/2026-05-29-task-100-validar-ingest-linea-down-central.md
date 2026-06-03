@@ -10,6 +10,14 @@ blocked_by: [task-036]
 tags: [firmware, hardware, central, down, uart, linea]
 ---
 
+> **🔧 CORRECCIÓN 2026-06-03 (leer antes de cablear).** El cuerpo de abajo dice
+> "Serial2 / pines 7-8" y depende del "conflicto 7/8 (TASK-036)". Eso está
+> **SUPERADO**: el link DOWN→CENTRAL es **Serial1 (RX1 = pin 0)** y el conflicto
+> 7/8 fue **RESUELTO** (2026-05-31; los pines 7/8 quedaron para el motor 2).
+> ⚠️ NO conectar el cable de DOWN al pin 7 — ahí va un H-bridge. El receptor de
+> banco vigente decodifica `LineStatusV2` por Serial1. Ver ESTADO-ACTUAL.md y
+> `DIAG-CENTRAL-COMM-DOWN.md`.
+
 ## Resumen
 
 Confirmar en hardware real que CENTRAL ahora **sí recibe** los frames

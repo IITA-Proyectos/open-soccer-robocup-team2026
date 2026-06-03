@@ -120,7 +120,10 @@ void comm_arbiter_send_status(uint8_t role, uint8_t error_flags, uint16_t batter
 }
 
 bool comm_arbiter_partner_is_fresh() {
-    return (millis() - g_partner_last_rx_ms) < 500;  // 500 ms heartbeat partner
+    // g_partner_last_rx_ms==0 → nunca llegó un frame del partner. Sin este guard,
+    // millis()-0 < 500 da "fresco" los primeros 500 ms post-boot y expone el
+    // PartnerSnapshot cero-inicializado como real (mismo bug ya parcheado en comm_down).
+    return g_partner_last_rx_ms != 0 && (millis() - g_partner_last_rx_ms) < 500;  // 500 ms heartbeat
 }
 
 const PartnerSnapshot& comm_arbiter_get_partner() { return g_partner; }

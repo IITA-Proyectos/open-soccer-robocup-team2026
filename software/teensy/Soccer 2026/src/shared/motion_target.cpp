@@ -14,8 +14,6 @@ MotionCmd mt_compute(const MotionIn& in){
             c.vx_mm_s = (int16_t)lroundf(sp * in.ball_x_mm / n);
             c.vy_mm_s = (int16_t)lroundf(sp * in.ball_y_mm / n);
         }
-    } else if (in.intent == MI_KICK){
-        c.kicker = 1;
     }
     // MI_STOP / MI_HOLD: c queda en cero (placeholder; HOLD == STOP hasta Plan 2).
     return c;

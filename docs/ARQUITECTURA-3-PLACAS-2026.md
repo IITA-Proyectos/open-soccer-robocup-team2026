@@ -1,7 +1,7 @@
 ---
 title: "Arquitectura distribuida de 3 placas — Robot 2026"
 date: 2026-05-11
-status: propuesta
+status: vigente
 audience: equipo IITA Soccer Open (Director, Coach, Competidores)
 tags: [arquitectura, hardware, software, top-board, down-board, central, distribuida]
 ---
@@ -27,7 +27,7 @@ El robot 2026 distribuye su inteligencia en **3 placas especializadas** conectad
 ├────────────────────────┤         ├────────────────────────┤         ├────────────────────────┤
 │ • 2 cámaras OpenMV     │         │ • FSM principal        │         │ • 32 sensores luz      │
 │ • 2 IMU BNO055         │         │ • Motores 3-omni + PID │         │ • 2 OTOS odométricos   │
-│ • 4 ToF + 1 ultrasonido│         │ • Kicker / dribbler    │         │ • Measurement línea    │
+│ • 4 ToF + 1 ultrasonido│         │ • Dribbler (sin kicker)│         │ • Measurement línea    │
 │ • Árbitro GPIO 5/6     │         │ • Coordinación partner │         │ • Detección bordes     │
 │ • Fusión sensor → pose │         │ • Watchdog global      │         │                        │
 │   (x, y, heading, ball)│         │                        │         │                        │
@@ -76,7 +76,7 @@ Cinco principios de diseño justifican la elección:
 | Lazos de control (PIDs) | **Todos los PIDs del robot corren acá**: PID de heading (consume IMU desde ARRIBA), PID lateral del arquero (consume measurement de línea desde ABAJO, solo en modo arquero), PID de approach a la pelota. Un único lugar con todas las ganancias tuneables. |
 | Watchdog global | Si ARRIBA timeout 500 ms → modo seguro (parar motores, parpadear LED). Si ABAJO timeout 500 ms → estrategia ciega (sin información de línea). |
 | Coordinación táctica | Aplica reglas de partner (recibe partner data desde ARRIBA via comm árbitros) y decide quién va a la pelota. |
-| Kicker y dribbler | Activa solenoide kicker cuando la pelota está alineada con el arco rival (solo delantero). |
+| Empuje (sin kicker físico) | El robot NO tiene kicker físico: el delantero empuja la pelota por inercia cuando está alineado con el arco rival. |
 | Modo "match running" | Solo mueve motores cuando recibió START del árbitro (también via ARRIBA). |
 
 ### Lo que NO hace
@@ -94,7 +94,7 @@ Cinco principios de diseño justifican la elección:
 ### Outputs
 
 - **PWM a los 3 motores omni** (directo, sin UART).
-- **GPIO al solenoide kicker** y dribbler PWM (solo delantero).
+- **Dribbler PWM** (solo delantero, opcional). Sin kicker físico: no hay solenoide.
 - **UART hacia ARRIBA**: comandos como recalibrar cámaras, resetear pose.
 - **UART hacia ABAJO**: comandos administrativos (calibrar umbrales de línea, reset OTOS). ABAJO no necesita conocer el modo del robot — sólo reporta lo que ve.
 
@@ -411,7 +411,7 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
        100 Hz             └───────────────┘
                           ┌───────────────┐
                           │  PLACA CENTRAL│── PWM directo ──► 3 motores omni
-                          │  (Teensy 4.1) │── GPIO ─────────► kicker (ROBOT2)
+                          │  (Teensy 4.1) │   (sin kicker físico: empuja por inercia)
                           │  FSM + PIDs   │
                           └───────────────┘
                                   ▲

@@ -66,23 +66,75 @@ se mira al robot desde afuera/enfrente (ahí izquierda y derecha se invierten).
 
 ## 2. Marco de la CANCHA (pose absoluta)
 
-Origen en una esquina propia. Heading 0 = el robot mira al **arco rival**.
+**Origen de coordenadas `(0, 0)`:** el **rincón de PARED** donde se cruzan la
+**pared del arco propio** (sur) y la **pared lateral izquierda** (oeste) —
+mirando desde detrás del arco propio hacia el rival, es la esquina
+inferior-izquierda. **Es sobre la PARED, NO sobre la línea blanca**: el marco es
+**pared-a-pared** porque los ToF miden a las paredes (`y=0` = pared sur,
+`x=0` = pared oeste; lo confirma `localization.cpp::classify_wall`:
+`WALL_SOUTH → y=dperp`, `WALL_WEST → x=dperp`). La línea blanca queda **120 mm
+hacia adentro** en cada lado, así que su esquina cae en `(120, 120)`. Desde ese
+origen:
 
-| Eje | Significado |
+- **+Y crece hacia el arco rival** — es el lado **LARGO** de la cancha (la
+  dirección de juego, arco-a-arco).
+- **+X crece hacia la DERECHA** del robot mirando al arco rival — es el lado
+  **CORTO** (de lateral a lateral).
+- **Heading 0 = el robot mira al arco rival** (+Y).
+
+**Puntos de referencia (mm, marco pared-a-pared):**
+
+| Punto | (x, y) |
 |---|---|
-| **+Y (FIELD_HEIGHT, 1820 mm... ver nota)** | hacia el **arco rival** |
-| **+X (FIELD_WIDTH, 2430 mm)** | a la **DERECHA** del robot cuando mira al arco rival (= pared "EAST") |
-| **−X** | a la **IZQUIERDA** (pared "WEST") |
+| Origen — esquina propia-izquierda (pared) | `(0, 0)` |
+| Esquina rival-derecha (pared) | `(1820, 2430)` |
+| Centro de la cancha | `(910, 1215)` |
+| **Boca del arco propio** (centro, sobre la línea blanca sur) | `(910, 120)` |
+| **Boca del arco rival** (centro, sobre la línea blanca norte) | `(910, 2310)` |
+| Esquina de la **línea blanca** (SO) | `(120, 120)` |
+| Cancha de juego (dentro de la línea) | `x ∈ [120, 1700]`, `y ∈ [120, 2310]` |
 
-Coherencia con `localization.cpp::classify_wall`: con heading 0 (mirando al
-arco), `world_angle = +90°` cae en `WALL_WEST` (−X) = izquierda del robot; y
-`+270°` cae en `WALL_EAST` (+X) = derecha. ✅ Mismo signo que el marco robot.
+> **Los arcos NO están en la pared.** Las "posts" del arco van **sobre la línea
+> blanca** (reglamento RCJ 2026), no en el plano de la pared. La boca del arco
+> está en `y = 120` (propio) / `y = 2310` (rival); `y = 0` y `y = 2430` son las
+> **PAREDES** (que van por detrás de los arcos). El arco es una caja de **600 mm
+> de ancho × 100 mm de alto × 74 mm de profundidad** (centrado → abarca
+> `x ∈ [610, 1210]`); su fondo queda ~74 mm por detrás de la línea, hacia la
+> pared. La **localización** mide a las PAREDES (2430 × 1820), así que ese marco
+> NO cambia; los `y = 120 / 2310` son sólo la referencia del **arco** (para
+> detección por cámara / táctica).
 
-> **Nota de nombres:** en `pinout_common.h`, `FIELD_WIDTH_MM = 2430` (eje X
-> largo) y `FIELD_HEIGHT_MM = 1820` (eje Y corto, al arco). La convención de
-> ejes X/Y de la cancha (cuál es largo/corto) está en la spec de localización
-> §4.1; este doc solo fija el sentido de izquierda/derecha, que es lo que se
-> confundía.
+| Eje | Dirección | Medida (pared-a-pared / línea blanca) |
+|---|---|---|
+| **+Y** | hacia el **arco rival** — lado **LARGO** (arco-a-arco) | **2430 mm** pared / **2190 mm** línea blanca |
+| **+X** | a la **DERECHA** del robot mirando al arco — lado **CORTO** (lateral) | **1820 mm** pared / **1580 mm** línea blanca |
+| **−X** | a la **IZQUIERDA** (pared "WEST", x=0) | — |
+
+> **Dos medidas, no una (importante para no confundir los valores).** El
+> reglamento RCJ Soccer 2026 define la **cancha de juego** (dentro de la línea
+> blanca) en **2190 × 1580 mm** (219 × 158 cm) y un **outer area de 12 cm por
+> lado** hasta las paredes → total **pared-a-pared 2430 × 1820 mm** (243 × 182
+> cm). **Los ToF miden a las PAREDES**, así que la localización usa **2430 (Y,
+> largo) × 1820 (X, corto)**.
+
+**Coherencia con el código** (`pinout_common.h` + `localization.cpp::classify_wall`):
+- `FIELD_HEIGHT_MM = 2430` (extensión en **Y**, arco-a-arco, el largo) y
+  `FIELD_WIDTH_MM = 1820` (extensión en **X**, lateral, el corto). La pared
+  NORTE (arco rival, +Y) está en `y = field_height = 2430`; las paredes
+  ESTE/OESTE (laterales) en `x ∈ [0, field_width] = [0, 1820]`.
+- Con heading 0 (mirando al arco), `world_angle = +90°` cae en `WALL_WEST` (−X) =
+  izquierda del robot; `+270°` cae en `WALL_EAST` (+X) = derecha. ✅ Mismo signo
+  que el marco robot.
+
+> ⚠️ **CORREGIDO 2026-06-03 (este doc + firmware).** Antes este doc y el firmware
+> tenían **`FIELD_WIDTH=2430` en X y `FIELD_HEIGHT=1820` en Y** — o sea, el eje
+> hacia el arco rival (+Y) con el valor del lado **corto**. Está **invertido**:
+> arco-a-arco es el lado **largo** (2430). Verificado contra el field spec oficial
+> RCJ 2026 (cancha de juego 219 × 158 cm → 243 × 182 cm pared-a-pared, arcos en
+> las paredes cortas). Se dieron vuelta los valores en `pinout_common.h`,
+> `diag_pose_live.cpp` y los comentarios de `localization.h`; `FUENTES-DE-VERDAD`
+> actualizado. (`FIRMWARE-PLACA-ARRIBA §6.4`, que tenía X=1820/Y=2430, era el
+> correcto en cuanto a dimensiones.)
 
 ## 3. Mapeo de los 4 ToF (confirmado en banco 2026-05-30/31)
 

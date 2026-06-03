@@ -2,8 +2,8 @@
 //
 // CENTRAL no fusiona sensores — recibe el WorldSnapshot armado por TOP y lo
 // expone como estado del mundo para que strategy lo consulte. Si CENTRAL deja
-// de recibir snapshots (TOP cuelga), expone confidence = 0 y `is_fresh()` = false
-// para que strategy decida modo seguro.
+// de recibir snapshots (TOP cuelga), `world_model_snapshot_is_fresh()` pasa a
+// false (>500 ms sin snapshot) y main_central frena los motores (modo seguro).
 
 #pragma once
 #include <stdint.h>
@@ -33,6 +33,11 @@ float world_model_get_my_heading_deg();
 bool  world_model_ball_visible();
 float world_model_get_ball_x_mm();
 float world_model_get_ball_y_mm();
+
+// Velocidad de la pelota (mm/s, marco robot) del WorldSnapshot. 0 si N/A o quieta.
+// Lo usa el arquero (strategy GK_INTERCEPT) para anticipar vía ball_predict.
+int16_t world_model_get_ball_vx_mm_s();
+int16_t world_model_get_ball_vy_mm_s();
 
 bool  world_model_goal_opp_visible();
 float world_model_get_goal_opp_angle_deg();

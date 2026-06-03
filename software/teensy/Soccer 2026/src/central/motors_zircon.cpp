@@ -23,64 +23,13 @@ const WheelConfig WHEELS[3] = {
     { WHEEL_ANGLES_DEG[2] * PI_F / 180.0f, WHEEL_RADIUS_MM },
 };
 
-// === Kicker (solenoide) — solo se compila si ROBOT2 ===
-#if defined(ROBOT2)
-// Estado interno del kicker. Lo manejamos como pulso one-shot con cooldown:
-//   • cmd.kicker_fire=1 + cooldown vencido + no hay pulso activo → arrancar pulso.
-//   • Mientras el pulso está activo, el pin GPIO queda HIGH.
-//   • Cuando pasa KICKER_PULSE_MS desde el arranque del pulso, lo bajamos
-//     a LOW y arrancamos cooldown.
-bool     g_kicker_pulse_active = false;
-uint32_t g_kicker_pulse_start_ms = 0;
-uint32_t g_kicker_last_fire_ms = 0;
-
-void kicker_init() {
-    pinMode(PIN_KICKER_SOL, OUTPUT);
-    digitalWrite(PIN_KICKER_SOL, LOW);
-    g_kicker_pulse_active = false;
-    g_kicker_pulse_start_ms = 0;
-    g_kicker_last_fire_ms = 0;
-}
-
-// Llamar en cada motors_apply_command — orquesta el ciclo pulso/cooldown.
-// cmd.kicker_fire=1 solo arranca uno nuevo si nada está activo Y el cooldown
-// venció. Una vez arrancado, el pulso corre independiente del flag.
-void kicker_update(uint8_t kicker_fire_flag) {
-    const uint32_t now_ms = millis();
-    if (g_kicker_pulse_active) {
-        if (now_ms - g_kicker_pulse_start_ms >= KICKER_PULSE_MS) {
-            // Pulso terminó — bajar pin y arrancar cooldown.
-            digitalWrite(PIN_KICKER_SOL, LOW);
-            g_kicker_pulse_active = false;
-            g_kicker_last_fire_ms = now_ms;
-        }
-        return;   // mientras el pulso corre, ignoramos nuevos flags
-    }
-    // Sin pulso activo — evaluar si arrancamos uno nuevo.
-    if (kicker_fire_flag != 0) {
-        const bool cooldown_ok = (g_kicker_last_fire_ms == 0)
-                                 || (now_ms - g_kicker_last_fire_ms >= KICKER_COOLDOWN_MS);
-        if (cooldown_ok) {
-            digitalWrite(PIN_KICKER_SOL, HIGH);
-            g_kicker_pulse_active = true;
-            g_kicker_pulse_start_ms = now_ms;
-        }
-    }
-}
-
-// Apaga el kicker de inmediato (sin esperar fin de pulso). Usar en motors_stop
-// y motors_brake — si entramos a emergencia, NO queremos que el solenoide
-// quede pegado HIGH consumiendo corriente.
-void kicker_force_off() {
-    digitalWrite(PIN_KICKER_SOL, LOW);
-    g_kicker_pulse_active = false;
-    // No tocamos last_fire_ms — el cooldown sigue corriendo igual.
-}
-#endif
-
 void apply_pwm_to_motor(int motor_idx, int pwm_signed) {
     if (motor_idx < 0 || motor_idx >= 3) return;
     const MotorPins& p = MOTOR_PINS[motor_idx];
+    // Sentido por motor: algunos drivers tienen INA/INB invertidos por hardware
+    // (validado en banco — ver MOTOR_INVERT en config_central.h). Negar el PWM
+    // firmado equivale a cruzar INA/INB, igual que diag_central_line_sweep::motor2().
+    pwm_signed *= MOTOR_INVERT[motor_idx];
     if (pwm_signed > 0) {
         digitalWrite(p.ina, 1);
         digitalWrite(p.inb, 0);
@@ -105,9 +54,6 @@ void motors_init() {
         pinMode(MOTOR_PINS[i].pwm, OUTPUT);
     }
     motors_stop();
-#if defined(ROBOT2)
-    kicker_init();
-#endif
 }
 
 void motors_apply_command(const MotorCommand& cmd) {
@@ -124,28 +70,12 @@ void motors_apply_command(const MotorCommand& cmd) {
         int pwm = wheel_speed_to_pwm(ws.wheel[i], MAX_SPEED_MM_S, MAX_PWM);
         apply_pwm_to_motor(i, pwm);
     }
-
-#if defined(ROBOT2)
-    // Delantero: pulso one-shot al solenoide cuando strategy lo pide y el
-    // cooldown está OK. Manejado adentro de kicker_update — el flag solo
-    // arranca un pulso, no lo sostiene.
-    kicker_update(cmd.kicker_fire);
-#else
-    // Arquero no tiene kicker — el flag se ignora silenciosamente para evitar
-    // que se cuele un pulso por error si strategy lo setea.
-    (void)cmd.kicker_fire;
-#endif
 }
 
 void motors_stop() {
     for (int i = 0; i < 3; ++i) {
         apply_pwm_to_motor(i, 0);
     }
-#if defined(ROBOT2)
-    // Apagar el solenoide si hubo un pulso activo — no queremos que un
-    // watchdog deje el pin HIGH.
-    kicker_force_off();
-#endif
 }
 
 void motors_brake() {
@@ -158,9 +88,6 @@ void motors_brake() {
         digitalWrite(p.inb, HIGH);
         analogWrite(p.pwm, 0);
     }
-#if defined(ROBOT2)
-    kicker_force_off();
-#endif
 }
 
 void motors_set_one(int motor_idx, int pwm_signed) {

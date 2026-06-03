@@ -71,10 +71,16 @@ constexpr int PIN_LED_STATUS = 13;
 
 // ============================================================
 // Cancha RCJ Soccer Open 2026 — convención de ejes canónica
-// (X long axis derecha, Y short axis al arco rival)
+// (ver docs/CONVENCION-EJES-ROBOT.md §2). Medidas PARED-A-PARED (las que ven
+// los ToF): cancha de juego 2190 x 1580 mm (línea blanca) + 12 cm de outer area
+// por lado = 2430 x 1820 pared-a-pared. +Y va al arco rival = lado LARGO
+// (arco-a-arco) = 2430; +X = lateral = lado CORTO = 1820.
+// ⚠️ CORREGIDO 2026-06-03: antes WIDTH=2430/HEIGHT=1820 (eje +Y al arco con el
+// valor del lado corto) — INVERTIDO respecto al reglamento. classify_wall usa
+// field_height para la pared del arco rival (+Y), que es el LARGO (2430).
 // ============================================================
-constexpr uint16_t FIELD_WIDTH_MM  = 2430;   // eje X (largo)
-constexpr uint16_t FIELD_HEIGHT_MM = 1820;   // eje Y (corto)
+constexpr uint16_t FIELD_WIDTH_MM  = 1820;   // eje X (lateral, lado CORTO)
+constexpr uint16_t FIELD_HEIGHT_MM = 2430;   // eje Y (arco-a-arco, lado LARGO)
 
 // Ángulos de montaje físico de los TOFs fijos (mismo en ambos robots).
 // CONVENCIÓN (ver localization.cpp::classify_wall): heading 0 = robot mira al

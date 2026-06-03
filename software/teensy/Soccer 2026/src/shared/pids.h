@@ -39,7 +39,9 @@ struct HeadingPID {
 
     // Clamps (anti-windup + saturación).
     float integral_clamp = 50.0f;
-    float output_clamp = 360.0f;  // grados/s. Limite practico de velocidad angular.
+    float output_clamp = 327.0f;  // grados/s. ⚠️ ≤327 A PROPÓSITO: cmd.omega_centideg_s = omega*100
+                                  // es int16 (±32767); con 360 (=36000) hacía OVERFLOW y el giro se
+                                  // invertía a fondo al saturar el PID (bug CRÍTICO, eval 2026-06-03).
 };
 
 // Resetea el estado interno (integral y prev_error). Usar en transiciones de FSM

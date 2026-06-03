@@ -38,7 +38,7 @@ BehindBallTarget compute_behind_ball_target(float ball_x_mm,
     return out;
 }
 
-bool is_aligned_to_shoot(float ball_x_mm,
+bool is_aligned_to_push(float ball_x_mm,
                          float ball_y_mm,
                          float goal_angle_deg,
                          float kick_dist_mm,

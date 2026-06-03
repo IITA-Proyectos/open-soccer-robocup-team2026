@@ -58,7 +58,7 @@ este repo, por eso no tiene un pack del mismo tipo que los otros 5.
 | [`2026-05-17-placa-top-analisis-gerbers.md`](2026-05-17-placa-top-analisis-gerbers.md) | Histórico | `top-board-pack/01-pinout-y-hardware.md` (integra esta info) |
 | [`2026-05-19-pinout-down-extraido-schematic.md`](2026-05-19-pinout-down-extraido-schematic.md) | Vigente, pero también incluido como copia en `down-board-pack/01-pinout-y-posiciones.md` | — (es la misma fuente) |
 | [`mapa-pines-placas-nuevas.md`](mapa-pines-placas-nuevas.md) | **Superado** — decía "A/B/C compartidas" lo cual es incorrecto | Pack DOWN y pack TOP (ambos extraen del SCH JSON real) |
-| [`mapa-pines-teensy-ambos-robots.md`](mapa-pines-teensy-ambos-robots.md) | Histórico (2026-03-20), única referencia textual del pinout del Zircon | `central-board-pack/01-pinout-y-hardware.md` (cura esta info + marca conflicto pines 7/8) |
+| [`mapa-pines-teensy-ambos-robots.md`](mapa-pines-teensy-ambos-robots.md) | Histórico (2026-03-20), única referencia textual del pinout del Zircon | `central-board-pack/01-pinout-y-hardware.md` (cura esta info; conflicto pines 7/8 RESUELTO 2026-05-31) |
 
 ### Placa Zircon (legado 2025)
 

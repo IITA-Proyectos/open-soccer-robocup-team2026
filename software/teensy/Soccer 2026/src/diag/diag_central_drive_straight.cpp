@@ -50,8 +50,8 @@
 //     apretón corta inmediatamente.
 //
 // Build:
-//   pio run -e diag_central_drive_robot1 -t upload   (arquero, sin kicker)
-//   pio run -e diag_central_drive_robot2 -t upload   (delantero, con kicker — no se dispara acá)
+//   pio run -e diag_central_drive_robot1 -t upload   (arquero)
+//   pio run -e diag_central_drive_robot2 -t upload   (delantero — sin kicker físico)
 //
 // Flags opcionales:
 //   -DDIAG_DRIVE_SPEED_MM_S=200      Velocidad de avance (default 300)
@@ -176,7 +176,6 @@ void apply_drive(float vy_mm_s, uint32_t now_ms) {
     cmd.vx_mm_s          = 0;
     cmd.vy_mm_s          = static_cast<int16_t>(vy_mm_s);
     cmd.omega_centideg_s = static_cast<int16_t>(omega_deg_s * 100.0f);
-    cmd.kicker_fire      = 0;
     cmd.dribbler_pwm     = 0;
     motors_apply_command(cmd);
 }

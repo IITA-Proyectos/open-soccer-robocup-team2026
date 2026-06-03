@@ -70,7 +70,7 @@ El comando del árbitro RCJ (PLAY/STOP del partido) llega al TOP como **nivel di
 | **`Serial7`** | 28 | 29 | ← TOP | 230400 | recibe `WORLD_SNAPSHOT` |
 | **`Serial1`** | 0 | 1 | ← DOWN | 230400 | recibe `LINE_URGENT` / `LineStatusV2` + odometría OTOS (`Pose2D`/`Velocity2D`, broadcast; OTOS para control de movimiento — Capa 2) |
 
-*Motores:* GPIO directo (INA/INB/PWM), **no UART**. *Kicker* (R2): GPIO pin 23 (placeholder, confirmar Enzo).
+*Motores:* GPIO directo (INA/INB/PWM), **no UART**. *Kicker:* **no existe** — el robot no tiene kicker físico; el delantero empuja la pelota por inercia (TASK-011 cancelada 2026-06-03).
 *✅ Reasignado 2026-05-31 (decisión Gustavo, cableado en banco):* el link a **TOP usa `Serial7` (28/29)** y el de **DOWN usa `Serial1` (0/1)**. Así `Serial2` (pines 7/8) queda **LIBRE para el driver del motor 2 (U17)** → el viejo conflicto **F8/TASK-036 está RESUELTO** (ya no hay UART en 7/8).
 
 ### DOWN — Teensy 4.0 (sensores de piso: 32 línea + 2 OTOS)

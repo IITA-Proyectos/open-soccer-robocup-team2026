@@ -6,10 +6,11 @@
 // Roles:
 //   • Receptor: drena bytes de Serial5 cuando llegan, decodifica frames,
 //     procesa comandos del TOP (reset OTOS, calibrar línea, etc).
-//   • Emisor: a 100 Hz envía 3 frames con el estado del DOWN:
-//       LINE_STATUS (ángulo línea + profundidad + flag salida inminente)
+//   • Emisor: a 100 Hz envía 2 frames con el estado del DOWN:
 //       OTOS_POSE   (x, y, heading)
 //       OTOS_VEL    (vx, vy, omega, slip estimate)
+//     (La línea — LINE_URGENT/LineStatusV2 — llega a TOP por el broadcast
+//      simétrico de down_tx, NO por comm_top_send_status. Ver Capa 1 broadcast.)
 
 #pragma once
 #include <stdint.h>
@@ -23,7 +24,7 @@ void comm_top_init();
 // Retorna número de frames procesados en esta llamada.
 int  comm_top_tick();
 
-// Envía los 3 frames de estado de DOWN al TOP. Llamar a 100 Hz.
+// Envía los 2 frames de estado de DOWN al TOP (OTOS pose + vel). Llamar a 100 Hz.
 void comm_top_send_status();
 
 // Estadísticas para debug:

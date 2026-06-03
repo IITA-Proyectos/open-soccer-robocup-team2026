@@ -47,12 +47,13 @@ BehindBallTarget compute_behind_ball_target(float ball_x_mm,
                                             float goal_angle_deg,
                                             float gap_mm);
 
-// Chequea si el robot está alineado para patear / empujar:
+// Chequea si el robot está alineado para empujar la pelota:
 //   • La pelota está cerca (distance ≤ kick_dist_mm)
 //   • El robot está apuntando al arco rival (|goal_angle_deg| ≤ kick_angle_deg)
 //
-// Se usa para decidir cuándo emitir cmd.kicker_fire = 1.
-bool is_aligned_to_shoot(float ball_x_mm,
+// Se usa para decidir cuándo el robot está alineado para empujar (el robot no
+// tiene kicker físico; empuja la pelota por inercia, no dispara).
+bool is_aligned_to_push(float ball_x_mm,
                          float ball_y_mm,
                          float goal_angle_deg,
                          float kick_dist_mm,

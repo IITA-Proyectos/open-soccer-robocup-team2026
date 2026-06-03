@@ -23,7 +23,7 @@ Validar end-to-end (en banco o cancha despejada) que la **cadena completa de
 control de movimiento** del CENTRAL funciona:
 
 ```
-TOP -> WorldSnapshot (Serial1)
+TOP -> WorldSnapshot (Serial7, pin 28)
         \
          world_model
               \
@@ -49,7 +49,7 @@ a girar parásita-mente, omega correctivo lo vuelve a alinear.
 
 ## Lo que SÍ valida
 
-1. **Cadena TOP→CENTRAL**: que el `WorldSnapshot` llega por Serial1, con
+1. **Cadena TOP→CENTRAL**: que el `WorldSnapshot` llega por Serial7 (pin 28), con
    watchdog 500 ms. Si falla → motor stop automático.
 2. **Cinemática inversa omni-3**: que `WHEEL_ANGLES_DEG` y `WHEEL_RADIUS_MM`
    en `config_central.h` matchean el robot armado. Si no matchean, el robot
@@ -91,7 +91,9 @@ a girar parásita-mente, omega correctivo lo vuelve a alinear.
 2. **PLACA TOP corriendo** y enviando `WorldSnapshot` por Serial1 a 230400
    baud. Sin esto el sketch queda en `WAITING_SNAPSHOT` para siempre
    (timeout 5 s).
-3. **Cable UART** TOP→CENTRAL conectado físicamente (pines 0/1 del CENTRAL).
+3. **Cable UART** TOP→CENTRAL conectado físicamente al **pin 28 del CENTRAL**
+   (Serial7 RX7); el cable sale del **TOP pin 17 (TX4)**. ⚠️ NO a los pines 0/1
+   (esos son el link de DOWN, Serial1).
 4. **Batería cargada** — los H-bridges NO se alimentan por USB.
 5. **Robot SUJETO al banco**, con **ruedas al aire**, O en **cancha
    despejada** con al menos 1.5 m de espacio (a 300 mm/s × 3 s = 900 mm).

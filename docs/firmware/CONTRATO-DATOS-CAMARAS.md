@@ -78,8 +78,13 @@ Fuente: `src/top/cameras_runtime.cpp` (código vivo).
 
 > **✅ Actualizado 2026-05-31 (TASK-204):** la cámara trasera quedó **soldada en
 > Serial5 (RX pin 21)** — confirmado en banco (`diag_top_cameras`, FORMATO OK).
-> Por eso el UART **TOP→CENTRAL** se movió a **Serial7 (28/29)**. Firmware:
-> `cameras_runtime.cpp` lee la trasera en `Serial5`; `comm_central.cpp` usa `Serial7`.
+> `cameras_runtime.cpp` lee la trasera en `Serial5`.
+>
+> **🔧 Fix 2026-06-02 (vale sobre lo de arriba):** el UART **TOP→CENTRAL** NO va por
+> Serial7. El Teensy 4.0 NO expone Serial7 (28/29) en el borde (son pads SMD traseros);
+> ponerlo ahí dejaba al TOP sin llegar a la CENTRAL. El enlace real es **Serial4 (16/17)**:
+> `src/top/comm_central.cpp` usa **`Serial4`** (cable TOP pin17/TX4 → CENTRAL pin28/RX7,
+> que en el 4.1 sí es Serial7). En el TOP, Serial2 (7/8) = módulo COMM (árbitro).
 
 ### 1.2 Protocolo actual — 9 bytes raw
 
@@ -262,17 +267,16 @@ Los arcos se reportan como ángulo + distancia (no como x, y):
 ```
 angle_centideg = atan2(x_mm, y_mm) × (18000/π)
                  cero = frente del robot
-                 +90° = izquierda
-                 -90° = derecha
+                 +90° = DERECHA
+                 -90° = izquierda
 ```
 
-Fuente: `cameras_fusion.cpp:99-100`.
+Fuente: `cameras_fusion.cpp:97-100` (+x = DERECHA).
 
-> **Inconsistencia de signo lateral**: la convención en `cameras_fusion.h:40`
-> dice "+x lateral", y `atan2(x, y)` con +y=frente da:
-> - +x a la derecha → atan2(+x, +y) > 0 para objeto a la derecha.
-> Pero el comentario dice "+90° = izquierda". Verificar con test en hardware.
-> NO implementado el test de este signo.
+> **✅ Signo RESUELTO (2026-05-31):** `+x = DERECHA`, `atan2(x, y)` con +y=frente ⇒
+> **+90° = arco/pelota a la DERECHA del robot**. Coincide con `cameras_fusion.cpp:97-99`
+> ("=> +90° = arco a la derecha") y con `docs/CONVENCION-EJES-ROBOT.md`. La nota vieja
+> ("+90°=izquierda, verificar") quedó SUPERADA — el código ya está corregido.
 
 ---
 

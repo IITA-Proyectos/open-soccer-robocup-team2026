@@ -1,4 +1,7 @@
 // pio test -e test_native -f test_central_trajectory
+// ⚠️ NOTA: caracteriza bt_classify (ball_trajectory), AÚN no cableado al binario (strategy no lo
+// llama todavía; la velocidad de pelota sí llega y el arquero anticipa por ball_predict). NO es
+// cobertura de la conducta desplegada — es red para cuando se cablee bt_classify.
 #include <unity.h>
 #include "ball_trajectory.h"
 using namespace iitasoccer;

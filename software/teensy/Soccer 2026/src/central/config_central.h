@@ -7,8 +7,8 @@
 //   - Reporta status básico al TOP.
 //
 // Selección de robot por compilación:
-//   pio run -e zircon_robot1   → arquero (#define ROBOT1)
-//   pio run -e zircon_robot2   → delantero (#define ROBOT2)
+//   pio run -e central_robot1   → arquero (#define ROBOT1)
+//   pio run -e central_robot2   → delantero (#define ROBOT2)
 //
 // Pinout basado en hardware/electronics/mapa-pines-teensy-ambos-robots.md
 // (documento del 2026-03-20). NO MODIFICAR sin coordinar con Enzo + verificar
@@ -33,6 +33,12 @@ namespace iitasoccer {
     constexpr int PIN_INA3 = 11;
     constexpr int PIN_INB3 = 12;
     constexpr int PIN_PWM3 = 4;
+
+    // Sentido por motor (+1 normal, -1 invertido por hardware).
+    // VALIDADO en banco (María/Elías, diag_central_line_sweep_robot1): el motor 2
+    // (driver U17, pines 8/7/6) tiene INA/INB cruzados por HW → va invertido.
+    // Fuente: docs/firmware/DIAG-CENTRAL-MOTORS.md + journal 2026-05-29 / 2026-06-01.
+    constexpr int MOTOR_INVERT[3] = { +1, -1, +1 };
 #elif defined(ROBOT2)  // Delantero
     constexpr int PIN_INA1 = 8;
     constexpr int PIN_INB1 = 7;
@@ -45,6 +51,15 @@ namespace iitasoccer {
     constexpr int PIN_INA3 = 2;
     constexpr int PIN_INB3 = 5;
     constexpr int PIN_PWM3 = 3;
+
+    // Sentido por motor — por ahora IGUAL que ROBOT1 (decisión 2026-06-03).
+    // ⚠️ FALTA VERIFICAR EN BANCO si el delantero se comporta igual que el arquero:
+    // correr diag_central_motors en el delantero y confirmar si esto es así o no.
+    // OJO: en el delantero los pines están ROTADOS → el índice 1 de este array es
+    // el driver U7 (11/12/4), NO el U17. Si la inversión real es del driver U17
+    // (que en el delantero es el índice 0), el array correcto sería { -1, +1, +1 }.
+    // El banco lo dirime.
+    constexpr int MOTOR_INVERT[3] = { +1, -1, +1 };  // = ROBOT1, sin validar en delantero
 #else
     #error "Debe definirse ROBOT1 (arquero) o ROBOT2 (delantero) en build_flags"
 #endif
@@ -92,25 +107,11 @@ constexpr int   UART_DOWN_TX    = 1;   // Serial1 TX1
 // ============================================================
 // Watchdog
 // ============================================================
-// Si no llega un MotorCommand del TOP en este tiempo, los motores se detienen
-// para evitar que el robot quede a velocidad fija si el TOP se cuelga o se desconecta.
-constexpr uint32_t COMMAND_TIMEOUT_MS = 200;
-
-// ============================================================
-// Kicker (solenoide) — solo ROBOT2 (delantero)
-// ============================================================
-// El solenoide se dispara con un pulso GPIO HIGH durante KICKER_PULSE_MS.
-// Después del pulso hay un cooldown KICKER_COOLDOWN_MS antes de poder volver a
-// disparar — protege al solenoide de recargas seguidas que lo queman.
-//
-// ⚠️ PIN_KICKER_SOL es placeholder — confirmar con Enzo qué GPIO del Zircon
-// está cableado al MOSFET del solenoide. Mientras tanto usamos el pin 23
-// (libre en ambos robots según mapa-pines-teensy del 2026-03-20).
-#if defined(ROBOT2)
-    constexpr int PIN_KICKER_SOL = 23;   // ⚠️ A CONFIRMAR ENZO (TASK-NUEVA)
-    constexpr uint32_t KICKER_PULSE_MS    = 80;    // duración del pulso al MOSFET
-    constexpr uint32_t KICKER_COOLDOWN_MS = 1500;  // tiempo mínimo entre disparos
-#endif
+// ⚠️ SIN USO HOY (sin callers, verificado por grep). El watchdog EFECTIVO de la
+// CENTRAL es SNAPSHOT_TIMEOUT_MS=500 ms (world_model.cpp) sobre el WorldSnapshot:
+// main_central frena los motores si snapshot_is_fresh()==false. CENTRAL ya NO
+// recibe MotorCommand del TOP (recibe WorldSnapshot y decide localmente).
+constexpr uint32_t COMMAND_TIMEOUT_MS = 200;  // conservada como referencia; no se usa
 
 // ============================================================
 // Arranque manual fail-safe (F3) — SOLO banco, gateado por CENTRAL_ENABLE_MANUAL_START

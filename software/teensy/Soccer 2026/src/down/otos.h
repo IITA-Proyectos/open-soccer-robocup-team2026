@@ -18,7 +18,7 @@
 //   heading      = atan2(otos_der.y - otos_izq.y, OTOS_SEPARATION_MM)
 //                  (porque ambos OTOS se mueven distinto si el robot rota)
 //
-// Stub si solo un OTOS funciona (placa 04-12 con solo SDA2/SCL2 ruteado):
+// Modo single-OTOS (degradación, p.ej. placa 04-12 con solo SDA2/SCL2 ruteado):
 //   Se usa el OTOS disponible como única fuente de pose. No hay diferencial.
 
 #pragma once

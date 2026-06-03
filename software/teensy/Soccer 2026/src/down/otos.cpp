@@ -37,11 +37,10 @@ uint32_t g_tick_count = 0;
 float g_left_x = 0.0f,  g_left_y = 0.0f,  g_left_h = 0.0f;
 float g_right_x = 0.0f, g_right_y = 0.0f, g_right_h = 0.0f;
 
-// Última velocidad de cada OTOS. Mientras la lib SparkFun esté comentada,
-// quedan en 0 → los getters de velocidad retornan 0 (igual que antes).
-// Cuando se descomente TODO_OTOS_LIB, el bloque de otos_tick las llena y la
-// fusión de abajo computa g_vx/g_vy/g_omega. Esto cierra el bug latente:
-// antes g_vx/g_vy/g_omega NUNCA se asignaban ni con la lib activa.
+// Última velocidad de cada OTOS. La lib SparkFun YA está activa (TASK-012,
+// 2026-05-24): otos_tick() lee getVelocity() y llena estos campos, y la fusión
+// de abajo computa g_vx/g_vy/g_omega con datos reales. (Antes, con la lib
+// comentada, quedaban en 0 — bug latente ya cerrado.)
 float g_left_vx = 0.0f,  g_left_vy = 0.0f,  g_left_w = 0.0f;
 float g_right_vx = 0.0f, g_right_vy = 0.0f, g_right_w = 0.0f;
 
@@ -105,8 +104,8 @@ void otos_tick() {
         const float dy = g_right_y - g_left_y;
         g_heading_deg = std::atan2(dy, OTOS_SEPARATION_MM) * (180.0f / M_PI);
 
-        // Velocidad del centro = promedio de los 2 (0 mientras la lib esté
-        // comentada → comportamiento actual idéntico).
+        // Velocidad del centro = promedio de los 2 (la lib SparkFun ya está
+        // activa, así que estos son valores reales de getVelocity()).
         g_vx = (g_left_vx + g_right_vx) * 0.5f;
         g_vy = (g_left_vy + g_right_vy) * 0.5f;
         g_omega = (g_left_w + g_right_w) * 0.5f;

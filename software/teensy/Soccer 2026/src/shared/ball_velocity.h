@@ -4,10 +4,12 @@
 // -------------
 // El WorldSnapshot v2 ya tiene `ball_vx_mm_s` / `ball_vy_mm_s` y la cadena
 // `bt_classify` (ball_trajectory.{h,cpp}, 7 tests verdes) los consume para
-// decidir si la pelota va al arco propio/rival. Pero `build_snapshot()` en el
-// TOP los deja en 0 → toda esa lógica está dormida (siempre BT_STILL). Este
-// módulo deriva la velocidad de la posición fusionada de la pelota y enciende
-// esa cadena. Ver journal/2026-05-31-analisis-vision-n6-deteccion-protocolo.md §4.
+// decidir si la pelota va al arco propio/rival. Antes `build_snapshot()` en el
+// TOP los dejaba en 0 (siempre BT_STILL). Este módulo deriva la velocidad de la
+// posición fusionada y la mete en el snapshot, dejándola lista para esa cadena.
+// ⚠️ Falta el último eslabón: CENTRAL aún NO consume ball_vx/vy (no hay getter
+// en world_model ni llamada a bt_classify en strategy) — pendiente de cablear.
+// Ver journal/2026-05-31-analisis-vision-n6-deteccion-protocolo.md §4.
 //
 // Diseño (MVP, host-testeable, sin Arduino)
 // -----------------------------------------

@@ -21,8 +21,12 @@ void motors_apply_command(const MotorCommand& cmd);
 // Usar para estado default / watchdog (no urgente).
 void motors_stop();
 
-// Freno activo (PWM = 0, INA = INB = 1 → corto en H-bridge).
-// El motor frena más rápido que motors_stop() pero estresa los drivers.
+// "Freno" (PWM = 0, INA = INB = 1).  ⚠️ #41/#11 SIN CONFIRMAR EN HW: esto es freno
+// activo (corto en el H-bridge) SOLO si el chip driver hace short-brake con esa
+// combinación. En drivers tipo VNH (PWM = enable) PWM=0 DESHABILITA el puente → el
+// motor queda en COAST (libre), NO frena. EMERGENCY_LINE depende de que esto frene de
+// verdad (<15 ms). PENDIENTE: identificar el integrado del Zircon Rev v15 (Enzo/datasheet)
+// y medir en banco tiempo de parada brake vs stop. Ver auditoría 2026-06-03 #11.
 // Usar SOLO en EMERGENCY_LINE u otra emergencia real.
 void motors_brake();
 

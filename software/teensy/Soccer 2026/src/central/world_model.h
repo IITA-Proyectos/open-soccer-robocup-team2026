@@ -26,6 +26,12 @@ bool world_model_snapshot_is_fresh();
 bool world_model_line_is_fresh();
 
 // === Acceso a pose y entidades ===
+// #16 — OJO: varios de estos accessors EXISTEN pero la FSM (strategy.cpp) NO los consume
+// hoy (son superficie de contrato para Nivel 2/3 futuro): get_my_x/y, min_obstacle,
+// goal_opp_distance, in_own_penalty_area, partner_alive/sees_ball, get_otos_x/y, otos_omega,
+// otos_slip, otos_pose_confidence. Que tengan accessor NO implica que el robot los use
+// (p.ej. NO hay evasión de obstáculos aunque min_obstacle esté expuesto). Antes de asumir
+// una conducta, verificar con grep en strategy.cpp. Ver auditoría 2026-06-03 #16.
 float world_model_get_my_x_mm();
 float world_model_get_my_y_mm();
 float world_model_get_my_heading_deg();
@@ -76,6 +82,11 @@ bool world_model_in_own_penalty_area();
 bool world_model_partner_alive();
 bool world_model_partner_sees_ball();
 
+// #19: referee_cmd — RESERVADO / NO consumido por la FSM (0 callers en strategy.cpp).
+// El contrato REAL del árbitro de este equipo es BINARIO: START/STOP llega como NIVEL
+// GPIO (pines 5/6 del TOP) → flag bit3 MATCH_RUNNING del snapshot → world_model_match_running().
+// halftime(2)/reset(3) NO se transmiten por este COMM. No construir lógica sobre este campo
+// sin antes cablear su emisión en el TOP. Ver auditoría 2026-06-03 #19 + CONTRATO-DATOS-CENTRAL.
 uint8_t world_model_referee_cmd();
 
 // === OTOS directo de DOWN (Capa 1 broadcast) ===
@@ -84,7 +95,8 @@ uint8_t world_model_referee_cmd();
 // (drive-straight / patear derecho), que se cablea en Capa 2.
 void world_model_apply_otos_pose(const Pose2D& pose);
 void world_model_apply_otos_vel(const Velocity2D& vel);
-bool world_model_otos_is_fresh();
+bool world_model_otos_is_fresh();      // frescura de la POSE (0x11)
+bool world_model_otos_vel_is_fresh();  // #21: frescura de la VEL (0x12), por separado de la pose
 
 float   world_model_get_otos_x_mm();
 float   world_model_get_otos_y_mm();

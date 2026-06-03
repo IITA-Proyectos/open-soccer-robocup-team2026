@@ -13,7 +13,8 @@ uint32_t g_line_last_ms = 0;
 
 Pose2D     g_otos_pose{};
 Velocity2D g_otos_vel{};
-uint32_t   g_otos_last_ms = 0;
+uint32_t   g_otos_last_ms = 0;       // frescura de la POSE (0x11)
+uint32_t   g_otos_vel_last_ms = 0;   // #21: frescura PROPIA de la VEL (0x12) — no asumir que llega junto con la pose
 constexpr uint32_t OTOS_TIMEOUT_MS = 500;
 
 constexpr uint32_t SNAPSHOT_TIMEOUT_MS = 500;
@@ -33,6 +34,7 @@ void world_model_init() {
     g_otos_pose = Pose2D{};
     g_otos_vel  = Velocity2D{};
     g_otos_last_ms = 0;
+    g_otos_vel_last_ms = 0;
 }
 
 void world_model_apply_snapshot(const WorldSnapshot& snap) {
@@ -95,8 +97,12 @@ bool world_model_partner_sees_ball()    { return flag_set(g_snap.flags, 2); }
 uint8_t world_model_referee_cmd()       { return g_snap.referee_cmd; }
 
 void world_model_apply_otos_pose(const Pose2D& pose) { g_otos_pose = pose; g_otos_last_ms = millis(); }
-void world_model_apply_otos_vel(const Velocity2D& vel) { g_otos_vel = vel; }  // freshness va con la pose (llegan juntas a 100 Hz)
-bool world_model_otos_is_fresh() { return g_otos_last_ms > 0 && (millis() - g_otos_last_ms) < OTOS_TIMEOUT_MS; }
+void world_model_apply_otos_vel(const Velocity2D& vel) { g_otos_vel = vel; g_otos_vel_last_ms = millis(); }  // #21: timestamp propio
+bool world_model_otos_is_fresh()     { return g_otos_last_ms > 0     && (millis() - g_otos_last_ms)     < OTOS_TIMEOUT_MS; }
+// #21: frescura de la VEL por separado. Pose (0x11) y Vel (0x12) son frames distintos
+// con CRC independiente; uno puede perderse sin el otro. El control que cancela deriva
+// con la vel (drive_straight) debe chequear ESTA, no solo la frescura de la pose.
+bool world_model_otos_vel_is_fresh() { return g_otos_vel_last_ms > 0 && (millis() - g_otos_vel_last_ms) < OTOS_TIMEOUT_MS; }
 
 float   world_model_get_otos_x_mm()         { return static_cast<float>(g_otos_pose.x_mm); }
 float   world_model_get_otos_y_mm()         { return static_cast<float>(g_otos_pose.y_mm); }

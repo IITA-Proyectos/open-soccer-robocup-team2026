@@ -31,8 +31,14 @@ tags: [audit, riesgo, firmware-central, fsm, control, comunicacion, motion, pre-
 > compilan. **PENDIENTE DE BANCO** (regla 1): #9 y #29 cambian conducta → validar que
 > el robot no gira al revés / no sobrepasa → **TASK-102**. Detalle:
 > `journal/2026-06-03-etapa2-tier1-fixes-central-host-tested.md`.
-> El resto (Tier-2 + #1 cross-board + #21/#23 sin test host) sigue pendiente — ver
-> "Recomendación para Etapa 2" abajo.
+> **2da tanda autónoma (compile-verified, src/central no host-testeable):** **#21**
+> (OTOS vel con freshness propia + gateo conservador en strategy), **#16** (anotar
+> accessors no-consumidos), **#19** (`referee_cmd` reservado/dead → contrato binario),
+> **#41** (comentario honesto de `motors_brake` pendiente #11), **#23** (semántica de
+> `frames_lost`). `central_robot1/2` compilan. Detalle:
+> `journal/2026-06-03-etapa2-tanda2-robustez-y-contrato-central.md`.
+> **Pendiente (no autónomo):** #1 (cross-board, agente TOP); Tier-2 (#8/#10/#6/#7/#11/#2/#4/#35,
+> requieren banco); #33 (refactor FSM, post-Incheon). Ver "Recomendación para Etapa 2" abajo.
 
 ## Cómo se hizo
 

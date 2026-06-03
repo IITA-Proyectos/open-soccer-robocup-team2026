@@ -226,7 +226,11 @@ MotorCommand attacker_tick() {
                 DriveStraightIn ds_in;
                 ds_in.target_heading_deg = world_model_get_otos_heading_deg();
                 ds_in.cur_heading_deg    = world_model_get_otos_heading_deg();
-                ds_in.otos_vy_mm_s       = world_model_get_otos_vx_mm_s();  // lateral robot = +X
+                // #21: solo cancelar deriva si la VEL del OTOS está fresca (frame 0x12 propio).
+                // Si la vel se perdió (CRC) aunque la pose siga fresca, usar 0 (no corregir con dato viejo).
+                ds_in.otos_vy_mm_s       = world_model_otos_vel_is_fresh()
+                                               ? world_model_get_otos_vx_mm_s()   // lateral robot = +X
+                                               : 0.0f;
                 ds_in.fwd_speed_mm_s     = kv.vy_mm_s;                      // boost al frente
                 const DriveStraightCfg ds_cfg{DS_KP_HEADING, DS_KP_LATERAL};
                 const DriveStraightCmd ds = drive_straight_compute(ds_in, ds_cfg);
@@ -394,7 +398,11 @@ MotorCommand attacker_tick() {
                 DriveStraightIn ds_in;
                 ds_in.target_heading_deg = 0.0f;   // omega lo controla el HeadingPID
                 ds_in.cur_heading_deg    = 0.0f;   // -> error 0 -> ds.omega = 0 (no se usa)
-                ds_in.otos_vy_mm_s       = world_model_get_otos_vx_mm_s();  // lateral robot = +X
+                // #21: solo cancelar deriva si la VEL del OTOS está fresca (frame 0x12 propio).
+                // Si la vel se perdió (CRC) aunque la pose siga fresca, usar 0 (no corregir con dato viejo).
+                ds_in.otos_vy_mm_s       = world_model_otos_vel_is_fresh()
+                                               ? world_model_get_otos_vx_mm_s()   // lateral robot = +X
+                                               : 0.0f;
                 ds_in.fwd_speed_mm_s     = 0.0f;
                 const DriveStraightCfg ds_cfg{DS_KP_HEADING, DS_KP_LATERAL};
                 const DriveStraightCmd ds = drive_straight_compute(ds_in, ds_cfg);

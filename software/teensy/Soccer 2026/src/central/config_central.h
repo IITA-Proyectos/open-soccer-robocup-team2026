@@ -33,6 +33,12 @@ namespace iitasoccer {
     constexpr int PIN_INA3 = 11;
     constexpr int PIN_INB3 = 12;
     constexpr int PIN_PWM3 = 4;
+
+    // Sentido por motor (+1 normal, -1 invertido por hardware).
+    // VALIDADO en banco (María/Elías, diag_central_line_sweep_robot1): el motor 2
+    // (driver U17, pines 8/7/6) tiene INA/INB cruzados por HW → va invertido.
+    // Fuente: docs/firmware/DIAG-CENTRAL-MOTORS.md + journal 2026-05-29 / 2026-06-01.
+    constexpr int MOTOR_INVERT[3] = { +1, -1, +1 };
 #elif defined(ROBOT2)  // Delantero
     constexpr int PIN_INA1 = 8;
     constexpr int PIN_INB1 = 7;
@@ -45,6 +51,12 @@ namespace iitasoccer {
     constexpr int PIN_INA3 = 2;
     constexpr int PIN_INB3 = 5;
     constexpr int PIN_PWM3 = 3;
+
+    // ⚠️ ROBOT2 (delantero) NO testeado en banco. En el delantero el driver U17
+    // (8/7/6) es el MOTOR 1 (índice 0). Si la inversión de U17 es del driver/PCB
+    // (como apunta el banco del arquero), acá iría { -1, +1, +1 }. Se deja en
+    // neutro hasta confirmar con diag_central_motors en el delantero (no inventar HW).
+    constexpr int MOTOR_INVERT[3] = { +1, +1, +1 };
 #else
     #error "Debe definirse ROBOT1 (arquero) o ROBOT2 (delantero) en build_flags"
 #endif

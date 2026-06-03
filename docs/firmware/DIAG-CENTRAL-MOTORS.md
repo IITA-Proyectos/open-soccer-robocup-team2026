@@ -66,14 +66,15 @@ constexpr int MOTOR_DIR[3] = { +1, +1, +1 };
   Serial Monitor lo imprime al arrancar (`M1 M2 M3 → CW/CCW`) para confirmar
   **antes** de soltar el robot.
 
-> ⚠️ **Importante (producción):** el firmware de producción
-> (`src/central/motors_zircon.cpp`) **NO tiene inversión por motor** — usa la
-> misma convención que el diag (`PWM>0 → INA=HIGH, INB=LOW`) y la dirección
-> sale 100% de la cinemática + el cableado. Por eso lo correcto es que **las 3
-> ruedas sean consistentes con `+1`** (todas empujando al robot para el mismo
-> lado de giro). Si alguna necesitara `-1`, eso es un **gap de producción** a
-> resolver (agregar el signo a `motors_zircon.cpp` o invertir el cableado
-> INA/INB), no algo que producción haga hoy.
+> ⚠️ **Importante (producción) — actualizado 2026-06-03:** el motor 2 (driver
+> U17) tiene **INA/INB invertidos por hardware** (validado en banco por
+> María/Elías con `diag_central_line_sweep`, donde `motor2()` cruza INA/INB y
+> `ROT_M2=-1`). Producción ya lo honra: `config_central.h` define
+> `MOTOR_INVERT[3] = {+1,-1,+1}` (ROBOT1) y `motors_zircon.cpp` multiplica el PWM
+> firmado por ese signo antes de manejar INA/INB. **Fuente única del sentido por
+> motor = `MOTOR_INVERT` en `config_central.h`** (no repetir el dato en otros
+> docs; referenciarlo). ⚠️ ROBOT2 (delantero) NO testeado — ver el comentario de
+> `MOTOR_INVERT` en la rama ROBOT2 de `config_central.h`.
 
 ## Procedimiento operativo
 
@@ -198,15 +199,15 @@ Primer test de banco exitoso con el sketch ya robustecido. Robot físico **#1**
 `ROBOT1`).
 
 - ✅ **Los 3 motores giran y esperan el botón en cada paso.**
-- **Motor 1** con sentido efectivo `+1` (INA=HIGH, INB=LOW) → antihorario
-  **visto de frente** ("hacia la izquierda").
-- **Motores 2 y 3** con `+1` → empujan al robot para **el mismo lado** que el
-  motor 1 (visto de arriba). Los 3 son **consistentes**.
-- Con las 3 ruedas girando juntas, el robot rota **horario visto desde arriba**.
 
-**Conclusión:** `MOTOR_DIR = { +1, +1, +1 }` (sin inversiones). Como producción
-no tiene inversión por motor, esta consistencia es exactamente lo que se
-necesita — **no hay gap de cableado/signo para la rotación**. ✅
+> ⚠️ **CORREGIDO 2026-06-03.** La conclusión original de esta sección decía
+> `MOTOR_DIR = {+1,+1,+1}` (sin inversiones). Quedó **superado**: el banco
+> posterior (María/Elías, `diag_central_line_sweep_robot1`, 2026-06-01) mostró
+> que el **motor 2 (driver U17) va INVERTIDO por hardware** (INA/INB cruzados;
+> `ROT_M2=-1`). El sentido validado para ROBOT1 es **`{+1, -1, +1}`**, ya cargado
+> en producción (`config_central.h` → `MOTOR_INVERT` + `motors_zircon.cpp`).
+> La nota del viernes 2026-05-29 había dejado la tabla de sentidos **en blanco**;
+> el dato real lo aportó el banco del arquero que SÍ anduvo.
 
 > ⚠️ **A validar en el diag de avance/heading (NO en este):** en la cinemática
 > (`src/shared/kinematics.cpp:14`), `+omega` gira las 3 ruedas en `+1`, o sea
@@ -237,7 +238,7 @@ El sketch tenía dos bugs de banco, ya corregidos (host-verificados, compila):
 |---|---|---|
 | 1 | ~~**Veredicto pines 7/8 (TASK-036)**~~ → ✅ **RESUELTO 2026-05-31 por reasignación de UART** (no por aislar el motor): el link DOWN→CENTRAL se movió a **Serial1 (0/1)** y TOP→CENTRAL a **Serial7 (28/29)**, dejando los pines **7/8 exclusivos del motor 2 (U17)**. Ya no hay que decidir Serial2 vs Serial7 — el link es **Serial1**. | Cerrado. |
 | 2 | **Mapeo motor firmware → rueda física** (M1/M2/M3 = frente / izq / der) | Correr este diag y completar la tabla del Paso 4 (journal §1.1) |
-| 3 | **Orientación / `MOTOR_DIR` definitiva** | Robot 1 ya medido (`{+1,+1,+1}`, horario visto de arriba — ver "Resultados de calibración"). Confirmar en ambos robots + cargar a producción si hay que invertir algún signo |
+| 3 | **Orientación / sentido por motor (`MOTOR_INVERT`)** | ROBOT1 validado: **M2 (U17) invertido → `{+1,-1,+1}`**, ya en `config_central.h` + `motors_zircon.cpp` (banco María/Elías 2026-06-01). **Falta ROBOT2/delantero**: correr este diag en el delantero y cargar su `MOTOR_INVERT` (ahí U17 es el motor 1). |
 | 4 | Convención global de giro (`+omega` = horario/antihorario) | `diag_central_drive` + IMU/heading (ver caja ⚠️ arriba) |
 | 5 | ~~Confirmar `PIN_KICKER_SOL` (TASK-011)~~ — **CANCELADO**: el robot no tiene kicker físico (empuja por inercia); TASK-011 cancelada. | — |
 | 6 | Cinemática real (`WHEEL_ANGLES_DEG`, `WHEEL_RADIUS_MM`) — marcada **tentativa** en `config_central.h:62-69` | Sketch de movimientos vectoriales con los 3 motores identificados |

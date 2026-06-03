@@ -26,6 +26,10 @@ const WheelConfig WHEELS[3] = {
 void apply_pwm_to_motor(int motor_idx, int pwm_signed) {
     if (motor_idx < 0 || motor_idx >= 3) return;
     const MotorPins& p = MOTOR_PINS[motor_idx];
+    // Sentido por motor: algunos drivers tienen INA/INB invertidos por hardware
+    // (validado en banco — ver MOTOR_INVERT en config_central.h). Negar el PWM
+    // firmado equivale a cruzar INA/INB, igual que diag_central_line_sweep::motor2().
+    pwm_signed *= MOTOR_INVERT[motor_idx];
     if (pwm_signed > 0) {
         digitalWrite(p.ina, 1);
         digitalWrite(p.inb, 0);

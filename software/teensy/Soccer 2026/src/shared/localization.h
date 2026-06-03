@@ -29,8 +29,8 @@ struct LocalizationInputs {
 
 // Configuracion estatica (cancha + montaje + tuning).
 struct LocalizationConfig {
-    uint16_t field_width_mm;        // 2430 — eje X de la cancha
-    uint16_t field_height_mm;       // 1820 — eje Y de la cancha
+    uint16_t field_width_mm;        // 1820 — eje X (lateral, lado corto). Ver CONVENCION-EJES §2.
+    uint16_t field_height_mm;       // 2430 — eje Y (arco-a-arco, lado largo). Corregido 2026-06-03.
     int16_t  bno_offset_centideg;   // calibrado al boot (heading apuntando al arco rival)
     uint16_t tof_mount_angle_deg[4]; // {0,180,270,90} = {frente,atras,derecha,izquierda}
     // Radio del robot: distancia del plano del sensor ToF al CENTRO del robot, en mm.

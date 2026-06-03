@@ -50,8 +50,8 @@ constexpr uint16_t TOF_NO_READING   = 0xFFFF;
 constexpr uint16_t TOF_MAX_RANGE_MM = 4000;
 
 // ---- Cancha / montaje (espejo de pinout_common.h; este diag no usa el HAL) ----
-constexpr uint16_t FIELD_WIDTH_MM  = 2430;   // X (largo)
-constexpr uint16_t FIELD_HEIGHT_MM = 1820;   // Y (corto)
+constexpr uint16_t FIELD_WIDTH_MM  = 1820;   // X (lateral, corto) — ver pinout_common.h
+constexpr uint16_t FIELD_HEIGHT_MM = 2430;   // Y (arco-a-arco, largo) — corregido 2026-06-03
 constexpr uint16_t MOUNT_ANGLE[4]  = {0, 180, 270, 90};  // frente,atras,der,izq
 constexpr uint16_t OUTLIER_MM      = 300;
 const char*        POS_LABEL[4]    = {"FRENTE", "ATRAS ", "DERECHA", "IZQ   "};

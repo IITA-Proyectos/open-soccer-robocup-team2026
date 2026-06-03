@@ -34,6 +34,11 @@ bool  world_model_ball_visible();
 float world_model_get_ball_x_mm();
 float world_model_get_ball_y_mm();
 
+// Velocidad de la pelota (mm/s, marco robot) del WorldSnapshot. 0 si N/A o quieta.
+// Lo usa el arquero (strategy GK_INTERCEPT) para anticipar vía ball_predict.
+int16_t world_model_get_ball_vx_mm_s();
+int16_t world_model_get_ball_vy_mm_s();
+
 bool  world_model_goal_opp_visible();
 float world_model_get_goal_opp_angle_deg();
 float world_model_get_goal_opp_distance_mm();

@@ -28,6 +28,7 @@
 #include "pids.h"
 #include "behind_ball.h"
 #include "drive_straight.h"
+#include "ball_predict.h"
 
 #include <Arduino.h>
 #include <cmath>
@@ -475,11 +476,22 @@ MotorCommand goalkeeper_tick() {
             const float by = world_model_get_ball_y_mm();
             const float dist = std::sqrt(bx * bx + by * by);
 
+            // ANTICIPACIÓN: en vez de seguir la X ACTUAL de la pelota, apuntar a
+            // la X PREDICHA dentro de lookahead_s (ball_predict). Con velocidad
+            // N/A o pelota quieta (vx=vy=0) el lead es 0 → px=bx = conducta
+            // IDÉNTICA a hoy (fallback automático, sin gating extra).
+            // ⚠️ A TUNEAR EN BANCO: lookahead_s / max_lead_mm.
+            const float bx_pred = ball_predict(world_model_get_ball_x_mm(),
+                                               world_model_get_ball_y_mm(),
+                                               world_model_get_ball_vx_mm_s(),
+                                               world_model_get_ball_vy_mm_s(),
+                                               ball_predict_default_params()).px_mm;
+
             // PID lateral por cross_track (paralelo a la línea), con fallback
             // EXACTO a profundidad si es N/A — mismo helper que PATROL.
             const float vx_lateral_pid = gk_lateral_pid_output(now_ms);
 
-            const float vx_intercept = bx * GK_INTERCEPT_KP_VS_BALL_X;
+            const float vx_intercept = bx_pred * GK_INTERCEPT_KP_VS_BALL_X;
             cmd.vx_mm_s = static_cast<int16_t>(vx_intercept + vx_lateral_pid * 0.3f);
 
             // Transición a CLEAR: la pelota llegó cerca → salir a despejar

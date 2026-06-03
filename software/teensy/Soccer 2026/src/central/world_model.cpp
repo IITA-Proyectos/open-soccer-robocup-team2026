@@ -60,6 +60,8 @@ float world_model_get_my_heading_deg()      { return g_snap.my_heading_centideg 
 bool  world_model_ball_visible()            { return g_snap.ball_visible != 0; }
 float world_model_get_ball_x_mm()           { return static_cast<float>(g_snap.ball_x_mm); }
 float world_model_get_ball_y_mm()           { return static_cast<float>(g_snap.ball_y_mm); }
+int16_t world_model_get_ball_vx_mm_s()      { return g_snap.ball_vx_mm_s; }
+int16_t world_model_get_ball_vy_mm_s()      { return g_snap.ball_vy_mm_s; }
 
 bool  world_model_goal_opp_visible()        { return g_snap.goal_opp_visible != 0; }
 float world_model_get_goal_opp_angle_deg()  { return g_snap.goal_opp_angle_centideg / 100.0f; }

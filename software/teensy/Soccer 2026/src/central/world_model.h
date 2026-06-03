@@ -2,8 +2,8 @@
 //
 // CENTRAL no fusiona sensores — recibe el WorldSnapshot armado por TOP y lo
 // expone como estado del mundo para que strategy lo consulte. Si CENTRAL deja
-// de recibir snapshots (TOP cuelga), expone confidence = 0 y `is_fresh()` = false
-// para que strategy decida modo seguro.
+// de recibir snapshots (TOP cuelga), `world_model_snapshot_is_fresh()` pasa a
+// false (>500 ms sin snapshot) y main_central frena los motores (modo seguro).
 
 #pragma once
 #include <stdint.h>

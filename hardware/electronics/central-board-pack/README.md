@@ -81,7 +81,7 @@ central-board-pack/
 | ¿Qué MCU y placa usa CENTRAL? | `01-pinout-y-hardware.md` §1 (Teensy 4.1 + Zircon Rev v15) |
 | ¿Qué pin del Teensy va a qué motor? | `01-pinout-y-hardware.md` §3 (ROBOT1) o §4 (ROBOT2) |
 | ¿Cuál es la diferencia de pinout entre arquero y delantero? | `01-pinout-y-hardware.md` §5 |
-| ¿Qué pines usa la UART hacia TOP? | `01-pinout-y-hardware.md` §2.1 (Serial1, RX=0, TX=1) |
+| ¿Qué pines usa la UART hacia TOP? | `01-pinout-y-hardware.md` §2.1 (**Serial7, RX=28, TX=29**) |
 | ¿Qué pines usa la UART hacia DOWN? | `01-pinout-y-hardware.md` §2.1 (**Serial1, RX=0, TX=1** — reasignado 2026-05-31; antes Serial2/7-8, conflicto resuelto) |
 | ¿Qué pines usa el BNO055 y qué dirección I²C? | `01-pinout-y-hardware.md` §2.2 (Wire, SDA=18, SCL=19, 0x28) |
 | ¿Cómo es la cinemática del robot? | `01-pinout-y-hardware.md` §6 + `02-funcionalidad.md` §5.1 + `firmware/shared/kinematics.{h,cpp}` |

@@ -38,8 +38,8 @@ tags: [firmware, down, top, otos, tof, hardware]
 lógica de fusión ya está implementada y activa, pero las llamadas a las
 librerías de hardware están comentadas entre marcas `TODO_OTOS_LIB` /
 `TODO_TOF_LIB`. Sin esto: odometría = 0 (sin pose), y solo HC-SR04 da
-proximidad (sin los 4 ToF). Es **P0** porque bloquea pose absoluta y la
-detección de obstáculos real.
+proximidad (sin los 4 ToF). Era **P0** (bajó a **P1** — ver banner arriba: OTOS
+ya desbloqueado); bloqueaba pose absoluta y la detección de obstáculos real.
 
 ## Contexto
 

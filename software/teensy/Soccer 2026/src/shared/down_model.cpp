@@ -217,7 +217,7 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     if(suspect || saturated) ev|=EV_CALIB_SUSPECT;  // saturación todo-blanco reusa este flag (sin bit libre en el contrato de 16 bytes)
     if(any_mux_dead) ev|=EV_MUX_DEAD;   // TEMA 1 P0 — 2026-05-29 (cacheado arriba)
     if(sh_any_unhealthy(m.sensor_health, n)) ev|=EV_SENSOR_NOISY;  // TEMA 4 P1 — 2026-05-29
-    if(n<32)       ev|=EV_DEGRADED_GEOMETRY;  // anillo parcial: mux muerto o rig reducido
+    if(n<SENSOR_COUNT) ev|=EV_DEGRADED_GEOMETRY;  // anillo parcial: mux muerto o rig reducido
     s.event_flags=ev;
     s.quality = s.data_valid ? (uint8_t)(g.line_present? 85 : 95) : 0; // placeholder: metrica real (SNR) diferida a Plan 3
     s.sample_age_ms = 0;   // lo setea el glue HW (comm) con el delta real antes de framing

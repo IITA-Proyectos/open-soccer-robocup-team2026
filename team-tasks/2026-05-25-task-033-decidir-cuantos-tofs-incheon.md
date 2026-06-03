@@ -133,7 +133,7 @@ B como upgrade. **Decisión real: A primero, B opcional.**
 
 ## Recomendación del coach
 
-**Opción B (2 ToFs sin rework).**
+**Opción A (2 ToFs sin rework).**
 
 Justificación:
 1. **Strategy fit con Incheon = aprendizaje, no podio** (CLAUDE.md). 2

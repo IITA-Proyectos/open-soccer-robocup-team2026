@@ -7,8 +7,8 @@
 //   - Reporta status básico al TOP.
 //
 // Selección de robot por compilación:
-//   pio run -e zircon_robot1   → arquero (#define ROBOT1)
-//   pio run -e zircon_robot2   → delantero (#define ROBOT2)
+//   pio run -e central_robot1   → arquero (#define ROBOT1)
+//   pio run -e central_robot2   → delantero (#define ROBOT2)
 //
 // Pinout basado en hardware/electronics/mapa-pines-teensy-ambos-robots.md
 // (documento del 2026-03-20). NO MODIFICAR sin coordinar con Enzo + verificar
@@ -92,9 +92,11 @@ constexpr int   UART_DOWN_TX    = 1;   // Serial1 TX1
 // ============================================================
 // Watchdog
 // ============================================================
-// Si no llega un MotorCommand del TOP en este tiempo, los motores se detienen
-// para evitar que el robot quede a velocidad fija si el TOP se cuelga o se desconecta.
-constexpr uint32_t COMMAND_TIMEOUT_MS = 200;
+// ⚠️ SIN USO HOY (sin callers, verificado por grep). El watchdog EFECTIVO de la
+// CENTRAL es SNAPSHOT_TIMEOUT_MS=500 ms (world_model.cpp) sobre el WorldSnapshot:
+// main_central frena los motores si snapshot_is_fresh()==false. CENTRAL ya NO
+// recibe MotorCommand del TOP (recibe WorldSnapshot y decide localmente).
+constexpr uint32_t COMMAND_TIMEOUT_MS = 200;  // conservada como referencia; no se usa
 
 // ============================================================
 // Arranque manual fail-safe (F3) — SOLO banco, gateado por CENTRAL_ENABLE_MANUAL_START

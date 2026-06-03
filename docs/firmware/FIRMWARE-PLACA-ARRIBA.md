@@ -52,7 +52,7 @@ La placa ARRIBA es el **cerebro sensorial** del robot. No toma decisiones tácti
 - **Compañero**: pose y estado recibidos vía ESP-NOW (cuando llega).
 - **Rivales**: estimación de hasta 2 oponentes con baja confianza (obstáculos detectados por ToF + cámara que no son pelota ni partner).
 - **Arcos**: posiciones fijas conocidas, confirmadas cuando se ven.
-- **Comando árbitro**: start/stop/halftime recibido por la placa COMM.
+- **Comando árbitro**: start/stop/halftime. El TOP lo lee como **nivel GPIO** en sus pines 5/6 (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART) y lo expone en el snapshot.
 - **Flags**: match running, in_own_penalty_area, partner_alive, partner_sees_ball, IMU degradado, etc.
 
 **Fusiona 5 fuentes**:
@@ -90,7 +90,8 @@ La placa ARRIBA es el módulo más complejo computacionalmente del robot. Su car
 | BNO055 IMU | 2 | I2C dual (Wire + Wire1) | Wire1 remapeado a pines 24/25 (Q3 confirmado) |
 | Sensor ToF VL53L7CX | 4 fijos (plan: 6) | **TODOS en `Wire` (I²C0)**, LP individual por bodge | 8×8 SPAD multizona. Dir 0x2A..0x2D. Plan: +2 móviles para pelota |
 | Ultrasonido HC-SR04 | 1 | TRIG=pin 4 / ECHO=pin 3 | Frontal, fallback de ToF, lectura bloqueante 25 ms (banco 2026-05-31) |
-| Placa COMM (ESP32-C6) | 1 | UART (**Serial2, RX 7 / TX 8**) | Bridge a árbitros + ESP-NOW partner (fix 2026-06-02) |
+| Árbitro RCJ (START/STOP) | — | **GPIO: pin 5 = OUT1 (PLAY/STOP), pin 6 = OUT2 (espejo de OUT1)** | Nivel 0 = juego PARADO, 1 = juego EN CURSO (3.3V). NO viene por UART (fix 2026-06-02 / TASK-039) |
+| Placa COMM (ESP32-C6) | 1 | UART (**Serial2, RX 7 / TX 8**) | SOLO ESP-NOW partner + status (el árbitro ya NO pasa por COMM/UART — fix 2026-06-02 / TASK-039) |
 | Conector hacia DOWN | 1 | UART (Serial1) | Recibe ODOM_POSE/VEL de ABAJO |
 | Conector hacia CENTRAL | 1 | UART (**Serial4, RX 16 / TX 17**) | Envía WORLD_SNAPSHOT (fix 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde) |
 | Conector Dean-T-F batería | 1 | 7.4V LiPo | Comparte con CENTRAL y ABAJO |
@@ -121,7 +122,7 @@ reset del Teensy no las borra).
 | Serial1 | 1 | 0 | conector U16 ← DOWN | 230400 | Recibe ODOM |
 | **Serial5** | **20** | **21** | ← Cámara 2 (trasera) | 19200 | **Cámara trasera soldada acá** (✅ banco 2026-05-31, FORMATO OK) |
 | Serial3 | 14 | 15 | conector U8 ↔ Cámara 1 | 19200 | Protocolo OpenMV ✅ FORMATO OK |
-| **Serial2** | **8** | **7** | conector U15 ↔ COMM | 115200 | **Bridge árbitros + partner** (fix 2026-06-02) |
+| **Serial2** | **8** | **7** | conector U15 ↔ COMM | 115200 | **SOLO partner ESP-NOW + status** (el árbitro NO viene por acá — es GPIO pines 5/6; fix 2026-06-02 / TASK-039) |
 | **Serial4** | **17** | **16** | → CENTRAL | 230400 | **Envía WORLD_SNAPSHOT** (TX4=pin 17 → CENTRAL pin 28; fix 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde) |
 
 > **✅ Actualización 2026-05-31 (TASK-204, vale para todo este doc):** la **cámara
@@ -157,7 +158,7 @@ Quedan libres Serial6 (BLOQUEADO por Wire1 remap, pines 24/25); Serial7 NO es us
 | R11 | Fusión sensorial EKF → pose propia con confianza | 100 Hz |
 | R12 | Predicción Kalman de pelota (extrapolación cuando no se ve) | 100 Hz |
 | R13 | Estimación de rivales (de obstáculos ToF + cámara) | 30 Hz |
-| R14 | Comm con placa COMM (recibir árbitros + recibir partner) | 100 Hz tick, 10 Hz envío partner |
+| R14 | Leer árbitro por **GPIO (pines 5/6)** + comm con placa COMM (recibir partner) | 100 Hz tick, 10 Hz envío partner |
 | R15 | Fusión con datos del partner | 10 Hz |
 | R16 | Construir `WorldSnapshot` y enviar a CENTRAL | 100 Hz |
 | R17 | Recibir comandos administrativos del CENTRAL | bajo, eventos |
@@ -799,7 +800,8 @@ struct WorldSnapshot {
 ### 13.2 Streams secundarios
 
 - **Recepción desde ABAJO** (Serial1): `DOWN_OTOS_POSE/VEL` a 100 Hz para fusión EKF.
-- **Recepción desde COMM** (Serial2, 7/8): `COMM_REFEREE_CMD`, `COMM_PARTNER_DATA`, `COMM_STATUS_REQ` (eventos).
+- **Recepción desde COMM** (Serial2, 7/8): `COMM_PARTNER_DATA`, `COMM_STATUS_REQ` (eventos). El viejo `COMM_REFEREE_CMD` quedó **obsoleto**: el árbitro ya NO llega por UART (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART).
+- **Lectura del árbitro (GPIO, pines 5/6)**: el TOP lee `read_referee_gpio()` (pin 5 = OUT1, pin 6 = OUT2 espejo) con `INPUT_PULLDOWN`. `match_running = (pin5 AND pin6)` en alto → AND con fail-safe a STOP si se desconecta. El resultado se vuelca al `referee_cmd`/`flags.match_running` del snapshot.
 - **Envío a COMM** (Serial2, 7/8): `TOP_PARTNER_DATA` a 10 Hz, `TOP_STATUS_REPLY` a demanda.
 - **Recepción desde CENTRAL** (Serial4, 16/17): `CENTRAL_RESET_TOP`, `CENTRAL_TOP_CMD` (eventos).
 
@@ -821,7 +823,8 @@ struct WorldSnapshot {
 | Ambas cámaras | No llegan packets por > 1s | Modo DEGRADED_NO_CAMERAS. Pelota solo por predicción |
 | UART hacia CENTRAL | No se puede TX (raro) | LED parpadea, intentar reiniciar Serial |
 | UART desde ABAJO | Timeout 500 ms | Confianza pose baja, sigue con cámara+ToF+IMU |
-| UART desde COMM | Timeout 500 ms | Marcar partner_alive=false, sin árbitros |
+| UART desde COMM | Timeout 500 ms | Marcar partner_alive=false (NO afecta árbitro: el árbitro es GPIO pines 5/6, independiente del UART COMM — fix 2026-06-02 / TASK-039) |
+| Árbitro GPIO (pines 5/6) | Pin 5 o pin 6 caen / se desconectan | `match_running = pin5 AND pin6` → fail-safe a STOP (juego PARADO) |
 
 ---
 
@@ -833,7 +836,8 @@ struct WorldSnapshot {
 loop():
     # RX (cada loop, no bloquea)
     comm_down_tick()        # ~50 µs (drena Serial1)
-    comm_arbiter_tick()     # ~50 µs (drena Serial2, COMM 7/8)
+    comm_arbiter_tick()     # ~50 µs (lee árbitro por GPIO pines 5/6 vía read_referee_gpio; NO UART — fix 2026-06-02/TASK-039)
+    comm_partner_tick()     # ~50 µs (drena Serial2, COMM 7/8: partner ESP-NOW + status)
     comm_central_tick()     # ~50 µs (drena Serial4, CENTRAL 16/17)
     cameras_tick()          # ~100 µs (parsea Serial3 + Serial5)
 
@@ -1032,7 +1036,7 @@ Si hay tiempo y placas listas:
 - **PIDs**: viven en CENTRAL.
 - **Cinemática inversa omni-3**: vive en CENTRAL.
 - **Procesamiento de imagen avanzado**: vive **dentro de las OpenMV**. ARRIBA solo recibe blobs ya detectados.
-- **Comunicación con árbitros del torneo (protocolo oficial)**: implementado en la placa COMM (ESP32-C6). ARRIBA solo recibe comandos pre-decodificados.
+- **Comunicación con árbitros del torneo (protocolo oficial)**: el árbitro RCJ llega al TOP como **nivel GPIO** en los pines 5/6 (OUT1/OUT2). ARRIBA solo lee ese nivel y lo refleja en `referee_cmd`/`match_running` del snapshot (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART; el viejo bridge por COMM/`COMM_REFEREE_CMD` quedó obsoleto).
 - **Almacenamiento persistente**: no hay flash de usuario en Teensy 4.0 (solo Teensy 4.1). Para guardar calibración, usar EEPROM emulada limitada o agregar SD en otra placa.
 
 ---

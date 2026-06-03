@@ -50,7 +50,8 @@ publicar. **NO decide estrategia. NO controla motores.**
 | Recepción odometría OTOS desde DOWN | Frame se recibe, pero `my_x_mm/my_y_mm` NO se populan con esa data |
 | Clasificación del rol (arquero/delantero) | `PIN_ROLE_DIPSWITCH` declarado (`config_top.h:87`) pero NO hay `digitalRead` en el código |
 | Polaridad de arco (opp vs own) | **HARDCODEADO** `yellow=opp, blue=own` (`main_top.cpp:65`, TODO presente) |
-| Bridge árbitros / partner ESP-NOW | **REAL** — `comm_arbiter` recibe `COMM_REFEREE_CMD` y partner data |
+| Recepción comando de árbitro (START/STOP) | **REAL** — `comm_arbiter` lee **nivel GPIO en pines 5/6 del TOP** *(fix 2026-06-02 / TASK-039: el arbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)* |
+| Partner ESP-NOW / status | **REAL** — `comm_arbiter` recibe partner data por UART (Serial2) |
 
 ### Lo que TOP NO hace (y por qué importa documentarlo)
 
@@ -106,7 +107,7 @@ primero). El CRC viaja big-endian. No confundir.
 | TOP ← CENTRAL | `0x61` | `CENTRAL_RESET_TOP` | `uint8` (0 B usado) | evento | Reset del world model / recalibrar cámaras — **recibido pero no procesado** (`comm_central.cpp:19-23`) |
 | TOP ← CENTRAL | `0x62` | `CENTRAL_TOP_CMD` | genérico | evento | Comandos admin — **no implementado** |
 | TOP → COMM | `0x32` | `TOP_STATUS_REPLY` | `StatusReply` (5 B) | pedido | Responde a `COMM_STATUS_REQ` con rol, errores, batería (§4) |
-| TOP ← COMM | `0x30` | `COMM_REFEREE_CMD` | `uint8` (1 B) | evento | Comando del árbitro start/stop/halftime/reset (§4) |
+| ~~TOP ← COMM~~ | ~~`0x30`~~ | ~~`COMM_REFEREE_CMD`~~ | ~~`uint8` (1 B)~~ | — | **OBSOLETO** *(fix 2026-06-02 / TASK-039)*: el árbitro RCJ ya **no** llega por UART. Ahora entra como **NIVEL GPIO en pines 5/6 del TOP** (no es un frame). Ver §4. |
 | TOP ← COMM | `0x31` | `COMM_STATUS_REQ` | vacío | pedido | COMM pide status — recibido, handler devuelve sin responder automáticamente (`comm_arbiter.cpp:44-48`) |
 | TOP ← COMM | `0x40` | `COMM_PARTNER_DATA` | `PartnerSnapshot` (12 B) | ~10 Hz | Snapshot del robot partner vía ESP-NOW (§4) |
 | TOP → COMM | `0x41` | `TOP_PARTNER_DATA` | `PartnerSnapshot` (12 B) | app | Mi snapshot al partner vía COMM/ESP-NOW (§4) |
@@ -121,7 +122,8 @@ primero). El CRC viaja big-endian. No confundir.
 | Serial1 | RX=0, TX=1 | 230400 | ← DOWN (odometría OTOS) | Inferido del schematic |
 | **Serial5** | **RX=21, TX=20** | 19200 | ← **Cámara trasera** (OpenMV) | ✅ **banco 2026-05-31: trasera soldada acá (FORMATO OK, `diag_top_cameras`)** |
 | Serial3 | RX=15, TX=14 | 19200 | ← Cámara frontal (OpenMV) | Schematic U8 ✅ FORMATO OK |
-| **Serial2** | **RX=7, TX=8** | 115200 | ↔ **COMM (árbitros + ESP-NOW)** | ✅ **banco 2026-06-02: COMM cableada acá (el Teensy 4.0 no expone Serial7 28/29 en el borde)** |
+| **Serial2** | **RX=7, TX=8** | 115200 | ↔ **COMM (SOLO partner ESP-NOW / status)** | ✅ **banco 2026-06-02: COMM cableada acá (el Teensy 4.0 no expone Serial7 28/29 en el borde)** *(fix 2026-06-02 / TASK-039: el árbitro ya NO viaja por este UART; entra como nivel GPIO en pines 5/6 del TOP)* |
+| **GPIO** | **pin 5 = OUT1, pin 6 = OUT2** | — | ← **Árbitro RCJ (START/STOP), nivel GPIO** | ✅ **banco 2026-06-02 (TASK-039): pines 5/6 con `INPUT_PULLDOWN`; OUT2 = espejo de OUT1; 0 = juego PARADO, 1 = juego EN CURSO (3.3V)** |
 | **Serial4** | **RX=16, TX=17** | 230400 | **→ CENTRAL (snapshot)** | ✅ **banco 2026-06-02: TX4=pin 17 → CENTRAL RX7=pin 28** |
 
 > **✅ Actualizado 2026-06-02 (fix de cableado):** el **Teensy 4.0 NO expone Serial7
@@ -192,7 +194,7 @@ commit 2a9064e: GAP-001 / G-TOP-12 cerrado).
 | 21 | `goal_opp_visible` | u8 | — | 0 / 1 | **REAL**; polaridad **HARDCODEADA** `yellow=opp` (`main_top.cpp:65`) | 1 = el arco rival está visible. Polaridad incorrecta en ~50% de partidos hasta leer el comando de árbitro. |
 | 22 | `goal_own_visible` | u8 | — | 0 / 1 | **REAL**; polaridad **HARDCODEADA** `blue=own` (`main_top.cpp:69`) | 1 = el arco propio está visible. Mismo problema de polaridad. |
 | 23 | `min_obstacle_mm` | u16 | mm | 0..65534; **65535 (`0xFFFF`) = sin lectura** | **PARCIAL** — los 4 ToF I2C son STUB (siempre `0xFFFF`); solo HC-SR04 activo pero bloqueante (`sensors_tof.cpp:23-35`) | Distancia al obstáculo más cercano. Sin los ToF, cubre solo sector frontal con HC-SR04. |
-| 25 | `referee_cmd` | u8 | — | 0=STOP, 1=START, 2=HALFTIME, 3=RESET, 0xFF=UNKNOWN | **REAL** — llega vía COMM (`comm_arbiter.cpp:39-43`) | Último comando del árbitro. Arranca en `UNKNOWN=0xFF`. |
+| 25 | `referee_cmd` | u8 | — | 0=STOP, 1=START, 2=HALFTIME, 3=RESET, 0xFF=UNKNOWN | **REAL** — derivado del **nivel GPIO en pines 5/6 del TOP** (`comm_arbiter.cpp`, `read_referee_gpio()`) *(fix 2026-06-02 / TASK-039: el arbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)* | Último comando del árbitro, tal como lo emite el TOP en el snapshot. Arranca en `UNKNOWN=0xFF`. CENTRAL/strategy lo siguen consumiendo desde el `WORLD_SNAPSHOT` (no cambia). |
 | 26 | `flags` | u8 | bitfield | ver §3.3 | **PARCIAL** — solo bits 1 y 3 se ponen (`main_top.cpp:76-80`) | Flags útiles para strategy (ver tabla §3.3). |
 
 `sizeof(WorldSnapshot) == 27` bytes (schema v2, +ball_vx/vy, `__attribute__((packed))`).
@@ -205,7 +207,7 @@ Frame completo TOP→CENTRAL: 27 + 7 overhead = **34 bytes**.
 | 0 | `0x01` | `in_own_penalty_area` | **NO implementado** (`main_top.cpp:78`: "requiere pose absoluta — Nivel 2") | El robot está dentro de su propia área. Necesita fusión cámara+pose. |
 | 1 | `0x02` | `partner_alive` | **REAL** — `comm_arbiter_partner_is_fresh()` con timeout 500 ms (`comm_arbiter.cpp:107`) | El robot partner respondió hace menos de 500 ms. |
 | 2 | `0x04` | `partner_sees_ball` | **NO implementado** (`main_top.cpp:79`: "requiere parseo del partner snapshot — futuro") | El partner detectó la pelota. |
-| 3 | `0x08` | `match_running` | **REAL** — `comm_arbiter_is_match_running()` (`comm_arbiter.cpp:80`) | El árbitro dio START y no dio STOP/HALFTIME/RESET. |
+| 3 | `0x08` | `match_running` | **REAL** — `comm_arbiter_is_match_running()` (`comm_arbiter.cpp`); deriva del **nivel GPIO en pines 5/6 del TOP**: `match_running = (pin5 AND pin6) en alto` (AND → fail-safe a STOP si se desconecta) *(fix 2026-06-02 / TASK-039: el arbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)* | El árbitro tiene el juego EN CURSO (pin5 Y pin6 en alto). CENTRAL/strategy lo consumen desde el `WORLD_SNAPSHOT` (no cambia). |
 | 4-7 | `0xF0` | reservados | — | Escribir 0; receptor ignora. |
 
 ### 3.4 Convención de ángulos (sin ambigüedad)
@@ -275,20 +277,41 @@ provee valor numérico aquí porque SEQ varía.)
 
 ---
 
-## 4. Mensajes con COMM (placa árbitros + partner) — Serial2 (RX pin 7 / TX pin 8)
+## 4. Recepción del árbitro (GPIO) y mensajes con COMM (partner) — Serial2 (RX pin 7 / TX pin 8)
 
-### 4.1 `COMM_REFEREE_CMD` — COMM → TOP (TYPE `0x30`)
+> **Serial2 (COMM)** queda **SOLO** para partner ESP-NOW / status (§4.2–§4.4). El
+> comando del árbitro **ya no viaja por este UART**; ver §4.1.
 
-| Payload | Tipo | Bytes | Valores válidos |
-|---------|------|-------|-----------------|
-| byte 0 | `uint8` | 1 | 0=STOP, 1=START, 2=HALFTIME, 3=RESET |
+### 4.1 Comando del árbitro RCJ — **NIVEL GPIO en pines 5/6 del TOP** *(fix 2026-06-02 / TASK-039)*
 
-Implementado en `comm_arbiter.cpp:38-43`. El campo `referee_cmd` del
-`WORLD_SNAPSHOT` refleja el último valor recibido. Arranca en `0xFF=UNKNOWN`.
+El árbitro RCJ (START/STOP del partido) llega al TOP como **nivel GPIO, no por
+UART**. Pines del TOP (Teensy 4.0):
 
-**Sin COMM operativa:** la FSM de CENTRAL queda en `WAIT_START` indefinidamente
-(bloqueante). Es un P0 para Incheon (TASK-006/TASK-024: fallback manual o COMM
-operativa obligatoria antes de la primera competencia).
+| Pin TOP | Señal | Nivel | Significado |
+|--------:|-------|-------|-------------|
+| **pin 5** | **OUT1 (PLAY/STOP)** | 0 = juego PARADO, 1 = juego EN CURSO (3.3V) | Línea principal del árbitro |
+| **pin 6** | **OUT2 (espejo de OUT1)** | id. | Redundancia: espejo de OUT1 |
+
+Firmware (`src/top/comm_arbiter.cpp`): `read_referee_gpio()` lee los pines 5/6 con
+`INPUT_PULLDOWN`; `match_running = (pin5 AND pin6) en alto` (**AND → fail-safe a
+STOP si se desconecta** cualquiera de las dos líneas). El probe temporal se removió
+de `main_top.cpp`.
+
+El campo `referee_cmd` del `WORLD_SNAPSHOT` refleja el último estado leído del GPIO.
+Arranca en `0xFF=UNKNOWN`.
+
+**Obsoleto:** el viejo frame UART `COMM_REFEREE_CMD` (TYPE `0x30`, COMM → TOP, 1 B)
+quedó **obsoleto**. Ya no se usa para recibir el árbitro.
+
+> **Nota — consumo en CENTRAL/strategy (NO cambia):** CENTRAL y la strategy siguen
+> consumiendo `referee_cmd` / `match_running` **dentro del `WORLD_SNAPSHOT`** que
+> manda el TOP. Lo único que cambió es la **fuente en el TOP** (de UART a GPIO en
+> pines 5/6), no cómo se consume aguas abajo.
+
+**Sin señal de árbitro válida:** por el AND con fail-safe, el TOP reporta STOP, y
+la FSM de CENTRAL queda en `WAIT_START` indefinidamente (bloqueante). Es un P0 para
+Incheon (TASK-006/TASK-024: cableado correcto del árbitro a pines 5/6 o fallback
+manual antes de la primera competencia).
 
 ### 4.2 `TOP_STATUS_REPLY` — TOP → COMM (TYPE `0x32`), 5 bytes
 
@@ -299,7 +322,7 @@ Definido inline en `comm_arbiter.cpp:83-88` (struct local, no en `types.h`):
 | 0 | `role` | u8 | Rol del robot (0=arquero, 1=delantero). Hoy valor hardcodeado/sin leer |
 | 1 | `error_flags` | u8 | Bitfield de errores de hardware. Definición no formalizada aún |
 | 2 | `battery_mv` | u16 LE | Tensión de batería en mV. Fuente no conectada (retorna 0) |
-| 4 | `match_running` | u8 | 0/1 — espejo del estado interno de COMM |
+| 4 | `match_running` | u8 | 0/1 — estado de juego que el TOP deriva del **árbitro GPIO (pines 5/6)** *(fix 2026-06-02 / TASK-039: el arbitro es NIVEL GPIO en pines 5/6 del TOP, no UART; ya no es espejo del estado interno de COMM)* |
 
 Enviado en respuesta a `COMM_STATUS_REQ`. El handler actual recibe el request
 pero **no responde automáticamente** (`comm_arbiter.cpp:44-48`); el caller
@@ -390,8 +413,8 @@ del robot son los dos ceros.
 | `goal_opp_angle_centideg` | MEDIA | Usar para dirección de tiro; distancia NO confiable |
 | `goal_opp_visible`, `goal_own_visible` | MEDIA PERO polaridad incorrecta | Solo confiable luego de implementar lectura de `referee_cmd` para corrección de polaridad (TASK-024) |
 | `min_obstacle_mm` | BAJA — solo HC-SR04 frontal | Usar con precaución; 0xFFFF = sin datos (ignorar para decisiones críticas) |
-| `referee_cmd` | ALTA si COMM operativa | Confiable si COMM está viva (`partner_alive` en flags) |
-| `flags.match_running` (bit 3) | ALTA si COMM operativa | Depende de COMM |
+| `referee_cmd` | ALTA si el árbitro está cableado a los pines 5/6 del TOP | Confiable si el GPIO del árbitro (pines 5/6) está conectado *(fix 2026-06-02 / TASK-039: el arbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)*. CENTRAL lo sigue leyendo del `WORLD_SNAPSHOT`. |
+| `flags.match_running` (bit 3) | ALTA si el árbitro está cableado a los pines 5/6 del TOP | Depende del GPIO del árbitro (pines 5/6, AND con fail-safe a STOP). CENTRAL lo sigue leyendo del `WORLD_SNAPSHOT`. |
 | `flags.partner_alive` (bit 1) | ALTA | Confiable |
 
 ### 6.2 Qué campos son N/A hoy (NUNCA usar para decisiones)
@@ -433,12 +456,12 @@ setup():
   sensors_tof_init()      ← no bloqueante (stub)
   cameras_init()          ← abre Serial3 (cam frontal) + Serial5 (cam trasera)
   comm_down_init()        ← abre Serial1
-  comm_arbiter_init()     ← abre Serial2  (COMM; fix 2026-06-02)
+  comm_arbiter_init()     ← abre Serial2 (COMM partner/status) + configura pines 5/6 como INPUT_PULLDOWN (árbitro GPIO; fix 2026-06-02 TASK-039)
   comm_central_init()     ← abre Serial4  (TOP→CENTRAL; fix 2026-06-02)
 
 loop() (no tiene period fijo — corre tan rápido como puede):
   comm_down_tick()        ← drena Serial1, OTOS de DOWN
-  comm_arbiter_tick()     ← drena Serial2, COMM/árbitros/partner
+  comm_arbiter_tick()     ← lee árbitro GPIO (pines 5/6) + drena Serial2 (COMM partner/status)
   comm_central_tick()     ← drena Serial4, comandos de CENTRAL
   cameras_tick()          ← drena Serial3 + Serial5, parsers OpenMV
   if (every 10 ms) sensors_imu_tick()
@@ -461,7 +484,7 @@ loop() (no tiene period fijo — corre tan rápido como puede):
 | Wiring cámaras UART | `cameras_runtime.cpp` | **HW-BOUND** | No | `Serial3` (frontal) / `Serial5` (trasera, soldada en pin 21); cota 64 bytes/tick implementada. |
 | IMU BNO055 dual | `sensors_imu.cpp` | **HW-BOUND** | No (usa Wire + Adafruit_BNO055) | Setup bloqueante (~5s); tick no bloqueante. |
 | ToF + HC-SR04 | `sensors_tof.cpp` | **HW-BOUND** | No | HC-SR04 usa `pulseIn` bloqueante (P0: TASK-014); 4 ToF I2C son stub. |
-| COMM arbiter | `comm_arbiter.cpp` | **HW-BOUND** | No (usa **Serial2**, fix 2026-06-02) | `guard last_ms==0` ausente en `comm_arbiter_partner_is_fresh()` (`comm_arbiter.cpp:107`): `millis()-0 < 500` → true al boot antes de recibir cualquier dato. |
+| COMM arbiter | `comm_arbiter.cpp` | **HW-BOUND** | No (usa **Serial2** para partner/status + **GPIO pines 5/6** para el árbitro, `read_referee_gpio()`; fix 2026-06-02 TASK-039) | `guard last_ms==0` ausente en `comm_arbiter_partner_is_fresh()` (`comm_arbiter.cpp:107`): `millis()-0 < 500` → true al boot antes de recibir cualquier dato. |
 | Comm DOWN | `comm_down.cpp` | **HW-BOUND** | No (usa Serial1) | Mismo bug de guard: `fresh(0)` → true al boot. |
 | Comm CENTRAL | `comm_central.cpp` | **HW-BOUND** | No (usa **Serial4**, fix 2026-06-02) | Handler de `CENTRAL_RESET_TOP` recibido pero no procesado. |
 
@@ -478,7 +501,7 @@ loop() (no tiene period fijo — corre tan rápido como puede):
 | ID | Gap | Archivo:línea | Risk-no-fix | Risk-fix | Tiempo est. |
 |----|-----|--------------|-------------|----------|-------------|
 | ~~G-TOP-01~~ | ✅ **RESUELTO 2026-06-02:** TOP→CENTRAL = **Serial4 (RX pin 16 / TX pin 17)**; COMM = **Serial2 (RX pin 7 / TX pin 8)**. *(fix 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde; el cable TOP TX4=pin 17 → CENTRAL RX7=pin 28 del Teensy 4.1.)* Confirmado en banco. | `comm_central.cpp:34` | — | — |
-| G-TOP-02 | **Polaridad de arco hardcodeada** `yellow=opp` | `main_top.cpp:65` | En ~50% de partidos el robot ataca su propio arco | Leer `referee_cmd` para aplicar inversión; fácil una vez que COMM anda | 3h |
+| G-TOP-02 | **Polaridad de arco hardcodeada** `yellow=opp` | `main_top.cpp:65` | En ~50% de partidos el robot ataca su propio arco | Leer `referee_cmd` para aplicar inversión; fácil una vez que el árbitro GPIO (pines 5/6) esté cableado *(fix 2026-06-02 / TASK-039: el arbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)* | 3h |
 | G-TOP-03 | **Rol no leído** (`PIN_ROLE_DIPSWITCH` sin `digitalRead`) | `config_top.h:87` + `main_top.cpp` (ausente) | Arquero y delantero son indistinguibles al boot; `TOP_STATUS_REPLY` manda rol=0 siempre | Agregar 1 línea en `setup()`, propagar rol | 1h |
 | G-TOP-04 | **`pulseIn` bloqueante en HC-SR04** en el loop | `sensors_tof.cpp:32` | Loop puede tardar hasta 25 ms en cada lectura → violación de loop timing → snapshot retrasado | Convertir a lectura no bloqueante con ISR o timer | 4h |
 | G-TOP-05 | **`Serial.print` debug sin gate de competición** | `main_top.cpp:136-167` | En partido puede agregar latencia perceptible al loop | Agregar flag `competition_mode` o macro | 1h |

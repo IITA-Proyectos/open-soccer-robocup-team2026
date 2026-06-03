@@ -36,7 +36,7 @@ programación — ya es independiente. (Teensy 4.0 tiene 7 UART y la 4.1 tiene 8
 |--------|----|----|-------------|------|----------|
 | **`Serial`** (USB) | — | — | PC | — | flasheo + monitor (debug) |
 | **`Serial1`** | 0 | 1 | ← DOWN | 230400 | recibe odometría OTOS (pose + vel) + línea (`LineStatusV2`, broadcast; cacheada, no consumida aún) |
-| **`Serial2`** | 7 | 8 | ↔ COMM (ESP32-C6) | 115200 | árbitros + partner ESP-NOW |
+| **`Serial2`** | 7 | 8 | ↔ COMM (ESP32-C6) | 115200 | **partner ESP-NOW / status** (el árbitro NO viene por acá; ver §1.1) |
 | **`Serial3`** | 15 | 14 | ← cámara **frontal** (U8) | 19200 | blobs pelota/arcos (9 bytes) |
 | **`Serial4`** | 16 | 17 | → CENTRAL | 230400 | envía `WORLD_SNAPSHOT` (100 Hz) |
 | **`Serial5`** | 21 | 20 | ← cámara **trasera** | 19200 | blobs pelota/arcos (9 bytes) |
@@ -48,6 +48,20 @@ programación — ya es independiente. (Teensy 4.0 tiene 7 UART y la 4.1 tiene 8
 > CENTRAL**. El lado CENTRAL (Teensy **4.1**) SÍ tiene 28/29 en el borde → su `Serial7` queda igual.
 
 *Libres:* `Serial6` (24/25) no se usa como UART (esos pines los toma `Wire1`) · `Serial7` (28/29) = pads traseros del 4.0, **no usables**.
+
+#### 1.1 Árbitro RCJ (START/STOP) — **NIVEL GPIO, no UART**
+*(fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)*
+
+El comando del árbitro RCJ (PLAY/STOP del partido) llega al TOP como **nivel digital GPIO**, **NO por UART**:
+
+| Pin TOP | Señal | Nivel |
+|---------|-------|-------|
+| **5** | OUT1 (PLAY/STOP) | **0 = juego PARADO · 1 = juego EN CURSO (3.3 V)** |
+| **6** | OUT2 (espejo de OUT1) | igual que OUT1 |
+
+- Firmware (`src/top/comm_arbiter.cpp`): `read_referee_gpio()` lee los pines 5/6 con `INPUT_PULLDOWN`; `match_running = (pin5 Y pin6)` en alto (**AND** → *fail-safe* a STOP si se desconecta).
+- El `Serial2` (7/8) del enlace a COMM queda **SOLO para partner ESP-NOW / status**; el viejo frame `COMM_REFEREE_CMD` por UART quedó **obsoleto**.
+- ⚠️ **El cambio es solo la FUENTE en el TOP.** El `match_running` / `referee_cmd` sigue viajando **dentro del `WORLD_SNAPSHOT`** que el TOP manda a la CENTRAL; la CENTRAL y la strategy lo consumen igual que antes.
 
 ### CENTRAL — Teensy 4.1 sobre Zircon Rev v15 (cerebro: FSM + PIDs + motores)
 | Puerto | RX | TX | Conecta con | Baud | Para qué |
@@ -80,7 +94,7 @@ programación — ya es independiente. (Teensy 4.0 tiene 7 UART y la 4.1 tiene 8
 | **TOP → CENTRAL** (snapshot) | TOP · `Serial4` · **pin 17** (TX4) | CENTRAL · `Serial7` · **pin 28** (RX7) | 230400 | 🔧 fix 2026-06-02 (era `Serial7` en el TOP, inexistente en el borde del 4.0) |
 | **DOWN → TOP** (línea + odometría OTOS) | DOWN · `Serial5` · **pin 20** | TOP · `Serial1` · **pin 0** | 230400 | ⚠️ sin cablear |
 | **DOWN → CENTRAL** (línea + odometría OTOS) | DOWN · `Serial1` · **pin 1** | CENTRAL · `Serial1` · **pin 0** | 230400 | ✅ cable validado (DOWN→CENTRAL OK en banco 2026-06-02) |
-| **TOP ↔ COMM** (árbitros) | TOP · `Serial2` · **7/8** | COMM (ESP32-C6) | 115200 | 🔧 fix 2026-06-02 (era `Serial4`) |
+| **TOP ↔ COMM** (partner ESP-NOW / status) | TOP · `Serial2` · **7/8** | COMM (ESP32-C6) | 115200 | 🔧 fix 2026-06-02 (era `Serial4`) · el árbitro NO viaja por acá: es NIVEL GPIO en pines 5/6 del TOP (TASK-039, ver §1.1) |
 | **cámara frontal → TOP** | cam · UART3 | TOP · `Serial3` · pin 15 | 19200 | ✅ FORMATO OK |
 | **cámara trasera → TOP** | cam · UART3 | TOP · `Serial5` · pin 21 | 19200 | ✅ FORMATO OK |
 

@@ -28,7 +28,7 @@ El robot 2026 distribuye su inteligencia en **3 placas especializadas** conectad
 │ • 2 cámaras OpenMV     │         │ • FSM principal        │         │ • 32 sensores luz      │
 │ • 2 IMU BNO055         │         │ • Motores 3-omni + PID │         │ • 2 OTOS odométricos   │
 │ • 4 ToF + 1 ultrasonido│         │ • Kicker / dribbler    │         │ • Measurement línea    │
-│ • Comm árbitros RCJ    │         │ • Coordinación partner │         │ • Detección bordes     │
+│ • Árbitro GPIO 5/6     │         │ • Coordinación partner │         │ • Detección bordes     │
 │ • Fusión sensor → pose │         │ • Watchdog global      │         │                        │
 │   (x, y, heading, ball)│         │                        │         │                        │
 └────────────────────────┘         └────────────────────────┘         └────────────────────────┘
@@ -38,7 +38,7 @@ El robot 2026 distribuye su inteligencia en **3 placas especializadas** conectad
 ```
 
 **Las 3 placas son especialistas, ninguna es generalista**:
-- **ARRIBA** percibe el mundo (cámaras + IMU + ToF + comm árbitros) y entrega un *world snapshot* pre-procesado.
+- **ARRIBA** percibe el mundo (cámaras + IMU + ToF + árbitro RCJ por GPIO + partner por COMM) y entrega un *world snapshot* pre-procesado.
 - **CENTRAL** decide qué hacer (FSM táctica), corre todos los lazos de control (PIDs) y mueve los motores. Es el master del robot.
 - **ABAJO** es un sensor puro: detecta línea + odometría y entrega measurements al CENTRAL, sin lógica de control.
 
@@ -84,7 +84,7 @@ Cinco principios de diseño justifican la elección:
 - No procesa imagen de cámaras (lo hace ARRIBA).
 - No lee directamente 32 sensores de línea (lo hace ABAJO).
 - No corre Kalman ni filtros de fusión (lo hace ARRIBA).
-- No comunica directamente con el módulo de árbitros (lo hace ARRIBA via placa COMM).
+- No lee directamente el árbitro (lo hace ARRIBA por GPIO en pines 5/6 y lo inyecta en el `WORLD_SNAPSHOT`). (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)
 
 ### Inputs
 
@@ -123,7 +123,7 @@ El Teensy 4.1 (Cortex-M7 a 600 MHz) tiene mucha capacidad libre para estrategia 
 | Visión multi-cámara | Procesa 2 OpenMV H7/H7+ via UART. Cada cámara reporta blobs (pelota, arco propio, arco rival). ARRIBA fusiona ambas vistas. |
 | IMU dual (heading absoluto) | 2 BNO055 **ambos en el bus `Wire` (18/19)**: LEFT=0x28, RIGHT=0x29 (pad ADR puenteado a 3V3). Modo IMUPLUS para evitar interferencia magnética de motores. Si uno falla, sigue el otro. Esto liberó `Wire1` (24/25) para la placa DOWN. |
 | Obstáculos cercanos | 4 sensores ToF VL53L7CX **todos en el bus `Wire`** (LP por bodge {9,10,11,12} → 0x2A..0x2D) + 1 HC-SR04 frontal (gateado off). Reporta distancia mínima en cada cuadrante. |
-| Comunicación con árbitros | Bridge UART hacia placa COMM (ESP32-C6) que implementa el protocolo oficial RCJ Communication Module y reporta start/stop/halftime al ARRIBA. |
+| Recepción del árbitro (START/STOP) | El comando del árbitro RCJ llega al ARRIBA como **nivel GPIO (no UART)**: pin 5 = OUT1 (PLAY/STOP) y pin 6 = OUT2 (espejo de OUT1), leídos con `INPUT_PULLDOWN`. Nivel 0 = juego PARADO, nivel 1 (3.3V) = juego EN CURSO. `match_running = (pin5 AND pin6)` → fail-safe a STOP si el cable se desconecta. ARRIBA inyecta `match_running` en el `WORLD_SNAPSHOT`. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART) |
 | Comunicación con partner | ESP-NOW transparente vía placa COMM. Recibe pose y pelota del robot compañero, lo agrega al world snapshot. |
 | Fusión sensorial → pose | Calcula pose propia (x, y, heading) combinando IMU + odometría OTOS (recibida desde ABAJO) + visión de arcos cuando son visibles. |
 | Detección de área chica | Cuando la pose estimada cae dentro del rectángulo del área chica propia, reporta el flag al CENTRAL. |
@@ -140,7 +140,8 @@ El Teensy 4.1 (Cortex-M7 a 600 MHz) tiene mucha capacidad libre para estrategia 
 - 2 BNO055 (ambos en `Wire`: 0x28 + 0x29).
 - 4 ToF VL53L7CX (todos en `Wire`, LP por bodge → 0x2A..0x2D).
 - 1 HC-SR04 ultrasonido (GPIO TRIG/ECHO).
-- Placa COMM (UART Serial2, pines 7/8) — comandos árbitros + datos partner. (fix 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde; COMM=Serial2 7/8, CENTRAL=Serial4 16/17)
+- Árbitro RCJ (GPIO) — pin 5 = OUT1 (PLAY/STOP) + pin 6 = OUT2 (espejo), `INPUT_PULLDOWN`. 0 = parado, 1 (3.3V) = en curso; `match_running = pin5 AND pin6` (fail-safe a STOP). (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)
+- Placa COMM (UART Serial2, pines 7/8) — **solo** datos partner ESP-NOW + status (el árbitro ya NO viene por acá). (fix 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde; COMM=Serial2 7/8, CENTRAL=Serial4 16/17)
 - ABAJO (UART) — odometría OTOS para fusión.
 
 ### Outputs
@@ -157,7 +158,7 @@ El Teensy 4.1 (Cortex-M7 a 600 MHz) tiene mucha capacidad libre para estrategia 
 | ~30 Hz ToF × 4 | 10% |
 | Parser cámaras (2 × 19200 baud) | < 1% |
 | Fusión sensorial | 5% |
-| Comm árbitros + partner | 3% |
+| Árbitro GPIO (pins 5/6) + COMM partner | 3% |
 | **Total** | **~25%** |
 
 Margen amplio para integrar EKF de pose o filtros Kalman de pelota en 2027.
@@ -241,7 +242,7 @@ Suficiente margen para subir el polling a 2 kHz si hace falta más resolución t
 
 ABAJO **difunde (broadcast) los mismos 3 frames a las DOS placas**: tanto el enlace
 a ARRIBA (Serial5) como el de CENTRAL (Serial1) llevan línea + odometría OTOS.
-ARRIBA habla con CENTRAL (snapshot completo) y con COMM (árbitros).
+ARRIBA habla con CENTRAL (snapshot completo) y con COMM (partner ESP-NOW); el árbitro lo lee aparte por GPIO en pines 5/6.
 CENTRAL es el único que controla motores.
 
 ### Protocolo de mensajes
@@ -268,7 +269,7 @@ Los otros 5 UARTs del Teensy 4.0 (Serial2, 3, 4, 6, 7) no están cableados en la
 
 **Placa ARRIBA (Teensy 4.0)** — UARTs cableados según PCB 04-12 (corregido 2026-06-02):
 - **Serial1** (pines 0/1) — conector U16 "UART_COMM_IN" → recibe odometría desde ABAJO.
-- **Serial2** (RX pin 7 / TX pin 8) — placa COMM (árbitros + partner ESP-NOW), baud 115200.
+- **Serial2** (RX pin 7 / TX pin 8) — placa COMM (partner ESP-NOW + status), baud 115200. El árbitro NO viene por este UART: es nivel GPIO en pines 5/6. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)
 - **Serial3** (pines 15/14) — conector U8 "UART-CAMERA1" → cámara 1.
 - **Serial4** (RX pin 16 / TX pin 17) — → **CENTRAL** (`WORLD_SNAPSHOT`, TX4=pin 17), baud 230400. Cablear TOP pin 17 → CENTRAL pin 28 (RX7) + GND común.
 - **Serial5** (pines 20/21) — cámara 2 (**trasera**), soldada acá (RX pin 21). ✅ confirmado en banco 2026-05-31 (`diag_top_cameras`, FORMATO OK).
@@ -358,14 +359,14 @@ ARRIBA tiene físicamente todos los sensores de percepción ambiental (cámaras,
 
 CENTRAL queda libre para hacer estrategia táctica avanzada (Kalman de pelota, predicción, coordinación con partner) sin pelear por ciclos con la fusión sensorial.
 
-### ¿Por qué la placa COMM (árbitros) la maneja ARRIBA y no CENTRAL?
+### ¿Por qué el árbitro y el partner los maneja ARRIBA y no CENTRAL?
 
 Tres razones:
-1. ARRIBA ya tiene 4 UARTs disponibles libres y CENTRAL no tanto.
-2. El comando del árbitro (start/stop/halftime) viaja naturalmente con el resto del world snapshot — es un input perceptual más.
+1. ARRIBA tiene GPIO y UARTs libres para esto y CENTRAL no tanto.
+2. El comando del árbitro (start/stop) viaja naturalmente con el resto del world snapshot — es un input perceptual más.
 3. El ESP-NOW partner es lógicamente parte de "lo que sé del mundo", como las cámaras y los ToF. Va con la percepción.
 
-CENTRAL recibe el comando como flag dentro del snapshot, sin tener que parsear nada de la placa COMM.
+ARRIBA lee el árbitro RCJ como **nivel GPIO en los pines 5/6** (OUT1/OUT2, `INPUT_PULLDOWN`, `match_running = pin5 AND pin6`, fail-safe a STOP) y recibe los datos del partner por la placa COMM (ESP-NOW vía Serial2). CENTRAL recibe `match_running` como flag dentro del snapshot, sin leer GPIO ni parsear la placa COMM. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART; el UART de COMM queda solo para partner ESP-NOW / status)
 
 ---
 
@@ -401,8 +402,9 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 ```
    OpenMV cam1 ──Serial3 19200──┐
    OpenMV cam2 ──Serial5 19200──┤
+   Árbitro RCJ ──GPIO pin 5/6 ──┤        (nivel: 0=STOP, 1=PLAY; match_running=p5 AND p6)
    Placa COMM  ──Serial2 115200─┤        ┌── Serial4 230400 ──► CENTRAL
-   (árbitros, 7/8)              ▼        │   WORLD_SNAPSHOT 100 Hz (24 B)
+   (partner, 7/8)               ▼        │   WORLD_SNAPSHOT 100 Hz (24 B)
                           ┌───────────────┐
        DOWN ─Serial1─────►│  PLACA ARRIBA │── Serial4 ✅ ──► CENTRAL
        odometría OTOS     │  (Teensy 4.0) │   (TX4=pin 17 → CEN pin 28, 230400)
@@ -432,7 +434,7 @@ La arquitectura completa se puede construir incrementalmente. Cada nivel añade 
 | ABAJO → ARRIBA | DOWN Serial5 RX21/TX20 → TOP Serial1 | 230400 | odometría OTOS | pose/vel | 100 Hz | parcial (TASK-008 rewiring) |
 | cam1 → ARRIBA | TOP Serial3 RX15/TX14 | 19200 | blobs pelota/arco | proto viejo 9 B | ~30 Hz | OK |
 | cam2 → ARRIBA | TOP **Serial5** RX21/TX20 | 19200 | blobs pelota/arco | proto viejo 9 B | ~30 Hz | ✅ banco 2026-05-31 (FORMATO OK) |
-| COMM ↔ ARRIBA | TOP **Serial2** RX7/TX8 | 115200 | start/stop/partner | RCJ proto | evento | ⚠️ firmware COMM pendiente (TASK-006). (fix 2026-06-02: COMM se movió de Serial4 a Serial2 7/8 porque Serial4 16/17 pasó al link a CENTRAL) |
+| COMM ↔ ARRIBA | TOP **Serial2** RX7/TX8 | 115200 | partner ESP-NOW + status | RCJ proto | evento | ⚠️ firmware COMM pendiente (TASK-006). (fix 2026-06-02 / TASK-039: el árbitro ya NO viaja por este UART — es NIVEL GPIO en pines 5/6 del TOP; Serial2 queda solo para partner ESP-NOW / status) (fix 2026-06-02: COMM se movió de Serial4 a Serial2 7/8 porque Serial4 16/17 pasó al link a CENTRAL) |
 | CENTRAL → motores | GPIO directo (no UART) | — | PWM + INA/INB | `MotorCommand` interno | 100 Hz | OK |
 
 ### Gaps de flujo de datos sin cerrar (NO asumir resueltos)

@@ -191,7 +191,7 @@ Quedan libres Serial6 (BLOQUEADO por Wire1 remap, pines 24/25); Serial7 NO es us
 Cada BNO055 ofrece:
 - **Modo IMUPLUS** (recomendado): fusión acelerómetro + gyro, sin magnetómetro. Inmune a interferencia magnética de motores. Heading relativo (no Norte magnético).
 - **Frecuencia máxima de actualización interna**: 100 Hz.
-- **Latencia I2C** (400 kHz): ~300 µs por lectura de `orientation.x`.
+- **Latencia I2C** (100 kHz — el BNO055 + ToF NO coexisten a 400 kHz, fix 2026-06-02): ~1.2 ms por lectura de `orientation.x`.
 
 Polling rate del firmware: **100 Hz**. Suficiente para control de heading y para detectar saltos.
 

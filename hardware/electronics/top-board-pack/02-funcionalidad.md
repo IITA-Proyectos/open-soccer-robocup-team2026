@@ -100,7 +100,7 @@ implementado todavía.
 Cada BNO055:
 - **Modo IMUPLUS** (recomendado): fusión accel + gyro sin magnetómetro. Inmune a interferencia magnética de motores. Heading **relativo** (no Norte magnético).
 - **Frecuencia interna**: 100 Hz.
-- **Latencia I²C** (400 kHz): ~300 µs por lectura.
+- **Latencia I²C** (100 kHz — BNO055+ToF no coexisten a 400 kHz): ~1.2 ms por lectura.
 
 Polling del firmware: **100 Hz**.
 

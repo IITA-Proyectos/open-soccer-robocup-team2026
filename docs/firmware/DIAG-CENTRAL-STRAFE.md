@@ -24,9 +24,10 @@ vx lateral → cinemática inversa omni-3 → motors_zircon (PWM a los 3 H-bridg
 
 ## ⚠️ Es OPEN-LOOP, sin feedback de heading
 
-El CENTRAL **no tiene BNO055** (el heading viene del TOP, que acá **no se usa**) y
-**no recibe los OTOS** (su pose va DOWN→TOP, no a CENTRAL). Entonces este test
-comanda **`omega = 0`**:
+El CENTRAL **no tiene BNO055** (el heading viene del TOP, que acá **no se usa**).
+El **OTOS de la base ahora SÍ llega a CENTRAL** (broadcast simétrico desde DOWN,
+2026-06-01), pero **este sketch v1 todavía no lo usa** (open-loop a propósito, para
+validar primero el movimiento lateral simple). Entonces comanda **`omega = 0`**:
 
 - Para un omni-3 con **ruedas parejas y bien calibradas**, `omega=0` es
   **traslación pura SIN rotar** → el robot "mira al frente" mientras se mueve de
@@ -35,10 +36,10 @@ comanda **`omega = 0`**:
   heading en CENTRAL). Cuánto deriva es justamente uno de los datos que este test
   mide (FASE B).
 
-> **Heading-hold activo = v2** (ver "Próximos pasos"): necesita una fuente de
-> heading en CENTRAL. La única posible sin TOP son los **OTOS de la base**, pero
-> hoy su pose va DOWN→TOP — habría que agregar un **mensaje nuevo DOWN→CENTRAL**
-> con la pose/heading OTOS (cross-board, scope DOWN + contrato).
+> **Heading-hold activo = v2** (ver "Próximos pasos"): ahora es **viable sin TOP**
+> porque el **OTOS ya llega a CENTRAL** (`pose_view.h` + `world_model`, broadcast
+> 2026-06-01). Es un cambio **local en CENTRAL** (sumar un `HeadingPID` sobre el
+> heading del OTOS) — ya NO requiere mensaje nuevo ni trabajo cross-board.
 
 ## ⚠️ Distancia OPEN-LOOP (aproximada)
 
@@ -105,11 +106,11 @@ Telemetría cada 250 ms: `state | vx`.
 
 ## Próximos pasos (para el arquero "de verdad")
 
-1. **Heading-hold con OTOS (v2)** — si la FASE B muestra deriva grande. Necesita
-   que **DOWN mande la pose/heading OTOS a CENTRAL** (mensaje nuevo DOWN→CENTRAL,
-   hoy esa pose va DOWN→TOP). Es cross-board (scope DOWN + contrato shared). Con
-   esa fuente se agrega un `HeadingPID` que corrige `omega` (igual que hace el
-   `diag_central_drive_straight`, pero con OTOS en vez del WorldSnapshot).
+1. **Heading-hold con OTOS (v2)** — si la FASE B muestra deriva grande. **Ya
+   viable**: el OTOS llega a CENTRAL (`pose_view.h` + `world_model`, broadcast
+   2026-06-01). Es un cambio **local en CENTRAL**: agregar un `HeadingPID` que
+   corrige `omega` con el heading del OTOS (igual que `diag_central_drive_straight`,
+   pero con la pose OTOS en vez del WorldSnapshot del TOP). Ya NO es cross-board.
 2. **Evitar la línea mientras patrulla** (placa inferior) — integrar `comm_down` +
    `world_model_imminent_exit()` para frenar/rebotar en el borde (mismo patrón que
    `diag_central_drive_straight` con `-DDIAG_DRIVE_WITH_LINE`). Necesita el link

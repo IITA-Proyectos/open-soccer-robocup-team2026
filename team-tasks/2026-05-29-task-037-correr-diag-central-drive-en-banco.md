@@ -14,6 +14,14 @@ related: [team-tasks/2026-05-29-task-036-correr-diag-central-motors-en-banco.md,
 
 # TASK-037 — Correr `diag_central_drive_straight` en banco
 
+> ⚠️ **Actualización 2026-06-03 — UART corregido.** El mapa cambió: **TOP→CENTRAL
+> = Serial7 (RX7 = pin 28)**, NO Serial1/pin 0. El **pin 0 (Serial1) ahora es el
+> link de DOWN→CENTRAL**. Donde abajo diga "cable TOP↔CENTRAL al pin 0 RX1/pin 1
+> TX1" está **stale** → ese cable va al **pin 28**. Además este sketch sirve para el
+> **gate del signo de omega** (¿`+omega` corrige HACIA el rumbo o se aleja? — si se
+> aleja, runaway: invertir omega antes de cualquier heading-hold). Ver
+> [TASK-101](2026-06-03-task-101-banco-mitad-inferior-cinematica-y-fork-arquero.md).
+
 ## Resumen
 
 Sketch nuevo listo en el repo el 2026-05-29 (sesión Claude, requested-by
@@ -45,7 +53,8 @@ Sirve para:
    basura** porque un motor caído impide compensar.
 2. **Placa TOP operativa** — firmware `pio run -e top -t upload` corriendo,
    `pio device monitor` muestra que arma y emite `WorldSnapshot`.
-3. **Cable UART** TOP↔CENTRAL conectado (pin 0 RX1 / pin 1 TX1 del CENTRAL).
+3. **Cable UART** TOP→CENTRAL conectado al **pin 28 (RX7 / Serial7)** del CENTRAL
+   (el TOP envía por su pin 17/TX4). ⚠️ NO al pin 0 — ese es el link de DOWN.
 4. **Batería cargada** — los H-bridges NO se alimentan por USB.
 5. **Espacio físico** o robot sujeto.
 6. **Excepción Avast** (TASK-025) aplicada si PIO se traba.

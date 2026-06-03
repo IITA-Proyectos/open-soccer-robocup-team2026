@@ -14,6 +14,15 @@ related: [team-tasks/2026-05-15-task-011-confirmar-pin-kicker-solenoide-zircon.m
 
 # TASK-036 — Correr `diag_central_motors` en banco
 
+> ⚠️ **Actualización 2026-06-03.** (1) El **conflicto pines 7/8 YA está resuelto**
+> por reasignación de UART (link DOWN→CENTRAL = **Serial1 0/1**, TOP→CENTRAL =
+> **Serial7 28/29**; 7/8 quedan para el motor 2). **Ignorar** todo lo de abajo sobre
+> "cerrar el conflicto 7/8 / migrar Serial2 a Serial7" — es histórico. (2) Sigue
+> pendiente y es lo importante: **mapeo motor↔rueda + veredicto de la polaridad de
+> M2** (2026-05-29 dio `{+1,+1,+1}` sin inversión, pero 2026-06-01 reportó M2
+> INA/INB invertido por HW — **reconciliar en ESTE robot**). Contexto y secuencia:
+> [TASK-101](2026-06-03-task-101-banco-mitad-inferior-cinematica-y-fork-arquero.md).
+
 ## Resumen
 
 Sketch nuevo `diag_central_motors` listo en el repo el 2026-05-28

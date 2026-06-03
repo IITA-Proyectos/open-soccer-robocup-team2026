@@ -166,6 +166,24 @@ nativo, pero ya no es el único camino. Ver
    (2026-06-03): `calib-lab-n6.py` en ambos packs + [`docs/firmware/CALIBRACION-VISION-N6.md`](firmware/CALIBRACION-VISION-N6.md).
    El item #6 del análisis (velocidad de pelota en el TOP) **ya está hecho** (ver Avance 2026-06-03).
 
+### Avance 2026-06-03 (pt.2) — arquero anticipa + robustez velocidad + OTOS heading/slip + merges de agentes
+- **Merges a main:** se trajeron a `main` los trabajos de los agentes **down** (`comm_top` = Serial7 en
+  ESTADO), **central** (prep banco mitad-inferior + review GK + TASK-101 + caveat cinemática del strafe)
+  y **top** (solo el journal histórico del árbitro; sus ediciones a TASK-006/204 quedaron afuera por
+  estar superadas por TASK-039).
+- **`ball_velocity` expira por tiempo (M4):** `ball_velocity_update` recibe `now_ms`; si los packets se
+  cortan pero la cámara sigue `visible`, invalida la velocidad (no sirve fantasmas). 16 tests.
+- **Arquero ANTICIPA (nuevo módulo VIVO `src/shared/ball_predict`):** el GK INTERCEPT apunta a la **X
+  predicha** de la pelota (`pos + v·lookahead`, clamp) en vez de la X actual. Getters `world_model_get_ball_vx/vy_mm_s`.
+  **Fallback automático**: con pelota quieta o velocidad N/A (vx=vy=0) la conducta es **idéntica** a hoy.
+  9 tests. ⚠️ **Cambio de conducta → validar en banco** (tunear `lookahead_s`/`max_lead_mm`).
+- **OTOS heading/slip (M2/M3):** heading dual por **promedio circular** de los headings absolutos (cubre
+  ±180, antes saturaba a ±90); slip por **diferencia de velocidad** menos rotación esperada (antes era
+  diferencia de posición integrada, monótona). Sin cambio de conducta (nadie consume hoy; heading bueno = BNO).
+  ⚠️ **Validar en banco con 2 OTOS** (signo/eje, `OTOS_SEPARATION_MM` real).
+- **Gate:** host **354 tests / 29 envs / 0 fallos**; compilan `down`, `central_robot1/2`, `top_robot1/2`.
+  Los cambios de conducta (arquero) y los de OTOS están **gateados/sin consumidor** → no rompen lo de hoy.
+
 ### Avance 2026-06-03 — Visión TASK-022: velocidad de pelota (firmware) + kit de calibración
 - **Pieza A — estimador de velocidad de la pelota (DONE, host-testeado).** `build_snapshot()`
   llenaba `ball_x/y/confidence` pero dejaba `ball_vx/vy` en **0** → toda la cadena

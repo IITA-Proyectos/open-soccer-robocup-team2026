@@ -53,7 +53,7 @@ CENTRAL **recibe** datos del mundo (vía TOP) y datos de emergencia de línea
 
 ```
      [TOP]  ←──── WORLD_SNAPSHOT (STREAM, 100 Hz)  ────►  [CENTRAL]
-                   (via Serial1 de CENTRAL)
+                   (via Serial7 de CENTRAL, RX7 = pin 28)
 
      [DOWN] ←──── LINE_URGENT (EVENTO+STREAM, 200 Hz) ──►  [CENTRAL]
                    (via Serial1 de CENTRAL)
@@ -148,7 +148,7 @@ El transporte de TODOS los enlaces es **idéntico al definido en
 
 **Frecuencia:** 100 Hz (TOP genera a 100 Hz).
 
-**Transporte:** Serial1 de CENTRAL (`comm_top.cpp:30`). Recibido en
+**Transporte:** Serial7 de CENTRAL (RX7 = pin 28; `comm_top.cpp:30`). Recibido en
 `comm_top_tick()` (`comm_top.cpp:33-43`), decodificado con `FrameDecoder`,
 entregado a `world_model_apply_snapshot()` (`comm_top.cpp:22-24`).
 

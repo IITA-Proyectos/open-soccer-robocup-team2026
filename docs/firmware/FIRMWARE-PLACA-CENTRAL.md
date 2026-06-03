@@ -789,14 +789,14 @@ El firmware debe compilar con o sin encoders mediante `#define HAS_ENCODERS` o f
 
 ## 11. Comunicaciones
 
-### 11.1 Recepción desde ARRIBA (Serial1)
+### 11.1 Recepción desde ARRIBA (Serial7, RX7 = pin 28)
 
-**Frame esperado**: `WORLD_SNAPSHOT` (24 bytes payload + 7 overhead = 31 bytes/frame). Frecuencia: 100 Hz.
+**Frame esperado**: `WORLD_SNAPSHOT` (27 bytes payload v2 + 7 overhead = 34 bytes/frame). Frecuencia: 100 Hz.
 
 ```cpp
 void comm_top_tick() {
-    while (Serial1.available()) {
-        uint8_t b = Serial1.read();
+    while (Serial7.available()) {     // TOP→CENTRAL = Serial7 (pin 28), reasignado 2026-05-31
+        uint8_t b = Serial7.read();
         if (g_decoder_top.feed(b)) {
             const Frame& f = g_decoder_top.get_frame();
             if (f.type == MsgType::WORLD_SNAPSHOT) {

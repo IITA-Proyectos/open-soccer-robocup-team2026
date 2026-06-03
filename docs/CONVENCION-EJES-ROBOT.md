@@ -66,9 +66,15 @@ se mira al robot desde afuera/enfrente (ahí izquierda y derecha se invierten).
 
 ## 2. Marco de la CANCHA (pose absoluta)
 
-**Origen de coordenadas `(0, 0)`:** la esquina del **propio** campo que queda a
-la **IZQUIERDA** del robot cuando uno se para detrás del arco propio mirando al
-arco rival. Desde ese origen:
+**Origen de coordenadas `(0, 0)`:** el **rincón de PARED** donde se cruzan la
+**pared del arco propio** (sur) y la **pared lateral izquierda** (oeste) —
+mirando desde detrás del arco propio hacia el rival, es la esquina
+inferior-izquierda. **Es sobre la PARED, NO sobre la línea blanca**: el marco es
+**pared-a-pared** porque los ToF miden a las paredes (`y=0` = pared sur,
+`x=0` = pared oeste; lo confirma `localization.cpp::classify_wall`:
+`WALL_SOUTH → y=dperp`, `WALL_WEST → x=dperp`). La línea blanca queda **120 mm
+hacia adentro** en cada lado, así que su esquina cae en `(120, 120)`. Desde ese
+origen:
 
 - **+Y crece hacia el arco rival** — es el lado **LARGO** de la cancha (la
   dirección de juego, arco-a-arco).
@@ -76,8 +82,27 @@ arco rival. Desde ese origen:
   **CORTO** (de lateral a lateral).
 - **Heading 0 = el robot mira al arco rival** (+Y).
 
-La esquina diagonalmente opuesta (arco rival, lateral derecho) es
-`(x, y) = (1820, 2430)` en mm pared-a-pared.
+**Puntos de referencia (mm, marco pared-a-pared):**
+
+| Punto | (x, y) |
+|---|---|
+| Origen — esquina propia-izquierda (pared) | `(0, 0)` |
+| Esquina rival-derecha (pared) | `(1820, 2430)` |
+| Centro de la cancha | `(910, 1215)` |
+| **Boca del arco propio** (centro, sobre la línea blanca sur) | `(910, 120)` |
+| **Boca del arco rival** (centro, sobre la línea blanca norte) | `(910, 2310)` |
+| Esquina de la **línea blanca** (SO) | `(120, 120)` |
+| Cancha de juego (dentro de la línea) | `x ∈ [120, 1700]`, `y ∈ [120, 2310]` |
+
+> **Los arcos NO están en la pared.** Las "posts" del arco van **sobre la línea
+> blanca** (reglamento RCJ 2026), no en el plano de la pared. La boca del arco
+> está en `y = 120` (propio) / `y = 2310` (rival); `y = 0` y `y = 2430` son las
+> **PAREDES** (que van por detrás de los arcos). El arco es una caja de **600 mm
+> de ancho × 100 mm de alto × 74 mm de profundidad** (centrado → abarca
+> `x ∈ [610, 1210]`); su fondo queda ~74 mm por detrás de la línea, hacia la
+> pared. La **localización** mide a las PAREDES (2430 × 1820), así que ese marco
+> NO cambia; los `y = 120 / 2310` son sólo la referencia del **arco** (para
+> detección por cámara / táctica).
 
 | Eje | Dirección | Medida (pared-a-pared / línea blanca) |
 |---|---|---|

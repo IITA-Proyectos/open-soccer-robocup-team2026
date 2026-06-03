@@ -33,6 +33,12 @@ struct LocalizationConfig {
     uint16_t field_height_mm;       // 1820 — eje Y de la cancha
     int16_t  bno_offset_centideg;   // calibrado al boot (heading apuntando al arco rival)
     uint16_t tof_mount_angle_deg[4]; // {0,180,270,90} = {frente,atras,derecha,izquierda}
+    // Radio del robot: distancia del plano del sensor ToF al CENTRO del robot, en mm.
+    // Tipico ~90-100mm. Si 0 -> F1a desactivado (comportamiento legacy, sin correccion
+    // de offset). Se suma a la distancia cruda ANTES de proyectar por coseno (F1b).
+    // El valor REAL se mide en hardware (TASK del equipo, cinta: plano-sensor -> centro
+    // geometrico) y se setea en localization_runtime desde TOF_OFFSET_MM (pinout_common.h).
+    uint16_t tof_offset_mm;
     uint16_t outlier_threshold_mm;  // umbral inconsistencia entre TOFs del mismo eje
     // Pose anterior para el outlier rejection por consistencia. Si es la primera
     // llamada, pasar {0, 0, 0, 0, false}.

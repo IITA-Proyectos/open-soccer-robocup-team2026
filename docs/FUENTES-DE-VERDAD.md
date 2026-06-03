@@ -22,6 +22,7 @@ tipo: indice
 | Tema | Doc/módulo canónico (vigente) | Superados / no usar como guía |
 |---|---|---|
 | **Arquitectura general 3 placas** | `docs/ARQUITECTURA-3-PLACAS-2026.md` (la sección "Mapa de flujo de datos" tiene WorldSnapshot v1 24 B — ver tema WorldSnapshot abajo) | — |
+| **Mapa de datos end-to-end (qué corre + qué mensaje va a quién/cómo)** | **`docs/MAPA-DE-DATOS.md`** (índice "start-here": cada mensaje con tipo/tamaño/transporte/pin/freq + quién lo llena/consume + link al contrato canónico) | — |
 | **FSM táctica CENTRAL (la que CORRE)** | `src/central/strategy.cpp` (código vivo, llamado por `main_central.cpp:113`) + `src/shared/strategy_transitions.{h,cpp}` como caracterización pura con 35 tests | `_archive/src/shared/strategy_core.*` (FSM alternativa nunca integrada). `docs/superpowers/specs/2026-05-18-central-strategy-core-design.md` (diseño de la alternativa archivada — útil como referencia post-Incheon, NO refleja lo que corre hoy) |
 | **FSM táctica CENTRAL (docs)** | `docs/firmware/FIRMWARE-PLACA-CENTRAL.md §8` (sincronizada con `strategy.cpp` real) | Diferentes sistemas de nombres en otros docs (SEEK/DRIVE vs SEARCH/POSITION) son la **misma máquina con etiquetas distintas**, no FSM rivales |
 | **Behind-the-ball** | `src/shared/behind_ball.{h,cpp}` + 16 tests. Llamado por `strategy.cpp:230` (estado POSITION). Versión RELATIVA (sin pose absoluta). | El pseudocódigo de `FIRMWARE-PLACA-CENTRAL.md §8.4/§8.5` con `OPP_GOAL_X/Y` es Nivel 3 futuro (requiere EKF) — ya marcado en el doc |

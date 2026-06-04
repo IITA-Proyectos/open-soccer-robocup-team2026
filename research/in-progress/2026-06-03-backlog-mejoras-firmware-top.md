@@ -76,15 +76,21 @@ medición/decisión física → requiere humano. Nada que cablee la fusión, toq
 - **Evaluación:** banco — setear lado A, confirmar que `goal_opp` apunta al arco
   rival correcto; repetir lado B; verificar que strategy diferencia rol.
 
-### P0-CAM-OPERATIVA · Cámara OpenMV no endurecida (TASK-022)
+### P0-CAM-OPERATIVA · Cámara OpenMV no endurecida (TASK-022) — 🟡 ~70% (avance 2026-06-03)
 - **Tipo:** mejora. **Qué:** percepción depende de scripts OpenMV sin sentinel,
   sin lock de exposición, sin calibración mm/LAB. **Esfuerzo:** L (~24 h).
+- **✅ Avance 2026-06-03 (banco):** detecta pelota + arcos; colores calibrados
+  (azul/amarillo/naranja); **lente ultra-wide** colocado, "anduvo muy bien".
+- **🔴 FALTA para cerrar:** (1) verificar **estabilidad** (10 min sin perderla,
+  sin falsos positivos) + **sentinel** (cámara tapada → no fantasma); (2) **lock
+  de exposición/WB/gain**; (3) calibración de distancia (→ P0-CALIB, ahora más
+  urgente por el ultra-wide); (4) idealmente, luz tipo Incheon.
 - **Riesgo-no-fix:** sin esto el robot **no ve la pelota** confiable bajo la luz
   de Incheon → no compite. Es el bloqueante más cercano a "no juega".
 - **Riesgo-fix:** medio — sobre-ajustar a una luz y fallar en otra; mitigable con
   `openmv-vision-tuning` + datasets en varias luces.
-- **🔴 Requiere intervención:** equipo con cámaras montadas + pelota IR + cancha
-  con iluminación representativa. **Testeo humano** obligatorio.
+- **🔴 Requiere intervención:** equipo con cámaras montadas + pelota + cancha con
+  iluminación representativa. **Testeo humano** obligatorio. **La cierra el equipo.**
 - **Evaluación:** pelota a 30/50/80/100 cm, detección estable + distancia mm en
   tolerancia; lock de exposición en 2-3 luces; 0 crashes en 10 min.
 
@@ -119,9 +125,14 @@ medición/decisión física → requiere humano. Nada que cablee la fusión, toq
 - **Evaluación:** banco — toggle GPIO + osciloscopio, período min/avg/max con y
   sin eco; contar bytes perdidos del RX; confirmar período <10 ms p99.
 
-### P0-CALIB-PLACEHOLDERS · Factor cámara 10.0 y TOF_OFFSET_MM 95 sin calibrar
+### P0-CALIB-PLACEHOLDERS · Factor cámara 10.0 y TOF_OFFSET_MM 95 sin calibrar — ⬆️ MÁS URGENTE (lente ultra-wide 2026-06-03)
 - **Tipo:** mejora. **Qué:** `CAMERA_UNIT_TO_MM=10.0` y `TOF_OFFSET_MM=95mm` son
   placeholders. **Esfuerzo:** S-M (4-6 h, el trabajo es físico).
+- **⚠️ 2026-06-03:** se colocó **lente ultra-wide** → distorsión de barril. El
+  factor `unit→mm` y el mapeo de ángulos viejos son de OTRO lente y **ya no
+  valen**. La recalibración con el ultra-wide puesto pasa de "deseable" a
+  **obligatoria** antes de confiar en distancia/ángulo de pelota y arcos
+  (verificar el ángulo en varios puntos del FOV, no solo al centro).
 - **Riesgo-no-fix:** distancias de approach mal → el robot frena/acelera mal
   cerca de la pelota; la pose ToF arranca con offset fijo erróneo sesgando toda
   la trilateración. Calibrar localización (TASK-035) sin esto es construir sobre

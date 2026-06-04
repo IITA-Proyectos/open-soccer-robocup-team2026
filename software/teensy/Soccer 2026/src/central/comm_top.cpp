@@ -44,17 +44,15 @@ void comm_top_init() {
     Serial7.begin(UART_BAUD);
 }
 
-int comm_top_tick() {
-    int processed = 0;
+void comm_top_tick() {
+    // CC-04: void (ningún caller usa el contador de frames procesados).
     while (Serial7.available() > 0) {
         const uint8_t b = static_cast<uint8_t>(Serial7.read());
         g_bytes_received++;  // DIAG: contar todo byte que entra por Serial7
         if (g_decoder.feed(b)) {
             handle_frame(g_decoder.get_frame());
-            processed++;
         }
     }
-    return processed;
 }
 
 uint32_t comm_top_get_frames_received() { return g_frames_received; }

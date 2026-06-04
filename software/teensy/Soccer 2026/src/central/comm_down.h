@@ -14,7 +14,7 @@
 namespace iitasoccer {
 
 void comm_down_init();
-int  comm_down_tick();   // drena UART, aplica LineStatusV2 a world_model
+void comm_down_tick();   // drena UART, aplica LineStatusV2 a world_model
 
 // Comandos administrativos hacia ABAJO:
 void comm_down_send_reset_otos();

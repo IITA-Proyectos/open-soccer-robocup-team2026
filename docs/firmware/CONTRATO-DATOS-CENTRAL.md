@@ -561,7 +561,7 @@ no tiene consumidor en `strategy.cpp` / `world_model.cpp`. GAP-010 queda **obsol
 │  src/central/world_model.cpp    — estado del mundo (+ millis()) │
 │  src/central/strategy.cpp       — FSM + PIDs (usa millis())     │
 │  src/central/motors_zircon.cpp  — PWM + H-bridges (3 motores)   │
-│  src/central/comm_top.cpp       — Serial1, FrameDecoder         │
+│  src/central/comm_top.cpp       — Serial7, FrameDecoder         │
 │  src/central/comm_down.cpp      — Serial1, FrameDecoder         │
 │  src/central/imu_zircon.cpp     — I2C BNO055 + delay() en setup │
 │  src/central/config_central.h   — pinout + constantes HW        │
@@ -578,7 +578,7 @@ no tiene consumidor en `strategy.cpp` / `world_model.cpp`. GAP-010 queda **obsol
 | FSM strategy | `src/central/strategy.cpp` | **HW-bound** (usa `millis()`) | **NO — hay `strategy_transitions.cpp` (réplica) con 35 tests, pero NO es el archivo real. GAP-011.** |
 | World model | `src/central/world_model.cpp` | **HW-bound** (usa `millis()`) | NO |
 | Motors Zircon | `src/central/motors_zircon.cpp` | **HW-bound** (Arduino GPIO) | NO |
-| Comm TOP | `src/central/comm_top.cpp` | **HW-bound** (Serial1) | NO (proto.h sí testeado) |
+| Comm TOP | `src/central/comm_top.cpp` | **HW-bound** (Serial7) | NO (proto.h sí testeado) |
 | Comm DOWN | `src/central/comm_down.cpp` | **HW-bound** (Serial1) | NO (proto.h sí testeado) |
 | IMU Zircon | `src/central/imu_zircon.cpp` | **HW-bound** (I2C + delay) | NO |
 
@@ -862,7 +862,7 @@ MotorCommand: {vx≈intercept+pid_blend, vy=0, omega=0}
 - `software/teensy/Soccer 2026/src/central/strategy.cpp` (FSM + PIDs, líneas 1-465)
 - `software/teensy/Soccer 2026/src/central/world_model.cpp` (estado del mundo, líneas 1-73)
 - `software/teensy/Soccer 2026/src/central/motors_zircon.cpp` (PWM 3 motores)
-- `software/teensy/Soccer 2026/src/central/comm_top.cpp` (Serial1 receptor, líneas 1-48)
+- `software/teensy/Soccer 2026/src/central/comm_top.cpp` (Serial7 receptor, líneas 1-48)
 - `software/teensy/Soccer 2026/src/central/comm_down.cpp` (Serial1 emisor/receptor, líneas 1-71)
 - `software/teensy/Soccer 2026/src/central/imu_zircon.cpp` (IMU fallback, líneas 1-89)
 - `software/teensy/Soccer 2026/src/central/config_central.h` (pinout + constantes, líneas 1-112)

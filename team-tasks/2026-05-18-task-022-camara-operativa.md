@@ -63,7 +63,47 @@ encontró que **no hay 2 programas de cámara**: hay **1 script genérico de dem
 
 _(completar al ejecutar — registrar exposure_us y thresholds calibrados + foto)_
 
+### 2026-06-03 — Avance de banco (reporte de Gustavo). NO cierra la TASK.
+
+Probado hoy con las cámaras montadas:
+
+- ✅ **Detecta pelota + arcos.** Colores calibrados: **azul, amarillo y naranja**
+  (arco propio / arco rival / pelota).
+- ✅ **Lente ULTRA-WIDE colocado y "anduvo muy bien"** — más campo de visión,
+  buena detección.
+- ⚠️ **NO verificado todavía:** estabilidad de la detección (no perderla en
+  10 min, sin falsos positivos), lock de exposición/WB/gain, y prueba bajo
+  iluminación tipo Incheon.
+
+Progreso contra el "Criterio de cierre":
+
+- [ ] Cámara tapada → `ball_visible=false` (sentinel) — **sin verificar hoy**.
+- [ ] Sin crash con coords extremas — **sin verificar**.
+- [~] Exposición/WB/gain fijos; detección estable — **detección OK, falta lock
+      de exposición + prueba de estabilidad y luz Incheon**.
+- [ ] Distancias en mm verificadas — **NO** (ver ⚠️ del lente abajo).
+- [~] Script por cámara con homografía/FOV — **el ultra-wide cambió el FOV**.
+
+> ### ⚠️ El lente ultra-wide vuelve OBLIGATORIA la recalibración de distancia
+> El ultra-wide introduce **distorsión de barril**: el factor `CAMERA_UNIT_TO_MM`
+> y el mapeo de ángulos del firmware son de OTRO lente y **ya no valen**. Con el
+> ultra-wide, los bordes del FOV mienten más en distancia/ángulo que el centro.
+> → El paso 5 (calibrar mm a 30/50/80/100 cm) **se hace con el ultra-wide puesto**,
+> y conviene verificar el ángulo del arco en varios puntos del FOV, no solo al
+> centro. Esto está trackeado como **P0-CALIB** en
+> `research/in-progress/2026-06-03-backlog-mejoras-firmware-top.md`.
+
+**Lo que falta para cerrar TASK-022:** (1) verificar estabilidad + sentinel
+(cámara tapada → no fantasma); (2) lock de exposición/WB/gain con valor medido;
+(3) calibrar distancia mm con el ultra-wide; (4) idealmente, prueba bajo luz de
+Incheon. **La cierra el equipo humano** (Claude no cierra TASKs de hardware).
+
 ## Cambios de estado
 
 - 2026-05-18: creada por Claude tras la evaluación crítica del firmware, a
   pedido de Gustavo Viollaz.
+- 2026-06-03: avance de banco — detección de pelota/arcos OK + colores
+  (azul/amarillo/naranja) + lente ultra-wide. Sigue `pending`: falta
+  estabilidad, lock de exposición y calibración de distancia (con el ultra-wide,
+  que vuelve obligatoria la recalibración). Nota agregada por Claude (Opus 4.8)
+  a pedido de Gustavo.

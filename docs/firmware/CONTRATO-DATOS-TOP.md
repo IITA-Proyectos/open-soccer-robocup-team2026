@@ -45,9 +45,9 @@ publicar. **NO decide estrategia. NO controla motores.**
 | Heading del robot (IMU dual BNO055) | **REAL** — promedio/fallback de dos BNO055 en modo IMUPLUS |
 | Detección de pelota (fusión front+back) | **REAL** — parser + fusión dual testeada |
 | Detección de arcos (ángulo + distancia) | **REAL** para ángulo; distancia usa `CAMERA_UNIT_TO_MM=10.0` **sin calibrar** |
-| Evasión de obstáculos (ToF) | **STUB** — todos los ToF I2C comentados; solo HC-SR04 bloqueante activo |
-| Pose absoluta (x, y) en cancha | **HARDCODEADO a 0** — fusión cámara+IMU+OTOS ausente |
-| Recepción odometría OTOS desde DOWN | Frame se recibe, pero `my_x_mm/my_y_mm` NO se populan con esa data |
+| Evasión de obstáculos (ToF) | **REAL en código** — los 4 VL53L7CX enumeran a 0x2A..0x2D por LP (`TOP_ENABLE_MULTI_TOF` ON por default en `top_robot1/2`) + HC-SR04 frontal; **ranging en cancha PENDIENTE de validar en HW** *(corregido 2026-06-03)* |
+| Pose absoluta (x, y) en cancha | **REAL en código** — trilateración TOF+IMU vía `localization_runtime_get_pose()` (`main_top.cpp:51-54`); cae a `0` SOLO si `pose.valid==false`. **Validación en HW PENDIENTE** *(corregido 2026-06-03)* |
+| Recepción odometría OTOS desde DOWN | Frame se recibe; `my_x_mm/my_y_mm` hoy salen de la trilateración TOF+IMU (no de OTOS): la fusión con OTOS aún no se cablea |
 | Clasificación del rol (arquero/delantero) | `PIN_ROLE_DIPSWITCH` declarado (`config_top.h:87`) pero NO hay `digitalRead` en el código |
 | Polaridad de arco (opp vs own) | **HARDCODEADO** `yellow=opp, blue=own` (`main_top.cpp:65`, TODO presente) |
 | Recepción comando de árbitro (START/STOP) | **REAL** — `comm_arbiter` lee **nivel GPIO en pines 5/6 del TOP** *(fix 2026-06-02 / TASK-039: el arbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)* |
@@ -179,21 +179,21 @@ commit 2a9064e: GAP-001 / G-TOP-12 cerrado).
 
 | Off | Campo | Tipo | Unidad | Rango / Sentinela | Estado real | Significado |
 |----:|-------|------|--------|------|-------------|-------------|
-| 0 | `my_x_mm` | i16 | mm | −32768..+32767; **0 = N/A hoy** | **HARDCODEADO a 0** (`main_top.cpp:49`) | Posición X del robot en cancha. NO implementada: fusión cámara+OTOS ausente. |
-| 2 | `my_y_mm` | i16 | mm | id. | **HARDCODEADO a 0** (`main_top.cpp:50`) | Posición Y del robot en cancha. Mismo estado. |
-| 4 | `my_heading_centideg` | i16 | centideg | −18000..+18000 | **REAL** — IMU dual BNO055 (`main_top.cpp:51`) | Heading del robot (ángulo de orientación, marco cancha). Cero = orientación al boot. |
-| 6 | `my_pose_confidence` | u8 | — | 0..100; **0 = pose inválida** | **PARCIAL** — vale 60 si ≥1 IMU OK, 0 si ambos fallaron (`main_top.cpp:51-52`); no refleja calidad de x/y | Confianza de la pose completa. Hoy solo cubre heading; x/y siempre inválidos. CENTRAL debe tratar x/y como N/A independientemente de este campo. |
+| 0 | `my_x_mm` | i16 | mm | −32768..+32767; **0 = N/A si confidence=0** | **REAL en código** — `pose.x_mm` de la trilateración TOF+IMU (`main_top.cpp:52`); cae a `0` SOLO si `pose.valid==false`. **Validación HW pendiente** *(corregido 2026-06-03)* | Posición X del robot en cancha. Sale de `localization_runtime_get_pose()`. CENTRAL la usa SOLO si `my_pose_confidence>0`. |
+| 2 | `my_y_mm` | i16 | mm | id. | **REAL en código** — `pose.y_mm` (`main_top.cpp:53`); `0` SOLO si `pose.valid==false`. **Validación HW pendiente** *(corregido 2026-06-03)* | Posición Y del robot en cancha. Mismo origen y misma regla que X. |
+| 4 | `my_heading_centideg` | i16 | centideg | −18000..+18000 | **REAL** — IMU dual BNO055, expuesto SIEMPRE (`main_top.cpp:64`), desacoplado de la validez de x/y | Heading del robot (ángulo de orientación, marco cancha). Cero = orientación al boot. CENTRAL lo consume sin gatearlo por confidence. |
+| 6 | `my_pose_confidence` | u8 | — | 0..100; **0 = pose (x,y) inválida** | **REAL en código** — `pose.valid ? 70 : 0` (`main_top.cpp:54`). **Validación HW de la trilateración pendiente** *(corregido 2026-06-03)* | Confianza de la POSICIÓN (x,y). `70` cuando la trilateración es válida, `0` si no. NO gobierna el heading (que va siempre). |
 | 7 | `ball_x_mm` | i16 | mm | −32768..+32767 | **REAL** pero escala sin calibrar (`CAMERA_UNIT_TO_MM=10.0`, `cameras_runtime.cpp:25`) | Posición X de la pelota relativa al robot. Marco robot: +x = derecha, +y = frente. |
 | 9 | `ball_y_mm` | i16 | mm | id. | **REAL** pero escala sin calibrar | Posición Y de la pelota relativa al robot. |
 | 11 | `ball_visible` | u8 | — | 0 / 1 | **REAL** — fusión dual front+back (`cameras_runtime.cpp:127`) | 1 = al menos una cámara viva detectó la pelota. |
 | 12 | `ball_confidence` | u8 | — | 0..100 | **REAL** — ponderado por consenso dual (`cameras_fusion.cpp`) | Calidad de la detección de la pelota. 100 = ambas cámaras concuerdan. |
-| 13 | `ball_vx_mm_s` | i16 | mm/s | −32767..+32767; **`(0,0)` = N/A** | **STUB — siempre 0** (TOP lo llena en Nivel 2) | Velocidad de la pelota eje X en marco robot (mm/s). `0,0` = N/A. CENTRAL la usa para clasificar trayectoria (dejar circular / interceptar / desviar). |
-| 15 | `ball_vy_mm_s` | i16 | mm/s | id. | **STUB — siempre 0** (TOP lo llena en Nivel 2) | Velocidad de la pelota eje Y en marco robot (mm/s). El par `(ball_vx_mm_s, ball_vy_mm_s) = (0,0)` indica N/A. |
+| 13 | `ball_vx_mm_s` | i16 | mm/s | −32767..+32767; **`(0,0)` = N/A** | **REAL en código** — `cameras_get_ball_vx_mm_s()` (`main_top.cpp:76`); `0` = sin estimación válida. **CENTRAL todavía NO la consume** (falta getter en world_model + `bt_classify`) *(corregido 2026-06-03)* | Velocidad de la pelota eje X en marco robot (mm/s). `0,0` = N/A. Pensada para que CENTRAL clasifique trayectoria (dejar circular / interceptar / desviar). |
+| 15 | `ball_vy_mm_s` | i16 | mm/s | id. | **REAL en código** — `cameras_get_ball_vy_mm_s()` (`main_top.cpp:77`); `0` = sin estimación válida. **CENTRAL todavía NO la consume** *(corregido 2026-06-03)* | Velocidad de la pelota eje Y en marco robot (mm/s). El par `(ball_vx_mm_s, ball_vy_mm_s) = (0,0)` indica N/A. |
 | 17 | `goal_opp_angle_centideg` | i16 | centideg | −18000..+18000 | **REAL** pero escala sin calibrar | Ángulo del arco rival respecto al frente del robot. Convención: atan2(x_mm, y_mm), 0° = frente, **+90° = DERECHA** (ver `cameras_fusion.cpp:97` + CONVENCION-EJES-ROBOT.md). |
 | 19 | `goal_opp_distance_mm` | i16 | mm | 0..32767 | **REAL** pero escala sin calibrar | Distancia estimada al arco rival. Precision baja hasta calibrar `CAMERA_UNIT_TO_MM`. |
 | 21 | `goal_opp_visible` | u8 | — | 0 / 1 | **REAL**; polaridad **HARDCODEADA** `yellow=opp` (`main_top.cpp:65`) | 1 = el arco rival está visible. Polaridad incorrecta en ~50% de partidos hasta leer el comando de árbitro. |
 | 22 | `goal_own_visible` | u8 | — | 0 / 1 | **REAL**; polaridad **HARDCODEADA** `blue=own` (`main_top.cpp:69`) | 1 = el arco propio está visible. Mismo problema de polaridad. |
-| 23 | `min_obstacle_mm` | u16 | mm | 0..65534; **65535 (`0xFFFF`) = sin lectura** | **PARCIAL** — los 4 ToF I2C son STUB (siempre `0xFFFF`); solo HC-SR04 activo pero bloqueante (`sensors_tof.cpp:23-35`) | Distancia al obstáculo más cercano. Sin los ToF, cubre solo sector frontal con HC-SR04. |
+| 23 | `min_obstacle_mm` | u16 | mm | 0..65534; **65535 (`0xFFFF`) = sin lectura** | **REAL en código** — los 4 VL53L7CX enumeran a 0x2A..0x2D (`TOP_ENABLE_MULTI_TOF` ON por default en `top_robot1/2`) + HC-SR04 frontal; `sensors_tof_get_min_distance_mm()` toma el mínimo. **Ranging en cancha PENDIENTE de validar en HW** *(corregido 2026-06-03)* | Distancia al obstáculo más cercano (mín. de los 4 ToF + HC-SR04). `0xFFFF` solo si ninguno tiene lectura. |
 | 25 | `referee_cmd` | u8 | — | 0=STOP, 1=START, 2=HALFTIME, 3=RESET, 0xFF=UNKNOWN | **REAL** — derivado del **nivel GPIO en pines 5/6 del TOP** (`comm_arbiter.cpp`, `read_referee_gpio()`) *(fix 2026-06-02 / TASK-039: el arbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)* | Último comando del árbitro, tal como lo emite el TOP en el snapshot. Arranca en `UNKNOWN=0xFF`. CENTRAL/strategy lo siguen consumiendo desde el `WORLD_SNAPSHOT` (no cambia). |
 | 26 | `flags` | u8 | bitfield | ver §3.3 | **PARCIAL** — solo bits 1 y 3 se ponen (`main_top.cpp:76-80`) | Flags útiles para strategy (ver tabla §3.3). |
 
@@ -244,34 +244,36 @@ Frame completo TOP→CENTRAL: 27 + 7 overhead = **34 bytes**.
 
 ### 3.6 Ejemplo byte-a-byte (frame completo)
 
-Escenario: heading=+45.00°, pelota visible a (+120, +200) mm, velocidad pelota
-(0, 0) = N/A (stub), arco opp visible a +15.00° y ~300 mm, arco own no visible,
-min_obstacle=0xFFFF (sin ToF), referee_cmd=1 (START), flags=0x0A (partner_alive + match_running).
+Escenario (corregido 2026-06-03 para reflejar el código vivo): pose válida en
+(x,y) = (1000, 1500) mm con `my_pose_conf=70` (trilateración válida), heading=+45.00°,
+pelota visible a (+120, +200) mm, velocidad pelota (0, 0) = N/A (sin estimación),
+arco opp visible a +15.00° y ~300 mm, arco own no visible, min_obstacle=350 mm (ToF),
+referee_cmd=1 (START), flags=0x0A (partner_alive + match_running).
 
 ```
-my_x_mm=0            → 00 00
-my_y_mm=0            → 00 00
+my_x_mm=1000         → E8 03  (LE: 0x03E8 = 1000)           ← corregido 2026-06-03
+my_y_mm=1500         → DC 05  (LE: 0x05DC = 1500)           ← corregido 2026-06-03
 my_heading=4500      → 94 11  (LE: 0x1194 = 4500 = +45.00°)
-my_pose_conf=60      → 3C
+my_pose_conf=70      → 46  (pose.valid → 70 = 0x46; ver §3.2 off 6)   ← corregido 2026-06-03
 ball_x_mm=120        → 78 00  (LE: 0x0078 = 120)
 ball_y_mm=200        → C8 00  (LE: 0x00C8 = 200)
 ball_visible=1       → 01
 ball_conf=85         → 55
-ball_vx_mm_s=0       → 00 00  (N/A, stub)           ← schema v2
-ball_vy_mm_s=0       → 00 00  (N/A, stub)           ← schema v2
+ball_vx_mm_s=0       → 00 00  (N/A: sin estimación válida)  ← schema v2
+ball_vy_mm_s=0       → 00 00  (N/A: sin estimación válida)  ← schema v2
 goal_opp_angle=1500  → DC 05  (LE: 0x05DC = 1500 = +15.00°)
 goal_opp_dist=300    → 2C 01  (LE: 0x012C = 300)
 goal_opp_vis=1       → 01
 goal_own_vis=0       → 00
-min_obstacle=65535   → FF FF  (sentinel sin ToF)
+min_obstacle=350     → 5E 01  (LE: 0x015E = 350; ToF midiendo)   ← corregido 2026-06-03
 referee_cmd=1        → 01
 flags=0x0A           → 0A
 
-Payload completo (27 bytes):
-00 00 00 00 94 11 3C 78 00 C8 00 01 55 00 00 00 00 DC 05 2C 01 01 00 FF FF 01 0A
+Payload completo (27 bytes) — corregido 2026-06-03 (pose válida + ToF midiendo):
+E8 03 DC 05 94 11 46 78 00 C8 00 01 55 00 00 00 00 DC 05 2C 01 01 00 5E 01 01 0A
 
 Frame completo (= 0xAA LEN TYPE SEQ PAYLOAD CRC16 0x55):
-AA 1B 60 XX 00 00 00 00 94 11 3C 78 00 C8 00 01 55 00 00 00 00 DC 05 2C 01 01 00 FF FF 01 0A [CRC_H] [CRC_L] 55
+AA 1B 60 XX E8 03 DC 05 94 11 46 78 00 C8 00 01 55 00 00 00 00 DC 05 2C 01 01 00 5E 01 01 0A [CRC_H] [CRC_L] 55
 ```
 (LEN=0x1B=27; TYPE=0x60; SEQ=XX=depende del contador en curso; CRC calculado
 sobre `LEN+TYPE+SEQ+PAYLOAD`. El receptor debe calcularlo para validar; no se
@@ -387,9 +389,11 @@ DOWN a 100 Hz. Comportamiento actual:
 - El frame es parseado y almacenado en `comm_down.cpp` (`g_pose`, `g_vel`).
 - Frescos con `is_*_fresh()` usando `DOWN_HEARTBEAT_TIMEOUT_MS = 500 ms`
   (`config_top.h:99`).
-- **`my_x_mm` y `my_y_mm` del snapshot NO se populan con esta data.**
-  `build_snapshot()` (`main_top.cpp:48-51`) escribe `0` directamente,
-  ignorando `comm_down_get_pose()`.
+- **`my_x_mm` y `my_y_mm` del snapshot NO se populan con la OTOS de DOWN.**
+  Hoy `build_snapshot()` (`main_top.cpp:51-54`) los puebla con la pose de la
+  **trilateración TOF+IMU** (`localization_runtime_get_pose()`), NO con
+  `comm_down_get_pose()`. La fusión cámara/TOF/IMU **con** OTOS aún no se cablea
+  *(corregido 2026-06-03)*.
 
 ### Regla de interpretación de `Pose2D` (contrato DOWN §4)
 

@@ -16,6 +16,21 @@ related: [software/teensy/Soccer 2026/src/shared/proto.h, software/teensy/Soccer
 
 # Contrato de datos TOP — referencia única para programar TOP, CENTRAL y COMM
 
+> **⚠️ COPIA DE PACK DESACTUALIZADA (2026-06-03) — NO usar la columna "estado
+> real del código" de abajo.** Este archivo es un snapshot del 2026-05-18 y la
+> columna de estado quedó vieja: dice "pose HARDCODEADO a 0", "ToF STUB",
+> "ball_vx STUB" y "árbitro por `COMM_REFEREE_CMD` (UART)" — **todo eso ya NO es
+> cierto** en el código vivo. La realidad hoy: pose real por trilateración
+> TOF+IMU (`localization_runtime_get_pose()`), 4 ToF VL53L7CX enumerados a
+> 0x2A..0x2D, ball_vx real, y **árbitro por NIVEL GPIO en pines 5/6** (TASK-039),
+> no UART. El **transporte/layout/byte-offsets de abajo SIGUEN siendo válidos**
+> (el `WorldSnapshot` no cambió de bytes); solo la columna de "estado" está vieja.
+>
+> **Fuente de verdad del estado actual:**
+> [`docs/firmware/CONTRATO-DATOS-TOP.md`](../../../docs/firmware/CONTRATO-DATOS-TOP.md)
+> (corregida 2026-06-03 contra el código vivo). Regenerar este snapshot del pack
+> en el próximo refresh.
+
 > **Propósito.** Definir SIN AMBIGÜEDAD qué datos emite y recibe la placa TOP,
 > con qué formato exacto, unidades, rangos, convenciones, estado real del código
 > (real vs stub/hardcodeado) y gaps pendientes. Quien programe TOP implementa

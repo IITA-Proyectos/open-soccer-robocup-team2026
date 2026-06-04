@@ -29,6 +29,7 @@
 #include "behind_ball.h"
 #include "drive_straight.h"
 #include "ball_predict.h"
+#include "ball_trajectory.h"
 
 #include <Arduino.h>
 #include <cmath>
@@ -125,6 +126,30 @@ constexpr float GK_CLEAR_TRIGGER_MM           = 250.0f;    // pelota más cerca 
 constexpr float GK_CLEAR_RELEASE_MM           = 400.0f;    // histéresis: vuelve a PATROL al alejarse
 constexpr float GK_CLEAR_SPEED_MM_S           = 500.0f;
 
+// Arquero — clasificación de trayectoria (bt_classify, src/shared/ball_trajectory).
+//
+// El arquero ya ANTICIPA la X de la pelota vía ball_predict en INTERCEPT, pero no
+// distinguía si el tiro va al ARCO PROPIO (amenaza real) o si la pelota sale hacia
+// el arco rival / cruza de costado. bt_classify clasifica la trayectoria a partir
+// de la velocidad de la pelota (marco robot) y la geometría de los arcos, y el
+// arquero usa el resultado SOLO para elegir qué X perseguir en INTERCEPT:
+//
+//   kind                       conducta INTERCEPT
+//   ------------------------   ---------------------------------------------------
+//   BT_TO_OWN_GOAL (amenaza)   perseguir la X PREDICHA (anticipar el tiro al arco)
+//   BT_OTHER / BT_TO_OPP_GOAL  perseguir la X PREDICHA (idéntico a hoy)
+//   BT_STILL / sin geometría   perseguir la X PREDICHA (idéntico a hoy)
+//
+// ⚠️ FALLBACK EXACTO: si la velocidad es N/A o la pelota está quieta (vx=vy=0),
+// bt_classify devuelve BT_STILL y, además, ball_predict no agrega lead (px=bx);
+// si el arco rival NO es visible deshabilitamos la clasificación de arcos
+// (toward_tol=0) → la conducta es BYTE-IDÉNTICA a la de hoy en todos esos casos.
+// La rama BT_TO_OWN_GOAL hoy persigue la misma X PREDICHA que las demás (no cambia
+// el comando todavía): es el punto de enganche documentado para subir el lead /
+// la ganancia cuando haya banco. Tunear BT_OWN_* ahí. Ver bt_decide_intercept.
+constexpr int16_t GK_BT_SPEED_MIN_MM_S        = 80;        // |v| < esto → BT_STILL (pelota quieta / ruido)
+constexpr int16_t GK_BT_TOWARD_TOL_CENTIDEG   = 4500;      // ±45°: cono "va hacia el arco" (0 deshabilita)
+
 // === Helpers ===
 
 inline bool line_data_fresh() {
@@ -164,6 +189,73 @@ inline float gk_lateral_pid_output(uint32_t now_ms) {
     const float depth = static_cast<float>(world_model_get_line_depth());
     lateral_pid_set_target(g_lateral_pid_gk, GK_LATERAL_SETPOINT_DEPTH);
     return lateral_pid_tick(g_lateral_pid_gk, depth, now_ms);
+}
+
+// Clasifica la trayectoria de la pelota para el arquero y decide qué X (marco
+// robot) debe perseguir el INTERCEPT. PURA (sin world_model / Arduino) para poder
+// caracterizarla host-side en test_central_trajectory (espejo bt_decide_intercept).
+//
+// Entradas:
+//   bx, by               : posición actual de la pelota (mm, marco robot).
+//   bx_pred              : X PREDICHA por ball_predict (mm) — lo que hoy persigue.
+//   vx, vy               : velocidad de la pelota (mm/s, marco robot); 0 si N/A/quieta.
+//   goal_opp_visible     : ¿se ve el arco rival? (gobierna la geometría de arcos).
+//   goal_opp_angle_deg   : ángulo al arco rival (deg, 0 = frente del robot).
+//   dist_mm              : distancia robot↔pelota (mm).
+//
+// Salida: la X (marco robot) que el INTERCEPT debe usar como objetivo lateral.
+//
+// Convención de arcos (la MISMA que bt_classify / behind_ball): heading en marco
+// robot, 0 cd = frente (+Y), +90° = derecha (+X). El arco PROPIO del arquero está
+// detrás (lado contrario al rival): goal_own ≈ goal_opp + 180°. Sin arco rival
+// visible no hay geometría confiable → deshabilitamos la clasificación de arcos
+// (toward_tol=0) y la pelota cae en BT_OTHER/BT_STILL → conducta IDÉNTICA a hoy.
+//
+// FALLBACK EXACTO: en TODAS las ramas se devuelve bx_pred (lo que el arquero ya
+// perseguía). La clasificación NO altera el comando hoy; deja documentado y
+// host-testeado el punto de enganche (BT_TO_OWN_GOAL = amenaza real al arco
+// propio) para subir lead/ganancia en banco sin tocar el resto de la conducta.
+struct GkInterceptDecision {
+    BallTrajKind kind;
+    float        target_x_mm;   // X que el INTERCEPT debe perseguir (marco robot).
+    bool         threat;        // true = tiro clasificado al arco PROPIO (amenaza).
+};
+
+inline GkInterceptDecision gk_classify_intercept(float bx, float by, float bx_pred,
+                                                 int16_t vx, int16_t vy,
+                                                 bool goal_opp_visible,
+                                                 float goal_opp_angle_deg,
+                                                 float dist_mm) {
+    BallTrajIn in{};
+    in.ball_vx_mm_s        = vx;
+    in.ball_vy_mm_s        = vy;
+    in.ball_speed_min_mm_s = GK_BT_SPEED_MIN_MM_S;
+    in.ball_dist_mm        = static_cast<int16_t>(dist_mm > 32767.0f ? 32767.0f : dist_mm);
+    in.reach_mm            = 0;   // el arquero no usa in_reach; CLEAR ya gobierna la cercanía.
+    if (goal_opp_visible) {
+        // Arco rival visible → geometría confiable. Arco propio = opuesto al rival.
+        // Normalizar a (-180,180] ANTES de pasar a centideg: si goal_opp ~ +180,
+        // own=+360 → *100 desbordaría int16 (bt_classify espera centideg en rango).
+        float own_deg = goal_opp_angle_deg + 180.0f;
+        while (own_deg >  180.0f) own_deg -= 360.0f;
+        while (own_deg <= -180.0f) own_deg += 360.0f;
+        in.goal_opp_angle_centideg = static_cast<int16_t>(lroundf(goal_opp_angle_deg * 100.0f));
+        in.goal_own_angle_centideg = static_cast<int16_t>(lroundf(own_deg * 100.0f));
+        in.toward_tol_centideg     = GK_BT_TOWARD_TOL_CENTIDEG;
+    } else {
+        // Sin geometría: toward_tol=0 deshabilita la clasificación de arcos.
+        // Resultado: BT_STILL (sin velocidad) o BT_OTHER → fallback exacto.
+        in.toward_tol_centideg = 0;
+    }
+    const BallTraj t = bt_classify(in);
+    GkInterceptDecision d{};
+    d.kind   = t.kind;
+    d.threat = (t.kind == BT_TO_OWN_GOAL);
+    // Conducta: siempre perseguir la X PREDICHA (idéntico a hoy). El branch de
+    // amenaza queda separado (d.threat) para tunear en banco sin regresión.
+    d.target_x_mm = bx_pred;
+    (void)by;
+    return d;
 }
 
 void transition_atk(AtkState new_state) {
@@ -495,11 +587,26 @@ MotorCommand goalkeeper_tick() {
                                                world_model_get_ball_vy_mm_s(),
                                                ball_predict_default_params()).px_mm;
 
+            // CLASIFICACIÓN DE TRAYECTORIA (bt_classify): decide qué X perseguir
+            // según si el tiro va al arco propio (amenaza), al rival, cruza o está
+            // quieto. FALLBACK EXACTO: hoy todas las ramas devuelven bx_pred, así
+            // que el comando es IDÉNTICO al previo; d.threat queda para tunear en
+            // banco. Ver gk_classify_intercept y el mapeo documentado arriba.
+            const GkInterceptDecision bt = gk_classify_intercept(
+                bx, by, bx_pred,
+                world_model_get_ball_vx_mm_s(),
+                world_model_get_ball_vy_mm_s(),
+                world_model_goal_opp_visible(),
+                world_model_goal_opp_visible() ? world_model_get_goal_opp_angle_deg() : 0.0f,
+                dist);
+            (void)bt.kind;      // expuesto para observabilidad/tuning (no cambia el comando hoy).
+            (void)bt.threat;
+
             // PID lateral por cross_track (paralelo a la línea), con fallback
             // EXACTO a profundidad si es N/A — mismo helper que PATROL.
             const float vx_lateral_pid = gk_lateral_pid_output(now_ms);
 
-            const float vx_intercept = bx_pred * GK_INTERCEPT_KP_VS_BALL_X;
+            const float vx_intercept = bt.target_x_mm * GK_INTERCEPT_KP_VS_BALL_X;
             cmd.vx_mm_s = static_cast<int16_t>(vx_intercept + vx_lateral_pid * 0.3f);
 
             // Transición a CLEAR: la pelota llegó cerca → salir a despejar

@@ -11,6 +11,13 @@ requested-by: "Gustavo Viollaz (@gviollaz)"
 
 # `diag_central_strafe` — Patrulla lateral del arquero (OPEN-LOOP)
 
+> **🔬 Resultado de banco 2026-06-03** (corrido vía el hermano `diag_central_arbitro_strafe`,
+> mismo path de motores): al moverse **solo gira el motor 1**. Causa: cinemática
+> `{60,-60,180}` → lateral puro da **M3=0 (esperado**, rueda trasera kiwi) y M1=M2=±0.866·vx,
+> pero a `vx=150`/`MAX_SPEED=1000` el PWM es ~13% → **M2 stalled por deadzone**. **Subir
+> velocidad** (`-DDIAG_STRAFE_SPEED_MM_S=600`) para sacar el par delantero del umbral.
+> Ver journal `2026-06-03-banco-resultados-arbitro-strafe-y-bno-freeze.md` + TASK-101.
+
 ## Para qué sirve
 
 Test de banco de la **mitad inferior** (motores + placa CENTRAL + cinemática). El

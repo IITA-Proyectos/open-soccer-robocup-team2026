@@ -31,6 +31,11 @@ void handle_frame(const Frame& f) {
     // Perdida de frames: (uint8_t)(seq - last - 1) = cuantos faltaron entre este
     // y el anterior (0 si consecutivo; el cast maneja el wrap 255->0). Mide la
     // MAGNITUD del hueco, no solo el evento — telemetria para "aprendizaje Incheon".
+    // #23 — OJO al interpretar: un frame que FALLA CRC nunca llega aca, asi que su SEQ
+    // aparece como hueco en el proximo frame bueno => se cuenta en crc_errors() Y aca.
+    // Por eso frames_lost SE SOLAPA con crc_errors: huecos_reales ≈ frames_lost - crc_errors.
+    // Ademas mezcla los 3 tipos (0x10 linea / 0x11 pose / 0x12 vel) en un solo SEQ por enlace
+    // (down_tx.cpp:25), asi que NO distingue QUE mensaje se perdio. Ver auditoria 2026-06-03 #23.
     if (g_have_last_seq) {
         g_frames_lost += static_cast<uint8_t>(f.seq - g_last_seq - 1);
     }
@@ -92,5 +97,6 @@ void comm_down_send_calib_line(bool white) {
 uint32_t comm_down_get_frames_received() { return g_frames_received; }
 uint32_t comm_down_get_crc_errors()      { return g_decoder.crc_errors(); }
 uint32_t comm_down_get_frames_lost()     { return g_frames_lost; }
+uint32_t comm_down_get_resync_events()   { return g_decoder.resync_events(); }
 
 }  // namespace iitasoccer

@@ -21,6 +21,19 @@ namespace {
     }
 }
 
+// Convierte grados/s -> centideg/s saturando al rango int16 [-32767, +32767].
+// Redondea al entero más cercano y NUNCA cambia de signo (sin overflow/wrap).
+//
+// Author: Claude Opus 4.8 (Anthropic). Requested-by: Viollaz.
+int16_t omega_degps_to_centideg(float omega_deg_s) {
+    float centideg = omega_deg_s * 100.0f;
+    // Redondeo al entero más cercano conservando el signo.
+    centideg = (centideg >= 0.0f) ? (centideg + 0.5f) : (centideg - 0.5f);
+    if (centideg > 32767.0f)  return 32767;
+    if (centideg < -32767.0f) return -32767;
+    return (int16_t)centideg;
+}
+
 // ============================================================================
 // Heading PID
 // ============================================================================
@@ -49,7 +62,14 @@ float heading_pid_tick(HeadingPID& pid, float current_heading_deg, uint32_t now_
     }
     pid.last_tick_ms = now_ms;
 
-    // Integral con anti-windup.
+    // Anti-windup real (conditional integration): acumular tentativamente, pero
+    // si el output (pre-clamp) ya está saturado Y el error empuja en la MISMA
+    // dirección de la saturación, NO acumulamos este tick (revertimos la suma).
+    // Esto evita el windup que producía overshoot al volver al setpoint.
+    // El comportamiento NO saturado queda idéntico al clamp simple anterior.
+    //
+    // Author: Claude Opus 4.8 (Anthropic). Requested-by: Viollaz.
+    const float integral_before = pid.integral;
     pid.integral += error * dt;
     pid.integral = clamp(pid.integral, -pid.integral_clamp, +pid.integral_clamp);
 
@@ -61,8 +81,16 @@ float heading_pid_tick(HeadingPID& pid, float current_heading_deg, uint32_t now_
     pid.prev_error = error;
     pid.primed = true;
 
-    // Output.
+    // Output tentativo (pre-clamp) para decidir conditional integration.
     float output = pid.kp * error + pid.ki * pid.integral + pid.kd * derivative;
+    const bool saturated = (output >= pid.output_clamp) || (output <= -pid.output_clamp);
+    const bool same_dir = (output > 0.0f && error > 0.0f) || (output < 0.0f && error < 0.0f);
+    if (saturated && same_dir) {
+        // Revertir la acumulación de este tick y recomputar el output sin ella.
+        pid.integral = integral_before;
+        output = pid.kp * error + pid.ki * pid.integral + pid.kd * derivative;
+    }
+
     output = clamp(output, -pid.output_clamp, +pid.output_clamp);
     return output;
 }
@@ -93,6 +121,9 @@ float lateral_pid_tick(LateralPID& pid, float measurement, uint32_t now_ms) {
     }
     pid.last_tick_ms = now_ms;
 
+    // Anti-windup real (conditional integration) — ver heading_pid_tick.
+    // Author: Claude Opus 4.8 (Anthropic). Requested-by: Viollaz.
+    const float integral_before = pid.integral;
     pid.integral += error * dt;
     pid.integral = clamp(pid.integral, -pid.integral_clamp, +pid.integral_clamp);
 
@@ -104,6 +135,13 @@ float lateral_pid_tick(LateralPID& pid, float measurement, uint32_t now_ms) {
     pid.primed = true;
 
     float output = pid.kp * error + pid.ki * pid.integral + pid.kd * derivative;
+    const bool saturated = (output >= pid.output_clamp) || (output <= -pid.output_clamp);
+    const bool same_dir = (output > 0.0f && error > 0.0f) || (output < 0.0f && error < 0.0f);
+    if (saturated && same_dir) {
+        pid.integral = integral_before;
+        output = pid.kp * error + pid.ki * pid.integral + pid.kd * derivative;
+    }
+
     output = clamp(output, -pid.output_clamp, +pid.output_clamp);
     return output;
 }

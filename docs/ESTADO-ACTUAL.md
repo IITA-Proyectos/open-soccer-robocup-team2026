@@ -23,6 +23,21 @@ tipo: indice-operacional
 > cableado: `hardware/electronics/MAPA-CONEXIONES-3-PLACAS.md`. Cualquier "conflicto 7/8
 > abierto" o "Serial2 → CENTRAL" más abajo está **superado**.
 
+> **🏁 BANCO 2026-06-03 (3 placas) — leer:** (1) ✅ **El árbitro mueve a la CENTRAL.**
+> `diag_central_arbitro_strafe` validó en banco que el START/STOP del árbitro
+> (COMM→GPIO 5/6→TOP→flag MATCH_RUNNING→Serial7→CENTRAL) dispara/frena la conducta.
+> Primera vez que el árbitro mueve el robot end-to-end. (2) ⚠️ **Al moverse, solo gira
+> el motor 1.** Vía `inverse_kinematics({60,-60,180})`, un lateral puro da M3=0
+> (esperado: rueda trasera kiwi) y M1=M2=±0.866·vx pero a `vx=150`/`MAX_SPEED=1000` el
+> PWM es ~13% → M1 raspa, M2 stalled (deadzone). Primer test: `-DDIAG_ARB_SPEED_MM_S=600`.
+> Detalle → TASK-101 + journal `2026-06-03-banco-resultados-arbitro-strafe-y-bno-freeze.md`.
+> (3) ⚠️ **El heading del BNO (TOP) se CONGELA en producción** (`top_robot1`): el snapshot
+> llega sano por Serial7 (0 CRC, frames OK) y x/y cambian, pero `hdg` quedó clavado en
+> −108.3°. Causa: contención BNO+ToF en `Wire` (`sensors_imu.cpp:167`), band-aid insuficiente.
+> **Scope TOP.** Para el heading del arquero, la CENTRAL NO debe depender del BNO/TOP —
+> usar el OTOS (llega vivo y local). (4) `seqGap` ~33% en el link DOWN = frames que DOWN
+> dropea por backpressure (`down_tx.cpp:25` sube SEQ aunque descarte); dato fresco igual, no crítico.
+
 ## 📦 Para programar un subsistema: usar los packs
 
 Hay 5 packs autocontenidos en `hardware/electronics/` (uno por subsistema

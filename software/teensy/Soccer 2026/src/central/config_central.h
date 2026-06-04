@@ -99,19 +99,26 @@ constexpr float MAX_SPEED_MM_S  = 1000.0f; // velocidad máxima estimada del rob
 //   • Serial2 (7/8) queda LIBRE para el driver del motor 2 (U17) → conflicto F8 RESUELTO.
 // ============================================================
 constexpr long  UART_TOP_BAUD   = 230400;
-constexpr int   UART_TOP_RX     = 28;  // Serial7 RX7 (TOP→CENTRAL)
-constexpr int   UART_TOP_TX     = 29;  // Serial7 TX7
-constexpr int   UART_DOWN_RX    = 0;   // Serial1 RX1 (DOWN→CENTRAL)
-constexpr int   UART_DOWN_TX    = 1;   // Serial1 TX1
+// #17: las 4 constantes de pin de abajo son INFORMATIVAS (mapa de cableado). En
+// Teensy 4.1 los pines de Serial7/Serial1 son FIJOS — comm_top.cpp/comm_down.cpp
+// llaman Serial7.begin()/Serial1.begin() sin pasar pines, así que editar estos
+// números acá NO reasigna nada. Si cambia el cableado, se cambia de Serial, no el pin.
+constexpr int   UART_TOP_RX     = 28;  // Serial7 RX7 (TOP→CENTRAL)  [informativo]
+constexpr int   UART_TOP_TX     = 29;  // Serial7 TX7                [informativo]
+constexpr int   UART_DOWN_RX    = 0;   // Serial1 RX1 (DOWN→CENTRAL) [informativo]
+constexpr int   UART_DOWN_TX    = 1;   // Serial1 TX1                [informativo]
 
 // ============================================================
 // Watchdog
 // ============================================================
-// ⚠️ SIN USO HOY (sin callers, verificado por grep). El watchdog EFECTIVO de la
-// CENTRAL es SNAPSHOT_TIMEOUT_MS=500 ms (world_model.cpp) sobre el WorldSnapshot:
-// main_central frena los motores si snapshot_is_fresh()==false. CENTRAL ya NO
-// recibe MotorCommand del TOP (recibe WorldSnapshot y decide localmente).
-constexpr uint32_t COMMAND_TIMEOUT_MS = 200;  // conservada como referencia; no se usa
+// El watchdog REAL del snapshot vive en world_model.cpp (SNAPSHOT_TIMEOUT_MS = 500 ms):
+// si no llega WORLD_SNAPSHOT del TOP en ese tiempo, main_central frena los motores.
+// (#15: se removió COMMAND_TIMEOUT_MS=200 — era código muerto + heredado del rol viejo
+//  de "motor-server"; la CENTRAL ya NO recibe MotorCommand del TOP, arma el comando local.)
+//
+// merge 2026-06-03: el bloque KICKER que traía la rama del agente NO se reintegra
+// — el robot NO tiene kicker físico (ya removido en main, TASK-011 cancelada). No
+// reintroducir PIN_KICKER_SOL / KICKER_*.
 
 // ============================================================
 // Arranque manual fail-safe (F3) — SOLO banco, gateado por CENTRAL_ENABLE_MANUAL_START

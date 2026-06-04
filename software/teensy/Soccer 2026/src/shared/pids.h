@@ -59,6 +59,14 @@ float heading_pid_tick(HeadingPID& pid, float current_heading_deg, uint32_t now_
 // Utility: diferencia de ángulos con wrap-around a [-180, +180].
 float wrap_diff_deg(float a, float b);
 
+// Convierte ω en grados/s -> centideg/s (×100) para enviar como
+// MotorCommand.omega_centideg_s (int16). SATURA a [-32767, +32767]: nunca
+// envuelve ni cambia de signo. Evita el bug donde 360 deg/s -> 36000 hacía
+// overflow del int16 y el robot giraba al revés a casi máxima velocidad.
+//
+// Author: Claude Opus 4.8 (Anthropic). Requested-by: Viollaz.
+int16_t omega_degps_to_centideg(float omega_deg_s);
+
 // ============================================================================
 // Lateral PID (genérico — se usa para arquero pisando línea)
 // ============================================================================

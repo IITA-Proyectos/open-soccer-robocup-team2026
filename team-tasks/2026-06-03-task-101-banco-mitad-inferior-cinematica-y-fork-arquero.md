@@ -26,6 +26,24 @@ related:
 > [`journal/2026-06-03-…`](../journal/2026-06-03-verificacion-banco-mitad-inferior-y-review-gk.md).
 > Acá: qué medir en banco, en qué orden, y **la decisión que hay que tomar**.
 
+## 🔬 Actualización 2026-06-03 (resultados de banco)
+
+Se corrió `diag_central_arbitro_strafe` con las 3 placas:
+- ✅ **El árbitro mueve a la CENTRAL** (gate START/STOP validado).
+- ⚠️ **Al moverse SOLO gira el motor 1** (M2 y M3 quietos). Diagnóstico fundamentado
+  (no probado aún): vía `inverse_kinematics({60,-60,180})`, un lateral puro da
+  **M3=0 (esperado** — rueda trasera kiwi, no aporta a lateral) y **M1=M2=±0.866·vx**,
+  pero a `vx=150`/`MAX_SPEED=1000` el PWM es **~13% (33/255)** → M1 raspa, **M2 stalled
+  por deadzone**. Confirma el "no straferea" del 2026-06-01 a nivel rueda.
+- **Pin path de M2 descartado:** `config_central.h` ROBOT1 da M2=INA8/INB7/PWM6,
+  **idéntico** a lo que `diag_central_motors` validó (M2 gira ahí). No es cableado.
+- **Primer test (gatea Tema 1 y 2):** `-DDIAG_ARB_SPEED_MM_S=600` (≈52% PWM).
+  - M1+M2 se mueven, M3 casi quieto → confirmado deadzone + geometría → subir velocidad
+    base del arquero y/o reconciliar substrato (Opción A/B abajo).
+  - M2 sigue muerto a PWM alto → ahí sí es M2 (polaridad/driver) → aislar con `diag_central_motors`.
+
+Detalle: journal `2026-06-03-banco-resultados-arbitro-strafe-y-bno-freeze.md`.
+
 ## Contexto en 3 líneas
 
 - El árbol compila (`central_robot1` + diags) y el Serial está verificado en código

@@ -257,10 +257,15 @@ FRAME = AA 07 11 01 D2 04 D0 FD 28 23 55 C2 4A 55      CRC16=0xC24A
 - `schema_version` viaja en el byte 0 de `LineStatusV2`. Cualquier cambio de
   layout **incrementa** `schema_version` y actualiza el frontmatter
   `contract-schema` de este documento.
-- Migración v1→v2: el firmware DOWN actual usa el `LineStatus` de 5 B (v1, sin
-  `schema_version`). Este documento define **v2** como el contrato objetivo;
-  la migración se ejecuta en la implementación del programa DOWN (spec
-  separada). Hasta migrar, CENTRAL/TOP deben saber qué versión esperan.
+- Migración v1→v2: ✅ **COMPLETADA (verificado en código 2026-06-04).** El firmware
+  DOWN emite `LineStatusV2` (16 B, `schema_version = LSV2_SCHEMA = 2`): `dm_update()`
+  setea `schema_version` (`down_model.cpp:260`) y `down_tx_broadcast_line()` →
+  `down_encode_line()` (`down_encode.cpp`) serializa el frame `LINE_URGENT (0x10)`
+  con `payload_len = sizeof(LineStatusV2) = 16`, difundido a CENTRAL (Serial1) y TOP
+  (Serial5). El `LineStatus` v1 de 5 B **ya no existe**. CENTRAL decodifica con
+  `lsv2_from_frame()` (`line_view.h`), que valida tipo + tamaño + `schema_version`
+  (rechaza un schema distinto en vez de reinterpretar basura). Cadena host-testeada
+  (test_down_encode + test_central_line_ingest + test_down_tx, verdes).
 
 ## 6. Checklist para quien programe cada placa
 
@@ -280,9 +285,11 @@ fondo/frente con su heading, reaccionar a `event_flags`.
 ## 7. Fuentes
 
 - `software/teensy/Soccer 2026/src/shared/proto.h`, `crc16.h`, `types.h`
-  (definiciones de transporte y structs v1).
-- `software/teensy/Soccer 2026/src/down/comm_central.cpp`, `comm_top.cpp`
-  (encoders actuales — v1).
+  (transporte + struct `LineStatusV2` v2, 16 B, con `static_assert(sizeof==16)`).
+- `software/teensy/Soccer 2026/src/down/comm_central.cpp` (arma el `LineStatusV2`
+  vía `dm_update`) + `src/down/down_tx.cpp` + `src/shared/down_encode.cpp`
+  (**encoders v2** — el camino VIVO es el MISMO que el testeado) +
+  `src/shared/line_view.h` (decoder del CENTRAL).
 - CRCs y frames de §3.6 / §4 calculados con CRC-16/CCITT-FALSE sobre
   LEN+TYPE+SEQ+PAYLOAD (verificable; algoritmo en `crc16.h`).
 - Diseño marco: `docs/decisions/2026-05-18-diseno-comunicaciones-robusto-definitivo.md`.

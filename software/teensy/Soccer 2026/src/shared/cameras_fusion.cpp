@@ -10,6 +10,24 @@ constexpr float PI_F = 3.14159265358979323846f;
 // Cuando migremos al protocolo nuevo, esto vendrá del propio packet.
 constexpr float CONF_SINGLE_CAMERA = 80.0f;
 constexpr float CONF_CONSENSUS     = 95.0f;  // bonus cuando 2 cámaras coinciden
+
+// SB-4 (eval 2026-06-04): clamp del cast float→int16 en la fusión.
+// HOY es no-op: el parser da ~[-128,127] units * CAMERA_UNIT_TO_MM (10) =>
+// ~[-1280,1280] mm/eje (dist <~1810), muy adentro de int16. Pero si se sube
+// UNIT_TO_MM al recalibrar la homografía (TASK-022) el cast crudo desbordaría
+// int16 y wrappearía de signo (un arco a la derecha lejano se reportaría a la
+// IZQUIERDA), igual que el bug de omega que motivó telemetry_sat.h.
+//
+// OJO: usamos TRUNCAMIENTO (no el redondeo simétrico de sat_i16) a propósito:
+// el código previo era `static_cast<int16_t>(float)` (trunca hacia 0), y este
+// cambio debe ser BIT-IDÉNTICO en el rango de hoy para no mover el gate host
+// verde (no debe cambiar ningún test de test_cameras_fusion). Solo agregamos la
+// saturación en los extremos; el valor en rango queda exactamente igual.
+inline int16_t clamp_to_i16_trunc(float v) {
+    if (v >= 32767.0f)  return 32767;
+    if (v <= -32768.0f) return -32768;
+    return static_cast<int16_t>(v);  // trunca hacia 0, idéntico al cast previo
+}
 }  // namespace
 
 CamObs cam_obs_to_robot_frame(int16_t x_raw,
@@ -44,18 +62,18 @@ BallFused fuse_ball_dual(const CamObs& front,
         // Sin confianza por cámara en el protocolo, el "promedio ponderado" con
         // pesos iguales ES una media simple (SB-3, eval 2026-06-04): la
         // escribimos así — numéricamente idéntica y consistente con fuse_goal_dual.
-        out.x_mm = static_cast<int16_t>((front.x_mm + back.x_mm) * 0.5f);
-        out.y_mm = static_cast<int16_t>((front.y_mm + back.y_mm) * 0.5f);
+        out.x_mm = clamp_to_i16_trunc((front.x_mm + back.x_mm) * 0.5f);
+        out.y_mm = clamp_to_i16_trunc((front.y_mm + back.y_mm) * 0.5f);
         out.confidence = static_cast<uint8_t>(CONF_CONSENSUS);
         out.visible = true;
     } else if (f_ok) {
-        out.x_mm = static_cast<int16_t>(front.x_mm);
-        out.y_mm = static_cast<int16_t>(front.y_mm);
+        out.x_mm = clamp_to_i16_trunc(front.x_mm);
+        out.y_mm = clamp_to_i16_trunc(front.y_mm);
         out.confidence = static_cast<uint8_t>(CONF_SINGLE_CAMERA);
         out.visible = true;
     } else if (b_ok) {
-        out.x_mm = static_cast<int16_t>(back.x_mm);
-        out.y_mm = static_cast<int16_t>(back.y_mm);
+        out.x_mm = clamp_to_i16_trunc(back.x_mm);
+        out.y_mm = clamp_to_i16_trunc(back.y_mm);
         out.confidence = static_cast<uint8_t>(CONF_SINGLE_CAMERA);
         out.visible = true;
     } else {
@@ -95,8 +113,10 @@ GoalFused fuse_goal_dual(const CamObs& front,
         // => +90° = arco a la derecha del robot. Ver docs/CONVENCION-EJES-ROBOT.md.
         // Devolvemos centideg para encajar en el campo de WorldSnapshot.
         const float angle_rad = std::atan2(x, y);
-        out.angle_centideg = static_cast<int16_t>(angle_rad * (18000.0f / PI_F));
-        out.distance_mm = static_cast<int16_t>(std::sqrt(x * x + y * y));
+        // angle ∈ [-180,180]° => centideg ∈ [-18000,18000]: nunca desborda (el
+        // clamp es defensivo). distance sí podría con UNIT_TO_MM grande.
+        out.angle_centideg = clamp_to_i16_trunc(angle_rad * (18000.0f / PI_F));
+        out.distance_mm = clamp_to_i16_trunc(std::sqrt(x * x + y * y));
     } else {
         out.angle_centideg = 0;
         out.distance_mm = 0;

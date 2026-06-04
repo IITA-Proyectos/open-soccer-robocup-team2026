@@ -24,6 +24,9 @@
 #include "sensors_imu.h"
 #include "config_top.h"
 #include "imu_fusion.h"
+#ifdef TOP_ENABLE_BNO_FREEZE_DETECT
+#include "imu_freeze.h"   // detector de BNO congelado (GATED OFF por default)
+#endif
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -53,6 +56,18 @@ ImuSensorCfg g_scfg[IMU_FUSION_N];
 
 uint32_t g_last_tick_ms   = 0;
 uint32_t g_calib_check_ctr = 0;
+
+#ifdef TOP_ENABLE_BNO_FREEZE_DETECT
+// Detector de BNO CONGELADO (audit 2026-06-04, único HIGH). GATED OFF por
+// default: con el flag sin definir, NADA de esto se compila y el binario de
+// competencia es EXACTAMENTE el de hoy. Activarlo SOLO tras validar en banco que
+// no da falsos-DEAD con el robot quieto (un BNO vivo jitterea ≥1 LSB de centideg;
+// un valor clavado al centideg EXACTO muchos ticks = el (0,0,0) por fallo I²C /
+// yaw congelado del banco 2026-06-02). NO agrega transacciones I²C: reusa el
+// heading que ya se leyó este tick. Ver src/shared/imu_freeze.h.
+ImuFreezeState g_freeze[IMU_FUSION_N];
+ImuFreezeCfg   g_freeze_cfg;
+#endif
 
 constexpr uint32_t INIT_TIMEOUT_MS = 3000;
 constexpr uint32_t STABILIZE_MS    = 1000;
@@ -181,6 +196,13 @@ bool sensors_imu_init() {
     g_fcfg = imu_fusion_default_cfg();
     for (int i = 0; i < IMU_FUSION_N; ++i) g_scfg[i] = imu_fusion_default_sensor_cfg();
 
+#ifdef TOP_ENABLE_BNO_FREEZE_DETECT
+    // Detector de congelamiento: umbral derivado del intervalo de lectura real
+    // (BNO_READ_INTERVAL_MS) para que N corresponda a un tiempo conocido.
+    g_freeze_cfg = imu_freeze_cfg_from_rate(BNO_READ_INTERVAL_MS, IMU_FREEZE_MIN_MS);
+    for (int i = 0; i < IMU_FUSION_N; ++i) imu_freeze_reset(g_freeze[i]);
+#endif
+
     Serial.println("[IMU] Init BNO055 LEFT (Wire @ 0x28)...");
     g_ready[0] = init_one_bno(g_bno_left);
     Serial.println(g_ready[0] ? "[IMU] LEFT OK" : "[IMU] LEFT FAIL (continuando)");
@@ -257,6 +279,27 @@ void sensors_imu_tick() {
         }
     }
 
+#ifdef TOP_ENABLE_BNO_FREEZE_DETECT
+    // GATED OFF por default. Antes de fusionar: si un sensor que está present
+    // tiene el heading clavado al centideg EXACTO por >= N lecturas y >= T ms,
+    // lo tratamos como CONGELADO y bajamos su present → false, para que
+    // imu_fusion lo marque DEAD (deja de contaminar la fusión / el failover).
+    // Un BNO que muere por fallo I²C sigue ackeando (present=true) y reporta
+    // (0,0,0) clavado: sin esto, su heading muerto pasaría como válido para
+    // siempre (banco 2026-06-02: yaw congelado por contención BNO+ToF). Reusa el
+    // heading ya leído este tick: CERO transacciones I²C extra (no reintroduce la
+    // contención). Si el sensor revive (el valor cambia), imu_freeze se limpia
+    // solo, pero present sigue gobernado por g_ready (re-habilitar de verdad
+    // requiere re-init físico, igual que el latch de otos_health).
+    for (int i = 0; i < IMU_FUSION_N; ++i) {
+        if (!in[i].present) continue;
+        const int16_t hcdeg = static_cast<int16_t>(in[i].heading_deg * 100.0f);
+        if (imu_freeze_update(g_freeze[i], hcdeg, now, g_freeze_cfg)) {
+            in[i].present = false;   // congelado → fusion lo verá ausente → DEAD
+        }
+    }
+#endif
+
     imu_fusion_update(g_fusion, g_fcfg, g_scfg, in, dt_s);
 
     // Pedidos de RESET del módulo: SOFT-RESYNC no bloqueante (re-cero del sensor
@@ -269,6 +312,11 @@ void sensors_imu_tick() {
             // heading = SIGN*(raw - offset) = target  =>  offset = raw - target/SIGN
             g_offset[i] = raw - target_no_mount / HEADING_SIGN;
             imu_fusion_clear_reset(g_fusion, i);
+#ifdef TOP_ENABLE_BNO_FREEZE_DETECT
+            // El re-cero cambia el heading a propósito: re-sembrar el detector
+            // para no contar ese salto deliberado como (des)congelamiento espurio.
+            imu_freeze_reset(g_freeze[i]);
+#endif
             Serial.print("[IMU] soft-resync sensor ");
             Serial.print(i);
             Serial.println(" (drifto; re-alineado con el estable)");
@@ -304,6 +352,9 @@ void sensors_imu_recalibrate_zero() {
         if (g_ready[i]) g_offset[i] = capture_offset(*g_bno[i]);
     }
     imu_fusion_init(g_fusion);  // limpia estado de fusión (drift, glitch, etc)
+#ifdef TOP_ENABLE_BNO_FREEZE_DETECT
+    for (int i = 0; i < IMU_FUSION_N; ++i) imu_freeze_reset(g_freeze[i]);
+#endif
     g_last_tick_ms = millis();
 }
 

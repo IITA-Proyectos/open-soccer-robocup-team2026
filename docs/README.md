@@ -9,15 +9,17 @@ status: active
 Toda la documentación del equipo IITA Salta para RoboCup Junior Soccer Open 2026.
 
 > **Empezá por los índices vivos** (se actualizan en cada sesión de trabajo):
+> - ⭐ **[`MAPA-DE-DATOS.md`](MAPA-DE-DATOS.md)** — **start-here:** índice end-to-end de qué corre en cada placa y qué dato le manda a quién (el vistazo más accesible del sistema; indexa los contratos byte-a-byte y el cableado).
 > - ⭐ **[`ESTADO-ACTUAL.md`](ESTADO-ACTUAL.md)** — estado vivo del robot: módulos que corren, TASKs bloqueantes, deudas.
 > - ⭐ **[`FUENTES-DE-VERDAD.md`](FUENTES-DE-VERDAD.md)** — qué doc/módulo es canónico por tema (clave: hay docs superados que **NO** deben usarse como guía).
 >
-> Para entender el robot: **[`ARQUITECTURA-3-PLACAS-2026.md`](ARQUITECTURA-3-PLACAS-2026.md)** + las specs por placa en [`firmware/`](firmware/).
+> Para entender el robot: arrancá por **[`MAPA-DE-DATOS.md`](MAPA-DE-DATOS.md)**, después **[`ARQUITECTURA-3-PLACAS-2026.md`](ARQUITECTURA-3-PLACAS-2026.md)** + las specs por placa en [`firmware/`](firmware/).
 
 ## Estructura
 
 ```
 docs/
+├── MAPA-DE-DATOS.md      # ⭐ Start-here: índice end-to-end (qué corre / qué viaja por dónde)
 ├── ESTADO-ACTUAL.md      # ⭐ Estado vivo del robot (1ª lectura obligatoria)
 ├── FUENTES-DE-VERDAD.md  # ⭐ Doc/módulo canónico por tema
 ├── ARQUITECTURA-3-PLACAS-2026.md  # Arquitectura del robot 2026

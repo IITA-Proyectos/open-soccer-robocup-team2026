@@ -42,7 +42,7 @@
 |---|---|---|---|---|---|---|---|
 | Vision camera | **OpenMV Cam N6** (STM32N6 Cortex-M55 + Neural-ART NPU, PAG7936 sensor, QVGA RGB565 ~30 Hz) | 2 | OpenMV | New | Module (kit) | **[COST — pending]** (most expensive item on the robot, ~USD 80–200 each) | [COST — pending] |
 | IMU (heading/yaw) | **Bosch BNO055** (designators U10/U11) | 2 | Bosch (module) | New | Module (kit) on 4P header | **~USD 15** (internal citation `ARQUITECTURA-3-PLACAS-2026.md` L326) | **~USD 30** ⚠️ see note |
-| Multizone ToF sensor | **ST VL53L7CX** (8×8 zones, 60° FoV, Pololu module) | 4 | STMicro / Pololu | New | Module (kit) | **[PRICE — verify]** (see ⚠️ mismatch note) | [COST — pending] |
+| Multizone ToF sensor | **ST VL53L7CX** (8×8 zones, 60° FoV, Pololu module) | 4 | STMicro / Pololu | New | Module (kit) | **[PRICE — verify VL53L7CX]** (the cited ~USD 26 is for the single-zone VL53L1X, NOT this chip — see ⚠️ mismatch note §2) | [COST — pending] |
 | Ultrasonic | **HC-SR04** (designator U6 on TOP) | 1 | generic | New | Module (kit) | **[COST — pending] (est. ~USD 1–3)** | [COST — pending] |
 
 > ⚠️ **BNO055 note:** the repo mounts **2 BNO055** units but **1 unit (RIGHT, 0x29) is FAULTY**; the robot currently competes with **1 healthy BNO + 4 ToF**. For replicability/spares, plan for **2–4 units** (Incheon). The `~USD 15` price is the only concrete figure in the repo (qualitative).
@@ -89,6 +89,18 @@
 | **CENTRAL** PCB/shield | **Zircon Rev v15** (commercial PCB by **Robomov**, robomov.net; public schematic `Zircon.pdf`) | 1 | Robomov | **Reused** (the board that won the 2025 Nationals) | **Purchased (commercial COTS)** | **[COST — pending] (Robomov price)** | [COST — pending] |
 
 > 🔁 **Sustainability / reuse (award-worthy):** the **Zircon Rev v15 + Teensy 4.1** is the brain that **won the 2025 Nationals**; the new boards (TOP/DOWN) are **mounted around it**, not replacing it. If a new board fails in Incheon, CENTRAL **degrades to monolithic mode**. The design is **upgradable post-Incheon** (replace one board without touching the others; a better camera = only the TOP firmware changes).
+
+### 1.7 COMM-board-specific ICs (RCJ referee)
+
+> SMD components populated on the COMM PCB (`PCB1`), verbatim from `BOM_Board1_PCB1_2026-04-20.xlsx` and from the netlist (`FlyingProbeTesting.json`) reconstructed in `hardware/electronics/comm-board/2026-05-17-placa-comm-componentes-y-circuito.md`. Quantities are **per COMM board** (1 COMM board per robot).
+
+| Component | Part number / model | Qty | Source / supplier | New / Reused | Kit / Custom | Unit cost | Total cost |
+|---|---|---|---|---|---|---|---|
+| UART level shifter | **TI TXS0102DCUR** (VSON8; 2-bit bidirectional, robot UART ↔ ESP 3.3 V; designator U6) | 1 | TI | New | SMD on COMM PCB | **[COST — pending] (est. ~USD 0.5)** | [COST — pending] |
+| 3-axis accelerometer | **ST LIS3DHTR** (LGA-16; I²C, RCJ module "shake-to-start"; designator U7) | 1 | STMicro | New | SMD on COMM PCB | **[COST — pending] (est. ~USD 1–2)** | [COST — pending] |
+| Tactile pushbuttons | **TS-1088-AR02016** (SW-SMD; CONNECT/PROG = user button + boot strap GPIO9) | 2 | generic | New | SMD on COMM PCB | **[COST — pending] (est. <USD 0.1)** | [COST — pending] |
+
+> ⚠️ **COMM note:** the referee starts/stops via a **voltage LEVEL on OUT_1/OUT_2** (3.3 V = GO, 0 V = STOP), **NOT over UART** — the C6 firmware receives the command over BLE from the referee app and translates it to a level. The `RX_OUT/TX_OUT` UART (via the TXS0102) is passive hardware that the official v0.91 firmware does not yet use. The RCJ module's OLED display is **external** (not populated on this board; it goes on I²C via U4).
 
 ---
 

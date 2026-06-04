@@ -40,8 +40,15 @@ struct PoseFusionConfig {
     uint16_t field_height_mm;         // 2430 — eje Y (arco-a-arco, lado largo); clamp de salida en Y
     uint16_t correction_gain_q8;      // K en Q8: K_real = gain/256. Default 26 (~0.10).
     uint16_t tof_jump_gate_mm;        // gating: si |pose_tof - pose_pred| > esto, ToF rechazada. Default 400.
-    uint16_t otos_stale_ms;           // si dt desde último OTOS fresco > esto => sin predicción. Default 60.
-    uint16_t tof_stale_ms;            // si pasaron > esto sin corrección ToF, confidence decae. Default 500.
+    // POSE-02 (eval 2026-06-04): los dos knobs de staleness de abajo HOY no se
+    // consumen en pose_fusion_update — la freshness (otos_fresh / tof_valid) la
+    // gatea el CALLER antes de entrar (ver contrato en PoseFusionInputs). Se
+    // dejan a propósito (NO borrar): documentan la semántica para cuando el
+    // módulo se cablee y el filtro pase a hacer el gating temporal él mismo.
+    // El módulo aún no está wired; quitarlos no daría beneficio y tocaría el
+    // contrato público del struct compartido.
+    uint16_t otos_stale_ms;           // [no leído aún] si dt desde último OTOS fresco > esto => sin predicción. Default 60.
+    uint16_t tof_stale_ms;            // [no leído aún] si pasaron > esto sin corrección ToF, confidence decae. Default 500.
     uint16_t max_step_mm;             // clamp del módulo del delta OTOS por tick (anti-glitch). Default 80.
     uint8_t  conf_tof_anchor;         // confidence objetivo cuando recién se ancló a ToF (0-100). Default 90.
     uint8_t  conf_otos_only;          // confidence base cuando solo hay OTOS sin ToF reciente. Default 50.

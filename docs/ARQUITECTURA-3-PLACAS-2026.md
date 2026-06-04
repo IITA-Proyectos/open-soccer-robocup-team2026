@@ -71,7 +71,7 @@ Cinco principios de diseño justifican la elección:
 
 | Responsabilidad | Detalle |
 |-----------------|---------|
-| Máquina de estados táctica | FSM principal (delantero / arquero según dipswitch). Estados: SEARCH, APPROACH, POSITION, PUSH, GOALKEEPER_PATROL, INTERCEPT, KICK, LINE_AVOID. |
+| Máquina de estados táctica | Dos FSM según rol (delantero / arquero por dipswitch), en `central/strategy.cpp`. **Delantero (ATK):** WAIT_START, KICKOFF, SEARCH, POSITION, APPROACH, LINE_AVOID. **Arquero (GK):** WAIT_START, PATROL, INTERCEPT, CLEAR, LINE_AVOID. (No hay estados PUSH/KICK/GOALKEEPER_PATROL: el robot NO tiene kicker — el delantero empuja por inercia; el despeje del arquero es CLEAR.) Fuente: enums `AtkState`/`GkState` y `strategy_get_state_name()`. |
 | Control de motores | Cinemática inversa omni-3. Aplica PWM directo a los 3 H-bridges del Zircon. |
 | Lazos de control (PIDs) | **Todos los PIDs del robot corren acá**: PID de heading (consume IMU desde ARRIBA), PID lateral del arquero (consume measurement de línea desde ABAJO, solo en modo arquero), PID de approach a la pelota. Un único lugar con todas las ganancias tuneables. |
 | Watchdog global | Si ARRIBA timeout 500 ms → modo seguro (parar motores, parpadear LED). Si ABAJO timeout 500 ms → estrategia ciega (sin información de línea). |

@@ -180,7 +180,15 @@ bit-flip desincronizaba (bug R6, `cameras.h` viejo).
 
 ## 2. Sentinel "no detectado" — el gap P0 central
 
-### 2.1 Estado actual (inconsistencia)
+> ⚠️ **SECCIÓN HISTÓRICA (formato v1, contract-schema 1).** Lo descrito en §2.1 es el
+> sentinel **OBSOLETO** del packet de 9 bytes (X asimétrico [0..200], sentinel
+> posicional `(X=0, Y_coded=0)`). **El formato VIGENTE es v2** (11 bytes: 9 datos +
+> CRC8 + END=254, X e Y simétricos con offset +100, sentinel = byte coded **255**) —
+> ver §1.2 y §2.2 y, como fuente de verdad, `src/top/cameras.h` (`CAM_SENTINEL=255`,
+> `CAM_END_BYTE=254`, `CAM_PACKET_LEN=11`). Se conserva §2.1 para documentar el bug
+> P0 del fantasma que motivó el rediseño; NO implementarlo.
+
+### 2.1 Estado actual (inconsistencia) — HISTÓRICO v1
 
 Cuando no hay blobs, `procesar_blob` retorna `(0, 0)` — ver
 `enviar...:81-82`:
@@ -486,7 +494,17 @@ como iguales.
 
 ## 8. Diseño de los 2 programas OpenMV (objetivo)
 
-### 8.1 Estructura común (base compartida entre frontal y trasera)
+> ⚠️ **SECCIÓN HISTÓRICA (formato v1, contract-schema 1).** El esqueleto Python de
+> §8.1 codifica el packet **OBSOLETO de 9 bytes**: arma `bytearray([201, Xp, Ypc,
+> 202, ...])` SIN CRC ni END, con X asimétrico y sentinel posicional `SENTINEL_X=0` /
+> `SENTINEL_Y_CODED=0`. **El formato VIGENTE es v2** (11 bytes con CRC8 + END=254, X
+> simétrico `X_coded=X+100`, sentinel = byte coded **255**). Para el layout y el
+> sentinel reales ver §1.2, §6 y los scripts vivos `cam-frontal-n6.py` /
+> `cam-trasera-n6.py` + `src/top/cameras.h`. El ejemplo de abajo sirve para la
+> estructura del programa (init del sensor, homografía, clamp anti-crash), **NO**
+> para el encoding del packet — ése es v1 y quedó superado.
+
+### 8.1 Estructura común (base compartida entre frontal y trasera) — encoding HISTÓRICO v1
 
 Ambos programas comparten la misma estructura. Las diferencias entre ellos son
 exactamente los parámetros marcados como [FRONTAL] vs [TRASERA].

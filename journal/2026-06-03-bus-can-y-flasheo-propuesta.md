@@ -86,3 +86,13 @@ Conclusiones:
   (= Opción C ya rechazada). El gateway es un **ESP32-S3 separado**.
 - **No cambia** la decisión `2026-05-17` (Opción A: inter-robot diferido); §7-bis
   es la arquitectura concreta de la **Opción B** para post-Incheon.
+
+## Addendum 2 — Apéndice A: interfaz CAN por Teensy + costo + PoC
+
+A pedido de Gustavo, se agregó el **Apéndice A** al doc del bus con: esquema del
+circuito de interfaz (Teensy 4.0/4.1 ↔ SN65HVD230 ↔ bus, 4 cables), tabla de
+pines CAN (CAN1=22/23 recomendado; CAN3=30/31 FD pero pads traseros en la 4.0),
+gotcha de terminación (120 Ω solo en los 2 extremos; los módulos VP230 lo traen
+soldado), **BOM y costo** (~USD 2.5–4.5 por nodo importado; bus completo de 8
+nodos ~USD 20–35) y un **sketch PoC Fase 0** (FlexCAN_T4, ping 10 Hz entre 2
+Teensy con detector de `gaps` para el test de ruido de motores).

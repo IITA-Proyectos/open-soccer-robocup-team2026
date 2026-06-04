@@ -506,3 +506,126 @@ partido por esto. El flasheo es de banco.
   · OpenMV Arduino Interface Library (CAN/UART/SPI/I²C, CAN ≤1 Mbps) · FlasherX
   (auto-flasheo Teensy desde cualquier stream) · RoboCup Jr Soccer Rules 2026
   (1.3.1 / 3.2: robot↔robot 2.4 GHz ≤100 mW, no remote control).
+
+---
+
+## Apéndice A — Interfaz CAN por Teensy: esquema, pines, BOM/costo y PoC Fase 0
+
+### A.1 Circuito por nodo (Teensy 4.0/4.1 ↔ transceiver ↔ bus)
+La Teensy trae el **controlador CAN adentro** (FlexCAN). Solo se agrega un
+**transceiver** SN65HVD230 (3.3 V, clásico, ≤1 Mbps). Mismo circuito para 4.0 y 4.1.
+
+```text
+  TEENSY 4.0 / 4.1 (3.3 V)            SN65HVD230 / VP230 (módulo)         BUS CAN (2 hilos)
+ ┌─────────────────────┐            ┌──────────────────────────┐
+ │ CTX (CAN-TX) ────────┼───────────►│ 1  D  (TXD)              │
+ │ CRX (CAN-RX) ◄───────┼────────────│ 4  R  (RXD)              │
+ │ 3V3 ─────────────────┼─────┬──────►│ 3  VCC            CANH 7 ├──●──── CANH ──► otros nodos
+ │ GND ─────────────────┼──┬──┼──────►│ 2  GND            CANL 6 ├──●──── CANL ──►
+ └─────────────────────┘  │  │       │ 8  Rs ── GND (alta vel.) │  │
+              (módulo: 100nF a bordo) │ 5  Vref (sin conectar)   │ [120 Ω SOLO en los 2 extremos]
+                         GND COMÚN a todo el bus
+```
+Solo **4 cables** Teensy↔módulo: `CTX→D`, `CRX→R`, `3V3→VCC`, `GND→GND`.
+
+### A.2 Pines CAN (iguales en 4.0 y 4.1; distinta accesibilidad física)
+| Controlador | CTX (TX) | CRX (RX) | CAN-FD | Accesibilidad |
+|---|---|---|---|---|
+| **CAN1** | **22** | **23** | No | ✅ borde en 4.0 y 4.1 → **el más fácil (usar este en v1)** |
+| CAN2 | 1 | 0 | No | ✅ borde, pero `0/1` suele estar ocupado (Serial1) |
+| CAN3 | 31 | 30 | ✅ sí | ⚠️ 4.1: borde · **4.0: pads traseros** (incómodo) |
+
+> `FlexCAN_T4`/`ACAN-T4` asignan los pines por defecto: declarás `FlexCAN_T4<CAN1>`.
+
+### A.3 Topología y terminación (gotcha #1)
+```text
+[Teensy A]─xcvr──┬───CANH/CANL───┬───CANH/CANL───┬──xcvr─[Teensy B]
+  120 Ω (extremo)│               │               │      120 Ω (extremo)
+            [nodo medio]    [nodo medio]    ...  (medios SIN 120 Ω)
+```
+⚠️ Los módulos VP230 **traen 120 Ω soldado**. Con 8 módulos en paralelo = ~15 Ω →
+**el bus no funciona**. Dejar el 120 Ω **solo en los 2 extremos** y **desoldarlo
+en los del medio** (o usar chips pelados con tu propio 120 Ω en las puntas).
+
+### A.4 BOM + costo por nodo
+| Ítem | Internacional (AliExpress) | Local Argentina (aprox.) |
+|---|---|---|
+| Módulo SN65HVD230 / VP230 (trae 120 Ω + 100nF) | USD 2–4 | USD 5–10 |
+| — alt.: chip SN65HVD230 pelado (SOP-8) | ~USD 1 (×10 ≈ USD 9) | USD 2–4 |
+| Conector JST-GH 4P + housing | ~USD 0.5 | USD 1–2 |
+| Resistencia 120 Ω (solo 2 en TODO el bus) | centavos | centavos |
+
+- **Interfaz por Teensy ≈ USD 2.5–4.5** (importado) / **USD 6–12** (local).
+- **Bus completo** (3 Teensy + 4 cámaras + 1 bridge = 8 nodos) **≈ USD 20–35** importado.
+- Plug-and-play sin soldar: Copperhill Teensy 4.0 CAN-FD breakout (~USD 30–40).
+- Para CAN-FD: SN65HVD230 → MCP2562FD / TCAN1057 / TJA1051 (mismo circuito).
+
+### A.5 PoC Fase 0 — ping entre 2 Teensy (CAN1, 1 Mbps)
+Mismo sketch en ambas placas (cambiar `NODE_ID`). Valida el bus **con el ruido
+real de un motor al lado** (no solo desconectando cables), alineado con la
+filosofía "medir, no inventar" (TASK-014).
+
+```cpp
+// Fase 0 — PoC bus CAN entre 2 Teensy 4.x (CAN1, 1 Mbps clasico)
+// Mismo sketch en AMBAS placas; cambiar solo NODE_ID (1 en una, 2 en la otra).
+// Cableado: Teensy 22(CTX1)->D, 23(CRX1)->R, 3V3->VCC, GND->GND del SN65HVD230.
+// Bus: CANH<->CANH, CANL<->CANL. Con solo 2 nodos, los 2 modulos llevan su 120 ohm.
+// Libreria: FlexCAN_T4 (viene con Teensyduino; PlatformIO:
+//   lib_deps = https://github.com/tonton81/FlexCAN_T4.git )
+#include <FlexCAN_T4.h>
+
+FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> can1;
+
+const uint8_t NODE_ID = 1;          // <<< 1 en una placa, 2 en la otra
+
+uint32_t last_tx_ms = 0, last_log_ms = 0;
+uint32_t tx_count = 0, rx_count = 0, gaps = 0;
+uint8_t  last_ctr[8];
+bool     have_last[8] = {false};
+
+void onRx(const CAN_message_t &msg) {
+  rx_count++;
+  uint8_t sender = msg.buf[0] & 0x07;
+  uint8_t ctr    = msg.buf[1];
+  if (have_last[sender] && ctr != (uint8_t)(last_ctr[sender] + 1)) gaps++;  // perdida/reorden
+  last_ctr[sender] = ctr;
+  have_last[sender] = true;
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_BUILTIN, OUTPUT);
+  can1.begin();
+  can1.setBaudRate(1000000);        // 1 Mbps clasico
+  can1.setMaxMB(16);
+  can1.enableFIFO();
+  can1.enableFIFOInterrupt();
+  can1.onReceive(onRx);
+}
+
+void loop() {
+  can1.events();                    // procesa RX -> dispara onRx()
+
+  if (millis() - last_tx_ms >= 100) {        // TX a 10 Hz
+    last_tx_ms = millis();
+    CAN_message_t msg;
+    msg.id  = 0x100 + NODE_ID;               // ID propio (prioridad por ID)
+    msg.len = 8;
+    msg.buf[0] = NODE_ID;
+    msg.buf[1] = (uint8_t)(tx_count & 0xFF);   // contador -> detector de perdida
+    if (can1.write(msg)) { tx_count++; digitalToggle(LED_BUILTIN); }
+  }
+
+  if (millis() - last_log_ms >= 1000) {      // log 1 Hz
+    last_log_ms = millis();
+    Serial.print("tx="); Serial.print(tx_count);
+    Serial.print("  rx="); Serial.print(rx_count);
+    Serial.print("  gaps="); Serial.println(gaps);   // gaps ~0 con motor = bus sano
+  }
+}
+```
+
+**Criterio de aceptación Fase 0:** con las 2 Teensy conectadas, cada una ve `rx`
+subir ~10/s y `gaps` ≈ 0. Encendé un motor del robot pegado al cable del bus: si
+`gaps` sigue ~0 → bus robusto. Si `gaps` crece → revisar trenzado del par,
+GND común y terminación. Recién con eso verde se pasa a Fase 1 (backbone 3 placas).

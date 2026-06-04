@@ -18,5 +18,6 @@ uint32_t comm_top_get_frames_received();
 uint32_t comm_top_get_crc_errors();
 uint32_t comm_top_get_bytes_received();  // DIAG: bytes crudos en Serial7 (link TOP)
 uint32_t comm_top_get_resync_events();   // DIAG: resyncs del decoder (byte-slip/ruido, #25)
+uint32_t comm_top_get_snapshot_size_rejects();  // CC-01 DIAG: WorldSnapshot con tamano != schema (deploy v2/v3)
 
 }  // namespace iitasoccer

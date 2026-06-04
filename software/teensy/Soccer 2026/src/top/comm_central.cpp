@@ -12,6 +12,7 @@ namespace {
 FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
 uint32_t g_frames_sent = 0;
+uint32_t g_frames_tx_dropped = 0;  // SI-02: snapshots dropeados por buffer TX lleno (no bloquea el loop)
 uint8_t  g_send_seq = 0;
 LinkSeqTracker g_seq{};   // gap de SEQ del enlace CENTRAL→TOP (RX) (P1-SEQ-LINK-HEALTH)
 
@@ -61,13 +62,22 @@ void comm_central_send_snapshot(const WorldSnapshot& snap) {
     uint8_t buf[PROTO_MAX_FRAME];
     size_t n = proto_encode(f, buf, sizeof(buf));
     if (n > 0) {
-        Serial4.write(buf, n);
-        g_frames_sent++;
+        // SI-02 (eval 2026-06-04): no bloquear el loop del TOP si el buffer TX de
+        // Serial4 esta lleno. availableForWrite() = espacio libre del buffer TX;
+        // si no entra el frame completo lo dropeamos (inocuo a 100 Hz: el siguiente
+        // snapshot llega en 10 ms) en vez de que Serial4.write() bloquee el loop.
+        if (Serial4.availableForWrite() >= static_cast<int>(n)) {
+            Serial4.write(buf, n);
+            g_frames_sent++;
+        } else {
+            g_frames_tx_dropped++;
+        }
     }
 }
 
 uint32_t comm_central_get_frames_sent()     { return g_frames_sent; }
 uint32_t comm_central_get_frames_received() { return g_frames_received; }
 uint32_t comm_central_get_frames_lost()     { return g_seq.lost; }
+uint32_t comm_central_get_frames_tx_dropped() { return g_frames_tx_dropped; }
 
 }  // namespace iitasoccer

@@ -21,5 +21,7 @@ uint32_t comm_central_get_frames_received();
 // SE SOLAPA con crc_errors del decoder (ver LinkSeqTracker en comm_arbiter.h).
 // (P1-SEQ-LINK-HEALTH)
 uint32_t comm_central_get_frames_lost();
+// Snapshots dropeados en TX por buffer lleno (SI-02): 0 en operacion normal.
+uint32_t comm_central_get_frames_tx_dropped();
 
 }  // namespace iitasoccer

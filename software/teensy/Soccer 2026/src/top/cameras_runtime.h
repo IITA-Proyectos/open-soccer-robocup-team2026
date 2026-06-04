@@ -53,6 +53,14 @@ bool     cameras_both_dead();         // ninguna reportó → DEGRADED_NO_CAMERA
 // === Diagnóstico ===
 uint32_t cameras_packets_front();
 uint32_t cameras_packets_back();
-uint32_t cameras_resyncs_total();
+uint32_t cameras_resyncs_total();        // pérdida de framing AGREGADA (front+back)
+
+// Telemetría de integridad del enlace cámara→TOP (TASK-015 / P0-CAM-CRC).
+// AGREGADOS front+back de los contadores que ya expone el parser v2 (cameras.h):
+//   • crc_errors  : frames de 11 B completos pero con CRC8 malo (bit-flip).
+//   • resync      : alias explícito de cameras_resyncs_total() (framing perdido).
+// Aditivos, solo leen el parser; NO tocan el contrato de wire ni cameras.cpp/.h.
+uint32_t cameras_get_crc_errors_total();
+uint32_t cameras_resync_total();         // == cameras_resyncs_total()
 
 }  // namespace iitasoccer

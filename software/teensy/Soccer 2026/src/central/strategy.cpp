@@ -128,27 +128,50 @@ constexpr float GK_CLEAR_SPEED_MM_S           = 500.0f;
 
 // Arquero — clasificación de trayectoria (bt_classify, src/shared/ball_trajectory).
 //
-// El arquero ya ANTICIPA la X de la pelota vía ball_predict en INTERCEPT, pero no
-// distinguía si el tiro va al ARCO PROPIO (amenaza real) o si la pelota sale hacia
+// El arquero ANTICIPA la X de la pelota vía ball_predict en INTERCEPT y, además,
+// distingue si el tiro va al ARCO PROPIO (amenaza real) o si la pelota sale hacia
 // el arco rival / cruza de costado. bt_classify clasifica la trayectoria a partir
 // de la velocidad de la pelota (marco robot) y la geometría de los arcos, y el
-// arquero usa el resultado SOLO para elegir qué X perseguir en INTERCEPT:
+// arquero usa el resultado para REFORZAR la respuesta en INTERCEPT:
 //
 //   kind                       conducta INTERCEPT
 //   ------------------------   ---------------------------------------------------
-//   BT_TO_OWN_GOAL (amenaza)   perseguir la X PREDICHA (anticipar el tiro al arco)
-//   BT_OTHER / BT_TO_OPP_GOAL  perseguir la X PREDICHA (idéntico a hoy)
-//   BT_STILL / sin geometría   perseguir la X PREDICHA (idéntico a hoy)
+//   BT_TO_OWN_GOAL (amenaza)   X PREDICHA con MÁS lead (×LEAD_FACTOR) + KP ×KP_FACTOR
+//   BT_OTHER / BT_TO_OPP_GOAL  X PREDICHA con lead/KP base (idéntico a hoy)
+//   BT_STILL / sin geometría   X PREDICHA con lead/KP base (idéntico a hoy)
 //
 // ⚠️ FALLBACK EXACTO: si la velocidad es N/A o la pelota está quieta (vx=vy=0),
 // bt_classify devuelve BT_STILL y, además, ball_predict no agrega lead (px=bx);
 // si el arco rival NO es visible deshabilitamos la clasificación de arcos
-// (toward_tol=0) → la conducta es BYTE-IDÉNTICA a la de hoy en todos esos casos.
-// La rama BT_TO_OWN_GOAL hoy persigue la misma X PREDICHA que las demás (no cambia
-// el comando todavía): es el punto de enganche documentado para subir el lead /
-// la ganancia cuando haya banco. Tunear BT_OWN_* ahí. Ver bt_decide_intercept.
+// (toward_tol=0) → no hay amenaza → lead_factor=kp_factor=1.0 → la conducta es
+// BYTE-IDÉNTICA a la de hoy en todos esos casos. SOLO la rama BT_TO_OWN_GOAL
+// escala lead y KP (ver GK_BT_THREAT_* y gk_threat_response). Tunear esos factores
+// en banco. El espejo host-testeable es bt_decide_intercept (test_central_trajectory).
 constexpr int16_t GK_BT_SPEED_MIN_MM_S        = 80;        // |v| < esto → BT_STILL (pelota quieta / ruido)
 constexpr int16_t GK_BT_TOWARD_TOL_CENTIDEG   = 4500;      // ±45°: cono "va hacia el arco" (0 deshabilita)
+
+// === Arquero — RESPUESTA A AMENAZA (bt_classify threat ACTIVADO) ===
+//
+// Cuando bt_classify marca BT_TO_OWN_GOAL (la pelota VA al arco PROPIO = amenaza
+// real), el arquero refuerza la respuesta de dos maneras INDEPENDIENTES y aditivas:
+//
+//   1) MÁS LEAD: re-predice la X con ball_predict usando lookahead/max_lead
+//      escalados por GK_BT_THREAT_LEAD_FACTOR (anticipa más el tiro entrante).
+//   2) MÁS GANANCIA: el KP del eje X de INTERCEPT se multiplica por
+//      GK_BT_THREAT_KP_FACTOR (reacción más agresiva a llegar a esa X).
+//
+// ⚠️ FALLBACK EXACTO (no-regresión): si threat==false (BT_STILL/OPP/OTHER, o
+// velocidad N/A, o sin arco rival visible), AMBOS factores valen 1.0 → la X
+// predicha es BYTE-IDÉNTICA a la de hoy (ball_predict con default params) y el KP
+// queda en GK_INTERCEPT_KP_VS_BALL_X. La amenaza solo MULTIPLICA, nunca cambia el
+// signo ni el camino del fallback.
+//
+// 🔧 needs_bench: estos dos factores CAMBIAN la conducta del arquero ante un tiro
+// al arco propio → tunear en banco (un factor muy alto puede sobre-anticipar y
+// dejar hueco; muy bajo no aporta sobre el comportamiento actual). Valores
+// iniciales conservadores: +50% de lead, +50% de ganancia.
+constexpr float GK_BT_THREAT_LEAD_FACTOR      = 1.5f;      // ×lookahead y ×max_lead cuando amenaza (1.0 = sin cambio)
+constexpr float GK_BT_THREAT_KP_FACTOR        = 1.5f;      // ×GK_INTERCEPT_KP_VS_BALL_X cuando amenaza (1.0 = sin cambio)
 
 // === Helpers ===
 
@@ -203,7 +226,7 @@ inline float gk_lateral_pid_output(uint32_t now_ms) {
 //   goal_opp_angle_deg   : ángulo al arco rival (deg, 0 = frente del robot).
 //   dist_mm              : distancia robot↔pelota (mm).
 //
-// Salida: la X (marco robot) que el INTERCEPT debe usar como objetivo lateral.
+// Salida: la X (marco robot) que el INTERCEPT debe usar + el multiplicador de KP.
 //
 // Convención de arcos (la MISMA que bt_classify / behind_ball): heading en marco
 // robot, 0 cd = frente (+Y), +90° = derecha (+X). El arco PROPIO del arquero está
@@ -211,15 +234,43 @@ inline float gk_lateral_pid_output(uint32_t now_ms) {
 // visible no hay geometría confiable → deshabilitamos la clasificación de arcos
 // (toward_tol=0) y la pelota cae en BT_OTHER/BT_STILL → conducta IDÉNTICA a hoy.
 //
-// FALLBACK EXACTO: en TODAS las ramas se devuelve bx_pred (lo que el arquero ya
-// perseguía). La clasificación NO altera el comando hoy; deja documentado y
-// host-testeado el punto de enganche (BT_TO_OWN_GOAL = amenaza real al arco
-// propio) para subir lead/ganancia en banco sin tocar el resto de la conducta.
+// RESPUESTA A AMENAZA: si la clasificación da BT_TO_OWN_GOAL (amenaza), la X se
+// re-predice con MÁS lead (×GK_BT_THREAT_LEAD_FACTOR) y el KP se escala
+// (×GK_BT_THREAT_KP_FACTOR). En cualquier otra rama (incluido velocidad N/A,
+// pelota quieta o sin arco rival visible) los factores valen 1.0 → la X coincide
+// con bx_pred (lo que el arquero ya perseguía) y kp_scale=1.0 ⇒ FALLBACK EXACTO,
+// byte-idéntico a hoy. La decisión threat→(lead,kp) está extraída a la función
+// pura gk_threat_response (host-testeada vía su espejo en test_central_trajectory).
 struct GkInterceptDecision {
     BallTrajKind kind;
     float        target_x_mm;   // X que el INTERCEPT debe perseguir (marco robot).
     bool         threat;        // true = tiro clasificado al arco PROPIO (amenaza).
+    float        kp_scale;      // multiplicador del KP del eje X (1.0 = sin amenaza).
 };
+
+// Decisión PURA de la respuesta a amenaza: dado el flag `threat`, la posición y
+// velocidad de la pelota (marco robot) y los parámetros base de predicción/KP,
+// devuelve (a) la X objetivo y (b) el multiplicador de KP.
+//
+// FALLBACK EXACTO: con threat==false los factores son 1.0 → target_x es
+// ball_predict(base_params).px (idéntico a hoy) y kp_scale=1.0. Con threat==true
+// re-predice con lookahead/max_lead escalados por lead_factor y devuelve kp_factor.
+// Host-testeable: solo depende de ball_predict (src/shared) y aritmética.
+struct GkThreatResponse { float target_x_mm; float kp_scale; };
+
+inline GkThreatResponse gk_threat_response(bool threat,
+                                           int16_t bx, int16_t by,
+                                           int16_t vx, int16_t vy,
+                                           const BallPredictParams& base,
+                                           float lead_factor, float kp_factor) {
+    const float lf = threat ? lead_factor : 1.0f;
+    BallPredictParams p{ base.lookahead_s * lf, base.max_lead_mm * lf };
+    const BallPredictOut pred = ball_predict(bx, by, vx, vy, p);
+    GkThreatResponse r{};
+    r.target_x_mm = pred.px_mm;
+    r.kp_scale    = threat ? kp_factor : 1.0f;
+    return r;
+}
 
 inline GkInterceptDecision gk_classify_intercept(float bx, float by, float bx_pred,
                                                  int16_t vx, int16_t vy,
@@ -251,10 +302,20 @@ inline GkInterceptDecision gk_classify_intercept(float bx, float by, float bx_pr
     GkInterceptDecision d{};
     d.kind   = t.kind;
     d.threat = (t.kind == BT_TO_OWN_GOAL);
-    // Conducta: siempre perseguir la X PREDICHA (idéntico a hoy). El branch de
-    // amenaza queda separado (d.threat) para tunear en banco sin regresión.
-    d.target_x_mm = bx_pred;
-    (void)by;
+    // Respuesta a amenaza ACTIVADA: si threat → más lead (X re-predicha con
+    // lookahead/max_lead escalados) y más KP. Si NO-threat → lead_factor y
+    // kp_factor valen 1.0 ⇒ X == ball_predict(default) == bx_pred (idéntico a hoy)
+    // y kp_scale=1.0. Por eso el path de no-amenaza es BYTE-IDÉNTICO al previo.
+    const GkThreatResponse tr = gk_threat_response(
+        d.threat,
+        static_cast<int16_t>(lroundf(bx)), static_cast<int16_t>(lroundf(by)),
+        vx, vy, ball_predict_default_params(),
+        GK_BT_THREAT_LEAD_FACTOR, GK_BT_THREAT_KP_FACTOR);
+    d.target_x_mm = tr.target_x_mm;
+    d.kp_scale    = tr.kp_scale;
+    // bx_pred queda como referencia del cálculo del caller (mismo default params);
+    // en no-amenaza d.target_x_mm == bx_pred por construcción. No se usa más acá.
+    (void)bx_pred;
     return d;
 }
 
@@ -587,11 +648,13 @@ MotorCommand goalkeeper_tick() {
                                                world_model_get_ball_vy_mm_s(),
                                                ball_predict_default_params()).px_mm;
 
-            // CLASIFICACIÓN DE TRAYECTORIA (bt_classify): decide qué X perseguir
-            // según si el tiro va al arco propio (amenaza), al rival, cruza o está
-            // quieto. FALLBACK EXACTO: hoy todas las ramas devuelven bx_pred, así
-            // que el comando es IDÉNTICO al previo; d.threat queda para tunear en
-            // banco. Ver gk_classify_intercept y el mapeo documentado arriba.
+            // CLASIFICACIÓN DE TRAYECTORIA (bt_classify): decide qué X perseguir y
+            // cuánto reforzar según si el tiro va al arco propio (amenaza), al rival,
+            // cruza o está quieto. RESPUESTA A AMENAZA ACTIVADA: si BT_TO_OWN_GOAL,
+            // bt.target_x trae MÁS lead y bt.kp_scale escala el KP (ver
+            // GK_BT_THREAT_*). FALLBACK EXACTO: en cualquier otra rama (o velocidad
+            // N/A / sin arco rival visible) target_x == bx_pred y kp_scale==1.0 → el
+            // comando es IDÉNTICO al previo. Ver gk_classify_intercept / gk_threat_response.
             const GkInterceptDecision bt = gk_classify_intercept(
                 bx, by, bx_pred,
                 world_model_get_ball_vx_mm_s(),
@@ -599,14 +662,17 @@ MotorCommand goalkeeper_tick() {
                 world_model_goal_opp_visible(),
                 world_model_goal_opp_visible() ? world_model_get_goal_opp_angle_deg() : 0.0f,
                 dist);
-            (void)bt.kind;      // expuesto para observabilidad/tuning (no cambia el comando hoy).
-            (void)bt.threat;
+            (void)bt.kind;      // expuesto para observabilidad/tuning.
 
             // PID lateral por cross_track (paralelo a la línea), con fallback
             // EXACTO a profundidad si es N/A — mismo helper que PATROL.
             const float vx_lateral_pid = gk_lateral_pid_output(now_ms);
 
-            const float vx_intercept = bt.target_x_mm * GK_INTERCEPT_KP_VS_BALL_X;
+            // RESPUESTA A AMENAZA ACTIVADA: target_x ya trae más lead si bt.threat;
+            // y el KP se escala por bt.kp_scale (1.0 si no es amenaza → idéntico a
+            // hoy). Ambos refuerzos colapsan a la conducta previa cuando threat=false.
+            const float kp_intercept = GK_INTERCEPT_KP_VS_BALL_X * bt.kp_scale;
+            const float vx_intercept = bt.target_x_mm * kp_intercept;
             cmd.vx_mm_s = static_cast<int16_t>(vx_intercept + vx_lateral_pid * 0.3f);
 
             // Transición a CLEAR: la pelota llegó cerca → salir a despejar

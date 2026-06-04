@@ -179,5 +179,19 @@ uint32_t cameras_packets_back()  { return g_parser_back.packets_decoded(); }
 uint32_t cameras_resyncs_total() {
     return g_parser_front.resync_events() + g_parser_back.resync_events();
 }
+// CRC errors AGREGADOS (front + back). El parser v2 (cameras.cpp) cuenta un
+// crc_error por cada frame de 11 bytes que llegó completo pero con CRC8 malo
+// (bit-flip en el enlace cámara→TOP). Es la métrica de integridad de enlace que
+// pedía P0-CAM-CRC / TASK-015: si crece en banco, hay ruido/bit-flips en el cable.
+// Solo LEE los getters del parser (cam_crc8 / crc_errors()); NO toca cameras.cpp/.h
+// ni el contrato de wire. resync_events() (ya expuesto en cameras_resyncs_total)
+// cuenta el otro modo de falla: pérdida de framing (header/END fuera de lugar).
+uint32_t cameras_get_crc_errors_total() {
+    return g_parser_front.crc_errors() + g_parser_back.crc_errors();
+}
+// Alias de nombre explícito para el agregado de resyncs (mismo valor que
+// cameras_resyncs_total(), que ya consumen diag_top_all y main_top). Lo agrego
+// para cerrar el par crc/resync pedido por TASK-015 sin renombrar el getter viejo.
+uint32_t cameras_resync_total() { return cameras_resyncs_total(); }
 
 }  // namespace iitasoccer

@@ -4,6 +4,11 @@
 //   cada uno con el parser de PRODUCCIÓN (cameras.cpp). Imprime UNA LÍNEA POR UART,
 //   así se ve EXPLÍCITAMENTE en cuál cae cada cámara (no más "scan" de una sola línea).
 //
+// v3.1 (2026-06-03): además de bytes/paquetes, cada línea muestra crc= y resync=
+//   (contadores del parser v2). Sirve para CONTAR errores de enlace en banco
+//   (TASK-015 / P0-CAM-CRC): un enlace sano deja ambos ~0 en 10 min; si crc sube,
+//   hay bit-flips en el cable cámara→TOP.
+//
 //   NO es firmware de competencia. Standalone: solo abre los UART + imprime por USB.
 //
 // Para qué sirve:
@@ -81,6 +86,12 @@ void report(Link& c, uint32_t now) {
     Serial.print("  bytes=+"); Serial.print(c.bytes_win);
     Serial.print(" (tot ");    Serial.print(c.bytes_total); Serial.print(")");
     Serial.print("  paq=+");   Serial.print(dpkts);
+    // Telemetría de integridad del enlace (parser v2 — TASK-015 / P0-CAM-CRC):
+    //   crc    = frames de 11 B con CRC8 malo (bit-flip en el cable cámara→TOP).
+    //   resync = pérdida de framing (header/END fuera de lugar → re-lock).
+    // Acumulados; en un enlace sano deben quedar ~0 en 10 min de banco.
+    Serial.print("  crc=");    Serial.print(c.parser.crc_errors());
+    Serial.print("  resync="); Serial.print(c.parser.resync_events());
 
     if (viva && dpkts > 0) {
         const CameraPacket& p = c.parser.get_packet();

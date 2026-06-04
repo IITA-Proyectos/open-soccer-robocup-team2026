@@ -1,3 +1,9 @@
+// ⚠️ CÓDIGO MUERTO (dead-code) — mt_compute() NO tiene callers en producción.
+// Solo lo ejercita test_central_motion; strategy.cpp NO lo invoca (usa behind_ball
+// + drive_straight + ball_predict). Conservado como esqueleto forward-looking; ver
+// el banner de motion_target.h. Eliminar junto a su test cuando se confirme que no
+// se usará. (P2-DEADCODE-CLEANUP / P2-DOC-VARIOS — solo comentario, sin cambio de
+// comportamiento.)
 #include "motion_target.h"
 #include <cmath>
 namespace iitasoccer {

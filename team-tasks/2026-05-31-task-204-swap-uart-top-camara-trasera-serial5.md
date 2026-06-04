@@ -18,6 +18,12 @@ tags: [top, uart, camaras, comunicacion, central, hardware-truth]
 > CENTRAL pin28/RX7). En el TOP, **Serial2 (7/8) = módulo COMM (árbitro)**; ignorar las menciones del
 > cuerpo a "Serial4 = COMM" y "Serial2 = HC-SR04 ECHO" (el HC-SR04 está en pines 4/3).
 
+> **ℹ️ NOTA DE ID (cleanup 2026-06-03).** Este archivo es el **dueño canónico de
+> TASK-204**. Existe OTRO archivo que reusó el número 204 por error
+> (`2026-06-02-task-204-verificar-pines-arbitro-comm-top.md`, del árbitro): ya está
+> CERRADO como duplicada de TASK-039 y lleva un banner de colisión apuntando acá.
+> Si buscás "TASK-204" y caés en el del árbitro, el de UART (este) es el válido.
+
 ## Resumen
 
 La **cámara trasera quedó soldada en los pines de Serial5 (RX5 = pin 21)** de la

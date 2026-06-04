@@ -12,6 +12,14 @@ tags: [comm-board, arbitros, hardware, top-board, multimetro, homologacion, dupl
 
 # TASK-204 — DUPLICADA, usar TASK-039
 
+> **⚠️ COLISIÓN DE ID (cleanup 2026-06-03).** El número **TASK-204** está usado
+> por DOS archivos distintos. El **dueño canónico de TASK-204** es la tarea de
+> swap de UART del TOP: [`2026-05-31-task-204-swap-uart-top-camara-trasera-serial5.md`](2026-05-31-task-204-swap-uart-top-camara-trasera-serial5.md)
+> (rango TOP 200-299, creada antes). **Este archivo del árbitro reusó 204 por
+> error** y, además, ya está superado por **TASK-039**. No se renumera porque está
+> CERRADO (duplicada); queda como registro del solape. Para el problema del árbitro
+> ir a TASK-039; para el swap de UART, a la TASK-204 del 2026-05-31. No confundir.
+
 > **✅ UPDATE 2026-06-02 (post-merge con main):** el tema del árbitro YA SE
 > RESOLVIÓ en `main` (TASK-039). El árbitro llega al TOP como **NIVEL GPIO en
 > pines 5/6** y `comm_arbiter.cpp` ya los lee (`match_running = pin5 OR pin6`,

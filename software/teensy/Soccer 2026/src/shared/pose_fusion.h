@@ -19,8 +19,10 @@
 // TODO EN ENTEROS: pose en mm, heading en centideg. El factor K se expresa como
 // entero /256 (Q8) para no usar float ni en target ni en host.
 //
-// CONVENCIÓN DE EJES (docs/CONVENCION-EJES-ROBOT.md): X largo=2430mm,
-// Y corto=1820mm; origen en una esquina; heading 0 = robot mira +Y.
+// CONVENCIÓN DE EJES (docs/CONVENCION-EJES-ROBOT.md): X = lateral, lado CORTO
+// = 1820 mm; Y = arco-a-arco, lado LARGO = 2430 mm; origen en una esquina;
+// heading 0 = robot mira +Y. (Corregido 2026-06-04: antes decía X=2430/Y=1820,
+// invertido respecto a la convención canónica; el módulo aún no está cableado.)
 
 #pragma once
 #include <stdint.h>
@@ -34,8 +36,8 @@ constexpr uint8_t POSE_FUSION_FLAG_TOF_REJECT  = 0x04;  // bit2: rechazó ToF po
 
 // --- CONFIG (estática, tuning) ---
 struct PoseFusionConfig {
-    uint16_t field_width_mm;          // 2430 (clamp de salida en X)
-    uint16_t field_height_mm;         // 1820 (clamp de salida en Y)
+    uint16_t field_width_mm;          // 1820 — eje X (lateral, lado corto); clamp de salida en X
+    uint16_t field_height_mm;         // 2430 — eje Y (arco-a-arco, lado largo); clamp de salida en Y
     uint16_t correction_gain_q8;      // K en Q8: K_real = gain/256. Default 26 (~0.10).
     uint16_t tof_jump_gate_mm;        // gating: si |pose_tof - pose_pred| > esto, ToF rechazada. Default 400.
     uint16_t otos_stale_ms;           // si dt desde último OTOS fresco > esto => sin predicción. Default 60.

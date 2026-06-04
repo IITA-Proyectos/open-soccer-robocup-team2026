@@ -52,8 +52,8 @@ void clamp_vector_magnitude(int32_t& dx, int32_t& dy, int32_t max_step) {
 
 PoseFusionConfig pose_fusion_default_config() {
     PoseFusionConfig cfg{};
-    cfg.field_width_mm        = 2430;
-    cfg.field_height_mm       = 1820;
+    cfg.field_width_mm        = 1820;   // eje X (lateral, lado corto)
+    cfg.field_height_mm       = 2430;   // eje Y (arco-a-arco, lado largo)
     cfg.correction_gain_q8    = 26;    // K_real ~= 26/256 = 0.1016
     cfg.tof_jump_gate_mm      = 400;
     cfg.otos_stale_ms         = 60;

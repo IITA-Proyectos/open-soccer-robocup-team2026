@@ -117,7 +117,11 @@ void comm_central_send_line_urgent() {
         derive_calib_from_line_ring();
     }
 
-    // Leer valores crudos del anillo de sensores.
+    // DOBLE CADENA DE LÍNEA (deuda conocida, NO archivar antes de Incheon): acá
+    // RE-leemos los valores crudos del anillo y los reprocesamos con DownModel
+    // para armar el LineStatusV2 que va a CENTRAL. NO usamos la salida de
+    // line_ring_tick() (la "cadena vieja" que corre en paralelo a 1 kHz); solo
+    // tomamos su lectura cruda (line_ring_get_raw). Ver FUENTES-DE-VERDAD §deudas.
     uint16_t raw[DM_MAX_SENSORS];
     for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
         raw[i] = line_ring_get_raw(static_cast<uint8_t>(i));

@@ -85,8 +85,9 @@ void comm_top_send_status() {
     vel.vy_mm_s = sat_i16(otos_get_vy_mm_s());
     // omega: el getter da rad/s; Velocity2D usa centideg/s. Convertimos + saturamos.
     vel.omega_centideg_s = omega_rad_s_to_centideg_s_sat(otos_get_omega_rad_s());
-    vel.slip_estimate = static_cast<uint8_t>(
-        otos_get_slip_estimate() > 255.0f ? 255 : otos_get_slip_estimate());
+    // DC-2 (2026-06-04): sat_u8 también cubre el negativo (el cast crudo a uint8
+    // wrappea -1 → 255, un "slip" enorme falso) y NaN, no solo el techo de 255.
+    vel.slip_estimate = sat_u8(otos_get_slip_estimate());
     down_tx_broadcast_vel(vel);
 }
 

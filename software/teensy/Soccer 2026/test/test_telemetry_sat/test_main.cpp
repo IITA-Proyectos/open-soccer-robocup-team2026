@@ -47,6 +47,27 @@ void test_sat_nan_inf_safe(void) {
     TEST_ASSERT_EQUAL_INT16(-32768, sat_i16(-INFINITY));
 }
 
+// --- sat_u8 (DC-2) ---------------------------------------------------------
+
+void test_sat_u8_zero_and_range(void) {
+    TEST_ASSERT_EQUAL_UINT8(0, sat_u8(0.0f));
+    TEST_ASSERT_EQUAL_UINT8(100, sat_u8(100.4f));
+    TEST_ASSERT_EQUAL_UINT8(101, sat_u8(100.6f));
+}
+
+void test_sat_u8_clamps_and_negative(void) {
+    TEST_ASSERT_EQUAL_UINT8(0, sat_u8(-1.0f));        // negativo -> 0 (NO wrap a 255)
+    TEST_ASSERT_EQUAL_UINT8(0, sat_u8(-1000.0f));
+    TEST_ASSERT_EQUAL_UINT8(255, sat_u8(255.0f));
+    TEST_ASSERT_EQUAL_UINT8(255, sat_u8(50000.0f));
+}
+
+void test_sat_u8_nan_inf_safe(void) {
+    TEST_ASSERT_EQUAL_UINT8(0, sat_u8(std::nanf("")));
+    TEST_ASSERT_EQUAL_UINT8(255, sat_u8(INFINITY));
+    TEST_ASSERT_EQUAL_UINT8(0, sat_u8(-INFINITY));
+}
+
 // --- omega_rad_s_to_centideg_s_sat -----------------------------------------
 
 void test_omega_zero(void) {
@@ -93,6 +114,9 @@ int main(int, char**) {
     RUN_TEST(test_sat_clamps_positive);
     RUN_TEST(test_sat_clamps_negative);
     RUN_TEST(test_sat_nan_inf_safe);
+    RUN_TEST(test_sat_u8_zero_and_range);
+    RUN_TEST(test_sat_u8_clamps_and_negative);
+    RUN_TEST(test_sat_u8_nan_inf_safe);
     RUN_TEST(test_omega_zero);
     RUN_TEST(test_omega_one_rad_s);
     RUN_TEST(test_omega_in_range_no_saturation);

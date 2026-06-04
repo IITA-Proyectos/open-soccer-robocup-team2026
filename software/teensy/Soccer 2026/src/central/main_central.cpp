@@ -120,16 +120,20 @@ void loop() {
     }
 #endif
 
-    // === EMERGENCY_LINE — bypass de FSM ===
-    // Si ABAJO reporta línea inminente Y los datos son frescos, frenar AHORA.
-    // Latencia objetivo: <15 ms desde detección en DOWN hasta freno activo.
-    // Se chequea cada iteración del loop (no espera al tick de 100 Hz de strategy).
+    // === FRENO DE BORDE (EMERGENCY_LINE) — tiene PRIORIDAD sobre la FSM ===
+    // En simple: si la placa de ABAJO ve que el robot está por salirse de la
+    // cancha (línea inminente) y ese dato es fresco, frenamos YA, sin esperar al
+    // ciclo normal de decisión.
+    // Por qué va acá: se chequea en CADA vuelta del loop para que el freno llegue
+    // en <15 ms desde que ABAJO detecta el borde (no al tick de 100 Hz de strategy).
+    // ⚠️ BANCO (audit 2026-06-04): motors_brake() hace freno ACTIVO (corto HIGH/HIGH
+    // en el H-bridge), no solo PWM=0 — pero FALTA CONFIRMAR en el Zircon que de
+    // verdad frena y no queda en COAST (rueda libre). Medirlo antes de confiar el borde.
     if (world_model_imminent_exit() && world_model_line_is_fresh()) {
-        motors_brake();  // freno activo (corto en H-bridge), no solo PWM=0.
-        // Encender LED fijo como alerta visual.
-        digitalWrite(PIN_LED_STATUS, HIGH);
-        // No salimos del loop — seguimos drenando UARTs para detectar el reset
-        // (cuando imminent_exit baja, recuperamos control en el próximo tick).
+        motors_brake();                       // freno activo (corto en H-bridge), no solo PWM=0
+        digitalWrite(PIN_LED_STATUS, HIGH);   // LED fijo = alerta visual
+        // No salimos del loop: seguimos leyendo los UARTs para enterarnos cuándo
+        // ABAJO baja la alerta y recuperar el control en el próximo tick.
         return;
     }
 

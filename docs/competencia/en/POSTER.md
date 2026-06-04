@@ -176,7 +176,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 > - **Anticipating goalkeeper:** aims at the **predicted X** = `pos + v·lookahead` (not the current X).
 
 `[PHOTO: screenshot of the 545-test host suite passing green (run-host-tests.sh terminal) — Fig.3]`
-`[DIAGRAM: pseudocode/flowchart of the tactical FSM (ATTACKER: SEARCH→APPROACH→PUSH ; GOALKEEPER: PATROL→INTERCEPT→CLEAR ; EMERGENCY_LINE bypasses) — Fig.4]`
+`[DIAGRAM: flowchart of the dual tactical FSM — ATTACKER: WAIT_START→KICKOFF→SEARCH→POSITION→APPROACH (+LINE_AVOID); GOALKEEPER: WAIT_START→PATROL→INTERCEPT→CLEAR (+LINE_AVOID); EMERGENCY_LINE bypasses the FSM. (Pushing toward the goal is NOT a state: it happens inside APPROACH.) Ready-to-use source: the Mermaid diagram in docs/competencia/assets/diagramas.md (verified against strategy.cpp); details in docs/firmware/ESTRATEGIA-ALTO-NIVEL.md — Fig.4]`
 
 ---
 

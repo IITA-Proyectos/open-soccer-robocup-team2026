@@ -186,7 +186,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > - **Arquero que anticipa:** apunta a la **X predicha** = `pos + v·lookahead` (no a la X actual).
 
 `[FOTO: captura de pantalla de la suite de 545 tests host pasando en verde (terminal run-host-tests.sh) — Fig.3]`
-`[FOTO: pseudocódigo/flowchart de la FSM táctica (ATTACKER: SEARCH→APPROACH→PUSH ; GOALKEEPER: PATROL→INTERCEPT→CLEAR ; EMERGENCY_LINE bypassa) — Fig.4]`
+`[DIAGRAMA: flowchart de la FSM táctica dual — ATTACKER: WAIT_START→KICKOFF→SEARCH→POSITION→APPROACH (+LINE_AVOID); GOALKEEPER: WAIT_START→PATROL→INTERCEPT→CLEAR (+LINE_AVOID); EMERGENCY_LINE bypassa la FSM. (El empuje al arco NO es un estado: ocurre dentro de APPROACH.) Fuente lista: el diagrama Mermaid de docs/competencia/assets/diagramas.md (verificado vs strategy.cpp); detalle en docs/firmware/ESTRATEGIA-ALTO-NIVEL.md — Fig.4]`
 
 ---
 

@@ -212,6 +212,117 @@ void test_partial_ring_fields_na(void){
     TEST_ASSERT_EQUAL_INT16(LSV2_NA_I16, s.cross_track_mm);
 }
 
+// ============================================================================
+// TEMA #4 (audit 2026-06-03): el gate anti-deriva de lc_adapt_carpet usa white[]
+// (pre-espacial), NO validated[]. Un sensor que ve blanco REAL pero sin vecino-
+// de-índice blanco (array-singleton) NO debe contaminar su baseline de carpet.
+// ============================================================================
+
+// cfg con alpha agresivo para que el drift (si existiera) sea nítido en pocos ticks.
+static void mkcfg_fast_adapt(DownModelCfg& c){ mkcfg(c); c.adapt_alpha=0.2f; }
+
+// idx24 (anillo interno, S25) ve blanco 800 como ARRAY-SINGLETON: sus vecinos
+// de índice 23 y 25 leen carpet, así que validated[24]=false. Con el bug viejo
+// (gate=validated[]) lc_adapt_carpet lo trataría como off-line y arrastraría su
+// carpet hacia 800 → threshold trepa → sensor ciego. Con el fix (gate=white[])
+// queda gated OUT de la adaptación y su carpet se mantiene ~200.
+void test_array_singleton_white_does_not_drift_carpet(void){
+    DownModelCfg cfg; DownModel m = mk_model32(cfg);
+    cfg.adapt_alpha = 0.2f;   // acelerar el drift potencial
+    const int white[] = {24};
+    uint16_t raw[SENSOR_COUNT]; mk_raw32(raw, white, 1);
+    for(uint32_t t=0;t<300;++t) dm_update(m,cfg,raw,SENSOR_COUNT, t*5);  // ~200Hz
+    // El carpet de idx24 NO debe haber trepado: gated out por white[].
+    TEST_ASSERT_UINT16_WITHIN(15, 200, m.calib[24].carpet);
+    TEST_ASSERT_UINT16_WITHIN(15, 500, m.calib[24].threshold);
+}
+
+// Control: un cluster blanco contiguo (idx0/1/2) — idx1 SÍ valida (vecinos 0 y 2
+// blancos). El sensor que ve blanco igual queda gated OUT de la adaptación (con
+// el fix lo gobierna white[1]=true, no validated[1]), así que su carpet también
+// se mantiene. Confirma que el fix no rompe el caso "línea real bien formada".
+void test_clustered_white_does_not_drift_carpet(void){
+    DownModelCfg cfg; DownModel m = mk_model32(cfg);
+    cfg.adapt_alpha = 0.2f;
+    const int white[] = {0,1,2};
+    uint16_t raw[SENSOR_COUNT]; mk_raw32(raw, white, 3);
+    for(uint32_t t=0;t<300;++t) dm_update(m,cfg,raw,SENSOR_COUNT, t*5);
+    TEST_ASSERT_UINT16_WITHIN(15, 200, m.calib[1].carpet);   // sigue carpet, no drift
+    TEST_ASSERT_UINT16_WITHIN(15, 500, m.calib[1].threshold);
+}
+
+// Un sensor que lee CARPET (no blanco) sí debe seguir adaptando su baseline
+// hacia la lectura (comportamiento normal anti-deriva, no roto por el fix).
+void test_carpet_sensor_still_adapts(void){
+    DownModelCfg cfg; DownModel m = mk_model32(cfg);
+    cfg.adapt_alpha = 0.3f;
+    // calib arranca carpet=200; alimentamos un carpet real más alto (260) en un
+    // sensor que NUNCA ve blanco → su carpet debe converger hacia ~260.
+    uint16_t raw[SENSOR_COUNT]; const int none[1]={0}; mk_raw32(raw, none, 0);
+    raw[5] = 260;   // idx5 lee carpet elevado, nunca cruza threshold (500)
+    for(uint32_t t=0;t<300;++t){ raw[5]=260; dm_update(m,cfg,raw,SENSOR_COUNT, t*5); }
+    TEST_ASSERT_UINT16_WITHIN(12, 260, m.calib[5].carpet);   // adaptó hacia el carpet real
+}
+
+// ============================================================================
+// TEMA #16 (audit 2026-06-03): corner detection usa geometría REAL cuando n==32.
+// ============================================================================
+
+// Dos clusters perpendiculares en geometría real: frontal-izq (idx0-2, ~ -20°) y
+// lateral-der/atrás (idx20-22, ~ +99°). Separación ~119° ∈ [55,125] → corner.
+void test_corner_xy_real_geometry(void){
+    DownModelCfg cfg; DownModel m = mk_model32(cfg);
+    const int white[] = {0,1,2, 20,21,22};
+    uint16_t raw[SENSOR_COUNT]; mk_raw32(raw, white, 6);
+    LineStatusV2 s = dm_update(m,cfg,raw,SENSOR_COUNT,1000);
+    TEST_ASSERT_EQUAL_UINT8(1, s.line_present);
+    TEST_ASSERT_TRUE(s.event_flags & EV_CORNER);
+    // line_angle sigue viniendo de lg_compute_xy (no N/A).
+    TEST_ASSERT_NOT_EQUAL(LSV2_NA_I16, s.line_angle_centideg);
+}
+
+// Una franja recta (solo frontales idx0-7) NO es esquina: un solo cluster.
+void test_no_corner_straight_strip_real_geometry(void){
+    DownModelCfg cfg; DownModel m = mk_model32(cfg);
+    const int white[] = {0,1,2,3,4,5,6,7};
+    uint16_t raw[SENSOR_COUNT]; mk_raw32(raw, white, 8);
+    LineStatusV2 s = dm_update(m,cfg,raw,SENSOR_COUNT,1000);
+    TEST_ASSERT_EQUAL_UINT8(1, s.line_present);
+    TEST_ASSERT_FALSE(s.event_flags & EV_CORNER);
+}
+
+// ============================================================================
+// TEMA #21 (audit 2026-06-03): penetration robusto a 1-2 sensores internos
+// espurios (usa el K-ésimo radio más chico, no el mínimo crudo).
+// ============================================================================
+
+// Línea REAL en el anillo externo frontal (idx0-7) + UN PAR de internos
+// adyacentes-por-índice espurios (idx30,31, R≈35-39mm). Con el min crudo viejo
+// penetration saltaría a ~55mm; con el estimador robusto (K=3) se mantiene cerca
+// del grueso externo (~15mm) porque solo 2 sensores están adentro.
+void test_penetration_robust_to_inner_outlier(void){
+    DownModelCfg cfg; DownModel m = mk_model32(cfg);
+    const int white[] = {0,1,2,3,4,5,6,7, 30,31};
+    uint16_t raw[SENSOR_COUNT]; mk_raw32(raw, white, 10);
+    LineStatusV2 s = dm_update(m,cfg,raw,SENSOR_COUNT,1000);
+    TEST_ASSERT_EQUAL_UINT8(1, s.line_present);
+    TEST_ASSERT_NOT_EQUAL(LSV2_NA_U16, s.penetration_mm);
+    TEST_ASSERT_UINT16_WITHIN(8, 15, s.penetration_mm);     // ~15mm, NO ~55mm
+}
+
+// Penetración genuina profunda (idx0-7 + 24-27 + 28-31): el cluster interno es
+// REAL (>=3 sensores adentro) → el estimador robusto NO lo penaliza, sigue ~55mm.
+void test_penetration_deep_genuine_not_penalized(void){
+    DownModelCfg cfg; DownModel m = mk_model32(cfg);
+    const int white[] = {0,1,2,3,4,5,6,7, 24,25,26,27, 28,29,30,31};
+    uint16_t raw[SENSOR_COUNT]; mk_raw32(raw, white, 16);
+    LineStatusV2 s = dm_update(m,cfg,raw,SENSOR_COUNT,1000);
+    TEST_ASSERT_EQUAL_UINT8(1, s.line_present);
+    TEST_ASSERT_NOT_EQUAL(LSV2_NA_U16, s.penetration_mm);
+    TEST_ASSERT_UINT16_WITHIN(8, 55, s.penetration_mm);     // sigue profundo
+    TEST_ASSERT_TRUE(s.penetration_mm > 30);
+}
+
 int main(int, char**){
     UNITY_BEGIN();
     RUN_TEST(test_no_line_carpet_valid);
@@ -228,5 +339,15 @@ int main(int, char**){
     RUN_TEST(test_penetration_shallow_outer_only);
     RUN_TEST(test_penetration_deep_through_center);
     RUN_TEST(test_partial_ring_fields_na);
+    // TEMA #4 — gate anti-deriva por white[] (no validated[])
+    RUN_TEST(test_array_singleton_white_does_not_drift_carpet);
+    RUN_TEST(test_clustered_white_does_not_drift_carpet);
+    RUN_TEST(test_carpet_sensor_still_adapts);
+    // TEMA #16 — corner con geometría real
+    RUN_TEST(test_corner_xy_real_geometry);
+    RUN_TEST(test_no_corner_straight_strip_real_geometry);
+    // TEMA #21 — penetration robusto a outliers internos
+    RUN_TEST(test_penetration_robust_to_inner_outlier);
+    RUN_TEST(test_penetration_deep_genuine_not_penalized);
     return UNITY_END();
 }

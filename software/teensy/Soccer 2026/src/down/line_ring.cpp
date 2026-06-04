@@ -35,7 +35,8 @@ uint8_t g_depth = 0;
 bool    g_imminent_exit = false;
 
 uint32_t g_tick_count = 0;
-uint32_t g_last_tick_us = 0;
+uint32_t g_last_tick_us = 0;     // DURACIÓN del último tick (diagnóstico de carga)
+uint32_t g_last_sample_us = 0;   // TIMESTAMP (micros()) del último muestreo
 
 constexpr uint8_t IMMINENT_EXIT_DEPTH = 3;
 
@@ -91,6 +92,8 @@ void line_ring_init() {
 }
 
 void line_ring_tick() {
+    const uint32_t t_start = micros();
+
     // 1. Lectura hardware: 32 sensores via muxes.
     sample_all_sensors_hardware();
 
@@ -123,9 +126,8 @@ void line_ring_tick() {
     // imminent_exit: depth alto Y robot NO está levantado (sino son datos basura).
     g_imminent_exit = (g_depth >= IMMINENT_EXIT_DEPTH) && !g_lifted_state.is_lifted;
 
-    g_last_tick_us = micros();   // TIMESTAMP de fin de tick (NO la duración). comm_central lo usa
-                                 // como base de sample_age_ms = (micros()-este)/1000. Antes guardaba
-                                 // (micros()-t_start)=duración → age daba ~uptime y saturaba a 255 (bug eval 2026-06-03).
+    g_last_tick_us = micros() - t_start;   // duración del tick (diagnóstico)
+    g_last_sample_us = micros();           // timestamp del muestreo (freshness)
     g_tick_count++;
 }
 
@@ -202,7 +204,8 @@ uint16_t line_ring_get_white_avg(uint8_t sensor_idx) {
     return g_white_avg[sensor_idx];
 }
 
-uint32_t line_ring_get_tick_count()   { return g_tick_count; }
-uint32_t line_ring_get_last_tick_us() { return g_last_tick_us; }
+uint32_t line_ring_get_tick_count()     { return g_tick_count; }
+uint32_t line_ring_get_last_tick_us()   { return g_last_tick_us; }
+uint32_t line_ring_get_last_sample_us() { return g_last_sample_us; }
 
 }  // namespace iitasoccer

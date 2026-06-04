@@ -51,6 +51,10 @@ uint16_t line_ring_get_white_avg(uint8_t sensor_idx);  // 0..NUM_LINE_SENSORS-1
 
 // Diagnóstico:
 uint32_t line_ring_get_tick_count();
-uint32_t line_ring_get_last_tick_us();
+uint32_t line_ring_get_last_tick_us();    // DURACIÓN del último tick en us (carga)
+// Timestamp (micros()) del último muestreo. Para calcular la edad de la muestra
+// (LineStatusV2.sample_age_ms) hacé micros() - line_ring_get_last_sample_us().
+// OJO: NO confundir con line_ring_get_last_tick_us(), que es la duración del tick.
+uint32_t line_ring_get_last_sample_us();
 
 }  // namespace iitasoccer

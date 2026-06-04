@@ -63,8 +63,23 @@ float dm_outer_radius_mm() {
 struct LineMetrics {
     bool     have;            // true si hubo >=1 sensor validado en blanco
     int16_t  cross_track_mm;  // centroide Y (mm), firmado (+adelante/-atrás)
-    uint16_t penetration_mm;  // R_OUTER - min_radio_blanco, clamp >=0
+    uint16_t penetration_mm;  // R_OUTER - K-ésimo-menor radio blanco, clamp >=0
 };
+
+// TEMA #21 (audit 2026-06-03) — penetration ROBUSTO a outliers.
+// La penetración mide cuán adentro de la zona de línea está el robot. El proxy
+// ingenuo (R_OUTER - min_radio_de_cualquier_validado) es sensible a 1-2 sensores
+// internos espurios: bastan 2 internos adyacentes-por-índice que pasen el filtro
+// espacial para llevar min_r de ~75mm (anillo externo) a ~35mm (anillo interno)
+// y saltar penetration de ~15mm a ~55mm aunque el grueso de la línea esté afuera.
+// En vez del mínimo crudo, exigimos que al menos PEN_MIN_INNER_SENSORS sensores
+// validados estén a ese radio o más adentro: tomamos el K-ésimo radio MÁS CHICO
+// (K = PEN_MIN_INNER_SENSORS). Así una línea genuina que atraviesa al centro
+// (que enciende varios internos) sigue leyendo profundo, pero 1-2 internos
+// ruidosos caen de vuelta al anillo externo. Si hay menos de K validados (línea
+// mínima de 1-2 sensores), no se puede robustecer: caemos al mínimo real.
+// Espeja la robustez de cross_track (promedio, no extremo).
+constexpr int PEN_MIN_INNER_SENSORS = 3;
 
 // Calcula cross_track/penetration sobre las posiciones reales. Requiere n==32
 // (las posiciones de SENSOR_POS[i] sólo corresponden con el anillo completo).
@@ -72,21 +87,36 @@ LineMetrics dm_line_metrics(const bool* validated, int n) {
     LineMetrics out{false, LSV2_NA_I16, LSV2_NA_U16};
     if (n != SENSOR_COUNT) return out;   // anillo parcial: geometría no mapea
     double sum_y = 0.0;
-    float  min_r = 1e9f;
+    float  radii[SENSOR_COUNT];   // radios de los validados (para el K-ésimo menor)
     int    cnt = 0;
     for (int i = 0; i < SENSOR_COUNT; ++i) {
         if (!validated[i]) continue;
-        ++cnt;
         sum_y += SENSOR_POS[i].y_mm;
         const float x = SENSOR_POS[i].x_mm, y = SENSOR_POS[i].y_mm;
-        const float r = sqrtf(x*x + y*y);
-        if (r < min_r) min_r = r;
+        radii[cnt] = sqrtf(x*x + y*y);
+        ++cnt;
     }
     if (cnt == 0) return out;            // sin blancos validados → N/A
     out.have = true;
     const double cy = sum_y / (double)cnt;
     out.cross_track_mm = (int16_t)lroundf((float)cy);
-    float pen = dm_outer_radius_mm() - min_r;
+
+    // K-ésimo radio más chico (K = PEN_MIN_INNER_SENSORS, clamp a cnt). Selección
+    // parcial por inserción: cnt<=32 y K<=3, costo trivial. k_idx 0-based.
+    const int k_idx = (cnt < PEN_MIN_INNER_SENSORS ? cnt : PEN_MIN_INNER_SENSORS) - 1;
+    float kth = 1e9f;
+    for (int pick = 0; pick <= k_idx; ++pick) {
+        // Encontrar el mínimo de los restantes y "sacarlo" subiéndolo a +inf.
+        int best = -1;
+        float bestv = 1e9f;
+        for (int j = 0; j < cnt; ++j) {
+            if (radii[j] < bestv) { bestv = radii[j]; best = j; }
+        }
+        kth = bestv;
+        if (best >= 0) radii[best] = 1e9f;   // marcar usado
+    }
+
+    float pen = dm_outer_radius_mm() - kth;
     if (pen < 0.0f) pen = 0.0f;          // clamp: nunca negativo
     out.penetration_mm = (uint16_t)lroundf(pen);
     return out;
@@ -104,8 +134,21 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
         white[i]=lf_hysteresis_on_white(filt[i], m.calib[i].threshold,
                                          m.was_white[i]);
         m.was_white[i]=white[i];
-        ang[i]=lg_sensor_angle_deg(i,n);
+        ang[i]=lg_sensor_angle_deg(i,n);   // aproximación uniforme; sobreescrita con geometría real si n==32 (TEMA #16)
         carpet[i]=m.calib[i].carpet;  // snapshot PRE-adapt: sm_update ve el baseline ANTES del drift de este tick (no reordenar)
+    }
+    // TEMA #16 (audit 2026-06-03) — corner detection con geometría REAL.
+    // Cuando n == 32, ang[] se llena con los ángulos físicos del PCB
+    // (sg_fill_angles_deg) en vez del anillo ideal equidistante. line_angle ya
+    // usaba geometría real (lg_compute_xy con SENSOR_POS), pero el flag corner
+    // se calculaba sobre ángulos uniformes — una incoherencia: los 32 sensores
+    // viven en 3 anillos de radios 37/54/80-87mm, no en un anillo perfecto, así
+    // que las separaciones angulares reales difieren de los 11.25°/sensor
+    // uniformes y un cluster real podía clasificarse mal. Con n<32 la LUT no
+    // mapea el anillo parcial (igual que lg_compute_xy), así que se mantiene el
+    // fallback uniforme ya cargado en el loop de arriba.
+    if (n == SENSOR_COUNT) {
+        sg_fill_angles_deg(ang, n);
     }
     bool validated[DM_MAX_SENSORS];
     lf_spatial_filter(white, validated, n);
@@ -160,7 +203,9 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     //
     // lg_compute_xy NO computa corner detection (la lógica de "2 clusters
     // separados ~90°" requiere ángulos discretos). Llamamos también
-    // lg_compute para tomar PRESTADO su flag corner.
+    // lg_compute para tomar PRESTADO su flag corner. Con n==32 ese corner ya
+    // se calcula sobre la geometría REAL (ang[] llenado con sg_fill_angles_deg
+    // arriba), coherente con line_angle de lg_compute_xy (TEMA #16).
     GeomResult g_ang = lg_compute(validated, ang, n);
     GeomResult g;
     if (n == SENSOR_COUNT) {
@@ -173,9 +218,29 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     // No adaptar calib en ticks saturados: validated[] ya está en cero y
     // adaptar nudgearía el carpet hacia los valores blancos (corrompería el
     // baseline). Saltamos el drift mientras dura la falla.
+    //
+    // TEMA #4 (audit 2026-06-03) — el gate anti-deriva usa white[] (POST
+    // hysteresis, PRE filtro espacial), NO validated[]. Razón: validated[] exige
+    // un vecino-de-array blanco (lf_spatial_filter), y la geometría del PCB tiene
+    // 6 pares de índices contiguos que están físicamente LEJOS (idx 7↔8: 141mm;
+    // 23↔24: 116mm; 31↔0: 102mm; …). Un sensor que ve blanco REAL pero cuyo
+    // único vecino-de-índice no encendió (línea tangente, borde de franja, anillo
+    // interno sin vecino contiguo) queda validated=false aunque white=true.
+    // Con validated[] como gate, lc_adapt_carpet lo trataría como carpet y
+    // arrastraría su lectura brillante hacia c.carpet (alpha=0.02), subiendo el
+    // threshold hasta cegarlo a la línea — justo el modo de fallo que el gate
+    // pretende evitar (caso arquero parkeado sobre la línea de fondo). El filtro
+    // espacial es para el CENTROIDE (qué sensores entran al ángulo), NO para
+    // decidir qué sensor contamina el baseline de carpet.
+    //
+    // Interplay con las invalidaciones de validated[] de arriba (todas neutras o
+    // mejores con white[]): sensor unhealthy stuck-HIGH queda gated OUT de la
+    // adaptación (mejor: no arrastra el carpet); stuck-LOW (white=false) sigue
+    // adaptando hacia carpet (correcto). El "& !saturated" del if externo ya
+    // cubre la saturación, así que white[i] solo a sensor individual.
     if (!saturated) {
         for(int i=0;i<n;++i)
-            lc_adapt_carpet(m.calib[i], filt[i], validated[i], cfg.adapt_alpha);
+            lc_adapt_carpet(m.calib[i], filt[i], white[i], cfg.adapt_alpha);
     }
     bool suspect = lc_is_suspect(m.calib, n, cfg.calib_min_margin);
     bool lifted  = sm_update(m.surface, filt, carpet, n, now_ms,
@@ -194,6 +259,21 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     LineStatusV2 s{};
     s.schema_version = LSV2_SCHEMA;
     s.data_valid = (sm_data_valid(lifted, suspect) && !any_mux_dead && !saturated) ? 1 : 0;
+    // TEMA #25 (audit 2026-06-03) — line_present es PER-TICK, sin debounce
+    // temporal sobre la señal AGREGADA. La única histéresis es per-sensor de
+    // AMPLITUD (lf_hysteresis_on_white, band=±20 counts) + el filtro espacial
+    // (exige vecino). NO hay un anti-flicker de N ticks sobre line_present: en el
+    // borde de la franja, el conteo de validados puede cruzar 1↔0 vía sensores
+    // distintos tick-a-tick. Hoy es aceptable porque ningún consumidor de
+    // seguridad de CENTRAL usa line_present crudo (LINE_AVOID gatea por
+    // EV_IMMINENT_EXIT con umbral 6; el strafe del arquero usa cross_track con
+    // fallback limpio). Si un futuro consumidor necesita line_present estable en
+    // el borde, agregar un debounce de N ticks DEBE gatear TODO el bloque de
+    // geometría coherentemente (no solo el bit) para no mezclar campos de épocas
+    // distintas — es decisión de diseño + tradeoff de latencia del fail-safe, NO
+    // un cambio trivial. NOTA: los comentarios "con histéresis" de types.h y
+    // line_view.h se refieren a la histéresis per-sensor, no a un debounce
+    // temporal agregado.
     s.line_present = g.line_present ? 1 : 0;
     s.sensors_on_line = g.sensors_on_line;
     if(g.line_present){

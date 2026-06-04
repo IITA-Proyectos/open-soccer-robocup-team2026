@@ -40,10 +40,15 @@ struct Velocity2D {
 } __attribute__((packed));
 
 // Estado del anillo de 32 sensores de línea (computado por DOWN).
+// ⚠️ LEGACY v1 — SUPERSEDED por `LineStatusV2` (abajo), que es lo que viaja por el
+// cable (TYPE 0x10). Esta struct ya no se instancia (sólo se nombra en comentarios).
+// El umbral de "salida inminente" que REALMENTE se emite es `sensors_on_line >= 6`
+// (DownModelCfg.imminent_depth → EV_IMMINENT_EXIT). NO confundir con el detector
+// MUERTO `IMMINENT_EXIT_DEPTH=3` de line_ring (sólo alimenta prints de diag).
 struct LineStatus {
     int16_t angle_centideg;       // ángulo de la línea (0 = frente, ±18000)
     uint8_t depth_mm;             // qué tan dentro de la línea (mm, o # sensores)
-    uint8_t imminent_exit_flag;   // 0 o 1: ≥ N sensores en blanco simultáneo
+    uint8_t imminent_exit_flag;   // 0 o 1: ≥ N sensores en blanco (LEGACY — ver nota arriba)
     uint8_t flags;                // bit 0 = lifted (robot en aire — ignorar datos)
                                   // bit 1 = mux_X_dead (algún mux roto)
                                   // bit 2 = calibration_invalid

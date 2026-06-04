@@ -175,17 +175,25 @@ Cada sensor tiene umbrales propios porque los componentes ALS-PT19 tienen variab
 - `white_avg[i]` — valor promedio sobre línea blanca.
 - `threshold[i] = (carpet_avg[i] + white_avg[i]) / 2` — umbral binario.
 
-**Procedimiento de calibración**:
-1. CENTRAL envía `CENTRAL_CALIB_LINE` con flag 0 (carpet).
-2. ABAJO entra en modo `CALIBRATING_CARPET`.
-3. Durante 320 ms (32 muestras × 10 ms): lee los 32 sensores y promedia.
-4. Actualiza `carpet_avg[i]` para cada sensor.
-5. Vuelve a `NORMAL`.
-6. Operario mueve el robot a línea blanca.
-7. CENTRAL envía `CENTRAL_CALIB_LINE` con flag 1 (white). Idéntico procedimiento.
-8. ABAJO recalcula `threshold[i]` con la fórmula y queda listo.
+**Procedimiento de calibración (real, 2026-06)**:
 
-**Persistencia**: la calibración se mantiene en RAM. Al apagar el robot se pierde. Mejora futura: guardar en EEPROM del Teensy y restaurar al boot.
+> ⚠️ El gatillo REAL de calibración en cancha es la herramienta de banco
+> `diag_down_calibracion` por USB (comandos `c`/`b`/`s`), NO un comando UART desde
+> CENTRAL. El handler `CENTRAL_CALIB_LINE` existe en el firmware de DOWN, pero
+> **ninguna placa lo emite hoy** (`comm_down_send_calib_line()` no tiene caller en
+> `src/central` ni `src/top`). El flujo descrito abajo (CENTRAL ordena) es el
+> diseño original que el código NO implementa — se conserva sólo como referencia.
+
+1. Operario carga `pio run -e diag_down_calibracion -t upload` y abre el monitor.
+2. Robot sobre carpet verde → comando `c`: lee los 32 sensores y promedia `carpet_avg[i]`.
+3. Operario mueve el robot a la línea blanca → comando `b`: ídem `white_avg[i]`.
+4. Comando `m` para revisar sensores sospechosos; comando `s` para GUARDAR en EEPROM.
+5. Recalcula `threshold[i] = (carpet_avg[i] + white_avg[i]) / 2`.
+
+**Persistencia**: ✅ la calibración se guarda en la EEPROM emulada del Teensy
+(P0.2, integrado 2026-05-29) y el firmware de competencia la **carga al boot**
+(`comm_central_load_persisted_calib()` en `main_down.cpp`), quedando `data_valid=1`
+sin recalibrar. Hay que correr la calibración de campo UNA vez por cancha/iluminación.
 
 **Detección de calibración inválida**: si `white_avg[i] - carpet_avg[i] < 100` (separación insuficiente), marcar sensor i como "no confiable" y excluirlo del cálculo de ángulo.
 

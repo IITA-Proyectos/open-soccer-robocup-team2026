@@ -11,11 +11,14 @@
 // (NO compartidos como decía un doc viejo). Total: 12 pines SEL + 4 pines ADC.
 // Los pines INH están atados a GND físico en el PCB — el firmware NO los controla.
 //
-// Flags de compilación (defaults conservadores para evitar lecturas al aire):
-//   -DDOWN_NUM_MUXES_CONNECTED=1  → solo mux U4 (8 sensores, placa degradada).
-//   -DDOWN_NUM_MUXES_CONNECTED=4  → modo full, los 4 muxes (32 sensores). [validado]
-//   -DDOWN_NUM_OTOS_CONNECTED=1   → solo el OTOS U5 (Wire).
-//   -DDOWN_NUM_OTOS_CONNECTED=2   → ambos OTOS (U5 + U6).
+// Flags de compilación. Los #define de abajo son sólo FALLBACK por si un env no
+// pasa -D; la PLACA DE COMPETENCIA compila con 4 muxes + 2 OTOS (ver más abajo y
+// platformio.ini [env:down] / [env:down_debug] / [env:diag_down], que setean
+// -DDOWN_NUM_MUXES_CONNECTED=4 y -DDOWN_NUM_OTOS_CONNECTED=2 desde 2026-05-31):
+//   -DDOWN_NUM_MUXES_CONNECTED=1  → fallback: solo mux U1 (8 sensores, placa degradada).
+//   -DDOWN_NUM_MUXES_CONNECTED=4  → PRODUCCIÓN: los 4 muxes (32 sensores). [validado 2026-05-24]
+//   -DDOWN_NUM_OTOS_CONNECTED=1   → fallback: solo el OTOS U5 (Wire).
+//   -DDOWN_NUM_OTOS_CONNECTED=2   → PRODUCCIÓN: ambos OTOS (U5 + U6).
 
 #pragma once
 #include <stdint.h>
@@ -27,11 +30,13 @@ namespace iitasoccer {
 // Compile-time configuration de la placa física
 // ============================================================
 #ifndef DOWN_NUM_MUXES_CONNECTED
-    #define DOWN_NUM_MUXES_CONNECTED 1   // default: solo mux U4 (placa 04-12)
+    // FALLBACK si ningún env pasa -D. PRODUCCIÓN compila =4 (ver platformio.ini [env:down]).
+    #define DOWN_NUM_MUXES_CONNECTED 1
 #endif
 
 #ifndef DOWN_NUM_OTOS_CONNECTED
-    #define DOWN_NUM_OTOS_CONNECTED 1    // default: solo 1 OTOS (placa 04-12)
+    // FALLBACK si ningún env pasa -D. PRODUCCIÓN compila =2 (ver platformio.ini [env:down]).
+    #define DOWN_NUM_OTOS_CONNECTED 1
 #endif
 
 constexpr int NUM_SENSORS_PER_MUX = 8;
@@ -72,13 +77,18 @@ constexpr uint8_t MUX_CH_FOR_SENSOR[8] = { 3, 0, 1, 2, 5, 7, 6, 4 };
 // ============================================================
 // SparkFun OTOS (I2C dual)
 // ============================================================
-// OTOS U5 → I2C bus 1 (Wire  en Teensy 4.0: SDA=18, SCL=19)
-// OTOS U6 → I2C bus 2 (Wire1 en Teensy 4.0: SDA=17, SCL=16)
+// OTOS U5 → Wire  (I2C bus 0, SDA=18 / SCL=19)
+// OTOS U6 → Wire1 (I2C bus 1, SDA=17 / SCL=16)
+// (Pinout validado en otos.cpp — corregido 2026-05-24: antes decía "Wire2/I2C2",
+//  era un typo viejo; el Teensy 4.0 ni siquiera expone Wire2 en estos pines.)
 // Ambos comparten dirección I2C por default (no se pueden poner en el mismo bus).
-constexpr uint8_t OTOS_I2C_ADDR = 0x17;  // SparkFun default (informativo; SIN USO: la lib lo fija internamente, no se pasa en begin())
+constexpr uint8_t OTOS_I2C_ADDR = 0x17;  // SparkFun default
 
 // Separación física entre los 2 OTOS (mm). Q5 del usuario: "uno a cada costado".
-// Confirmar con TASK-004 (montaje físico real).
+// ⚠️ SIN VALIDAR (número tentativo) — medir el real y cerrar TASK-004 / TASK-029 test2.
+// SOLO entra al cálculo de heading dual en modo 2-OTOS (otos.cpp ~l.105). Con la
+// config de 1 OTOS el heading viene del chip y este valor NO se usa. Si el real ≠
+// 200 mm, el heading dual sale con error de escala sistemático.
 constexpr float OTOS_SEPARATION_MM = 200.0f;  // tentativo: 10cm desde el centro a cada lado
 
 // ============================================================

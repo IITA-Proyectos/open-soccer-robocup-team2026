@@ -16,10 +16,11 @@ namespace {
 // Cota holgada: a 30 Hz un packet llega cada ~33 ms → 1 s = ~30 packets perdidos.
 constexpr uint32_t CAMERA_TIMEOUT_MS = 1000;
 
-// Conversión cruda → mm. El protocolo viejo OpenMV manda Xp ∈ [0..200] y Yp ∈
-// [-100..100] (después del decode del offset). Sin calibración fina, asumimos
-// "1 unidad ≈ 1 cm" — alcanza para que la FSM produzca ángulos correctos y
-// distancias razonables al perfil de approach_velocity (close=50, far=500).
+// Conversión cruda → mm. Con el contrato de cámara v2 (2026-06-03) X e Y se
+// codifican IGUAL (valor + 100) y al decodificar el offset ambos quedan en
+// [-100..100] (simétrico; antes X era asimétrico [0..200]). Sin calibración fina
+// asumimos "1 unidad ≈ 1 cm" — alcanza para que la FSM produzca ángulos correctos
+// y distancias razonables al perfil de approach_velocity (close=50, far=500).
 //
 // TODO: calibrar contra cancha real con pelota a 30/50/80/100 cm desde el robot,
 // reemplazar este valor por el factor medido. Apuntar al journal cuando se haga.

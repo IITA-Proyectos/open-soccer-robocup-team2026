@@ -257,7 +257,11 @@ bool sensors_tof_init() {
     // Init del ToF frontal U2 (unico instalado fisicamente al 2026-05-24).
     // begin() devuelve bool. Internamente carga ~85 KB de firmware blob por
     // I2C, puede tardar hasta ~10 s.
-    if (!g_tof_frontal.begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, 400000)) {
+    // TOF-1 (2026-06-04): 100 kHz como el path MULTI. A 400 kHz el BNO055 y los
+    // ToF en el mismo bus se pisan y el yaw se CONGELA (lección de banco). Esta
+    // rama (single-ToF, sin TOP_ENABLE_MULTI_TOF) no se compila en competencia,
+    // pero igualamos el valor para que nadie herede el 400 kHz peligroso.
+    if (!g_tof_frontal.begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, 100000)) {
         if (!g_tof_init_logged) {
             Serial.println(F("[sensors_tof] WARN: VL53L7CX U2 begin() fallo; "
                              "se sigue sin ToF frontal."));

@@ -135,6 +135,11 @@ constexpr uint32_t DOWN_HEARTBEAT_TIMEOUT_MS   = 500;
 // slot puede estar populated o no según ROBOT_HAS_TOF_*; para iterar solo
 // los activos, usar NUM_TOF_ACTIVE del pinout_robotN.h.
 constexpr int NUM_TOF = 4;
+// Guarda (TOPHAL-01, 2026-06-04): los arrays de trilateración en localization.h
+// son de tamaño fijo [4] (tof_distance_mm[4], tof_valid[4], tof_mount_angle_deg[4]).
+// Subir NUM_TOF sin ampliar esos arrays sería un out-of-bounds silencioso.
+static_assert(NUM_TOF == 4,
+              "NUM_TOF != 4: ampliá los arrays [4] de localization.h antes de subirlo");
 
 // PLAN DE ESCALADO A 6 ToF (diseño objetivo, NO cableado todavía):
 //   • 4 ToF FIJOS (los actuales) -> localización 2D por trilateración.

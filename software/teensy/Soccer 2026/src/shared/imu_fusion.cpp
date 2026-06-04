@@ -237,7 +237,10 @@ void imu_fusion_update(ImuFusion& f,
         if (b_ok && !a_ok) pick = b;
         else if (a_ok == b_ok) {
             if (in[b].calib_gyro > in[a].calib_gyro) pick = b;
-            else pick = (a == 0) ? a : ((b == 0) ? b : a);
+            // Empate de salud y de calib: el de MENOR índice (a = usable[0], el más
+            // a la izquierda) como referencia histórica. a<b siempre, así que la
+            // expresión vieja "(a==0)?a:((b==0)?b:a)" daba 'a' en todos los casos.
+            else pick = a;
         }
         f.fused_heading_deg = f.s[pick].heading_deg;
         f.fused_valid = true;

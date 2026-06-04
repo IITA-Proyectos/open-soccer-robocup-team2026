@@ -27,6 +27,17 @@ inline int16_t sat_i16(float v) {
     return static_cast<int16_t>(v >= 0.0f ? v + 0.5f : v - 0.5f);  // redondeo simétrico
 }
 
+// Satura un float a [0, 255] (uint8) con redondeo y manejo de NaN/inf (DC-2,
+// 2026-06-04). Espejo de sat_i16 para campos uint8 de telemetría como el
+// slip_estimate de la OTOS: el cast crudo de un negativo a uint8_t wrappea
+// (-1 → 255, un "slip" enorme falso) y NaN/inf a entero es UB.
+inline uint8_t sat_u8(float v) {
+    if (std::isnan(v)) return 0;
+    if (v <= 0.0f)   return 0;
+    if (v >= 255.0f) return 255;
+    return static_cast<uint8_t>(v + 0.5f);
+}
+
 // Conversión rad/s → centideg/s SATURADA (el único campo de telemetría DOWN que
 // físicamente puede desbordar int16). 1 rad/s = 18000/π centideg/s ≈ 5729.58.
 inline int16_t omega_rad_s_to_centideg_s_sat(float omega_rad_s) {

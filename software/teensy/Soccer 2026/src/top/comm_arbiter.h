@@ -8,6 +8,9 @@
 //
 // El protocolo entre TOP y COMM usa el mismo frame proto.h. Mensajes:
 //   COMM_REFEREE_CMD  (COMM → TOP): comando del árbitro (start/stop/halftime).
+//     ⚠️ OBSOLETO (TASK-039, banco 2026-06-02): el árbitro YA NO viaja por UART.
+//     Llega al TOP como NIVEL GPIO en los pines 5/6 (ver read_referee_gpio en
+//     comm_arbiter.cpp). El UART COMM↔TOP (Serial2) queda solo para status/partner.
 //   COMM_STATUS_REQ   (COMM → TOP): pide status del robot.
 //   TOP_STATUS_REPLY  (TOP → COMM): responde con batería, role, errores.
 //   COMM_PARTNER_DATA (COMM → TOP): mensaje recibido del partner via ESP-NOW.

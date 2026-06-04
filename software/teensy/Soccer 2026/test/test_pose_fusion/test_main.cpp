@@ -319,7 +319,7 @@ void test_clamp_salida_dentro_de_cancha(void) {
 
     // Forzar (via deltas OTOS acotados a max_step) que el estado interno se vaya
     // a x negativo e y > field_height. Aplicamos muchos ticks de paso máximo.
-    // En X: empujar hacia abajo (negativo). En Y: empujar hacia arriba (>1820).
+    // En X: empujar hacia abajo (negativo). En Y: empujar hacia arriba (>2430).
     int16_t otos_x = 100;
     int16_t otos_y = 100;
     for (int i = 0; i < 60; ++i) {
@@ -334,7 +334,7 @@ void test_clamp_salida_dentro_de_cancha(void) {
     }
     // El estado interno está fuera de cancha; la salida se clampa.
     TEST_ASSERT_TRUE(st.x_mm_q0 < 0);
-    TEST_ASSERT_TRUE(st.y_mm_q0 > 1820);
+    TEST_ASSERT_TRUE(st.y_mm_q0 > 2430);
 
     // Un último tick para leer la salida clampada limpia.
     PoseFusionInputs in = make_inputs(0, 0, /*tof_valid=*/false,
@@ -342,7 +342,7 @@ void test_clamp_salida_dentro_de_cancha(void) {
                                       /*heading=*/0, /*dt=*/10);
     PoseFusionOutput out = pose_fusion_update(st, in, cfg);
     TEST_ASSERT_EQUAL_INT16(0, out.x_mm);     // clamp a [0, width]
-    TEST_ASSERT_EQUAL_INT16(1820, out.y_mm);  // clamp a [0, height]
+    TEST_ASSERT_EQUAL_INT16(2430, out.y_mm);  // clamp a [0, height]
 }
 
 // ============================================================

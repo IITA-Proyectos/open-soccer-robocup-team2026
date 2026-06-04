@@ -249,6 +249,8 @@ mantuvieron como hallazgos reales, dos de ellos degradados de severidad.
 
 ### Aplicar YA — quick-wins seguros (aditivos / solo-comentario, no tocan el camino vivo)
 
+> ✅ **APLICADOS 2026-06-04** (mergeados a main): SC-01, SI-03, SB-3, VIS-02 (commit `f73c8c0`) + CC-01, SI-02 (commit `f069c7f`). Segunda tanda en rama `mejoras/auditoria-2026-06-04`: POSE-01, POSE-03, DC-2, TOPHAL-01, TOF-1 + correcciones de comentarios y docs. Gate host **550/40/0**, las 3 placas compilan.
+
 1. **SC-01** — Guarda NaN en `omega_degps_to_centideg` (cierra el agujero de heading
    corrupto del BNO desde el lado del control; complementa IMU-1). + test.
 2. **CC-01** — Contador `g_snapshot_size_rejects` en la telemetría de CENTRAL

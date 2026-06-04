@@ -214,6 +214,29 @@ inline float gk_lateral_pid_output(uint32_t now_ms) {
     return lateral_pid_tick(g_lateral_pid_gk, depth, now_ms);
 }
 
+// Orientación del arquero respecto al ARCO PROPIO (schema v3). Bridge entre la
+// decisión PURA gk_own_goal_orient (world_model.h, host-testeada) y el HeadingPID
+// (Arduino). Devuelve la ω en centideg/s a aplicar a cmd.omega_centideg_s.
+//
+// FALLBACK EXACTO (no-regresión): si el arco propio NO es visible O heading_valid
+// es false, gk_own_goal_orient devuelve set_heading=false → devolvemos 0 SIN tocar
+// el setpoint del PID, exactamente como PATROL/INTERCEPT antes del schema v3 (no
+// orientaban: ω=0). La mejora SÓLO actúa con dato nuevo presente y heading válido.
+inline int16_t gk_own_goal_orient_omega(uint32_t now_ms) {
+    const float heading = world_model_get_my_heading_deg();
+    const GkOwnGoalOrient o = gk_own_goal_orient(
+        world_model_goal_own_visible(),
+        world_model_heading_valid(),
+        heading,
+        world_model_get_goal_own_angle_deg());
+    if (!o.set_heading) {
+        return 0;   // fallback EXACTO: sin rumbo nuevo → ω=0 (idéntico a hoy).
+    }
+    heading_pid_set_target(g_heading_pid, o.heading_target_deg);
+    const float omega = heading_pid_tick(g_heading_pid, heading, now_ms);
+    return omega_degps_to_centideg(omega);  // satura int16 (anti sign-flip, #9)
+}
+
 // Clasifica la trayectoria de la pelota para el arquero y decide qué X (marco
 // robot) debe perseguir el INTERCEPT. PURA (sin world_model / Arduino) para poder
 // caracterizarla host-side en test_central_trajectory (espejo bt_decide_intercept).
@@ -466,8 +489,14 @@ MotorCommand attacker_tick() {
                 bx, by, goal_angle, ATK_BEHIND_BALL_GAP_MM);
 
             // Heading: siempre mirar al arco rival.
+            // heading_valid gate (#schema v3): si el BNO aún no convergió
+            // (heading=0 falso al boot) NO orientar con ese rumbo este tick (ω=0).
+            // Si heading_valid (caso normal) → ω idéntica a hoy. Igual seteamos el
+            // target para que el PID no arranque frío cuando el heading vuelva.
             heading_pid_set_target(g_heading_pid, heading + goal_angle);
-            const float omega = heading_pid_tick(g_heading_pid, heading, now_ms);
+            const float omega = central_gate_heading_omega(
+                world_model_heading_valid(),
+                heading_pid_tick(g_heading_pid, heading, now_ms));
 
             // Vector al target relativo al robot. Velocidad proporcional con
             // perfil suave (mismo approach_velocity reusado).
@@ -530,8 +559,12 @@ MotorCommand attacker_tick() {
             // ball_x relativo al robot: 0 = frente. Convertir a absoluto.
             const float ball_angle_rel = std::atan2(bx, by) * (180.0f / M_PI);
             const float ball_angle_abs = heading + ball_angle_rel;
+            // heading_valid gate (#schema v3): no orientar con heading=0 falso al
+            // boot. heading_valid → ω idéntica a hoy.
             heading_pid_set_target(g_heading_pid, ball_angle_abs);
-            const float omega = heading_pid_tick(g_heading_pid, heading, now_ms);
+            const float omega = central_gate_heading_omega(
+                world_model_heading_valid(),
+                heading_pid_tick(g_heading_pid, heading, now_ms));
 
             // Velocidad de avance con perfil suave.
             const float speed = approach_velocity(dist,
@@ -625,6 +658,13 @@ MotorCommand goalkeeper_tick() {
             const float vx_patrol = direction * GK_PATROL_SPEED_MM_S;
             cmd.vx_mm_s = static_cast<int16_t>(vx_patrol + vx_lateral_pid * 0.5f);
 
+            // goal_own (#schema v3): si el arco propio es visible (y heading
+            // válido) orientar el frente a la cancha (de espaldas al arco propio)
+            // para que el arquero quede bien plantado. FALLBACK EXACTO: si no es
+            // visible o heading inválido, set_heading=false → NO seteamos rumbo →
+            // ω queda 0, idéntico a la conducta previa al schema v3.
+            cmd.omega_centideg_s = gk_own_goal_orient_omega(now_ms);
+
             if (world_model_ball_visible()) {
                 transition_gk(GkState::INTERCEPT);
             }
@@ -675,6 +715,11 @@ MotorCommand goalkeeper_tick() {
             const float vx_intercept = bt.target_x_mm * kp_intercept;
             cmd.vx_mm_s = static_cast<int16_t>(vx_intercept + vx_lateral_pid * 0.3f);
 
+            // goal_own (#schema v3): mantener el frente hacia la cancha mientras
+            // intercepta sobre el eje X. FALLBACK EXACTO: sin arco propio visible o
+            // heading inválido → ω=0 (idéntico a antes del schema v3).
+            cmd.omega_centideg_s = gk_own_goal_orient_omega(now_ms);
+
             // Transición a CLEAR: la pelota llegó cerca → salir a despejar
             // en lugar de seguir solo el eje X.
             if (dist < GK_CLEAR_TRIGGER_MM) {
@@ -710,12 +755,16 @@ MotorCommand goalkeeper_tick() {
                 cmd.vy_mm_s = static_cast<int16_t>(by / dist * GK_CLEAR_SPEED_MM_S);
             }
             // Heading hacia la pelota para que el despeje sea con el frente.
+            // heading_valid gate (#schema v3): no orientar con heading=0 falso al
+            // boot. heading_valid → ω idéntica a hoy.
             const float ball_angle_rel = std::atan2(bx, by) * (180.0f / M_PI);
             heading_pid_set_target(g_heading_pid,
                                    world_model_get_my_heading_deg() + ball_angle_rel);
-            const float omega = heading_pid_tick(g_heading_pid,
-                                                  world_model_get_my_heading_deg(),
-                                                  now_ms);
+            const float omega = central_gate_heading_omega(
+                world_model_heading_valid(),
+                heading_pid_tick(g_heading_pid,
+                                 world_model_get_my_heading_deg(),
+                                 now_ms));
             cmd.omega_centideg_s = omega_degps_to_centideg(omega);  // satura int16 (anti sign-flip, #9)
             return cmd;
         }

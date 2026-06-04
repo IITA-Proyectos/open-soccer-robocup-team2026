@@ -87,7 +87,8 @@ struct BallObservation {
 // CENTRAL NO fusiona — recibe este snapshot y decide. La fusión sensorial
 // (IMU + OTOS + cámaras + ToF) corre en ARRIBA.
 //
-// Tamaño: 27 bytes (contrato v2: +ball_vx/vy). Cabe en proto (32).
+// Tamaño: 31 bytes (contrato v3: +goal_own_angle/distance + flags bit4=heading_valid).
+// Cabe en proto (32). ⚠️ WIRE-BREAKING vs v2 (27 B): re-flashear TOP y CENTRAL JUNTOS.
 struct WorldSnapshot {
     // Pose propia fusionada en cancha
     int16_t my_x_mm;
@@ -107,7 +108,13 @@ struct WorldSnapshot {
     int16_t goal_opp_angle_centideg;
     int16_t goal_opp_distance_mm;
     uint8_t goal_opp_visible;
+
+    // Arco propio (visibilidad + ángulo + distancia estimada). Schema v3.
+    // Sentinela: MISMO criterio que goal_opp → goal_own_visible=0 significa que
+    // goal_own_angle_centideg / goal_own_distance_mm NO son válidos (no leerlos).
     uint8_t goal_own_visible;
+    int16_t goal_own_angle_centideg;  // ← schema v3; centideg, válido sólo si goal_own_visible=1
+    int16_t goal_own_distance_mm;     // ← schema v3; mm, válido sólo si goal_own_visible=1
 
     // Obstáculo más cercano (min de ToFs + HC-SR04)
     uint16_t min_obstacle_mm;
@@ -120,9 +127,10 @@ struct WorldSnapshot {
                                     // bit 1 = partner_alive
                                     // bit 2 = partner_sees_ball
                                     // bit 3 = match_running
-                                    // bits 4-7 = reservados
+                                    // bit 4 = heading_valid (1 = heading del BNO válido)  ← schema v3
+                                    // bits 5-7 = reservados
 } __attribute__((packed));
-static_assert(sizeof(WorldSnapshot) == 27, "WorldSnapshot contrato v2 = 27 bytes");
+static_assert(sizeof(WorldSnapshot) == 31, "WorldSnapshot contrato v3 = 31 bytes");
 
 // Contrato DOWN→CENTRAL v2 — ver docs/firmware/CONTRATO-DATOS-DOWN.md
 struct LineStatusV2 {

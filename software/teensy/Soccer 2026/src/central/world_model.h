@@ -49,6 +49,21 @@ bool  world_model_goal_opp_visible();
 float world_model_get_goal_opp_angle_deg();
 float world_model_get_goal_opp_distance_mm();
 
+// Arco PROPIO (schema v3). Espejo passthrough del WorldSnapshot del TOP.
+// Sentinela: MISMO criterio que goal_opp → si world_model_goal_own_visible()==false,
+// angle/distance NO son válidos (no usarlos). El arquero los consume SOLO bajo esa
+// compuerta (ver strategy.cpp::goalkeeper_tick / gk_own_goal_orient). Cuando no es
+// visible la conducta del arquero es IDÉNTICA a la previa al schema v3.
+bool  world_model_goal_own_visible();
+float world_model_get_goal_own_angle_deg();       // centideg/100 (grados); válido sólo si goal_own_visible
+float world_model_get_goal_own_distance_mm();     // mm; válido sólo si goal_own_visible
+
+// heading_valid (flags bit 4, máscara 0x10): 1 = heading del BNO válido. Al boot
+// (BNO sin converger) el TOP lo pone en 0 → strategy NO debe orientar con ese
+// heading=0 falso. Es la compuerta de central_gate_heading_omega (abajo). Caso
+// normal (heading_valid=1) → conducta IDÉNTICA a hoy.
+bool  world_model_heading_valid();
+
 uint16_t world_model_get_min_obstacle_mm();
 
 // === Línea (de DOWN bus emergencia) ===
@@ -111,5 +126,60 @@ float   world_model_get_otos_vy_mm_s();
 float   world_model_get_otos_omega_deg_s();
 uint8_t world_model_get_otos_slip();
 uint8_t world_model_otos_pose_confidence();
+
+// ============================================================================
+// Decisiones PURAS del consumo schema v3 (sin Arduino → host-testeables).
+//
+// Viven en el header (no en el .cpp, que depende de Arduino) para que el test
+// host (test_snapshot_v3_consume) las incluya por ruta relativa, igual que
+// test_link_health hace con comm_arbiter.h. run-host-tests.sh sólo agrega
+// -I src/shared + el dir del test (NO -I src/central); este header sólo incluye
+// <stdint.h> + types.h, así que compila host. NO agregar acá includes de
+// Arduino ni de line_view.h.
+// ============================================================================
+
+// (1) heading_valid → usar/ignorar el heading para orientar ESTE tick.
+// strategy computa una ω candidata con el HeadingPID hacia un setpoint de rumbo;
+// esta compuerta decide si esa ω se aplica. Si heading_valid==false (ej. BNO sin
+// converger al boot → heading=0 falso), devuelve 0 (NO girar con un rumbo
+// inventado). Si heading_valid==true → devuelve omega_if_valid sin tocarlo →
+// conducta IDÉNTICA a hoy. Es la ÚNICA regla; no hace nada más.
+inline float central_gate_heading_omega(bool heading_valid, float omega_if_valid) {
+    return heading_valid ? omega_if_valid : 0.0f;
+}
+
+// (2) goal_own → ajuste de orientación del ARQUERO respecto al arco PROPIO.
+//
+// Cuando el arco propio es visible (y el heading es válido), el arquero puede
+// orientar el frente hacia la CANCHA (de espaldas a su arco) usando el ángulo al
+// arco propio: el arco propio está DETRÁS, así que mirar al campo =
+// my_heading + (goal_own_angle + 180), normalizado. Esto le da una referencia de
+// rumbo estable en PATROL/INTERCEPT (estados que hoy NO setean rumbo: ω=0).
+//
+// FALLBACK EXACTO (no-regresión): si goal_own NO es visible O heading_valid==false,
+// set_heading=false → el caller NO setea setpoint de rumbo ese tick → ω queda 0,
+// BYTE-IDÉNTICO a la conducta previa al schema v3 (PATROL/INTERCEPT no orientaban).
+// La mejora SÓLO se activa con dato nuevo presente y heading válido.
+struct GkOwnGoalOrient {
+    bool  set_heading;          // false => no setear rumbo este tick (fallback exacto)
+    float heading_target_deg;   // rumbo absoluto objetivo (sólo si set_heading)
+};
+
+inline GkOwnGoalOrient gk_own_goal_orient(bool goal_own_visible, bool heading_valid,
+                                          float my_heading_deg, float goal_own_angle_deg) {
+    GkOwnGoalOrient r{};
+    if (!goal_own_visible || !heading_valid) {
+        r.set_heading = false;          // fallback EXACTO: sin rumbo nuevo
+        r.heading_target_deg = my_heading_deg;
+        return r;
+    }
+    // Frente a la cancha = opuesto al arco propio (que está detrás).
+    float target = my_heading_deg + goal_own_angle_deg + 180.0f;
+    while (target >  180.0f) target -= 360.0f;
+    while (target <= -180.0f) target += 360.0f;
+    r.set_heading = true;
+    r.heading_target_deg = target;
+    return r;
+}
 
 }  // namespace iitasoccer

@@ -10,7 +10,7 @@ tags: [comunicacion, firmware, protocolo, contrato, central-board, ambos]
 robot: ambos
 area: comunicacion
 tipo: protocolo
-contract-schema: 2
+contract-schema: 3
 related:
   - software/teensy/Soccer 2026/src/shared/proto.h
   - software/teensy/Soccer 2026/src/shared/types.h
@@ -152,16 +152,22 @@ El transporte de TODOS los enlaces es **idéntico al definido en
 `comm_top_tick()` (`comm_top.cpp:33-43`), decodificado con `FrameDecoder`,
 entregado a `world_model_apply_snapshot()` (`comm_top.cpp:22-24`).
 
-**Payload:** `struct WorldSnapshot` de `types.h:92-123`. 27 bytes (WorldSnapshot schema v2: +ball_vx/vy).
-`static_assert(sizeof(WorldSnapshot)==27)` presente en el código (RESUELTO 2026-05-18, commit 2a9064e).
+**Payload:** `struct WorldSnapshot` de `types.h`. 31 bytes (WorldSnapshot schema v3: +goal_own_angle/distance + flags bit4=heading_valid).
+`static_assert(sizeof(WorldSnapshot)==31)` presente en el código.
 
-#### 2.1.1 Layout exacto de `WorldSnapshot` (`types.h:92-123`)
+> **⚠️ WIRE-BREAKING (schema v2 → v3, 2026-06-04).** El layout creció de **27 → 31 bytes**
+> (se agregaron `goal_own_angle_centideg` + `goal_own_distance_mm`, +4 B, junto al arco
+> propio) y se asignó `flags` bit4 = `heading_valid`. El cambio NO es retrocompatible: un
+> TOP v2 y un CENTRAL v3 (o viceversa) se desalinean. **Re-flashear TOP y CENTRAL JUNTOS.**
+> Ver changelog en §9.
+
+#### 2.1.1 Layout exacto de `WorldSnapshot` (`types.h`)
 
 | Off | Campo | Tipo | Unidad | Rango / Sentinela | Significado |
 |----:|-------|------|--------|-------------------|-------------|
 | 0 | `my_x_mm` | i16 | mm | −32767..+32767 | Pose X fusionada en cancha. **Hardcodeado a 0** (GAP-002). |
 | 2 | `my_y_mm` | i16 | mm | −32767..+32767 | Pose Y fusionada en cancha. **Hardcodeado a 0** (GAP-002). |
-| 4 | `my_heading_centideg` | i16 | centideg | −18000..+18000 | Heading fusionado IMU dual. **Funcional.** |
+| 4 | `my_heading_centideg` | i16 | centideg | −18000..+18000 | Heading fusionado IMU dual. **Funcional.** Válido sólo si `flags` bit4 (`heading_valid`) = 1. |
 | 6 | `my_pose_confidence` | u8 | — | 0..100 | Confianza en la pose (0 = pose inválida). |
 | 7 | `ball_x_mm` | i16 | mm | −32767..+32767 | Posición X de la pelota relativa al robot. |
 | 9 | `ball_y_mm` | i16 | mm | −32767..+32767 | Posición Y de la pelota relativa al robot. |
@@ -172,14 +178,16 @@ entregado a `world_model_apply_snapshot()` (`comm_top.cpp:22-24`).
 | 17 | `goal_opp_angle_centideg` | i16 | centideg | −18000..+18000 | Ángulo al arco rival relativo al frente del robot. |
 | 19 | `goal_opp_distance_mm` | i16 | mm | 0..32767 | Distancia estimada al arco rival. |
 | 21 | `goal_opp_visible` | u8 | — | 0 / 1 | 1 = arco rival visible. |
-| 22 | `goal_own_visible` | u8 | — | 0 / 1 | 1 = arco propio visible. |
-| 23 | `min_obstacle_mm` | u16 | mm | 0..65535 | Obstáculo más cercano (ToF + HC-SR04). **Stub — siempre alto** (GAP-003). |
-| 25 | `referee_cmd` | u8 | — | 0=stop,1=start,2=halftime,3=reset | Comando árbitro vigente. |
-| 26 | `flags` | u8 | bitfield | ver abajo | Flags tácticos. |
+| 22 | `goal_own_visible` | u8 | — | 0 / 1 | 1 = arco propio visible. **Compuerta del bloque arco propio** (mismo criterio que `goal_opp_visible`). |
+| 23 | `goal_own_angle_centideg` | i16 | centideg | −18000..+18000; **válido sólo si `goal_own_visible`=1** | **schema v3.** Ángulo al arco propio relativo al frente del robot. Sentinela = mismo criterio que `goal_opp`: si `goal_own_visible`=0 NO usar este campo. |
+| 25 | `goal_own_distance_mm` | i16 | mm | 0..32767; **válido sólo si `goal_own_visible`=1** | **schema v3.** Distancia estimada al arco propio. Mismo criterio de sentinela que `goal_own_angle_centideg`. |
+| 27 | `min_obstacle_mm` | u16 | mm | 0..65535 | Obstáculo más cercano (ToF + HC-SR04). **Stub — siempre alto** (GAP-003). |
+| 29 | `referee_cmd` | u8 | — | 0=stop,1=start,2=halftime,3=reset | Comando árbitro vigente. |
+| 30 | `flags` | u8 | bitfield | ver abajo | Flags tácticos. |
 
-`sizeof(WorldSnapshot) == 27` (schema v2, +ball_vx/vy). `static_assert(sizeof==27)` presente (RESUELTO 2026-05-18, commit 2a9064e: GAP-001 cerrado).
+`sizeof(WorldSnapshot) == 31` (schema v3, +goal_own_angle/distance). `static_assert(sizeof==31)` presente.
 
-#### 2.1.2 `flags` de `WorldSnapshot` (`types.h:118-122`)
+#### 2.1.2 `flags` de `WorldSnapshot` (`types.h`)
 
 | Bit | Máscara | Nombre | Interpretación en CENTRAL |
 |----:|---------|--------|--------------------------|
@@ -187,7 +195,8 @@ entregado a `world_model_apply_snapshot()` (`comm_top.cpp:22-24`).
 | 1 | `0x02` | `partner_alive` | El compañero envió heartbeat reciente (ESP-NOW). |
 | 2 | `0x04` | `partner_sees_ball` | El compañero reportó pelota visible. |
 | 3 | `0x08` | `match_running` | Partido activo (árbitro dijo START). **Gate maestro de la FSM.** |
-| 4-7 | `0xF0` | reservados | CENTRAL los ignora; TOP escribe 0. |
+| 4 | `0x10` | `heading_valid` | **schema v3.** 1 = `my_heading_centideg` proviene de un BNO válido. Si 0, CENTRAL NO debe confiar en el heading. |
+| 5-7 | `0xE0` | reservados | CENTRAL los ignora; TOP escribe 0. |
 
 **Interpretación en `world_model.cpp`** (líneas 66-70):
 - `match_running` = `flag_set(g_snap.flags, 3)` → bit 3 = máscara `0x08`.
@@ -659,7 +668,7 @@ línea → puede salir de cancha. Ver GAP-009.
 
 | ID | Severidad | Descripción | Archivo:línea | Qué hace falta |
 |---|---|---|---|---|
-| GAP-001 | ~~P1~~ **RESUELTO** | `static_assert(sizeof(WorldSnapshot)==27)` — **RESUELTO 2026-05-18, commit 2a9064e**: `static_assert(sizeof==27)` agregado; WorldSnapshot bumpeado a v2 (27 B, +ball_vx/vy). | `types.h` | — |
+| GAP-001 | ~~P1~~ **RESUELTO** | `static_assert(sizeof(WorldSnapshot))` — **RESUELTO 2026-05-18, commit 2a9064e**: `static_assert` agregado; WorldSnapshot bumpeado a v2 (27 B, +ball_vx/vy). **Actualizado 2026-06-04 a `==31` (schema v3, +goal_own_angle/distance).** | `types.h` | — |
 | GAP-002 | P0 | `my_x_mm` y `my_y_mm` hardcodeados a 0 en TOP; CENTRAL los lee pero no tiene localización real | TOP (no en CENTRAL) | OTOS real en DOWN + fusión en TOP (TASK-012) |
 | GAP-003 | P1 | `min_obstacle_mm` siempre alto (ToF stub en TOP); CENTRAL no evita obstáculos | TOP (no en CENTRAL) | ToF real (TASK-012) |
 | GAP-004 | P1 | `config_central.h` describe el modelo "motor server" (LEGACY); confunde al lector | `config_central.h:1-14` | Reescribir el comentario del archivo para reflejar el rol master actual |
@@ -810,7 +819,7 @@ MotorCommand: {vx≈intercept+pid_blend, vy=0, omega=0}
 
 | Dir | TYPE | Nombre | Payload | Clase | Frecuencia | Estado impl. |
 |---|---|---|---|---|---|---|
-| TOP → CENTRAL | `0x60` | `WORLD_SNAPSHOT` | `WorldSnapshot` (27 B, schema v2) | STREAM | 100 Hz | Implementado (`comm_top.cpp`) |
+| TOP → CENTRAL | `0x60` | `WORLD_SNAPSHOT` | `WorldSnapshot` (31 B, schema v3) | STREAM | 100 Hz | Implementado (`comm_top.cpp`) |
 | DOWN → CENTRAL | `0x10` | `LINE_URGENT` | `LineStatus` v1 (5 B) / objetivo v2 (16 B) | EVENTO+STREAM | 200 Hz | Implementado v1 (`comm_down.cpp`) |
 | DOWN → CENTRAL | `0x11` | `DOWN_OTOS_POSE` | `Pose2D` (7 B) | STREAM | 100 Hz | Implementado (Capa 1 broadcast): ingerido en `comm_down.cpp` → `world_model_apply_otos_pose()`. **Solo para control de movimiento (Capa 2); la pose de cancha autoritativa sigue siendo el WorldSnapshot del TOP.** |
 | DOWN → CENTRAL | `0x12` | `DOWN_OTOS_VEL` | `Velocity2D` (7 B) | STREAM | 100 Hz | Implementado (Capa 1 broadcast): ingerido en `comm_down.cpp` → `world_model_apply_otos_vel()`. Mismo criterio: control de movimiento, no localización de cancha. |
@@ -824,11 +833,26 @@ MotorCommand: {vx≈intercept+pid_blend, vy=0, omega=0}
 
 ## 9. Versionado del contrato
 
-- `contract-schema: 2` en este documento (WorldSnapshot schema v2: +ball_vx/vy, 27 B, 2026-05-18).
+- `contract-schema: 3` en este documento (WorldSnapshot schema v3: +goal_own_angle/distance +
+  `flags` bit4=heading_valid, **31 B**, 2026-06-04).
 - Cambios de layout de `WorldSnapshot` o de mensajes emitidos por CENTRAL
   incrementan `contract-schema` y se versionan este documento y el código.
 - La migración a `LineStatusV2` (schema 2 en DOWN) requiere actualización
   coordinada de `comm_down.cpp`, `world_model.cpp`, y este documento.
+
+### 9.1 Changelog del contrato `WorldSnapshot`
+
+| Schema | Fecha | Tamaño | Cambio | Compatibilidad |
+|---|---|---|---|---|
+| v1 | 2026-05-18 | 23 B | Layout inicial | — |
+| v2 | 2026-05-18 | 27 B | +`ball_vx_mm_s` / +`ball_vy_mm_s` (off 13/15) | WIRE-BREAKING vs v1 |
+| **v3** | **2026-06-04** | **31 B** | +`goal_own_angle_centideg` (off 23) +`goal_own_distance_mm` (off 25), junto al arco propio; `flags` bit4 = `heading_valid` (1 = heading BNO válido); bits 5-7 reservados | **WIRE-BREAKING vs v2** |
+
+> **⚠️ AVISO WIRE-BREAKING (v2 → v3).** El `WorldSnapshot` pasa de **27 a 31 bytes**.
+> El frame TOP→CENTRAL completo pasa de 34 a 38 bytes (31 + 7 de overhead proto). Un TOP
+> en v2 y un CENTRAL en v3 (o viceversa) NO se entienden: el parser descartará los frames por
+> tamaño/CRC. **Hay que re-flashear TOP y CENTRAL JUNTOS** con el firmware v3. Los offsets de
+> `min_obstacle_mm`, `referee_cmd` y `flags` se corrieron +4 (de 23/25/26 a 27/29/30).
 
 ---
 

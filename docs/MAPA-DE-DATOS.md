@@ -34,7 +34,7 @@ requested-by: "Gustavo Viollaz (@gviollaz)"
 
 | Mensaje | Tipo / tamaño | De → A | Transporte | Freq | Lo llena | Lo consume | Contrato canónico |
 |---|---|---|---|---|---|---|---|
-| **WorldSnapshot** | `0x60` · **27 B** (schema v2) | **TOP → CENTRAL** | TOP `Serial4` pin17 (TX4) → CEN `Serial7` pin28 (RX7) | 100 Hz | `main_top.cpp::build_snapshot` | `comm_top`→`world_model`→`strategy.cpp` | `CONTRATO-DATOS-CENTRAL.md` / `CONTRATO-DATOS-TOP.md §3` |
+| **WorldSnapshot** | `0x60` · **31 B** (schema v3) | **TOP → CENTRAL** | TOP `Serial4` pin17 (TX4) → CEN `Serial7` pin28 (RX7) | 100 Hz | `main_top.cpp::build_snapshot` | `comm_top`→`world_model`→`strategy.cpp` | `CONTRATO-DATOS-CENTRAL.md` / `CONTRATO-DATOS-TOP.md §3` |
 | **LineStatusV2** | `0x10` · **16 B** | **DOWN → CENTRAL y TOP** (broadcast) | DOWN `Serial1` pin1 → CEN `Serial1` pin0 · y DOWN `Serial5` pin20 → TOP `Serial1` pin0 | ~alta | `comm_central.cpp` (DOWN) vía `down_tx` | CEN: `comm_down`→`world_model`. TOP: cacheado (aún no consumido) | `CONTRATO-DATOS-DOWN.md` |
 | **Pose2D (OTOS)** | `0x11` · **7 B** | **DOWN → CENTRAL y TOP** (broadcast) | (igual que LineStatusV2) | ~alta | DOWN `down_tx` | CEN: control de movimiento (Capa 2). TOP: cacheado | `CONTRATO-DATOS-DOWN.md` |
 | **Velocity2D (OTOS)** | `0x12` · **7 B** | **DOWN → CENTRAL y TOP** (broadcast) | (igual que LineStatusV2) | ~alta | DOWN `down_tx` | idem Pose2D | `CONTRATO-DATOS-DOWN.md` |
@@ -44,10 +44,10 @@ requested-by: "Gustavo Viollaz (@gviollaz)"
 
 ### Qué lleva el WorldSnapshot (resumen)
 Pose propia (x/y/heading/conf), pelota (x/y relativos + velocidad vx/vy + visible/conf),
-arco rival (ángulo+distancia) y visibilidad del propio, obstáculo más cercano
-(`min_obstacle_mm`), comando del árbitro (`referee_cmd`), y `flags`
-(in_penalty / partner_alive / partner_sees_ball / **match_running**).
-Struct exacto: `src/shared/types.h` (`struct WorldSnapshot`, 27 B, con `static_assert`).
+arco rival (ángulo+distancia) y arco propio (visible + **ángulo+distancia**, schema v3),
+obstáculo más cercano (`min_obstacle_mm`), comando del árbitro (`referee_cmd`), y `flags`
+(in_penalty / partner_alive / partner_sees_ball / **match_running** / **heading_valid** bit4, schema v3).
+Struct exacto: `src/shared/types.h` (`struct WorldSnapshot`, 31 B, con `static_assert`).
 
 ## 3. El árbitro NO viaja por UART (importante)
 

@@ -69,6 +69,15 @@ bool  world_model_goal_opp_visible()        { return g_snap.goal_opp_visible != 
 float world_model_get_goal_opp_angle_deg()  { return g_snap.goal_opp_angle_centideg / 100.0f; }
 float world_model_get_goal_opp_distance_mm(){ return static_cast<float>(g_snap.goal_opp_distance_mm); }
 
+// Arco propio (schema v3) — passthrough espejado del snapshot. angle/distance sólo
+// son válidos si world_model_goal_own_visible() (mismo centinela que goal_opp).
+bool  world_model_goal_own_visible()        { return g_snap.goal_own_visible != 0; }
+float world_model_get_goal_own_angle_deg()  { return g_snap.goal_own_angle_centideg / 100.0f; }
+float world_model_get_goal_own_distance_mm(){ return static_cast<float>(g_snap.goal_own_distance_mm); }
+
+// heading_valid: flags bit 4 (máscara 0x10). 1 = heading del BNO válido.
+bool  world_model_heading_valid()           { return flag_set(g_snap.flags, 4); }
+
 uint16_t world_model_get_min_obstacle_mm()  { return g_snap.min_obstacle_mm; }
 
 bool     world_model_line_detected()        { return lsv2_line_present(g_line); }

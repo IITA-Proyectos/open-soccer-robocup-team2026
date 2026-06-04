@@ -139,7 +139,15 @@ WorldSnapshot build_snapshot() {
     s.goal_opp_visible        = cameras_goal_yellow_visible() ? 1 : 0;
     s.goal_opp_angle_centideg = cameras_get_goal_yellow_angle_centideg();
     s.goal_opp_distance_mm    = cameras_get_goal_yellow_distance_mm();
+    // Arco propio (azul) — schema v3. Antes sólo se mandaba la visibilidad y se
+    // DESCARTABA el ángulo/distancia que cameras_fusion (fuse_goal_dual) YA computa.
+    // Ahora viajan los 3 campos, EXACTAMENTE como el arco rival (mismo patrón):
+    // los getters de fusión ya devuelven 0/0 cuando el arco no está visible
+    // (ver fuse_goal_dual → else: angle=0, distance=0), que es el MISMO sentinel
+    // que goal_opp. El consumidor (CENTRAL) gatea por goal_own_visible.
     s.goal_own_visible        = cameras_goal_blue_visible() ? 1 : 0;
+    s.goal_own_angle_centideg = cameras_get_goal_blue_angle_centideg();
+    s.goal_own_distance_mm    = cameras_get_goal_blue_distance_mm();
 
     // Obstáculo más cercano (de ToFs + HC-SR04).
     s.min_obstacle_mm = sensors_tof_get_min_distance_mm();
@@ -149,6 +157,14 @@ WorldSnapshot build_snapshot() {
     uint8_t flags = 0;
     if (comm_arbiter_is_match_running())    flags |= (1 << 3);
     if (comm_arbiter_partner_is_fresh())    flags |= (1 << 1);
+    // bit 4 = heading_valid (schema v3, máscara 0x10). El heading SIEMPRE se manda
+    // (s.my_heading_centideg viene del IMU), pero este bit le dice al CENTRAL si
+    // confiar en él. Criterio: al menos un BNO listo (init OK). sensors_imu NO
+    // expone un getter de "heading válido" dedicado; el más cercano y honesto es
+    // el readiness por chip (_left_ready / _right_ready), que es justo lo que usa
+    // el degradado del propio sensors_imu (get_heading_deg → 0 si ambos fallan).
+    // Si ambos BNO fallaron el init → ninguno ready → heading_valid=0.
+    if (sensors_imu_left_ready() || sensors_imu_right_ready()) flags |= (1 << 4);
     // bit 0 (in_own_penalty_area) requiere pose absoluta — Nivel 2.
     // bit 2 (partner_sees_ball) requiere parseo del partner snapshot — futuro.
     s.flags = flags;

@@ -41,6 +41,61 @@ elapsedMillis g_since_debug;
 
 uint32_t g_loop_count = 0;
 
+// ============================================================================
+// WATCHDOG de hardware (P1-WDT, 2026-06-03) — ARDUINO-ONLY, no host-testeable.
+// ----------------------------------------------------------------------------
+// Problema: sin watchdog, un cuelgue de I2C (BNO o ToF que se traba en una
+// transaccion) deja el loop mudo el resto del partido — el robot queda parado
+// sin auto-reset (CENTRAL frena por fail-safe, pero el robot no se recupera).
+//
+// Implementacion: WDOG1 del i.MX RT1062 por registros (imxrt.h, siempre
+// disponible via Arduino.h). NO usamos la lib externa WDT_T4 (tonton81) porque
+// NO esta vendoreada en lib/ y agregarla via lib_deps forzaria una descarga del
+// registry que Avast bloquea (TASK-025). Los registros WDOG1_WCR/WSR del core
+// son suficientes y sin dependencias.
+//
+//   • Timeout = (WT+1) * 0.5 s. WT=1 -> 1.0 s (HOLGADO a proposito, ver abajo).
+//   • Service ("feed"): escribir 0x5555 y luego 0xAAAA a WDOG1_WSR.
+//   • WDZST=1: el WDT se SUSPENDE en modos low-power/debug (no resetea al depurar).
+//
+// POR QUE EL TIMEOUT ES HOLGADO (1 s, no menos):
+//   El loop normal corre a >100 Hz, pero sensores BLOQUEANTES legitimos pueden
+//   robar hasta ~12 ms por ciclo cada tanto: el HC-SR04 (pulseIn, ~12 ms) y el
+//   read multi-byte del BNO055 a 100 kHz. Un timeout corto (p.ej. 50-100 ms)
+//   resetearia el robot en stalls NORMALES -> reset-loop en pleno partido. 1 s
+//   da margen de sobra para cualquier stall legitimo y aun asi reacciona rapido
+//   ante un cuelgue REAL de I2C (que es indefinido). El minimo que permite el
+//   WDOG1 es 0.5 s; elegimos 1 s para mas holgura.
+//
+// NOTA Teensy: NO existe Wire.setWireTimeout() en el core IMXRT (es API de AVR/
+// ESP; ver WireIMXRT.h — solo setClock). En Teensy 4.0, las transacciones del
+// Wire ya tienen un timeout HW interno; el WATCHDOG es el cinturon de seguridad
+// real ante un cuelgue del bus que igual trabe el loop. Por eso el WDT es la
+// pieza central de P1-WDT (y reemplaza el pedido de setWireTimeout del backlog).
+//
+// needs_bench: confirmar (1) 0 resets espurios en 30 min de marcha normal con
+// los 4 ToF + HC-SR04 + BNO activos; (2) auto-reset al colgar el I2C
+// (desconectar un sensor en caliente) — WDOG1_WRSR debe indicar reset por WDT.
+constexpr uint8_t WDT_WT_FIELD = 1;  // (1+1)*0.5 s = 1.0 s
+
+void watchdog_init_1s() {
+    // Secuencia de configuracion del WDOG1 (una sola escritura al WCR; el WT y los
+    // bits de control solo se pueden fijar una vez tras el reset).
+    //   WT(1)  -> timeout 1.0 s
+    //   WDE    -> habilita el watchdog
+    //   WDZST  -> suspende en low-power/debug (no resetea al depurar/dormir)
+    // SRS se deja en 1 (no forzamos software reset). WDA idem.
+    WDOG1_WCR = WDOG_WCR_WT(WDT_WT_FIELD) | WDOG_WCR_WDE | WDOG_WCR_WDZST |
+                WDOG_WCR_SRS | WDOG_WCR_WDA;
+    asm volatile("dsb");
+}
+
+inline void watchdog_feed() {
+    // Refresh ("kick"): la secuencia magica 0x5555 -> 0xAAAA reinicia el contador.
+    WDOG1_WSR = 0x5555;
+    WDOG1_WSR = 0xAAAA;
+}
+
 // Construye el WorldSnapshot a partir de todas las fuentes percibidas.
 WorldSnapshot build_snapshot() {
     WorldSnapshot s{};
@@ -133,12 +188,25 @@ void setup() {
     comm_arbiter_init(); // Serial2 (7/8) ↔ placa COMM
     comm_central_init(); // Serial4 (16/17) → snapshot a CENTRAL
 
+    // WATCHDOG (P1-WDT): instalar AL FINAL del setup, DESPUES de todos los begin()
+    // lentos (los 4 ToF cargan ~85 KB c/u por I2C -> boot ~40 s). Si lo armaramos
+    // antes, esa carga legitima dispararia el WDT en pleno arranque. Una vez
+    // armado, el loop debe alimentarlo cada ciclo (watchdog_feed) o el robot se
+    // reinicia a 1 s. Ver el bloque de notas arriba (timeout holgado + Teensy).
+    watchdog_init_1s();
+
     digitalWrite(PIN_LED_STATUS, HIGH);
-    Serial.println("[TOP] cerebro sensorial listo, enviando snapshots a CENTRAL");
+    Serial.println("[TOP] cerebro sensorial listo, enviando snapshots a CENTRAL (WDT 1s armado)");
 }
 
 void loop() {
     g_loop_count++;
+
+    // === WATCHDOG (P1-WDT): alimentar cada ciclo ===
+    // Mientras el loop GIRE, refrescamos el WDOG1. Si el loop se cuelga (p.ej. una
+    // transaccion I2C trabada de un sensor), deja de alimentarse y el WDOG1
+    // resetea el Teensy a 1 s -> el robot se recupera solo en vez de quedar mudo.
+    watchdog_feed();
 
     // === RX: drenar UARTs (no bloquea) ===
     comm_down_tick();      // odometría OTOS desde ABAJO

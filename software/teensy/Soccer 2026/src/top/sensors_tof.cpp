@@ -1,4 +1,9 @@
-// sensors_tof.cpp — Implementacion VIVA del modulo ToF + HC-SR04 del TOP.
+// sensors_tof.cpp — Implementacion VIVA del modulo ToF (4 VL53L7CX) + HC-SR04 del TOP.
+//
+// Lee los 4 ToF VL53L7CX (bus unico Wire, enumerados a 0x2A..0x2D por LP) + el
+// HC-SR04 frontal, y expone la distancia minima como obstaculo mas cercano. Cada
+// ToF lleva una marca de frescura (P1-TOF-STALE): tras TOF_STALE_TIMEOUT_MS sin
+// lectura buena, el getter devuelve TOF_NO_READING en vez del ultimo valor viejo.
 //
 // ============================================================================
 // MIGRACION 2026-05-24 — stub TODO_TOF_LIB -> Adafruit_VL53L7CX
@@ -36,6 +41,11 @@ namespace {
 // ----- Estado del modulo -----
 uint16_t g_distances_mm[NUM_TOF];
 bool     g_ready[NUM_TOF];
+// Frescura por sensor (P1-TOF-STALE 2026-06-03): g_last_ok_ms[i] = millis() de la
+// ultima lectura BUENA; g_ever_ok[i] = si alguna vez hubo una. La decision
+// fresco/stale se delega a tof_fresh_or_no_reading() (pura, host-testeada).
+uint32_t g_last_ok_ms[NUM_TOF] = {0};
+bool     g_ever_ok[NUM_TOF]    = {false};
 uint16_t g_hcsr04_mm = TOF_NO_READING;
 uint32_t g_tick_count = 0;
 
@@ -191,6 +201,8 @@ bool sensors_tof_init() {
     for (int i = 0; i < NUM_TOF; ++i) {
         g_distances_mm[i] = TOF_NO_READING;
         g_ready[i] = false;
+        g_last_ok_ms[i] = 0;
+        g_ever_ok[i] = false;   // sin lectura buena todavia -> getter da NO_READING
     }
 
     // NOTA: NO tocamos los pines XSHUT (PIN_TOF_XSHUT[]). Validado el
@@ -282,13 +294,21 @@ void sensors_tof_tick() {
     // lo trae y promediamos las zonas validas.
 #ifdef TOP_ENABLE_MULTI_TOF
     // Poll de los 4 ToF enumerados (no bloqueante).
+    const uint32_t now = millis();
     for (int i = 0; i < NUM_TOF; ++i) {
         if (!g_ready[i]) continue;
         if (g_tof_multi[i].isDataReady() &&
             g_tof_multi[i].getRangingData(&g_tof_results)) {
+            // getRangingData() OK = el sensor responde por I2C -> lectura FRESCA
+            // (aunque mean sea NO_READING = "nada en rango", es una respuesta
+            // valida y reciente, no un dato colgado). Sellamos la frescura.
             g_distances_mm[i] = mean_valid_zones(g_tof_results, TOF_RESOLUTION_ZONES);
+            g_last_ok_ms[i]   = now;
+            g_ever_ok[i]      = true;
         }
-        // si getRangingData() devuelve false, mantenemos el ultimo valor cacheado.
+        // si getRangingData() devuelve false, NO tocamos g_last_ok_ms[i]: el valor
+        // cacheado se mantiene SOLO mientras siga fresco; tras TOF_STALE_TIMEOUT_MS
+        // sin un read bueno, el getter lo expira a TOF_NO_READING (P1-TOF-STALE).
     }
 #else
     if (g_ready[TOF_FRONTAL_IDX]) {
@@ -296,10 +316,13 @@ void sensors_tof_tick() {
             if (g_tof_frontal.getRangingData(&g_tof_results)) {
                 g_distances_mm[TOF_FRONTAL_IDX] =
                     mean_valid_zones(g_tof_results, TOF_RESOLUTION_ZONES);
+                g_last_ok_ms[TOF_FRONTAL_IDX] = millis();  // sello de frescura
+                g_ever_ok[TOF_FRONTAL_IDX]    = true;
             }
             // Si getRangingData() devuelve false, dejamos el ultimo valor
-            // valido cacheado — preferimos "ultimo dato bueno" a un sentinel
-            // que dispare evasion espuria por un frame perdido.
+            // cacheado — preferimos "ultimo dato bueno" a un sentinel que
+            // dispare evasion espuria por UN frame perdido. Pero ya no para
+            // siempre: tras TOF_STALE_TIMEOUT_MS el getter lo expira (P1-TOF-STALE).
         }
     }
 #endif  // TOP_ENABLE_MULTI_TOF
@@ -316,18 +339,30 @@ void sensors_tof_tick() {
 #endif
 }
 
+// Distancia del ToF idx, ya filtrada por frescura (P1-TOF-STALE): si la ultima
+// lectura buena venció (TOF_STALE_TIMEOUT_MS), devuelve TOF_NO_READING en vez del
+// valor viejo. La decision la toma la funcion PURA host-testeada; aca solo le
+// pasamos el estado + millis().
 uint16_t sensors_tof_get_distance_mm(uint8_t idx) {
     if (idx >= NUM_TOF) return TOF_NO_READING;
-    return g_distances_mm[idx];
+    return tof_fresh_or_no_reading(g_distances_mm[idx], g_last_ok_ms[idx],
+                                   g_ever_ok[idx], millis(),
+                                   TOF_STALE_TIMEOUT_MS);
 }
 
 uint16_t sensors_hcsr04_get_distance_mm() { return g_hcsr04_mm; }
 
 uint16_t sensors_tof_get_min_distance_mm() {
+    const uint32_t now = millis();
     uint16_t min_d = TOF_NO_READING;
     for (int i = 0; i < NUM_TOF; ++i) {
-        if (g_distances_mm[i] != TOF_NO_READING && g_distances_mm[i] < min_d) {
-            min_d = g_distances_mm[i];
+        // Aplica el filtro de frescura por sensor: un ToF colgado en 80 mm ya no
+        // domina el min_obstacle para siempre — expira a NO_READING y se ignora.
+        const uint16_t d = tof_fresh_or_no_reading(
+            g_distances_mm[i], g_last_ok_ms[i], g_ever_ok[i], now,
+            TOF_STALE_TIMEOUT_MS);
+        if (d != TOF_NO_READING && d < min_d) {
+            min_d = d;
         }
     }
     if (g_hcsr04_mm != TOF_NO_READING && g_hcsr04_mm < min_d) {

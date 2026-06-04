@@ -11,6 +11,12 @@
 //   AMBOS BNO en el bus Wire (18/19). LEFT=0x28 (ADR flotante),
 //   RIGHT=0x29 (ADR puenteado a 3V3). Wire1 (24/25) quedó LIBRE para DOWN.
 //
+// Tiempo de boot (DOC-FIX 2026-06-03): el init del BNO no es "~2 s" como decía
+// la nota vieja. A 100 kHz (coexistencia con los ToF) el begin()+estabilización+
+// calibración del/los BNO toma ~10 s; y el setup() COMPLETO del TOP ronda ~40 s
+// porque cada VL53L7CX carga ~85 KB de firmware blob por I2C (init_one_bno aquí
+// reintenta begin() hasta INIT_TIMEOUT_MS=3 s por chip). Ver sensors_tof.cpp.
+//
 // Convención de heading: CCW-positivo (IZQUIERDA sube), [-180,180]. El chip da
 // yaw CW-positivo, lo invertimos con HEADING_SIGN. Mismo signo al gyroZ para que
 // el test de glitch del módulo (cambio de heading vs gyro*dt) sea consistente.

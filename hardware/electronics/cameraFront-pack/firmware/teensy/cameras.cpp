@@ -1,3 +1,23 @@
+// ═══════════════════════════════════════════════════════════════════════════
+//  ⚠️  SNAPSHOT v1 SUPERADO — NO ES LA FUENTE NI EL BUILD PATH  ⚠️
+//
+//  Esta es una copia foto-curada (2026-05-24) del parser de cámaras en su
+//  versión v1: 9 bytes/packet, X SIN offset, sentinel (X=0 & Y=-100), SIN CRC.
+//  Quedó STALE: el contrato cámara→TOP saltó a v2 el 2026-06-03 (commit d230de5)
+//  y esta copia NO se actualizó al v2.
+//
+//  Contrato VIVO v2: 11 bytes/packet · X e Y simétricos (coded = valor + 100) ·
+//  sentinel = 255 · CRC8 (XOR de los 9 bytes de datos) + END = 254.
+//
+//  FUENTE CANÓNICA (lo que compila/flashea PlatformIO env top_robot1/2):
+//      software/teensy/Soccer 2026/src/top/cameras.{cpp,h}
+//  CONTRATO CANÓNICO:
+//      docs/firmware/CONTRATO-DATOS-CAMARAS.md
+//
+//  NO compiles ni flashees desde este archivo. Si contradice el repo vivo,
+//  gana el repo vivo (regla de oro del pack — ver README.md del pack).
+// ═══════════════════════════════════════════════════════════════════════════
+
 #include "cameras.h"
 
 namespace iitasoccer {

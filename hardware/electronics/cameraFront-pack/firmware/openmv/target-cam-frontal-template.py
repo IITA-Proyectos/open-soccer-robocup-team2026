@@ -1,3 +1,16 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  ⚠️  TEMPLATE v1 SUPERADO — ya existe el script v2 real; flasheá ése  ⚠️
+#
+#  Este "template objetivo" emite el packet v1 (9 bytes, X sin offset, SIN
+#  CRC/END) y describe el sentinel viejo (X=0, Y_coded=0). Quedó SUPERADO: el
+#  contrato cámara→TOP saltó a v2 el 2026-06-03 (commit d230de5) y el script
+#  REAL de la cámara frontal ya está implementado en esta carpeta:
+#      cam-frontal-n6.py   ← FLASHEAR ÉSTE (v2: 11 B · X+100 · sentinel 255 · CRC8+END)
+#  Contrato canónico: docs/firmware/CONTRATO-DATOS-CAMARAS.md
+#
+#  NO flashear este template. Si contradice el repo vivo, gana el repo vivo.
+# ═══════════════════════════════════════════════════════════════════════════
+
 # cam_frontal.py — Template objetivo de la cámara FRONTAL del robot Soccer 2026
 #
 # Estado: TEMPLATE — los valores marcados [CALIBRAR] son placeholders y deben

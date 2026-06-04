@@ -1,3 +1,19 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  ⚠️  SNAPSHOT v1 — el contrato cámara→TOP vivo es v2 (2026-06-03, d230de5)  ⚠️
+#
+#  Este script genérico emite el packet v1: 9 bytes, X sin offset, SIN CRC/END,
+#  y usa pyb.LED (crashea en la OpenMV N6 fw 4.8.1). Es REFERENCIA HISTÓRICA
+#  (bugs P0 documentados en README.md de esta carpeta), NO el firmware vivo.
+#
+#  Los scripts que SÍ corren en las cámaras —y que YA están en v2 (11 bytes ·
+#  X+100 simétrico · sentinel 255 · CRC8 + END 254)— están en esta misma carpeta:
+#      cam-frontal-n6.py   (cámara frontal)
+#      cam-trasera-n6.py   (cámara trasera)
+#  Contrato canónico: docs/firmware/CONTRATO-DATOS-CAMARAS.md
+#
+#  NO flashear este archivo. Si contradice el repo vivo, gana el repo vivo.
+# ═══════════════════════════════════════════════════════════════════════════
+
 from pyb import UART
 import sensor, image, time
 import math

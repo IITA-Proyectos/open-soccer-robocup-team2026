@@ -84,9 +84,30 @@ BALL_ASPECT_MAX = 2.0       # w()/h() máximo
 # banco antes de activar; NO poner números que recorten el FOV real. Dejar en None.
 BALL_ROI = None
 
-SENTINEL_X = 0
-SENTINEL_Y_CODED = 0    # → Y = 0-100 = -100 en el parser TOP → is_visible = False
+# ── Contrato v2 (contract-schema 2) — packet de 11 bytes ──────────────────────
+# (a) EJE-X SIMÉTRICO: X se codifica IGUAL que Y → X_coded = X + 100 (X∈[-100,100]
+#     → 0..200). La pelota a la IZQUIERDA (X<0) ya es representable (antes colapsaba
+#     a 0 = "al frente"). Ver research/2026-06-03-eje-x-codificacion-asimetrica.
+# (b) SENTINEL INEQUÍVOCO "no detectado" = (X_coded=255, Y_coded=255). Como las
+#     coords reales se clampean a [0,200], 255 es INALCANZABLE desde una detección
+#     → cero colisión con un objeto real (antes el sentinel 0/0 chocaba con el
+#     borde del FOV).
+# (c) INTEGRIDAD: al final del packet van CRC8 (XOR de los 9 bytes de datos) + END.
+# ⚠️ TOCA EL WIRE: re-flashear cámara + TOP juntos + validar en banco.
+SENTINEL_CODED = 255    # X_coded==255 y Y_coded==255 ⇒ objeto no detectado (parser TOP)
+COORD_OFFSET = 100      # coded = valor + 100, en AMBOS ejes
+HEADER1, HEADER2, HEADER3 = 201, 202, 203
+END_BYTE = 254          # fin de trama
 # ============================================================================
+
+
+def crc8(data):
+    # XOR de los 9 bytes de datos (3 headers + 6 coords). Debe coincidir EXACTO
+    # con cam_crc8() del TOP (cameras.h). Detecta bit-flips en el enlace UART.
+    c = 0
+    for b in data:
+        c ^= b
+    return c & 0xFF
 
 # --- Inicialización del sensor (módulo `sensor`, IGUAL que el generic que funciona) ---
 sensor.reset()
@@ -116,7 +137,7 @@ def transformar(u,v):
     H = H_MATRIX
     denom = H[2][0] * u + H[2][1] * v + H[2][2]
     if abs(denom) < 1e-6:
-        return SENTINEL_X, SENTINEL_Y_CODED      # caso degenerado → no-detectado
+        return SENTINEL_CODED, SENTINEL_CODED     # caso degenerado → no-detectado
 
     x = (H[0][0] * u + H[0][1] * v + H[0][2]) / denom
     y = (H[1][0] * u + H[1][1] * v + H[1][2]) / denom
@@ -125,21 +146,22 @@ def transformar(u,v):
     X = x * (CAM_HEIGHT_CM - BALL_RADIUS_CM) / CAM_HEIGHT_CM
     Y = y * (CAM_HEIGHT_CM - BALL_RADIUS_CM) / CAM_HEIGHT_CM
 
-    X = max(-127, min(200, X))
+    # Clamp al rango físico simétrico [-100,100] en AMBOS ejes (X igual que Y).
+    X = max(-100, min(100, X))
     Y = max(-100, min(100, Y))
 
-    Y_coded = int(Y) + 100                       # ∈ [0, 200]
-    X_int = int(X)
-    if X_int == 0 and Y_coded == 0:              # no colisionar con el sentinel
-        X_int = 1
-    X_int = max(0, min(255, X_int))            # ⚠️ clamp uint8 final → anti-crash
-    Y_coded = max(0, min(255, Y_coded))
-    return X_int, Y_coded
+    X_coded = int(X) + COORD_OFFSET              # ∈ [0, 200] (símetrico a Y)
+    Y_coded = int(Y) + COORD_OFFSET              # ∈ [0, 200]
+    # Clamp uint8 final → anti-crash en bytearray. Nunca llega al SENTINEL (255)
+    # porque [0,200] < 255 → un objeto real JAMÁS produce el sentinel.
+    X_coded = max(0, min(200, X_coded))
+    Y_coded = max(0, min(200, Y_coded))
+    return X_coded, Y_coded
 
 
 def procesar_blob(blobs):
     if not blobs:
-        return SENTINEL_X, SENTINEL_Y_CODED
+        return SENTINEL_CODED, SENTINEL_CODED     # no detectado → 255,255
     blob = max(blobs, key=lambda b: b.pixels())
     return transformar(blob.cx(), blob.cy())
 
@@ -197,8 +219,9 @@ while True:
     Xam, Yamc = procesar_blob(amarillo_blobs)
     Xaz, Yazc = procesar_blob(azul_blobs)
 
-    # Todos uint8 por el clamp → no crashea bytearray:
-    packet = bytearray([201, Xp, Ypc, 202, Xam, Yamc, 203, Xaz, Yazc])
+    # Contrato v2: 9 bytes de datos + CRC8 + END. Todos uint8 por el clamp.
+    data = [HEADER1, Xp, Ypc, HEADER2, Xam, Yamc, HEADER3, Xaz, Yazc]
+    packet = bytearray(data + [crc8(data), END_BYTE])   # 11 bytes
     uart.write(packet)
     if BRING_UP:
         # bring-up: ver paquetes válidos + fps (medir ≥25 Hz). NO en competencia.

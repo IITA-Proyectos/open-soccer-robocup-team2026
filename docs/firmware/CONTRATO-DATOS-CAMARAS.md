@@ -1,16 +1,16 @@
 ---
-title: "Contrato de datos de las cámaras OpenMV — protocolo, diseño de programas y gaps (v1)"
-date: 2026-05-18
-author: "Claude (Anthropic - claude-sonnet-4-6)"
+title: "Contrato de datos de las cámaras OpenMV — protocolo, diseño de programas y gaps (v2)"
+date: 2026-06-03
+author: "Claude (Anthropic - claude-sonnet-4-6 v1; Claude Opus 4.8 v2)"
 requested-by: "Gustavo Viollaz (@gviollaz)"
 ai-assisted: true
-ai-tool: "Claude Code (claude-sonnet-4-6, Anthropic)"
+ai-tool: "Claude Code (Opus 4.8 1M, Anthropic)"
 status: draft
 tags: [comunicacion, firmware, protocolo, contrato, camaras, openmv, top, vision]
 robot: ambos
 area: vision
 tipo: protocolo
-contract-schema: 1
+contract-schema: 2
 related:
   - software/vision/enviar coordenadas 2 arcos y pelota
   - software/teensy/Soccer 2026/src/top/cameras.cpp
@@ -36,6 +36,47 @@ related:
 > - **Protocolo actual** — lo que hoy existe en el código real.
 > - **Protocolo objetivo** — lo que debe existir para que las cámaras sean
 >   operativas (no demo). Las diferencias entre ambas capas son los gaps P0.
+
+---
+
+## ⚠️ CHANGELOG v2 (contract-schema: 2) — 2026-06-03 — TOCA EL WIRE
+
+> **El packet pasó de 9 a 11 bytes y cambió la semántica de X y del sentinel.**
+> **Re-flashear AMBAS cámaras (`cam-frontal-n6.py` + `cam-trasera-n6.py`) Y el TOP
+> en el MISMO deploy, y validar en banco.** NO es regresión-segura por separado:
+> una punta v1 contra la otra v2 NO decodifica (longitud, offset y sentinel
+> distintos). Resuelve la decisión A/B de
+> `research/in-progress/2026-06-03-eje-x-codificacion-asimetrica-vision.md` → **Opción A**.
+
+Tres cambios, en una sola revisión coherente del packet:
+
+1. **Eje X simétrico a Y (Opción A).** Antes X se mandaba sin offset (0..200) e Y
+   con offset (+100); la pelota a la **izquierda** (X<0) se clampeaba a 0 y el TOP
+   la leía "al frente" — la mitad izquierda del FOV se perdía. Ahora **X se codifica
+   igual que Y**: `X_coded = X + 100` (X ∈ [-100,100] → 0..200) y el TOP hace
+   `ball_x = byte - 100`. La izquierda ya es representable.
+
+2. **Sentinel inequívoco.** Antes "no detectado" era `(X=0, Y_coded=0)` → frágil:
+   colisionaba con un objeto real en `(X=0, Y=-100)` (borde del FOV) y `X=0` es una
+   columna válida. Ahora el sentinel es **un byte coded == 255** (`0xFF`) en X y/o Y.
+   Como las coords reales se clampean a **[0,200]**, el valor 255 es **inalcanzable
+   desde una detección** → cero colisión. Un objeto se marca **no visible** si
+   **cualquiera** de sus dos bytes coded es 255.
+
+3. **Integridad (CRC + fin de trama).** Se agregan 2 bytes al final: **CRC8** (XOR
+   de los 9 bytes de datos, bytes 0..8) y **END = 254** (`0xFE`). El parser valida
+   los 3 headers en posición fija, el END en posición fija y el CRC; si algo falla,
+   **descarta el frame** y cuenta `crc_errors` / `resync_events`. Detecta bit-flips
+   del enlace y datos que coinciden con un header (bug R6).
+
+**Por qué no hay colisión de bytes:** coords coded ∈ [0,200]; headers = 201/202/203;
+END = 254; SENTINEL = 255. Ningún dato de coordenada real puede valer 201/202/203/254/255.
+El CRC es el único byte libre [0,255]; por eso se valida **antes** de aceptar el packet.
+
+**Fuente del v2:** `src/top/cameras.h` (constantes públicas + `cam_crc8`),
+`src/top/cameras.cpp` (state machine 11 bytes), ambos `*-n6.py` (armado + `crc8`),
+`test/test_cameras_parser/test_main.cpp` (17 tests host: izq/centro/der, sentinel,
+CRC malo, END malo, dato==header).
 
 ---
 
@@ -86,38 +127,54 @@ Fuente: `src/top/cameras_runtime.cpp` (código vivo).
 > `src/top/comm_central.cpp` usa **`Serial4`** (cable TOP pin17/TX4 → CENTRAL pin28/RX7,
 > que en el 4.1 sí es Serial7). En el TOP, Serial2 (7/8) = módulo COMM (árbitro).
 
-### 1.2 Protocolo actual — 9 bytes raw
+### 1.2 Protocolo VIGENTE v2 — 11 bytes con CRC + END (contract-schema 2)
 
-El script actual (`software/vision/enviar coordenadas 2 arcos y pelota:148-155`)
-manda un paquete de 9 bytes en cada iteración del loop:
+Cada cámara manda un paquete de **11 bytes** por iteración del loop:
 
 ```
-byte 0:  201        (HEADER1 — sync pelota)
-byte 1:  Xp         (coord X pelota, uint8, rango nominal 0..200)
-byte 2:  Yp_coded   (Y pelota + 100, uint8, rango nominal 0..200)
-byte 3:  202        (HEADER2 — sync arco amarillo)
-byte 4:  Xam        (coord X arco amarillo, uint8, 0..200)
-byte 5:  Yam_coded  (Y arco amarillo + 100, uint8, 0..200)
-byte 6:  203        (HEADER3 — sync arco azul)
-byte 7:  Xaz        (coord X arco azul, uint8, 0..200)
-byte 8:  Yaz_coded  (Y arco azul + 100, uint8, 0..200)
+byte  0:  201        (HEADER1 — sync pelota)
+byte  1:  Xp_coded   (X pelota + 100, uint8, datos ∈ [0,200] | 255 = SENTINEL)
+byte  2:  Yp_coded   (Y pelota + 100, uint8, datos ∈ [0,200] | 255 = SENTINEL)
+byte  3:  202        (HEADER2 — sync arco amarillo)
+byte  4:  Xam_coded  (X arco amarillo + 100)
+byte  5:  Yam_coded  (Y arco amarillo + 100)
+byte  6:  203        (HEADER3 — sync arco azul)
+byte  7:  Xaz_coded  (X arco azul + 100)
+byte  8:  Yaz_coded  (Y arco azul + 100)
+byte  9:  CRC8       (XOR de los bytes 0..8 inclusive)
+byte 10:  254        (END — fin de trama, 0xFE)
 ```
 
-Fuente: `cameras.h:20-30` (comentario de layout), `cameras.cpp:6-9` (constantes).
+Fuente: `cameras.h` (layout + `CAM_*` constantes + `cam_crc8`), `cameras.cpp`
+(state machine), `cam-frontal-n6.py` / `cam-trasera-n6.py` (`crc8` + armado).
 
-**Sin byte de fin. Sin checksum. Sin longitud explícita.** La sincronización
-depende enteramente de que los headers (201/202/203) no aparezcan como datos.
+- **X e Y se codifican SIMÉTRICO:** `coded = valor + 100`, con `valor ∈ [-100,100]`.
+  El TOP recupera `valor = byte - 100` en **ambos** ejes. `+x = derecha`, `-x = izquierda`.
+- **SENTINEL "no detectado" = byte coded == 255.** Inalcanzable desde datos reales
+  (clamp a [0,200]). Un objeto es "no visible" si X_coded **o** Y_coded es 255.
+- **CRC8 = XOR de los 9 bytes de datos.** El parser descarta el frame si no matchea
+  (cuenta `crc_errors()`). No es CRC16 a propósito: 1 byte mantiene el packet corto
+  y el parser trivial de auditar.
+- **END = 254** valida el fin de trama en posición fija (segundo guard contra
+  desalineación además de los 3 headers).
 
-**Problema con los headers como datos:** si X o Y_coded de cualquier objeto
-vale 201, 202 o 203, el parser del TOP se desincroniza. El rango X ∈ [0,200]
-y Y_coded ∈ [0,200] hacen que **201 y 202 sean inalcanzables en datos pero 203
-no** (Y_coded puede ser 203 si Y = 103, que sería X=103 en el espacio de
-coordenadas de salida). La función `procesar_blob` clampea Y a [-100,100], por
-lo tanto Y_coded ∈ [0,200] — 201 y 202 son inalcanzables. **X, en cambio, no
-se clampea en el camino al `bytearray`:** si X > 200 se clampea a 200 por la
-línea `if X>200: X=200` (`enviar...:100`), pero el cast `int(X)` antes de
-poner en el array puede dar 201/202/203 en casos de desbordamiento numérico
-de la homografía. Este es el bug R6 documentado en `cameras.h:8`.
+**Por qué los headers como datos ya no rompen (bug R6 cerrado):** coords coded ∈
+[0,200], así que **ningún dato real puede valer 201/202/203/254/255**. Aunque por un
+bit-flip un dato quede igual a un header, el CRC del frame no matchea → se descarta.
+
+#### 1.2-bis Protocolo LEGACY v1 — 9 bytes (histórico, ya NO se usa)
+
+> ⚠️ **Obsoleto desde 2026-06-03.** Se deja como referencia de migración. Una cámara
+> o un TOP que sigan en v1 NO interoperan con v2.
+
+```
+[201, Xp, Yp_coded, 202, Xam, Yam_coded, 203, Xaz, Yaz_coded]   (9 bytes)
+```
+
+Defectos de v1 que v2 corrige: (1) **X sin offset** → la izquierda (X<0) colapsaba a
+0 = "al frente"; (2) **sentinel `(X=0,Y_coded=0)`** colisionaba con el borde del FOV
+y `X=0` era columna válida; (3) **sin CRC ni byte de fin** → un dato == header o un
+bit-flip desincronizaba (bug R6, `cameras.h` viejo).
 
 ---
 
@@ -157,28 +214,27 @@ El comentario en `cameras.h:12-16` documenta el sentinel esperado como
 `Y_coded=100`, no `Y_coded=0`. **El script no concuerda con el contrato que
 el parser ya implementa.**
 
-### 2.2 Protocolo objetivo — sentinel corregido
+### 2.2 Sentinel VIGENTE v2 — byte coded == 255 (inequívoco)
 
-El protocolo objetivo alinea script y parser usando `Y_coded=0` como sentinel:
+El v2 deja de inferir "no detectado" de la posición y usa un **byte reservado**:
 
-| Caso | X enviado | Y_coded enviado | Y que ve el parser | Marca parser |
-|------|-----------|----------------|--------------------|--------------|
-| Objeto detectado, Y = +50 | valor real | 150 | +50 | visible |
-| Objeto detectado, Y = 0 | valor real ≠ 0 | 100 | 0 | visible |
-| Objeto detectado, Y = -100 | valor real ≠ 0 | 0 | -100 | ver nota* |
-| **No detectado (sentinel)** | **0** | **0** | **-100** | **no visible** |
+| Caso | X_coded enviado | Y_coded enviado | Decodifica parser | Marca parser |
+|------|-----------------|-----------------|-------------------|--------------|
+| Detectado, X=+30 Y=+50 | 130 | 150 | (+30, +50) | **visible** |
+| Detectado al centro, X=0 Y=0 | 100 | 100 | (0, 0) | **visible** |
+| Detectado esquina, X=-100 Y=-100 | 0 | 0 | (-100, -100) | **visible** ✓ |
+| **No detectado (SENTINEL)** | **255** | **255** | — | **no visible** |
+| No detectado (basta uno) | 255 | cualquiera | — | **no visible** |
 
-> *Nota: si el objeto está en Y = -100 (coordenada real extrema) y X ≠ 0, el
-> parser lo marca como visible. Si X también es 0, colisiona con el sentinel.
-> Para el espacio de coordenadas actual (Y ∈ [-100, 100]) el valor Y=-100 es
-> el límite del clamp. **La solución correcta a largo plazo es migrar al
-> protocolo con byte de fin/checksum (ver §8).**
+> **Clave del v2:** como las coords reales se clampean a **[0,200]**, el valor 255
+> es **inalcanzable desde una detección**. Por eso la esquina extrema `(X=-100, Y=-100)`
+> —que en v1 colisionaba con el sentinel— en v2 es una detección **válida y visible**.
 
-**Regla del sentinel v1 (protocolo actual corregido):**
-- No detectado: OpenMV envía `X=0, Y_coded=0` para ese objeto.
-- El parser lo decodifica como `Y = 0 - 100 = -100` y `is_visible(0, -100)` = false.
-- Esta convención ya está implementada en el parser (`cameras.cpp:14-16`).
-  **Solo hay que corregir el script OpenMV.**
+**Regla del sentinel v2:**
+- No detectado: la cámara envía `X_coded=255, Y_coded=255` para ese objeto
+  (constante `SENTINEL_CODED` en ambos `.py`; `CAM_SENTINEL` en `cameras.h`).
+- El parser marca el objeto **no visible** si X_coded **o** Y_coded es 255.
+- Ya **no** se usa la heurística `is_visible(x==0 && y==-100)` de v1 (era frágil).
 
 ---
 
@@ -308,64 +364,62 @@ competencia. La calibración de la homografía es parte de TASK-022.
 
 ---
 
-## 6. Ejemplos byte-a-byte (protocolo actual v1, NO objetivo)
+## 6. Ejemplos byte-a-byte (protocolo VIGENTE v2, 11 bytes)
 
-Los siguientes ejemplos corresponden al protocolo actual de 9 bytes, con el
-sentinel **corregido** (objetivo: usar `Y_coded=0` para "no detectado").
-Hex decimal; se muestra el array de bytes que llega al Teensy.
+Cada packet termina en `[…, CRC8, 254]`. CRC8 = XOR de los 9 bytes de datos (0..8).
+Los CRC de abajo están calculados; un test host (`test_crc8_known_vector`) los fija.
 
-**Ejemplo A — Pelota visible en (X=80, Y=+30), arcos no visibles**
+**Ejemplo A — Pelota a la DERECHA (X=+80, Y=+30), arcos no visibles**
 ```
-Script calcula: Xp=80, Yp=30 → codedYp = 30+100 = 130
-Sin arco amarillo: Xam=0, Yam=0 → codedYam=0  (SENTINEL)
-Sin arco azul:     Xaz=0, Yaz=0 → codedYaz=0  (SENTINEL)
-
-Paquete decimal: [201, 80, 130, 202, 0, 0, 203, 0, 0]
-Paquete hex:     C9  50  82   CA  00 00  CB  00 00
-                 ^^  ^^  ^^   ^^            ^^
-                 H1  Xp  Ypc  H2  Xam Yamc H3  Xaz Yazc
+Xp_coded  = 80+100 = 180   Yp_coded = 30+100 = 130
+arcos: SENTINEL (255,255)
+data    = [201,180,130, 202,255,255, 203,255,255]
+CRC8    = 254 ; END = 254
+Paquete = [201,180,130, 202,255,255, 203,255,255, 254, 254]   (11 B)
 ```
+Parser: ball x=180-100=+80 (derecha), y=130-100=+30, visible ✓; arcos no visibles ✓.
 
-Parser TOP decodifica:
-- ball: x=80, y=130-100=30 → is_visible(80, 30) = true ✓
-- goal_yellow: x=0, y=0-100=-100 → is_visible(0, -100) = false ✓
-- goal_blue:   x=0, y=0-100=-100 → is_visible(0, -100) = false ✓
+**Ejemplo A2 — Pelota a la IZQUIERDA (X=-80, Y=+30) — el fix central**
+```
+Xp_coded = -80+100 = 20   Yp_coded = 130
+data    = [201,20,130, 202,255,255, 203,255,255]   CRC8 = 94 ; END = 254
+Paquete = [201,20,130, 202,255,255, 203,255,255, 94, 254]
+```
+Parser: ball x=20-100=**-80 (IZQUIERDA, representable)**, y=+30, visible ✓.
+> En v1 este caso colapsaba a X=0 → "al frente". Ése era el bug que v2 cierra.
 
 **Ejemplo B — Nada visible (cámara tapada o campo vacío)**
 ```
-Xp=0, codedYp=0 (SENTINEL)
-Xam=0, codedYam=0 (SENTINEL)
-Xaz=0, codedYaz=0 (SENTINEL)
-
-Paquete: [201, 0, 0, 202, 0, 0, 203, 0, 0]
-Hex:      C9  00 00  CA  00 00  CB  00 00
+todo SENTINEL: data = [201,255,255, 202,255,255, 203,255,255]
+CRC8 = 200 ; END = 254
+Paquete = [201,255,255, 202,255,255, 203,255,255, 200, 254]
 ```
+Parser: ball/yellow/blue todos no visibles ✓ (ningún fantasma).
 
-Parser TOP: todos is_visible = false → ball_visible=false, goal_*_visible=false ✓
-
-**Ejemplo C — Arco amarillo visible, pelota y azul no visibles**
+**Ejemplo C — Arco amarillo visible (X=+20, Y=-20), pelota y azul no**
 ```
-Xp=0, codedYp=0 (SENTINEL pelota)
-Xam=120, Yam=-20 → codedYam = -20+100 = 80
-Xaz=0, codedYaz=0 (SENTINEL arco azul)
-
-Paquete: [201, 0, 0, 202, 120, 80, 203, 0, 0]
-Hex:      C9  00 00  CA  78   50  CB  00 00
+Xam_coded = 20+100 = 120   Yam_coded = -20+100 = 80
+data    = [201,255,255, 202,120,80, 203,255,255]   CRC8 = 224 ; END = 254
+Paquete = [201,255,255, 202,120,80, 203,255,255, 224, 254]
 ```
+Parser: ball no visible; yellow x=+20, y=-20, visible ✓; blue no visible.
 
-Parser TOP:
-- ball: is_visible(0, -100) = false ✓
-- goal_yellow: x=120, y=80-100=-20 → is_visible(120, -20) = true ✓
-- goal_blue: is_visible(0, -100) = false ✓
+**Ejemplo D — Pelota AL CENTRO (X=0, Y=0) — visible, NO sentinel**
+```
+Xp_coded = 100   Yp_coded = 100
+data    = [201,100,100, 202,255,255, 203,255,255]   CRC8 = 200 ; END = 254
+Paquete = [201,100,100, 202,255,255, 203,255,255, 200, 254]
+```
+Parser: ball x=0, y=0, **visible** ✓ (en v2 el centro ya no se confunde con
+"no detectado": el sentinel es 255, no 0).
 
-**Ejemplo D — BUG ACTUAL (antes de la corrección)**
-Con el script sin corregir:
+**Ejemplo E — Frame CORRUPTO (bit-flip) → descartado**
 ```
-Sin pelota: procesar_blob retorna (0, 0) → codedYp = 0+100 = 100
-Paquete: [201, 0, 100, ...]
-Parser: x=0, y=100-100=0 → is_visible(0, 0) = true → ¡FANTASMA!
+Tomar el Ejemplo A y voltear 1 bit del byte Xp (180 → 181):
+Paquete = [201,181,130, 202,255,255, 203,255,255, 254, 254]
+El CRC recibido (254) ya no coincide con XOR(data') → el parser DESCARTA el
+frame, NO publica, e incrementa crc_errors(). El último packet bueno queda intacto.
 ```
-Esto es el bug P0 documentado en TASK-022 y research/completed/2026-05-18-*:63.
 
 ---
 
@@ -373,15 +427,17 @@ Esto es el bug P0 documentado en TASK-022 y research/completed/2026-05-18-*:63.
 
 ### 7.1 Detección de "no visible" sin ambigüedad
 
-El TOP ya implementa correctamente estas reglas en `cameras.cpp` asumiendo que
-el script envía el sentinel correcto:
+El TOP implementa estas reglas en `cameras.cpp` (parser v2):
 
-1. `is_visible(x, y)` retorna `false` si y solo si `x == 0 && y == -100`
-   (después de restar el offset). Ver `cameras.cpp:14-16`.
-2. El TOP **no debe** interpretar `(x=0, y=0)` como "no visible" — esa posición
-   puede ser una detección real cerca del centro del frame.
-3. El TOP **no debe** interpretar `x=0` solo como no visible — es una columna
-   válida del frame.
+1. Un objeto es **no visible** si y solo si su byte X_coded **o** su byte Y_coded
+   recibido valía `255` (`CAM_SENTINEL`). Se evalúa sobre el **byte crudo**, antes
+   de restar el offset. Ver `cameras.cpp` (`decode_coord` + flags `*_vis_`).
+2. El TOP **no debe** interpretar `(x=0, y=0)` como "no visible" — el centro exacto
+   del frame es una detección real (X_coded=100, Y_coded=100, lejos de 255).
+3. El TOP **no debe** interpretar `x=0` solo como no visible — es una columna válida.
+4. El TOP **solo publica** un packet cuando los 3 headers, el byte END (254) y el
+   CRC8 chequearon. Un frame con CRC/END/header malo se **descarta** (cuenta
+   `crc_errors()` / `resync_events()`) y NO pisa el último packet bueno.
 
 ### 7.2 Qué es "stale" (dato viejo)
 
@@ -654,13 +710,17 @@ no-visible del parser no están cubiertos.
 - **Riesgo sin fix:** el bug puede reaparecer sin que los tests lo detecten.
 - **Esfuerzo:** 2–3 horas de tests en C++.
 
-### Gap 8 (P2): Sin byte de fin / checksum en protocolo
+### Gap 8 (P2): Sin byte de fin / checksum en protocolo — ✅ RESUELTO en v2 (2026-06-03)
 
-- **Evidencia:** `cameras.h:20-30` documenta el protocolo de 9 bytes sin CRC.
-- **Fix a largo plazo:** migrar al protocolo de `proto.h` (START + LEN + TYPE + SEQ + PAYLOAD + CRC16 + END). Requiere actualizar el parser del TOP y los scripts OpenMV.
-- **Riesgo sin fix:** datos que coinciden con headers (201/202/203) pueden causar desincronización esporádica (bug R6 en `cameras.h:8`).
-- **Esfuerzo:** ~8 horas (script + parser + tests). Es un cambio breaking del protocolo.
-- **Recomendación para Incheon:** posponer a post-Incheon. Resolver gaps 1–5 primero.
+- **Evidencia (v1):** el protocolo de 9 bytes no tenía CRC ni byte de fin.
+- **Fix aplicado (v2, contract-schema 2):** se agregó **CRC8** (XOR de los 9 bytes
+  de datos) + **END=254** al packet (ahora 11 bytes). El parser descarta frames con
+  CRC/END/header malo y cuenta `crc_errors()`/`resync_events()`. Se eligió CRC8 (no
+  CRC16 de `proto.h`) por simplicidad: 1 byte, parser trivial, suficiente para
+  bit-flips de enlace corto a 19200 baud. Ver §1.2 y `cameras.h`/`cameras.cpp`.
+- **Riesgo cerrado:** datos == header (201/202/203) ya no pueden ocurrir (coords ∈
+  [0,200]) y, si un bit-flip los provocara, el CRC del frame no matchea → se descarta.
+- **TOCA EL WIRE:** re-flashear cámara + TOP juntos + validar en banco (ver §0 changelog).
 
 ### Gap 9 (P2): Confianza fija en la fusión (no proporcional al área del blob)
 
@@ -676,35 +736,43 @@ no-visible del parser no están cubiertos.
 
 Estos son los criterios de cierre de TASK-022 en términos de este contrato:
 
-- [ ] `cam_frontal.py`: sentinel `(0, SENTINEL_Y_CODED=0)` cuando no hay blob → TOP marca `ball_visible=false`.
-- [ ] `cam_trasera.py`: ídem.
+- [x] `cam-frontal-n6.py`: sentinel `(255,255)` cuando no hay blob → TOP marca `ball_visible=false`. **(v2)**
+- [x] `cam-trasera-n6.py`: ídem. **(v2)**
+- [x] X codificado simétrico a Y (`X_coded=X+100`) → pelota a la izquierda representable. **(v2)**
+- [x] CRC8 + END en el packet; parser descarta frames corruptos. **(v2)**
 - [ ] Ninguna cámara crashea con bytearray (test de inyección de coordenadas extremas).
 - [ ] `set_auto_whitebal(False)`, `set_auto_gain(False)`, `set_auto_exposure(False, exposure_us=VALOR_MEDIDO)` en ambos scripts.
 - [ ] `VALOR_MEDIDO` documentado en el journal con foto del setup de medición.
 - [ ] Homografía calibrada para `cam_frontal.py` en posición de montaje real.
 - [ ] Homografía calibrada para `cam_trasera.py` en posición de montaje real.
 - [ ] `CAMERA_UNIT_TO_MM` calibrado (pelota a 30/50/80/100 cm, error < 10%).
-- [ ] Tests host-native del parser: sentinel OK, no-fantasma, resync.
+- [x] Tests host-native del parser: izq/centro/der, sentinel, CRC malo, END malo, resync. **(v2, 17 tests)**
 - [ ] `pixels_threshold` de pelota ≥ 20 (no ruido).
 
 ---
 
 ## 11. Versionado del contrato
 
-- `contract-schema: 1` — este documento define la versión 1 del contrato de
-  cámaras. Cualquier cambio de layout del paquete (agregar campos, cambiar
-  offsets) **incrementa** `contract-schema` y actualiza el frontmatter.
-- El protocolo actual de 9 bytes es el **"protocolo viejo"** — funciona sin
-  cambios en el paquete para los gaps 1–7. Solo los gaps 8–9 requieren
-  cambiar el protocolo y hacer upgrade de `contract-schema`.
+- `contract-schema: 2` (VIGENTE, 2026-06-03) — packet de **11 bytes**: X simétrico
+  a Y (`X_coded=X+100`), sentinel `255`, CRC8 + END=254. **Breaking vs v1:** cambia
+  longitud, offset de X y semántica del sentinel → re-flashear cámara + TOP juntos
+  y validar en banco (§0 changelog). Resuelve la Opción A de
+  `research/in-progress/2026-06-03-eje-x-codificacion-asimetrica-vision.md` y el Gap 8.
+- `contract-schema: 1` (HISTÓRICO) — packet de 9 bytes, X sin offset, sentinel
+  `(0,0)`, sin CRC. Defectos en §1.2-bis.
+- **Regla:** cualquier cambio de layout (longitud, offsets, sentinel, CRC)
+  **incrementa** `contract-schema` y actualiza el frontmatter, y exige re-flashear
+  ambas puntas en el mismo deploy.
 
 ## 12. Fuentes
 
 | Archivo | Líneas relevantes |
 |---------|------------------|
-| `software/vision/enviar coordenadas 2 arcos y pelota` | :31-32 (auto-WB/gain), :67-75 (homografía), :80-107 (procesar_blob, sentinel), :148-155 (bytearray/packet) |
-| `software/teensy/Soccer 2026/src/top/cameras.cpp` | :6-9 (constantes headers/offset), :14-16 (is_visible/sentinel), :30-94 (state machine parser) |
-| `software/teensy/Soccer 2026/src/top/cameras.h` | :1-16 (decisión protocolo viejo), :20-30 (layout 9 bytes), :36-50 (CameraPacket struct) |
+| `hardware/electronics/cameraFront-pack/firmware/openmv/cam-frontal-n6.py` | `crc8`, `transformar` (X_coded=X+100, clamp [0,200]), `SENTINEL_CODED=255`, armado packet 11 B |
+| `hardware/electronics/cameraBack-pack/firmware/openmv/cam-trasera-n6.py` | ídem frontal (la trasera NO rota coords; lo hace el TOP) |
+| `software/teensy/Soccer 2026/src/top/cameras.cpp` (v2) | `decode_coord`, state machine 11 bytes con `READ_CRC`/`WAIT_END`, validación CRC8 + descarte de frame corrupto |
+| `software/teensy/Soccer 2026/src/top/cameras.h` (v2) | constantes `CAM_*`, `cam_crc8`, layout 11 bytes, `CameraPacket`, `crc_errors()` |
+| `software/teensy/Soccer 2026/test/test_cameras_parser/test_main.cpp` (v2) | 17 tests host: izq/centro/der, sentinel, CRC malo, END malo, dato==header |
 | `software/teensy/Soccer 2026/src/top/cameras_runtime.cpp` | :16 (CAMERA_TIMEOUT_MS), :21-25 (CAMERA_UNIT_TO_MM placeholder), :32-33 (g_parser_front/back), :59-77 (cam_obs_to_robot_frame calls) |
 | `software/teensy/Soccer 2026/src/top/cameras_runtime.h` | :15-16 (convención +y=frente) |
 | `software/teensy/Soccer 2026/src/top/config_top.h` | :43-55 (UART asignaciones y bauds) |

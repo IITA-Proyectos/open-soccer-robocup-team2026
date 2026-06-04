@@ -41,14 +41,11 @@ BallFused fuse_ball_dual(const CamObs& front,
     const bool b_ok = back_alive  && back.visible;
 
     if (f_ok && b_ok) {
-        // Promedio ponderado por confianza. Como el protocolo viejo no manda
-        // confianza, las pesamos igual (CONF_SINGLE_CAMERA cada una).
-        const float w_f = CONF_SINGLE_CAMERA;
-        const float w_b = CONF_SINGLE_CAMERA;
-        out.x_mm = static_cast<int16_t>((front.x_mm * w_f + back.x_mm * w_b)
-                                        / (w_f + w_b));
-        out.y_mm = static_cast<int16_t>((front.y_mm * w_f + back.y_mm * w_b)
-                                        / (w_f + w_b));
+        // Sin confianza por cámara en el protocolo, el "promedio ponderado" con
+        // pesos iguales ES una media simple (SB-3, eval 2026-06-04): la
+        // escribimos así — numéricamente idéntica y consistente con fuse_goal_dual.
+        out.x_mm = static_cast<int16_t>((front.x_mm + back.x_mm) * 0.5f);
+        out.y_mm = static_cast<int16_t>((front.y_mm + back.y_mm) * 0.5f);
         out.confidence = static_cast<uint8_t>(CONF_CONSENSUS);
         out.visible = true;
     } else if (f_ok) {

@@ -26,6 +26,13 @@ namespace {
 //
 // Author: Claude Opus 4.8 (Anthropic). Requested-by: Viollaz.
 int16_t omega_degps_to_centideg(float omega_deg_s) {
+    // Guarda defensiva (SC-01, eval 2026-06-04): un heading corrupto del BNO
+    // puede llegar como NaN. Las comparaciones con NaN son TODAS false, así que
+    // sin esta guarda el NaN se saltearía los clamps de abajo y `(int16_t)NaN`
+    // sería comportamiento indefinido (basura directa al motor). NaN != NaN.
+    // ω no-finito ⇒ 0 (sin giro). ±Inf ya satura bien vía los clamps de abajo.
+    // Complementa el failover del BNO muerto (IMU-1).
+    if (!(omega_deg_s == omega_deg_s)) return 0;
     float centideg = omega_deg_s * 100.0f;
     // Redondeo al entero más cercano conservando el signo.
     centideg = (centideg >= 0.0f) ? (centideg + 0.5f) : (centideg - 0.5f);

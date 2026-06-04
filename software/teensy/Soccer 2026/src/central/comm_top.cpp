@@ -13,15 +13,24 @@ namespace {
 FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
 uint32_t g_bytes_received = 0;  // DIAG: bytes crudos leidos de Serial7 (link TOP->CENTRAL)
+uint32_t g_snapshot_size_rejects = 0;  // CC-01: WorldSnapshot con tamano != schema (deploy v2/v3 desfasado)
 
 constexpr long UART_BAUD = 230400;
 
 void handle_frame(const Frame& f) {
     g_frames_received++;
-    if (f.type == MsgType::WORLD_SNAPSHOT && f.payload_len == sizeof(WorldSnapshot)) {
-        WorldSnapshot snap{};
-        memcpy(&snap, f.payload, sizeof(WorldSnapshot));
-        world_model_apply_snapshot(snap);
+    if (f.type == MsgType::WORLD_SNAPSHOT) {
+        if (f.payload_len == sizeof(WorldSnapshot)) {
+            WorldSnapshot snap{};
+            memcpy(&snap, f.payload, sizeof(WorldSnapshot));
+            world_model_apply_snapshot(snap);
+        } else {
+            // CC-01 (eval 2026-06-04): llego un WorldSnapshot con tamano distinto
+            // al schema compilado -> una placa quedo con firmware viejo tras un
+            // deploy wire-breaking (v2/v3). Sin este contador, en el pit se ve
+            // IGUAL que "sin link". Se expone en la telemetria DIAG (badsz=).
+            g_snapshot_size_rejects++;
+        }
     }
 }
 
@@ -52,5 +61,6 @@ uint32_t comm_top_get_frames_received() { return g_frames_received; }
 uint32_t comm_top_get_crc_errors()      { return g_decoder.crc_errors(); }
 uint32_t comm_top_get_bytes_received()  { return g_bytes_received; }
 uint32_t comm_top_get_resync_events()   { return g_decoder.resync_events(); }
+uint32_t comm_top_get_snapshot_size_rejects() { return g_snapshot_size_rejects; }
 
 }  // namespace iitasoccer

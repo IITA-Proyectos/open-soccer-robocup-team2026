@@ -171,6 +171,8 @@ void loop() {
         Serial.print(comm_top_get_crc_errors());
         Serial.print(" rsy=");
         Serial.print(comm_top_get_resync_events());  // #25: resyncs = byte-slip/ruido del link
+        Serial.print(" badsz=");
+        Serial.print(comm_top_get_snapshot_size_rejects());  // CC-01: snapshots con tamano != schema (deploy v2/v3 desfasado)
         Serial.print("]");
         Serial.print(" line_fresh=");
         Serial.print(world_model_line_is_fresh() ? "Y" : "N");

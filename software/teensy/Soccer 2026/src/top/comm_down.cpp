@@ -1,4 +1,5 @@
 #include "comm_down.h"
+#include "comm_arbiter.h"   // LinkSeqTracker / link_seq_track (P1-SEQ-LINK-HEALTH)
 #include "config_top.h"
 #include "proto.h"
 #include "line_view.h"
@@ -13,6 +14,7 @@ namespace {
 FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
 uint8_t  g_send_seq = 0;
+LinkSeqTracker g_seq{};   // gap de SEQ del enlace DOWN→TOP (P1-SEQ-LINK-HEALTH)
 
 // Estado más reciente.
 LineStatusV2 g_line{};
@@ -66,8 +68,33 @@ void handle_frame(const Frame& f) {
 
 }  // namespace
 
+// Buffer RX extra para el enlace DOWN→TOP (P0-LOOP-HCSR04 parcial, Arduino-only).
+//
+// El ring RX por defecto de HardwareSerial (Teensy 4.x) es de 64 bytes. A 230400
+// baud entran ~23 B/ms, así que 64 B se llenan en ~2.8 ms: si el loop se bloquea
+// (p.ej. el pulseIn del HC-SR04 ~12 ms), el ring se desborda en SILENCIO y se
+// pierde odometría OTOS sin disparar LOST. addMemoryForRead() amplía ese ring con
+// un buffer estático nuestro (512 B ≈ ~22 ms de aire @230400) → absorbe el bloqueo
+// sin perder bytes. Es ADITIVO (no toca el path de decodificación) y no cambia el
+// contrato de wire. La causa raíz (pulseIn bloqueante) la trata TASK-014 por otro
+// lado; esto es el colchón de bajo riesgo recomendado en paralelo.
+//
+// El tamaño debe ser múltiplo del tamaño interno de Teensy (8 B); 512 lo es.
+// Guardado por macro para no asumir la API en builds host (este .cpp no compila
+// host hoy, pero el guard documenta la dependencia de plataforma).
+#ifndef DOWN_RX_EXTRA_BYTES
+#define DOWN_RX_EXTRA_BYTES 512
+#endif
+static uint8_t g_down_rx_extra[DOWN_RX_EXTRA_BYTES];
+
 void comm_down_init() {
     Serial1.begin(UART_FROM_DOWN_BAUD);
+#if defined(__IMXRT1062__) || defined(CORE_TEENSY)
+    // Teensy 4.x: agranda el ring RX con nuestro buffer estático (Arduino-only).
+    Serial1.addMemoryForRead(g_down_rx_extra, sizeof(g_down_rx_extra));
+#else
+    (void)g_down_rx_extra;
+#endif
 }
 
 int comm_down_tick() {
@@ -75,7 +102,9 @@ int comm_down_tick() {
     while (Serial1.available() > 0) {
         const uint8_t b = static_cast<uint8_t>(Serial1.read());
         if (g_decoder.feed(b)) {
-            handle_frame(g_decoder.get_frame());
+            const Frame& f = g_decoder.get_frame();
+            link_seq_track(g_seq, f.seq);   // salud del enlace DOWN→TOP por SEQ
+            handle_frame(f);
             processed++;
         }
     }
@@ -115,5 +144,6 @@ const Velocity2D& comm_down_get_velocity() { return g_vel; }
 
 uint32_t comm_down_get_frames_received() { return g_frames_received; }
 uint32_t comm_down_get_crc_errors()      { return g_decoder.crc_errors(); }
+uint32_t comm_down_get_frames_lost()     { return g_seq.lost; }
 
 }  // namespace iitasoccer

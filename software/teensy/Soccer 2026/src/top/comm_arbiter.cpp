@@ -12,6 +12,7 @@ namespace {
 FrameDecoder g_decoder;
 uint8_t      g_send_seq = 0;
 uint32_t     g_frames_received = 0;   // frames validos decodificados desde COMM (salud del enlace)
+LinkSeqTracker g_seq{};               // gap de SEQ por enlace COMM (P1-SEQ-LINK-HEALTH)
 
 RefereeCommand g_last_cmd = RefereeCommand::UNKNOWN;
 uint32_t       g_last_cmd_ms = 0;
@@ -19,8 +20,13 @@ uint32_t       g_last_cmd_ms = 0;
 PartnerSnapshot g_partner{};
 uint32_t        g_partner_last_rx_ms = 0;
 
-// El "match running" refleja el NIVEL GPIO del arbitro (ver read_referee_gpio).
+// El "match running" refleja el NIVEL GPIO del arbitro DEBOUNCEADO (ver read_referee_gpio).
 bool g_match_running = false;
+
+// Máquina de debounce por estabilidad (P1-ARB-DEBOUNCE). La lógica vive en
+// comm_arbiter.h (RefereeDebounce / referee_debounce_update), host-testeable;
+// acá solo le pasamos digitalRead()+millis(). Arranca en STOP (fail-safe).
+RefereeDebounce g_ref_debounce{};
 
 // === Arbitro = NIVEL GPIO (no UART). CONFIRMADO EN BANCO 2026-06-02 (TASK-039). ===
 // El modulo COMM oficial RCJ entrega el estado de juego como NIVEL LOGICO en 2 pines del
@@ -35,8 +41,13 @@ constexpr uint8_t PIN_REFEREE_A = 5;   // OUT1
 constexpr uint8_t PIN_REFEREE_B = 6;   // OUT2
 
 void read_referee_gpio() {
-    const bool go = (digitalRead(PIN_REFEREE_A) == HIGH) ||
-                    (digitalRead(PIN_REFEREE_B) == HIGH);
+    // Nivel crudo = OR de los 2 pines (ver bloque de arriba).
+    const bool raw = (digitalRead(PIN_REFEREE_A) == HIGH) ||
+                     (digitalRead(PIN_REFEREE_B) == HIGH);
+    // DEBOUNCE por estabilidad (P1-ARB-DEBOUNCE): el crudo debe sostenerse
+    // REFEREE_DEBOUNCE_MS antes de mover el estado OFICIAL. Filtra glitches de EMI
+    // de los motores que de otro modo darían START espurio en STOP (penalizable).
+    const bool go = referee_debounce_update(g_ref_debounce, raw, millis());
     const RefereeCommand cmd = go ? RefereeCommand::START : RefereeCommand::STOP;
     if (cmd != g_last_cmd) {        // sella el instante del ultimo CAMBIO de estado
         g_last_cmd    = cmd;
@@ -80,7 +91,9 @@ int comm_arbiter_tick() {
     while (Serial2.available() > 0) {
         const uint8_t b = static_cast<uint8_t>(Serial2.read());
         if (g_decoder.feed(b)) {
-            handle_frame(g_decoder.get_frame());
+            const Frame& f = g_decoder.get_frame();
+            link_seq_track(g_seq, f.seq);   // salud del enlace por SEQ (P1-SEQ-LINK-HEALTH)
+            handle_frame(f);
             g_frames_received++;
             processed++;
         }
@@ -93,6 +106,7 @@ RefereeCommand comm_arbiter_get_last_command()      { return g_last_cmd; }
 uint32_t       comm_arbiter_get_last_command_ms()   { return g_last_cmd_ms; }
 bool           comm_arbiter_is_match_running()      { return g_match_running; }
 uint32_t       comm_arbiter_get_frames_received()   { return g_frames_received; }
+uint32_t       comm_arbiter_get_frames_lost()       { return g_seq.lost; }
 
 void comm_arbiter_send_status(uint8_t role, uint8_t error_flags, uint16_t battery_mv) {
     struct StatusReply {

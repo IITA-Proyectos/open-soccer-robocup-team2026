@@ -1,4 +1,5 @@
 #include "comm_central.h"
+#include "comm_arbiter.h"   // LinkSeqTracker / link_seq_track (P1-SEQ-LINK-HEALTH)
 #include "proto.h"
 
 #include <Arduino.h>
@@ -12,6 +13,7 @@ FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
 uint32_t g_frames_sent = 0;
 uint8_t  g_send_seq = 0;
+LinkSeqTracker g_seq{};   // gap de SEQ del enlace CENTRAL→TOP (RX) (P1-SEQ-LINK-HEALTH)
 
 constexpr long UART_BAUD = 230400;
 
@@ -40,7 +42,9 @@ int comm_central_tick() {
     while (Serial4.available() > 0) {
         const uint8_t b = static_cast<uint8_t>(Serial4.read());
         if (g_decoder.feed(b)) {
-            handle_frame(g_decoder.get_frame());
+            const Frame& f = g_decoder.get_frame();
+            link_seq_track(g_seq, f.seq);   // salud del enlace CENTRAL→TOP por SEQ
+            handle_frame(f);
             processed++;
         }
     }
@@ -64,5 +68,6 @@ void comm_central_send_snapshot(const WorldSnapshot& snap) {
 
 uint32_t comm_central_get_frames_sent()     { return g_frames_sent; }
 uint32_t comm_central_get_frames_received() { return g_frames_received; }
+uint32_t comm_central_get_frames_lost()     { return g_seq.lost; }
 
 }  // namespace iitasoccer

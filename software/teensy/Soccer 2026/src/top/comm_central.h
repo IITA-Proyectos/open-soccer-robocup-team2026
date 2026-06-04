@@ -17,5 +17,9 @@ void comm_central_send_snapshot(const WorldSnapshot& snap);
 
 uint32_t comm_central_get_frames_sent();
 uint32_t comm_central_get_frames_received();
+// Frames presumiblemente perdidos en RX desde CENTRAL (gap de SEQ acumulado).
+// SE SOLAPA con crc_errors del decoder (ver LinkSeqTracker en comm_arbiter.h).
+// (P1-SEQ-LINK-HEALTH)
+uint32_t comm_central_get_frames_lost();
 
 }  // namespace iitasoccer

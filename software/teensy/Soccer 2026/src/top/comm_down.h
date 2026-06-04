@@ -39,5 +39,8 @@ const Velocity2D& comm_down_get_velocity();
 // Estadísticas:
 uint32_t comm_down_get_frames_received();
 uint32_t comm_down_get_crc_errors();
+// Frames presumiblemente perdidos en el enlace DOWN→TOP (gap de SEQ acumulado).
+// SE SOLAPA con crc_errors (ver LinkSeqTracker en comm_arbiter.h). (P1-SEQ-LINK-HEALTH)
+uint32_t comm_down_get_frames_lost();
 
 }  // namespace iitasoccer

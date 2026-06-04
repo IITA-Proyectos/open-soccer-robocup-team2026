@@ -26,10 +26,11 @@ requested-by: "Gustavo Viollaz (@gviollaz)"
 >
 > **Fuentes de verdad usadas:** flujo de datos = `docs/MAPA-DE-DATOS.md` (al día,
 > 2026-06-03). FSM = estados y transiciones REALES de
-> `software/teensy/Soccer 2026/src/central/strategy.cpp`. Los nombres del poster en
-> prosa (`SEARCH→APPROACH→PUSH`, `PATROL→INTERCEPT→CLEAR`) son un **resumen**; estos
-> diagramas muestran **todos** los estados que existen en el código (incluidos
-> `WAIT_START`, `KICKOFF`, `POSITION`, `LINE_AVOID`).
+> `software/teensy/Soccer 2026/src/central/strategy.cpp`. Estos diagramas muestran
+> **todos** los estados REALES del código — delantero: `WAIT_START`, `KICKOFF`,
+> `SEARCH`, `POSITION`, `APPROACH`, `LINE_AVOID`; arquero: `WAIT_START`, `PATROL`,
+> `INTERCEPT`, `CLEAR`, `LINE_AVOID`. **No existe un estado `PUSH`**: el empuje al
+> arco ocurre dentro de `APPROACH` (y el despeje del arquero, dentro de `CLEAR`).
 
 ---
 

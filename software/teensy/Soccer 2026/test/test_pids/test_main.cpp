@@ -210,6 +210,19 @@ void test_omega_centideg_no_sign_flip_above_327deg(void) {
     TEST_ASSERT_EQUAL_INT16(32767, out);  // saturado al tope
 }
 
+void test_omega_centideg_nan_returns_zero(void) {
+    // SC-01 (eval 2026-06-04): un heading corrupto del BNO puede producir NaN.
+    // Sin la guarda, (int16_t)NaN es UB y mete basura al motor. ω = NaN ⇒ 0.
+    const float nan_val = std::nan("");
+    TEST_ASSERT_EQUAL_INT16(0, omega_degps_to_centideg(nan_val));
+}
+
+void test_omega_centideg_inf_saturates(void) {
+    // ±Inf no es el caso que la guarda NaN cubre, pero los clamps lo saturan.
+    TEST_ASSERT_EQUAL_INT16(32767, omega_degps_to_centideg(INFINITY));
+    TEST_ASSERT_EQUAL_INT16(-32767, omega_degps_to_centideg(-INFINITY));
+}
+
 // ============================================================================
 // LateralPID
 // ============================================================================
@@ -298,6 +311,8 @@ int main(int, char**) {
     RUN_TEST(test_omega_centideg_normal_value_rounds_and_keeps_sign);
     RUN_TEST(test_omega_centideg_zero);
     RUN_TEST(test_omega_centideg_no_sign_flip_above_327deg);
+    RUN_TEST(test_omega_centideg_nan_returns_zero);
+    RUN_TEST(test_omega_centideg_inf_saturates);
 
     // LateralPID
     RUN_TEST(test_lateral_pid_zero_error_zero_output);

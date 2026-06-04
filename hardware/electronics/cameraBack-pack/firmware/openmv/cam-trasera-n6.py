@@ -145,8 +145,10 @@ def transformar(u, v):
     X = max(-100, min(100, X))
     Y = max(-100, min(100, Y))
 
-    X_coded = int(X) + COORD_OFFSET              # ∈ [0, 200] (símetrico a Y)
-    Y_coded = int(Y) + COORD_OFFSET              # ∈ [0, 200]
+    X_coded = round(X) + COORD_OFFSET            # ∈ [0, 200] (símetrico a Y)
+    Y_coded = round(Y) + COORD_OFFSET            # ∈ [0, 200]
+    # VIS-02 (eval 2026-06-04): round() (al entero más cercano) en vez de int()
+    # (trunca hacia cero) → simetría +X/-X correcta. El clamp uint8 de abajo cubre el rango.
     # Clamp uint8 final → anti-crash en bytearray. Nunca llega al SENTINEL (255).
     X_coded = max(0, min(200, X_coded))
     Y_coded = max(0, min(200, Y_coded))

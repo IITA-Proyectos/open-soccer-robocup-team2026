@@ -113,6 +113,14 @@ bool FrameDecoder::feed(uint8_t byte) {
             frames_decoded_++;
             return true;
         }
+
+        default:
+            // Estado inesperado (corrupción de `state_`): rearmar el decoder a
+            // un punto conocido en vez de quedar atascado. Hoy INALCANZABLE
+            // (todos los estados del enum están cubiertos arriba); red de
+            // seguridad de mantenibilidad (SI-03, eval 2026-06-04).
+            reset();
+            return false;
     }
     return false;
 }

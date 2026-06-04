@@ -68,6 +68,10 @@ void motors_apply_command(const MotorCommand& cmd) {
 
     for (int i = 0; i < 3; ++i) {
         int pwm = wheel_speed_to_pwm(ws.wheel[i], MAX_SPEED_MM_S, MAX_PWM);
+        // Piso de PWM (deadzone compensation): a vx/vy bajos el PWM cae en la zona
+        // muerta del motor y raspa/stalled. Con MOTOR_MIN_PWM>0 (banco) lo eleva al
+        // piso. DEFAULT MOTOR_MIN_PWM=0 → no-op → binario de competencia idéntico.
+        pwm = apply_pwm_floor(pwm, MOTOR_MIN_PWM, MOTOR_PWM_NOISE_THRESH);
         apply_pwm_to_motor(i, pwm);
     }
 }

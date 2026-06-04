@@ -1,61 +1,99 @@
-// ═══════════════════════════════════════════════════════════════════════════
-//  ⚠️  SNAPSHOT v1 SUPERADO — NO ES LA FUENTE NI EL BUILD PATH  ⚠️
-//
-//  Esta es una copia foto-curada (2026-05-24) del parser de cámaras en su
-//  versión v1: 9 bytes/packet, X SIN offset, sentinel (X=0 & Y=-100), SIN CRC.
-//  Quedó STALE: el contrato cámara→TOP saltó a v2 el 2026-06-03 (commit d230de5)
-//  y esta copia NO se actualizó al v2.
-//
-//  Contrato VIVO v2: 11 bytes/packet · X e Y simétricos (coded = valor + 100) ·
-//  sentinel = 255 · CRC8 (XOR de los 9 bytes de datos) + END = 254.
-//
-//  FUENTE CANÓNICA (lo que compila/flashea PlatformIO env top_robot1/2):
-//      software/teensy/Soccer 2026/src/top/cameras.{cpp,h}
-//  CONTRATO CANÓNICO:
-//      docs/firmware/CONTRATO-DATOS-CAMARAS.md
-//
-//  NO compiles ni flashees desde este archivo. Si contradice el repo vivo,
-//  gana el repo vivo (regla de oro del pack — ver README.md del pack).
-// ═══════════════════════════════════════════════════════════════════════════
+// ============================================================================
+// ⚠️  MIRROR GENERADO — NO EDITAR ACÁ.
+// Copia byte-a-byte del fuente CANÓNICO que compila PlatformIO:
+//     software/teensy/Soccer 2026/src/top/cameras.h
+// Ningún build usa este archivo: platformio.ini compila src/top + src/shared,
+// no hardware/. Vive en un "pack autocontenido" sólo como referencia para
+// programar la placa. Si cambia el parser, editá el CANÓNICO en src/top y
+// re-sincronizá este mirror (NO al revés).
+// Contrato: v2 (contract-schema 2 — 11 bytes, CRC8 + END). Sincronizado: 2026-06-04.
+// Doc del contrato: docs/firmware/CONTRATO-DATOS-CAMARAS.md
+// ============================================================================
 
-// cameras.h — Parser robusto del protocolo viejo de OpenMV (9 bytes con headers 201/202/203)
+// cameras.h — Parser robusto del protocolo de las cámaras OpenMV N6 → placa TOP.
 //
-// Decisión del coach (Q6, 2026-05-10): mantener protocolo viejo del firmware OpenMV
-// inicialmente. La robustez se implementa en el receptor (este parser en el TOP)
-// porque tocar el OpenMV está fuera de scope para Hito 1.
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║ CONTRATO v2 (contract-schema: 2) — 11 bytes por packet. TOCA EL WIRE.      ║
+// ║ Re-flashear AMBAS cámaras (cam-frontal-n6.py / cam-trasera-n6.py) + TOP    ║
+// ║ en el MISMO deploy + validar en banco. NO es regresión-segura por sí solo. ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
 //
-// Lecciones aplicadas de docs/internal/analisis-definitivo-delantero.md:
-//   • BUG 1   — sin sincronización robusta. Solución: state machine que descarta bytes
-//               basura hasta encontrar HEADER1 (201). Si se desincroniza al medio del
-//               packet (HEADER2 o HEADER3 no esperados), reinicia búsqueda.
-//   • BUG R6  — valores que coinciden con headers. Mitigación: validamos los 3 headers
-//               (201/202/203) en posiciones fijas; si fallan, descartamos packet.
-//   • T2      — Xp == 0 interpretado como "no pelota". Mitigación parcial: marcamos
-//               un objeto como "no visible" SÓLO cuando AMBOS X e Y son 0 (sentinel
-//               del firmware OpenMV viejo). La pelota en el centro exacto pierde un
-//               frame pero no se interpreta como ausente.
+// Historia:
+//   • v1 (contract-schema 1): 9 bytes [201,Xp,Ypc,202,Xam,Yamc,203,Xaz,Yazc].
+//     - X SIN offset (0..200) e Y CON offset (+100). ASIMÉTRICO: X<0 (pelota a la
+//       IZQUIERDA) se clampeaba a 0 y el TOP la leía "al frente". La mitad
+//       izquierda del FOV se perdía (research/2026-06-03-eje-x-codificacion-
+//       asimetrica-vision.md, opción A).
+//     - Sentinel "no detectado" = (X=0, Y_coded=0) → Y=-100. Frágil: colisiona con
+//       un objeto real en (X=0, Y=-100); y X=0 es además una columna válida.
+//     - Sin CRC ni byte de fin: un bit-flip o un dato == header desincronizaba
+//       (bug R6).
 //
-// Layout del protocolo viejo (9 bytes por packet):
+//   • v2 (este archivo): resuelve las 3 cosas de una sola vez (revisión coherente):
+//       (a) EJE-X SIMÉTRICO: X se codifica IGUAL que Y → X_coded = X + 100
+//           (X ∈ [-100,100] → 0..200). El parser hace ball_x = byte - 100, igual
+//           que con Y. La pelota a la izquierda (X<0) ya es representable.
+//       (b) SENTINEL INEQUÍVOCO: "no detectado" = (X_coded=255, Y_coded=255).
+//           Un objeto real codifica ambos en [0,200] (clamp), así que 255 es
+//           INALCANZABLE desde una detección → cero colisión. (Antes el sentinel
+//           podía chocar con un objeto real en el borde del FOV.)
+//       (c) INTEGRIDAD: se agregan 2 bytes al final → CRC8 (XOR de los 9 bytes de
+//           datos) + END (254). El parser valida los 3 headers en posición fija,
+//           el END en posición fija y el CRC; si algo falla DESCARTA el frame y
+//           cuenta crc_errors / resync_events. Detecta bit-flips y datos==header.
 //
-//   byte 0: 201          (HEADER1, sync)
-//   byte 1: Xp           (coordenada X de la pelota, 0..200)
-//   byte 2: Yp_coded     (coordenada Y de la pelota codificada como Y + 100)
-//   byte 3: 202          (HEADER2, sync)
-//   byte 4: Xam          (coordenada X del arco amarillo)
-//   byte 5: Yam_coded    (Y + 100)
-//   byte 6: 203          (HEADER3, sync)
-//   byte 7: Xaz          (coordenada X del arco azul)
-//   byte 8: Yaz_coded    (Y + 100)
+// Layout del protocolo v2 (11 bytes por packet):
 //
-// El receptor decodifica Y = Y_coded - 100 para recuperar el signo.
+//   byte  0: 201          (HEADER1, sync pelota)
+//   byte  1: Xp_coded     (X pelota + 100, uint8, datos ∈ [0,200] | 255 = sentinel)
+//   byte  2: Yp_coded     (Y pelota + 100, uint8, datos ∈ [0,200] | 255 = sentinel)
+//   byte  3: 202          (HEADER2, sync arco amarillo)
+//   byte  4: Xam_coded    (X arco amarillo + 100)
+//   byte  5: Yam_coded    (Y arco amarillo + 100)
+//   byte  6: 203          (HEADER3, sync arco azul)
+//   byte  7: Xaz_coded    (X arco azul + 100)
+//   byte  8: Yaz_coded    (Y arco azul + 100)
+//   byte  9: CRC8         (XOR de los bytes 0..8 inclusive)
+//   byte 10: 254          (END, fin de trama)
+//
+// El receptor decodifica X = X_coded - 100 e Y = Y_coded - 100 para recuperar el
+// signo. "No visible" para un objeto ⇔ sus dos bytes coded valían 255 (sentinel).
+//
+// Rangos / por qué no hay colisión de bytes:
+//   - coords coded ∈ [0,200]   (clamp en la cámara)
+//   - headers       = 201/202/203
+//   - END           = 254
+//   - SENTINEL byte = 255
+//   ⇒ ningún dato de coordenada real puede valer 201/202/203/254/255. El CRC es
+//     el único byte que puede tomar cualquier valor [0,255]; por eso se valida
+//     ANTES de aceptar el packet, no por posición de sync.
 
 #pragma once
 #include <stdint.h>
 
 namespace iitasoccer {
 
+// === Constantes del contrato v2 (públicas: las usan parser, tests y doc) ===
+constexpr uint8_t CAM_HEADER1     = 201;   // sync pelota
+constexpr uint8_t CAM_HEADER2     = 202;   // sync arco amarillo
+constexpr uint8_t CAM_HEADER3     = 203;   // sync arco azul
+constexpr uint8_t CAM_END_BYTE    = 254;   // fin de trama (0xFE)
+constexpr uint8_t CAM_SENTINEL    = 255;   // byte coded == 255 ⇒ objeto no detectado
+constexpr int16_t CAM_COORD_OFFSET = 100;  // coded = valor + 100 (X e Y por igual)
+constexpr int     CAM_PACKET_LEN  = 11;    // bytes por packet v2
+
+// CRC del contrato: XOR de los 9 bytes de datos (headers + coords, bytes 0..8).
+// Simple y determinista; detecta cualquier bit-flip de 1 bit y la mayoría de los
+// múltiples. No es CRC16 polinómico a propósito: 1 byte mantiene el packet corto
+// y el parser trivial de auditar. Si en el futuro se quiere CRC16, sube schema.
+inline uint8_t cam_crc8(const uint8_t* data9) {
+    uint8_t c = 0;
+    for (int i = 0; i < 9; ++i) c ^= data9[i];
+    return c;
+}
+
 struct CameraPacket {
-    // Coordenadas decodificadas (Y ya tiene su offset de 100 restado)
+    // Coordenadas decodificadas (offset de 100 ya restado en AMBOS ejes).
     int16_t ball_x;
     int16_t ball_y;
     int16_t goal_yellow_x;
@@ -63,7 +101,8 @@ struct CameraPacket {
     int16_t goal_blue_x;
     int16_t goal_blue_y;
 
-    // Flags de visibilidad (heurística: X == 0 AND Y == 0 → no visible)
+    // Flags de visibilidad. Un objeto es "no visible" ⇔ sus dos bytes coded eran
+    // 255 (sentinel). Ya NO se infiere de (x==0 && y==-100): eso era frágil en v1.
     bool ball_visible;
     bool goal_yellow_visible;
     bool goal_blue_visible;
@@ -75,16 +114,18 @@ class CameraParser {
 public:
     CameraParser();
 
-    // Alimenta un byte recibido por UART. Retorna true cuando completa
-    // un packet válido (los 3 headers se validaron OK).
+    // Alimenta un byte recibido por UART. Retorna true SOLO cuando completa un
+    // packet válido: los 3 headers, el byte END y el CRC chequearon OK. Un frame
+    // con header/END/CRC malo NO actualiza get_packet() y cuenta como error.
     bool feed(uint8_t byte);
 
-    // Último packet decodificado. Válido solo después de que feed() retornó true.
+    // Último packet decodificado VÁLIDO. Solo cambia cuando feed() retornó true.
     const CameraPacket& get_packet() const;
 
     // Estadísticas:
     uint32_t packets_decoded() const { return packets_decoded_; }
-    uint32_t resync_events() const   { return resync_events_; }
+    uint32_t resync_events()   const { return resync_events_; }
+    uint32_t crc_errors()      const { return crc_errors_; }
 
     void reset();
 
@@ -99,12 +140,25 @@ private:
         WAIT_HEADER3,
         READ_BLUE_X,
         READ_BLUE_Y,
+        READ_CRC,
+        WAIT_END,
     };
 
-    State state_;
-    CameraPacket packet_;
+    // Decodifica un coord byte → valor con signo; setea visible=false si == sentinel.
+    static int16_t decode_coord(uint8_t coded);
+
+    // Resync: registra el evento y reposiciona el FSM (re-lock si el byte es HEADER1).
+    void on_resync(uint8_t byte);
+
+    State    state_;
+    CameraPacket packet_;        // último packet VÁLIDO publicado
+    uint8_t  buf_[CAM_PACKET_LEN]; // bytes 0..8 crudos del frame en curso (para CRC)
+    uint8_t  rx_crc_;            // CRC recibido (byte 9)
+    bool     ball_vis_, yellow_vis_, blue_vis_;  // visibilidad del frame en curso
+    int16_t  ball_x_, ball_y_, yellow_x_, yellow_y_, blue_x_, blue_y_;  // decod. en curso
     uint32_t packets_decoded_;
     uint32_t resync_events_;
+    uint32_t crc_errors_;
 };
 
 }  // namespace iitasoccer

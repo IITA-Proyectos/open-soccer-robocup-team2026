@@ -1,114 +1,148 @@
-// ═══════════════════════════════════════════════════════════════════════════
-//  ⚠️  SNAPSHOT v1 SUPERADO — NO ES LA FUENTE NI EL BUILD PATH  ⚠️
-//
-//  Esta es una copia foto-curada (2026-05-24) del parser de cámaras en su
-//  versión v1: 9 bytes/packet, X SIN offset, sentinel (X=0 & Y=-100), SIN CRC.
-//  Quedó STALE: el contrato cámara→TOP saltó a v2 el 2026-06-03 (commit d230de5)
-//  y esta copia NO se actualizó al v2.
-//
-//  Contrato VIVO v2: 11 bytes/packet · X e Y simétricos (coded = valor + 100) ·
-//  sentinel = 255 · CRC8 (XOR de los 9 bytes de datos) + END = 254.
-//
-//  FUENTE CANÓNICA (lo que compila/flashea PlatformIO env top_robot1/2):
-//      software/teensy/Soccer 2026/src/top/cameras.{cpp,h}
-//  CONTRATO CANÓNICO:
-//      docs/firmware/CONTRATO-DATOS-CAMARAS.md
-//
-//  NO compiles ni flashees desde este archivo. Si contradice el repo vivo,
-//  gana el repo vivo (regla de oro del pack — ver README.md del pack).
-// ═══════════════════════════════════════════════════════════════════════════
+// ============================================================================
+// ⚠️  MIRROR GENERADO — NO EDITAR ACÁ.
+// Copia byte-a-byte del fuente CANÓNICO que compila PlatformIO:
+//     software/teensy/Soccer 2026/src/top/cameras.cpp
+// Ningún build usa este archivo: platformio.ini compila src/top + src/shared,
+// no hardware/. Vive en un "pack autocontenido" sólo como referencia para
+// programar la placa. Si cambia el parser, editá el CANÓNICO en src/top y
+// re-sincronizá este mirror (NO al revés).
+// Contrato: v2 (contract-schema 2 — 11 bytes, CRC8 + END). Sincronizado: 2026-06-04.
+// Doc del contrato: docs/firmware/CONTRATO-DATOS-CAMARAS.md
+// ============================================================================
 
 #include "cameras.h"
 
 namespace iitasoccer {
 
-namespace {
-constexpr uint8_t HEADER1 = 201;
-constexpr uint8_t HEADER2 = 202;
-constexpr uint8_t HEADER3 = 203;
-constexpr int16_t Y_OFFSET = 100;  // protocolo viejo codifica Y como (Y + 100)
-
-// Heurística de visibilidad del protocolo viejo:
-// OpenMV firmware viejo envía (X=0, Y_coded=0) cuando no detecta el objeto.
-// Después del offset, Y_coded=0 → Y=-100. Así que "no visible" = X==0 AND Y==-100.
-inline bool is_visible(int16_t x, int16_t y) {
-    return !(x == 0 && y == -Y_OFFSET);
+// Decodifica un byte coded → coordenada con signo (offset -100). Si el byte es el
+// SENTINEL (255), retorna 0 y el caller marca el objeto como no visible; el valor
+// numérico es irrelevante en ese caso (visible=false lo desactiva aguas abajo).
+int16_t CameraParser::decode_coord(uint8_t coded) {
+    if (coded == CAM_SENTINEL) return 0;
+    return static_cast<int16_t>(coded) - CAM_COORD_OFFSET;
 }
-}  // namespace
 
 CameraParser::CameraParser()
     : state_(State::WAIT_HEADER1),
+      rx_crc_(0),
+      ball_vis_(false), yellow_vis_(false), blue_vis_(false),
+      ball_x_(0), ball_y_(0), yellow_x_(0), yellow_y_(0), blue_x_(0), blue_y_(0),
       packets_decoded_(0),
-      resync_events_(0) {
+      resync_events_(0),
+      crc_errors_(0) {
     packet_ = CameraPacket{};
+    for (int i = 0; i < CAM_PACKET_LEN; ++i) buf_[i] = 0;
 }
 
 void CameraParser::reset() {
     state_ = State::WAIT_HEADER1;
 }
 
+void CameraParser::on_resync(uint8_t byte) {
+    resync_events_++;
+    // Si el byte inesperado es HEADER1, ya estamos re-sincronizando desde el inicio
+    // de un nuevo frame; arrancamos a leer la pelota. Si no, volvemos a buscar sync.
+    if (byte == CAM_HEADER1) {
+        buf_[0] = CAM_HEADER1;
+        state_ = State::READ_BALL_X;
+    } else {
+        state_ = State::WAIT_HEADER1;
+    }
+}
+
 bool CameraParser::feed(uint8_t byte) {
     switch (state_) {
         case State::WAIT_HEADER1:
-            if (byte == HEADER1) {
+            if (byte == CAM_HEADER1) {
+                buf_[0] = byte;
                 state_ = State::READ_BALL_X;
             }
-            // Cualquier otro byte se descarta silenciosamente — resync natural.
+            // Cualquier otro byte se descarta silenciosamente — resync natural,
+            // sin contar (basura pre-trama no es un error del enlace).
             return false;
 
         case State::READ_BALL_X:
-            packet_.ball_x = static_cast<int16_t>(byte);
+            buf_[1] = byte;
+            ball_x_ = decode_coord(byte);
+            ball_vis_ = (byte != CAM_SENTINEL);
             state_ = State::READ_BALL_Y;
             return false;
 
         case State::READ_BALL_Y:
-            packet_.ball_y = static_cast<int16_t>(byte) - Y_OFFSET;
+            buf_[2] = byte;
+            ball_y_ = decode_coord(byte);
+            // Visible solo si NINGUNO de los dos bytes fue sentinel.
+            ball_vis_ = ball_vis_ && (byte != CAM_SENTINEL);
             state_ = State::WAIT_HEADER2;
             return false;
 
         case State::WAIT_HEADER2:
-            if (byte != HEADER2) {
-                resync_events_++;
-                // Si por casualidad este byte es HEADER1, ya estamos sincronizando
-                // de nuevo desde el principio.
-                state_ = (byte == HEADER1) ? State::READ_BALL_X : State::WAIT_HEADER1;
-                return false;
-            }
+            if (byte != CAM_HEADER2) { on_resync(byte); return false; }
+            buf_[3] = byte;
             state_ = State::READ_YELLOW_X;
             return false;
 
         case State::READ_YELLOW_X:
-            packet_.goal_yellow_x = static_cast<int16_t>(byte);
+            buf_[4] = byte;
+            yellow_x_ = decode_coord(byte);
+            yellow_vis_ = (byte != CAM_SENTINEL);
             state_ = State::READ_YELLOW_Y;
             return false;
 
         case State::READ_YELLOW_Y:
-            packet_.goal_yellow_y = static_cast<int16_t>(byte) - Y_OFFSET;
+            buf_[5] = byte;
+            yellow_y_ = decode_coord(byte);
+            yellow_vis_ = yellow_vis_ && (byte != CAM_SENTINEL);
             state_ = State::WAIT_HEADER3;
             return false;
 
         case State::WAIT_HEADER3:
-            if (byte != HEADER3) {
-                resync_events_++;
-                state_ = (byte == HEADER1) ? State::READ_BALL_X : State::WAIT_HEADER1;
-                return false;
-            }
+            if (byte != CAM_HEADER3) { on_resync(byte); return false; }
+            buf_[6] = byte;
             state_ = State::READ_BLUE_X;
             return false;
 
         case State::READ_BLUE_X:
-            packet_.goal_blue_x = static_cast<int16_t>(byte);
+            buf_[7] = byte;
+            blue_x_ = decode_coord(byte);
+            blue_vis_ = (byte != CAM_SENTINEL);
             state_ = State::READ_BLUE_Y;
             return false;
 
         case State::READ_BLUE_Y:
-            packet_.goal_blue_y = static_cast<int16_t>(byte) - Y_OFFSET;
+            buf_[8] = byte;
+            blue_y_ = decode_coord(byte);
+            blue_vis_ = blue_vis_ && (byte != CAM_SENTINEL);
+            state_ = State::READ_CRC;
+            return false;
 
-            // Aplicar heurística de visibilidad (T2 mitigation)
-            packet_.ball_visible        = is_visible(packet_.ball_x, packet_.ball_y);
-            packet_.goal_yellow_visible = is_visible(packet_.goal_yellow_x, packet_.goal_yellow_y);
-            packet_.goal_blue_visible   = is_visible(packet_.goal_blue_x, packet_.goal_blue_y);
+        case State::READ_CRC:
+            rx_crc_ = byte;
+            state_ = State::WAIT_END;
+            return false;
 
+        case State::WAIT_END:
+            if (byte != CAM_END_BYTE) {
+                // Fin de trama corrupto → descartamos. Tratamos como resync.
+                on_resync(byte);
+                return false;
+            }
+            // END OK → validar CRC sobre los 9 bytes de datos.
+            if (cam_crc8(buf_) != rx_crc_) {
+                crc_errors_++;
+                state_ = State::WAIT_HEADER1;  // frame corrupto: descartar, NO publicar
+                return false;
+            }
+            // Frame íntegro → publicar el packet (atómico: recién acá tocamos packet_).
+            packet_.ball_x = ball_x_;
+            packet_.ball_y = ball_y_;
+            packet_.goal_yellow_x = yellow_x_;
+            packet_.goal_yellow_y = yellow_y_;
+            packet_.goal_blue_x = blue_x_;
+            packet_.goal_blue_y = blue_y_;
+            packet_.ball_visible = ball_vis_;
+            packet_.goal_yellow_visible = yellow_vis_;
+            packet_.goal_blue_visible = blue_vis_;
             packets_decoded_++;
             state_ = State::WAIT_HEADER1;
             return true;

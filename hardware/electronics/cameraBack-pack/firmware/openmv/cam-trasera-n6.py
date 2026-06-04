@@ -75,6 +75,12 @@ BALL_SHAPE_FILTER = True
 BALL_MIN_DENSITY = 0.45      # density = pixels / area del bounding box; < esto = rechazar
 BALL_ASPECT_MIN = 0.5       # w()/h() mínimo (redondo ≈ 1); fuera de rango = rechazar
 BALL_ASPECT_MAX = 2.0       # w()/h() máximo
+# REDONDEZ/circularidad — fit del círculo de OpenMV (b.roundness(), 0..1). La
+# pelota es esférica ⇒ roundness alto; reflejos/manchas naranjas del fondo son
+# irregulares ⇒ roundness bajo. Conservador y TUNEABLE en banco. ⚠️ Si la fw
+# 4.8.1 de la N6 NO expone roundness(), el try/except de is_ball_like lo ignora
+# (FAIL-OPEN, igual que aspect/density): mejor ver la pelota que crashear/filtrar.
+BALL_MIN_ROUNDNESS = 0.55    # b.roundness() < esto = rechazar (no esférico)
 
 # ROI OPCIONAL de pelota — DESACTIVADO por default (frame completo).
 # Un ROI que recorte la parte superior puede excluir horizonte/público y bajar
@@ -176,6 +182,12 @@ def is_ball_like(b):
         if aspect < BALL_ASPECT_MIN or aspect > BALL_ASPECT_MAX:
             return False
         if b.density() < BALL_MIN_DENSITY:
+            return False
+        # Redondez/circularidad (DENTRO del try → fail-open si la fw no la expone):
+        # OpenMV `roundness()` = fit del círculo en [0,1]. Rechaza naranjas no
+        # esféricos (reflejos, fondo) que envenenan la FSM. Si roundness() no
+        # existe en esta N6 (4.8.1), salta al except y NO filtra (= hoy).
+        if b.roundness() < BALL_MIN_ROUNDNESS:
             return False
         return True
     except Exception:

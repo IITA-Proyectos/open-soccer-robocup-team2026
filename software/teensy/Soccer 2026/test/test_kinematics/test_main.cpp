@@ -120,6 +120,53 @@ void test_saturate_wheels_no_op_when_within_limit(void) {
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 150.0f, ws.wheel[2]);
 }
 
+// ── apply_pwm_floor (deadzone compensation / piso de PWM) ───────────────────
+
+void test_pwm_floor_gate_off_is_noop(void) {
+    // min_pwm <= 0 → GATE OFF: cualquier pwm pasa SIN cambios (binario competencia).
+    TEST_ASSERT_EQUAL_INT(0,    apply_pwm_floor(0,    0, 0));
+    TEST_ASSERT_EQUAL_INT(5,    apply_pwm_floor(5,    0, 0));
+    TEST_ASSERT_EQUAL_INT(-5,   apply_pwm_floor(-5,   0, 0));
+    TEST_ASSERT_EQUAL_INT(200,  apply_pwm_floor(200,  0, 0));
+    TEST_ASSERT_EQUAL_INT(-255, apply_pwm_floor(-255, 0, 0));
+    // min_pwm negativo también es OFF (defensivo): no-op aunque noise_thresh sea >0.
+    TEST_ASSERT_EQUAL_INT(3,    apply_pwm_floor(3, -10, 50));
+}
+
+void test_pwm_floor_raises_small_to_min_positive(void) {
+    // 0 < pwm < min_pwm → se eleva al piso, signo positivo conservado.
+    TEST_ASSERT_EQUAL_INT(40, apply_pwm_floor(10, 40, 0));
+    TEST_ASSERT_EQUAL_INT(40, apply_pwm_floor(39, 40, 0));
+    TEST_ASSERT_EQUAL_INT(40, apply_pwm_floor(1,  40, 0));
+}
+
+void test_pwm_floor_raises_small_to_min_negative(void) {
+    // Mismo caso, signo negativo conservado.
+    TEST_ASSERT_EQUAL_INT(-40, apply_pwm_floor(-10, 40, 0));
+    TEST_ASSERT_EQUAL_INT(-40, apply_pwm_floor(-39, 40, 0));
+    TEST_ASSERT_EQUAL_INT(-40, apply_pwm_floor(-1,  40, 0));
+}
+
+void test_pwm_floor_noise_goes_to_zero(void) {
+    // |pwm| <= noise_thresh → 0 (ruido/comando despreciable, no zumba parado).
+    TEST_ASSERT_EQUAL_INT(0, apply_pwm_floor(0,   40, 5));
+    TEST_ASSERT_EQUAL_INT(0, apply_pwm_floor(5,   40, 5));
+    TEST_ASSERT_EQUAL_INT(0, apply_pwm_floor(-5,  40, 5));
+    TEST_ASSERT_EQUAL_INT(0, apply_pwm_floor(3,   40, 5));
+    // Justo por encima del ruido (6 > 5) pero por debajo del piso → sube al piso.
+    TEST_ASSERT_EQUAL_INT(40,  apply_pwm_floor(6,  40, 5));
+    TEST_ASSERT_EQUAL_INT(-40, apply_pwm_floor(-6, 40, 5));
+}
+
+void test_pwm_floor_large_pwm_untouched(void) {
+    // |pwm| >= min_pwm → intacto (signo incluido).
+    TEST_ASSERT_EQUAL_INT(40,   apply_pwm_floor(40,   40, 5));  // justo en el piso
+    TEST_ASSERT_EQUAL_INT(100,  apply_pwm_floor(100,  40, 5));
+    TEST_ASSERT_EQUAL_INT(-100, apply_pwm_floor(-100, 40, 5));
+    TEST_ASSERT_EQUAL_INT(255,  apply_pwm_floor(255,  40, 5));
+    TEST_ASSERT_EQUAL_INT(-255, apply_pwm_floor(-255, 40, 5));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_stop_command_all_wheels_zero);
@@ -133,5 +180,10 @@ int main(int, char**) {
     RUN_TEST(test_pwm_conversion_linear);
     RUN_TEST(test_saturate_wheels_preserves_direction);
     RUN_TEST(test_saturate_wheels_no_op_when_within_limit);
+    RUN_TEST(test_pwm_floor_gate_off_is_noop);
+    RUN_TEST(test_pwm_floor_raises_small_to_min_positive);
+    RUN_TEST(test_pwm_floor_raises_small_to_min_negative);
+    RUN_TEST(test_pwm_floor_noise_goes_to_zero);
+    RUN_TEST(test_pwm_floor_large_pwm_untouched);
     return UNITY_END();
 }

@@ -38,4 +38,16 @@ void saturate_wheels(WheelSpeeds& ws, float max_speed_mm_s) {
     }
 }
 
+int apply_pwm_floor(int pwm, int min_pwm, int noise_thresh) {
+    // GATE OFF: si no hay piso configurado, no tocar nada (binario de competencia idéntico).
+    if (min_pwm <= 0) return pwm;
+    const int mag = (pwm < 0) ? -pwm : pwm;
+    // Ruido / comando despreciable → apagar el motor.
+    if (mag <= noise_thresh) return 0;
+    // Por debajo del piso → elevar al piso conservando el signo.
+    if (mag < min_pwm) return (pwm < 0) ? -min_pwm : min_pwm;
+    // Suficiente PWM → intacto.
+    return pwm;
+}
+
 }  // namespace iitasoccer

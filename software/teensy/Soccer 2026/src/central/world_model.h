@@ -40,6 +40,19 @@ bool  world_model_ball_visible();
 float world_model_get_ball_x_mm();
 float world_model_get_ball_y_mm();
 
+// "Vi la pelota hace menos de window_ms" — ventana de gracia (origen: Delantero
+// 2025). Devuelve true si llegó un snapshot con ball_visible dentro de los
+// últimos window_ms (resta unsigned wrap-safe, mismo patrón que los _is_fresh
+// de arriba). Sirve para no saltar a SEARCH al primer frame sin detección
+// cuando la pelota titila entre frames.
+//
+// #16: ADITIVO y DORMIDO — ningún caller en strategy.cpp lo usa todavía, así que
+// NO cambia el binario de competencia. world_model_ball_visible() queda EXACTO
+// (instantáneo, sin ventana); este accessor es la verdad EXTENDIDA en el tiempo.
+// strategy.cpp lo consumirá en una etapa futura (gated). La ventana (300-500 ms)
+// se tunea en banco. Si nunca se vio la pelota (g_last_ball_seen_ms==0) → false.
+bool world_model_ball_recently_seen(uint16_t window_ms);
+
 // Velocidad de la pelota (mm/s, marco robot) del WorldSnapshot. 0 si N/A o quieta.
 // Lo usa el arquero (strategy GK_INTERCEPT) para anticipar vía ball_predict.
 int16_t world_model_get_ball_vx_mm_s();

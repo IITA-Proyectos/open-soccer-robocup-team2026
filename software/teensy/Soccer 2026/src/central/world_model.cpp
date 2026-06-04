@@ -10,6 +10,7 @@ WorldSnapshot g_snap{};
 LineStatusV2  g_line{};
 uint32_t g_snap_last_ms = 0;
 uint32_t g_line_last_ms = 0;
+uint32_t g_last_ball_seen_ms = 0;   // millis() del último snapshot con ball_visible (ventana de gracia; 0 = nunca vista)
 
 Pose2D     g_otos_pose{};
 Velocity2D g_otos_vel{};
@@ -31,6 +32,7 @@ void world_model_init() {
     g_line = LineStatusV2{};
     g_snap_last_ms = 0;
     g_line_last_ms = 0;
+    g_last_ball_seen_ms = 0;
     g_otos_pose = Pose2D{};
     g_otos_vel  = Velocity2D{};
     g_otos_last_ms = 0;
@@ -40,6 +42,14 @@ void world_model_init() {
 void world_model_apply_snapshot(const WorldSnapshot& snap) {
     g_snap = snap;
     g_snap_last_ms = millis();
+    // Ventana de gracia: sella el instante de la última detección de pelota.
+    // Sólo avanza cuando el snapshot trae ball_visible; si no, conserva el
+    // último timestamp para que world_model_ball_recently_seen() siga true
+    // unos ms tras un frame perdido (anti-titileo). NO afecta a
+    // world_model_ball_visible(), que sigue siendo instantáneo.
+    if (snap.ball_visible != 0) {
+        g_last_ball_seen_ms = g_snap_last_ms;
+    }
 }
 
 void world_model_apply_line(const LineStatusV2& line) {
@@ -60,6 +70,12 @@ float world_model_get_my_y_mm()             { return static_cast<float>(g_snap.m
 float world_model_get_my_heading_deg()      { return g_snap.my_heading_centideg / 100.0f; }
 
 bool  world_model_ball_visible()            { return g_snap.ball_visible != 0; }
+// Ventana de gracia (DORMIDO): true si vimos la pelota hace < window_ms. Mismo
+// patrón wrap-safe que world_model_*_is_fresh() (resta unsigned). g_last_ball_seen_ms==0
+// (nunca vista) → false. No toca world_model_ball_visible(), que queda instantáneo.
+bool  world_model_ball_recently_seen(uint16_t window_ms) {
+    return g_last_ball_seen_ms > 0 && (millis() - g_last_ball_seen_ms) < window_ms;
+}
 float world_model_get_ball_x_mm()           { return static_cast<float>(g_snap.ball_x_mm); }
 float world_model_get_ball_y_mm()           { return static_cast<float>(g_snap.ball_y_mm); }
 int16_t world_model_get_ball_vx_mm_s()      { return g_snap.ball_vx_mm_s; }

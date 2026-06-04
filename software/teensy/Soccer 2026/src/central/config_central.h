@@ -92,6 +92,19 @@ constexpr float WHEEL_ANGLES_DEG[3] = { 60.0f, -60.0f, 180.0f };
 constexpr int MAX_PWM           = 255;    // Arduino analogWrite range
 constexpr float MAX_SPEED_MM_S  = 1000.0f; // velocidad máxima estimada del robot
 
+// Piso de PWM (deadzone compensation) — porta el IMPULSO_INICIAL del delantero 2025.
+// A vx/vy bajos el PWM de rueda cae en la zona muerta del motor → raspa / se queda
+// stalled (banco: "a vx=150 solo gira el motor 1"). apply_pwm_floor() (kinematics.h)
+// eleva todo PWM no-nulo por debajo de MOTOR_MIN_PWM hasta ese piso (conservando el
+// signo) y manda 0 cuando |pwm| <= MOTOR_PWM_NOISE_THRESH.
+//
+// ⚠️ DEFAULT = 0 ⇒ apply_pwm_floor es NO-OP ⇒ el binario de competencia es IDÉNTICO
+// al de hoy. El equipo sube MOTOR_MIN_PWM en banco (típico 25-45) hasta que las 3
+// ruedas arranquen parejo a baja velocidad; MOTOR_PWM_NOISE_THRESH filtra el jitter
+// del comando para no zumbar parado. NO subir estos valores en competencia sin tunear.
+constexpr int MOTOR_MIN_PWM          = 0;  // piso de arranque (0 = OFF, banco: 25-45)
+constexpr int MOTOR_PWM_NOISE_THRESH = 0;  // |pwm| <= esto → 0 (filtra ruido del comando)
+
 // ============================================================
 // UARTs inter-placa (reasignados 2026-05-31 — ver MAPA-CONEXIONES-3-PLACAS.md)
 //   • TOP→CENTRAL  (WORLD_SNAPSHOT): Serial7  RX7=pin 28, TX7=pin 29

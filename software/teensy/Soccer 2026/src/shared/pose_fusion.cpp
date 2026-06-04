@@ -56,6 +56,8 @@ PoseFusionConfig pose_fusion_default_config() {
     cfg.field_height_mm       = 2430;   // eje Y (arco-a-arco, lado largo)
     cfg.correction_gain_q8    = 26;    // K_real ~= 26/256 = 0.1016
     cfg.tof_jump_gate_mm      = 400;
+    // POSE-02: estos dos NO se leen hoy (el caller gatea la freshness; ver
+    // pose_fusion.h). Se setean para documentar el default cuando se cablee.
     cfg.otos_stale_ms         = 60;
     cfg.tof_stale_ms          = 500;
     cfg.max_step_mm           = 80;

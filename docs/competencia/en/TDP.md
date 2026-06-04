@@ -57,7 +57,7 @@ The robot uses **4 microcontrollers** (3 Teensy + 1 ESP32-C6) on **3 custom PCBs
 **Identical power chain on TOP and DOWN** (CENTRAL uses the Zircon's regulation):
 
 ```
-LiPo 2S 7.4 V nominal ──► Dean-T-F connector (XP1)
+LiPo 2S 7.4 V nominal ──► Deans-T-F connector (XP1)
                           │
             2× Schottky diode B5819W (1A/40V, LCSC C8598)  ← reverse-polarity protection / OR-ing
                           │
@@ -264,7 +264,7 @@ The **6 I²C sensors hang off the same `Wire` bus (pins 18/19)**: 2 BNO055 (0x28
    Unity test (test/test_X/...)    ──┤
    vendored Unity (lib/Unity)      ──┤
                                      ▼
-        g++ -std=gnu++17 -I src/shared -I src/down -I lib/Unity/src \
+        g++ -std=gnu++17 -I src/shared -I lib/Unity/src \
             lib/Unity/src/unity.c src/shared/*.cpp test_main.cpp -o test_X
                                      ▼
         ./test_X   →   PASS/FAIL on the PC (no board, no network, no Avast)

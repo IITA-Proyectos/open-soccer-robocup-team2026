@@ -44,7 +44,7 @@
 |---|---|---|---|---|---|---|---|
 | Cámara de visión | **OpenMV Cam N6** (STM32N6 Cortex-M55 + NPU Neural-ART, sensor PAG7936, QVGA RGB565 ~30 Hz) | 2 | OpenMV | Nuevo | Módulo (kit) | **[COST — pending]** (ítem más caro del robot, ~USD 80–200 c/u) | [COST — pending] |
 | IMU (heading/yaw) | **Bosch BNO055** (designadores U10/U11) | 2 | Bosch (módulo) | Nuevo | Módulo (kit) en header 4P | **~USD 15** (cita interna `ARQUITECTURA-3-PLACAS-2026.md` L326) | **~USD 30** ⚠️ ver nota |
-| Sensor ToF multizona | **ST VL53L7CX** (8×8 zonas, FoV 60°, módulo Pololu) | 4 | STMicro / Pololu | Nuevo | Módulo (kit) | **[PRICE — verify]** (ver nota ⚠️ mismatch) | [COST — pending] |
+| Sensor ToF multizona | **ST VL53L7CX** (8×8 zonas, FoV 60°, módulo Pololu) | 4 | STMicro / Pololu | Nuevo | Módulo (kit) | **[PRICE — verify VL53L7CX]** (el ~USD 26 citado es del VL53L1X de 1 zona, NO de este chip — ver nota ⚠️ mismatch §2) | [COST — pending] |
 | Ultrasonido | **HC-SR04** (designador U6 en TOP) | 1 | genérico | Nuevo | Módulo (kit) | **[COST — pending] (est. ~USD 1–3)** | [COST — pending] |
 
 > ⚠️ **Nota BNO055:** el repo monta **2 BNO055** pero **1 unidad (RIGHT, 0x29) está FALLADA**; el robot compite hoy con **1 BNO sano + 4 ToF**. Para replicabilidad/repuestos: prever **2–4 unidades** (Incheon). Precio `~USD 15` es la única cifra concreta del repo (cualitativa).
@@ -76,7 +76,7 @@
 | Componente | Part number / modelo | Cant. (por robot) | Fuente / proveedor | Nuevo / Reusado | Kit / Custom | Costo unit. | Costo total |
 |---|---|---|---|---|---|---|---|
 | Batería | **LiPo 2S 7.4 V nominal** (mAh / C-rating / marca **[SPEC?]**) | **[1–2?]** | genérico | Nuevo | Módulo (kit) | **[COST — pending] (est. ~USD 10–25)** | [COST — pending] |
-| Conector de batería | **Dean-T-F (XP1)** | 3 (1/placa) | genérico | Nuevo | Componente | **[COST — pending] (est. <USD 1)** | [COST — pending] |
+| Conector de batería | **Deans-T-F (XP1)** | 3 (1/placa) | genérico | Nuevo | Componente | **[COST — pending] (est. <USD 1)** | [COST — pending] |
 | Diodo Schottky (protec.) | **B5819W SL** (LCSC `C8598`, 1 A/40 V; OR-ing/polaridad) | 6 (2/placa) | CJ / LCSC | Nuevo | SMD en PCB custom | **USD 0.024** | **USD 0.14** |
 | Regulador buck | **MP1584-EN** (módulo SIP 4-pin; rails 5 V lógica + 3.3 V sensores) | 6 (2/placa) | genérico | Nuevo | Módulo (kit) | **[COST — pending] (est. ~USD 0.5–1 c/u)** | [COST — pending] |
 | LDO 3.3 V (solo COMM) | **TI UA78M33CDCYR** (SOT-223) | 1 | TI | Nuevo | SMD en PCB COMM | **[COST — pending] (est. ~USD 0.3)** | [COST — pending] |
@@ -91,6 +91,18 @@
 | PCB/Shield **CENTRAL** | **Zircon Rev v15** (PCB comercial de **Robomov**, robomov.net; esquemático `Zircon.pdf` público) | 1 | Robomov | **Reusado** (placa que ganó el Nacional 2025) | **Comprado (COTS comercial)** | **[COST — pending] (precio Robomov)** | [COST — pending] |
 
 > 🔁 **Sustentabilidad / reuso (premiable):** el **Zircon Rev v15 + Teensy 4.1** es el cerebro que **ganó el Nacional 2025**; las placas nuevas (TOP/DOWN) se **montan alrededor**, no lo reemplazan. Si una placa nueva falla en Incheon, CENTRAL **degrada a modo monolítico**. El diseño es **capitalizable post-Incheon** (reemplazar una placa sin tocar las otras; mejor cámara = solo cambia el firmware del TOP).
+
+### 1.7 ICs específicos de la placa COMM (árbitro RCJ)
+
+> Componentes SMD poblados en la PCB COMM (`PCB1`), verbatim de `BOM_Board1_PCB1_2026-04-20.xlsx` y del netlist (`FlyingProbeTesting.json`) reconstruido en `hardware/electronics/comm-board/2026-05-17-placa-comm-componentes-y-circuito.md`. Cantidades **por placa COMM** (1 placa COMM por robot).
+
+| Componente | Part number / modelo | Cant. | Fuente / proveedor | Nuevo / Reusado | Kit / Custom | Costo unit. | Costo total |
+|---|---|---|---|---|---|---|---|
+| Level shifter UART | **TI TXS0102DCUR** (VSON8; 2 bits bidireccional, UART robot ↔ ESP 3.3 V; designador U6) | 1 | TI | Nuevo | SMD en PCB COMM | **[COST — pending] (est. ~USD 0.5)** | [COST — pending] |
+| Acelerómetro 3 ejes | **ST LIS3DHTR** (LGA-16; I²C, "shake-to-start" del módulo RCJ; designador U7) | 1 | STMicro | Nuevo | SMD en PCB COMM | **[COST — pending] (est. ~USD 1–2)** | [COST — pending] |
+| Pulsadores táctiles | **TS-1088-AR02016** (SW-SMD; CONNECT/PROG = botón usuario + strap boot GPIO9) | 2 | genérico | Nuevo | SMD en PCB COMM | **[COST — pending] (est. <USD 0.1)** | [COST — pending] |
+
+> ⚠️ **Nota COMM:** el árbitro arranca/para por **NIVEL de tensión en OUT_1/OUT_2** (3.3 V=GO, 0 V=STOP), **NO por UART** — el firmware C6 recibe el comando por BLE de la app del árbitro y lo traduce a nivel. El UART `RX_OUT/TX_OUT` (vía TXS0102) es hardware pasivo que el firmware oficial v0.91 todavía no usa. El display OLED del módulo RCJ es **externo** (no poblado en esta placa, va por I²C en U4).
 
 ---
 

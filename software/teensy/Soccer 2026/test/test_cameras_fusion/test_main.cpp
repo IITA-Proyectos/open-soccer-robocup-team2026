@@ -229,6 +229,59 @@ void test_fuse_ball_confidence_single_80_consensus_95(void) {
 }
 
 // ============================================================================
+// SB-4: clamp de los casts float→int16 en la fusión (eval 2026-06-04)
+//
+// HOY el clamp es no-op (el parser da ~[-1280,1280] mm). Estos tests fuerzan,
+// con un unit_to_mm grande (simulando una recalibración de homografía que sube
+// el factor), valores que SIN clamp desbordarían int16 y wrappearían de signo.
+// Verifican: (a) saturación a los extremos, NO wrap de signo; (b) que el rango
+// normal sigue idéntico (el clamp no toca valores in-range).
+// ============================================================================
+
+void test_sb4_ball_clamps_positive_overflow_no_wrap(void) {
+    // x_raw=20000, unit=10 => 200000 mm, muy por encima de int16 (32767).
+    // Sin clamp, el cast crudo wrappearía a un valor negativo (positivo→izq).
+    CamObs f = cam_obs_to_robot_frame(20000, 20000, true, 0, /*unit_to_mm=*/10.0f);
+    CamObs b = cam_obs_to_robot_frame(0, 0, false, 1, 10.0f);
+    BallFused out = fuse_ball_dual(f, b, true, false);
+    TEST_ASSERT_TRUE(out.visible);
+    TEST_ASSERT_EQUAL_INT16(32767, out.x_mm);   // satura, no wrap negativo
+    TEST_ASSERT_EQUAL_INT16(32767, out.y_mm);
+}
+
+void test_sb4_ball_clamps_negative_overflow_no_wrap(void) {
+    // back rota 180°: x_raw=20000 => -200000 mm => satura a -32768 (no wrap +).
+    CamObs f = cam_obs_to_robot_frame(0, 0, false, 0, 10.0f);
+    CamObs b = cam_obs_to_robot_frame(20000, 20000, true, 1, 10.0f);
+    BallFused out = fuse_ball_dual(f, b, false, true);
+    TEST_ASSERT_TRUE(out.visible);
+    TEST_ASSERT_EQUAL_INT16(-32768, out.x_mm);
+    TEST_ASSERT_EQUAL_INT16(-32768, out.y_mm);
+}
+
+void test_sb4_goal_distance_clamps_no_wrap(void) {
+    // Distancia enorme (x=300000,y=0) => sqrt = 300000 mm, satura a 32767.
+    // El ángulo (atan2) nunca desborda; solo verificamos la distancia.
+    CamObs f = cam_obs_to_robot_frame(30000, 0, true, 0, 10.0f);  // x = 300000 mm
+    CamObs b = cam_obs_to_robot_frame(0, 0, false, 1, 10.0f);
+    GoalFused out = fuse_goal_dual(f, b, true, false);
+    TEST_ASSERT_TRUE(out.visible);
+    TEST_ASSERT_EQUAL_INT16(32767, out.distance_mm);  // satura, no wrap
+    // El ángulo sigue siendo +90° (derecha pura) — el clamp no lo perturba.
+    TEST_ASSERT_INT16_WITHIN(10, 9000, out.angle_centideg);
+}
+
+void test_sb4_in_range_values_unchanged(void) {
+    // Red de regresión explícita: en el rango operativo de hoy el clamp es
+    // transparente (mismo truncamiento que el cast previo). (300,400) intactos.
+    CamObs f = cam_obs_to_robot_frame(30, 40, true, 0, UNIT_TO_MM);   // → (300,400)
+    CamObs b = cam_obs_to_robot_frame(-30, -40, true, 1, UNIT_TO_MM); // → (300,400)
+    BallFused out = fuse_ball_dual(f, b, true, true);
+    TEST_ASSERT_EQUAL_INT16(300, out.x_mm);
+    TEST_ASSERT_EQUAL_INT16(400, out.y_mm);
+}
+
+// ============================================================================
 // Runner
 // ============================================================================
 
@@ -263,6 +316,12 @@ int main(int, char**) {
     RUN_TEST(test_fuse_goal_left_is_negative_angle);
     RUN_TEST(test_fuse_ball_both_visible_distinct_points_true_average);
     RUN_TEST(test_fuse_ball_confidence_single_80_consensus_95);
+
+    // SB-4: clamp de casts float→int16 en la fusión
+    RUN_TEST(test_sb4_ball_clamps_positive_overflow_no_wrap);
+    RUN_TEST(test_sb4_ball_clamps_negative_overflow_no_wrap);
+    RUN_TEST(test_sb4_goal_distance_clamps_no_wrap);
+    RUN_TEST(test_sb4_in_range_values_unchanged);
 
     return UNITY_END();
 }

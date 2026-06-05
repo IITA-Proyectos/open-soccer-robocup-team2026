@@ -1,7 +1,7 @@
 # Technical Documentation Paper (TDP) — RoboCupJunior Soccer Open League 2026
 
-**Team:** IITA — [TEAM NAME] (confirm the name registered for RoboCup Incheon; the repository uses "IITA — Open Soccer RoboCup Team 2026")
-**Organization:** IITA (Instituto de [Innovación/Informática] y Tecnología Aplicada — VERIFY legal name) · Fundación Innovar — Salta, Argentina
+**Team:** IITA Low Battery Messi
+**Organization:** IITA (Instituto de Innovación y Tecnología Aplicada) · Fundación Innovar — Salta, Argentina
 **League / sub-league:** RoboCupJunior Soccer — **Open League**
 **Event:** RoboCup 2026 — Incheon, South Korea (30 Jun – 6 Jul 2026)
 **Qualification:** National champions, RoboCupJunior Soccer Argentina (Roboliga, December 2025, Buenos Aires)
@@ -409,7 +409,7 @@ The team's philosophy is **"invest in learning, not in the podium"**: an honest 
 > **Rubric goal (Bonus, +2):** +1 if **CAD/PCB/schematics** are open-sourced; +1 if **the software** is open-sourced. Dumping files is not enough: they are published **with an explanation of how and why**.
 
 **License:** **MIT** (`LICENSE`, Copyright 2026 IITA / Fundación Innovar). **Public repository:** https://github.com/IITA-Proyectos/open-soccer-robocup-team2026
-*(Consistency note: IITA's legal name appears as "Innovación" in `LICENSE` and "Informática" in `README`/`POSTER` — a real gap, to be resolved before submission; see §6.)*
+*(Consistency note: IITA legal name = Instituto de Innovación y Tecnología Aplicada, unified across all docs as of 2026-06-05.)*
 
 ## 5.1 Bonus +1 — Open CAD / PCB / schematics
 
@@ -440,9 +440,9 @@ The team's philosophy is **"invest in learning, not in the podium"**: an honest 
 > Honest record of missing real data. **Explicit placeholders** are marked in the body of the TDP. Priority: translate to English + close these gaps before submission.
 
 **Identification / team**
-- [GAP] **Official team name** registered for RoboCup Incheon (the repository uses "IITA — Open Soccer RoboCup Team 2026"). → form identity = `IITA` + `[TEAM NAME]`.
+- ✅ RESOLVED 2026-06-05: **Official team name** = **IITA Low Battery Messi** (form identity ready).
 - [GAP] **Region/representation** exact for RCJ registration (Salta, Argentina confirmed; the name of the regional they qualified through, to be confirmed). → `[REGION]`.
-- [GAP] **Legal name of the IITA organization:** the repository contradicts itself — `LICENSE` says "Innovación", `README`/`POSTER` say "Informática". Resolve to a single legal name before submission. → `IITA (Instituto de [Innovación/Informática] y Tecnología Aplicada — VERIFY legal name)`.
+- ✅ RESOLVED 2026-06-05: **Legal name** = **IITA — Instituto de Innovación y Tecnología Aplicada** (Fundación Innovar), unified across all docs.
 
 **Electrical / costs**
 - [GAP] **BOM with costs in currency** (ARS/USD): missing prices for the Teensy, OpenMV N6, OTOS, BNO055, MP1584, battery, Zircon; no total robot cost.

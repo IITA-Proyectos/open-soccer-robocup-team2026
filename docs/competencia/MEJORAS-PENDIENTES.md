@@ -19,7 +19,7 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 
 | # | Prio | Dato | Por qué (qué criterio desbloquea) | Dónde se usa |
 |---|---|---|---|---|
-| A1 | **P0** | **Nombre oficial del equipo** registrado en RoboCup Incheon 2026 (hoy `[NOMBRE DEL EQUIPO]`) | Identidad del TDP form, Title/ID del Poster, lower-third del video, tarjeta de entrevista | TDP §6 línea 7, POSTER Zona A, VIDEO Bloque 1, ENTREVISTA §1-2 |
+| A1 | **P0** | **Nombre oficial del equipo** registrado en RoboCup Incheon 2026 — ✅ RESUELTO 2026-06-05: **IITA Low Battery Messi** | Identidad del TDP form, Title/ID del Poster, lower-third del video, tarjeta de entrevista | TDP §6 línea 7, POSTER Zona A, VIDEO Bloque 1, ENTREVISTA §1-2 |
 | A2 | **P0** | **Región / regional de clasificación** exacta (Salta/Argentina confirmado; falta el nombre formal de la regional) | Title/Identification (elemento obligatorio del poster) | POSTER Zona A, TDP §6, VIDEO lower-third, ENTREVISTA |
 | A3 | **P0** | **Roster formal confirmado**: quién viaja, edades/categoría, y bindeo `[INTEGRANTE A]=María (visión/estrategia)`, `[INTEGRANTE B]=Elías (electro/mecánica)` | Presentation, Teamwork & Communication, créditos | ENTREVISTA §1-3, POSTER Zona B2, TDP roster |
 | A4 | **P0** | **Costos reales** de los componentes que dominan el presupuesto: 2× OpenMV N6, 2× SparkFun OTOS, 3× Teensy (4.0×2+4.1), Zircon (precio Robomov), 4× VL53L7CX, batería LiPo, 3× motores, 3× ruedas, BNO055, MP1584, ESP32-C6, HC-SR04 | "Tiempo y costo de desarrollo" es elemento OBLIGATORIO del poster; desbloquea TDP Electrical "uso de recursos" (Proficient→Excellent) | BOM §1, §3.1; POSTER Zona E; TDP §1.8 |
@@ -73,7 +73,7 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 - **P2** — Completar Title/ID (A1/A2) y la tabla de roles "quién hizo qué".
 
 ### TDP (`TDP.md`)
-- **P0** — Traducir a inglés y resolver `[NOMBRE DEL EQUIPO]` (línea 7 y §6) — los dos únicos faltantes que pueden invalidar/penalizar el TDP de entrada. ✅ RESUELTO 2026-06-05 (traducción): el TDP EN ya existe en `docs/competencia/en/` verificado sin español filtrado; queda solo el corrector EN. ⚠️ `[NOMBRE DEL EQUIPO]` sigue abierto (depende del equipo).
+- **P0** — Traducir a inglés y resolver `[NOMBRE DEL EQUIPO]` (línea 7 y §6) — los dos únicos faltantes que pueden invalidar/penalizar el TDP de entrada. ✅ RESUELTO 2026-06-05 (traducción): el TDP EN ya existe en `docs/competencia/en/` verificado sin español filtrado; queda solo el corrector EN. ✅ Nombre del equipo = **IITA Low Battery Messi** (resuelto 2026-06-05).
 - **P0** — Completar BOM §1.8 con costos reales + total + tiempo de desarrollo → convierte Electrical de Proficient a Excellent.
 - **P1** — Embeber 4-5 imágenes reales con caption+cita (robot sup/lateral, cada PCB poblada, bodge ToF, tests en verde, equipo Nacional 2025); convertir `[FOTO]/[DIAGRAMA]` de §6 en Fig. numeradas referenciadas desde el cuerpo. Sube Presentation y arrastra Documentation.
 - **P1** — Mini-ficha de motor + rueda 2026 (A6/A7) y diámetro/peso/tamaño medidos (A8) → Mechanical a Excellent.

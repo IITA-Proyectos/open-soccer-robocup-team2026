@@ -67,19 +67,19 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 
 **TEXTO EXACTO (impreso):**
 
-> ## [NOMBRE DEL EQUIPO]
+> ## IITA Low Battery Messi
 > ### Empujar para ganar: un robot de fútbol de 3 placas, sin pateador, verificado por software
 > *(en inglés sugerido: "Push to Score: a kicker-less, 3-board soccer robot verified in software")*
 >
 > **RoboCupJunior Soccer — Open League** · **Región:** Salta, Argentina · [REGIÓN/REGIONAL DE CLASIFICACIÓN]
-> **Organización:** IITA (Instituto de [Innovación/Informática] y Tecnología Aplicada — VERIFICAR nombre legal) / Fundación Innovar
+> **Organización:** IITA (Instituto de Innovación y Tecnología Aplicada) / Fundación Innovar
 > **Campeones nacionales Roboliga Argentina (dic-2025, Buenos Aires) → RoboCup 2026, Incheon (30 jun – 6 jul)**
 
 `[FOTO: logo del equipo / IITA a la izquierda de la banda]`
 `[FOTO: render o foto limpia del robot completo (vista 3/4) a la derecha de la banda, fondo neutro]`
 `[FOTO: bandera/ícono pequeño de Argentina + "Salta" para la región]`
 
-> **Nota de gap:** confirmar el **nombre oficial del equipo registrado en RoboCup Incheon** y la **regional exacta** de clasificación antes de imprimir.
+> **Nota de gap:** confirmar la **regional exacta** de clasificación antes de imprimir (✅ nombre del equipo: IITA Low Battery Messi).
 
 ---
 
@@ -319,7 +319,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 # CHECKLIST FINAL ANTES DE IMPRIMIR (NO va impreso)
 
 - [ ] **TRADUCIR TODO al inglés** (requisito duro de rúbrica) y correr corrector ortográfico.
-- [ ] Completar **[NOMBRE DEL EQUIPO]**, **[REGIÓN/REGIONAL]**, **roster con roles**.
+- [ ] Completar **[REGIÓN/REGIONAL]** y **roster con roles** (✅ nombre del equipo: IITA Low Battery Messi).
 - [ ] Completar **BOM con costos reales** y **costo total** (USD/ARS).
 - [ ] Tomar y colocar **todas las `[FOTO:]`** (Fig.1–11) etiquetadas y citadas.
 - [x] ✅ Generadas 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Falta solo maquetarlas en el A1.

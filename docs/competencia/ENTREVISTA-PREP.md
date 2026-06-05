@@ -22,7 +22,7 @@
 | **Technical Understanding** | **Fluidez técnica fuerte** y resolución de problemas | §4 (respuestas modelo por categoría, con números reales) |
 | **Task Execution** | Completa **eficientemente** con **enfoques innovadores** | §3 (tips del Teamwork-Task: cómo dividirnos, dónde está el código, flash rápido) |
 
-> **Placeholders a completar antes de Incheon** (registrados en gaps al final): `[NOMBRE DEL EQUIPO]`,
+> **Placeholders a completar antes de Incheon** (registrados en gaps al final): `IITA Low Battery Messi`,
 > roles definitivos de `[INTEGRANTE A]`/`[INTEGRANTE B]`, y confirmar que en Incheon compiten 2 personas
 > (el roster del repo: Gustavo Viollaz director, Enzo Juárez coach, María Virginia Viollaz y Elías Cordero
 > competidores). En la entrevista **hablan los competidores presentes**; el coach no responde por ellos.
@@ -39,7 +39,7 @@
 
 | Tiempo | Quién | Línea (en español de trabajo — 🇬🇧 traducir) |
 |---|---|---|
-| 0-15 s | `[INTEGRANTE A]` | "Somos `[NOMBRE DEL EQUIPO]`, de Salta, Argentina, en la sub-liga **Open**. Llegamos a Incheon como **campeones nacionales** de la Roboliga Argentina 2025. Traemos **2 robots**: un **arquero** y un **delantero**." |
+| 0-15 s | `[INTEGRANTE A]` | "Somos `IITA Low Battery Messi`, de Salta, Argentina, en la sub-liga **Open**. Llegamos a Incheon como **campeones nacionales** de la Roboliga Argentina 2025. Traemos **2 robots**: un **arquero** y un **delantero**." |
 | 15-40 s | `[INTEGRANTE A]` | "Nuestro robot usa una **arquitectura distribuida de 3 placas**: una placa **percibe** (2 cámaras OpenMV N6, 1 IMU, 4 sensores ToF), una placa **decide** (FSM táctica + 3 motores omni) y una placa **toca el piso** (anillo de 32 sensores de línea + 2 sensores ópticos de odometría). Se hablan por UART a 230400 baud." |
 | 40-65 s | `[INTEGRANTE B]` | "Lo que más nos enorgullece es **cómo verificamos el firmware sin la placa**: la lógica de decisión vive en módulos C++ puros que compilamos y testeamos en la PC con g++. Hoy corremos **624 tests host-native en 44 suites, 0 fallos** (verificado 2026-06-04 con `scripts/run-host-tests.sh`). Eso nos deja **iterar rápido y seguro** a días de la competencia." |
 | 65-85 s | `[INTEGRANTE B]` | "Y una decisión táctica de la que estamos orgullosos: el **arquero anticipa**. En vez de seguir la posición actual de la pelota, proyecta dónde **va a estar** usando su velocidad (`pos + v·0.2 s`, con tope). Se lo mostramos en cancha si quieren." |
@@ -283,7 +283,7 @@ otro equipo lo replique — si quieren les pasamos el repo." (Refuerza Documenta
 
 ## §7 — Checklist de preparación (hacer ANTES de viajar)
 
-- [ ] Completar `[NOMBRE DEL EQUIPO]` y confirmar quiénes son los **competidores presentes** en Incheon.
+- [ ] Completar `IITA Low Battery Messi` y confirmar quiénes son los **competidores presentes** en Incheon.
 - [ ] Cada competidor ensaya **su área** (§2) hasta responder de corrido, con números.
 - [ ] **Traducir al inglés** §1 (Show&Tell) y las respuestas 💡 de §4, y practicarlas en voz alta. 🇬🇧
 - [ ] Ensayar el **Show&Tell cronometrado** (90 s) 3 veces con el robot en mano.
@@ -297,13 +297,13 @@ otro equipo lo replique — si quieren les pasamos el repo." (Refuerza Documenta
 
 ## Gaps (datos reales faltantes — completar antes de Incheon)
 
-- `[NOMBRE DEL EQUIPO]` oficial registrado en RoboCup Junior para Incheon (el repo usa "IITA - Open Soccer RoboCup Team 2026" como descriptor, no consta el nombre de equipo registrado).
+- `IITA Low Battery Messi` oficial registrado en RoboCup Junior para Incheon (confirmado 2026-06-05; "IITA - Open Soccer RoboCup Team 2026" es el descriptor interno del repo).
 - **Roster definitivo de la entrevista**: confirmar qué competidores están físicamente en Incheon y asignarles el área que dominan en §2 (`[INTEGRANTE A]`/`[INTEGRANTE B]`). El repo lista María Virginia Viollaz y Elías Cordero como competidores.
 - **Región/representación** para el registro RCJ (provincia Salta y país Argentina confirmados; falta el nombre de la regional con que clasificaron, más allá de "campeones nacionales Roboliga Argentina 2025").
 - **Materiales y dimensiones del chasis 2026** (altura entre pisos/standoffs, piezas impresas, diámetro y peso del robot) — no documentados; afecta respuestas de la categoría Mechanical.
 - **STL/CAD del chasis 2026** para poder decir "es replicable" con confianza (los del repo son del 2025 con dribbler/solenoide ya descartados).
 - **Estado de la coordinación partner (ESP-NOW) en banco** — para responder con seguridad la pregunta de "robot-robot".
 - **Número de tests vigente** al momento de viajar: verificado **624 tests / 44 suites / 0 failures (2026-06-04 vía `scripts/run-host-tests.sh`)**. Correr el runner el día anterior y usar la cifra real del día.
-- **Nombre legal de IITA**: el acrónimo "IITA" se usa consistente, pero la expansión es un **gap real** — la LICENSE dice "Instituto de **Innovación** y Tecnología Aplicada" mientras que README/POSTER dicen "Instituto de **Informática** y Tecnología Aplicada". Verificar el nombre legal antes de imprimir cualquier material oficial.
+- **Nombre legal de IITA** (✅ resuelto 2026-06-05): **IITA = Instituto de Innovación y Tecnología Aplicada** / Fundación Innovar. Unificado en todos los docs.
 - **Figuras de datos** (`docs/competencia/assets/fig8_test_growth.png`, `fig9_otos_error.png`): generarlas con `gen_figuras.py` antes de viajar — el script existe pero los PNG aún no están generados en `assets/`.
 - **Traducción al inglés** de todo el material de entrevista (requisito de idioma de la competencia): la versión EN vive en `docs/competencia/en/ENTREVISTA-PREP.md`; falta **ensayarla en voz alta**.

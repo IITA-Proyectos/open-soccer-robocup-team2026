@@ -60,8 +60,8 @@ Se eligió **el testing host-native de firmware embebido** como "feature más or
 
 | Tiempo | Narración (ES — texto exacto) | Imagen en pantalla | Texto/gráfico en pantalla (EN en versión final) |
 |---|---|---|---|
-| 0:00 | "¿Cómo verificás que el firmware de tu robot está bien… sin la placa, sin batería, y sin perder horas de banco?" | [IMG: plano corto del robot armado sobre la cancha, quieto; luego corte rápido a una notebook] | **Título:** "How we test robot firmware — WITHOUT the board" · logo [NOMBRE DEL EQUIPO] |
-| 0:08 | "Somos [NOMBRE DEL EQUIPO], de Salta, Argentina. Esta es la feature de la que estamos más orgullosos: **testing host-native de firmware embebido**." | [IMG: foto del equipo / del robot; transición a una terminal limpia] | **Lower-third:** "[TEAM NAME] · Salta, Argentina · RoboCupJunior Soccer Open" |
+| 0:00 | "¿Cómo verificás que el firmware de tu robot está bien… sin la placa, sin batería, y sin perder horas de banco?" | [IMG: plano corto del robot armado sobre la cancha, quieto; luego corte rápido a una notebook] | **Título:** "How we test robot firmware — WITHOUT the board" · logo IITA Low Battery Messi |
+| 0:08 | "Somos IITA Low Battery Messi, de Salta, Argentina. Esta es la feature de la que estamos más orgullosos: **testing host-native de firmware embebido**." | [IMG: foto del equipo / del robot; transición a una terminal limpia] | **Lower-third:** "IITA Low Battery Messi · Salta, Argentina · RoboCupJunior Soccer Open" |
 
 ## BLOQUE 2 — El problema (criterio: "easy to follow" — primero el porqué) · 0:18–0:48
 
@@ -95,7 +95,7 @@ Se eligió **el testing host-native de firmware embebido** como "feature más or
 | Tiempo | Narración (ES — texto exacto) | Imagen en pantalla | Texto/gráfico en pantalla (EN) |
 |---|---|---|---|
 | 2:30 | "Esto nos dejó iterar rápido y sin miedo, incluso a días de competir. Todo el código y el script están abiertos, con licencia MIT, en nuestro repo de GitHub." | [IMG: pantallazo del repo en GitHub mostrando `scripts/run-host-tests.sh` y la carpeta `test/`] | **Texto:** "Open-source · MIT · github.com/IITA-Proyectos/open-soccer-robocup-team2026" |
-| 2:42 | "Si sos competidor de RoboCupJunior y querés probar tu firmware sin la placa, copiá la receta. Nos vemos en Incheon. ¡Gracias!" | [IMG: robot moviéndose en la cancha (clip corto); cierra con tarjeta de equipo + handle] | **Tarjeta final:** "[TEAM NAME] · RoboCupJunior Soccer Open · Incheon 2026 · github.com/IITA-Proyectos/open-soccer-robocup-team2026" |
+| 2:42 | "Si sos competidor de RoboCupJunior y querés probar tu firmware sin la placa, copiá la receta. Nos vemos en Incheon. ¡Gracias!" | [IMG: robot moviéndose en la cancha (clip corto); cierra con tarjeta de equipo + handle] | **Tarjeta final:** "IITA Low Battery Messi · RoboCupJunior Soccer Open · Incheon 2026 · github.com/IITA-Proyectos/open-soccer-robocup-team2026" |
 
 > **Cierre del video: ≈ 2:55** — bajo el límite de 3:00 con margen. Si la locución se estira, recortar la narración *opcional* del Bloque 3 (0:48 → vuelve a ≈ 2:43).
 
@@ -137,7 +137,7 @@ Se eligió **el testing host-native de firmware embebido** como "feature más or
   - Comando exacto y receta: `scripts/run-host-tests.sh` (líneas 32–34).
   - Origen: Avast bloqueaba el registry de PlatformIO → **TASK-025**; solución = Unity vendoreado en `lib/Unity` + `g++`.
   - Licencia **MIT**, repo público: https://github.com/IITA-Proyectos/open-soccer-robocup-team2026 (org `IITA-Proyectos`).
-  - **Organización: IITA** (usar el acrónimo de forma consistente). ⚠️ La expansión legal es un **gap real, NO resolver a ciegas**: el `LICENSE` dice "Instituto de **Innovación** y Tecnología Aplicada"; el `README`/`POSTER` dicen "Instituto de **Informática** y Tecnología Aplicada". Donde haya que expandir, escribir: "IITA (Instituto de [Innovación/Informática] y Tecnología Aplicada — VERIFY legal name)".
+  - **Organización: IITA** (usar el acrónimo de forma consistente). ✅ Expansión legal resuelta 2026-06-05: **Instituto de Innovación y Tecnología Aplicada** (Fundación Innovar).
 - **Continuidad con los otros entregables:** este video destaca la MISMA feature #1 que el poster y el TDP marcan como su diferencial de proceso, así el juez ve un mensaje coherente entre video, poster y TDP.
 
 ---
@@ -146,10 +146,10 @@ Se eligió **el testing host-native de firmware embebido** como "feature más or
 
 | # | Gap | Tipo | Dónde impacta en el video |
 |---|---|---|---|
-| 1 | **[NOMBRE DEL EQUIPO]** oficial registrado en RoboCup Incheon 2026 (el repo usa "IITA — Open Soccer RoboCup Team 2026" como descriptor interno) | Identificación | Título 0:00, lower-third 0:08, tarjeta final 2:42 |
+| 1 | **IITA Low Battery Messi** oficial registrado en RoboCup Incheon 2026 (el repo usa "IITA — Open Soccer RoboCup Team 2026" como descriptor interno) | Identificación | Título 0:00, lower-third 0:08, tarjeta final 2:42 |
 | 2 | **[REGIÓN]** / nombre de la regional o superregional con que clasificaron (Salta, Argentina confirmado; falta la regional formal) | Identificación | Lower-third 0:08 (hoy dice solo "Salta, Argentina") |
 | 3 | **URL del repo RESUELTA** → https://github.com/IITA-Proyectos/open-soccer-robocup-team2026 (ya sobreimpresa en 2:30 y 2:42; sin gap pendiente) | Open-source | Texto 2:30 y tarjeta final 2:42 |
-| 3b | **Nombre legal de IITA SIN resolver:** `LICENSE` dice "Instituto de **Innovación** y Tecnología Aplicada"; `README`/`POSTER` dicen "Instituto de **Informática**…". Verificar el nombre legal real antes de expandir el acrónimo en pantalla/locución | Identificación | Lower-third 0:08, notas |
+| 3b | ✅ **Nombre legal RESUELTO** 2026-06-05: Instituto de Innovación y Tecnología Aplicada (Fundación Innovar) | Identificación | Lower-third 0:08, notas |
 | 4 | **[FOTO/CLIP: robot 2026 armado moviéndose en la cancha]** — clip real para gancho (0:00) y cierre (2:42) | Footage | Bloques 1 y 5 |
 | 5 | **[FOTO: equipo / competidores]** para la identificación | Footage | Bloque 1 (0:08) |
 | 6 | **[CLIP: timelapse de flashear el Teensy + mover el robot a mano]** para ilustrar "lento y caro" | Footage | Bloque 2 (0:18) |

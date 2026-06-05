@@ -62,8 +62,8 @@ All five files are complete 1:1 translations of their Spanish sources, with the 
 
 ## Before you submit — must-close checklist
 
-1. **Complete identity & costs.** Fill every `[TEAM NAME]` and `[REGION / QUALIFYING REGIONAL]` placeholder with the registered values, and resolve all `[COST - pending]` / `[TOTAL COST - pending]` / `[BOM costs - pending]` and `[New/Reused? - pending]` cells in `BOM.md`, `POSTER.md`, and `TDP.md`.
-2. **Confirm the organization's legal name.** The repo is inconsistent (`Instituto de [Innovación / Informática] y Tecnología Aplicada` — LICENSE vs. README disagree). Pick the legally correct one and use it identically across all five files.
+1. **Complete identity & costs.** ✅ `[TEAM NAME]` resolved 2026-06-05 = **IITA Low Battery Messi**; still fill every `[REGION / QUALIFYING REGIONAL]` placeholder, and resolve all `[COST - pending]` / `[TOTAL COST - pending]` / `[BOM costs - pending]` and `[New/Reused? - pending]` cells in `BOM.md`, `POSTER.md`, and `TDP.md`.
+2. ✅ **Organization legal name resolved 2026-06-05:** IITA = Instituto de Innovación y Tecnología Aplicada (Fundación Innovar), unified across all files.
 3. **Generate the images in `../assets/`.** `fig8_test_growth.png` and `fig9_otos_error.png` exist; produce/refresh every other `[PHOTO:]` / `[DIAGRAM:]` / `[CHART:]` referenced by the Poster and TDP (run `gen_figuras.py` to regenerate the charts if the test count changes before traveling).
 4. **Record the video.** Shoot the `<3 min` screencast per `VIDEO-GUION.md`, first reconciling the on-screen test-output text and the g++ replicate command with the real `run-host-tests.sh` output.
 5. **Re-run the tests the day before and lock one number.** `scripts/run-host-tests.sh` is the single source for the test count (today 624/44/0); make sure every deliverable shows the same figure, team name, and organization name.

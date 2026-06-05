@@ -53,8 +53,8 @@ We chose **host-native testing of embedded firmware** as the "feature we're most
 
 | Time | Narration (EN — exact text) | On-screen image | On-screen text/graphic (EN) |
 |---|---|---|---|
-| 0:00 | "How do you check that your robot's firmware is right… without the board, without a battery, and without losing hours at the bench?" | [IMG: tight shot of the assembled robot sitting still on the field; then a quick cut to a laptop] | **Title:** "How we test robot firmware — WITHOUT the board" · [TEAM NAME] logo |
-| 0:08 | "We are [TEAM NAME], from Salta, Argentina. This is the feature we're most proud of: **host-native testing of embedded firmware**." | [IMG: team / robot photo; transition to a clean terminal] | **Lower-third:** "[TEAM NAME] · Salta, Argentina · RoboCupJunior Soccer Open" |
+| 0:00 | "How do you check that your robot's firmware is right… without the board, without a battery, and without losing hours at the bench?" | [IMG: tight shot of the assembled robot sitting still on the field; then a quick cut to a laptop] | **Title:** "How we test robot firmware — WITHOUT the board" · IITA Low Battery Messi logo |
+| 0:08 | "We are IITA Low Battery Messi, from Salta, Argentina. This is the feature we're most proud of: **host-native testing of embedded firmware**." | [IMG: team / robot photo; transition to a clean terminal] | **Lower-third:** "IITA Low Battery Messi · Salta, Argentina · RoboCupJunior Soccer Open" |
 
 ## BLOCK 2 — The problem (criterion: "easy to follow" — the why first) · 0:18–0:48
 
@@ -88,7 +88,7 @@ We chose **host-native testing of embedded firmware** as the "feature we're most
 | Time | Narration (EN — exact text) | On-screen image | On-screen text/graphic (EN) |
 |---|---|---|---|
 | 2:30 | "This let us iterate fast and fearlessly, even days before competing. All the code and the script are open, MIT-licensed, in our GitHub repo." | [IMG: GitHub screenshot of the repo showing `scripts/run-host-tests.sh` and the `test/` folder] | **Text:** "Open-source · MIT · github.com/IITA-Proyectos/open-soccer-robocup-team2026" |
-| 2:42 | "If you're a RoboCupJunior competitor and you want to test your firmware without the board, copy the recipe. See you in Incheon. Thank you!" | [IMG: robot moving on the field (short clip); ends with a team card + handle] | **Final card:** "[TEAM NAME] · RoboCupJunior Soccer Open · Incheon 2026 · github.com/IITA-Proyectos/open-soccer-robocup-team2026" |
+| 2:42 | "If you're a RoboCupJunior competitor and you want to test your firmware without the board, copy the recipe. See you in Incheon. Thank you!" | [IMG: robot moving on the field (short clip); ends with a team card + handle] | **Final card:** "IITA Low Battery Messi · RoboCupJunior Soccer Open · Incheon 2026 · github.com/IITA-Proyectos/open-soccer-robocup-team2026" |
 
 > **Video close: ≈ 2:55** — under the 3:00 limit with margin. If the narration stretches, cut the *optional* Block 3 narration (0:48 → back to ≈ 2:43).
 
@@ -130,7 +130,7 @@ We chose **host-native testing of embedded firmware** as the "feature we're most
   - Exact command and recipe: `scripts/run-host-tests.sh` (lines 32–34).
   - Origin: Avast was blocking PlatformIO's registry → **TASK-025**; fix = Unity vendored in `lib/Unity` + `g++`.
   - License **MIT**, public repo: https://github.com/IITA-Proyectos/open-soccer-robocup-team2026 (org `IITA-Proyectos`).
-  - **Organization: IITA** (use the acronym consistently). ⚠️ The legal expansion is a **real gap, do NOT resolve it blindly**: `LICENSE` says "Instituto de **Innovación** y Tecnología Aplicada"; `README`/`POSTER` say "Instituto de **Informática** y Tecnología Aplicada". Where it must be expanded, write: "IITA (Instituto de [Innovación/Informática] y Tecnología Aplicada — VERIFY legal name)".
+  - **Organization: IITA** (use the acronym consistently). ✅ Legal expansion resolved 2026-06-05: **Instituto de Innovación y Tecnología Aplicada** (Fundación Innovar).
 - **Continuity with the other deliverables:** this video highlights the SAME feature #1 that the poster and the TDP mark as their process differentiator, so the judge sees a coherent message across video, poster and TDP.
 
 ---
@@ -139,10 +139,10 @@ We chose **host-native testing of embedded firmware** as the "feature we're most
 
 | # | Gap | Type | Where it impacts the video |
 |---|---|---|---|
-| 1 | **[TEAM NAME]** officially registered for RoboCup Incheon 2026 (the repo uses "IITA — Open Soccer RoboCup Team 2026" as an internal descriptor) | Identification | Title 0:00, lower-third 0:08, final card 2:42 |
+| 1 | **IITA Low Battery Messi** officially registered for RoboCup Incheon 2026 (the repo uses "IITA — Open Soccer RoboCup Team 2026" as an internal descriptor) | Identification | Title 0:00, lower-third 0:08, final card 2:42 |
 | 2 | **[REGION]** / name of the regional or super-regional they qualified through (Salta, Argentina confirmed; the formal regional is missing) | Identification | Lower-third 0:08 (currently says only "Salta, Argentina") |
 | 3 | **Repo URL RESOLVED** → https://github.com/IITA-Proyectos/open-soccer-robocup-team2026 (already overlaid at 2:30 and 2:42; no pending gap) | Open-source | Text 2:30 and final card 2:42 |
-| 3b | **IITA legal name UNRESOLVED:** `LICENSE` says "Instituto de **Innovación** y Tecnología Aplicada"; `README`/`POSTER` say "Instituto de **Informática**…". Verify the real legal name before expanding the acronym on screen / in narration | Identification | Lower-third 0:08, notes |
+| 3b | ✅ **IITA legal name RESOLVED** 2026-06-05: Instituto de Innovación y Tecnología Aplicada (Fundación Innovar) | Identification | Lower-third 0:08, notes |
 | 4 | **[PHOTO/CLIP: assembled 2026 robot moving on the field]** — real clip for the hook (0:00) and close (2:42) | Footage | Blocks 1 and 5 |
 | 5 | **[PHOTO: team / competitors]** for identification | Footage | Block 1 (0:08) |
 | 6 | **[CLIP: timelapse of flashing the Teensy + moving the robot by hand]** to illustrate "slow and expensive" | Footage | Block 2 (0:18) |

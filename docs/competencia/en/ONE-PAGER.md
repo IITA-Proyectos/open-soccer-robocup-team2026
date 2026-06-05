@@ -7,7 +7,7 @@ purpose: Sportsmanship / Community give-away — robot summary + open-source inv
 print: 1 side, A4 or US Letter, portrait
 ---
 
-# [TEAM NAME — confirmar]
+# IITA Low Battery Messi
 ### RoboCupJunior Soccer Open 2026 · IITA — Instituto de Innovación y Tecnología Aplicada, Salta, Argentina
 
 **An omnidirectional 3-board soccer robot (TOP / CENTRAL / DOWN) with OpenMV vision and no kicker — it scores by pushing the ball with inertia.**

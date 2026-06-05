@@ -4,8 +4,8 @@
 
 # Technical Documentation Paper (TDP) — RoboCupJunior Soccer Open League 2026
 
-**Equipo:** IITA — [TEAM NAME] (confirmar nombre registrado en RoboCup Incheon; el repo usa "IITA — Open Soccer RoboCup Team 2026")
-**Organización:** IITA (Instituto de [Innovación/Informática] y Tecnología Aplicada — VERIFY legal name) · Fundación Innovar — Salta, Argentina
+**Equipo:** IITA Low Battery Messi
+**Organización:** IITA (Instituto de Innovación y Tecnología Aplicada) · Fundación Innovar — Salta, Argentina
 **Liga / sub-liga:** RoboCupJunior Soccer — **Open League**
 **Evento:** RoboCup 2026 — Incheon, Corea del Sur (30 jun – 6 jul 2026)
 **Clasificación:** Campeones nacionales RoboCupJunior Soccer Argentina (Roboliga, diciembre 2025, Buenos Aires)
@@ -413,7 +413,7 @@ La filosofía del equipo es **"invertir en aprendizaje, no en podio"**: un robot
 > **Objetivo de rúbrica (Bonus, +2):** +1 si se open-sourcea **CAD/PCB/esquemáticos**; +1 si se open-sourcea **el software**. No alcanza con dumpear archivos: se publican **con explicación de cómo y por qué**.
 
 **Licencia:** **MIT** (`LICENSE`, Copyright 2026 IITA / Fundación Innovar). **Repositorio público:** https://github.com/IITA-Proyectos/open-soccer-robocup-team2026
-*(Nota de consistencia: el nombre legal de IITA aparece como "Innovación" en `LICENSE` y "Informática" en `README`/`POSTER` — gap real, resolver antes de entregar; ver §6.)*
+*(Nota de consistencia: el nombre legal de IITA = Instituto de Innovación y Tecnología Aplicada, unificado en todos los docs 2026-06-05.)*
 
 ## 5.1 Bonus +1 — CAD / PCB / esquemáticos abiertos
 
@@ -444,9 +444,9 @@ La filosofía del equipo es **"invertir en aprendizaje, no en podio"**: un robot
 > Registro honesto de datos reales faltantes. **Placeholders explícitos** marcados en el cuerpo del TDP. Prioridad: traducir a inglés + cerrar estos gaps antes del envío.
 
 **Identificación / equipo**
-- [GAP] **Nombre oficial del equipo** registrado en RoboCup Incheon (el repo usa "IITA — Open Soccer RoboCup Team 2026"). → identidad del form = `IITA` + `[TEAM NAME]`.
+- ✅ RESUELTO 2026-06-05: **Nombre oficial del equipo** = **IITA Low Battery Messi** (identidad del form lista).
 - [GAP] **Región/representación** exacta para el registro RCJ (Salta, Argentina confirmado; nombre de la regional con que clasificaron, a confirmar). → `[REGION]`.
-- [GAP] **Nombre legal de la organización IITA:** el repo se contradice — `LICENSE` dice "Innovación", `README`/`POSTER` dicen "Informática". Resolver a un único nombre legal antes de entregar. → `IITA (Instituto de [Innovación/Informática] y Tecnología Aplicada — VERIFY legal name)`.
+- ✅ RESUELTO 2026-06-05: **Nombre legal** = **IITA — Instituto de Innovación y Tecnología Aplicada** (Fundación Innovar), unificado en todos los docs.
 
 **Eléctrico / costos**
 - [GAP] **BOM con costos en moneda** (ARS/USD): faltan precios de Teensy, OpenMV N6, OTOS, BNO055, MP1584, batería, Zircon; sin costo total del robot.

@@ -58,11 +58,11 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 
 **EXACT TEXT (printed):**
 
-> ## [TEAM NAME]
+> ## IITA Low Battery Messi
 > ### Push to Score: a kicker-less, 3-board soccer robot verified in software
 >
 > **RoboCupJunior Soccer — Open League** · **Region:** Salta, Argentina · [REGION / QUALIFYING REGIONAL]
-> **Organization:** IITA (Instituto de [Innovación/Informática] y Tecnología Aplicada — VERIFY legal name) / Fundación Innovar
+> **Organization:** IITA (Instituto de Innovación y Tecnología Aplicada) / Fundación Innovar
 > **National champions, Roboliga Argentina (Dec 2025, Buenos Aires) → RoboCup 2026, Incheon (Jun 30 – Jul 6)**
 
 `[PHOTO: team / IITA logo on the left of the band]`
@@ -309,7 +309,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 # FINAL CHECKLIST BEFORE PRINTING (NOT printed)
 
 - [ ] **Spell-check** the English text (hard rubric requirement: no spelling errors).
-- [ ] Fill in **[TEAM NAME]**, **[REGION / REGIONAL]**, **roster with roles**.
+- [ ] Fill in **[REGION / REGIONAL]** and **roster with roles** (✅ team name: IITA Low Battery Messi).
 - [ ] Complete the **BOM with real costs** and the **total cost** (USD/ARS).
 - [ ] Shoot and place **all `[PHOTO:]`** (Fig.1–11), labeled and cited.
 - [x] ✅ Generated 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Only A1 layout remains.

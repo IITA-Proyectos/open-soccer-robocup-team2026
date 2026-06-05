@@ -7,7 +7,7 @@ proposito: regalo de Sportsmanship / Community — resumen del robot + invitaci�
 impresion: 1 carilla, A4 o carta, vertical
 ---
 
-# [TEAM NAME — confirmar]
+# IITA Low Battery Messi
 ### RoboCupJunior Soccer Open 2026 · IITA — Instituto de Innovación y Tecnología Aplicada, Salta, Argentina
 
 **Robot de fútbol omnidireccional de 3 placas (TOP / CENTRAL / DOWN) + visión OpenMV, sin pateador — convierte empujando la pelota por inercia.**

@@ -1,5 +1,5 @@
 # Bill of Materials (BOM) — Major Components
-## [NOMBRE DEL EQUIPO] · RoboCupJunior Soccer **Open** · Incheon 2026
+## IITA Low Battery Messi · RoboCupJunior Soccer **Open** · Incheon 2026
 
 > ⚠️ **VERSIÓN DE TRABAJO EN ESPAÑOL** — esta BOM alimenta el **Poster** y el **TDP**, que **FINALES deben entregarse en INGLÉS** (requisito de rúbrica RCJ). **Traducir antes de enviar.** El equipo lee/mejora esta versión; GitHub traduce automáticamente para los jueces.
 
@@ -15,7 +15,7 @@
 
 | Dato | Valor |
 |---|---|
-| Equipo | **[NOMBRE DEL EQUIPO]** (org. interna: **IITA** — Instituto de [Innovación/Informática] y Tecnología Aplicada — VERIFY legal name / Fundación Innovar) |
+| Equipo | **IITA Low Battery Messi** (org. interna: **IITA** — Instituto de Innovación y Tecnología Aplicada (Fundación Innovar)) |
 | Región | **[REGIÓN]** — Salta, **Argentina** (confirmar nombre de la regional/superregional con que clasificaron) |
 | Liga / Sub-liga | RoboCupJunior **Soccer — Open League** |
 | Evento | RoboCup 2026, **Incheon, Corea del Sur** (30-jun a 6-jul 2026) |
@@ -182,7 +182,7 @@ La rúbrica otorga **+1 bonus por open-source de CAD/PCB/esquemáticos** y **+1 
 
 | # | Gap | Tipo |
 |---|---|---|
-| 1 | **[NOMBRE DEL EQUIPO]** oficial registrado en RoboCup Incheon | Identificación |
+| 1 | **IITA Low Battery Messi** oficial registrado en RoboCup Incheon | Identificación |
 | 2 | **[REGIÓN]** — nombre de la regional/superregional de clasificación | Identificación |
 | 3 | **[COSTOS]** precios reales de: Teensy 4.0 ×2 + 4.1, **OpenMV N6 ×2 (las más caras)**, OTOS ×2, BNO055 ×2–4, VL53L7CX ×4, HC-SR04, ESP32-C6, **Zircon (precio Robomov)**, batería LiPo, MP1584 ×6, UA78M33, motores ×3, ruedas omni ×3 | Costo |
 | 4 | **[COSTO TOTAL]** por robot, total 2 robots, y **conversión a ARS** | Costo |

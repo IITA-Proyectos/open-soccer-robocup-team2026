@@ -1,5 +1,5 @@
 # Planilla de Costos — BOM (plantilla de trabajo)
-## [NOMBRE DEL EQUIPO] · RoboCupJunior Soccer **Open** · Incheon 2026
+## IITA Low Battery Messi · RoboCupJunior Soccer **Open** · Incheon 2026
 
 > 📝 **Planilla de trabajo — completar precios reales (facturas) y volcar el total a BOM.md §3.1 / POSTER Zona E / TDP §1.8 (items A4/A5/A11 de MEJORAS-PENDIENTES).**
 

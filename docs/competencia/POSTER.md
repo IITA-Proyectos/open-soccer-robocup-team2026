@@ -156,7 +156,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > - **Todos los PIDs en CENTRAL:** un solo lugar con todas las ganancias.
 > - **Continuidad:** CENTRAL es el Zircon que ganó el Nacional 2025; si una placa nueva falla, degrada a modo monolítico.
 
-`[FOTO: diagrama de bloques renderizado del flujo de datos — 3 cajas TOP/CENTRAL/DOWN con flechas etiquetadas "WorldSnapshot 31 B @100 Hz", "LineStatusV2 16 B @200 Hz", "bus emergencia" — Fig.2]`
+`[FOTO: diagrama de bloques renderizado del flujo de datos — 3 cajas TOP/CENTRAL/DOWN con flechas etiquetadas "WorldSnapshot 31 B @100 Hz", "LineStatusV2 16 B @200 Hz", "bus emergencia" — Fig.2 · archivo docs/competencia/assets/fig2_dataflow.png (gen_diagramas.py)]`
 
 ---
 
@@ -186,7 +186,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > - **Arquero que anticipa:** apunta a la **X predicha** = `pos + v·lookahead` (no a la X actual).
 
 `[FOTO: captura de pantalla de la suite de 624 tests host pasando en verde (terminal run-host-tests.sh) — Fig.3]`
-`[DIAGRAMA: flowchart de la FSM táctica dual — ATTACKER: WAIT_START→KICKOFF→SEARCH→POSITION→APPROACH (+LINE_AVOID); GOALKEEPER: WAIT_START→PATROL→INTERCEPT→CLEAR (+LINE_AVOID); EMERGENCY_LINE bypassa la FSM. (El empuje al arco NO es un estado: ocurre dentro de APPROACH.) Fuente lista: el diagrama Mermaid de docs/competencia/assets/diagramas.md (verificado vs strategy.cpp); detalle en docs/firmware/ESTRATEGIA-ALTO-NIVEL.md — Fig.4]`
+`[DIAGRAMA: flowchart de la FSM táctica dual — ATTACKER: WAIT_START→KICKOFF→SEARCH→POSITION→APPROACH (+LINE_AVOID); GOALKEEPER: WAIT_START→PATROL→INTERCEPT→CLEAR (+LINE_AVOID); EMERGENCY_LINE bypassa la FSM. (El empuje al arco NO es un estado: ocurre dentro de APPROACH.) Fuente lista: el diagrama Mermaid de docs/competencia/assets/diagramas.md (verificado vs strategy.cpp); detalle en docs/firmware/ESTRATEGIA-ALTO-NIVEL.md — Fig.4 · archivo docs/competencia/assets/fig4_fsm.png (gen_diagramas.py)]`
 
 ---
 
@@ -322,7 +322,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 - [ ] Completar **[NOMBRE DEL EQUIPO]**, **[REGIÓN/REGIONAL]**, **roster con roles**.
 - [ ] Completar **BOM con costos reales** y **costo total** (USD/ARS).
 - [ ] Tomar y colocar **todas las `[FOTO:]`** (Fig.1–11) etiquetadas y citadas.
-- [ ] Generar **Fig.2 (diagrama de flujo)**, **Fig.4 (flowchart FSM)**, **Fig.8–9 (gráficos)**.
+- [x] ✅ Generadas 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Falta solo maquetarlas en el A1.
 - [ ] Confirmar el **número de tests vivo** al cierre (verificado **624 tests / 44 suites / 0 fallos** el 2026-06-04 con `scripts/run-host-tests.sh`; re-correr antes de imprimir).
 - [ ] Verificar que el poster cabe en **A1 apaisado (≤70.7×100 cm)** y es legible a 1.5 m.
 - [ ] Generar los **QR** (repo + video TDP).

@@ -138,10 +138,14 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 | `test_ball_velocity` | 13 | velocidad pelota (EMA + reset al perder + clamp int16) |
 | **Total (20 envs)** | **262** | **0 fallos** |
 
-> ⚠️ La tabla de arriba es snapshot 2026-05-29. **Número vivo (2026-06-03):
-> 403 tests / 33 envs / 0 fallos** vía `scripts/run-host-tests.sh` (la tabla no
+> ⚠️ La tabla de arriba es snapshot 2026-05-29. **Número vivo (2026-06-05):
+> 624 tests / 44 suites (envs) / 0 fallos** vía `scripts/run-host-tests.sh` (la tabla no
 > incluye los tests sumados después: broadcast, drive_straight, imu_fusion,
 > tof_zone_orient, otos_ingest, gk_cross_track, ball_velocity, **cameras_parser**).
+
+> **Historial del conteo de tests (no reescribir las líneas viejas):** 246/19 (2026-05-29)
+> → 262/20 (2026-05-29 post-merge) → 324/26 (2026-06-03) → 354/29 (2026-06-03 pt.2)
+> → 403/33 (2026-06-03 pt.3) → **624/44 (2026-06-05, vigente)**, todos 0 fallos.
 
 **Estado (2026-05-29, post-merge 3 agentes):** ✅ **262 tests / 20 envs / 0 fallos** —
 verificado con `pio test -e test_native` tras mergear central+top+down a `main`

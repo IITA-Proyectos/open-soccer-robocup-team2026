@@ -146,7 +146,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 > - **All PIDs on CENTRAL:** a single place holding all the gains.
 > - **Continuity:** CENTRAL is the Zircon that won the 2025 Nationals; if a new board fails, it degrades to monolithic mode.
 
-`[DIAGRAM: rendered block diagram of the data flow — 3 boxes TOP/CENTRAL/DOWN with arrows labeled "WorldSnapshot 31 B @100 Hz", "LineStatusV2 16 B @200 Hz", "emergency bus" — Fig.2]`
+`[DIAGRAM: rendered block diagram of the data flow — 3 boxes TOP/CENTRAL/DOWN with arrows labeled "WorldSnapshot 31 B @100 Hz", "LineStatusV2 16 B @200 Hz", "emergency bus" — Fig.2 · archivo docs/competencia/assets/fig2_dataflow.png (gen_diagramas.py)]`
 
 ---
 
@@ -176,7 +176,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 > - **Anticipating goalkeeper:** aims at the **predicted X** = `pos + v·lookahead` (not the current X).
 
 `[PHOTO: screenshot of the 624-test host suite passing green (run-host-tests.sh terminal) — Fig.3]`
-`[DIAGRAM: flowchart of the dual tactical FSM — ATTACKER: WAIT_START→KICKOFF→SEARCH→POSITION→APPROACH (+LINE_AVOID); GOALKEEPER: WAIT_START→PATROL→INTERCEPT→CLEAR (+LINE_AVOID); EMERGENCY_LINE bypasses the FSM. (Pushing toward the goal is NOT a state: it happens inside APPROACH.) Ready-to-use source: the Mermaid diagram in docs/competencia/assets/diagramas.md (verified against strategy.cpp); details in docs/firmware/ESTRATEGIA-ALTO-NIVEL.md — Fig.4]`
+`[DIAGRAM: flowchart of the dual tactical FSM — ATTACKER: WAIT_START→KICKOFF→SEARCH→POSITION→APPROACH (+LINE_AVOID); GOALKEEPER: WAIT_START→PATROL→INTERCEPT→CLEAR (+LINE_AVOID); EMERGENCY_LINE bypasses the FSM. (Pushing toward the goal is NOT a state: it happens inside APPROACH.) Ready-to-use source: the Mermaid diagram in docs/competencia/assets/diagramas.md (verified against strategy.cpp); details in docs/firmware/ESTRATEGIA-ALTO-NIVEL.md — Fig.4 · archivo docs/competencia/assets/fig4_fsm.png (gen_diagramas.py)]`
 
 ---
 
@@ -312,7 +312,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 - [ ] Fill in **[TEAM NAME]**, **[REGION / REGIONAL]**, **roster with roles**.
 - [ ] Complete the **BOM with real costs** and the **total cost** (USD/ARS).
 - [ ] Shoot and place **all `[PHOTO:]`** (Fig.1–11), labeled and cited.
-- [ ] Generate **Fig.2 (flow diagram)**, **Fig.4 (FSM flowchart)**, **Fig.8–9 (charts)**.
+- [x] ✅ Generated 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Only A1 layout remains.
 - [ ] Confirm the **live test count** at closing (verified **624 tests / 44 suites / 0 failures** on 2026-06-04 via `scripts/run-host-tests.sh`; re-run before printing).
 - [ ] Verify the poster fits **A1 landscape (≤70.7×100 cm)** and is legible at 1.5 m.
 - [ ] Generate the **QR codes** (repo + TDP video).

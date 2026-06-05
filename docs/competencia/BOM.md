@@ -152,7 +152,7 @@ La rúbrica premia **decisiones de diseño basadas en datos y trade-offs**, no s
 | Árbitro homologado (mueve el robot end-to-end) | 2026-06-02/03 | `journal/2026-06-03-banco-*` |
 | **Esfuerzo total de ingeniería** | **≈ 4 meses** (feb–jun 2026), desarrollo asistido por múltiples agentes en ramas | journals |
 
-> 💡 **Métrica de proceso vendible:** **suite de tests host-native que crece de forma trazable sesión a sesión** — 180 → 246 → 262 → 324 → 354 → 470 → **624 tests / 44 suites / 0 failures (verified 2026-06-04 via `scripts/run-host-tests.sh`)**. Ver el gráfico de crecimiento en `docs/competencia/assets/fig8_test_growth.png` (generado por `gen_figuras.py`).
+> 💡 **Métrica de proceso vendible:** **suite de tests host-native que crece de forma trazable sesión a sesión** — 180 → 246 → 262 → 324 → 354 → 470 → **652 tests / 47 suites / 0 failures (measured 2026-06-05 18:39 ART via `scripts/run-host-tests.sh`)**. Ver el gráfico de crecimiento en `docs/competencia/assets/fig8_test_growth.png` (generado por `gen_figuras.py`).
 
 ---
 
@@ -193,7 +193,7 @@ La rúbrica otorga **+1 bonus por open-source de CAD/PCB/esquemáticos** y **+1 
 | 6 | **[SPEC rueda]** Ø/material/n.º rodillos/origen (impresa o comprada) de la rueda omni 2026 | Mecánica |
 | 7 | **[SPEC batería]** capacidad (mAh), C-rating, marca, peso, n.º de packs/robot | Eléctrica |
 | 8 | **[Nuevo/Reusado motores/ruedas]** confirmar si tracción es nueva 2026 o reusada 2025 | Sustentabilidad |
-| 9 | ✅ Cifra final de tests **resuelta**: **624 tests / 44 suites / 0 failures (verified 2026-06-04 via `scripts/run-host-tests.sh`)** — figura en `docs/competencia/assets/fig8_test_growth.png` | Proceso |
+| 9 | ✅ Cifra final de tests **resuelta**: **652 tests / 47 suites / 0 failures (measured 2026-06-05 18:39 ART via `scripts/run-host-tests.sh`)** — figura en `docs/competencia/assets/fig8_test_growth.png` | Proceso |
 | 10 | **[FOTO]** de cada PCB poblada (TOP/DOWN/Zircon/COMM) y del robot armado para etiquetar en el poster | Imágenes |
 | 11 | **[GAP]** set-points reales de los MP1584 (trimpot, sin medir) y costo de PCBs prorrateado del lote JLCPCB | Eléctrica |
 | 12 | **[PLANTILLA]** verificar si existe plantilla oficial de BOM RCJ y transcribir | Formato |

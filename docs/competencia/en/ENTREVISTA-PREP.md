@@ -41,7 +41,7 @@
 |---|---|---|
 | 0-15 s | `María Virginia Viollaz` | "We are `IITA Low Battery Messi`, from Salta, Argentina, in the **Open** sub-league. We arrived in Incheon as the **national champions** of the 2025 Roboliga Argentina. We bring **2 robots**: a **goalkeeper** and a **striker**." |
 | 15-40 s | `María Virginia Viollaz` | "Our robot uses a **distributed 3-board architecture**: one board **perceives** (2 OpenMV N6 cameras, 1 IMU, 4 ToF sensors), one board **decides** (tactical FSM + 3 omni motors) and one board **touches the floor** (a 32-sensor line ring + 2 optical odometry sensors). They talk to each other over UART at 230400 baud." |
-| 40-65 s | `Elías Cordero` | "What we are proudest of is **how we verify the firmware without the board**: the decision logic lives in pure C++ modules that we compile and test on the PC with g++. Today we run **624 host-native tests in 44 suites, 0 failures** (verified 2026-06-04 with `scripts/run-host-tests.sh`). That lets us **iterate fast and safely** days before the competition." |
+| 40-65 s | `Elías Cordero` | "What we are proudest of is **how we verify the firmware without the board**: the decision logic lives in pure C++ modules that we compile and test on the PC with g++. Today we run **652 host-native tests in 47 suites, 0 failures** (measured 2026-06-05 18:39 ART with `scripts/run-host-tests.sh`). That lets us **iterate fast and safely** days before the competition." |
 | 65-85 s | `Elías Cordero` | "And a tactical decision we are proud of: the **goalkeeper anticipates**. Instead of tracking the ball's current position, it projects where it **is going to be** using its velocity (`pos + v·0.2 s`, capped). We can show it to you on the field if you'd like." |
 | 85-90 s | both | "Everything is **open-source under the MIT license** on GitHub, documented so another team can replicate it. Where would you like to start?" |
 
@@ -99,7 +99,7 @@
 
 ### 3.3 — How we flash firmware fast (have this ready BEFORE)
 - **Embedded build/flash**: `pio run -e central_robot1 -t upload` (or `top_robot1` / `down`). The environment compiles **100% offline** (vendored libs in `lib/`), so **we don't depend on the venue's internet**.
-- **Instant board-free verification**: `bash scripts/run-host-tests.sh` → runs the 624 host tests in seconds (624 tests / 44 suites / 0 failures, verified 2026-06-04). **Showing this to the judge is a winner**: "before uploading to the robot, we validate it on the PC". **Honest caveat:** the host runner compiles the **pure modules** (shared + down); the central/top tests use Arduino and compile **on-target** on the board.
+- **Instant board-free verification**: `bash scripts/run-host-tests.sh` → runs the 652 host tests in seconds (652 tests / 47 suites / 0 failures, measured 2026-06-05 18:39 ART). **Showing this to the judge is a winner**: "before uploading to the robot, we validate it on the PC". **Honest caveat:** the host runner compiles the **pure modules** (shared + down); the central/top tests use Arduino and compile **on-target** on the board.
 - **Bench diagnostics**: there are ~40 sketches in `src/diag/` (`diag_central_motors`, `diag_central_strafe`, `diag_central_rx_all`...) that reuse the production parsers. If the task is "move a motor", `diag_central_motors` already does it.
 - **Bring-up trick that avoids wasting time (say it if something doesn't respond):** the I²C sensors (ToF and OTOS) **retain their address while powered at 3.3 V** → if they don't show up, do a **real power-cycle** (cut battery + USB for ~10 s), not just a reset. Knowing this saves 20 min of live debugging.
 
@@ -223,15 +223,15 @@
 
 **Q: How do you test? (the star) 💡**
 > "We separate the **decision logic into pure C++ modules** —no Arduino— and test them on the PC with g++. Today:
-> **624 tests / 44 suites / 0 failures** (verified 2026-06-04 with `scripts/run-host-tests.sh`), which grew traceably
-> (246 → 262 → 324 → 354 → 545 → 624). See the growth chart at `docs/competencia/assets/fig8_test_growth.png`. **Honest
+> **652 tests / 47 suites / 0 failures** (measured 2026-06-05 18:39 ART with `scripts/run-host-tests.sh`), which grew traceably
+> (246 → 262 → 324 → 354 → 545 → 652). See the growth chart at `docs/competencia/assets/fig8_test_growth.png`. **Honest
 > caveat:** the host runner compiles the **pure modules** (shared + down); the central/top tests use Arduino and
 > compile **on-target**. It was born from a real problem: the **antivirus was blocking PlatformIO**, so we vendored
 > the test framework and wrote a g++ runner that **dodges the antivirus and runs without internet**. That lets us
 > verify embedded firmware **without having the board in hand**."
 
 **Q: How do you make sure a change doesn't break what was working?**
-> "Two things: (1) a **mandatory green gate** —all 624 tests pass (624 / 44 / 0)— before any merge; and (2) a
+> "Two things: (1) a **mandatory green gate** —all 652 tests pass (652 / 47 / 0)— before any merge; and (2) a
 > **byte-identical fallback**: every new feature, if the data is unavailable, produces **exactly** the previous
 > command. We verify it with a test that compares the output with and without the data. That way a feature 'sleeps'
 > until the data flows and **never introduces a regression**."
@@ -300,7 +300,7 @@
 - **2026 chassis materials and dimensions** (height between floors/standoffs, printed parts, robot diameter and weight) — not documented; affects answers in the Mechanical category.
 - **2026 chassis STL/CAD** so we can say "it's replicable" with confidence (the ones in the repo are from 2025 with the now-discarded dribbler/solenoid).
 - **State of partner coordination (ESP-NOW) on the bench** — to confidently answer the "robot-to-robot" question.
-- **Current test count** at travel time: verified **624 tests / 44 suites / 0 failures (2026-06-04 via `scripts/run-host-tests.sh`)**. Run the runner the day before and use the real figure of the day.
+- **Current test count** at travel time: verified **652 tests / 47 suites / 0 failures (2026-06-05 18:39 ART via `scripts/run-host-tests.sh`)**. Run the runner the day before and use the real figure of the day.
 - **IITA legal name** (✅ resolved 2026-06-05): **IITA = Instituto de Innovación y Tecnología Aplicada** (Institute of Innovation and Applied Technology) / Fundación Innovar. Unified across all docs.
 - **Data figures** (`docs/competencia/assets/fig8_test_growth.png`, `fig9_otos_error.png`): generate them with `gen_figuras.py` before traveling — the script exists but the PNGs are not yet generated in `assets/`.
 - **English translation** of all interview material (a language requirement of the competition): this English version is `docs/competencia/en/ENTREVISTA-PREP.md`; it still needs to be **rehearsed out loud**.

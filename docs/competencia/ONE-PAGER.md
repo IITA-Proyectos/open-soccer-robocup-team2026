@@ -26,7 +26,7 @@ impresion: 1 carilla, A4 o carta, vertical
 
 ## Verificación sin placa
 
-- **624 tests / 44 suites / 0 fallos**, host-native (`g++`), **100% offline.**
+- **652 tests / 47 suites / 0 fallos** *(cifra viva: medida 2026-06-05 18:39 ART; crece cada sesión → será mayor en Incheon)*, host-native (`g++`), **100% offline.**
 - La lógica de decisión vive en **módulos C++ puros** (sin Arduino / Wire / Serial); compilan y corren en una notebook sin el robot. Ciclo de verificación: segundos.
 - Corrélo vos: `scripts/run-host-tests.sh`.
 

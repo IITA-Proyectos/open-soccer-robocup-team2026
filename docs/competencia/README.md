@@ -34,7 +34,7 @@ Carpeta de trabajo del equipo IITA para los entregables **documentales** de Robo
 - **Iteración con datos.** Mostrar el ciclo testeo→evaluación→modificación con **modificaciones MAYORES hechas POR el testing** (OTOS lámina/A4/cartón, I²C 400k→100k, árbitro AND→OR), en gráficos/tablas, no solo narrado.
 - **El cuello de botella es EJECUCIÓN, no contenido.** El texto ya apunta a Excellent en casi todo; faltan **imágenes (hoy hay 0 en el repo)**, **maquetar el A1**, **grabar el video**, **cerrar costos** y **traducir a inglés**. Software del TDP y los bonus open-source ya están sólidos.
 - **Honestidad calibrada.** Distinguir "verificado en banco" de "verificado en host", y "dato medido" de "objetivo de diseño". Un juez adversarial premia la honestidad y castiga datos inventados; sobrevender el 403/33 (visión sin calibrar) es un riesgo.
-- **Consistencia entre deliverables.** Una sola cifra de tests (correr `scripts/run-host-tests.sh` el día previo — hoy **624/44/0**), un solo nombre de equipo, un solo nombre de la organización (✅ unificado a "Instituto de Innovación y Tecnología Aplicada"). Cifras o nombres contradictorios = munición para el juez.
+- **Consistencia entre deliverables.** Una sola cifra de tests (correr `scripts/run-host-tests.sh` el día previo — hoy **652/47/0**), un solo nombre de equipo, un solo nombre de la organización (✅ unificado a "Instituto de Innovación y Tecnología Aplicada"). Cifras o nombres contradictorios = munición para el juez.
 
 > 🇬🇧 **Recordatorio final:** antes de imprimir/enviar, **traducir Poster + TDP + subtítulos del Video + material de Entrevista al INGLÉS** y correr corrector ortográfico EN. Sin esto, varios criterios no pueden puntuar Excellent por más bueno que sea el contenido.
 

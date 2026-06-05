@@ -88,7 +88,7 @@ Precio **por unidad** (poné ARS o USD, el que tengan; aclaren cuál):
 - [ ] **Robot de costado** mostrando las **3 placas apiladas** (los "pisos")
 - [ ] **Foto de cerca del anillo de sensores de línea** (la placa de abajo)
 - [ ] **El equipo** (idealmente con el trofeo del Nacional 2025 si lo tienen)
-- [ ] **La notebook con los tests en verde** (pantalla que diga `624 tests / 0 failures`) — *opcional, la sacamos nosotros*
+- [ ] **La notebook con los tests en verde** (pantalla que diga `652 tests / 0 failures`) — *opcional, la sacamos nosotros*
 - [ ] **(Opcional)** el robot jugando / en la cancha, para el video
 
 → ¿Quién las saca y para qué fecha? ______________________

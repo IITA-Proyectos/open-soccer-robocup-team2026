@@ -279,7 +279,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > **M4 — Diagnóstico que reusa los parsers de producción.** Los ~40 sketches de banco **no reimplementan** el decodificador: validan `payload_len` contra `sizeof` y detectan *staleness*/CRC/SEQ-gap.
 
 `[GRÁFICO: barras del crecimiento de la suite de tests — 180 → 246 → 262 → 324 → 354 → 545 → 624 — Fig.8 · archivo docs/competencia/assets/fig8_test_growth.png (gen_figuras.py)]`
-`[GRÁFICO: barras de error de odometría OTOS por superficie — A4-lámina 90.5% error, A4-limpio 99.9%, cartón 6.5% — Fig.9 · archivo docs/competencia/assets/fig9_otos_error.png (gen_figuras.py)]`
+`[GRÁFICO: barras de error de odometría OTOS por superficie — A4-lámina 9.5% error, A4-limpio 0%, cartón 6.5% — Fig.9 · archivo docs/competencia/assets/fig9_otos_error.png (gen_figuras.py)]`
 `[FOTO: sesión de banco con monitor serial decodificando un WorldSnapshot / diag_central_motors — Fig.10]`
 `[FOTO: el bodge de los 4 LP de ToF cableados a GPIO 9/10/11/12 (historia visual fuerte) — Fig.11]`
 

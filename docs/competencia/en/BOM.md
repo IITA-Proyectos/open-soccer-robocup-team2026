@@ -130,12 +130,13 @@ The rubric rewards **data-driven design decisions and trade-offs**, not just the
 | Item | Cost |
 |---|---|
 | Subtotal of components **with a real price in the repo** (line ring + muxes + diodes, per robot): ALS-PT19 (3.71) + 0402 LED (0.51) + CD4051 (3.84) + B5819W (0.14) | **≈ USD 8.20** |
-| Remaining major components (MCUs, N6 cameras ×2, OTOS ×2, BNO055 ×2, VL53L7CX ToF ×4 [PRICE — verify], motors ×3, Zircon, battery, MP1584 ×6, etc.) | **[COST — pending]** (no price in the repo; rough estimate USD 400–700/robot, dominated by the 2 N6 cameras and the 2 OTOS) |
-| **TOTAL COST per robot** | **[TOTAL — pending]** |
-| **TOTAL COST for 2 robots** | **[TOTAL — pending]** |
-| Conversion to local currency (ARS) | **[TOTAL — pending]** |
+| Major components (international reference price, verified 2026-06-05): 2× N6 ($330) + 2× OTOS ($169.90) + 3× Teensy ($79.10) + 4× VL53L7CX ($79.80) + 1–2× BNO055 ($35–70) + motors/wheels/battery + MP1584/ESP32-C6/HC-SR04 + Zircon (~$200, reused) | **≈ USD 990** |
+| **TOTAL COST per robot (all new, international ref.)** | **≈ USD 1,000** |
+| **TOTAL COST per robot (reusing the 2025 CENTRAL Zircon + Teensy 4.1)** | **≈ USD 770** |
+| **TOTAL COST for 2 robots (reference)** | **≈ USD 1,800 – 2,000** |
+| Conversion to local currency (ARS) | [exchange rate of the day] · ⚠️ local *landed* cost **higher** due to import restrictions (see note above) |
 
-> The repo has **no** consolidated cost BOM: only **LCSC unit prices in USD** for the passives/ICs of the custom boards (cited above). **Obtain from the team** the prices for Teensy ×3, OpenMV N6 ×2 (the most expensive), OTOS ×2, BNO055 ×2–4, VL53L7CX ×4, motors ×3, battery, Zircon (Robomov price), plus the **per-robot total + 2-robot total + ARS conversion**.
+> 💵 Prices are **international reference (USD)**, verified via web on 2026-06-05 (openmv.io, SparkFun, Pololu, Adafruit, DigiKey, etc.); **full breakdown with URLs in `BOM-COSTOS-TEMPLATE.md`**. **Pending from the team (small):** the real price of the standalone **Zircon** board (Robomov only lists the full kit at USD 529), which **motor** they use (generic TT ~$3 vs Pololu HP $23.95), the **exchange rate** of the day, and the development **hours**.
 
 ### 3.2 Development time (traceable in journals)
 

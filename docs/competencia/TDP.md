@@ -261,7 +261,7 @@ Los **6 sensores I²C cuelgan del mismo bus `Wire` (pines 18/19)**: 2 BNO055 (0x
 
 **Decisión central de ingeniería:** la **lógica de decisión vive en módulos PUROS** (`src/shared/`, sin Arduino/Wire/Serial/`analogWrite`); el **glue Arduino es delgado** y compile-only.
 **Por qué:** los módulos puros se compilan y testean con **g++ en la PC, sin la placa**, lo que da un ciclo de verificación de segundos y esquiva el bloqueo de Avast al registry de PlatformIO.
-**Dato:** **624 tests / 44 suites / 0 failures (verified 2026-06-04 via scripts/run-host-tests.sh)**. Crecimiento trazable sesión a sesión: 180 → 246 → 262 → 324 → 354 → 403 → 470 → 545. Ver **Fig. 8 — crecimiento de la cobertura de tests host-native** (`docs/competencia/assets/fig8_test_growth.png`, generada por `gen_figuras.py`).
+**Dato:** **624 tests / 44 suites / 0 failures (verified 2026-06-04 via scripts/run-host-tests.sh)**. Crecimiento trazable sesión a sesión: 180 → 246 → 262 → 324 → 354 → 403 → 470 → 545 → 624. Ver **Fig. 8 — crecimiento de la cobertura de tests host-native** (`docs/competencia/assets/fig8_test_growth.png`, generada por `gen_figuras.py`).
 
 ### [FLOWCHART] Pipeline de verificación host-native
 ```

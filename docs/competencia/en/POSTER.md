@@ -69,7 +69,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 `[PHOTO: clean render or photo of the complete robot (3/4 view) on the right of the band, neutral background]`
 `[PHOTO: small Argentina flag/icon + "Salta" for the region]`
 
-> **Gap note:** confirm the **official team name registered at RoboCup Incheon** and the **exact qualifying regional** before printing.
+> **Gap note:** confirm the **exact qualifying regional** before printing (✅ team name: IITA Low Battery Messi).
 
 ---
 
@@ -269,7 +269,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 > **M4 — Diagnostics that reuse the production parsers.** The ~40 bench sketches **do not reimplement** the decoder: they validate `payload_len` against `sizeof` and detect *staleness*/CRC/SEQ-gap.
 
 `[CHART: bars of the test-suite growth — 180 → 246 → 262 → 324 → 354 → 545 → 624 — Fig.8 · file docs/competencia/assets/fig8_test_growth.png (gen_figuras.py)]`
-`[CHART: bars of OTOS odometry error by surface — A4-film 90.5% error, A4-clean 99.9%, cardboard 6.5% — Fig.9 · file docs/competencia/assets/fig9_otos_error.png (gen_figuras.py)]`
+`[CHART: bars of OTOS odometry error by surface — A4-film 9.5% error, A4-clean 0%, cardboard 6.5% — Fig.9 · file docs/competencia/assets/fig9_otos_error.png (gen_figuras.py)]`
 `[PHOTO: bench session with a serial monitor decoding a WorldSnapshot / diag_central_motors — Fig.10]`
 `[PHOTO: the bodge of the 4 ToF LP wired to GPIO 9/10/11/12 (strong visual story) — Fig.11]`
 

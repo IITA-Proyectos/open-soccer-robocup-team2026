@@ -295,6 +295,60 @@ void test_clasificacion_borde_45_grados_estable(void) {
 }
 
 // ============================================================
+// Bugs latentes cerrados [audit 2026-06-05]
+// ============================================================
+
+void test_heading_output_normaliza_cruzando_wrap(void) {
+    // loc-heading-output-no-wrap: bno~-17000 con offset~+17000 daba
+    // heading_centideg = -34000, que desborda int16 (min -32768) y wrappea a un
+    // heading falso. El fix normaliza a (-18000, 18000] antes del cast.
+    //
+    // Con heading interno = (-17000 - 17000)/100 = -340 grados:
+    //   TOF[0] mount=0   -> world_angle 20  -> NORTH (eje Y)
+    //   TOF[1] mount=180 -> world_angle 200 -> SOUTH (eje Y)
+    //   TOF[2] mount=90  -> world_angle 110 -> WEST  (eje X)
+    //   TOF[3] mount=270 -> world_angle 290 -> EAST  (eje X)
+    // -> 2 estimaciones por eje, pose valido, podemos asertar el heading.
+    auto in = make_inputs(910, 910, 1215, 1215, -17000);
+    auto cfg = make_standard_config();
+    cfg.bno_offset_centideg = 17000;
+    cfg.prev_valid = false;
+
+    auto pose = localization_compute(in, cfg);
+
+    TEST_ASSERT_TRUE(pose.valid);
+    // -34000 + 36000 = 2000, dentro de +-18000 (sin el fix, (int16_t)-34000
+    // = 31536 por el wrap de int16: un heading falso fuera de [-18000,18000]).
+    TEST_ASSERT_EQUAL_INT16(2000, pose.heading_centideg);
+    TEST_ASSERT_TRUE(pose.heading_centideg > -18000 && pose.heading_centideg <= 18000);
+}
+
+void test_pose_estimacion_fuera_de_rango_int16_se_clampea(void) {
+    // loc-pose-int16-narrowing: con un field_height patologicamente grande, la
+    // estimacion (field_height_mm - dperp) excede int16 (>32767). Sin clamp el
+    // cast a int16 wrappea a negativo; con el clamp satura a 32767.
+    //
+    // field_height=60000 (eje Y), field_width=1820 (eje X). heading=0:
+    //   TOF[0] mount=0  -> NORTH -> y_est = 60000 - ~20 = 59980 -> clamp 32767
+    //   TOF[2] mount=90 -> WEST  -> x_est = ~910 (da pose valido)
+    // max_dim = 60000, asi que d=20 pasa el filtro de rango crudo.
+    auto in = make_inputs(20, 0, 910, 0, 0);
+    in.tof_valid[1] = false;  // sin estimacion trasera
+    in.tof_valid[3] = false;  // sin estimacion derecha
+    auto cfg = make_standard_config();
+    cfg.field_width_mm  = 1820;
+    cfg.field_height_mm = 60000;  // patologico: fuerza y_est > int16 max
+    cfg.tof_offset_mm   = 0;
+    cfg.prev_valid      = false;
+
+    auto pose = localization_compute(in, cfg);
+
+    TEST_ASSERT_TRUE(pose.valid);
+    // Sin el clamp: (int16_t)59980 = -5556. Con el clamp: 32767.
+    TEST_ASSERT_EQUAL_INT16(32767, pose.y_mm);
+}
+
+// ============================================================
 // Runner Unity
 // ============================================================
 int main(int argc, char** argv) {
@@ -314,5 +368,7 @@ int main(int argc, char** argv) {
     RUN_TEST(test_pose_invalid_sin_suficientes_tofs);
     RUN_TEST(test_pose_invalid_todos_tofs_fuera_de_rango);
     RUN_TEST(test_clasificacion_borde_45_grados_estable);
+    RUN_TEST(test_heading_output_normaliza_cruzando_wrap);
+    RUN_TEST(test_pose_estimacion_fuera_de_rango_int16_se_clampea);
     return UNITY_END();
 }

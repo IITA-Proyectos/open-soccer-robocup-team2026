@@ -92,7 +92,14 @@ struct AtkDecision {
     // "punto de empuje alineado" (pelota cerca + apuntando al arco), que es
     // pura geometría de alineación. Se conserva como red de caracterización de
     // strategy.cpp; el robot sigue empujando la pelota por inercia.
-    bool     kicker_fire;        // ¿este tick el robot está alineado para empujar?
+    //
+    // ⚠️ NOMBRE VESTIGIAL: kicker_fire = tick alineado para empujar; el robot NO
+    // tiene kicker físico. El nombre confunde pero NO se renombra acá: el símbolo
+    // aparece también fuera de los archivos de este track (src/diag/
+    // diag_central_arbitro_strafe.cpp lo menciona en un comentario). Renombrarlo a
+    // algo como `aligned_to_push` requiere coordinar con quien posee esos archivos
+    // (y verificar strategy.cpp) — ver follow_ups del audit 2026-06-05.
+    bool     kicker_fire;        // ¿este tick el robot está alineado para empujar? (= aligned_to_push)
     bool     start_kickoff_timer;// ¿el caller debe guardar now como kickoff_started?
 };
 

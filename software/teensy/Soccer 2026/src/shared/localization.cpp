@@ -10,6 +10,17 @@ enum Wall { WALL_NORTH, WALL_SOUTH, WALL_EAST, WALL_WEST, WALL_NONE };
 
 namespace {
 
+// Saturacion pura int32 -> int16 (sin float, para mantener este modulo libre de
+// libm; ver nota de cabecera de la LUT cos). Espeja telemetry_sat.h::sat_i16 pero
+// sobre entero. [audit 2026-06-05: loc-pose-int16-narrowing]
+// En el rango fisico actual (poses <=2430 mm) es un no-op; solo satura lecturas
+// patologicas que hoy no ocurren, evitando narrowing/wrap en el cast a int16.
+static inline int16_t loc_clamp_i16(int32_t v) {
+    if (v > 32767)  return 32767;
+    if (v < -32768) return -32768;
+    return static_cast<int16_t>(v);
+}
+
 // Normaliza un angulo a [0, 360).
 int normalize_angle_deg(int angle) {
     angle = angle % 360;
@@ -133,16 +144,16 @@ LocalizationPose localization_compute(
 
         switch (w) {
             case WALL_NORTH:
-                y_estimates[y_count++] = { static_cast<int16_t>(cfg.field_height_mm - dperp), i };
+                y_estimates[y_count++] = { loc_clamp_i16((int32_t)cfg.field_height_mm - dperp), i };
                 break;
             case WALL_SOUTH:
-                y_estimates[y_count++] = { static_cast<int16_t>(dperp), i };
+                y_estimates[y_count++] = { loc_clamp_i16(dperp), i };
                 break;
             case WALL_EAST:
-                x_estimates[x_count++] = { static_cast<int16_t>(cfg.field_width_mm - dperp), i };
+                x_estimates[x_count++] = { loc_clamp_i16((int32_t)cfg.field_width_mm - dperp), i };
                 break;
             case WALL_WEST:
-                x_estimates[x_count++] = { static_cast<int16_t>(dperp), i };
+                x_estimates[x_count++] = { loc_clamp_i16(dperp), i };
                 break;
             case WALL_NONE:
                 break;
@@ -193,9 +204,16 @@ LocalizationPose localization_compute(
             sum_y += y_estimates[i].value;
             pose.source_flags |= (1 << y_estimates[i].tof_idx);
         }
-        pose.x_mm = static_cast<int16_t>(sum_x / x_count);
-        pose.y_mm = static_cast<int16_t>(sum_y / y_count);
-        pose.heading_centideg = in.bno_heading_centideg - cfg.bno_offset_centideg;
+        pose.x_mm = loc_clamp_i16(sum_x / x_count);
+        pose.y_mm = loc_clamp_i16(sum_y / y_count);
+        // heading_centideg = bno - offset, normalizado a (-18000, 18000] para
+        // que no desborde int16 (bno~-17000 con offset~+17000 daba -34000 ->
+        // wrap a heading falso). Coincide con la nota de localization.h:54.
+        // [audit 2026-06-05: loc-heading-output-no-wrap]
+        int32_t h = (int32_t)in.bno_heading_centideg - cfg.bno_offset_centideg;
+        while (h > 18000)   h -= 36000;
+        while (h <= -18000) h += 36000;
+        pose.heading_centideg = static_cast<int16_t>(h);
         pose.valid = true;
     }
 

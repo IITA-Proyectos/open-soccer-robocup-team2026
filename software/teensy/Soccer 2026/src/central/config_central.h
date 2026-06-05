@@ -126,10 +126,18 @@ constexpr int   UART_DOWN_RX    = 0;   // Serial1 RX1 (DOWN→CENTRAL) [informat
 constexpr int   UART_DOWN_TX    = 1;   // Serial1 TX1                [informativo]
 
 // ============================================================
-// Watchdog
+// Timeout de datos (snapshot stale → motors_stop) — NO es un watchdog de HW
 // ============================================================
-// El watchdog REAL del snapshot vive en world_model.cpp (SNAPSHOT_TIMEOUT_MS = 500 ms):
-// si no llega WORLD_SNAPSHOT del TOP en ese tiempo, main_central frena los motores. ⚠️ Esto SÓLO cubre la MUERTE del TOP, NO un cuelgue del PROPIO loop de CENTRAL: a diferencia del TOP (WDOG1 de hardware), CENTRAL NO tiene watchdog de hardware (oportunidad de confiabilidad — audit 2026-06-05 R2).
+// OJO: esto NO es un watchdog de hardware. Es un TIMEOUT DE FRESCURA DE DATOS.
+// El timeout REAL del snapshot vive en world_model.cpp (SNAPSHOT_TIMEOUT_MS = 500 ms):
+// si no llega WORLD_SNAPSHOT del TOP en ese tiempo, main_central frena los motores.
+// ⚠️ Este timeout SÓLO cubre la MUERTE del TOP (que dejen de llegar snapshots), NO un
+// cuelgue del PROPIO loop de CENTRAL: si el loop de CENTRAL se traba, este chequeo vive
+// DENTRO del mismo loop colgado y nunca llega a frenar los motores.
+// El watchdog de HARDWARE de CENTRAL (que SÍ cubre el cuelgue del propio loop) es el
+// WDOG1 del i.MX RT1062, gateado por -DCENTRAL_ENABLE_WDT (ver main_central.cpp,
+// env central_robot1_wdt). DEFAULT OFF → sin el flag, el binario es idéntico (audit
+// 2026-06-05 R2: WDOG1 portado del TOP a CENTRAL).
 // (#15: se removió COMMAND_TIMEOUT_MS=200 — era código muerto + heredado del rol viejo
 //  de "motor-server"; la CENTRAL ya NO recibe MotorCommand del TOP, arma el comando local.)
 //

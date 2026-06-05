@@ -239,7 +239,8 @@ void test_atk_position_holds_when_not_reached(void) {
 }
 
 // ============================================================================
-// ATK — APPROACH (incluye kicker_fire)
+// ATK — APPROACH (incluye el flag de empuje/push alineado, campo kicker_fire —
+// nombre vestigial: el robot NO tiene kicker físico, empuja por inercia)
 // ============================================================================
 
 void test_atk_approach_to_search_when_ball_lost(void) {
@@ -272,7 +273,8 @@ void test_atk_approach_back_to_position_on_hysteresis_loss(void) {
     TEST_ASSERT_FALSE(d.kicker_fire);
 }
 
-void test_atk_approach_fires_kicker_when_aligned_and_close(void) {
+void test_atk_approach_commits_push_when_aligned_and_close(void) {
+    // "commits push" = alineado para empujar (el robot NO tiene kicker físico).
     AtkWorldView w = atk_w();
     w.ball_visible = true;
     w.goal_visible = true;
@@ -281,10 +283,10 @@ void test_atk_approach_fires_kicker_when_aligned_and_close(void) {
     w.goal_angle_deg = 0.0f;      // |goal| 0 < kick_angle 12
     AtkDecision d = atk_decide_transition(AtkPhase::APPROACH, true, w, T_ATK);
     TEST_ASSERT_EQUAL(AtkPhase::APPROACH, d.next_phase);
-    TEST_ASSERT_TRUE(d.kicker_fire);
+    TEST_ASSERT_TRUE(d.kicker_fire);   // campo vestigial = aligned_to_push
 }
 
-void test_atk_approach_no_kicker_when_far(void) {
+void test_atk_approach_no_push_when_far(void) {
     AtkWorldView w = atk_w();
     w.ball_visible = true;
     w.goal_visible = true;
@@ -293,18 +295,18 @@ void test_atk_approach_no_kicker_when_far(void) {
     w.goal_angle_deg = 0.0f;
     AtkDecision d = atk_decide_transition(AtkPhase::APPROACH, true, w, T_ATK);
     TEST_ASSERT_EQUAL(AtkPhase::APPROACH, d.next_phase);
-    TEST_ASSERT_FALSE(d.kicker_fire);
+    TEST_ASSERT_FALSE(d.kicker_fire);  // campo vestigial = aligned_to_push
 }
 
-void test_atk_approach_no_kicker_when_goal_not_visible(void) {
+void test_atk_approach_no_push_when_goal_not_visible(void) {
     AtkWorldView w = atk_w();
     w.ball_visible = true;
-    w.goal_visible = false;       // sin arco → no se evalúa kick
+    w.goal_visible = false;       // sin arco → no se evalúa el empuje
     w.ball_x_mm = 0.0f;
     w.ball_y_mm = 50.0f;
     AtkDecision d = atk_decide_transition(AtkPhase::APPROACH, true, w, T_ATK);
     TEST_ASSERT_EQUAL(AtkPhase::APPROACH, d.next_phase);
-    TEST_ASSERT_FALSE(d.kicker_fire);
+    TEST_ASSERT_FALSE(d.kicker_fire);  // campo vestigial = aligned_to_push
 }
 
 // ============================================================================
@@ -438,13 +440,13 @@ int main(int, char**) {
     RUN_TEST(test_atk_position_to_approach_when_reached_and_aligned);
     RUN_TEST(test_atk_position_holds_when_not_reached);
 
-    // ATK approach + kicker
+    // ATK approach + empuje/push alineado (campo vestigial kicker_fire)
     RUN_TEST(test_atk_approach_to_search_when_ball_lost);
     RUN_TEST(test_atk_approach_to_search_when_ball_too_close_singular);
     RUN_TEST(test_atk_approach_back_to_position_on_hysteresis_loss);
-    RUN_TEST(test_atk_approach_fires_kicker_when_aligned_and_close);
-    RUN_TEST(test_atk_approach_no_kicker_when_far);
-    RUN_TEST(test_atk_approach_no_kicker_when_goal_not_visible);
+    RUN_TEST(test_atk_approach_commits_push_when_aligned_and_close);
+    RUN_TEST(test_atk_approach_no_push_when_far);
+    RUN_TEST(test_atk_approach_no_push_when_goal_not_visible);
 
     // GK
     RUN_TEST(test_gk_match_stopped_forces_wait_start);

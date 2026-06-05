@@ -24,7 +24,7 @@
 
 > **Placeholders to fill in before Incheon** (logged in the gaps at the end): `IITA Low Battery Messi`, final roles for
 > `María Virginia Viollaz`/`Elías Cordero`, and confirm that 2 people compete in Incheon (repo roster: Gustavo Viollaz director,
-> Enzo Juárez coach, María Virginia Viollaz and Elías Cordero competitors). In the interview **the competitors who
+> Enzo Juárez Velázquez coach, María Virginia Viollaz and Elías Cordero competitors). In the interview **the competitors who
 > are present speak**; the coach does not answer for them.
 
 ---
@@ -295,7 +295,7 @@
 ## Gaps (real data still missing — fill in before Incheon)
 
 - `IITA Low Battery Messi` officially registered with RoboCup Junior for Incheon (confirmed 2026-06-05; "IITA - Open Soccer RoboCup Team 2026" is the internal repo descriptor).
-- ✅ RESOLVED 2026-06-05: competitors **María Virginia Viollaz** (vision/strategy) and **Elías Cordero** (electro-mechanics), both 18. Also travelling: **Enzo Velázquez (coach)** and **Cecilia Budeguer (mentor)**; **Gustavo Viollaz (mentor)** does not travel.
+- ✅ RESOLVED 2026-06-05: competitors **María Virginia Viollaz** (vision/strategy) and **Elías Cordero** (electro-mechanics), both 18. Also travelling: **Enzo Juárez Velázquez (coach)** and **Cecilia Budeguer (mentor)**; **Gustavo Viollaz (mentor)** does not travel.
 - ✅ RESOLVED 2026-06-05: Salta, Argentina · champions of the 2025 Roboliga Argentina national final (UAI).
 - **2026 chassis materials and dimensions** (height between floors/standoffs, printed parts, robot diameter and weight) — not documented; affects answers in the Mechanical category.
 - **2026 chassis STL/CAD** so we can say "it's replicable" with confidence (the ones in the repo are from 2025 with the now-discarded dribbler/solenoid).

@@ -24,7 +24,7 @@
 
 > **Placeholders a completar antes de Incheon** (registrados en gaps al final): `IITA Low Battery Messi`,
 > roles definitivos de `María Virginia Viollaz`/`Elías Cordero`, y confirmar que en Incheon compiten 2 personas
-> (el roster del repo: Gustavo Viollaz director, Enzo Juárez coach, María Virginia Viollaz y Elías Cordero
+> (el roster del repo: Gustavo Viollaz director, Enzo Juárez Velázquez coach, María Virginia Viollaz y Elías Cordero
 > competidores). En la entrevista **hablan los competidores presentes**; el coach no responde por ellos.
 
 ---
@@ -298,7 +298,7 @@ otro equipo lo replique — si quieren les pasamos el repo." (Refuerza Documenta
 ## Gaps (datos reales faltantes — completar antes de Incheon)
 
 - `IITA Low Battery Messi` oficial registrado en RoboCup Junior para Incheon (confirmado 2026-06-05; "IITA - Open Soccer RoboCup Team 2026" es el descriptor interno del repo).
-- ✅ RESUELTO 2026-06-05: compiten **María Virginia Viollaz** (visión/estrategia) y **Elías Cordero** (electro-mecánica), ambos 18. Viajan también **Enzo Velázquez (coach)** y **Cecilia Budeguer (mentora)**; **Gustavo Viollaz (mentor)** no viaja.
+- ✅ RESUELTO 2026-06-05: compiten **María Virginia Viollaz** (visión/estrategia) y **Elías Cordero** (electro-mecánica), ambos 18. Viajan también **Enzo Juárez Velázquez (coach)** y **Cecilia Budeguer (mentora)**; **Gustavo Viollaz (mentor)** no viaja.
 - ✅ RESUELTO 2026-06-05: Salta, Argentina · campeones de la final nacional de la Roboliga Argentina 2025 (UAI).
 - **Materiales y dimensiones del chasis 2026** (altura entre pisos/standoffs, piezas impresas, diámetro y peso del robot) — no documentados; afecta respuestas de la categoría Mechanical.
 - **STL/CAD del chasis 2026** para poder decir "es replicable" con confianza (los del repo son del 2025 con dribbler/solenoide ya descartados).

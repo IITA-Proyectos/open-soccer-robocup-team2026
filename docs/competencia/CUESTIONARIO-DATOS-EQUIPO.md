@@ -19,10 +19,10 @@
 - **Equipo:** IITA Low Battery Messi · Salta, Argentina.
 - **Clasificación:** campeones de la **final nacional de la Roboliga Argentina 2025** (organizada por la UAI), clasificatoria a la RoboCup.
 - **Compiten (viajan):** **María Virginia Viollaz** (18 — visión/estrategia; campeona nacional 2022 en Rescue Line + mundial 2023 en Eindhoven) y **Elías Cordero** (18 — electrónica/mecánica).
-- **Acompañan (viajan):** **Enzo Velázquez** (coach) y **Cecilia Budeguer** (mentora).
+- **Acompañan (viajan):** **Enzo Juárez Velázquez** (coach) y **Cecilia Budeguer** (mentora).
 - **Mentor (no viaja):** **Gustavo Viollaz**.
 
-> ⚠️ **Solo 2 detalles chiquitos a confirmar** (Gustavo): **(a)** la **categoría exacta** del título 2025 — los docs hoy dicen "campeones de RoboCupJunior **Soccer**", pero en el mensaje apareció "Rescate"; **(b)** el **apellido del coach Enzo** — ¿es **Velázquez** o **Juárez** (el del usuario @enzzo195 que diseñó las PCB)?
+> ✅ **Confirmado por Gustavo (2026-06-05):** son **campeones inaugurales de la categoría Soccer** (primera edición en Argentina) y el coach es **Enzo Juárez Velázquez** (@enzzo195). Identidad 100% cerrada — nada que confirmar acá.
 
 ---
 
@@ -114,7 +114,7 @@ Precio **por unidad** (poné ARS o USD, el que tengan; aclaren cuál):
 
 Devuelvan este archivo (o las respuestas sueltas, como les quede cómodo) y yo:
 1. Cargo los **costos** en el BOM, el póster y el TDP (totales + tiempo de desarrollo).
-2. Completo **región y roster** en los 16 documentos (ES + EN) de una.
+2. Cargo las **specs mecánicas** (motor/rueda/robot/batería) en el TDP/BOM.
 3. Ubico las **fotos** en el póster/TDP con sus epígrafes.
 4. Genero el **QR del repo** para el póster y el one-pager.
 

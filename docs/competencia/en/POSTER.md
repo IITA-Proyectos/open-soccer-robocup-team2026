@@ -103,7 +103,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 > | Role | Member | Technical contribution |
 > |---|---|---|
 > | Director | Gustavo Viollaz | Coordination, bench sessions, 3-board integration |
-> | Coach | Enzo Juárez | PCB design (EasyEDA), hardware *bodges*, electrical validation |
+> | Coach | Enzo Juárez Velázquez | PCB design (EasyEDA), hardware *bodges*, electrical validation |
 > | Competitor | María Virginia Viollaz (18) | Computer vision, trajectories, camera parser |
 > | Competitor | Elías Cordero (Electromechanical Eng., UNSa) | Motor bench, kinematics, measurements |
 
@@ -309,7 +309,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 # FINAL CHECKLIST BEFORE PRINTING (NOT printed)
 
 - [ ] **Spell-check** the English text (hard rubric requirement: no spelling errors).
-- [x] ✅ Identity COMPLETE 2026-06-05: team IITA Low Battery Messi · region Roboliga Argentina 2025 (UAI) · roster (María Virginia Viollaz / Elías Cordero + coach Enzo Velázquez / mentor Cecilia Budeguer).
+- [x] ✅ Identity COMPLETE 2026-06-05: team IITA Low Battery Messi · region Roboliga Argentina 2025 (UAI) · roster (María Virginia Viollaz / Elías Cordero + coach Enzo Juárez Velázquez / mentor Cecilia Budeguer).
 - [ ] Complete the **BOM with real costs** and the **total cost** (USD/ARS).
 - [ ] Shoot and place **all `[PHOTO:]`** (Fig.1–11), labeled and cited.
 - [x] ✅ Generated 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Only A1 layout remains.

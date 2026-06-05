@@ -4,14 +4,14 @@
 **Organization:** IITA (Instituto de Innovación y Tecnología Aplicada) · Fundación Innovar — Salta, Argentina
 **League / sub-league:** RoboCupJunior Soccer — **Open League**
 **Event:** RoboCup 2026 — Incheon, South Korea (30 Jun – 6 Jul 2026)
-**Qualification:** National champions, RoboCupJunior Soccer Argentina (Roboliga, December 2025 (UAI))
+**Qualification:** National champions of the **first-ever edition** of RoboCupJunior Soccer Argentina (Roboliga, UAI, December 2025)
 **Repository (open-source, MIT):** https://github.com/IITA-Proyectos/open-soccer-robocup-team2026
 
 | Role | Name | Detail |
 |---|---|---|
 | Competitor — Soccer Open | María Virginia Viollaz (@mariaviollaz), 18 | Computer vision, strategy, trajectories, bench. 2022 national champion (Rescue Line) + 2023 RoboCup world championship, Eindhoven |
 | Competitor — Soccer Open | Elías Cordero, 18 (Electromechanical Eng., UNSa) | Motors, power electronics, mechanics, bench |
-| Coach (travels) | Enzo Velázquez (@enzzo195) | PCB design (EasyEDA), hardware bodges, technical review, on-site support |
+| Coach (travels) | Enzo Juárez Velázquez (@enzzo195) | PCB design (EasyEDA), hardware bodges, technical review, on-site support |
 | Mentor (travels) | Cecilia Budeguer | Team mentoring |
 | Mentor (does not travel) | Gustavo Viollaz (@gviollaz) | Coordination, test bench, integration of the 3 boards |
 
@@ -381,7 +381,7 @@ We are the **IITA (Salta, Argentina)** team, **national champions** of RoboCupJu
 
 The team's philosophy is **"invest in learning, not in the podium"**: an honest robot, matches actually played, and the systematic capture of every lesson in the engineering `journal/`. This TDP reflects that honesty: we clearly mark what is *bench-validated* vs *host-verified only*, and we publish even the false negatives that cost us time (the ToF power cycle, the GPIO referee, the silently broken line contract).
 
-**The team.** Two 18-year-old members compete: **María Virginia Viollaz** (vision and strategy) and **Elías Cordero** (electronics and mechanics). They travel to Incheon together with **Enzo Velázquez (coach)** and **Cecilia Budeguer (mentor)**; **Gustavo Viollaz (mentor)** supports the project without travelling. María Virginia brings international RoboCupJunior experience: she was **2022 national champion in Rescue Line** and represented Argentina at the **2023 RoboCup world championship in Eindhoven (Rescue Line)**; this year she moved up to the Soccer category. **2025 was the first year of the Soccer category in the Roboliga Argentina**, so we are a team in the middle of learning the league: this year the robot **scores by pushing the ball with inertia** (fewer components, fewer points of failure), and we keep the **kicker and dribbler as a declared goal for next year**. We show what we have honestly, and we come to learn from the best.
+**The team.** Two 18-year-old members compete: **María Virginia Viollaz** (vision and strategy) and **Elías Cordero** (electronics and mechanics). They travel to Incheon together with **Enzo Juárez Velázquez (coach)** and **Cecilia Budeguer (mentor)**; **Gustavo Viollaz (mentor)** supports the project without travelling. María Virginia brings international RoboCupJunior experience: she was **2022 national champion in Rescue Line** and represented Argentina at the **2023 RoboCup world championship in Eindhoven (Rescue Line)**; this year she moved up to the Soccer category. **2025 was the first year of the Soccer category in the Roboliga Argentina**, so we are a team in the middle of learning the league: this year the robot **scores by pushing the ball with inertia** (fewer components, fewer points of failure), and we keep the **kicker and dribbler as a declared goal for next year**. We show what we have honestly, and we come to learn from the best.
 
 ## 4.2 What we learned (the most transferable lessons)
 

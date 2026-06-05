@@ -113,7 +113,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > | Rol | Integrante | Aporte técnico |
 > |---|---|---|
 > | Director | Gustavo Viollaz | Coordinación, sesiones de banco, integración 3 placas |
-> | Coach | Enzo Juárez | Diseño de PCB (EasyEDA), *bodges* de hardware, validación eléctrica |
+> | Coach | Enzo Juárez Velázquez | Diseño de PCB (EasyEDA), *bodges* de hardware, validación eléctrica |
 > | Competidora | María Virginia Viollaz (18) | Visión artificial, trayectorias, parser de cámara |
 > | Competidor | Elías Cordero (Ing. Electromecánica, UNSa) | Banco de motores, cinemática, mediciones |
 
@@ -319,7 +319,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 # CHECKLIST FINAL ANTES DE IMPRIMIR (NO va impreso)
 
 - [ ] **TRADUCIR TODO al inglés** (requisito duro de rúbrica) y correr corrector ortográfico.
-- [x] ✅ Identidad COMPLETA 2026-06-05: equipo IITA Low Battery Messi · región Roboliga Argentina 2025 (UAI) · roster (María Virginia Viollaz / Elías Cordero + coach Enzo Velázquez / mentora Cecilia Budeguer).
+- [x] ✅ Identidad COMPLETA 2026-06-05: equipo IITA Low Battery Messi · región Roboliga Argentina 2025 (UAI) · roster (María Virginia Viollaz / Elías Cordero + coach Enzo Juárez Velázquez / mentora Cecilia Budeguer).
 - [ ] Completar **BOM con costos reales** y **costo total** (USD/ARS).
 - [ ] Tomar y colocar **todas las `[FOTO:]`** (Fig.1–11) etiquetadas y citadas.
 - [x] ✅ Generadas 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Falta solo maquetarlas en el A1.

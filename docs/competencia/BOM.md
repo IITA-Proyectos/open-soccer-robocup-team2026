@@ -43,11 +43,11 @@
 | Componente | Part number / modelo | Cant. | Fuente / proveedor | Nuevo / Reusado | Kit / Custom | Costo unit. | Costo total |
 |---|---|---|---|---|---|---|---|
 | Cámara de visión | **OpenMV Cam N6** (STM32N6 Cortex-M55 + NPU Neural-ART, sensor PAG7936, QVGA RGB565 ~30 Hz) | 2 | OpenMV | Nuevo | Módulo (kit) | **USD 165/u** (openmv.io; alt. 120 Kickstarter) | [COST — pending] |
-| IMU (heading/yaw) | **Bosch BNO055** (designadores U10/U11) | 2 | Bosch (módulo) | Nuevo | Módulo (kit) en header 4P | **~USD 15** (cita interna `ARQUITECTURA-3-PLACAS-2026.md` L326) | **~USD 30** ⚠️ ver nota |
+| IMU (heading/yaw) | **Bosch BNO055** (designadores U10/U11) | 2 | Bosch (módulo) | Nuevo | Módulo (kit) en header 4P | **USD 34.95/u** (Adafruit #2472; Qwiic #4646 = 29.95) | **34.95–69.90** ⚠️ ver nota |
 | Sensor ToF multizona | **ST VL53L7CX** (8×8 zonas, FoV 60°, módulo Pololu) | 4 | STMicro / Pololu | Nuevo | Módulo (kit) | **USD 19.95/u** (Pololu #3418) | **79.80** |
 | Ultrasonido | **HC-SR04** (designador U6 en TOP) | 1 | genérico | Nuevo | Módulo (kit) | **USD 5.25** (SparkFun) / ~1–2 genérico | [COST — pending] |
 
-> ⚠️ **Nota BNO055:** el repo monta **2 BNO055** pero **1 unidad (RIGHT, 0x29) está FALLADA**; el robot compite hoy con **1 BNO sano + 4 ToF**. Para replicabilidad/repuestos: prever **2–4 unidades** (Incheon). Precio `~USD 15` es la única cifra concreta del repo (cualitativa).
+> ⚠️ **Nota BNO055:** el repo monta **2 BNO055** pero **1 unidad (RIGHT, 0x29) está FALLADA**; el robot compite hoy con **1 BNO sano + 4 ToF**. Para replicabilidad/repuestos: prever **2–4 unidades** (Incheon). Precio real de referencia: **USD 34.95/u** (Adafruit #2472) o 29.95 (Qwiic #4646); el viejo ~USD 15 era una nota cualitativa del repo.
 
 ### 1.3 Odometría y sensores de piso (placa DOWN)
 
@@ -112,8 +112,8 @@ La rúbrica premia **decisiones de diseño basadas en datos y trade-offs**, no s
 
 | Decisión | Alternativas evaluadas | Dato / criterio | Elección |
 |---|---|---|---|
-| **Localización 2D: 4× VL53L7CX (ToF) vs LiDAR vs EKF/MCL** | LiDAR (~USD 100), array ToF (~USD 26 ⚠️ ver nota), EKF (±0.5–1 cm/3–5 días), Particle Filter (~500 µs, "overkill para cancha 1.83×2.43 m con 4 paredes ortogonales") | ToF: **±2–3 cm**, CPU despreciable, **1 día** de dev, **~USD 26** vs **USD 100** del LiDAR | **Trilateración geométrica con 4 ToF** (`docs/lidar-tof-slam-analysis.md`, `research/.../2026-05-25-localizacion-tof-imu-analisis.md`) |
-| **2× BNO055** (redundancia de heading) | 1 IMU | "dos chips de ~USD 15 c/u; confiabilidad muy superior" | 2 IMU (hoy 1 sano; ver gap) |
+| **Localización 2D: 4× VL53L7CX (ToF) vs LiDAR vs EKF/MCL** | LiDAR (~USD 100), array ToF (~USD 80 = 4× VL53L7CX), EKF (±0.5–1 cm/3–5 días), Particle Filter (~500 µs, "overkill para cancha 1.83×2.43 m con 4 paredes ortogonales") | ToF: **±2–3 cm**, CPU despreciable, **1 día** de dev, **~USD 80** vs **USD 100** del LiDAR | **Trilateración geométrica con 4 ToF** (`docs/lidar-tof-slam-analysis.md`, `research/.../2026-05-25-localizacion-tof-imu-analisis.md`) |
+| **2× BNO055** (redundancia de heading) | 1 IMU | "dos chips de ~USD 35 c/u; confiabilidad muy superior" | 2 IMU (hoy 1 sano; ver gap) |
 | **2× OTOS** (odometría óptica) | encoders en rueda | mide **slip lateral y rotación** directo del piso; banco: 300 mm reales → 280.4 mm (6.5 % error, pasa tolerancia 8 %) — ver gráfico de error por superficie en `docs/competencia/assets/fig9_otos_error.png` | 2 OTOS dual-bus |
 | **MCU: Teensy 4.x (Cortex-M7 @600 MHz)** | ESP32, STM32 menores | cada MCU corre a **<30 % de CPU** (margen para Kalman/EKF/coordinación) | Teensy 4.0/4.1 |
 | **Sin kicker** | solenoide (2025 lo tenía) | menos componentes/energía/fallas; empuje por inercia | eliminado del firmware 2026-06-03 |

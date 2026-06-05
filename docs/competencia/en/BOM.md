@@ -31,27 +31,27 @@
 
 | Component | Part number / model | Qty | Source / supplier | New / Reused | Kit / Custom | Unit cost | Total cost |
 |---|---|---|---|---|---|---|---|
-| TOP board MCU | **Teensy 4.0** (LCSC `C99001332551`) — Cortex-M7 @600 MHz | 1 | PJRC / LCSC | New | Module (kit) on custom PCB | **[COST — pending] (est. ~USD 24–30)** | [COST — pending] |
-| DOWN board MCU | **Teensy 4.0** (LCSC `C99001332551`) | 1 | PJRC / LCSC | New | Module (kit) on custom PCB | **[COST — pending] (est. ~USD 24–30)** | [COST — pending] |
-| CENTRAL board MCU | **Teensy 4.1** (Cortex-M7 @600 MHz) | 1 | PJRC | **Reused** (from the 2025 National robot) | Module (kit) on Zircon PCB | **[COST — pending] (est. ~USD 32–40)** | [COST — pending] |
-| COMM board MCU | **ESP32-C6-MINI-1-N4** (Espressif; RISC-V, WiFi 6 / BLE 5 / 802.15.4, native USB, 4 MB flash) | 1 | Espressif (on COMM PCB) | New | SMD on custom PCB (RCJ fork) | **[COST — pending] (est. ~USD 3–5)** | [COST — pending] |
+| TOP board MCU | **Teensy 4.0** (LCSC `C99001332551`) — Cortex-M7 @600 MHz | 1 | PJRC / LCSC | New | Module (kit) on custom PCB | **USD 23.80** (SparkFun DEV-15583) | [COST — pending] |
+| DOWN board MCU | **Teensy 4.0** (LCSC `C99001332551`) | 1 | PJRC / LCSC | New | Module (kit) on custom PCB | **USD 23.80** (SparkFun DEV-15583) | [COST — pending] |
+| CENTRAL board MCU | **Teensy 4.1** (Cortex-M7 @600 MHz) | 1 | PJRC | **Reused** (from the 2025 National robot) | Module (kit) on Zircon PCB | **USD 31.50** (SparkFun DEV-16771) | [COST — pending] |
+| COMM board MCU | **ESP32-C6-MINI-1-N4** (Espressif; RISC-V, WiFi 6 / BLE 5 / 802.15.4, native USB, 4 MB flash) | 1 | Espressif (on COMM PCB) | New | SMD on custom PCB (RCJ fork) | **USD 4.53** (DigiKey) | [COST — pending] |
 
 ### 1.2 Perception sensors (cameras + IMU + ranging)
 
 | Component | Part number / model | Qty | Source / supplier | New / Reused | Kit / Custom | Unit cost | Total cost |
 |---|---|---|---|---|---|---|---|
-| Vision camera | **OpenMV Cam N6** (STM32N6 Cortex-M55 + Neural-ART NPU, PAG7936 sensor, QVGA RGB565 ~30 Hz) | 2 | OpenMV | New | Module (kit) | **[COST — pending]** (most expensive item on the robot, ~USD 80–200 each) | [COST — pending] |
-| IMU (heading/yaw) | **Bosch BNO055** (designators U10/U11) | 2 | Bosch (module) | New | Module (kit) on 4P header | **~USD 15** (internal citation `ARQUITECTURA-3-PLACAS-2026.md` L326) | **~USD 30** ⚠️ see note |
-| Multizone ToF sensor | **ST VL53L7CX** (8×8 zones, 60° FoV, Pololu module) | 4 | STMicro / Pololu | New | Module (kit) | **[PRICE — verify VL53L7CX]** (the cited ~USD 26 is for the single-zone VL53L1X, NOT this chip — see ⚠️ mismatch note §2) | [COST — pending] |
-| Ultrasonic | **HC-SR04** (designator U6 on TOP) | 1 | generic | New | Module (kit) | **[COST — pending] (est. ~USD 1–3)** | [COST — pending] |
+| Vision camera | **OpenMV Cam N6** (STM32N6 Cortex-M55 + Neural-ART NPU, PAG7936 sensor, QVGA RGB565 ~30 Hz) | 2 | OpenMV | New | Module (kit) | **USD 165/each** (openmv.io; alt. 120 Kickstarter) | [COST — pending] |
+| IMU (heading/yaw) | **Bosch BNO055** (designators U10/U11) | 2 | Bosch (module) | New | Module (kit) on 4P header | **USD 34.95/each** (Adafruit #2472; Qwiic #4646 = 29.95) | **34.95–69.90** ⚠️ see note |
+| Multizone ToF sensor | **ST VL53L7CX** (8×8 zones, 60° FoV, Pololu module) | 4 | STMicro / Pololu | New | Module (kit) | **USD 19.95/each** (Pololu #3418) | **79.80** |
+| Ultrasonic | **HC-SR04** (designator U6 on TOP) | 1 | generic | New | Module (kit) | **USD 5.25** (SparkFun) / ~1–2 generic | [COST — pending] |
 
-> ⚠️ **BNO055 note:** the repo mounts **2 BNO055** units but **1 unit (RIGHT, 0x29) is FAULTY**; the robot currently competes with **1 healthy BNO + 4 ToF**. For replicability/spares, plan for **2–4 units** (Incheon). The `~USD 15` price is the only concrete figure in the repo (qualitative).
+> ⚠️ **BNO055 note:** the repo mounts **2 BNO055** units but **1 unit (RIGHT, 0x29) is FAULTY**; the robot currently competes with **1 healthy BNO + 4 ToF**. For replicability/spares, plan for **2–4 units** (Incheon). Real reference price: **USD 34.95/each** (Adafruit #2472) or 29.95 (Qwiic #4646); the old ~USD 15 was a qualitative repo note.
 
 ### 1.3 Odometry and floor sensors (DOWN board)
 
 | Component | Part number / model | Qty | Source / supplier | New / Reused | Kit / Custom | Unit cost | Total cost |
 |---|---|---|---|---|---|---|---|
-| Optical odometry | **SparkFun OTOS** (Optical Tracking Odometry Sensor; designators U5/U6) | 2 | SparkFun | New | Module (kit), header | **[COST — pending] (est. ~USD 50 each)** | [COST — pending] |
+| Optical odometry | **SparkFun OTOS** (Optical Tracking Odometry Sensor; designators U5/U6) | 2 | SparkFun | New | Module (kit), header | **USD 84.95/each** (SparkFun SEN-24904) | [COST — pending] |
 | Line phototransistor | **Everlight ALS-PT19-315C/L177/TR8** (LCSC `C146233`) | 32 | Everlight / LCSC | New | SMD on custom PCB | **USD 0.116** | **USD 3.71** |
 | 0402 emitter LED (ring) | **YLED0402O** (LCSC `C28310436`) | 32 | Yongyutai / LCSC | New | SMD on custom PCB | **USD 0.016** | **USD 0.51** |
 | 8:1 analog multiplexer | **TI CD4051BM** (LCSC `C353976`) — 4 muxes × 8 channels = 32 | 4 | TI / LCSC | New | SMD on custom PCB | **USD 0.96** | **USD 3.84** |
@@ -76,7 +76,7 @@
 | Battery | **LiPo 2S 7.4 V nominal** (mAh / C-rating / brand **[SPEC?]**) | **[1–2?]** | generic | New | Module (kit) | **[COST — pending] (est. ~USD 10–25)** | [COST — pending] |
 | Battery connector | **Deans-T-F (XP1)** | 3 (1/board) | generic | New | Component | **[COST — pending] (est. <USD 1)** | [COST — pending] |
 | Schottky diode (protection) | **B5819W SL** (LCSC `C8598`, 1 A/40 V; OR-ing/polarity) | 6 (2/board) | CJ / LCSC | New | SMD on custom PCB | **USD 0.024** | **USD 0.14** |
-| Buck regulator | **MP1584-EN** (4-pin SIP module; 5 V logic + 3.3 V sensor rails) | 6 (2/board) | generic | New | Module (kit) | **[COST — pending] (est. ~USD 0.5–1 each)** | [COST — pending] |
+| Buck regulator | **MP1584-EN** (4-pin SIP module; 5 V logic + 3.3 V sensor rails) | 6 (2/board) | generic | New | Module (kit) | **~USD 0.90/each** (pack of 6 = 5.39) | [COST — pending] |
 | 3.3 V LDO (COMM only) | **TI UA78M33CDCYR** (SOT-223) | 1 | TI | New | SMD on COMM PCB | **[COST — pending] (est. ~USD 0.3)** | [COST — pending] |
 
 ### 1.6 Custom PCBs (fabricated by the team) and reused board
@@ -110,14 +110,14 @@ The rubric rewards **data-driven design decisions and trade-offs**, not just the
 
 | Decision | Alternatives evaluated | Data / criterion | Choice |
 |---|---|---|---|
-| **2D localization: 4× VL53L7CX (ToF) vs LiDAR vs EKF/MCL** | LiDAR (~USD 100), ToF array (~USD 26 ⚠️ see note), EKF (±0.5–1 cm / 3–5 days), Particle Filter (~500 µs, "overkill for a 1.83×2.43 m field with 4 orthogonal walls") | ToF: **±2–3 cm**, negligible CPU, **1 day** of dev, **~USD 26** vs **USD 100** for the LiDAR | **Geometric trilateration with 4 ToF** (`docs/lidar-tof-slam-analysis.md`, `research/.../2026-05-25-localizacion-tof-imu-analisis.md`) |
-| **2× BNO055** (heading redundancy) | 1 IMU | "two chips at ~USD 15 each; far superior reliability" | 2 IMUs (1 healthy today; see gap) |
+| **2D localization: 4× VL53L7CX (ToF) vs LiDAR vs EKF/MCL** | LiDAR (~USD 100), ToF array (~USD 80 = 4× VL53L7CX), EKF (±0.5–1 cm / 3–5 days), Particle Filter (~500 µs, "overkill for a 1.83×2.43 m field with 4 orthogonal walls") | ToF: **±2–3 cm**, negligible CPU, **1 day** of dev, **~USD 80** vs **USD 100** for the LiDAR | **Geometric trilateration with 4 ToF** (`docs/lidar-tof-slam-analysis.md`, `research/.../2026-05-25-localizacion-tof-imu-analisis.md`) |
+| **2× BNO055** (heading redundancy) | 1 IMU | "two chips at ~USD 35 each; far superior reliability" | 2 IMUs (1 healthy today; see gap) |
 | **2× OTOS** (optical odometry) | wheel encoders | measures **lateral slip and rotation** directly off the floor; bench: 300 mm real → 280.4 mm (6.5 % error, passes the 8 % tolerance) — see error-by-surface chart in `docs/competencia/assets/fig9_otos_error.png` | 2 OTOS dual-bus |
 | **MCU: Teensy 4.x (Cortex-M7 @600 MHz)** | ESP32, smaller STM32 | each MCU runs at **<30 % CPU** (headroom for Kalman/EKF/coordination) | Teensy 4.0/4.1 |
 | **No kicker** | solenoid (2025 had one) | fewer components/energy/failures; push by inertia | removed from firmware 2026-06-03 |
 | **OpenMV N6** (vs H7 Plus) | OpenMV H7 Plus | Neural-ART NPU for color vision; documented HW constraint (use `sensor`+`pyb.UART`) | 2× N6 |
 
-> ⚠️ **ToF price mismatch (fix before submitting):** the **~USD 26** cost analysis for the ToF array cited above corresponds to the **VL53L1X (single-zone)**, but the robot **mounts the VL53L7CX (8×8 zones)**, which is a more expensive chip. The **~USD 26** price **does not apply** to the sensor actually mounted. **Obtain the real VL53L7CX price** (Pololu module) and mark it **[PRICE — verify]**; the design decision (ToF vs LiDAR) remains valid, but the cost figure must be corrected.
+> ✅ **ToF price RESOLVED (2026-06-05):** the VL53L7CX (8×8 zones) costs **USD 19.95/each** (Pololu carrier #3418, with 3.3V regulator + level-shifters; drops to 17.96 from 5 u). The old ~USD 26 was for the single-zone VL53L1X and does NOT apply. ToF subtotal/robot = 4 × 19.95 = **USD 79.80**. The design decision (ToF vs LiDAR) remains valid.
 
 ---
 

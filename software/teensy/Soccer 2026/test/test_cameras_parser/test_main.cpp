@@ -277,6 +277,109 @@ void test_crc8_known_vector(void) {
     TEST_ASSERT_EQUAL_UINT8(expected, cam_crc8(data));
 }
 
+// ── GOLDEN de OFFSETS del paquete cámara v2 (11 B) ───────────────────────────
+// El paquete cruza cámara→TOP por BYTES CRUDOS sobre UART; el parser lo arma
+// byte a byte (no hay struct empacado), así que el contrato es la POSICIÓN de
+// cada campo dentro de los 11 bytes. Los tests 1..17 verifican el decode pero
+// usan sentinel en casi todos los campos de arco → no atrapan un reorder de,
+// p.ej., (Xam_coded ↔ Xaz_coded) o un corrimiento de byte. Estos tests pinean
+// el OFFSET exacto de cada campo: arman un buffer de 11 B con un valor ÚNICO y
+// reconocible por campo en su offset esperado y aseveran que el parser real lo
+// decodifica desde ESE offset. Si alguien reordena/desfasa los bytes, el
+// static_assert de tamaño NO lo atrapa pero ESTE test sí.
+
+// Layout v2 esperado (contrato cameras.h):
+//   [0]=HEADER1(201) [1]=Xp_c [2]=Yp_c [3]=HEADER2(202) [4]=Xam_c [5]=Yam_c
+//   [6]=HEADER3(203) [7]=Xaz_c [8]=Yaz_c [9]=CRC8 [10]=END(254)
+void test_packet_offsets_golden(void) {
+    CameraParser p;
+    // Valor ÚNICO por campo de coordenada (todos distintos entre sí, todos en
+    // [0,200] reales tras restar el offset, todos != sentinel/headers/end):
+    //   Xp=+1, Yp=+2, Xam=+3, Yam=+4, Xaz=+5, Yaz=+6  → coded = valor + 100.
+    uint8_t f[11];
+    f[0] = CAM_HEADER1;     // offset 0: sync pelota
+    f[1] = enc(1);          // offset 1: Xp_coded  (101)
+    f[2] = enc(2);          // offset 2: Yp_coded  (102)
+    f[3] = CAM_HEADER2;     // offset 3: sync arco amarillo
+    f[4] = enc(3);          // offset 4: Xam_coded (103)
+    f[5] = enc(4);          // offset 5: Yam_coded (104)
+    f[6] = CAM_HEADER3;     // offset 6: sync arco azul
+    f[7] = enc(5);          // offset 7: Xaz_coded (105)
+    f[8] = enc(6);          // offset 8: Yaz_coded (106)
+    f[9] = cam_crc8(f);     // offset 9: CRC8 (XOR bytes 0..8)
+    f[10] = CAM_END_BYTE;   // offset 10: END (254)
+
+    // 1) Sanity del layout que estamos pineando (documenta el contrato).
+    TEST_ASSERT_EQUAL_INT(11, CAM_PACKET_LEN);
+    TEST_ASSERT_EQUAL_UINT8(201, CAM_HEADER1);
+    TEST_ASSERT_EQUAL_UINT8(202, CAM_HEADER2);
+    TEST_ASSERT_EQUAL_UINT8(203, CAM_HEADER3);
+    TEST_ASSERT_EQUAL_UINT8(254, CAM_END_BYTE);
+    TEST_ASSERT_EQUAL_UINT8(255, CAM_SENTINEL);
+    TEST_ASSERT_EQUAL_INT16(100, CAM_COORD_OFFSET);
+
+    // 2) El frame debe decodificar (3 headers + END + CRC OK).
+    TEST_ASSERT_EQUAL_INT(1, feed_all(p, f, 11));
+    const CameraPacket& pk = p.get_packet();
+
+    // 3) Cada campo decodifica desde SU offset (offset−100 = valor sembrado).
+    //    Un swap p.ej. Xam↔Xaz (offset 4 vs 7) cambiaría 3↔5 y rompería esto.
+    TEST_ASSERT_EQUAL_INT16(1, pk.ball_x);          // de f[1]
+    TEST_ASSERT_EQUAL_INT16(2, pk.ball_y);          // de f[2]
+    TEST_ASSERT_EQUAL_INT16(3, pk.goal_yellow_x);   // de f[4]
+    TEST_ASSERT_EQUAL_INT16(4, pk.goal_yellow_y);   // de f[5]
+    TEST_ASSERT_EQUAL_INT16(5, pk.goal_blue_x);     // de f[7]
+    TEST_ASSERT_EQUAL_INT16(6, pk.goal_blue_y);     // de f[8]
+    TEST_ASSERT_TRUE(pk.ball_visible);
+    TEST_ASSERT_TRUE(pk.goal_yellow_visible);
+    TEST_ASSERT_TRUE(pk.goal_blue_visible);
+    TEST_ASSERT_EQUAL_UINT32(0, p.crc_errors());
+}
+
+// La SIMETRÍA del eje X (coded = valor + 100) debe valer por igual en LOS TRES
+// pares de coordenadas y en sus offsets respectivos. Sembramos un negativo
+// distinto por campo (solo posible en v2) y verificamos signo + offset juntos:
+// si X y Y estuvieran cruzados, o si algún campo usara el decode viejo (X sin
+// offset), los signos saldrían mal.
+void test_packet_offsets_x_symmetry_all_fields(void) {
+    CameraParser p;
+    uint8_t f[11];
+    f[0] = CAM_HEADER1;  f[1] = enc(-10); f[2] = enc(11);
+    f[3] = CAM_HEADER2;  f[4] = enc(-20); f[5] = enc(21);
+    f[6] = CAM_HEADER3;  f[7] = enc(-30); f[8] = enc(31);
+    f[9] = cam_crc8(f);  f[10] = CAM_END_BYTE;
+    TEST_ASSERT_EQUAL_INT(1, feed_all(p, f, 11));
+    const CameraPacket& pk = p.get_packet();
+    TEST_ASSERT_EQUAL_INT16(-10, pk.ball_x);        // izquierda, offset 1
+    TEST_ASSERT_EQUAL_INT16(11,  pk.ball_y);        // offset 2
+    TEST_ASSERT_EQUAL_INT16(-20, pk.goal_yellow_x); // izquierda, offset 4
+    TEST_ASSERT_EQUAL_INT16(21,  pk.goal_yellow_y); // offset 5
+    TEST_ASSERT_EQUAL_INT16(-30, pk.goal_blue_x);   // izquierda, offset 7
+    TEST_ASSERT_EQUAL_INT16(31,  pk.goal_blue_y);   // offset 8
+}
+
+// El SENTINEL (255) en cada offset de coordenada apaga SOLO el objeto de ese
+// par, dejando a los otros visibles. Cruza visibilidad con offsets: si un byte
+// de un par se leyera del par equivocado, la visibilidad caería en el objeto
+// equivocado. Sembramos: pelota real, arco amarillo sentinel, arco azul real.
+void test_packet_offsets_sentinel_per_field(void) {
+    CameraParser p;
+    uint8_t f[11];
+    f[0] = CAM_HEADER1;  f[1] = enc(7);        f[2] = enc(8);
+    f[3] = CAM_HEADER2;  f[4] = CAM_SENTINEL;  f[5] = CAM_SENTINEL;  // amarillo OFF
+    f[6] = CAM_HEADER3;  f[7] = enc(9);        f[8] = enc(12);
+    f[9] = cam_crc8(f);  f[10] = CAM_END_BYTE;
+    TEST_ASSERT_EQUAL_INT(1, feed_all(p, f, 11));
+    const CameraPacket& pk = p.get_packet();
+    TEST_ASSERT_TRUE(pk.ball_visible);
+    TEST_ASSERT_EQUAL_INT16(7, pk.ball_x);
+    TEST_ASSERT_EQUAL_INT16(8, pk.ball_y);
+    TEST_ASSERT_FALSE(pk.goal_yellow_visible);      // sentinel en offsets 4/5
+    TEST_ASSERT_TRUE(pk.goal_blue_visible);
+    TEST_ASSERT_EQUAL_INT16(9,  pk.goal_blue_x);
+    TEST_ASSERT_EQUAL_INT16(12, pk.goal_blue_y);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ball_center_x_zero);
@@ -296,5 +399,8 @@ int main(void) {
     RUN_TEST(test_two_consecutive_packets);
     RUN_TEST(test_blue_only_visible_left);
     RUN_TEST(test_crc8_known_vector);
+    RUN_TEST(test_packet_offsets_golden);
+    RUN_TEST(test_packet_offsets_x_symmetry_all_fields);
+    RUN_TEST(test_packet_offsets_sentinel_per_field);
     return UNITY_END();
 }

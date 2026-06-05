@@ -16,10 +16,10 @@
 | Dato | Valor |
 |---|---|
 | Equipo | **IITA Low Battery Messi** (org. interna: **IITA** — Instituto de Innovación y Tecnología Aplicada (Fundación Innovar)) |
-| Región | **[REGIÓN]** — Salta, **Argentina** (confirmar nombre de la regional/superregional con que clasificaron) |
+| Región | **Salta, Argentina** — campeones de la final nacional de la Roboliga Argentina 2025 (organizada por la UAI) |
 | Liga / Sub-liga | RoboCupJunior **Soccer — Open League** |
 | Evento | RoboCup 2026, **Incheon, Corea del Sur** (30-jun a 6-jul 2026) |
-| Clasificación | Campeones nacionales Roboliga Argentina (diciembre 2025, Buenos Aires) |
+| Clasificación | Campeones nacionales Roboliga Argentina (diciembre 2025 (UAI)) |
 | Robots | **2** — ROBOT1 = arquero, ROBOT2 = delantero |
 | Licencia / open-source | **MIT** (Copyright 2026 IITA / Fundación Innovar) — repo público: https://github.com/IITA-Proyectos/open-soccer-robocup-team2026 |
 
@@ -183,7 +183,7 @@ La rúbrica otorga **+1 bonus por open-source de CAD/PCB/esquemáticos** y **+1 
 | # | Gap | Tipo |
 |---|---|---|
 | 1 | **IITA Low Battery Messi** oficial registrado en RoboCup Incheon | Identificación |
-| 2 | **[REGIÓN]** — nombre de la regional/superregional de clasificación | Identificación |
+| 2 | ✅ RESUELTO: Roboliga Argentina 2025 (final nacional, UAI) · Salta, Argentina | Identificación |
 | 3 | **[COSTOS]** precios reales de: Teensy 4.0 ×2 + 4.1, **OpenMV N6 ×2 (las más caras)**, OTOS ×2, BNO055 ×2–4, VL53L7CX ×4, HC-SR04, ESP32-C6, **Zircon (precio Robomov)**, batería LiPo, MP1584 ×6, UA78M33, motores ×3, ruedas omni ×3 | Costo |
 | 4 | **[COSTO TOTAL]** por robot, total 2 robots, y **conversión a ARS** | Costo |
 | 5 | **[SPEC motor]** modelo/voltaje/RPM/torque/reducción/encoder del motor TT 2026 | Mecánica |

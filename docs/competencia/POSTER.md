@@ -71,9 +71,9 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > ### Empujar para ganar: un robot de fútbol de 3 placas, sin pateador, verificado por software
 > *(en inglés sugerido: "Push to Score: a kicker-less, 3-board soccer robot verified in software")*
 >
-> **RoboCupJunior Soccer — Open League** · **Región:** Salta, Argentina · [REGIÓN/REGIONAL DE CLASIFICACIÓN]
+> **RoboCupJunior Soccer — Open League** · **Región:** Salta, Argentina · clasificaron en la final nacional de la Roboliga Argentina 2025 (organizada por la UAI)
 > **Organización:** IITA (Instituto de Innovación y Tecnología Aplicada) / Fundación Innovar
-> **Campeones nacionales Roboliga Argentina (dic-2025, Buenos Aires) → RoboCup 2026, Incheon (30 jun – 6 jul)**
+> **Campeones nacionales Roboliga Argentina (dic-2025 (UAI)) → RoboCup 2026, Incheon (30 jun – 6 jul)**
 
 `[FOTO: logo del equipo / IITA a la izquierda de la banda]`
 `[FOTO: render o foto limpia del robot completo (vista 3/4) a la derecha de la banda, fondo neutro]`
@@ -102,12 +102,12 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 **TEXTO EXACTO (impreso):**
 
 > ## NUESTRO RECORRIDO
-> - **Dic-2025:** campeones nacionales (Roboliga Argentina, Buenos Aires) con un robot monolítico sobre la placa Zircon.
+> - **Dic-2025:** campeones nacionales (Roboliga Argentina (UAI)) con un robot monolítico sobre la placa Zircon.
 > - **2026:** rediseño a **3 placas** reutilizando el cerebro campeón (Zircon) como CENTRAL y sumando percepción (TOP) y piso (DOWN) — *continuidad, no descarte*.
 > - **May–Jun 2026:** bring-up de las 3 placas físicas, ~30 sesiones de banco documentadas, suite de tests de 180 → **624 tests / 44 suites / 0 fallos** (verificado 2026-06-04 con `scripts/run-host-tests.sh`).
 > - **Jun–Jul 2026:** Incheon. Estrategia declarada del equipo: **invertir en aprendizaje**, jugar partidos honestos y capturar datos.
 
-`[FOTO: equipo IITA con el robot/trofeo en el Nacional 2025, Buenos Aires — etiquetar Fig.1]`
+`[FOTO: equipo IITA con el robot/trofeo en el Nacional 2025 (UAI) — etiquetar Fig.1]`
 
 > **Roles del equipo:**
 > | Rol | Integrante | Aporte técnico |
@@ -319,7 +319,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 # CHECKLIST FINAL ANTES DE IMPRIMIR (NO va impreso)
 
 - [ ] **TRADUCIR TODO al inglés** (requisito duro de rúbrica) y correr corrector ortográfico.
-- [ ] Completar **[REGIÓN/REGIONAL]** y **roster con roles** (✅ nombre del equipo: IITA Low Battery Messi).
+- [x] ✅ Identidad COMPLETA 2026-06-05: equipo IITA Low Battery Messi · región Roboliga Argentina 2025 (UAI) · roster (María Virginia Viollaz / Elías Cordero + coach Enzo Velázquez / mentora Cecilia Budeguer).
 - [ ] Completar **BOM con costos reales** y **costo total** (USD/ARS).
 - [ ] Tomar y colocar **todas las `[FOTO:]`** (Fig.1–11) etiquetadas y citadas.
 - [x] ✅ Generadas 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Falta solo maquetarlas en el A1.

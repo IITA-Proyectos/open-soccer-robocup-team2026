@@ -61,9 +61,9 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 > ## IITA Low Battery Messi
 > ### Push to Score: a kicker-less, 3-board soccer robot verified in software
 >
-> **RoboCupJunior Soccer — Open League** · **Region:** Salta, Argentina · [REGION / QUALIFYING REGIONAL]
+> **RoboCupJunior Soccer — Open League** · **Region:** Salta, Argentina · Roboliga Argentina 2025 (national final, UAI)
 > **Organization:** IITA (Instituto de Innovación y Tecnología Aplicada) / Fundación Innovar
-> **National champions, Roboliga Argentina (Dec 2025, Buenos Aires) → RoboCup 2026, Incheon (Jun 30 – Jul 6)**
+> **National champions, Roboliga Argentina (Dec 2025 (UAI)) → RoboCup 2026, Incheon (Jun 30 – Jul 6)**
 
 `[PHOTO: team / IITA logo on the left of the band]`
 `[PHOTO: clean render or photo of the complete robot (3/4 view) on the right of the band, neutral background]`
@@ -92,12 +92,12 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 **EXACT TEXT (printed):**
 
 > ## OUR JOURNEY
-> - **Dec 2025:** national champions (Roboliga Argentina, Buenos Aires) with a monolithic robot on the Zircon board.
+> - **Dec 2025:** national champions (Roboliga Argentina (UAI)) with a monolithic robot on the Zircon board.
 > - **2026:** redesign to **3 boards**, reusing the champion brain (Zircon) as CENTRAL and adding perception (TOP) and floor sensing (DOWN) — *continuity, not throw-away*.
 > - **May–Jun 2026:** bring-up of the 3 physical boards, ~30 documented bench sessions, test suite growing from 180 → **624 tests / 44 suites / 0 failures** (verified 2026-06-04 via `scripts/run-host-tests.sh`).
 > - **Jun–Jul 2026:** Incheon. The team's declared strategy: **invest in learning**, play honest matches, and capture data.
 
-`[PHOTO: IITA team with the robot/trophy at the 2025 Nationals, Buenos Aires — label Fig.1]`
+`[PHOTO: IITA team with the robot/trophy at the 2025 Nationals (UAI) — label Fig.1]`
 
 > **Team roles:**
 > | Role | Member | Technical contribution |
@@ -309,7 +309,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 # FINAL CHECKLIST BEFORE PRINTING (NOT printed)
 
 - [ ] **Spell-check** the English text (hard rubric requirement: no spelling errors).
-- [ ] Fill in **[REGION / REGIONAL]** and **roster with roles** (✅ team name: IITA Low Battery Messi).
+- [x] ✅ Identity COMPLETE 2026-06-05: team IITA Low Battery Messi · region Roboliga Argentina 2025 (UAI) · roster (María Virginia Viollaz / Elías Cordero + coach Enzo Velázquez / mentor Cecilia Budeguer).
 - [ ] Complete the **BOM with real costs** and the **total cost** (USD/ARS).
 - [ ] Shoot and place **all `[PHOTO:]`** (Fig.1–11), labeled and cited.
 - [x] ✅ Generated 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Only A1 layout remains.

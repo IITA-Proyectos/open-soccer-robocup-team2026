@@ -147,7 +147,7 @@ Se eligió **el testing host-native de firmware embebido** como "feature más or
 | # | Gap | Tipo | Dónde impacta en el video |
 |---|---|---|---|
 | 1 | **IITA Low Battery Messi** oficial registrado en RoboCup Incheon 2026 (el repo usa "IITA — Open Soccer RoboCup Team 2026" como descriptor interno) | Identificación | Título 0:00, lower-third 0:08, tarjeta final 2:42 |
-| 2 | **[REGIÓN]** / nombre de la regional o superregional con que clasificaron (Salta, Argentina confirmado; falta la regional formal) | Identificación | Lower-third 0:08 (hoy dice solo "Salta, Argentina") |
+| 2 | ✅ RESUELTO 2026-06-05: Roboliga Argentina 2025 (final nacional, UAI); lower-third = "Salta, Argentina" | Identificación | Lower-third 0:08 |
 | 3 | **URL del repo RESUELTA** → https://github.com/IITA-Proyectos/open-soccer-robocup-team2026 (ya sobreimpresa en 2:30 y 2:42; sin gap pendiente) | Open-source | Texto 2:30 y tarjeta final 2:42 |
 | 3b | ✅ **Nombre legal RESUELTO** 2026-06-05: Instituto de Innovación y Tecnología Aplicada (Fundación Innovar) | Identificación | Lower-third 0:08, notas |
 | 4 | **[FOTO/CLIP: robot 2026 armado moviéndose en la cancha]** — clip real para gancho (0:00) y cierre (2:42) | Footage | Bloques 1 y 5 |

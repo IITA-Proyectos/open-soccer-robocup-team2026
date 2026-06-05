@@ -23,7 +23,7 @@
 | **Task Execution** | Completa **eficientemente** con **enfoques innovadores** | §3 (tips del Teamwork-Task: cómo dividirnos, dónde está el código, flash rápido) |
 
 > **Placeholders a completar antes de Incheon** (registrados en gaps al final): `IITA Low Battery Messi`,
-> roles definitivos de `[INTEGRANTE A]`/`[INTEGRANTE B]`, y confirmar que en Incheon compiten 2 personas
+> roles definitivos de `María Virginia Viollaz`/`Elías Cordero`, y confirmar que en Incheon compiten 2 personas
 > (el roster del repo: Gustavo Viollaz director, Enzo Juárez coach, María Virginia Viollaz y Elías Cordero
 > competidores). En la entrevista **hablan los competidores presentes**; el coach no responde por ellos.
 
@@ -39,14 +39,14 @@
 
 | Tiempo | Quién | Línea (en español de trabajo — 🇬🇧 traducir) |
 |---|---|---|
-| 0-15 s | `[INTEGRANTE A]` | "Somos `IITA Low Battery Messi`, de Salta, Argentina, en la sub-liga **Open**. Llegamos a Incheon como **campeones nacionales** de la Roboliga Argentina 2025. Traemos **2 robots**: un **arquero** y un **delantero**." |
-| 15-40 s | `[INTEGRANTE A]` | "Nuestro robot usa una **arquitectura distribuida de 3 placas**: una placa **percibe** (2 cámaras OpenMV N6, 1 IMU, 4 sensores ToF), una placa **decide** (FSM táctica + 3 motores omni) y una placa **toca el piso** (anillo de 32 sensores de línea + 2 sensores ópticos de odometría). Se hablan por UART a 230400 baud." |
-| 40-65 s | `[INTEGRANTE B]` | "Lo que más nos enorgullece es **cómo verificamos el firmware sin la placa**: la lógica de decisión vive en módulos C++ puros que compilamos y testeamos en la PC con g++. Hoy corremos **624 tests host-native en 44 suites, 0 fallos** (verificado 2026-06-04 con `scripts/run-host-tests.sh`). Eso nos deja **iterar rápido y seguro** a días de la competencia." |
-| 65-85 s | `[INTEGRANTE B]` | "Y una decisión táctica de la que estamos orgullosos: el **arquero anticipa**. En vez de seguir la posición actual de la pelota, proyecta dónde **va a estar** usando su velocidad (`pos + v·0.2 s`, con tope). Se lo mostramos en cancha si quieren." |
+| 0-15 s | `María Virginia Viollaz` | "Somos `IITA Low Battery Messi`, de Salta, Argentina, en la sub-liga **Open**. Llegamos a Incheon como **campeones nacionales** de la Roboliga Argentina 2025. Traemos **2 robots**: un **arquero** y un **delantero**." |
+| 15-40 s | `María Virginia Viollaz` | "Nuestro robot usa una **arquitectura distribuida de 3 placas**: una placa **percibe** (2 cámaras OpenMV N6, 1 IMU, 4 sensores ToF), una placa **decide** (FSM táctica + 3 motores omni) y una placa **toca el piso** (anillo de 32 sensores de línea + 2 sensores ópticos de odometría). Se hablan por UART a 230400 baud." |
+| 40-65 s | `Elías Cordero` | "Lo que más nos enorgullece es **cómo verificamos el firmware sin la placa**: la lógica de decisión vive en módulos C++ puros que compilamos y testeamos en la PC con g++. Hoy corremos **624 tests host-native en 44 suites, 0 fallos** (verificado 2026-06-04 con `scripts/run-host-tests.sh`). Eso nos deja **iterar rápido y seguro** a días de la competencia." |
+| 65-85 s | `Elías Cordero` | "Y una decisión táctica de la que estamos orgullosos: el **arquero anticipa**. En vez de seguir la posición actual de la pelota, proyecta dónde **va a estar** usando su velocidad (`pos + v·0.2 s`, con tope). Se lo mostramos en cancha si quieren." |
 | 85-90 s | ambos | "Todo está **open-source con licencia MIT** en GitHub, documentado para que otro equipo lo replique. ¿Por dónde quieren empezar?" |
 
 **Tips de entrega (suben Teamwork & Communication a Excellent):**
-- **Pase de palabra explícito**: "...y eso lo trabajó sobre todo `[INTEGRANTE B]`, contale vos" → muestra roles claros y que se apoyan.
+- **Pase de palabra explícito**: "...y eso lo trabajó sobre todo `Elías Cordero`, contale vos" → muestra roles claros y que se apoyan.
 - Mantener contacto visual con **los jueces Y los otros equipos** (la rúbrica premia compromiso con todos los presentes).
 - Tener el robot **físico en la mano** y señalar las 3 placas mientras se nombran (las placas apiladas como pisos: TOP / CENTRAL / DOWN).
 - Cerrar con **pregunta abierta** → invita a la conversación en vez de cortarla.
@@ -62,8 +62,8 @@
 
 | Área | Dueño/a sugerido | Por qué (evidencia del repo) | Pregunta tipo que contesta sin dudar |
 |---|---|---|---|
-| **Visión + Estrategia/Trayectorias** | `[INTEGRANTE A]` (perfil María/Virginia: visión + trayectorias) | Experiencia 2025 en visión artificial y trayectorias | "¿Cómo detectan la pelota?" / "¿Cómo decide el arquero a dónde ir?" |
-| **Electrónica + Mecánica/Tracción** | `[INTEGRANTE B]` (perfil Elías: robótica + Ing. electromecánica) | Estudiante de Ing. Electromecánica; banco de motores | "¿Por qué motores omni a 120°?" / "¿Cómo eligieron los componentes?" |
+| **Visión + Estrategia/Trayectorias** | `María Virginia Viollaz` (visión + trayectorias) | Experiencia 2025 en visión artificial y trayectorias | "¿Cómo detectan la pelota?" / "¿Cómo decide el arquero a dónde ir?" |
+| **Electrónica + Mecánica/Tracción** | `Elías Cordero` (robótica + Ing. electromecánica) | Estudiante de Ing. Electromecánica; banco de motores | "¿Por qué motores omni a 120°?" / "¿Cómo eligieron los componentes?" |
 | **Software / Arquitectura / Testing** | **compartido** (los dos) | Es el diferencial del equipo; ambos deben poder explicar la idea de "módulos puros + tests host" | "¿Cómo testean sin la placa?" / "¿Cómo se comunican las 3 placas?" |
 | **Development & Documentation** | **compartido** | Journal de ingeniería + FUENTES-DE-VERDAD + tests trazables | "¿Cómo trackean el progreso?" / "¿Cómo saben que algo anda?" |
 
@@ -298,8 +298,8 @@ otro equipo lo replique — si quieren les pasamos el repo." (Refuerza Documenta
 ## Gaps (datos reales faltantes — completar antes de Incheon)
 
 - `IITA Low Battery Messi` oficial registrado en RoboCup Junior para Incheon (confirmado 2026-06-05; "IITA - Open Soccer RoboCup Team 2026" es el descriptor interno del repo).
-- **Roster definitivo de la entrevista**: confirmar qué competidores están físicamente en Incheon y asignarles el área que dominan en §2 (`[INTEGRANTE A]`/`[INTEGRANTE B]`). El repo lista María Virginia Viollaz y Elías Cordero como competidores.
-- **Región/representación** para el registro RCJ (provincia Salta y país Argentina confirmados; falta el nombre de la regional con que clasificaron, más allá de "campeones nacionales Roboliga Argentina 2025").
+- ✅ RESUELTO 2026-06-05: compiten **María Virginia Viollaz** (visión/estrategia) y **Elías Cordero** (electro-mecánica), ambos 18. Viajan también **Enzo Velázquez (coach)** y **Cecilia Budeguer (mentora)**; **Gustavo Viollaz (mentor)** no viaja.
+- ✅ RESUELTO 2026-06-05: Salta, Argentina · campeones de la final nacional de la Roboliga Argentina 2025 (UAI).
 - **Materiales y dimensiones del chasis 2026** (altura entre pisos/standoffs, piezas impresas, diámetro y peso del robot) — no documentados; afecta respuestas de la categoría Mechanical.
 - **STL/CAD del chasis 2026** para poder decir "es replicable" con confianza (los del repo son del 2025 con dribbler/solenoide ya descartados).
 - **Estado de la coordinación partner (ESP-NOW) en banco** — para responder con seguridad la pregunta de "robot-robot".

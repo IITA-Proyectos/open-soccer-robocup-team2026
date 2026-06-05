@@ -14,30 +14,15 @@
 
 ## 1. Identidad del equipo  🔴 P0
 
-El nombre del equipo ya lo tenemos: **IITA Low Battery Messi**. Falta:
+✅ **Esta sección YA está completa** (nombre, región, roster y mentores confirmados por Gustavo el 2026-06-05 y cargados en los 16 documentos). **No hace falta que la completes.** Para referencia, quedó así:
 
-**1.1 — Región / regional de clasificación.** ¿Cuál es el nombre **formal y exacto** del torneo por el que
-clasificaron a Incheon? (Ej.: "Roboliga Argentina 2025 — Final Nacional", o el nombre oficial que figure en el
-certificado/inscripción.)
-→ ____________________________________________
+- **Equipo:** IITA Low Battery Messi · Salta, Argentina.
+- **Clasificación:** campeones de la **final nacional de la Roboliga Argentina 2025** (organizada por la UAI), clasificatoria a la RoboCup.
+- **Compiten (viajan):** **María Virginia Viollaz** (18 — visión/estrategia; campeona nacional 2022 en Rescue Line + mundial 2023 en Eindhoven) y **Elías Cordero** (18 — electrónica/mecánica).
+- **Acompañan (viajan):** **Enzo Velázquez** (coach) y **Cecilia Budeguer** (mentora).
+- **Mentor (no viaja):** **Gustavo Viollaz**.
 
-**1.2 — ¿Son campeones de ese torneo?** (lo usamos en el video y el one-pager)
-- [ ] Sí, campeones nacionales 2025 · [ ] Sub-campeones · [ ] Otro: ______________
-
-**1.3 — Roster: ¿quiénes VIAJAN a Incheon?** (para el TDP, la tarjeta de entrevista y los créditos)
-Completá una fila por integrante que viaja:
-
-| Nombre y apellido | Edad | Rol principal en el equipo | ¿Viaja a Incheon? |
-|---|---|---|---|
-| ______________________ | ____ | _________________________ | [ ] sí / [ ] no |
-| ______________________ | ____ | _________________________ | [ ] sí / [ ] no |
-| ______________________ | ____ | _________________________ | [ ] sí / [ ] no |
-| ______________________ | ____ | _________________________ | [ ] sí / [ ] no |
-
-> *Roles típicos a elegir: visión/estrategia · electrónica/mecánica · programación · documentación · capitán.*
-
-**1.4 — Mentor / coach** (si los acompaña alguien adulto responsable, para el form):
-→ Nombre: ______________________  ·  Rol: ______________________
+> ⚠️ **Solo 2 detalles chiquitos a confirmar** (Gustavo): **(a)** la **categoría exacta** del título 2025 — los docs hoy dicen "campeones de RoboCupJunior **Soccer**", pero en el mensaje apareció "Rescate"; **(b)** el **apellido del coach Enzo** — ¿es **Velázquez** o **Juárez** (el del usuario @enzzo195 que diseñó las PCB)?
 
 ---
 

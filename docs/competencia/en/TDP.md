@@ -4,15 +4,16 @@
 **Organization:** IITA (Instituto de Innovación y Tecnología Aplicada) · Fundación Innovar — Salta, Argentina
 **League / sub-league:** RoboCupJunior Soccer — **Open League**
 **Event:** RoboCup 2026 — Incheon, South Korea (30 Jun – 6 Jul 2026)
-**Qualification:** National champions, RoboCupJunior Soccer Argentina (Roboliga, December 2025, Buenos Aires)
+**Qualification:** National champions, RoboCupJunior Soccer Argentina (Roboliga, December 2025 (UAI))
 **Repository (open-source, MIT):** https://github.com/IITA-Proyectos/open-soccer-robocup-team2026
 
-| Role | Name | Technical responsibility |
+| Role | Name | Detail |
 |---|---|---|
-| Project director | Gustavo Viollaz (@gviollaz) | Coordination, test bench, integration of the 3 boards |
-| Coach | Enzo Juárez (@enzzo195) | PCB design (EasyEDA), hardware bodges, technical review |
-| Competitor — Soccer Open | María Virginia Viollaz (@mariaviollaz), 18 | Computer vision, trajectories, bench |
-| Competitor — Soccer Open | Elías Cordero (Electromechanical Eng., UNSa) | Motors, power electronics, bench |
+| Competitor — Soccer Open | María Virginia Viollaz (@mariaviollaz), 18 | Computer vision, strategy, trajectories, bench. 2022 national champion (Rescue Line) + 2023 RoboCup world championship, Eindhoven |
+| Competitor — Soccer Open | Elías Cordero, 18 (Electromechanical Eng., UNSa) | Motors, power electronics, mechanics, bench |
+| Coach (travels) | Enzo Velázquez (@enzzo195) | PCB design (EasyEDA), hardware bodges, technical review, on-site support |
+| Mentor (travels) | Cecilia Budeguer | Team mentoring |
+| Mentor (does not travel) | Gustavo Viollaz (@gviollaz) | Coordination, test bench, integration of the 3 boards |
 
 > **How to read this TDP (for the judge):** the 4 sections map 1:1 to the 4 TDP rubric criteria — **§1 Electrical**, **§2 Mechanical**, **§3 Software**, **§4 Presentation / Narrative**. Every design decision is presented in a **Decision → Why → Data** format. The closing section (§5) explicitly claims the **2 bonus points** (open-source CAD/PCB and open-source software). Anything **not** yet validated on hardware is marked as such honestly, distinguishing *"verified on the bench"* from *"verified on the host only"*.
 
@@ -376,9 +377,11 @@ Three living indexes fight doc drift: `FUENTES-DE-VERDAD.md` (one canonical doc 
 
 ## 4.1 The team journey
 
-We are the **IITA (Salta, Argentina)** team, **national champions** of RoboCupJunior Soccer at the Roboliga Argentina (Buenos Aires, December 2025), qualified for **Incheon 2026**. The 2026 robot **does not start from scratch**: the **CENTRAL board (Zircon Rev v15 + Teensy 4.1) is exactly the one that won the 2025 Nationals**. The strategic decision was to **build new capability around what already works**, not replace it: TOP (perception) and DOWN (floor) are added as pre-processors. If a new board fails at Incheon, CENTRAL can degrade to monolithic mode.
+We are the **IITA (Salta, Argentina)** team, **national champions** of RoboCupJunior Soccer at the Roboliga Argentina (UAI, December 2025), qualified for **Incheon 2026**. The 2026 robot **does not start from scratch**: the **CENTRAL board (Zircon Rev v15 + Teensy 4.1) is exactly the one that won the 2025 Nationals**. The strategic decision was to **build new capability around what already works**, not replace it: TOP (perception) and DOWN (floor) are added as pre-processors. If a new board fails at Incheon, CENTRAL can degrade to monolithic mode.
 
 The team's philosophy is **"invest in learning, not in the podium"**: an honest robot, matches actually played, and the systematic capture of every lesson in the engineering `journal/`. This TDP reflects that honesty: we clearly mark what is *bench-validated* vs *host-verified only*, and we publish even the false negatives that cost us time (the ToF power cycle, the GPIO referee, the silently broken line contract).
+
+**The team.** Two 18-year-old members compete: **María Virginia Viollaz** (vision and strategy) and **Elías Cordero** (electronics and mechanics). They travel to Incheon together with **Enzo Velázquez (coach)** and **Cecilia Budeguer (mentor)**; **Gustavo Viollaz (mentor)** supports the project without travelling. María Virginia brings international RoboCupJunior experience: she was **2022 national champion in Rescue Line** and represented Argentina at the **2023 RoboCup world championship in Eindhoven (Rescue Line)**; this year she moved up to the Soccer category. **2025 was the first year of the Soccer category in the Roboliga Argentina**, so we are a team in the middle of learning the league: this year the robot **scores by pushing the ball with inertia** (fewer components, fewer points of failure), and we keep the **kicker and dribbler as a declared goal for next year**. We show what we have honestly, and we come to learn from the best.
 
 ## 4.2 What we learned (the most transferable lessons)
 
@@ -441,7 +444,7 @@ The team's philosophy is **"invest in learning, not in the podium"**: an honest 
 
 **Identification / team**
 - ✅ RESOLVED 2026-06-05: **Official team name** = **IITA Low Battery Messi** (form identity ready).
-- [GAP] **Region/representation** exact for RCJ registration (Salta, Argentina confirmed; the name of the regional they qualified through, to be confirmed). → `[REGION]`.
+- ✅ RESOLVED 2026-06-05: **Region** = Salta, Argentina; qualification = national final of the **2025 Roboliga Argentina (organized by UAI)**, qualifier to RoboCup. [Pending: confirm the exact **category** of the title with the team — see note.]
 - ✅ RESOLVED 2026-06-05: **Legal name** = **IITA — Instituto de Innovación y Tecnología Aplicada** (Fundación Innovar), unified across all docs.
 
 **Electrical / costs**

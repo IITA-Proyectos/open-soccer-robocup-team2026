@@ -23,7 +23,7 @@
 | **Task Execution** | Completes **efficiently** with **innovative approaches** | §3 (Teamwork-Task tips: how to split up, where the code lives, fast flashing) |
 
 > **Placeholders to fill in before Incheon** (logged in the gaps at the end): `IITA Low Battery Messi`, final roles for
-> `[MEMBER A]`/`[MEMBER B]`, and confirm that 2 people compete in Incheon (repo roster: Gustavo Viollaz director,
+> `María Virginia Viollaz`/`Elías Cordero`, and confirm that 2 people compete in Incheon (repo roster: Gustavo Viollaz director,
 > Enzo Juárez coach, María Virginia Viollaz and Elías Cordero competitors). In the interview **the competitors who
 > are present speak**; the coach does not answer for them.
 
@@ -39,14 +39,14 @@
 
 | Time | Who | Line |
 |---|---|---|
-| 0-15 s | `[MEMBER A]` | "We are `IITA Low Battery Messi`, from Salta, Argentina, in the **Open** sub-league. We arrived in Incheon as the **national champions** of the 2025 Roboliga Argentina. We bring **2 robots**: a **goalkeeper** and a **striker**." |
-| 15-40 s | `[MEMBER A]` | "Our robot uses a **distributed 3-board architecture**: one board **perceives** (2 OpenMV N6 cameras, 1 IMU, 4 ToF sensors), one board **decides** (tactical FSM + 3 omni motors) and one board **touches the floor** (a 32-sensor line ring + 2 optical odometry sensors). They talk to each other over UART at 230400 baud." |
-| 40-65 s | `[MEMBER B]` | "What we are proudest of is **how we verify the firmware without the board**: the decision logic lives in pure C++ modules that we compile and test on the PC with g++. Today we run **624 host-native tests in 44 suites, 0 failures** (verified 2026-06-04 with `scripts/run-host-tests.sh`). That lets us **iterate fast and safely** days before the competition." |
-| 65-85 s | `[MEMBER B]` | "And a tactical decision we are proud of: the **goalkeeper anticipates**. Instead of tracking the ball's current position, it projects where it **is going to be** using its velocity (`pos + v·0.2 s`, capped). We can show it to you on the field if you'd like." |
+| 0-15 s | `María Virginia Viollaz` | "We are `IITA Low Battery Messi`, from Salta, Argentina, in the **Open** sub-league. We arrived in Incheon as the **national champions** of the 2025 Roboliga Argentina. We bring **2 robots**: a **goalkeeper** and a **striker**." |
+| 15-40 s | `María Virginia Viollaz` | "Our robot uses a **distributed 3-board architecture**: one board **perceives** (2 OpenMV N6 cameras, 1 IMU, 4 ToF sensors), one board **decides** (tactical FSM + 3 omni motors) and one board **touches the floor** (a 32-sensor line ring + 2 optical odometry sensors). They talk to each other over UART at 230400 baud." |
+| 40-65 s | `Elías Cordero` | "What we are proudest of is **how we verify the firmware without the board**: the decision logic lives in pure C++ modules that we compile and test on the PC with g++. Today we run **624 host-native tests in 44 suites, 0 failures** (verified 2026-06-04 with `scripts/run-host-tests.sh`). That lets us **iterate fast and safely** days before the competition." |
+| 65-85 s | `Elías Cordero` | "And a tactical decision we are proud of: the **goalkeeper anticipates**. Instead of tracking the ball's current position, it projects where it **is going to be** using its velocity (`pos + v·0.2 s`, capped). We can show it to you on the field if you'd like." |
 | 85-90 s | both | "Everything is **open-source under the MIT license** on GitHub, documented so another team can replicate it. Where would you like to start?" |
 
 **Delivery tips (these push Teamwork & Communication toward Excellent):**
-- **Explicit hand-off**: "...and that was mostly worked on by `[MEMBER B]`, tell them about it" → shows clear roles and mutual support.
+- **Explicit hand-off**: "...and that was mostly worked on by `Elías Cordero`, tell them about it" → shows clear roles and mutual support.
 - Keep eye contact with **the judges AND the other teams** (the rubric rewards engagement with everyone present).
 - Hold the **physical robot in hand** and point at the 3 boards as they are named (the boards are stacked like floors: TOP / CENTRAL / DOWN).
 - Close with an **open-ended question** → it invites conversation instead of cutting it off.
@@ -62,8 +62,8 @@
 
 | Area | Suggested owner | Why (repo evidence) | Typical question they answer without hesitation |
 |---|---|---|---|
-| **Vision + Strategy/Trajectories** | `[MEMBER A]` (María/Virginia profile: vision + trajectories) | 2025 experience in computer vision and trajectories | "How do you detect the ball?" / "How does the goalkeeper decide where to go?" |
-| **Electronics + Mechanics/Drivetrain** | `[MEMBER B]` (Elías profile: robotics + electromechanical eng.) | Electromechanical Engineering student; motor bench work | "Why omni motors at 120°?" / "How did you choose the components?" |
+| **Vision + Strategy/Trajectories** | `María Virginia Viollaz` (vision + trajectories) | 2025 experience in computer vision and trajectories | "How do you detect the ball?" / "How does the goalkeeper decide where to go?" |
+| **Electronics + Mechanics/Drivetrain** | `Elías Cordero` (robotics + electromechanical eng.) | Electromechanical Engineering student; motor bench work | "Why omni motors at 120°?" / "How did you choose the components?" |
 | **Software / Architecture / Testing** | **shared** (both) | It is the team's differentiator; both must be able to explain the "pure modules + host tests" idea | "How do you test without the board?" / "How do the 3 boards communicate?" |
 | **Development & Documentation** | **shared** | Engineering journal + SOURCES-OF-TRUTH + traceable tests | "How do you track progress?" / "How do you know something works?" |
 
@@ -295,8 +295,8 @@
 ## Gaps (real data still missing — fill in before Incheon)
 
 - `IITA Low Battery Messi` officially registered with RoboCup Junior for Incheon (confirmed 2026-06-05; "IITA - Open Soccer RoboCup Team 2026" is the internal repo descriptor).
-- **Final interview roster**: confirm which competitors are physically in Incheon and assign them the area they own in §2 (`[MEMBER A]`/`[MEMBER B]`). The repo lists María Virginia Viollaz and Elías Cordero as competitors.
-- **Region/representation** for the RCJ registration (Salta province and Argentina confirmed; the name of the regional they qualified through is missing, beyond "2025 Roboliga Argentina national champions").
+- ✅ RESOLVED 2026-06-05: competitors **María Virginia Viollaz** (vision/strategy) and **Elías Cordero** (electro-mechanics), both 18. Also travelling: **Enzo Velázquez (coach)** and **Cecilia Budeguer (mentor)**; **Gustavo Viollaz (mentor)** does not travel.
+- ✅ RESOLVED 2026-06-05: Salta, Argentina · champions of the 2025 Roboliga Argentina national final (UAI).
 - **2026 chassis materials and dimensions** (height between floors/standoffs, printed parts, robot diameter and weight) — not documented; affects answers in the Mechanical category.
 - **2026 chassis STL/CAD** so we can say "it's replicable" with confidence (the ones in the repo are from 2025 with the now-discarded dribbler/solenoid).
 - **State of partner coordination (ESP-NOW) on the bench** — to confidently answer the "robot-to-robot" question.

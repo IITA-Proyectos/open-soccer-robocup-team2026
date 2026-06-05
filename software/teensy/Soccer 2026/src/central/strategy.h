@@ -1,16 +1,15 @@
 // strategy.h — FSM dual (delantero / arquero) para el robot.
 //
-// El role se selecciona en setup() por dipswitch (Q7 del coach: roles fijos
-// inicialmente). PIN_ROLE_DIPSWITCH en config_top.h:
-//   LOW  = arquero (defender)
-//   HIGH = delantero (atacar)
+// El role se fija en build por -DROBOT1 (arquero) / -DROBOT2 (delantero); se
+// aplica en setup() via apply_role_from_dipswitch() (nombre historico). No hay
+// dipswitch fisico: el rol es una constante de compilacion, no se lee en runtime.
 //
 // La FSM aplica decisiones tácticas usando world_model.h como entrada y
 // genera un MotorCommand como salida. NO toca hardware directamente — eso
 // queda en motors.h (envía al Zircon).
 //
-// Stub inicial (Hito 4): FSM mínima. Las estrategias completas (delantero
-// con behind-the-ball, arquero con predicción) llegan en Hito 6.
+// Estrategias implementadas: Nivel 1 (FSM base por rol) + Nivel 2 (delantero con
+// behind-the-ball, arquero con predicción ball_predict). Ya no es un stub.
 
 #pragma once
 #include <stdint.h>

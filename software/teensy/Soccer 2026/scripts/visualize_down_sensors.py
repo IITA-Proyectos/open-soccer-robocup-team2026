@@ -27,8 +27,8 @@ Uso:
   python visualize_down_sensors.py --port COM10 --baud 115200
 
 Opcional (mejor experiencia): modificar el firmware diag_down para imprimir
-cada 100 ms en lugar de 300 ms — ver hardware/electronics/down-board-pack/
-diag/main_diag_down.cpp linea ~83 (`if (g_since_print >= 300)`). Cambiarlo
+cada 100 ms en lugar de 300 ms — ver src/diag/main_diag_down.cpp (el firmware
+VIVO) linea ~121 (`if (g_since_print >= 300)`). Cambiarlo
 a 100 da 10 Hz de refresh visual en vez de 3.3 Hz. Cambio trivial pero
 requiere reflashear con el boton de la Teensy.
 """

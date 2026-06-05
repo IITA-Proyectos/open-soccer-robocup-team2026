@@ -5,7 +5,8 @@
 //
 // Roles:
 //   • Receptor: drena bytes de Serial5 cuando llegan, decodifica frames,
-//     procesa comandos del TOP (reset OTOS, calibrar línea, etc).
+//     procesa comandos del TOP (reset OTOS). El handler de calibrar-línea por
+//     TOP se eliminó (audit 2026-06-03 #19): la calib es canal exclusivo DOWN.
 //   • Emisor: a 100 Hz envía 2 frames con el estado del DOWN:
 //       OTOS_POSE   (x, y, heading)
 //       OTOS_VEL    (vx, vy, omega, slip estimate)

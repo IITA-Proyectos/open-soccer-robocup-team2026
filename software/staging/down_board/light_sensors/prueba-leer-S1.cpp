@@ -6,6 +6,7 @@
 //   software/teensy/Soccer 2026/src/  (ver el "mapa de reúso" del documento).
 // ============================================================================
 
+// ⚠️ STAGING CONGELADO — NO FLASHEAR. Sketch de prueba 2025 con BNO local + lib vieja; el equivalente VIVO esta en src/diag/ (ver software/staging/README.md).
 // Lectura de sensores de luz ALSPT19 via multiplexor U1 (CD4051BM)
 // Placa: Teensy 4.0 - Placa Base Robot Soccer 2026 - IITA Salta
 //

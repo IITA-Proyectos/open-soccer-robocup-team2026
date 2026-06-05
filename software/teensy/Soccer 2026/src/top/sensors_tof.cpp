@@ -21,10 +21,9 @@
 // Decision: migrar a Adafruit. Ver journal completo:
 //   journal/2026-05-24-hardware-up-top-tof-frontal-resuelto.md
 //
-// Estado del hardware (al 2026-05-24):
-//   • Solo el ToF frontal U2 esta fisicamente soldado (Wire / I2C0 / addr 0x29).
-//   • U3, U5, U17 son slots vacios -> get_distance_mm(1..3) retorna
-//     TOF_NO_READING permanente, is_ready(1..3) = false.
+// Estado del hardware (al 2026-05-30, banco):
+//   • 4 ToF activos enumerados a 0x2A-0x2D via LP 9/10/11/12 (bus unico Wire);
+//     get_distance_mm(0..3) e is_ready(0..3) devuelven lecturas reales.
 //   • HC-SR04 frontal (TRIG/ECHO) funciona como antes.
 // ============================================================================
 
@@ -49,7 +48,8 @@ bool     g_ever_ok[NUM_TOF]    = {false};
 uint16_t g_hcsr04_mm = TOF_NO_READING;
 uint32_t g_tick_count = 0;
 
-// ----- Sensor real (solo el frontal U2 esta instalado) -----
+// ----- Sensor frontal (indice 0); los 4 ToF activos se enumeran en g_tof_multi -----
+// Ver bloque TOP_ENABLE_MULTI_TOF: 4 ToF 0x2A-0x2D via LP 9/10/11/12 (banco 2026-05-30).
 constexpr uint8_t TOF_FRONTAL_IDX = 0;  // indice U2 en la abstraccion
 Adafruit_VL53L7CX     g_tof_frontal;
 VL53L7CX_ResultsData  g_tof_results;

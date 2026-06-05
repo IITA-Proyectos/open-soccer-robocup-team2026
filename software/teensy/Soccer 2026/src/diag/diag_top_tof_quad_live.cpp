@@ -1,6 +1,9 @@
 // diag_top_tof_quad_live.cpp — Lee los 4 ToF VL53L7CX a la vez (bus unico),
 // con la lib ADAFRUIT. NO es firmware de competencia.
 //
+// NOTA: corre el bus a 400 kHz (solo ToF, sin BNO en el loop -> seguro). NO es la
+// velocidad de produccion: el firmware vivo usa 100 kHz por la coexistencia BNO+ToF.
+//
 // Contexto (banco 2026-05-30)
 // ---------------------------
 // El recableado de Enzo dejo los 4 ToF en el bus Wire (18/19) con la pata LP

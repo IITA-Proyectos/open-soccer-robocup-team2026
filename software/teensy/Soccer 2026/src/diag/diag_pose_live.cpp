@@ -18,7 +18,7 @@
 //
 // Mapeo físico (confirmado banco 2026-05-31, pinout_common.h):
 //   ToF idx 0=FRENTE(+Y,0°)  1=ATRAS(-Y,180°)  2=DERECHA(+X,270°)  3=IZQ(-X,90°)
-// Cancha: X (largo) = 2430 mm, Y (corto) = 1820 mm. heading 0 = mira arco rival (+Y).
+// Cancha: X (lateral, corto) = 1820 mm, Y (arco-a-arco, largo) = 2430 mm. heading 0 = mira arco rival (+Y).
 //
 // PROCEDIMIENTO (las direcciones I2C de los ToF PERSISTEN — power-cycle!):
 //   1) pio run -e diag_pose_live -t upload
@@ -175,9 +175,9 @@ void header() {
     Serial.println("\n============================================================");
     Serial.println("  TOP — POSE EN VIVO (4 ToF + BNO -> localization_compute)");
     Serial.println("============================================================");
-    Serial.println("Cancha: X(largo)=2430mm  Y(corto)=1820mm. Origen en una esquina.");
+    Serial.println("Cancha: X(lateral,corto)=1820mm  Y(arco-a-arco,largo)=2430mm. Origen en una esquina.");
     Serial.println("heading 0 = mira arco rival (+Y), CCW+ (izquierda sube).");
-    Serial.println("Centro de cancha ~ (1215, 910).");
+    Serial.println("Centro de cancha ~ (910, 1215).");
     Serial.println("IMPORTANTE: apunta robot a +Y y manda 'z' para fijar el cero.");
     Serial.println("------------------------------------------------------------");
 }

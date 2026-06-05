@@ -21,7 +21,7 @@
 //       Mensajes: LINE_URGENT 0x10 (LineStatusV2 16B) + DOWN_OTOS_POSE 0x11 (Pose2D 7B)
 //                 + DOWN_OTOS_VEL 0x12 (Velocity2D 7B).
 //   • TOP  -> CENTRAL : Serial7 (RX7 = pin 28). TOP envia por su Serial4 (TX4 = pin 17).
-//       Mensajes: WORLD_SNAPSHOT 0x60 (WorldSnapshot 27B).
+//       Mensajes: WORLD_SNAPSHOT 0x60 (WorldSnapshot 31B (v3)).
 //   Baud: 230400 en ambos. GND comun obligatorio entre las 3 placas.
 //
 // Uso:

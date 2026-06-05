@@ -2,6 +2,9 @@
 //                               del area, centrandose adelante/atras sobre ella.
 //                               (placa CENTRAL, Teensy 4.1). NO es competencia.
 //
+// NOTA: usa BNO local (imu_zircon); la CENTRAL de competencia NO lleva BNO ->
+// degrada a patrulla sin correccion de heading si el BNO no esta.
+//
 // Comportamiento:
 //   - Se desplaza LATERALMENTE a lo largo de la linea del area (los 3 motores,
 //     logica de Elias/Maria: M1 y M2 contrarios, M3 acompaña).

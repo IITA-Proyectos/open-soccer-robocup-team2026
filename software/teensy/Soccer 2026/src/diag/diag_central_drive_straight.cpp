@@ -3,7 +3,7 @@
 // Para qué sirve:
 //   Validar EN BANCO (o cancha despejada) que la cadena completa de control de
 //   movimiento del CENTRAL funciona end-to-end:
-//     WorldSnapshot (TOP→CENTRAL Serial1)
+//     WorldSnapshot (TOP→CENTRAL Serial7 (RX7 pin28))
 //       → world_model
 //         → HeadingPID
 //           → kinematics inversa omni-3
@@ -33,7 +33,7 @@
 //
 // Pre-requisitos OPERATIVOS:
 //   - PLACA CENTRAL flasheada con este sketch (Zircon Rev v15 + Teensy 4.1).
-//   - PLACA TOP corriendo y enviando WorldSnapshot por Serial1 a 230400.
+//   - PLACA TOP corriendo y enviando WorldSnapshot por Serial7 (RX7 pin28) a 230400.
 //     (la cadena DOWN→TOP→CENTRAL tiene que estar al menos a nivel TOP→CENTRAL).
 //   - TASK-036 cerrada → motores validados, mapeo motor↔rueda conocido,
 //     conflicto pines 7/8 resuelto. Sin esto, los resultados del PID son
@@ -209,7 +209,7 @@ void enter_state(State s) {
             Serial.println(" Pre-flight check:");
             Serial.println("   - Bateria conectada y cargada (los drivers NO van por USB)");
             Serial.println("   - Robot SUJETO o ruedas al aire o cancha despejada");
-            Serial.println("   - Placa TOP corriendo, enviando WorldSnapshot por Serial1");
+            Serial.println("   - Placa TOP corriendo, enviando WorldSnapshot por Serial7 (RX7 pin28)");
             Serial.println("   - TASK-036 cerrada (motores validados, conflicto 7/8 resuelto)");
             Serial.println();
             Serial.println(" Operativa:");
@@ -286,7 +286,7 @@ void print_status() {
 // ============================================================
 // TODO_DIFFERENTIAL_OTOS
 //   Hoy CENTRAL recibe SOLO la pose fusionada del TOP (my_x/my_y/my_heading
-//   en WorldSnapshot v2). NO recibe las 2 lecturas crudas OTOS por separado.
+//   en WorldSnapshot). NO recibe las 2 lecturas crudas OTOS por separado.
 //   Para implementar el "PID diferencial por diferencia de las 2 OTOS" hay 2
 //   caminos:
 //

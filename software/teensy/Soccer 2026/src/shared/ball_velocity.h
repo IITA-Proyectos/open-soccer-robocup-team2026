@@ -2,7 +2,7 @@
 //
 // Por qué existe
 // -------------
-// El WorldSnapshot v2 ya tiene `ball_vx_mm_s` / `ball_vy_mm_s` y la cadena
+// El WorldSnapshot v3 ya tiene `ball_vx_mm_s` / `ball_vy_mm_s` y la cadena
 // `bt_classify` (ball_trajectory.{h,cpp}, 7 tests verdes) los consume para
 // decidir si la pelota va al arco propio/rival. Antes `build_snapshot()` en el
 // TOP los dejaba en 0 (siempre BT_STILL). Este módulo deriva la velocidad de la

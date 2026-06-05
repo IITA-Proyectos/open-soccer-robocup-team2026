@@ -1,6 +1,9 @@
 // diag_top_tof_zonemap.cpp — Mapea la ORIENTACION INTERNA de las zonas de cada
 // ToF (grilla 8x8). NO es firmware de competencia.
 //
+// NOTA: corre el bus a 400 kHz (solo ToF, sin BNO en el loop -> seguro). NO es la
+// velocidad de produccion: el firmware vivo usa 100 kHz por la coexistencia BNO+ToF.
+//
 // Por que existe
 // --------------
 // Los 4 ToF VL53L7CX ya enumeran en el bus Wire (banco 2026-05-30):

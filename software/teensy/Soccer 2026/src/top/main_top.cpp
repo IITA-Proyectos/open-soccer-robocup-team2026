@@ -14,7 +14,7 @@
 //   • WORLD_SNAPSHOT a CENTRAL (Serial4 16/17) a 100 Hz.
 //
 // Build:
-//   pio run -e top
+//   pio run -e top_robot1 / top_robot2  (el env exige -DROBOT1 / -DROBOT2)
 
 #include <Arduino.h>
 

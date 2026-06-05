@@ -8,7 +8,9 @@
 // --------
 // Escanea direcciones 0x08..0x77 en:
 //   • Wire  (I2C0) = pines 18 (SDA0) / 19 (SCL0)   -> aca viven U2 (frontal) + U3 (trasero) + 1 BNO
-//   • Wire1 (I2C1) = pines 25 (SDA1) / 24 (SCL1)   -> aca viven U5 (izq) + U17 (der) + (otro BNO si esta)
+//   • Wire1 (I2C1) = pines 25 (SDA1) / 24 (SCL1)   -> aca viven U5 (izq) + U17 (der)
+//     (un 2do BNO 0x29 estuvo previsto en Wire1, pero esa unidad esta FALLADA:
+//      hoy el robot corre con 1 solo BNO 0x28 en Wire, asi que NO esperes verlo)
 //   (topologia confirmada por extraccion forense del schematic 2026-04-12)
 //
 // Como leer la salida
@@ -49,6 +51,7 @@ const char* addr_hint(uint8_t addr) {
         case 0x2A: return "ToF reasignado (post-enumeracion)";
         case 0x2B: return "ToF reasignado (post-enumeracion)";
         case 0x2C: return "ToF reasignado (post-enumeracion)";
+        case 0x2D: return "ToF reasignado (post-enumeracion)";
         default:   return "desconocido";
     }
 }

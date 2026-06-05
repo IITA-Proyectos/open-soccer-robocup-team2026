@@ -6,8 +6,10 @@ namespace iitasoccer {
 namespace {
 constexpr float PI_F = 3.14159265358979323846f;
 
-// Confianza ficticia para el protocolo viejo (no envía área de blob).
-// Cuando migremos al protocolo nuevo, esto vendrá del propio packet.
+// Confianza ficticia: el packet cámara→TOP v2 no transporta área de blob, así
+// que la fusión asigna una confianza fija. Esta capa es agnóstica al wire (las
+// coords llegan ya decodificadas v2); si un futuro packet trae el área, vendrá
+// del propio packet en vez de esta constante.
 constexpr float CONF_SINGLE_CAMERA = 80.0f;
 constexpr float CONF_CONSENSUS     = 95.0f;  // bonus cuando 2 cámaras coinciden
 

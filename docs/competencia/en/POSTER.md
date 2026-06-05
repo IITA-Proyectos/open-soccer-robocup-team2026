@@ -197,24 +197,24 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 >
 > | Major component | Part number / model | Qty. | New / Reused | Unit cost (USD) |
 > |---|---|---|---|---|
-> | OpenMV N6 camera | OpenMV Cam N6 (STM32N6 + NPU) | 2 | New | **[COST — pending]** (most expensive component) |
-> | TOP / DOWN MCU | Teensy 4.0 (LCSC `C99001332551`) | 2 | New | **[COST — pending]** |
-> | CENTRAL MCU | Teensy 4.1 (on Zircon PCB) | 1 | **Reused** (2025 champion) | **[COST — pending]** |
-> | BNO055 IMU | Bosch BNO055 (U10/U11) | 2 (1 healthy) | New | ~15 (internal citation) |
-> | VL53L7CX ToF | ST VL53L7CX (Pololu module) | 4 | New | **[COST — pending]** |
-> | SparkFun OTOS | SparkFun OTOS (U5/U6) | 2 | New | **[COST — pending]** |
-> | Zircon Rev v15 PCB (CENTRAL) | Robomov Zircon Rev v15 (COTS) | 1 | **Reused** | **[COST — pending]** (Robomov price) |
+> | OpenMV N6 camera | OpenMV Cam N6 (STM32N6 + NPU) | 2 | New | **USD 165/ea** (int. ref.; most expensive) |
+> | TOP / DOWN MCU | Teensy 4.0 (LCSC `C99001332551`) | 2 | New | **USD 23.80/ea** (int. ref.) |
+> | CENTRAL MCU | Teensy 4.1 (on Zircon PCB) | 1 | **Reused** (2025 champion) | **USD 31.50** (int. ref.) |
+> | BNO055 IMU | Bosch BNO055 (U10/U11) | 2 (1 healthy) | New | **~USD 35/ea** (int. ref.) |
+> | VL53L7CX ToF | ST VL53L7CX (Pololu module) | 4 | New | **USD 19.95/ea** (int. ref.) |
+> | SparkFun OTOS | SparkFun OTOS (U5/U6) | 2 | New | **USD 84.95/ea** (int. ref.) |
+> | Zircon Rev v15 PCB (CENTRAL) | Robomov Zircon Rev v15 (COTS) | 1 | **Reused** | **~USD 200** (standalone Robomov price pending — kit USD 529) |
 > | CD4051BM mux | TI CD4051BM (LCSC `C353976`) | 4 | New | 0.96 |
-> | MP1584-EN buck regulator | MP1584-EN (SIP module) | 6 | New | **[COST — pending]** |
-> | LiPo 2S 7.4 V battery | LiPo 2S (mAh/C TBC) | 1–2 | New | **[COST — pending]** |
-> | 3 DC motors + 3 omni wheels | "TT" motor + KIWI omni wheel | 3+3 | **[New/Reused? — pending]** | **[COST — pending]** |
-> | **TOTAL per robot** | — | — | — | **[TOTAL COST — pending]** |
+> | MP1584-EN buck regulator | MP1584-EN (SIP module) | 6 | New | **USD 0.90/ea** (int. ref.) |
+> | LiPo 2S 7.4 V battery | LiPo 2S (mAh/C TBC) | 1–2 | New | **~USD 10–25** (specs pending) |
+> | 3 DC motors + 3 omni wheels | "TT" motor + KIWI omni wheel | 3+3 | New | **motor pending** (TT ~USD 3 vs Pololu HP USD 23.95) |
+> | **TOTAL per robot** | — | — | — | **≈ USD 1,000 all-new · ≈ USD 770 reusing CENTRAL** (int. ref.; 2 robots ≈ USD 1,800–2,000) |
 >
 > **Development time:** the 2026 redesign ≈ **8 weeks** of intensive engineering (May–June), built on the 2025 champion robot; total effort ≈ **4 months** (Feb–Jun 2026), traceable in `journal/`. Test suite growing **180 → 246 → 262 → 324 → 354 → 545 → 652** (measured 2026-06-05 18:39 ART via `scripts/run-host-tests.sh`; see Fig.8).
 >
 > **Real prices available in the repo (LCSC unit, cited verbatim in BOM.md):** ALS-PT19 phototransistor ≈ 0.116 · CD4051BM 0.96 · LED 0402 0.016 · B5819W diode 0.024 USD.
 
-> **Gap note (to record):** the **total robot cost** and the prices of Teensy, OpenMV N6, OTOS, BNO055, MP1584, battery, motors, and wheels **are still pending** (see `BOM.md` §3 and §6). Obtain an economic BOM with **ARS/USD** conversion before printing → **[TOTAL COST — pending]**.
+> **Gap note (to record):** costs are **international reference prices** (USD, verified 2026-06-05; single source `BOM.md` §3). **Pending from the team (small):** the standalone **Zircon** price (Robomov lists the kit at USD 529), which **motor** they use (TT ~USD 3 vs Pololu HP USD 23.95), the day's **ARS/USD exchange rate**, and the development **hours**. The local *landed* cost is **higher** due to Argentina's import restrictions.
 
 ---
 
@@ -316,7 +316,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 
 - [ ] **Spell-check** the English text (hard rubric requirement: no spelling errors).
 - [x] ✅ Identity COMPLETE 2026-06-05: team IITA Low Battery Messi · region Roboliga Argentina 2025 (UAI) · roster (María Virginia Viollaz / Elías Cordero + coach Enzo Juárez Velázquez / mentor Cecilia Budeguer).
-- [ ] Complete the **BOM with real costs** and the **total cost** (USD/ARS).
+- [ ] **International reference costs loaded** (≈USD 1,000 all-new / 770 reusing CENTRAL). Pending from team: **standalone Zircon price, motor, ARS/USD rate, and hours**.
 - [ ] Shoot and place **all `[PHOTO:]`** (Fig.1–11), labeled and cited.
 - [x] ✅ Generated 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Only A1 layout remains.
 - [ ] Confirm the **live test count** at closing (verified **652 tests / 47 suites / 0 failures** on 2026-06-05 18:39 ART via `scripts/run-host-tests.sh`; re-run before printing).

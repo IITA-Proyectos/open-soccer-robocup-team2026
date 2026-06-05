@@ -207,24 +207,24 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 >
 > | Componente mayor | Part number / modelo | Cant. | Nuevo / Reusado | Costo unit. (USD) |
 > |---|---|---|---|---|
-> | Cámara OpenMV N6 | OpenMV Cam N6 (STM32N6 + NPU) | 2 | Nuevo | **[COSTO — pending]** (componente más caro) |
-> | MCU TOP / DOWN | Teensy 4.0 (LCSC `C99001332551`) | 2 | Nuevo | **[COSTO — pending]** |
-> | MCU CENTRAL | Teensy 4.1 (en PCB Zircon) | 1 | **Reusado** (campeón 2025) | **[COSTO — pending]** |
-> | IMU BNO055 | Bosch BNO055 (U10/U11) | 2 (1 sano) | Nuevo | ~15 (cita interna) |
-> | ToF VL53L7CX | ST VL53L7CX (módulo Pololu) | 4 | Nuevo | **[COSTO — pending]** |
-> | OTOS SparkFun | SparkFun OTOS (U5/U6) | 2 | Nuevo | **[COSTO — pending]** |
-> | PCB Zircon Rev v15 (CENTRAL) | Robomov Zircon Rev v15 (COTS) | 1 | **Reusado** | **[COSTO — pending]** (precio Robomov) |
+> | Cámara OpenMV N6 | OpenMV Cam N6 (STM32N6 + NPU) | 2 | Nuevo | **USD 165 c/u** (ref. int.; el más caro) |
+> | MCU TOP / DOWN | Teensy 4.0 (LCSC `C99001332551`) | 2 | Nuevo | **USD 23.80 c/u** (ref. int.) |
+> | MCU CENTRAL | Teensy 4.1 (en PCB Zircon) | 1 | **Reusado** (campeón 2025) | **USD 31.50** (ref. int.) |
+> | IMU BNO055 | Bosch BNO055 (U10/U11) | 2 (1 sano) | Nuevo | **~USD 35 c/u** (ref. int.) |
+> | ToF VL53L7CX | ST VL53L7CX (módulo Pololu) | 4 | Nuevo | **USD 19.95 c/u** (ref. int.) |
+> | OTOS SparkFun | SparkFun OTOS (U5/U6) | 2 | Nuevo | **USD 84.95 c/u** (ref. int.) |
+> | PCB Zircon Rev v15 (CENTRAL) | Robomov Zircon Rev v15 (COTS) | 1 | **Reusado** | **~USD 200** (precio Robomov suelto pendiente — kit USD 529) |
 > | Mux CD4051BM | TI CD4051BM (LCSC `C353976`) | 4 | Nuevo | 0.96 |
-> | Regulador buck MP1584-EN | MP1584-EN (módulo SIP) | 6 | Nuevo | **[COSTO — pending]** |
-> | Batería LiPo 2S 7.4 V | LiPo 2S (mAh/C a confirmar) | 1–2 | Nuevo | **[COSTO — pending]** |
-> | 3 motores DC + 3 ruedas omni | Motor "TT" + rueda omni KIWI | 3+3 | **[Nuevo/Reusado? — pending]** | **[COSTO — pending]** |
-> | **TOTAL por robot** | — | — | — | **[TOTAL COST — pending]** |
+> | Regulador buck MP1584-EN | MP1584-EN (módulo SIP) | 6 | Nuevo | **USD 0.90 c/u** (ref. int.) |
+> | Batería LiPo 2S 7.4 V | LiPo 2S (mAh/C a confirmar) | 1–2 | Nuevo | **~USD 10–25** (specs pendientes) |
+> | 3 motores DC + 3 ruedas omni | Motor "TT" + rueda omni KIWI | 3+3 | Nuevo | **motor pendiente** (TT ~USD 3 vs Pololu HP USD 23.95) |
+> | **TOTAL por robot** | — | — | — | **≈ USD 1.000 nuevo · ≈ USD 770 reusando CENTRAL** (ref. int.; 2 robots ≈ USD 1.800–2.000) |
 >
 > **Tiempo de desarrollo:** rediseño 2026 ≈ **8 semanas** de ingeniería intensiva (mayo–junio), sobre la base del robot campeón 2025; esfuerzo total ≈ **4 meses** (feb–jun 2026) trazable en `journal/`. Suite de tests creciendo **180 → 246 → 262 → 324 → 354 → 545 → 652** (medido 2026-06-05 18:39 ART con `scripts/run-host-tests.sh`; ver Fig.8).
 >
 > **Precios reales disponibles en el repo (unitarios LCSC, citados verbatim en BOM.md):** fototransistor ALS-PT19 ≈ 0.116 · CD4051BM 0.96 · LED 0402 0.016 · diodo B5819W 0.024 USD.
 
-> **Nota de gap (registrar):** el **costo total del robot** y los precios de Teensy, OpenMV N6, OTOS, BNO055, MP1584, batería, motores y ruedas **siguen pendientes** (ver `BOM.md` §3 y §6). Conseguir BOM económico con conversión **ARS/USD** antes de imprimir → **[TOTAL COST — pending]**.
+> **Nota de gap (registrar):** costos = **precio internacional de referencia** (USD, verificado 2026-06-05; fuente única `BOM.md` §3). **Pendiente del equipo (chico):** precio del **Zircon** suelto (Robomov publica el kit a USD 529), qué **motor** usan (TT ~USD 3 vs Pololu HP USD 23.95), el **tipo de cambio ARS/USD** del día y las **horas** de desarrollo. El costo *landed* local es **mayor** por las restricciones de importación argentinas.
 
 ---
 
@@ -326,7 +326,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 
 - [ ] **TRADUCIR TODO al inglés** (requisito duro de rúbrica) y correr corrector ortográfico.
 - [x] ✅ Identidad COMPLETA 2026-06-05: equipo IITA Low Battery Messi · región Roboliga Argentina 2025 (UAI) · roster (María Virginia Viollaz / Elías Cordero + coach Enzo Juárez Velázquez / mentora Cecilia Budeguer).
-- [ ] Completar **BOM con costos reales** y **costo total** (USD/ARS).
+- [ ] Costos de **referencia internacional ya cargados** (≈USD 1.000 nuevo / 770 reusando CENTRAL). Falta del equipo: **precio Zircon suelto, motor, tipo de cambio ARS/USD y horas**.
 - [ ] Tomar y colocar **todas las `[FOTO:]`** (Fig.1–11) etiquetadas y citadas.
 - [x] ✅ Generadas 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Falta solo maquetarlas en el A1.
 - [ ] Confirmar el **número de tests vivo** al cierre (verificado **652 tests / 47 suites / 0 fallos** el 2026-06-05 18:39 ART con `scripts/run-host-tests.sh`; re-correr antes de imprimir).

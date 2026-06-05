@@ -148,25 +148,26 @@ The **6 I²C sensors hang off the same `Wire` bus (pins 18/19)**: 2 BNO055 (0x28
 
 > **Documented hardware trap to replicate:** the **Teensy 4.0 does NOT expose Serial7 (28/29) on the edge** (they are rear SMD pads). That is why the link to CENTRAL goes over Serial4 (16/17), not Serial7. The Teensy 4.1 (CENTRAL) **does** expose them.
 
-## 1.8 BOM of major components — resource use / cost: [BOM costs — pending]
+## 1.8 BOM of major components — resource use / cost (international reference prices)
 
-> **Resource use / cost:** [BOM costs — pending]. The per-robot quantities are confirmed; the unit prices and the total cost **are pending closure** (see the gap below). The table lists what cost data we do have and marks the rest as pending.
+> **Resource use / cost:** prices = **international reference (USD), verified 2026-06-05** (single source: `BOM.md` §3). The per-robot quantities are confirmed. Only the following remain pending from the team: standalone Zircon price, motor model, ARS/USD exchange rate, and hours (see the gap below).
 
 | Component | Qty (robot) | Unit price (LCSC USD) |
 |---|---|---|
-| Teensy 4.0 / 4.1 | 3 | [BOM costs — pending] |
-| OpenMV N6 (camera) | 2 | [BOM costs — pending] (the most expensive components) |
-| BNO055 (IMU) | 2 | ~15 USD (qualitative mention) |
-| VL53L7CX (ToF) | 4 | [BOM costs — pending] |
-| OTOS SparkFun | 2 | [BOM costs — pending] |
+| Teensy 4.0 / 4.1 | 3 | 23.80 (4.0) / 31.50 (4.1) — int. ref. |
+| OpenMV N6 (camera) | 2 | 165/ea — int. ref. (the most expensive) |
+| BNO055 (IMU) | 2 | ~35/ea — int. ref. |
+| VL53L7CX (ToF) | 4 | 19.95/ea — int. ref. |
+| OTOS SparkFun | 2 | 84.95/ea — int. ref. |
 | CD4051BM (mux) | 4 | 0.96 |
 | ALS-PT19 (phototransistor) | 32 | 0.116–0.118 |
 | 0402 LED | 32 | 0.016 |
 | B5819W diode | 4–6 | 0.024 |
-| MP1584-EN (buck) | 6 | [BOM costs — pending] |
-| ESP32-C6 / Zircon / LiPo | 1 each | [BOM costs — pending] |
+| MP1584-EN (buck) | 6 | 0.90/ea — int. ref. |
+| ESP32-C6 / Zircon / LiPo | 1 each | 4.53 / ~200 reused / ~10–25 — int. ref. |
+| **TOTAL / robot** | — | **≈ USD 1,000 all-new · ≈ USD 770 reusing CENTRAL** (int. ref.) |
 
-> **[BOM costs — pending]** The BOM CSVs (LCSC) only carry unit prices for **some passives**. Missing prices for the Teensy, OpenMV N6, OTOS, BNO055, MP1584, battery, and the purchased Zircon board, and **there is no total robot cost nor ARS conversion**. Building the full economic table (resource use / cost) is a registered gap.
+> **Total cost (international reference, verified 2026-06-05):** ≈ **USD 1,000/robot** (all new) · ≈ **USD 770/robot** reusing the 2025 CENTRAL Zircon + Teensy 4.1 · ≈ **USD 1,800–2,000** for both robots. Breakdown with URLs in `BOM-COSTOS-TEMPLATE.md`. **Pending from the team (small):** the standalone **Zircon** price (Robomov lists the kit at USD 529), **motor** model (TT ~USD 3 vs Pololu HP USD 23.95), the day's **ARS/USD exchange rate**, and development **hours**. The local *landed* cost is **higher** due to Argentina's import restrictions.
 
 ---
 

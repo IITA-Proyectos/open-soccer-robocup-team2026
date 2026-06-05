@@ -44,6 +44,32 @@ constexpr int NUM_LINE_SENSORS    = DOWN_NUM_MUXES_CONNECTED * NUM_SENSORS_PER_M
 constexpr int NUM_OTOS            = DOWN_NUM_OTOS_CONNECTED;
 
 // ============================================================
+// Pipeline de filtros de line_ring (gate de CPU)
+// ============================================================
+// El pipeline procesado de line_ring_tick() (temporal ×32, hysteresis ×32,
+// spatial, centroid, lifted) computa g_angle_deg / g_depth / g_imminent_exit /
+// g_lifted / g_sensor_white_validated. En COMPETENCIA esas salidas NADIE las
+// consume: el LineStatusV2 que va a CENTRAL se computa entero en dm_update()
+// (DownModel) desde la lectura CRUDA (line_ring_get_raw). Los únicos lectores de
+// las salidas procesadas son los diags de banco (main_diag_down.cpp,
+// diag_down_calibracion.cpp).
+//
+// LINE_RING_PROCESS gobierna si line_ring_tick() corre ese pipeline. Lo dejamos
+// DEFAULT ON para que TODOS los envs actuales (competencia Y diags) sean
+// BYTE-IDÉNTICOS al binario previo — sin riesgo de romper los diags, que NO
+// pasan -DLINE_RING_PROCESS pero igual lo reciben por este default.
+//
+// Para realizar el ahorro de CPU en competencia (saltar el pipeline muerto),
+// pasar -DDOWN_LEAN_LINE_PIPELINE en [env:down]/[env:down_debug] de
+// platformio.ini. Es un OPT-OUT explícito (DEFAULT NO PASADO): mientras no se
+// agregue, el binario de competencia no cambia. Los envs de diag NUNCA deben
+// pasarlo (siguen leyendo las salidas procesadas). El MUESTREO CRUDO y los
+// timestamps (g_last_sample_us / g_tick_count) corren SIEMPRE, con o sin gate.
+#if !defined(LINE_RING_PROCESS) && !defined(DOWN_LEAN_LINE_PIPELINE)
+    #define LINE_RING_PROCESS
+#endif
+
+// ============================================================
 // Pinout del Teensy 4.0 en la placa DOWN
 // (inferido del schematic 04-12 — confirmar contra fabricación real / TASK-009)
 // ============================================================
@@ -86,9 +112,13 @@ constexpr uint8_t OTOS_I2C_ADDR = 0x17;  // SparkFun default
 
 // Separación física entre los 2 OTOS (mm). Q5 del usuario: "uno a cada costado".
 // ⚠️ SIN VALIDAR (número tentativo) — medir el real y cerrar TASK-004 / TASK-029 test2.
-// SOLO entra al cálculo de heading dual en modo 2-OTOS (otos.cpp ~l.105). Con la
-// config de 1 OTOS el heading viene del chip y este valor NO se usa. Si el real ≠
-// 200 mm, el heading dual sale con error de escala sistemático.
+// El HEADING dual NO depende de esta separación: g_heading_deg es el promedio
+// VECTORIAL de los headings ABSOLUTOS de las 2 IMUs (fuse_dual_heading_deg en
+// otos.cpp ~l.142), no una derivada geométrica de Δposición/separación. La
+// separación entra SOLO en el slip_estimate (otos_slip_estimate, otos.cpp ~l.152,
+// usa OTOS_SEPARATION_MM*0.5 como radio para descontar la componente de rotación).
+// Por lo tanto, un error en este valor afecta el slip, NO el heading. Con la
+// config de 1 OTOS este valor no se usa (slip = 0).
 constexpr float OTOS_SEPARATION_MM = 200.0f;  // tentativo: 10cm desde el centro a cada lado
 
 // ============================================================

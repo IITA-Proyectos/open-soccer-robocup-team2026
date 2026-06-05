@@ -16,6 +16,20 @@
 # test_native: build_src_filter = +<shared/> => cada test linkea SOLO contra
 # src/shared (verificado: ningun .cpp de shared incluye Arduino.h).
 #
+# Aclaracion sobre el "SKIP de tests de central/top" (comentario historico, hoy
+# STALE / no aplica)
+# -------------------------------------------------------------------------------
+# NO se saltea ningun test por estar bajo central/ o top/. Un test que solo
+# INCLUYE un .h de central/ o top/ por ruta relativa (p.ej. world_model.h,
+# comm_arbiter.h) compila y CORRE host sin problema, porque esos headers son
+# Arduino-free y aqui se les agrega -I al dir del test (ver el -I "$dir" del g++
+# de abajo). Lo unico que NO se podria linkear es un test que arrastre un .cpp
+# de central/top con dependencia de Arduino (Wire/Serial/etc.) — para ESE caso
+# se reservaria un SKIP, pero HOY no existe ningun test asi (todos linkean solo
+# contra src/shared + headers inline). O sea: el SKIP es una capacidad latente,
+# no algo que el script este haciendo. Si algun dia hace falta, filtrar por
+# nombre de dir aca arriba; por ahora se corren TODOS los test/test_*.
+#
 # Uso
 # ---
 #   bash scripts/run-host-tests.sh            # corre todos los tests

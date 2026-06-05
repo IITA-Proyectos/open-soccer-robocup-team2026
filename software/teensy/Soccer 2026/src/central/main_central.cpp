@@ -26,8 +26,15 @@
 #include "imu_zircon.h"
 #include "comm_top.h"
 #include "comm_down.h"
+#include "loop_monitor.h"   // supervisor de loop-time (PURO, host-testeable)
 
 using namespace iitasoccer;
+
+// Getter del contador de rechazos por schema de línea (espejo CC-01). Definido en
+// comm_down.cpp dentro de namespace iitasoccer; se declara acá (NO en comm_down.h,
+// fuera del alcance de este track) en el MISMO namespace para que linkee. Igual
+// patrón que comm_top_get_snapshot_size_rejects() en la telemetría DIAG.
+namespace iitasoccer { uint32_t comm_down_line_schema_rejects(); }
 
 namespace {
 
@@ -35,6 +42,51 @@ elapsedMillis g_since_strategy_tick;
 elapsedMillis g_since_debug;
 
 uint32_t g_loop_count = 0;
+
+// Supervisor de loop-time (audit 2026-06-05, R2). Mide cuánto tarda cada vuelta del
+// loop para detectar DEGRADACIÓN (loop lento) antes de que se convierta en cuelgue.
+// Barato y sin efectos → corre SIEMPRE (no necesita flag). Zero-init = no primed.
+LoopMonitor g_loop_monitor{};
+
+// ============================================================================
+// WATCHDOG de hardware en CENTRAL (R2, 2026-06-05) — ARDUINO-ONLY, no host-testeable.
+// GATEADO por CENTRAL_ENABLE_WDT (DEFAULT OFF). Sin el flag: CERO cambio de binario.
+// ----------------------------------------------------------------------------
+// Por qué la CENTRAL lo necesita: la CENTRAL es el MASTER DE MOTORES — es la única
+// placa que pone PWM en los 3 H-bridge. Si SU loop se cuelga (p.ej. un ring de UART
+// que se traba, o una espera infinita), los motores se quedan con el ÚLTIMO comando
+// aplicado y el robot sigue corriendo a ciegas sin auto-reset. El timeout de 500 ms
+// del snapshot (world_model) NO cubre esto: ese código vive DENTRO del mismo loop
+// colgado, así que motors_stop() nunca llega a ejecutarse. El TOP ya tiene este
+// mismo WDOG1 (ver main_top.cpp); acá lo portamos idéntico para la placa de motores.
+//
+// Implementación: WDOG1 del i.MX RT1062 por registros (imxrt.h, vía Arduino.h),
+// igual que el TOP. Timeout HOLGADO de 1 s (mismo criterio): el loop normal corre a
+// ~100 Hz, pero stalls legítimos cortos no deben resetear; 1 s da margen y aun así
+// reacciona rápido ante un cuelgue REAL (que es indefinido). WDZST=1 suspende el WDT
+// en debug/low-power (no resetea al depurar). El mínimo del WDOG1 es 0.5 s; 1 s da holgura.
+//
+// DEFAULT OFF a propósito: needs_bench antes de prenderlo en competencia —
+//   (1) 0 resets espurios en marcha normal (loop drenando ambos UARTs + strategy);
+//   (2) auto-reset al colgar el loop a propósito; WDOG1_WRSR debe indicar reset WDT.
+// Se activa con -DCENTRAL_ENABLE_WDT en el build_flags del env tras validar en banco.
+#ifdef CENTRAL_ENABLE_WDT
+constexpr uint8_t CENTRAL_WDT_WT_FIELD = 1;  // (1+1)*0.5 s = 1.0 s (idéntico al TOP)
+
+void watchdog_init_1s() {
+    // Una sola escritura al WCR (WT y los bits de control solo se fijan una vez tras
+    // el reset). WT(1)->1.0 s; WDE habilita; WDZST suspende en debug/low-power.
+    WDOG1_WCR = WDOG_WCR_WT(CENTRAL_WDT_WT_FIELD) | WDOG_WCR_WDE | WDOG_WCR_WDZST |
+                WDOG_WCR_SRS | WDOG_WCR_WDA;
+    asm volatile("dsb");
+}
+
+inline void watchdog_feed() {
+    // Refresh ("kick"): la secuencia mágica 0x5555 -> 0xAAAA reinicia el contador.
+    WDOG1_WSR = 0x5555;
+    WDOG1_WSR = 0xAAAA;
+}
+#endif  // CENTRAL_ENABLE_WDT
 
 // NOTA: el rol NO se lee de un dipswitch (nombre historico). Se fija en build por
 // el flag -DROBOT1 (arquero) / -DROBOT2 (delantero); ver build_flags del env.
@@ -92,12 +144,35 @@ void setup() {
     comm_down_init();   // recibe LINE_URGENT (Serial1, pin 0)
     Serial.println("[CENTRAL] UARTs ARRIBA y ABAJO OK");
 
+#ifdef CENTRAL_ENABLE_WDT
+    // WATCHDOG (R2): armar AL FINAL del setup, DESPUÉS de motors_init y los comm_*_init
+    // (igual que el TOP arma tras sus begin() lentos). Una vez armado, el loop DEBE
+    // alimentarlo cada vuelta (watchdog_feed, primera línea de loop) o el Teensy se
+    // reinicia a 1 s. DEFAULT OFF — validar en banco antes de prenderlo (ver notas arriba).
+    watchdog_init_1s();
+    Serial.println("[CENTRAL] WDT de hardware ARMADO (CENTRAL_ENABLE_WDT, 1 s)");
+#endif
+
     digitalWrite(PIN_LED_STATUS, HIGH);
     Serial.println("[CENTRAL] master listo. Esperando snapshots.");
 }
 
 void loop() {
+#ifdef CENTRAL_ENABLE_WDT
+    // === WATCHDOG (R2): alimentar cada ciclo, PRIMERA línea ===
+    // Mientras el loop GIRE, refrescamos el WDOG1. Si el loop se cuelga (ring de UART
+    // trabado, espera infinita), deja de alimentarse y el WDOG1 resetea el Teensy a
+    // 1 s → el robot (master de motores) se recupera solo en vez de correr a ciegas.
+    watchdog_feed();
+#endif
+
     g_loop_count++;
+
+    // === Supervisor de loop-time (R2) — barato, SIEMPRE activo ===
+    // micros() al inicio de la vuelta; loop_monitor_update mide el dt contra la vuelta
+    // anterior (wrap-safe) y guarda el peor caso + un promedio suave. Solo diagnóstico:
+    // no toma ninguna acción; se imprime en el debug de abajo (loop_us max/avg).
+    loop_monitor_update(g_loop_monitor, micros());
 
     // === RX: drenar ambos UARTs (no bloquea) ===
     comm_top_tick();    // aplica WorldSnapshot al world_model
@@ -192,6 +267,8 @@ void loop() {
         Serial.print(comm_down_get_frames_lost());
         Serial.print(" rsy=");
         Serial.print(comm_down_get_resync_events());  // #25
+        Serial.print(" badsch=");
+        Serial.print(comm_down_line_schema_rejects());  // CC-01 espejo: línea 16 B con schema != 2 (deploy DOWN desfasado)
         Serial.print(" valid=");
         Serial.print(world_model_line_data_valid() ? "Y" : "N");
         Serial.print(" ev=0x");
@@ -200,6 +277,14 @@ void loop() {
         Serial.print(" match=");
         Serial.print(world_model_match_running() ? "RUN" : "STOP");
         Serial.print(" hdg=");
-        Serial.println(world_model_get_my_heading_deg(), 1);
+        Serial.print(world_model_get_my_heading_deg(), 1);
+        // loop_us(max/avg): salud del loop-time (R2). max = PEOR vuelta vista (no se
+        // olvida); avg = EMA suave. Si max sube mucho sobre los ~10 ms del tick de
+        // strategy, el loop se está degradando (sensor lento / ring desbordado) antes
+        // de que sea un cuelgue. (En estado nominal: max y avg cerca de la cadencia real.)
+        Serial.print(" loop_us(max/avg)=");
+        Serial.print(g_loop_monitor.max_us);
+        Serial.print("/");
+        Serial.println(g_loop_monitor.ema_us, 0);
     }
 }

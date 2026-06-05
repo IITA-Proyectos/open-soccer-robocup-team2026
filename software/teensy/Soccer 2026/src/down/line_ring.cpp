@@ -95,7 +95,19 @@ void line_ring_tick() {
     const uint32_t t_start = micros();
 
     // 1. Lectura hardware: 32 sensores via muxes.
+    //    SIEMPRE corre (con o sin LINE_RING_PROCESS): comm_central_send_line_urgent
+    //    re-lee estos crudos via line_ring_get_raw y los procesa en dm_update()
+    //    (DownModel) para armar el LineStatusV2 que va a CENTRAL. El gate de abajo
+    //    solo apaga el pipeline procesado MUERTO (sus salidas no las consume nadie
+    //    en competencia — ver config_down.h / LINE_RING_PROCESS).
     sample_all_sensors_hardware();
+
+#if defined(DOWN_DEBUG_SERIAL) || defined(LINE_RING_PROCESS)
+    // Pipeline procesado (g_angle_deg / g_depth / g_imminent_exit / g_lifted /
+    // g_sensor_white_validated). Lectores: SOLO los diags de banco
+    // (main_diag_down, diag_down_calibracion). En competencia esto está muerto
+    // (LineStatusV2 sale de dm_update, no de acá); se compila con LINE_RING_PROCESS
+    // ON por default para ser byte-idéntico hasta que se pase -DDOWN_LEAN_LINE_PIPELINE.
 
     // 2. Filtro temporal (moving average) por sensor.
     for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
@@ -125,10 +137,11 @@ void line_ring_tick() {
 
     // imminent_exit: depth alto Y robot NO está levantado (sino son datos basura).
     g_imminent_exit = (g_depth >= IMMINENT_EXIT_DEPTH) && !g_lifted_state.is_lifted;
+#endif  // pipeline procesado
 
     g_last_tick_us = micros() - t_start;   // duración del tick (diagnóstico)
-    g_last_sample_us = micros();           // timestamp del muestreo (freshness)
-    g_tick_count++;
+    g_last_sample_us = micros();           // timestamp del muestreo (freshness) — SIEMPRE
+    g_tick_count++;                        // SIEMPRE (dm_update/sample_age no dependen del pipeline)
 }
 
 // === Accesores ===

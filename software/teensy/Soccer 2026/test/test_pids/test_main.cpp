@@ -224,6 +224,51 @@ void test_omega_centideg_inf_saturates(void) {
 }
 
 // ============================================================================
+// clamp_velocity_mm_s (Track 3 — clamp defensivo float->int16 de velocidades)
+// ============================================================================
+
+void test_clamp_velocity_normal_value_byte_identical(void) {
+    // En el rango normal es BYTE-IDÉNTICO a (int16_t)v: trunca hacia cero igual
+    // que el cast directo. 123.9 -> 123 (no 124).
+    TEST_ASSERT_EQUAL_INT16(123, clamp_velocity_mm_s(123.9f));
+    TEST_ASSERT_EQUAL_INT16(0, clamp_velocity_mm_s(0.0f));
+    TEST_ASSERT_EQUAL_INT16(800, clamp_velocity_mm_s(800.0f));
+    TEST_ASSERT_EQUAL_INT16(32767, clamp_velocity_mm_s(32767.0f));   // tope exacto
+}
+
+void test_clamp_velocity_huge_positive_saturates(void) {
+    // Valor enorme (> int16 max) DEBE saturar a +32767, NUNCA envolver a negativo.
+    TEST_ASSERT_EQUAL_INT16(32767, clamp_velocity_mm_s(100000.0f));
+    TEST_ASSERT_EQUAL_INT16(32767, clamp_velocity_mm_s(32768.0f));   // primer fuera-de-rango
+}
+
+void test_clamp_velocity_huge_negative_saturates(void) {
+    TEST_ASSERT_EQUAL_INT16(-32767, clamp_velocity_mm_s(-100000.0f));
+    TEST_ASSERT_EQUAL_INT16(-32767, clamp_velocity_mm_s(-40000.0f));
+}
+
+void test_clamp_velocity_nan_returns_zero(void) {
+    // NaN (heading/PID corrupto) -> 0. Sin la guarda, (int16_t)NaN es UB.
+    const float nan_val = std::nan("");
+    TEST_ASSERT_EQUAL_INT16(0, clamp_velocity_mm_s(nan_val));
+}
+
+void test_clamp_velocity_sign_preserved(void) {
+    // El signo se conserva en valores normales (no hay flip).
+    TEST_ASSERT_TRUE(clamp_velocity_mm_s(-500.0f) < 0);
+    TEST_ASSERT_TRUE(clamp_velocity_mm_s(500.0f) > 0);
+    TEST_ASSERT_EQUAL_INT16(-500, clamp_velocity_mm_s(-500.0f));
+    // Y se conserva al saturar (positivo grande -> positivo tope, no negativo).
+    TEST_ASSERT_TRUE(clamp_velocity_mm_s(99999.0f) > 0);
+    TEST_ASSERT_TRUE(clamp_velocity_mm_s(-99999.0f) < 0);
+}
+
+void test_clamp_velocity_inf_saturates(void) {
+    TEST_ASSERT_EQUAL_INT16(32767, clamp_velocity_mm_s(INFINITY));
+    TEST_ASSERT_EQUAL_INT16(-32767, clamp_velocity_mm_s(-INFINITY));
+}
+
+// ============================================================================
 // LateralPID
 // ============================================================================
 
@@ -330,6 +375,14 @@ int main(int, char**) {
     RUN_TEST(test_omega_centideg_no_sign_flip_above_327deg);
     RUN_TEST(test_omega_centideg_nan_returns_zero);
     RUN_TEST(test_omega_centideg_inf_saturates);
+
+    // clamp_velocity_mm_s (Track 3)
+    RUN_TEST(test_clamp_velocity_normal_value_byte_identical);
+    RUN_TEST(test_clamp_velocity_huge_positive_saturates);
+    RUN_TEST(test_clamp_velocity_huge_negative_saturates);
+    RUN_TEST(test_clamp_velocity_nan_returns_zero);
+    RUN_TEST(test_clamp_velocity_sign_preserved);
+    RUN_TEST(test_clamp_velocity_inf_saturates);
 
     // LateralPID
     RUN_TEST(test_lateral_pid_zero_error_zero_output);

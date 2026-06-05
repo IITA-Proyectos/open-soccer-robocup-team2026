@@ -38,6 +38,47 @@ elapsedMillis g_since_central_send;    // 100-200 Hz línea a CENTRAL
 
 constexpr uint32_t LINE_URGENT_INTERVAL_MS = 5;  // 200 Hz hacia CENTRAL
 
+// ============================================================
+// R2 — WATCHDOG DE HARDWARE (WDOG1), GATEADO (default OFF)
+// ============================================================
+// Portado del TOP (src/top/main_top.cpp ~l.79-97). Cinturón de seguridad ante
+// un cuelgue del bus I2C de los OTOS: otos_tick() hace I2C BLOQUEANTE (~3-4 ms
+// los 2 OTOS) cada 10 ms, y el muestreo de línea (path de freno de borde) corre
+// a 1 kHz. Si el bus I2C de un OTOS se cuelga (cuelgue indefinido), el loop se
+// traba y se CORTA el LINE_URGENT a CENTRAL → el robot deja de frenar en el
+// borde. El WDOG1 resetea la placa tras 1 s sin feed, recuperando la cadena.
+//
+// GATEADO con -DDOWN_ENABLE_WDT (DEFAULT OFF): el binario de competencia NO
+// cambia de comportamiento hasta validar en banco que no hay resets espurios.
+// needs_bench (igual que el TOP): (1) 0 resets en 30 min de marcha normal con
+// los 4 muxes + 2 OTOS activos; (2) auto-reset al colgar el I2C (desconectar un
+// OTOS en caliente).
+//
+// NOTA Teensy 4.0: no existe Wire.setWireTimeout() en el core IMXRT (API de
+// AVR/ESP); las transacciones del Wire tienen timeout HW interno, pero un
+// cuelgue del bus igual traba el loop. El WATCHDOG es la protección real.
+//
+// ⚠️ TIMING DE BOOT: el watchdog se arma al FINAL de setup(), DESPUÉS de
+// otos_init/calibración (~0.5 s) y line_ring_calibrate_carpet (~0.32 s). Esas
+// operaciones lentas de boot NO deben auto-resetear la placa.
+#ifdef DOWN_ENABLE_WDT
+constexpr uint8_t WDT_WT_FIELD = 1;  // (1+1)*0.5 s = 1.0 s
+
+void watchdog_init_1s() {
+    // Una sola escritura al WCR (WT y bits de control solo se fijan una vez tras
+    // el reset). WT(1) → 1.0 s; WDE habilita; WDZST suspende en low-power/debug.
+    WDOG1_WCR = WDOG_WCR_WT(WDT_WT_FIELD) | WDOG_WCR_WDE | WDOG_WCR_WDZST |
+                WDOG_WCR_SRS | WDOG_WCR_WDA;
+    asm volatile("dsb");
+}
+
+inline void watchdog_feed() {
+    // Refresh ("kick"): la secuencia mágica 0x5555 → 0xAAAA reinicia el contador.
+    WDOG1_WSR = 0x5555;
+    WDOG1_WSR = 0xAAAA;
+}
+#endif  // DOWN_ENABLE_WDT
+
 }  // namespace
 
 void setup() {
@@ -93,9 +134,25 @@ void setup() {
 
     digitalWrite(PIN_LED_STATUS, HIGH);
     Serial.println("[DOWN] listo: odometria a ARRIBA + linea urgente a CENTRAL");
+
+#ifdef DOWN_ENABLE_WDT
+    // R2: armar el watchdog AL FINAL de setup(), DESPUÉS de otos_init (~0.5 s) y
+    // line_ring_calibrate_carpet (~0.32 s) — esas operaciones lentas de boot NO
+    // deben auto-resetear. A partir de acá, loop() debe alimentarlo cada ciclo
+    // (watchdog_feed, primera línea de loop) o la placa se resetea a 1 s.
+    watchdog_init_1s();
+    Serial.println("[DOWN] watchdog (WDOG1, 1 s) armado");
+#endif
 }
 
 void loop() {
+#ifdef DOWN_ENABLE_WDT
+    // R2: alimentar el watchdog como PRIMERA línea del loop. Si el loop se traba
+    // (p.ej. cuelgue del bus I2C de un OTOS), no se vuelve a alimentar y el
+    // WDOG1 resetea la placa a 1 s, recuperando el LINE_URGENT a CENTRAL.
+    watchdog_feed();
+#endif
+
     // RX: drenar ambos UARTs cada loop (no bloquea).
     comm_top_tick();          // comandos desde ARRIBA (legacy, low priority)
     comm_central_tick();      // comandos desde CENTRAL (calib línea, reset OTOS)

@@ -656,7 +656,10 @@ MotorCommand goalkeeper_tick() {
                 last_change = now_ms;
             }
             const float vx_patrol = direction * GK_PATROL_SPEED_MM_S;
-            cmd.vx_mm_s = static_cast<int16_t>(vx_patrol + vx_lateral_pid * 0.5f);
+            // clamp_velocity_mm_s: mismo patrón PID-sum que GK_INTERCEPT; defensivo
+            // y byte-idéntico a (int16_t) en el rango normal (path de falla: NaN->0,
+            // satura sin invertir signo).
+            cmd.vx_mm_s = clamp_velocity_mm_s(vx_patrol + vx_lateral_pid * 0.5f);
 
             // goal_own (#schema v3): si el arco propio es visible (y heading
             // válido) orientar el frente a la cancha (de espaldas al arco propio)
@@ -713,7 +716,10 @@ MotorCommand goalkeeper_tick() {
             // hoy). Ambos refuerzos colapsan a la conducta previa cuando threat=false.
             const float kp_intercept = GK_INTERCEPT_KP_VS_BALL_X * bt.kp_scale;
             const float vx_intercept = bt.target_x_mm * kp_intercept;
-            cmd.vx_mm_s = static_cast<int16_t>(vx_intercept + vx_lateral_pid * 0.3f);
+            // clamp_velocity_mm_s: defensivo (target_x_mm * kp puede crecer si el
+            // wire dejara pasar una X fuera de rango). Byte-idéntico a (int16_t)
+            // en el rango normal; sólo satura/anula NaN en el path de falla.
+            cmd.vx_mm_s = clamp_velocity_mm_s(vx_intercept + vx_lateral_pid * 0.3f);
 
             // goal_own (#schema v3): mantener el frente hacia la cancha mientras
             // intercepta sobre el eje X. FALLBACK EXACTO: sin arco propio visible o

@@ -194,6 +194,53 @@ void test_negative_centideg_freezes(void) {
     TEST_ASSERT_TRUE(feed_constant(s, -17999, 60, 50, now, cfg));
 }
 
+// WRAP de millis(): el módulo afirma `held_ms = now_ms - first_ms` "wrap-safe"
+// (resta unsigned). Lo probamos cruzando el reloj de cerca de 0xFFFFFFFF a 0:
+//   • el valor se siembra cerca del overflow (first_ms ~ 0xFFFFFFF0),
+//   • seguimos alimentando el MISMO heading mientras now_ms envuelve a 0 y sigue,
+//   • held_ms NO debe "explotar" (~0xFFFFFFFF) por el cruce: la resta unsigned da
+//     el delta REAL pequeño, así que el detector NO congela ANTES de tiempo,
+//   • y una vez acumulado >= T ms reales (post-wrap) SÍ congela, demostrando que
+//     el conteo de tiempo siguió siendo correcto a través del overflow.
+void test_millis_wrap_held_ms_safe(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();   // N=40, T=1500 ms
+
+    // Arrancamos 16 ms antes del overflow de uint32.
+    uint32_t now = 0xFFFFFFFFu - 15u;   // 0xFFFFFFF0
+
+    // Primera lectura: siembra first_ms = 0xFFFFFFF0.
+    TEST_ASSERT_FALSE(imu_freeze_update(s, 100, now, cfg));
+    TEST_ASSERT_EQUAL_UINT32(0xFFFFFFF0u, s.first_ms);
+    now += 4;   // 0xFFFFFFF4
+
+    // Alimentamos N+ lecturas idénticas a 4 ms de paso, cruzando el wrap. En el
+    // tick donde now envuelve a un valor PEQUEÑO (p.ej. 4), un cálculo no-wrap-safe
+    // daría held_ms gigante (~4 mil millones) y dispararía el latch ANTES de los
+    // 1500 ms reales. Verificamos que NO congela mientras held real < T.
+    for (int i = 0; i < (int)cfg.min_samples + 5; ++i) {
+        bool frozen = imu_freeze_update(s, 100, now, cfg);
+        // held real = lecturas*4 ms; para las primeras decenas << 1500 ms.
+        const uint32_t held = now - s.first_ms;   // misma cuenta unsigned del módulo
+        TEST_ASSERT_TRUE(held < cfg.min_ms);      // delta real chico, NO explotó
+        TEST_ASSERT_FALSE(frozen);                // todavía no debe congelar
+        now += 4;
+    }
+    TEST_ASSERT_FALSE(s.frozen);
+
+    // Ahora dejamos correr el tiempo REAL más allá de T (siempre mismo valor,
+    // cruzando ya holgadamente el origen): debe terminar congelando. Esto prueba
+    // que held_ms siguió siendo correcto y monótono a través del overflow.
+    for (int i = 0; i < 2000 && !s.frozen; ++i) {
+        imu_freeze_update(s, 100, now, cfg);
+        now += 1;
+    }
+    TEST_ASSERT_TRUE(s.frozen);
+    // held_ms efectivo en el disparo debe ser razonable (~T), no ~0xFFFFFFFF.
+    const uint32_t held_at_freeze = now - s.first_ms;
+    TEST_ASSERT_TRUE(held_at_freeze < 4000u);   // del orden de T, no un valor gigante
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_zero_init_not_frozen);
@@ -208,5 +255,6 @@ int main(int, char**) {
     RUN_TEST(test_change_resets_time_window);
     RUN_TEST(test_cfg_from_rate_floor);
     RUN_TEST(test_negative_centideg_freezes);
+    RUN_TEST(test_millis_wrap_held_ms_safe);
     return UNITY_END();
 }

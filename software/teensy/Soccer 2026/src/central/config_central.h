@@ -116,6 +116,10 @@ constexpr long  UART_TOP_BAUD   = 230400;
 // Teensy 4.1 los pines de Serial7/Serial1 son FIJOS — comm_top.cpp/comm_down.cpp
 // llaman Serial7.begin()/Serial1.begin() sin pasar pines, así que editar estos
 // números acá NO reasigna nada. Si cambia el cableado, se cambia de Serial, no el pin.
+// ⚠️ 28/29 son los pines de Serial7 EN EL TEENSY 4.1 (esta placa, CENTRAL): ahí SÍ
+// son pines de borde reales. En el TOP (Teensy 4.0) NO confundir: el Serial7 del 4.0
+// NO sale a pines de borde — son back-pads soldados por debajo, NO existe un "pin 28/29"
+// físico en el 4.0. El número 28/29 vale como pin SOLO acá (4.1), no como pin del TOP.
 constexpr int   UART_TOP_RX     = 28;  // Serial7 RX7 (TOP→CENTRAL)  [informativo]
 constexpr int   UART_TOP_TX     = 29;  // Serial7 TX7                [informativo]
 constexpr int   UART_DOWN_RX    = 0;   // Serial1 RX1 (DOWN→CENTRAL) [informativo]

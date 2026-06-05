@@ -21,6 +21,17 @@ float lg_sensor_angle_deg(int i, int n);
 // Centroide ANGULAR (solo direcciones, ignora distancia radial). escape = opuesto.
 // Caller pasa el array `sensor_angle_deg[n]` con el ángulo de cada sensor.
 // Para geometría real: llenar el array con sg_fill_angles_deg() antes de llamar.
+//
+// ⚠️ NOTA sobre el PESO de cada sensor (modo degradado n<32 / mux muerto):
+//   lg_compute() pondera cada sensor blanco por su VECTOR UNITARIO (cos/sin de su
+//   ángulo) — todos los sensores pesan IGUAL, sin importar en qué anillo están.
+//   En cambio lg_compute_xy() (camino n==32, geometría completa) pondera por la
+//   POSICIÓN REAL (x,y), así que un sensor del anillo externo pesa más que uno
+//   interno. Consecuencia: en el modo parcial/degradado el `line_angle` puede
+//   SESGARSE hacia los anillos internos (su contribución relativa sube respecto
+//   del cartesiano). El SIGNO y la CONVENCIÓN (0°=frente, horario+, escape=opuesto)
+//   se CONSERVAN — sólo cambia la magnitud/exactitud del ángulo, no su sentido.
+//   Es un fallback aceptable cuando la geometría completa no está disponible.
 GeomResult lg_compute(const bool* white, const float* sensor_angle_deg, int n);
 
 // Centroide CARTESIANO usando las posiciones (x, y) reales de cada sensor.

@@ -14,6 +14,12 @@ namespace {
 FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
 uint8_t  g_send_seq = 0;
+// Espejo de CC-01 (comm_top.cpp: g_snapshot_size_rejects): cuenta los frames de
+// línea con el TAMAÑO correcto del contrato (16 B) pero con schema_version != 2.
+// Hoy lsv2_from_frame() los rechaza EN SILENCIO (línea muerta sin pista en el pit):
+// pasa si DOWN quedó flasheado con un LineStatusV3 del mismo tamaño tras un deploy
+// wire-breaking desfasado. El contador lo hace visible en la telemetría DIAG.
+uint32_t g_line_schema_rejects = 0;
 
 // Deteccion de perdida de frames (el SEQ del protocolo viaja 0..255 con wrap).
 bool     g_have_last_seq = false;
@@ -41,6 +47,18 @@ void handle_frame(const Frame& f) {
     }
     g_last_seq = f.seq;
     g_have_last_seq = true;
+
+    // CC-01 (espejo): un frame de LÍNEA del tamaño exacto del contrato (16 B) pero
+    // con schema_version != 2 es un DOWN flasheado con otra versión (LineStatusV3
+    // del mismo tamaño tras un deploy desfasado). lsv2_from_frame() lo rechaza en
+    // silencio; lo contamos ANTES para que la telemetría DIAG lo distinga de "sin
+    // link". payload[0] es schema_version (primer campo de LineStatusV2). Aditivo:
+    // no cambia el wire ni el comportamiento (el frame se sigue descartando igual).
+    if (f.type == MsgType::LINE_URGENT &&
+        f.payload_len == sizeof(LineStatusV2) &&
+        f.payload[0] != LSV2_SCHEMA) {
+        g_line_schema_rejects++;
+    }
 
     LineStatusV2 ls{};
     if (lsv2_from_frame(f, ls)) { world_model_apply_line(ls); return; }
@@ -112,5 +130,7 @@ uint32_t comm_down_get_frames_received() { return g_frames_received; }
 uint32_t comm_down_get_crc_errors()      { return g_decoder.crc_errors(); }
 uint32_t comm_down_get_frames_lost()     { return g_frames_lost; }
 uint32_t comm_down_get_resync_events()   { return g_decoder.resync_events(); }
+// CC-01 (espejo): frames de línea del tamaño correcto pero con schema != 2.
+uint32_t comm_down_line_schema_rejects() { return g_line_schema_rejects; }
 
 }  // namespace iitasoccer

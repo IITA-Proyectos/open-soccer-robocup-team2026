@@ -19,6 +19,28 @@
 namespace iitasoccer {
 
 // ============================================================================
+// Clamp defensivo float -> int16 para velocidades (mm/s)
+// ============================================================================
+//
+// Espejo de omega_degps_to_centideg pero para velocidades lineales: convierte
+// un float a int16_t SATURANDO al rango, sin envolver ni cambiar de signo, y
+// con guarda NaN (NaN -> 0). Defensivo: aunque el overflow de GK_INTERCEPT se
+// refutó (el wire ya acota ball_x), clampear antes del cast float->int16 es
+// seguro y barato — un cast directo de un valor fuera de rango es UB y podría
+// invertir el signo del comando del motor (mismo modo de falla que el bug de
+// omega del 2026-06-03). En el rango normal (|v| <= 32767) es BYTE-IDÉNTICO a
+// (int16_t)v, así que no cambia el binario de competencia salvo en el path de
+// falla.
+//
+// Author: Claude Opus 4.8 (Anthropic). Requested-by: Viollaz.
+inline int16_t clamp_velocity_mm_s(float v) {
+    if (v != v) return 0;            // NaN -> 0 (cast de NaN a int es UB)
+    if (v > 32767.0f) return 32767;
+    if (v < -32767.0f) return -32767;
+    return static_cast<int16_t>(v);
+}
+
+// ============================================================================
 // Heading PID
 // ============================================================================
 

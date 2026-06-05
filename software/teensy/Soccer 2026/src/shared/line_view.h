@@ -76,6 +76,21 @@ inline uint8_t lsv2_sensors_on_line(const LineStatusV2& s) {
     return s.sensors_on_line;
 }
 
+// ¿La muestra de línea está RANCIA (más vieja que max_age_ms)? Implementa la
+// regla §3.5.5 del contrato (CONTRATO-DATOS-DOWN.md): sample_age_ms viaja en el
+// frame (0..255 ms) pero hoy nadie lo consume. Helper PURO — NO lo cablea a
+// world_model (esa decisión es de otro track).
+//   • data_valid == 0  ⇒ false (la compuerta maestra ya descartó el frame; no
+//     reportamos "stale" sobre datos que de por sí no son confiables).
+//   • sample_age_ms == 255 ⇒ false (255 = sentinel N/A, "edad desconocida", NO
+//     necesariamente stale — no lo tratamos como rancio).
+//   • sample_age_ms > max_age_ms ⇒ true (rancio).
+inline bool lsv2_sample_is_stale(const LineStatusV2& s, uint8_t max_age_ms) {
+    return s.data_valid != 0
+        && s.sample_age_ms != 255
+        && s.sample_age_ms > max_age_ms;
+}
+
 // Penetración en la línea, clampeada a uint8 para compat con el accessor viejo
 // `world_model_get_line_depth()`. Honra la compuerta maestra: si data_valid==0,
 // la profundidad no es confiable (el fallback por profundidad del PID lateral

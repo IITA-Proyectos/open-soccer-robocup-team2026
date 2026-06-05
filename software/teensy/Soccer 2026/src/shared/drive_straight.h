@@ -53,9 +53,23 @@ struct DriveStraightIn {
 
 // Salida: comando de movimiento en unidades de strategy (mm/s y grados/s).
 //   El caller convierte omega_deg_s → centideg/s (×100) al armar el MotorCommand.
+//
+// ⚠️ NAMING INTERNO — NO coincide con kinematics.h. A pesar del bloque de
+// "convención de signos" de arriba (heredado), los campos vx_mm_s / vy_mm_s de
+// ESTE struct NO usan los ejes de kinematics (donde +X=derecha y vx es lateral).
+// Acá el naming es INTERNO al módulo drive-straight:
+//   • vx_mm_s = AVANCE recto (eje +Y / frente del robot).
+//   • vy_mm_s = CORRECCIÓN LATERAL (eje +X / lateral del robot).
+// Es decir, vx↔vy están "cruzados" respecto de kinematics. El caller DEBE
+// re-bindear al armar el MotorCommand:
+//   MotorCommand.vy_mm_s (+Y/frente)   ← ds.vx_mm_s
+//   MotorCommand.vx_mm_s (+X/lateral)  ← ds.vy_mm_s
+// (omega_deg_s SÍ es el ω directo, sin cruce: ×100 → centideg/s.)
+// strategy.cpp ya hace este re-bindeo; no renombramos los campos para no tocar
+// los call sites existentes.
 struct DriveStraightCmd {
-    float vx_mm_s;       // = fwd_speed (avance recto)
-    float vy_mm_s;       // corrección lateral (opuesta a la deriva OTOS)
+    float vx_mm_s;       // = fwd_speed (AVANCE recto, eje +Y/frente — ver nota ⚠️ arriba)
+    float vy_mm_s;       // corrección lateral (eje +X/lateral, opuesta a la deriva OTOS)
     float omega_deg_s;   // corrección de heading (CCW+)
 };
 

@@ -96,13 +96,19 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 > - **2026:** redesign to **3 boards**, reusing the champion brain (Zircon) as CENTRAL and adding perception (TOP) and floor sensing (DOWN) — *continuity, not throw-away*.
 > - **May–Jun 2026:** bring-up of the 3 physical boards, ~30 documented bench sessions, test suite growing from 180 → **624 tests / 44 suites / 0 failures** (verified 2026-06-04 via `scripts/run-host-tests.sh`).
 > - **Jun–Jul 2026:** Incheon. The team's declared strategy: **invest in learning**, play honest matches, and capture data.
+>
+> ### 🤖 2026 innovation — how we work ("VIBE", AI-assisted methodology)
+> We adopted an AI-assisted workflow (Claude) we call **VIBE**: the AI **accelerates** design and documentation, and the **18-year-old team makes the decisions, validates on the bench, and is solely accountable** for what ships to the robot. Four fronts: **VIBE PCB Design** (EasyEDA driven by Claude via MCP), **VIBE 3D Design** (Fusion 360 via MCP — just getting started), **VIBE Coding** (C++ firmware with a 624-host-test safety net), and **Claude for documentation and project management** (TDP, byte-level data contracts, *journal*). We share the **methodology** — not just the code — as a contribution to the RoboCupJunior community.
+>
+> ### 🛣️ Next step (declared roadmap)
+> **Robot-to-robot communication** (goalkeeper ↔ striker) over **ESP-NOW** via the COMM board (ESP32-C6, already on the robot): sharing pose, whether each one sees the ball, and its state to **coordinate strategy**. What remains is integrating it into the WorldSnapshot and validating it on the bench — true to our discipline, the cooperative behavior "sleeps" until the data flows, with no regression. (The **kicker** and **dribbler** are also next year's goals.)
 
 `[PHOTO: IITA team with the robot/trophy at the 2025 Nationals (UAI) — label Fig.1]`
 
 > **Team roles:**
 > | Role | Member | Technical contribution |
 > |---|---|---|
-> | Director | Gustavo Viollaz | Coordination, bench sessions, 3-board integration |
+> | Mentor (does not travel) | Gustavo Viollaz | Coordination, bench sessions, 3-board integration |
 > | Coach | Enzo Juárez Velázquez | PCB design (EasyEDA), hardware *bodges*, electrical validation |
 > | Competitor | María Virginia Viollaz (18) | Computer vision, trajectories, camera parser |
 > | Competitor | Elías Cordero (Electromechanical Eng., UNSa) | Motor bench, kinematics, measurements |

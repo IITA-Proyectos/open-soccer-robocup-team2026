@@ -106,13 +106,19 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > - **2026:** rediseño a **3 placas** reutilizando el cerebro campeón (Zircon) como CENTRAL y sumando percepción (TOP) y piso (DOWN) — *continuidad, no descarte*.
 > - **May–Jun 2026:** bring-up de las 3 placas físicas, ~30 sesiones de banco documentadas, suite de tests de 180 → **624 tests / 44 suites / 0 fallos** (verificado 2026-06-04 con `scripts/run-host-tests.sh`).
 > - **Jun–Jul 2026:** Incheon. Estrategia declarada del equipo: **invertir en aprendizaje**, jugar partidos honestos y capturar datos.
+>
+> ### 🤖 Innovación 2026 — cómo trabajamos (metodología "VIBE", asistida por IA)
+> Adoptamos un flujo asistido por IA (Claude) que llamamos **VIBE**: la IA **acelera** el diseño y la documentación, y el **equipo de 18 años decide, valida en banco y es el único responsable** de lo que se sube al robot. Cuatro frentes: **VIBE PCB Design** (EasyEDA comandado por Claude vía MCP), **VIBE 3D Design** (Fusion 360 vía MCP — recién empezando), **VIBE Coding** (firmware C++ con red de seguridad de 624 tests host) y **Claude para documentar y gestionar** el proyecto (TDP, contratos de datos byte-a-byte, *journal*). Compartimos la **metodología** —no solo el código— como aporte a la comunidad de RoboCupJunior.
+>
+> ### 🛣️ Próximo paso (roadmap declarado)
+> **Comunicación robot-a-robot** (arquero ↔ delantero) por **ESP-NOW** vía la placa COMM (ESP32-C6, ya en el robot): compartir pose, si cada uno ve la pelota y su estado para **coordinar estrategia**. Falta integrarlo al WorldSnapshot y validarlo en banco — fiel a nuestra disciplina, la conducta cooperativa "duerme" hasta que el dato fluya, sin regresión. (El **kicker** y el **dribbler** también quedan para el año próximo.)
 
 `[FOTO: equipo IITA con el robot/trofeo en el Nacional 2025 (UAI) — etiquetar Fig.1]`
 
 > **Roles del equipo:**
 > | Rol | Integrante | Aporte técnico |
 > |---|---|---|
-> | Director | Gustavo Viollaz | Coordinación, sesiones de banco, integración 3 placas |
+> | Mentor (no viaja) | Gustavo Viollaz | Coordinación, sesiones de banco, integración 3 placas |
 > | Coach | Enzo Juárez Velázquez | Diseño de PCB (EasyEDA), *bodges* de hardware, validación eléctrica |
 > | Competidora | María Virginia Viollaz (18) | Visión artificial, trayectorias, parser de cámara |
 > | Competidor | Elías Cordero (Ing. Electromecánica, UNSa) | Banco de motores, cinemática, mediciones |

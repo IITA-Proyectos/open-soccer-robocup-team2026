@@ -409,6 +409,14 @@ La filosofía del equipo es **"invertir en aprendizaje, no en podio"**: un robot
 - ✅ **Resuelto en banco:** árbitro mueve la CENTRAL end-to-end; anillo de 32 sensores (0 muertos); 2 OTOS responden (6.5 % error); 4 ToF enumeran; motores mapeados con `MOTOR_INVERT` validado.
 - ⚠️ **Bloqueantes abiertos:** recalibración de visión (TASK-022, #1); calibración de cinemática KIWI; freno de emergencia (brake vs coast); failover del BNO; validación de trilateración en HW.
 
+## 4.5 Innovación de proceso 2026 — metodología asistida por IA ("VIBE")
+
+Este año adoptamos un flujo de trabajo asistido por IA al que internamente llamamos **VIBE**, en el que un agente de IA (Claude) acelera el diseño y la documentación mientras el equipo decide, valida en banco y se hace responsable del resultado. Lo aplicamos en cuatro frentes: **VIBE PCB Design** —el diseño de las PCB en EasyEDA, donde el agente propone y edita el esquemático/ruteo a través de un servidor MCP y un humano valida cada cambio—; **VIBE 3D Design** —diseño mecánico en Autodesk Fusion 360 comandado por el agente vía MCP, una línea que recién estamos empezando a explorar—; **VIBE Coding** —programación del firmware C++ asistida por el agente, con verificación host-native (624 tests / 44 suites / 0 fallos) como red de seguridad—; y **Claude para documentación y gestión**, con el TDP, los contratos de datos byte-a-byte, el diario de ingeniería y los entregables curados con IA y verificación humana. Nuestro encuadre es honesto y deliberado: **la IA acelera, pero el equipo de competidores de 18 años toma las decisiones, prueba en hardware real y es el único responsable de lo que se sube al robot**. Lo documentamos como un enfoque emergente y compartimos la metodología (no solo el código) como aporte a la comunidad de RoboCupJunior.
+
+## 4.6 Trabajo futuro — comunicación robot-a-robot
+
+La próxima mejora declarada de nuestro roadmap es la **comunicación en tiempo real entre los dos robots** (arquero y delantero) para compartir pose, si cada uno ve la pelota y su estado, y coordinar la estrategia en equipo. El hardware ya está en el robot: la placa COMM (ESP32-C6) puede establecer un enlace **ESP-NOW** de baja latencia entre ambos. Lo que falta es **integrar ese canal en el WorldSnapshot y validarlo en banco**; por eso, fiel a nuestra disciplina, la conducta cooperativa "duerme" hasta que el dato fluya de forma confiable, sin introducir regresiones en el juego actual. El **kicker** y el **dribbler**, ausentes en este primer año de la categoría Soccer, también forman parte de ese roadmap.
+
 ---
 
 # §5. OPEN SOURCE — Reclamo de los 2 puntos bonus

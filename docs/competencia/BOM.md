@@ -33,19 +33,19 @@
 
 | Componente | Part number / modelo | Cant. | Fuente / proveedor | Nuevo / Reusado | Kit / Custom | Costo unit. | Costo total |
 |---|---|---|---|---|---|---|---|
-| MCU placa TOP | **Teensy 4.0** (LCSC `C99001332551`) — Cortex-M7 @600 MHz | 1 | PJRC / LCSC | Nuevo | Módulo (kit) sobre PCB custom | **[COST — pending] (est. ~USD 24–30)** | [COST — pending] |
-| MCU placa DOWN | **Teensy 4.0** (LCSC `C99001332551`) | 1 | PJRC / LCSC | Nuevo | Módulo (kit) sobre PCB custom | **[COST — pending] (est. ~USD 24–30)** | [COST — pending] |
-| MCU placa CENTRAL | **Teensy 4.1** (Cortex-M7 @600 MHz) | 1 | PJRC | **Reusado** (del robot Nacional 2025) | Módulo (kit) sobre PCB Zircon | **[COST — pending] (est. ~USD 32–40)** | [COST — pending] |
-| MCU placa COMM | **ESP32-C6-MINI-1-N4** (Espressif; RISC-V, WiFi 6 / BLE 5 / 802.15.4, USB nativo, flash 4 MB) | 1 | Espressif (en PCB COMM) | Nuevo | SMD en PCB custom (fork RCJ) | **[COST — pending] (est. ~USD 3–5)** | [COST — pending] |
+| MCU placa TOP | **Teensy 4.0** (LCSC `C99001332551`) — Cortex-M7 @600 MHz | 1 | PJRC / LCSC | Nuevo | Módulo (kit) sobre PCB custom | **USD 23.80** (SparkFun DEV-15583) | [COST — pending] |
+| MCU placa DOWN | **Teensy 4.0** (LCSC `C99001332551`) | 1 | PJRC / LCSC | Nuevo | Módulo (kit) sobre PCB custom | **USD 23.80** (SparkFun DEV-15583) | [COST — pending] |
+| MCU placa CENTRAL | **Teensy 4.1** (Cortex-M7 @600 MHz) | 1 | PJRC | **Reusado** (del robot Nacional 2025) | Módulo (kit) sobre PCB Zircon | **USD 31.50** (SparkFun DEV-16771) | [COST — pending] |
+| MCU placa COMM | **ESP32-C6-MINI-1-N4** (Espressif; RISC-V, WiFi 6 / BLE 5 / 802.15.4, USB nativo, flash 4 MB) | 1 | Espressif (en PCB COMM) | Nuevo | SMD en PCB custom (fork RCJ) | **USD 4.53** (DigiKey) | [COST — pending] |
 
 ### 1.2 Sensores de percepción (cámaras + IMU + distancia)
 
 | Componente | Part number / modelo | Cant. | Fuente / proveedor | Nuevo / Reusado | Kit / Custom | Costo unit. | Costo total |
 |---|---|---|---|---|---|---|---|
-| Cámara de visión | **OpenMV Cam N6** (STM32N6 Cortex-M55 + NPU Neural-ART, sensor PAG7936, QVGA RGB565 ~30 Hz) | 2 | OpenMV | Nuevo | Módulo (kit) | **[COST — pending]** (ítem más caro del robot, ~USD 80–200 c/u) | [COST — pending] |
+| Cámara de visión | **OpenMV Cam N6** (STM32N6 Cortex-M55 + NPU Neural-ART, sensor PAG7936, QVGA RGB565 ~30 Hz) | 2 | OpenMV | Nuevo | Módulo (kit) | **USD 165/u** (openmv.io; alt. 120 Kickstarter) | [COST — pending] |
 | IMU (heading/yaw) | **Bosch BNO055** (designadores U10/U11) | 2 | Bosch (módulo) | Nuevo | Módulo (kit) en header 4P | **~USD 15** (cita interna `ARQUITECTURA-3-PLACAS-2026.md` L326) | **~USD 30** ⚠️ ver nota |
-| Sensor ToF multizona | **ST VL53L7CX** (8×8 zonas, FoV 60°, módulo Pololu) | 4 | STMicro / Pololu | Nuevo | Módulo (kit) | **[PRICE — verify VL53L7CX]** (el ~USD 26 citado es del VL53L1X de 1 zona, NO de este chip — ver nota ⚠️ mismatch §2) | [COST — pending] |
-| Ultrasonido | **HC-SR04** (designador U6 en TOP) | 1 | genérico | Nuevo | Módulo (kit) | **[COST — pending] (est. ~USD 1–3)** | [COST — pending] |
+| Sensor ToF multizona | **ST VL53L7CX** (8×8 zonas, FoV 60°, módulo Pololu) | 4 | STMicro / Pololu | Nuevo | Módulo (kit) | **USD 19.95/u** (Pololu #3418) | **79.80** |
+| Ultrasonido | **HC-SR04** (designador U6 en TOP) | 1 | genérico | Nuevo | Módulo (kit) | **USD 5.25** (SparkFun) / ~1–2 genérico | [COST — pending] |
 
 > ⚠️ **Nota BNO055:** el repo monta **2 BNO055** pero **1 unidad (RIGHT, 0x29) está FALLADA**; el robot compite hoy con **1 BNO sano + 4 ToF**. Para replicabilidad/repuestos: prever **2–4 unidades** (Incheon). Precio `~USD 15` es la única cifra concreta del repo (cualitativa).
 
@@ -53,7 +53,7 @@
 
 | Componente | Part number / modelo | Cant. | Fuente / proveedor | Nuevo / Reusado | Kit / Custom | Costo unit. | Costo total |
 |---|---|---|---|---|---|---|---|
-| Odometría óptica | **SparkFun OTOS** (Optical Tracking Odometry Sensor; designadores U5/U6) | 2 | SparkFun | Nuevo | Módulo (kit), header | **[COST — pending] (est. ~USD 50 c/u)** | [COST — pending] |
+| Odometría óptica | **SparkFun OTOS** (Optical Tracking Odometry Sensor; designadores U5/U6) | 2 | SparkFun | Nuevo | Módulo (kit), header | **USD 84.95/u** (SparkFun SEN-24904) | [COST — pending] |
 | Fototransistor de línea | **Everlight ALS-PT19-315C/L177/TR8** (LCSC `C146233`) | 32 | Everlight / LCSC | Nuevo | SMD en PCB custom | **USD 0.116** | **USD 3.71** |
 | LED emisor 0402 (anillo) | **YLED0402O** (LCSC `C28310436`) | 32 | Yongyutai / LCSC | Nuevo | SMD en PCB custom | **USD 0.016** | **USD 0.51** |
 | Multiplexor analógico 8:1 | **TI CD4051BM** (LCSC `C353976`) — 4 muxes × 8 canales = 32 | 4 | TI / LCSC | Nuevo | SMD en PCB custom | **USD 0.96** | **USD 3.84** |
@@ -119,7 +119,7 @@ La rúbrica premia **decisiones de diseño basadas en datos y trade-offs**, no s
 | **Sin kicker** | solenoide (2025 lo tenía) | menos componentes/energía/fallas; empuje por inercia | eliminado del firmware 2026-06-03 |
 | **OpenMV N6** (vs H7 Plus) | OpenMV H7 Plus | NPU Neural-ART para visión por color; restricción HW (usar `sensor`+`pyb.UART`) documentada | 2× N6 |
 
-> ⚠️ **Mismatch de precio ToF (corregir antes de entregar):** el análisis de costo **~USD 26** del array ToF citado arriba corresponde al **VL53L1X (1 zona)**, pero el robot **monta el VL53L7CX (8×8 zonas)**, que es un chip más caro. El precio **~USD 26** **no aplica** al sensor realmente montado. **Conseguir el precio real del VL53L7CX** (módulo Pololu) y marcar **[PRICE — verify]**; la decisión de diseño (ToF vs LiDAR) sigue siendo válida, pero la cifra de costo debe corregirse.
+> ✅ **Precio ToF RESUELTO (2026-06-05):** el VL53L7CX (8×8 zonas) cuesta **USD 19.95/u** (carrier Pololu #3418, con regulador 3.3V + level-shifters; baja a 17.96 desde 5 u). El viejo ~USD 26 era del VL53L1X de 1 zona y NO aplica. Subtotal ToF/robot = 4 × 19.95 = **USD 79.80**. La decisión de diseño (ToF vs LiDAR) sigue válida.
 
 ---
 
@@ -127,15 +127,18 @@ La rúbrica premia **decisiones de diseño basadas en datos y trade-offs**, no s
 
 ### 3.1 Costo total estimado
 
+> 🇦🇷 **Nota de costos — contexto de importación (Argentina).** Los precios de esta sección son **valores internacionales de referencia (USD)** tomados de retailers internacionales (DigiKey, Mouser, SparkFun, Pololu, openmv.io, etc.). El **costo real de adquisición en Argentina es sensiblemente mayor**: la importación está **restringida** —se puede traer un número acotado de unidades por operación (del orden de **3 por ítem por vez**)—, lo que obliga a **fraccionar las compras entre varios proveedores** y a pagar **múltiples impuestos y costos** (aranceles, IVA, percepciones, courier). Por eso publicamos el **precio internacional de referencia** como base reproducible para que otro equipo pueda estimar el suyo, y aclaramos que el costo *landed* local es superior.
+
 | Concepto | Costo |
 |---|---|
 | Subtotal componentes **con precio real en repo** (anillo línea + muxes + diodos, por robot): ALS-PT19 (3.71) + LED 0402 (0.51) + CD4051 (3.84) + B5819W (0.14) | **≈ USD 8.20** |
-| Resto de componentes mayores (MCUs, cámaras N6 ×2, OTOS ×2, BNO055 ×2, ToF VL53L7CX ×4 [PRICE — verify], motores ×3, Zircon, batería, MP1584 ×6, etc.) | **[COST — pending]** (sin precio en repo; estimado grueso USD 400–700/robot, dominado por las 2 cámaras N6 y los 2 OTOS) |
-| **COSTO TOTAL por robot** | **[TOTAL — pending]** |
-| **COSTO TOTAL 2 robots** | **[TOTAL — pending]** |
-| Conversión a moneda local (ARS) | **[TOTAL — pending]** |
+| Componentes mayores (precio internacional de referencia, verificado 2026-06-05): 2× N6 ($330) + 2× OTOS ($169.90) + 3× Teensy ($79.10) + 4× VL53L7CX ($79.80) + 1–2× BNO055 ($35–70) + motores/ruedas/batería + MP1584/ESP32-C6/HC-SR04 + Zircon (~$200, reusado) | **≈ USD 990** |
+| **COSTO TOTAL por robot (todo nuevo, ref. internacional)** | **≈ USD 1.000** |
+| **COSTO TOTAL por robot (reusando el CENTRAL Zircon + Teensy 4.1 del 2025)** | **≈ USD 770** |
+| **COSTO TOTAL 2 robots (referencia)** | **≈ USD 1.800 – 2.000** |
+| Conversión a moneda local (ARS) | [TC del día] · ⚠️ costo *landed* local **mayor** por las restricciones de importación (ver nota arriba) |
 
-> El repo **no** tiene un BOM económico consolidado: solo precios **unitarios LCSC en USD** de pasivos/ICs de las placas custom (citados arriba). **Conseguir del equipo** los precios de Teensy ×3, OpenMV N6 ×2 (las más caras), OTOS ×2, BNO055 ×2–4, VL53L7CX ×4, motores ×3, batería, Zircon (precio Robomov), y el **total por robot + total 2 robots + conversión a ARS**.
+> 💵 Los precios son **referencia internacional (USD)**, verificados por web el 2026-06-05 (openmv.io, SparkFun, Pololu, Adafruit, DigiKey, etc.); **desglose completo con URLs en `BOM-COSTOS-TEMPLATE.md`**. **Pendiente del equipo (chico):** precio real de la placa **Zircon** suelta (Robomov solo publica el kit completo USD 529), qué **motor** usan (TT genérico ~$3 vs Pololu HP $23.95), el **tipo de cambio** del día y las **horas** de desarrollo.
 
 ### 3.2 Tiempo de desarrollo (trazable en journals)
 

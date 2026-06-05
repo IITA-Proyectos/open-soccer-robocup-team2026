@@ -405,6 +405,14 @@ The team's philosophy is **"invest in learning, not in the podium"**: an honest 
 - ✅ **Solved on the bench:** the referee moves CENTRAL end-to-end; ring of 32 sensors (0 dead); 2 OTOS respond (6.5 % error); 4 ToF enumerate; motors mapped with validated `MOTOR_INVERT`.
 - ⚠️ **Open blockers:** vision recalibration (TASK-022, #1); KIWI kinematics calibration; emergency brake (brake vs coast); BNO failover; trilateration validation on HW.
 
+## 4.5 2026 process innovation — AI-assisted methodology ("VIBE")
+
+This year we adopted an AI-assisted workflow we internally call **VIBE**, in which an AI agent (Claude) accelerates design and documentation while the team makes the decisions, validates on the bench, and owns the result. We apply it on four fronts: **VIBE PCB Design** —PCB design in EasyEDA, where the agent proposes and edits the schematic/routing through an MCP server and a human validates every change—; **VIBE 3D Design** —mechanical design in Autodesk Fusion 360 driven by the agent via MCP, a line of work we are only just beginning to explore—; **VIBE Coding** —AI-assisted C++ firmware programming, with host-native verification (624 tests / 44 suites / 0 failures) as a safety net—; and **Claude for documentation and project management**, with the TDP, the byte-level data contracts, the engineering journal, and the deliverables all curated with AI assistance and human verification. Our framing is honest and deliberate: **the AI accelerates, but the 18-year-old competitors make the decisions, test on real hardware, and are solely accountable for what ships to the robot**. We document this as an emerging approach and share the methodology — not just the code — as a contribution to the RoboCupJunior community.
+
+## 4.6 Future work — robot-to-robot communication
+
+The next declared improvement on our roadmap is **real-time communication between the two robots** (goalkeeper and striker) to share pose, whether each one sees the ball, and its state, in order to coordinate team strategy. The hardware is already on the robot: the COMM board (ESP32-C6) can establish a low-latency **ESP-NOW** link between the two. What remains is to **integrate that channel into the WorldSnapshot and validate it on the bench**; true to our discipline, the cooperative behavior therefore "sleeps" until the data flows reliably, introducing no regression into current play. The **kicker** and **dribbler**, absent in this first year of the Soccer category, are also part of that roadmap.
+
 ---
 
 # §5. OPEN SOURCE — Claiming the 2 bonus points

@@ -125,6 +125,8 @@ The rubric rewards **data-driven design decisions and trade-offs**, not just the
 
 ### 3.1 Estimated total cost
 
+> 🇦🇷 **Cost note — import context (Argentina).** The prices in this section are **international reference values (USD)** taken from international retailers (DigiKey, Mouser, SparkFun, Pololu, openmv.io, etc.). The **real acquisition cost in Argentina is significantly higher**: imports are **restricted** —only a limited number of units can be brought in per operation (on the order of **3 per item at a time)**—, which forces us to **split purchases across several suppliers** and to pay **multiple taxes and fees** (tariffs, VAT, advance-tax perceptions, courier). We therefore publish the **international reference price** as a reproducible baseline so another team can estimate its own, noting that the local *landed* cost is higher.
+
 | Item | Cost |
 |---|---|
 | Subtotal of components **with a real price in the repo** (line ring + muxes + diodes, per robot): ALS-PT19 (3.71) + 0402 LED (0.51) + CD4051 (3.84) + B5819W (0.14) | **≈ USD 8.20** |

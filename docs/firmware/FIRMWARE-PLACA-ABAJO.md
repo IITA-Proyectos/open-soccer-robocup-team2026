@@ -297,7 +297,7 @@ bool is_lifted() {
 
 Los 2 SparkFun OTOS (U5 y U6 en el schematic) están en buses I2C separados:
 - OTOS izquierdo → `Wire` (I2C bus 0, pines 18/19 del Teensy 4.0).
-- OTOS derecho → `Wire1` (I2C bus 1, pines remapeados 24/25).
+- OTOS derecho → `Wire1` (I2C bus 1, pines **default 16/17** del Teensy 4.0). El remap a 24/25 es de la placa TOP, NO de DOWN (= config_down.h §6 / otos.cpp). [fix audit 2026-06-05]
 
 Esto es necesario porque ambos OTOS comparten dirección I2C por default (0x17) y no pueden coexistir en el mismo bus.
 

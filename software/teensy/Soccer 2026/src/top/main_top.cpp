@@ -159,12 +159,12 @@ WorldSnapshot build_snapshot() {
     if (comm_arbiter_partner_is_fresh())    flags |= (1 << 1);
     // bit 4 = heading_valid (schema v3, máscara 0x10). El heading SIEMPRE se manda
     // (s.my_heading_centideg viene del IMU), pero este bit le dice al CENTRAL si
-    // confiar en él. Criterio: al menos un BNO listo (init OK). sensors_imu NO
-    // expone un getter de "heading válido" dedicado; el más cercano y honesto es
-    // el readiness por chip (_left_ready / _right_ready), que es justo lo que usa
-    // el degradado del propio sensors_imu (get_heading_deg → 0 si ambos fallan).
-    // Si ambos BNO fallaron el init → ninguno ready → heading_valid=0.
-    if (sensors_imu_left_ready() || sensors_imu_right_ready()) flags |= (1 << 4);
+    // confiar en él. Criterio: validez de la fusión EN VIVO (no el readiness al boot).
+    // Byte-idéntico a (_left_ready||_right_ready) en operación normal, pero si el
+    // único BNO sano se cae/congela en runtime (n_use→0; lo dispara el freeze-detector
+    // o un miss-counter), fused_valid→false y CENTRAL deja de navegar con un heading
+    // muerto. (Audit 2026-06-05 R1.)
+    if (sensors_imu_get_heading_valid()) flags |= (1 << 4);
     // bit 0 (in_own_penalty_area) requiere pose absoluta — Nivel 2.
     // bit 2 (partner_sees_ball) requiere parseo del partner snapshot — futuro.
     s.flags = flags;

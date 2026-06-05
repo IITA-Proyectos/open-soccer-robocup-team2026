@@ -369,4 +369,13 @@ bool sensors_imu_save_calibration() {
 bool sensors_imu_left_ready()  { return g_ready[0]; }
 bool sensors_imu_right_ready() { return g_ready[1]; }
 
+// Validez del heading EN VIVO (no el readiness al boot). Refleja la fusión:
+// false cuando NINGÚN sensor es utilizable en runtime (n_use==0 en imu_fusion).
+// Hoy es byte-idéntico a (_left_ready || _right_ready) porque `present` arranca
+// en g_ready y no baja por tick (band-aid de contención I2C). Cuando el detector
+// de BNO congelado (TOP_ENABLE_BNO_FREEZE_DETECT) o un futuro miss-counter ponga
+// present->false en vivo, fused_valid cae a false y el snapshot deja de marcar
+// heading_valid -> CENTRAL deja de confiar en un heading muerto. (Audit 2026-06-05 R1.)
+bool sensors_imu_get_heading_valid() { return g_fusion.fused_valid; }
+
 }  // namespace iitasoccer

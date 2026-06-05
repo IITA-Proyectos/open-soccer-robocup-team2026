@@ -125,7 +125,7 @@ constexpr int   UART_DOWN_TX    = 1;   // Serial1 TX1                [informativ
 // Watchdog
 // ============================================================
 // El watchdog REAL del snapshot vive en world_model.cpp (SNAPSHOT_TIMEOUT_MS = 500 ms):
-// si no llega WORLD_SNAPSHOT del TOP en ese tiempo, main_central frena los motores.
+// si no llega WORLD_SNAPSHOT del TOP en ese tiempo, main_central frena los motores. ⚠️ Esto SÓLO cubre la MUERTE del TOP, NO un cuelgue del PROPIO loop de CENTRAL: a diferencia del TOP (WDOG1 de hardware), CENTRAL NO tiene watchdog de hardware (oportunidad de confiabilidad — audit 2026-06-05 R2).
 // (#15: se removió COMMAND_TIMEOUT_MS=200 — era código muerto + heredado del rol viejo
 //  de "motor-server"; la CENTRAL ya NO recibe MotorCommand del TOP, arma el comando local.)
 //

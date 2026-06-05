@@ -65,4 +65,9 @@ bool sensors_imu_save_calibration();
 bool sensors_imu_left_ready();
 bool sensors_imu_right_ready();
 
+// Validez del heading EN VIVO para el flag heading_valid del WorldSnapshot (bit4).
+// Refleja la fusión (false si ningún sensor utilizable en runtime), no el readiness
+// al boot. Byte-idéntico a (_left_ready||_right_ready) en operación normal. (Audit R1.)
+bool sensors_imu_get_heading_valid();
+
 }  // namespace iitasoccer

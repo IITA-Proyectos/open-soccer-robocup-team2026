@@ -117,7 +117,7 @@ struct WorldSnapshot {
     int16_t goal_own_distance_mm;     // ← schema v3; mm, válido sólo si goal_own_visible=1
 
     // Obstáculo más cercano (min de ToFs + HC-SR04)
-    uint16_t min_obstacle_mm;
+    uint16_t min_obstacle_mm;       // 0xFFFF (TOF_NO_READING) = SIN obstáculo (sentinel) → el consumidor lo trata como "libre", no como obstáculo a 65 m. [audit 2026-06-05]
 
     // Comando árbitro vigente
     uint8_t referee_cmd;            // 0=stop, 1=start, 2=halftime, 3=reset

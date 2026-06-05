@@ -56,8 +56,24 @@ void handle_frame(const Frame& f) {
 // Reasignado 2026-05-31: antes Serial2 (7/8) — pero esos pines son del driver del
 // motor 2 (U17). Movido a Serial1 (0/1, conector libre del Zircon) → CONFLICTO 7/8
 // RESUELTO (F8/TASK-036): el motor 2 ya tiene los pines 7/8 para sí solo.
+// El ring RX por defecto de HardwareSerial es de 64 B. CENTRAL recibe de DOWN el
+// tráfico MÁS denso y crítico (LINE_URGENT 200 Hz + pose/vel 100 Hz ≈ 9 KB/s a
+// 230400) y la rama LINE_URGENT es el FRENO DE BORDE. Si el loop se bloquea, ese
+// ring se desborda en SILENCIO y se pierde el frame de freno sin disparar LOST.
+// addMemoryForRead() amplía el ring (Arduino-only; el host no lo compila).
+// (Audit 2026-06-05: paridad con el colchón que ya tiene el TOP.)
+#ifndef CENTRAL_DOWN_RX_EXTRA_BYTES
+#define CENTRAL_DOWN_RX_EXTRA_BYTES 512
+#endif
+static uint8_t g_down_rx_extra[CENTRAL_DOWN_RX_EXTRA_BYTES];
+
 void comm_down_init() {
     Serial1.begin(UART_BAUD);
+#if defined(__IMXRT1062__) || defined(CORE_TEENSY)
+    Serial1.addMemoryForRead(g_down_rx_extra, sizeof(g_down_rx_extra));
+#else
+    (void)g_down_rx_extra;
+#endif
 }
 
 void comm_down_tick() {

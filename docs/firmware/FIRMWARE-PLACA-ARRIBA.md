@@ -764,38 +764,51 @@ ARRIBA usa la pose odométrica como **una observación más** en su EKF:
 
 Cada 10 ms, ARRIBA arma el snapshot completo y lo envía. Estructura del payload:
 
+> ⚠️ **Layout v3 = 31 bytes (FUENTE CANÓNICA: `src/shared/types.h`, `static_assert(sizeof==31)`, y `CONTRATO-DATOS-TOP.md §3`).** Antes este doc mostraba el v1 de 24 B (sin velocidad de pelota ni arco propio) — corregido en la auditoría 2026-06-05. Si editás este struct, sincronizá con types.h.
+
 ```cpp
 struct WorldSnapshot {
-    // Pose propia
+    // Pose propia fusionada en cancha
     int16_t my_x_mm;
     int16_t my_y_mm;
     int16_t my_heading_centideg;
-    uint8_t my_pose_confidence;
+    uint8_t my_pose_confidence;       // 0-100
 
-    // Pelota
+    // Pelota detectada (relativa al robot)
     int16_t ball_x_mm;
     int16_t ball_y_mm;
-    uint8_t ball_visible;
-    uint8_t ball_confidence;
+    uint8_t ball_visible;             // 0/1
+    uint8_t ball_confidence;          // 0-100
+    int16_t ball_vx_mm_s;             // velocidad pelota X (mm/s, marco robot); 0 si N/A  ← v2
+    int16_t ball_vy_mm_s;             // velocidad pelota Y (mm/s, marco robot); 0 si N/A  ← v2
 
-    // Arco rival visible
+    // Arco rival (ángulo + distancia estimada)
     int16_t goal_opp_angle_centideg;
     int16_t goal_opp_distance_mm;
     uint8_t goal_opp_visible;
-    uint8_t goal_own_visible;
 
-    // Obstáculo mínimo
+    // Arco propio (visibilidad + ángulo + distancia). Schema v3.
+    uint8_t goal_own_visible;
+    int16_t goal_own_angle_centideg;  // ← v3; válido sólo si goal_own_visible=1
+    int16_t goal_own_distance_mm;     // ← v3; válido sólo si goal_own_visible=1
+
+    // Obstáculo más cercano (min de ToFs + HC-SR04). 0xFFFF = sin obstáculo.
     uint16_t min_obstacle_mm;
 
-    // Árbitro + flags
-    uint8_t referee_cmd;     // 0=stop, 1=start, 2=halftime, 3=reset
-    uint8_t flags;           // bits: match_running, in_own_pen_area, partner_alive, etc.
-} __attribute__((packed));   // 24 bytes
+    // Comando árbitro vigente
+    uint8_t referee_cmd;              // 0=stop, 1=start, 2=halftime, 3=reset
+
+    // Flags útiles para strategy
+    uint8_t flags;                    // bit0=in_own_penalty_area · bit1=partner_alive
+                                      // bit2=partner_sees_ball · bit3=match_running
+                                      // bit4=heading_valid (← v3) · bits5-7 reservados
+} __attribute__((packed));
+static_assert(sizeof(WorldSnapshot) == 31, "WorldSnapshot contrato v3 = 31 bytes");
 ```
 
-**Total con overhead de protocolo**: 24 + 7 = **31 bytes/frame**. A 100 Hz = 3100 bytes/s = 1.3% del baud 230400. Holgado.
+**Total con overhead de protocolo**: 31 + 7 = **38 bytes/frame**. A 100 Hz ≈ 3800 bytes/s = 1.6% del baud 230400. Holgado.
 
-**Nota**: la pose del compañero, los rivales y la velocidad de la pelota NO están en el snapshot actual. Para Nivel 3+ se agregará un `WORLD_SNAPSHOT_EXTENDED` con esos datos.
+**Nota**: la pose del compañero y los rivales NO están en el snapshot. La **velocidad de la pelota SÍ** (`ball_vx/vy_mm_s`, v2 — la usa el arquero para anticipar) y el **arco propio** (v3). Para Nivel 3+ se podría agregar un `WORLD_SNAPSHOT_EXTENDED` con pose del compañero.
 
 ### 13.2 Streams secundarios
 

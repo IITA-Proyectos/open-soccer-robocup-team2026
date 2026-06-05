@@ -51,7 +51,7 @@ struct LocalizationConfig {
 struct LocalizationPose {
     int16_t  x_mm;                 // 0..field_width_mm (origen = esquina propia)
     int16_t  y_mm;                 // 0..field_height_mm
-    int16_t  heading_centideg;     // 0..36000 (relativo a +Y de la cancha)
+    int16_t  heading_centideg;     // = bno_heading - offset, FIRMADO ~[-18000..18000]; normalizar (wrap ±18000) antes de usar (NO es 0..36000). Campo NO consumido hoy (pose sólo válida con ≥2 ToF). [audit 2026-06-05]
     uint8_t  source_flags;         // bit i = 1 si TOF[i] se uso este ciclo
     bool     valid;                // false si <2 TOFs utiles (1 por eje minimo)
 };

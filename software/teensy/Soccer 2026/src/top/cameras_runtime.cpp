@@ -96,6 +96,16 @@ void recompute_fused(uint32_t now_ms) {
 void cameras_init() {
     Serial3.begin(UART_CAMERA1_BAUD);
     Serial5.begin(UART_CAMERA2_BAUD);
+#if defined(__IMXRT1062__) || defined(CORE_TEENSY)
+    // Colchón RX (Arduino-only): el ring por defecto es 64 B. Si el loop se
+    // bloquea, el packet de cámara (11 B) puede desbordarlo en silencio → se
+    // pierde la pelota sin que el parser lo note. (Audit 2026-06-05: paridad
+    // con el colchón de comm_down.) 256 B alcanza para ~23 packets en vuelo.
+    static uint8_t s_cam1_rx_extra[256];
+    static uint8_t s_cam2_rx_extra[256];
+    Serial3.addMemoryForRead(s_cam1_rx_extra, sizeof(s_cam1_rx_extra));
+    Serial5.addMemoryForRead(s_cam2_rx_extra, sizeof(s_cam2_rx_extra));
+#endif
     g_parser_front.reset();
     g_parser_back.reset();
     g_last_packet_ms_front = 0;

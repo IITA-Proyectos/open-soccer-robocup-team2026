@@ -278,11 +278,28 @@ void test_approach_velocity_mid_interpolation(void) {
 }
 
 // ============================================================================
+// INVARIANTE CRÍTICO: HeadingPID.output_clamp DEFAULT debe ser <= 327 deg/s.
+// Por qué: cmd.omega_centideg_s = omega_degps * 100 es int16 (±32767). Con un
+// clamp de 360 deg/s daba 36000 → OVERFLOW → el giro se INVERTÍA en cancha
+// (eval 2026-06-03). Este test es el guard de regresión para que nadie vuelva
+// a poner 360. (Audit 2026-06-05.)
+// ============================================================================
+void test_heading_pid_default_clamp_fits_int16(void) {
+    HeadingPID pid;  // construcción por defecto
+    // (1) el default NO debe superar 327 deg/s
+    TEST_ASSERT_TRUE(pid.output_clamp <= 327.0f);
+    // (2) y por las dudas, que omega*100 quepa en int16 con margen
+    TEST_ASSERT_TRUE(pid.output_clamp * 100.0f <= 32767.0f);
+    TEST_ASSERT_TRUE(pid.output_clamp > 0.0f);  // sanity: no quedó en 0
+}
+
+// ============================================================================
 // MAIN
 // ============================================================================
 
 int main(int, char**) {
     UNITY_BEGIN();
+    RUN_TEST(test_heading_pid_default_clamp_fits_int16);
 
     // wrap_diff_deg
     RUN_TEST(test_wrap_diff_zero_diff);

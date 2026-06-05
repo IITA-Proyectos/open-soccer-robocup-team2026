@@ -791,7 +791,7 @@ El firmware debe compilar con o sin encoders mediante `#define HAS_ENCODERS` o f
 
 ### 11.1 Recepción desde ARRIBA (Serial7, RX7 = pin 28)
 
-**Frame esperado**: `WORLD_SNAPSHOT` (27 bytes payload v2 + 7 overhead = 34 bytes/frame). Frecuencia: 100 Hz.
+**Frame esperado**: `WORLD_SNAPSHOT` (**31 bytes payload v3** + 7 overhead = **38 bytes/frame**). Frecuencia: 100 Hz. [fix audit 2026-06-05: era 27 B v2]
 
 ```cpp
 void comm_top_tick() {
@@ -811,7 +811,7 @@ void comm_top_tick() {
 
 ### 11.2 Recepción desde ABAJO (Serial1) — bus de emergencia
 
-**Frame esperado**: `LINE_URGENT` (5 bytes payload + 7 overhead = 12 bytes/frame). Frecuencia: 200 Hz.
+**Frame esperado**: `LINE_URGENT` / **LineStatusV2** (**16 bytes payload** + 7 overhead = **23 bytes/frame**). Frecuencia: 200 Hz. El código real decodifica vía `lsv2_from_frame` (valida 16 B + schema_version==2). [fix audit 2026-06-05: era 5 B v1]
 
 ```cpp
 void comm_down_tick() {
@@ -970,7 +970,7 @@ Como CENTRAL es master, no genera streams pesados — solo eventos puntuales.
 
 ```cpp
 struct WorldModel {
-    // Espejo del WORLD_SNAPSHOT recibido (24 bytes)
+    // Espejo del WORLD_SNAPSHOT recibido (31 bytes, schema v3) [fix audit 2026-06-05]
     int16_t my_x_mm, my_y_mm, my_heading_centideg;
     uint8_t my_pose_confidence;
     int16_t ball_x_mm, ball_y_mm;

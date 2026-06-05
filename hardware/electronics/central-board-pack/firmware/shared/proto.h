@@ -1,3 +1,4 @@
+// MIRROR del transporte vivo (proto.h), sin cambios. El payload/cableado del pack SI es viejo.
 // proto.h — protocolo UART entre placas (TOP, DOWN, Zircon, COMM)
 //
 // Frame layout:

@@ -1,3 +1,7 @@
+// ⚠️ SNAPSHOT CONGELADO (2026-05-24) — NO ES BUILD PATH NI FIRMWARE VIVO. NO FLASHEAR.
+// Este pack es un retrato historico; usa contrato VIEJO (WorldSnapshot v2/27B, kicker_fire,
+// UART TOP<->CENTRAL intercambiado). El firmware VIVO esta en software/teensy/Soccer 2026/src/
+// (WorldSnapshot v3/31B, camara v2/11B, sin kicker, arbitro GPIO 5/6). Ver docs/FUENTES-DE-VERDAD.md.
 // sensor_geometry.h — Posiciones físicas reales de los 32 sensores ALS-PT19
 // del anillo de la placa DOWN, extraídas del schematic + PCB layout JSON
 // (2026-04-12) validado empíricamente 2026-05-24.

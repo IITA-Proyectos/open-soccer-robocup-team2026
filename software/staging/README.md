@@ -2,6 +2,14 @@
 > Antes de tocar o agregar algo, leé **`software/staging/up_board/00-LEER-PRIMERO-recomendaciones-reuso.md`**.
 > Este scratch repite bugs ya resueltos. Usá el stack de PRODUCCIÓN testeado en
 > `software/teensy/Soccer 2026/src/` (ver el "mapa de reúso" del documento).
+>
+> 📦 **NOTA (2026-06-04):** los programas 2025 que este plan menciona más abajo
+> (`definitivo-delantero`, `definitivo-arquero`, la librería `zirconLib` y la visión v1
+> `enviar coordenadas 2 arcos y pelota`) ya **NO están en `software/`**: pasaron a
+> **`software/_deprecated-2025/`** por ser incompatibles de raíz con el contrato vigente
+> (kicker físico, parser cámara 9 B v1, BNO local, sin `proto.h`). El plan de prueba de
+> abajo quedó como registro histórico; **no apunta a código vivo**. Para visión viva ver las
+> cámaras N6 `cam-frontal-n6.py` / `cam-trasera-n6.py` de los packs (contrato v2, 11 B).
 
 ---
 title: "Staging — Pendiente de prueba en robots"

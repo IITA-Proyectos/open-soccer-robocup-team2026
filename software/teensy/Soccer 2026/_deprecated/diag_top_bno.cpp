@@ -1,3 +1,11 @@
+// ⚠️⚠️ DEPRECADO — NO USAR EN BANCO HOY (arquitectura I2C vieja). ⚠️⚠️
+// Este sketch asume el BNO derecho (U11) en Wire1 con REMAP de pines 24/25. Eso
+// YA NO ES EL HARDWARE ACTUAL: tras el recableado (2026-05-31) AMBOS BNO viven en
+// el bus Wire (I2C0, 18/19) y ademas el BNO derecho (0x29) es una UNIDAD FALLADA
+// (el robot corre con 1 solo BNO 0x28). Para verificar los BNO en banco usá el
+// VIGENTE: [env:diag_bno_dual_live]. Se conserva solo como referencia historica.
+// (Ver memoria hardware_uart_pin_map / FUENTES-DE-VERDAD.)
+//
 // diag_top_bno.cpp — Verificacion de los 2 BNO055 de la placa TOP.
 // NO es firmware de competencia.
 //

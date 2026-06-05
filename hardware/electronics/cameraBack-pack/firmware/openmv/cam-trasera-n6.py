@@ -210,7 +210,7 @@ def detectar_naranja(img):
 
 
 # ============================================================================
-# LOOP PRINCIPAL — la trasera NO rota nada (lo hace el TOP). 9 bytes por UART.
+# LOOP PRINCIPAL — la trasera NO rota nada (lo hace el TOP). 11 bytes (contrato v2) por UART.
 # Objetivo de frame rate: ≥25 Hz sostenido en QVGA (doc 04 #5) — confirmar en banco.
 # ============================================================================
 while True:

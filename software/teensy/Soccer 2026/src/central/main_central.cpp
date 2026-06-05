@@ -6,7 +6,8 @@
 //   • Corre la FSM principal (strategy).
 //   • Corre todos los PIDs (heading + lateral arquero + approach).
 //   • Aplica cinemática inversa omni-3 y PWM directo a los 3 motores del Zircon.
-//   • Lee BNO055 local del Zircon como respaldo si ARRIBA cae.
+//   • BNO055 local del Zircon: gated por -DCENTRAL_HAS_LOCAL_BNO (default OFF);
+//     el heading viene del TOP (snapshot). La CENTRAL no lo usa salvo ese flag.
 //
 // Watchdog:
 //   • Si ARRIBA timeout 500 ms → motors_stop() + LED parpadea (no hay mundo).
@@ -35,6 +36,8 @@ elapsedMillis g_since_debug;
 
 uint32_t g_loop_count = 0;
 
+// NOTA: el rol NO se lee de un dipswitch (nombre historico). Se fija en build por
+// el flag -DROBOT1 (arquero) / -DROBOT2 (delantero); ver build_flags del env.
 void apply_role_from_dipswitch() {
 #if defined(ROBOT1)
     strategy_set_role(RobotRole::GOALKEEPER);

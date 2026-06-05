@@ -1,3 +1,4 @@
+// ⚠️ STAGING CONGELADO — NO FLASHEAR. Sketch de prueba 2025 con BNO local + lib vieja; el equivalente VIVO esta en src/diag/ (ver software/staging/README.md).
 // ============================================================================
 // ⚠️ STAGING CONGELADO (2026-06-03) — NO subir más material a software/staging/.
 // Antes de tocar o agregar algo acá, LEÉ:

@@ -1,5 +1,8 @@
 // diag_central_recv1.cpp — Test MINIMO de recepcion en CENTRAL desde DOWN.
 //
+// NOTA: usa Serial2/pin7 como cable de PRUEBA puntual; NO es el cableado de
+// produccion (prod: DOWN->CENTRAL por Serial1/pin0).
+//
 // Que hace: lee Serial2 (el UART que viene de la placa DOWN, pines 7/8 del
 // Teensy 4.1) y cada vez que recibe un '1' prende el LED 13 y lo avisa por USB.
 // NO inicializa los motores -> por eso el pin 13 esta libre como LED y los pines

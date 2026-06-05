@@ -1,3 +1,4 @@
+// MIRROR del transporte vivo (proto.h), sin cambios. El payload/cableado del pack SI es viejo.
 #include "proto.h"
 #include "crc16.h"
 

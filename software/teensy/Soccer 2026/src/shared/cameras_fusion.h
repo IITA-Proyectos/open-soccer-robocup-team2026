@@ -49,9 +49,11 @@ struct GoalFused {
     bool visible;
 };
 
-// Convierte coords crudas del protocolo viejo OpenMV (unidades ≈ pixel-space)
-// al marco del robot en mm. El factor `unit_to_mm` se calibra offline — por
-// ahora ~10 mm/unit (placeholder, ver TODO en cameras_runtime.cpp).
+// Convierte coords crudas de cámara (unidades ≈ pixel-space) al marco del robot
+// en mm. Esta capa es AGNÓSTICA al wire: las coords ya vienen decodificadas del
+// packet cámara→TOP v2 (11 B, CRC8+END) por el parser de cameras_runtime; aquí
+// solo se escalan. El factor `unit_to_mm` se calibra offline — por ahora
+// ~10 mm/unit (placeholder, ver TODO en cameras_runtime.cpp).
 //
 // cam_id == 1 (trasera) implica rotación 180° → invertir signo de x e y.
 CamObs cam_obs_to_robot_frame(int16_t x_raw,

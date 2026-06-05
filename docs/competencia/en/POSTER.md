@@ -82,7 +82,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 >
 > We present a RoboCupJunior Soccer Open robot built on a **distributed architecture of 3 Teensy boards + 1 communication module**, in which each microcontroller is a **specialist, not a generalist**: **TOP** (Teensy 4.0) perceives the world (2 OpenMV N6 cameras, 1 BNO055 IMU, 4 VL53L7CX ToF sensors, 1 ultrasonic, RCJ referee over GPIO) and publishes a **31-byte WorldSnapshot at 100 Hz**; **CENTRAL** (Teensy 4.1 on the Zircon PCB) decides (tactical state machine + omni-3 inverse kinematics + PIDs) and drives **3 kiwi omni wheels at 120°**; **DOWN** (Teensy 4.0) is the structural plate and the floor sensor (**a 32-sensor line ring** multiplexed + 2 OTOS optical odometers), and **broadcasts** its measurement to both boards (*symmetric broadcast* with sequence-based loss detection).
 >
-> The robot has **no physical kicker**: the striker **pushes the ball by inertia** when it aligns with the opponent's goal, which reduces components, energy, and points of failure. The central methodological contribution is a **discipline of verifying embedded firmware on the PC without the board**: the decision logic lives in **pure C++ modules** compiled and tested with `g++` offline (**545 tests / 40 suites / 0 failures**, verified on 2026-06-04 via `scripts/run-host-tests.sh`), with thin Arduino *glue*. Three distinctive innovations: **(1) layered fail-safe** with a direct DOWN→CENTRAL emergency bus to stop within **<15 ms** at the boundary; **(2) byte-identical fallback** that lets each new feature "sleep" until its data flows, with no regression; **(3) a goalkeeper that anticipates from ball velocity**. The project is **open-source (MIT)** and includes manufacturable PCBs (EasyEDA), byte-level data contracts, and an *engineering journal* with every iteration measured on the bench. **Honest status (no overselling):** the #1 remaining blocker for Incheon is the **un-recalibrated vision** (LAB color + homography); features such as **2D ToF trilateration**, the **goalkeeper strafe**, and **OTOS drive-straight** are *code-complete* and host-verified, but **pending bench validation** (their behaviors "sleep" until their data flows). This poster documents the design in enough detail for **another team to replicate it**.
+> The robot has **no physical kicker**: the striker **pushes the ball by inertia** when it aligns with the opponent's goal, which reduces components, energy, and points of failure. The central methodological contribution is a **discipline of verifying embedded firmware on the PC without the board**: the decision logic lives in **pure C++ modules** compiled and tested with `g++` offline (**624 tests / 44 suites / 0 failures**, verified on 2026-06-04 via `scripts/run-host-tests.sh`), with thin Arduino *glue*. Three distinctive innovations: **(1) layered fail-safe** with a direct DOWN→CENTRAL emergency bus to stop within **<15 ms** at the boundary; **(2) byte-identical fallback** that lets each new feature "sleep" until its data flows, with no regression; **(3) a goalkeeper that anticipates from ball velocity**. The project is **open-source (MIT)** and includes manufacturable PCBs (EasyEDA), byte-level data contracts, and an *engineering journal* with every iteration measured on the bench. **Honest status (no overselling):** the #1 remaining blocker for Incheon is the **un-recalibrated vision** (LAB color + homography); features such as **2D ToF trilateration**, the **goalkeeper strafe**, and **OTOS drive-straight** are *code-complete* and host-verified, but **pending bench validation** (their behaviors "sleep" until their data flows). This poster documents the design in enough detail for **another team to replicate it**.
 
 ---
 
@@ -94,7 +94,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 > ## OUR JOURNEY
 > - **Dec 2025:** national champions (Roboliga Argentina, Buenos Aires) with a monolithic robot on the Zircon board.
 > - **2026:** redesign to **3 boards**, reusing the champion brain (Zircon) as CENTRAL and adding perception (TOP) and floor sensing (DOWN) — *continuity, not throw-away*.
-> - **May–Jun 2026:** bring-up of the 3 physical boards, ~30 documented bench sessions, test suite growing from 180 → **545 tests / 40 suites / 0 failures** (verified 2026-06-04 via `scripts/run-host-tests.sh`).
+> - **May–Jun 2026:** bring-up of the 3 physical boards, ~30 documented bench sessions, test suite growing from 180 → **624 tests / 44 suites / 0 failures** (verified 2026-06-04 via `scripts/run-host-tests.sh`).
 > - **Jun–Jul 2026:** Incheon. The team's declared strategy: **invest in learning**, play honest matches, and capture data.
 
 `[PHOTO: IITA team with the robot/trophy at the 2025 Nationals, Buenos Aires — label Fig.1]`
@@ -117,7 +117,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 **EXACT TEXT (printed):**
 
 > ## OPEN SOURCE (EVERYTHING published, MIT)
-> - **Software:** complete firmware for the 3 boards (C++17) + vision (MicroPython) + **545 tests / 40 suites / 0 failures** (verified 2026-06-04 via `scripts/run-host-tests.sh`) + bench scripts.
+> - **Software:** complete firmware for the 3 boards (C++17) + vision (MicroPython) + **624 tests / 44 suites / 0 failures** (verified 2026-06-04 via `scripts/run-host-tests.sh`) + bench scripts.
 > - **Hardware:** complete **EasyEDA** projects for TOP and DOWN (schematic + PCB + Gerbers + BOM + Pick&Place); CENTRAL = Zircon Rev v15 (public schematic).
 > - **How, not just what:** living **SOURCES-OF-TRUTH** documents (one canonical doc per topic), a **DATA-MAP** (every message: type/size/pin/frequency/who fills and consumes it), and an **engineering journal** with every iteration.
 >
@@ -175,7 +175,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 > - **Pure omni-3 kinematics:** `v_i = -vx·sin(θ_i) + vy·cos(θ_i) + ω·R`, with **proportional** saturation (scales all 3 wheels to preserve the trajectory).
 > - **Anticipating goalkeeper:** aims at the **predicted X** = `pos + v·lookahead` (not the current X).
 
-`[PHOTO: screenshot of the 545-test host suite passing green (run-host-tests.sh terminal) — Fig.3]`
+`[PHOTO: screenshot of the 624-test host suite passing green (run-host-tests.sh terminal) — Fig.3]`
 `[DIAGRAM: flowchart of the dual tactical FSM — ATTACKER: WAIT_START→KICKOFF→SEARCH→POSITION→APPROACH (+LINE_AVOID); GOALKEEPER: WAIT_START→PATROL→INTERCEPT→CLEAR (+LINE_AVOID); EMERGENCY_LINE bypasses the FSM. (Pushing toward the goal is NOT a state: it happens inside APPROACH.) Ready-to-use source: the Mermaid diagram in docs/competencia/assets/diagramas.md (verified against strategy.cpp); details in docs/firmware/ESTRATEGIA-ALTO-NIVEL.md — Fig.4]`
 
 ---
@@ -204,7 +204,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 > | 3 DC motors + 3 omni wheels | "TT" motor + KIWI omni wheel | 3+3 | **[New/Reused? — pending]** | **[COST — pending]** |
 > | **TOTAL per robot** | — | — | — | **[TOTAL COST — pending]** |
 >
-> **Development time:** the 2026 redesign ≈ **8 weeks** of intensive engineering (May–June), built on the 2025 champion robot; total effort ≈ **4 months** (Feb–Jun 2026), traceable in `journal/`. Test suite growing **180 → 246 → 262 → 324 → 354 → 545** (verified 2026-06-04 via `scripts/run-host-tests.sh`; see Fig.8).
+> **Development time:** the 2026 redesign ≈ **8 weeks** of intensive engineering (May–June), built on the 2025 champion robot; total effort ≈ **4 months** (Feb–Jun 2026), traceable in `journal/`. Test suite growing **180 → 246 → 262 → 324 → 354 → 545 → 624** (verified 2026-06-04 via `scripts/run-host-tests.sh`; see Fig.8).
 >
 > **Real prices available in the repo (LCSC unit, cited verbatim in BOM.md):** ALS-PT19 phototransistor ≈ 0.116 · CD4051BM 0.96 · LED 0402 0.016 · B5819W diode 0.024 USD.
 
@@ -254,7 +254,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 > ## TEST METHODS (repeatable by any team)
 > **M1 — Host-native verification (without the board).** The logic lives in pure C++ modules; they are compiled with
 > `g++ -std=gnu++17 -I src/shared lib/Unity/src/unity.c src/shared/*.cpp test/test_X/*.cpp` and the binary is run.
-> **Result: 545 tests / 40 suites / 0 failures** (verified 2026-06-04 via `scripts/run-host-tests.sh`). It dodges the antivirus that was blocking PlatformIO.
+> **Result: 624 tests / 44 suites / 0 failures** (verified 2026-06-04 via `scripts/run-host-tests.sh`). It dodges the antivirus that was blocking PlatformIO.
 >
 > **M2 — Mandatory power-cycle on I²C bring-up.** The VL53L7CX and OTOS addresses **persist with 3V3**; a reset is not enough. Protocol: *flash → cut and restore power (10 s) → open monitor*. (Without this: a false negative "no sensor responds".)
 >
@@ -262,7 +262,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 >
 > **M4 — Diagnostics that reuse the production parsers.** The ~40 bench sketches **do not reimplement** the decoder: they validate `payload_len` against `sizeof` and detect *staleness*/CRC/SEQ-gap.
 
-`[CHART: bars of the test-suite growth — 180 → 246 → 262 → 324 → 354 → 545 — Fig.8 · file docs/competencia/assets/fig8_test_growth.png (gen_figuras.py)]`
+`[CHART: bars of the test-suite growth — 180 → 246 → 262 → 324 → 354 → 545 → 624 — Fig.8 · file docs/competencia/assets/fig8_test_growth.png (gen_figuras.py)]`
 `[CHART: bars of OTOS odometry error by surface — A4-film 90.5% error, A4-clean 99.9%, cardboard 6.5% — Fig.9 · file docs/competencia/assets/fig9_otos_error.png (gen_figuras.py)]`
 `[PHOTO: bench session with a serial monitor decoding a WorldSnapshot / diag_central_motors — Fig.10]`
 `[PHOTO: the bodge of the 4 ToF LP wired to GPIO 9/10/11/12 (strong visual story) — Fig.11]`
@@ -277,7 +277,7 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 **EXACT TEXT (printed, brief):**
 
 > ## VISIT OUR ROBOT
-> We demonstrate live: **(1)** the suite of **545 tests / 40 suites / 0 failures** running on the laptop, **(2)** the **<15 ms** boundary braking, **(3)** the anticipating goalkeeper. Ask us how to replicate any of them.
+> We demonstrate live: **(1)** the suite of **624 tests / 44 suites / 0 failures** running on the laptop, **(2)** the **<15 ms** boundary braking, **(3)** the anticipating goalkeeper. Ask us how to replicate any of them.
 > `[QR to repo]`  ·  `[QR to TDP video <3 min]`
 
 **Internal team checklist (NOT printed) to secure Excellent in Presentation:**
@@ -313,6 +313,6 @@ The **zone titles are written so a JUDGE finds each rubric criterion at a glance
 - [ ] Complete the **BOM with real costs** and the **total cost** (USD/ARS).
 - [ ] Shoot and place **all `[PHOTO:]`** (Fig.1–11), labeled and cited.
 - [ ] Generate **Fig.2 (flow diagram)**, **Fig.4 (FSM flowchart)**, **Fig.8–9 (charts)**.
-- [ ] Confirm the **live test count** at closing (verified **545 tests / 40 suites / 0 failures** on 2026-06-04 via `scripts/run-host-tests.sh`; re-run before printing).
+- [ ] Confirm the **live test count** at closing (verified **624 tests / 44 suites / 0 failures** on 2026-06-04 via `scripts/run-host-tests.sh`; re-run before printing).
 - [ ] Verify the poster fits **A1 landscape (≤70.7×100 cm)** and is legible at 1.5 m.
 - [ ] Generate the **QR codes** (repo + TDP video).

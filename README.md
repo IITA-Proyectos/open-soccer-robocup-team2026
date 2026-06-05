@@ -1,7 +1,7 @@
 # IITA - Open Soccer RoboCup Team 2026
 
 > RoboCupJunior Soccer Open League — Temporada 2026  
-> Equipo del [Instituto de Informática y Tecnología Aplicada (IITA)](https://github.com/IITA-Proyectos), Salta, Argentina  
+> Equipo del [Instituto de Innovación y Tecnología Aplicada (IITA)](https://github.com/IITA-Proyectos), Salta, Argentina  
 > **Campeones nacionales RoboCupJunior Soccer — Diciembre 2025, Buenos Aires**  
 > **Clasificados para RoboCup 2026 — Incheon, Corea del Sur — 30 Jun - 6 Jul 2026**
 
@@ -117,5 +117,5 @@ Si sos una IA trabajando en este repositorio, leé **[AI-INSTRUCTIONS.md](AI-INS
 
 ---
 
-*Repositorio mantenido por IITA — Instituto de Informática y Tecnología Aplicada, Salta, Argentina*
+*Repositorio mantenido por IITA — Instituto de Innovación y Tecnología Aplicada, Salta, Argentina*
 

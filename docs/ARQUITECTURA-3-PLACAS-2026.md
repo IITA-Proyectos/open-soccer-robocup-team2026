@@ -478,4 +478,4 @@ Equipos de referencia:
 
 ---
 
-*Documento mantenido por IITA — Instituto de Informática y Tecnología Aplicada, Salta, Argentina.*
+*Documento mantenido por IITA — Instituto de Innovación y Tecnología Aplicada, Salta, Argentina.*

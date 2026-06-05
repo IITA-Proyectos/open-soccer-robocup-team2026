@@ -4,7 +4,7 @@
 
 ## Contexto del proyecto
 
-Este repositorio pertenece a un equipo de estudiantes del IITA (Instituto de Informática y Tecnología Aplicada) en Salta, Argentina, que participa en la competencia **RoboCupJunior Soccer Open League 2026**.
+Este repositorio pertenece a un equipo de estudiantes del IITA (Instituto de Innovación y Tecnología Aplicada) en Salta, Argentina, que participa en la competencia **RoboCupJunior Soccer Open League 2026**.
 
 El equipo construye y programa **2 robots autónomos** (un arquero y un delantero) que juegan fútbol en una cancha regulada. Los robots usan:
 

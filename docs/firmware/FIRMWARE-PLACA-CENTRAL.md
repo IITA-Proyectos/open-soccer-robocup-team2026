@@ -1146,4 +1146,4 @@ El robot del nacional 2025 corre un firmware monolítico en el Zircon Rev v15. E
 
 ---
 
-*Documento mantenido por IITA — Instituto de Informática y Tecnología Aplicada, Salta, Argentina.*
+*Documento mantenido por IITA — Instituto de Innovación y Tecnología Aplicada, Salta, Argentina.*

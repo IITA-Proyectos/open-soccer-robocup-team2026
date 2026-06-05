@@ -30,7 +30,7 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 | A9 | **P1** | **Spec de batería**: mAh / C-rating / marca / peso / packs por robot / autonomía medida | Power budget de Electrical; sustentabilidad | BOM §1.5, TDP §1 |
 | A10 | **P1** | **Set-points medidos de los 6 buck MP1584** (multímetro) | "Datos no medidos" hoy son objetivos; cierra power budget de Electrical | TDP §1, BOM |
 | A11 | **P1** | **Nuevo vs Reusado de la TRACCIÓN** (motores + ruedas) — único subsistema mayor sin clasificar | Sustentabilidad (criterio premiado por RCJ) | BOM §1.4-1.5 |
-| A12 | **P1** | **Cifra única de tests** verificada: correr `scripts/run-host-tests.sh` el día previo (hoy 545/40/0) y propagar a TODOS los deliverables | Credibilidad transversal; consistencia = puntos en Teamwork | TODOS (ver RUBRICA-COBERTURA §7) |
+| A12 | **P1** | **Cifra única de tests** verificada: correr `scripts/run-host-tests.sh` el día previo (hoy 624/44/0) y propagar a TODOS los deliverables | Credibilidad transversal; consistencia = puntos en Teamwork | TODOS (ver RUBRICA-COBERTURA §7) |
 | A13 | **P1** | **Métricas CPU% y latencias medidas** con scope/timestamps serial (o reetiquetar como "objetivo de diseño") | Honestidad de datos; un juez técnico castiga datos inventados | TDP §1, POSTER Zona H |
 | A14 | **P2** | **Mismatch sensor↔dato**: precio/análisis USD26 es de VL53L1X (1 zona); el robot monta VL53L7CX (8×8). Conseguir precio real del VL53L7CX y re-validar trade-off vs LiDAR | Rigor de "razonamiento basado en datos" (TDP Electrical) | BOM §1.2/§2, TDP §1 |
 | A15 | **P2** | **Estado real de ESP-NOW partner** (coordinación robot-robot) validado en banco o no | Pregunta de entrevista (Software/Strategy) | ENTREVISTA §6, TDP |
@@ -54,10 +54,10 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 | B6 | **P1** | **Fig.11** Bodge de los 4 ToF / power-cycle | Foto | Macro del bodge |
 | B7 | **P1** | **Fig.2** Diagrama de flujo de datos (TOP/CENTRAL/DOWN con flechas etiquetadas: WorldSnapshot 31B, broadcast línea+OTOS) | Diagrama | Excalidraw/draw.io/TikZ |
 | B8 | **P1** | **Fig.4** Flowchart de la FSM táctica | Diagrama | Idem |
-| B9 | **P0** | **Fig.8** Crecimiento de tests (barras: 180→246→262→324→354→403→545) | Gráfico | matplotlib desde los snapshots del repo |
+| B9 | **P0** | **Fig.8** Crecimiento de tests (barras: 180→246→262→324→354→403→545→624) | Gráfico | matplotlib desde los snapshots del repo |
 | B10 | **P0** | **Fig.9** Error de odometría OTOS por superficie (barras: A4-lámina 9.5% / sin lámina 0% / cartón 6.5%) | Gráfico | matplotlib desde datos de banco |
 | B11 | **P1** | **Fig.3** Esquemático recortado (TOP o Zircon) | Recorte PDF | Usar los PDFs ya existentes |
-| B12 | **P1** | Captura de los tests en verde (545/40/0) | Captura | Para TDP, poster y video |
+| B12 | **P1** | Captura de los tests en verde (624/44/0) | Captura | Para TDP, poster y video |
 | B13 | **P0** | **2 QR reales**: repo público + video TDP <3min | Generar QR | Cuando A1/repo/video estén listos (POSTER Zonas B3 e I) |
 
 ---
@@ -68,7 +68,7 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 - **P0** — Traducir TODO a inglés y correr corrector ortográfico EN antes de imprimir (mantener banner ES solo en el .md de trabajo).
 - **P0** — Producir el **artefacto A1 real** (Figma/Inkscape/LaTeX-tikzposter) siguiendo la grilla ya definida → PDF 300dpi → revisar legibilidad a 1.5 m. Hoy es un .md de texto; Layout no pasa de Satisfactory sin el PDF.
 - **P0** — Reemplazar la tabla BOM débil de Zona E por la versión condensada de `BOM.md` (part numbers + LCSC + nuevo/reusado) y **cerrar costos** (A4/A5).
-- **P1** — Matizar el **403/33 → 545/40** en el Abstract y aclarar que es cobertura de lógica host-native; ciertas features (visión LAB+homografía, trilateración, strafe) están code-complete pero pendientes de banco. Protege contra preguntas filosas y mantiene credibilidad.
+- **P1** — Matizar el **403/33 → 624/44** en el Abstract y aclarar que es cobertura de lógica host-native; ciertas features (visión LAB+homografía, trilateración, strafe) están code-complete pero pendientes de banco. Protege contra preguntas filosas y mantiene credibilidad.
 - **P1** — Reetiquetar CPU%/latencias como "objetivo de diseño" o medirlas (A13).
 - **P2** — Completar Title/ID (A1/A2) y la tabla de roles "quién hizo qué".
 
@@ -85,13 +85,13 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 - **P0** — **Grabar el video** (<3:00) con subtítulos quemados en INGLÉS. Hoy el entregable real vale 0 (es guion).
 - **P0** — Corregir el comando sobreimpreso del Paso 3 (Bloque 4): mostrar `cd "software/teensy/Soccer 2026"` y el include real `lib/Unity/src` (no `lib/Unity`). Hoy un par que copie lo que ve falla → baja replicabilidad de Excellent a Proficient.
 - **P1** — Reemplazar `[REPO URL]` por la URL real (verificada PUBLIC: `github.com/IITA-Proyectos/open-soccer-robocup-team2026`) en Bloque 5 y tarjeta final.
-- **P1** — Alinear la cifra a 545/40/0 (re-correr el runner el día de grabar) y mostrar el LICENSE MIT + org pública durante el Bloque 5.
-- **P2** — Congelar y hacer zoom ≥2s en la línea `PASS=40 FAIL=0 SKIP=0 (545 tests)` — es el frame que gana el punto.
+- **P1** — Alinear la cifra a 624/44/0 (re-correr el runner el día de grabar) y mostrar el LICENSE MIT + org pública durante el Bloque 5.
+- **P2** — Congelar y hacer zoom ≥2s en la línea `PASS=44 FAIL=0 SKIP=0 (624 tests)` — es el frame que gana el punto.
 
 ### ENTREVISTA (`ENTREVISTA-PREP.md`)
 - **P0** — Crear `ENTREVISTA-PREP.en.md` (o sección 🇬🇧 inline) con §1 (Show&Tell), las 4 respuestas 💡 de §4 y los cierres; agendar 3 ensayos en voz alta.
 - **P0** — Corregir **rutas §3.2**: anteponer `software/teensy/Soccer 2026/` a cada `src/...` (ahí vive `platformio.ini` y `src/`). Load-bearing para la velocidad del Teamwork-Task en vivo.
-- **P0** — Reemplazar TODAS las apariciones de "403 tests / 33 entornos" por la cifra verificada del día (545/40/0); agregar al checklist §7 "correr el runner el día previo".
+- **P0** — Reemplazar TODAS las apariciones de "403 tests / 33 entornos" por la cifra verificada del día (624/44/0); agregar al checklist §7 "correr el runner el día previo".
 - **P1** — Añadir frase honesta en §3.3: el runner compila los módulos PUROS (shared+down) host; los tests de central/top usan Arduino y se compilan on-target → convierte una sobre-venta en respuesta de ingeniería madura.
 - **P1** — Bindear placeholders (A3); verificar `pio run -e central_robot1 -t upload` desde el cwd correcto (anotarlo en §7).
 - **P2** — Mini-guion de Teamwork-Task que NO dependa de visión recalibrada (resolver con ToF/odometría o pedir 5 min de recalibración) — muestra resolución de problemas en vez de quedar trabados.

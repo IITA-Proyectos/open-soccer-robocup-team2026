@@ -74,7 +74,7 @@ Archivo de preparación: `docs/competencia/ENTREVISTA-PREP.md` (Show&Tell + Team
 | Componente | Criterio | Pts máx | Dónde lo cubrimos (archivo + sección) | Nivel apuntado | Estimado hoy | Qué falta para el máximo |
 |---|---|---:|---|---|---:|---|
 | Interview | **Teamwork & Communication** (colaboración fluida, roles claros, TODOS contribuyen) | 5 | `ENTREVISTA-PREP.md` §1 (Show&Tell 90s repartido) + §2 (roles por área) + §5 (protocolo pase de palabra) | Excellent | **Proficient (3)** | Bindear `[INTEGRANTE A/B]` → María/Elías; traducir a inglés y ensayar; confirmar quién viaja; unificar el conteo de tests para que ambos digan lo mismo. |
-| Interview | **Technical Understanding** (fluidez técnica fuerte + resolución de problemas) | 5 | `ENTREVISTA-PREP.md` §4 (6 categorías con dato+por qué; 4 historias 💡 testeo→dato→cambio, verificadas contra código) | Excellent | **Proficient (3)** | Actualizar **403/33 → 545/40** (la pantalla dirá 545 si corren el runner); cerrar `[GAP]` tocables (ESP-NOW partner, chasis 2026). |
+| Interview | **Technical Understanding** (fluidez técnica fuerte + resolución de problemas) | 5 | `ENTREVISTA-PREP.md` §4 (6 categorías con dato+por qué; 4 historias 💡 testeo→dato→cambio, verificadas contra código) | Excellent | **Proficient (3)** | Actualizar **403/33 → 624/44** (la pantalla dirá 624 si corren el runner); cerrar `[GAP]` tocables (ESP-NOW partner, chasis 2026). |
 | Interview | **Task Execution** (completa eficiente + enfoques innovadores) | 5 | `ENTREVISTA-PREP.md` §3 (plan 30s, mapa de archivos, flash offline, reuso de módulos puros + fallback byte-idéntico) | Excellent | **Satisfactory (1)** | **Corregir rutas §3.2** (`src/...` → `software/teensy/Soccer 2026/src/...`); aclarar que el runner cubre módulos puros (shared+down) y el resto es on-target; verificar `pio` desde el cwd correcto. |
 | **Subtotal Interview** | | **5** | | | **≈9-11 / 15 internos ≈ 3 / 5 hoy** | Techo en Proficient hasta traducir + arreglar rutas + fijar números. |
 
@@ -99,7 +99,7 @@ Archivo: `docs/competencia/VIDEO-GUION.md` (guion <3 min, feature: testing host-
 
 | Componente | Criterio | Pts máx | Dónde lo cubrimos (archivo + sección) | Nivel apuntado | Estimado hoy | Qué falta para el máximo |
 |---|---|---:|---|---|---:|---|
-| Video | **Easy to follow / un competidor par lo entiende** (criterio único, techo = Satisfactory=1) | 1 | `VIDEO-GUION.md` Bloques 1-5 (problema→solución→demo 40 suites verdes→receta→cierre, ~2:55, subtítulos EN) | Satisfactory (=1, máximo) | **0 hoy (guion, no video)** | **Grabar el video** con subtítulos EN; corregir el comando en pantalla (Paso 3: `cd software/teensy/Soccer 2026` + `lib/Unity/src`); alinear cifra a 545/40 en todos los deliverables. |
+| Video | **Easy to follow / un competidor par lo entiende** (criterio único, techo = Satisfactory=1) | 1 | `VIDEO-GUION.md` Bloques 1-5 (problema→solución→demo 44 suites verdes→receta→cierre, ~2:55, subtítulos EN) | Satisfactory (=1, máximo) | **0 hoy (guion, no video)** | **Grabar el video** con subtítulos EN; corregir el comando en pantalla (Paso 3: `cd software/teensy/Soccer 2026` + `lib/Unity/src`); alinear cifra a 624/44 en todos los deliverables. |
 | **Subtotal Video** | | **1** | | | **1 cuando se produzca** | El guion soporta el punto completo; el punto solo existe con el archivo de video renderizado. |
 
 ---
@@ -120,8 +120,8 @@ Sin archivo dedicado — es conducta en vivo. Plan en `MEJORAS-PENDIENTES.md` §
 |---|---|---|
 | `TDP.md`, `POSTER.md`, `ENTREVISTA-PREP.md`, `BOM.md` | 403 tests / 33 envs (2026-06-03) | Conservadora |
 | MEMORY del equipo | 470 / 37 (post-merge) | Intermedia |
-| `scripts/run-host-tests.sh` corrido 2026-06-04 | **545 tests / 40 suites / 0 fallos (exit 0)** | **Verificado HOY** |
-| `VIDEO-GUION.md` | 545 / 40 | Ya actualizado |
+| `scripts/run-host-tests.sh` corrido 2026-06-04 | **624 tests / 44 suites / 0 fallos (exit 0)** | **Verificado HOY** |
+| `VIDEO-GUION.md` | 624 / 44 | Ya actualizado |
 
 > **Acción:** correr el runner el día previo a entregar/grabar y **propagar UNA sola cifra** a los 5 deliverables + README + MEMORY. Tres cifras distintas en circulación = munición para un juez adversarial y riesgo de que dos integrantes digan números distintos (mata Teamwork & Communication).
 

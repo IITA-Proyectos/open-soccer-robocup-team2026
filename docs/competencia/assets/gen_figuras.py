@@ -29,8 +29,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # Fig.8 — Crecimiento de la cobertura de tests host-native
 # Datos DOCUMENTADOS en el repo (ESTADO-ACTUAL.md + MEMORY + run-host-tests.sh):
 #   246 y 262 = 2026-05-29 ; 324/354/403 = 2026-06-03 ; 470 = merge 2026-06-03 ;
-#   545 = 2026-06-04 (verificado: 40 suites / 0 fallos). [547 en la rama de
-#   quick-wins, +2 tests de guarda NaN.]
+#   545 = 2026-06-04 (verificado: 40 suites / 0 fallos) ; 624 = 2026-06-05
+#   (verificado: 44 suites / 0 fallos, vía scripts/run-host-tests.sh — CIFRA VIGENTE).
 # ============================================================================
 TEST_MILESTONES = [
     ("May 29\n(audit)", 246),
@@ -40,6 +40,7 @@ TEST_MILESTONES = [
     ("Jun 03", 403),
     ("Jun 03\n(merge)", 470),
     ("Jun 04", 545),
+    ("Jun 05", 624),
 ]
 
 def fig8():

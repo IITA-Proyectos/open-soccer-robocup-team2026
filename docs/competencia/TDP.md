@@ -34,7 +34,7 @@ Dos robots omnidireccionales (base KIWI de 3 ruedas omni a 120°): **ROBOT1 = ar
 | **DOWN** | Teensy 4.0 | Sensor de piso | Anillo de 32 sensores de línea (4 mux CD4051) + 2 OTOS de odometría óptica |
 | **COMM** | ESP32-C6 | Árbitro RCJ + partner | Fork del módulo oficial RCJ; entrega START/STOP por nivel GPIO |
 
-TOP fusiona todo en un **WorldSnapshot de 31 bytes** que envía a CENTRAL por UART a 100 Hz; DOWN difunde línea + odometría a CENTRAL y TOP (broadcast simétrico). La lógica de decisión vive en **módulos C++ puros** verificados con una suite **host-native (652 tests / 47 suites / 0 failures (measured 2026-06-05 18:39 ART via scripts/run-host-tests.sh))** que corre en una PC sin la placa.
+TOP fusiona todo en un **WorldSnapshot de 31 bytes** que envía a CENTRAL por UART a 100 Hz; DOWN difunde línea + odometría a CENTRAL y TOP (broadcast simétrico). La lógica de decisión vive en **módulos C++ puros** verificados con una suite **host-native (658 tests / 47 suites / 0 failures (measured 2026-06-05 19:50 ART via scripts/run-host-tests.sh))** que corre en una PC sin la placa.
 
 ---
 
@@ -262,7 +262,7 @@ Los **6 sensores I²C cuelgan del mismo bus `Wire` (pines 18/19)**: 2 BNO055 (0x
 
 **Decisión central de ingeniería:** la **lógica de decisión vive en módulos PUROS** (`src/shared/`, sin Arduino/Wire/Serial/`analogWrite`); el **glue Arduino es delgado** y compile-only.
 **Por qué:** los módulos puros se compilan y testean con **g++ en la PC, sin la placa**, lo que da un ciclo de verificación de segundos y esquiva el bloqueo de Avast al registry de PlatformIO.
-**Dato:** **652 tests / 47 suites / 0 failures (measured 2026-06-05 18:39 ART via scripts/run-host-tests.sh)**. Crecimiento trazable sesión a sesión: 180 → 246 → 262 → 324 → 354 → 403 → 470 → 545 → 652. Ver **Fig. 8 — crecimiento de la cobertura de tests host-native** (`docs/competencia/assets/fig8_test_growth.png`, generada por `gen_figuras.py`). **Cifra viva:** corremos la suite cada sesión, así que el número sigue creciendo — para Incheon será mayor. Por eso la publicamos con la **fecha y hora exactas de medición** (re-medir el día de grabar/imprimir; el gráfico se regenera con `gen_figuras.py`).
+**Dato:** **658 tests / 47 suites / 0 failures (measured 2026-06-05 19:50 ART via scripts/run-host-tests.sh)**. Crecimiento trazable sesión a sesión: 180 → 246 → 262 → 324 → 354 → 403 → 470 → 545 → 658. Ver **Fig. 8 — crecimiento de la cobertura de tests host-native** (`docs/competencia/assets/fig8_test_growth.png`, generada por `gen_figuras.py`). **Cifra viva:** corremos la suite cada sesión, así que el número sigue creciendo — para Incheon será mayor. Por eso la publicamos con la **fecha y hora exactas de medición** (re-medir el día de grabar/imprimir; el gráfico se regenera con `gen_figuras.py`).
 
 ### [FLOWCHART] Pipeline de verificación host-native
 ```
@@ -372,7 +372,7 @@ DOWN difunde 3 frames a CENTRAL (Serial1) **y** TOP (Serial5): `LineStatusV2` 0x
 
 Tres índices vivos combaten la deriva de docs: `FUENTES-DE-VERDAD.md` (un doc canónico por tema, regla: quien crea/supera un doc actualiza la tabla en el mismo commit), `MAPA-DE-DATOS.md` (cada mensaje: tipo/tamaño/transporte/pin/freq/quién-llena/quién-consume) y `ESTADO-ACTUAL.md` (1ª lectura obligatoria). **Jerarquía de verdad explícita:** si un doc contradice al código (`types.h`/`proto.h`) o al cableado, gana esa fuente.
 
-> **[GAP — software · features code-complete sin validar en HW]** Declaración honesta: las siguientes features están **code-complete + host-tested (entran en los 652 tests) pero AÚN NO validadas en hardware** — son código terminado, no comportamiento probado en el robot: trilateración (TASK-035), arquero que anticipa (tunear `lookahead_s`/`max_lead_mm`), strafe por cross_track (eje/signo), drive-straight OTOS, failover del BNO muerto (IMU-1 HIGH). **Bloqueante real #1:** la **visión sin recalibrar LAB+homografía** para Incheon (TASK-022) — el robot no ve la pelota hasta calibrar en banco. Las cargas de CPU y latencias son **objetivos de diseño, no medidos con osciloscopio**. **[FOTO: suite de 652 tests host en verde; diag de banco decodificando WorldSnapshot.]**
+> **[GAP — software · features code-complete sin validar en HW]** Declaración honesta: las siguientes features están **code-complete + host-tested (entran en los 658 tests) pero AÚN NO validadas en hardware** — son código terminado, no comportamiento probado en el robot: trilateración (TASK-035), arquero que anticipa (tunear `lookahead_s`/`max_lead_mm`), strafe por cross_track (eje/signo), drive-straight OTOS, failover del BNO muerto (IMU-1 HIGH). **Bloqueante real #1:** la **visión sin recalibrar LAB+homografía** para Incheon (TASK-022) — el robot no ve la pelota hasta calibrar en banco. Las cargas de CPU y latencias son **objetivos de diseño, no medidos con osciloscopio**. **[FOTO: suite de 658 tests host en verde; diag de banco decodificando WorldSnapshot.]**
 
 ---
 
@@ -390,7 +390,7 @@ La filosofía del equipo es **"invertir en aprendizaje, no en podio"**: un robot
 
 ## 4.2 Qué aprendimos (las lecciones más transferibles)
 
-1. **Verificar firmware embebido sin la placa es posible** y cambia la velocidad de iteración (lógica pura + g++ host = 652 tests en segundos).
+1. **Verificar firmware embebido sin la placa es posible** y cambia la velocidad de iteración (lógica pura + g++ host = 658 tests en segundos).
 2. **Los detalles de bring-up matan**: las direcciones I²C de los VL53L7CX persisten con 3V3 (power-cycle, no reset); los OTOS se alimentan de la batería, no del USB; el BNO + ToF no coexisten a 400 kHz.
 3. **El árbitro RCJ llega por nivel GPIO, no por UART**, y en PLAY sube un solo pin (OR, no AND) — un error de integración que puede costar la homologación.
 4. **Diseñar con fallback byte-idéntico** deja activar features sin riesgo de regresión.
@@ -412,7 +412,7 @@ La filosofía del equipo es **"invertir en aprendizaje, no en podio"**: un robot
 
 ## 4.5 Innovación de proceso 2026 — metodología asistida por IA ("VIBE")
 
-Este año adoptamos un flujo de trabajo asistido por IA al que internamente llamamos **VIBE**, en el que un agente de IA (Claude) acelera el diseño y la documentación mientras el equipo decide, valida en banco y se hace responsable del resultado. Lo aplicamos en cuatro frentes: **VIBE PCB Design** —el diseño de las PCB en EasyEDA, donde el agente propone y edita el esquemático/ruteo a través de un servidor MCP y un humano valida cada cambio—; **VIBE 3D Design** —diseño mecánico en Autodesk Fusion 360 comandado por el agente vía MCP, una línea que recién estamos empezando a explorar—; **VIBE Coding** —programación del firmware C++ asistida por el agente, con verificación host-native (652 tests / 47 suites / 0 fallos) como red de seguridad—; y **Claude para documentación y gestión**, con el TDP, los contratos de datos byte-a-byte, el diario de ingeniería y los entregables curados con IA y verificación humana. Nuestro encuadre es honesto y deliberado: **la IA acelera, pero el equipo de competidores de 18 años toma las decisiones, prueba en hardware real y es el único responsable de lo que se sube al robot**. Lo documentamos como un enfoque emergente y compartimos la metodología (no solo el código) como aporte a la comunidad de RoboCupJunior.
+Este año adoptamos un flujo de trabajo asistido por IA al que internamente llamamos **VIBE**, en el que un agente de IA (Claude) acelera el diseño y la documentación mientras el equipo decide, valida en banco y se hace responsable del resultado. Lo aplicamos en cuatro frentes: **VIBE PCB Design** —el diseño de las PCB en EasyEDA, donde el agente propone y edita el esquemático/ruteo a través de un servidor MCP y un humano valida cada cambio—; **VIBE 3D Design** —diseño mecánico en Autodesk Fusion 360 comandado por el agente vía MCP, una línea que recién estamos empezando a explorar—; **VIBE Coding** —programación del firmware C++ asistida por el agente, con verificación host-native (658 tests / 47 suites / 0 fallos) como red de seguridad—; y **Claude para documentación y gestión**, con el TDP, los contratos de datos byte-a-byte, el diario de ingeniería y los entregables curados con IA y verificación humana. Nuestro encuadre es honesto y deliberado: **la IA acelera, pero el equipo de competidores de 18 años toma las decisiones, prueba en hardware real y es el único responsable de lo que se sube al robot**. Lo documentamos como un enfoque emergente y compartimos la metodología (no solo el código) como aporte a la comunidad de RoboCupJunior.
 
 ## 4.6 Trabajo futuro — comunicación robot-a-robot
 
@@ -441,7 +441,7 @@ La próxima mejora declarada de nuestro roadmap es la **comunicación en tiempo 
 
 ## 5.2 Bonus +1 — Software abierto
 
-- **Firmware 3 placas** (`software/teensy/Soccer 2026/`): C++17, módulos puros + glue, 57 envs PlatformIO, **652 tests / 47 suites / 0 failures (measured 2026-06-05 18:39 ART via scripts/run-host-tests.sh)**.
+- **Firmware 3 placas** (`software/teensy/Soccer 2026/`): C++17, módulos puros + glue, 57 envs PlatformIO, **658 tests / 47 suites / 0 failures (measured 2026-06-05 19:50 ART via scripts/run-host-tests.sh)**.
 - **Build 100 % offline reproducible:** libs vendoreadas en `lib/` (Unity, OatmealOTOS + SparkFun_Toolkit podadas) → `pio run -e down` compila sin red.
 - **Receta de testing host-native publicada** (`scripts/run-host-tests.sh`) para que otro equipo verifique firmware embebido sin la placa.
 - **Packs autocontenidos por subsistema** (`hardware/electronics/*-pack/`): docs + snapshot del firmware + tests + ground-truth, con índice "pregunta → doc".
@@ -476,12 +476,12 @@ La próxima mejora declarada de nuestro roadmap es la **comunicación en tiempo 
 - [GAP] **Recalibración de visión** (TASK-022) — bloqueante #1.
 - [GAP] Validación HW de trilateración (TASK-035), tune de arquero anticipa, strafe cross_track, drive-straight OTOS, failover BNO (IMU-1).
 - [GAP] **Métricas en vivo** (CPU/latencias) con osciloscopio/profiler — hoy son objetivos de diseño.
-- [RESUELTO] Conteo de tests al cierre: **652 tests / 47 suites / 0 failures (measured 2026-06-05 18:39 ART via scripts/run-host-tests.sh)** — usado de forma consistente en todo el TDP.
+- [RESUELTO] Conteo de tests al cierre: **658 tests / 47 suites / 0 failures (measured 2026-06-05 19:50 ART via scripts/run-host-tests.sh)** — usado de forma consistente en todo el TDP.
 
 **Imágenes (originales/CC, etiquetadas y citadas)**
 - [FOTO] Robot 2026 armado (vista superior con 3 ruedas a 120°; vista lateral con la pila de 3 placas).
 - [FOTO] Cada PCB poblada (TOP, DOWN, CENTRAL/Zircon, COMM) + bodge de los 4 LP de ToF.
-- [FOTO] Suite de 652 tests host en verde + diag de banco decodificando WorldSnapshot. (Figuras de datos ya disponibles: `docs/competencia/assets/fig8_test_growth.png` y `fig9_otos_error.png`, generadas por `gen_figuras.py`.)
+- [FOTO] Suite de 658 tests host en verde + diag de banco decodificando WorldSnapshot. (Figuras de datos ya disponibles: `docs/competencia/assets/fig8_test_growth.png` y `fig9_otos_error.png`, generadas por `gen_figuras.py`.)
 - [DIAGRAMA] Plano de la pila de 3 placas con cotas de standoffs; diagrama de bloques del flujo de datos.
 - [FOTO] Equipo en el Nacional 2025.
 

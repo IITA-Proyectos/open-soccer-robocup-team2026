@@ -92,7 +92,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 >
 > Presentamos un robot de RoboCupJunior Soccer Open con una **arquitectura distribuida de 3 placas Teensy + 1 módulo de comunicación**, en el que cada microcontrolador es **especialista, no generalista**: **TOP** (Teensy 4.0) percibe el mundo (2 cámaras OpenMV N6, 1 IMU BNO055, 4 sensores ToF VL53L7CX, 1 ultrasonido, árbitro RCJ por GPIO) y publica un **WorldSnapshot de 31 bytes a 100 Hz**; **CENTRAL** (Teensy 4.1 sobre PCB Zircon) decide (máquina de estados táctica + cinemática inversa omni-3 + PIDs) y mueve **3 ruedas omni kiwi a 120°**; **DOWN** (Teensy 4.0) es el plato estructural y el sensor de piso (**anillo de 32 sensores de línea** multiplexados + 2 odómetros ópticos OTOS), y **difunde** su medición a ambas placas (*broadcast simétrico* con detección de pérdida por secuencia).
 >
-> El robot **no tiene pateador físico**: el delantero **empuja la pelota por inercia** al alinearse con el arco rival, lo que reduce componentes, energía y puntos de falla. La contribución metodológica central es una **disciplina de verificación de firmware embebido en la PC sin la placa**: la lógica de decisión vive en **módulos C++ puros** compilados y testeados con `g++` offline (**652 tests / 47 suites / 0 fallos**, medido el 2026-06-05 18:39 ART con `scripts/run-host-tests.sh`), con el *glue* de Arduino delgado. Tres innovaciones diferenciales: **(1) fail-safe en capas** con bus de emergencia directo DOWN→CENTRAL para frenar en **<15 ms** en el borde; **(2) fallback byte-idéntico** que deja "dormir" cada feature nueva hasta que su dato fluye, sin regresión; **(3) arquero que anticipa por velocidad de pelota**. El proyecto es **open-source (MIT)** e incluye PCBs fabricables (EasyEDA), contratos de datos byte-a-byte y un *diario de ingeniería* con cada iteración medida en banco. **Estado honesto (no sobrevendemos):** el bloqueante #1 que queda para Incheon es la **visión sin recalibrar** (color LAB + homografía); funciones como la **trilateración 2D con ToF**, el **strafe del arquero** y el **drive-straight con OTOS** están *code-complete* y verificadas en host, pero **pendientes de validación en banco** (sus conductas "duermen" hasta que su dato fluye). Este poster documenta el diseño con suficiente detalle para que **otro equipo lo replique**.
+> El robot **no tiene pateador físico**: el delantero **empuja la pelota por inercia** al alinearse con el arco rival, lo que reduce componentes, energía y puntos de falla. La contribución metodológica central es una **disciplina de verificación de firmware embebido en la PC sin la placa**: la lógica de decisión vive en **módulos C++ puros** compilados y testeados con `g++` offline (**658 tests / 47 suites / 0 fallos**, medido el 2026-06-05 19:50 ART con `scripts/run-host-tests.sh`), con el *glue* de Arduino delgado. Tres innovaciones diferenciales: **(1) fail-safe en capas** con bus de emergencia directo DOWN→CENTRAL para frenar en **<15 ms** en el borde; **(2) fallback byte-idéntico** que deja "dormir" cada feature nueva hasta que su dato fluye, sin regresión; **(3) arquero que anticipa por velocidad de pelota**. El proyecto es **open-source (MIT)** e incluye PCBs fabricables (EasyEDA), contratos de datos byte-a-byte y un *diario de ingeniería* con cada iteración medida en banco. **Estado honesto (no sobrevendemos):** el bloqueante #1 que queda para Incheon es la **visión sin recalibrar** (color LAB + homografía); funciones como la **trilateración 2D con ToF**, el **strafe del arquero** y el **drive-straight con OTOS** están *code-complete* y verificadas en host, pero **pendientes de validación en banco** (sus conductas "duermen" hasta que su dato fluye). Este poster documenta el diseño con suficiente detalle para que **otro equipo lo replique**.
 
 ---
 
@@ -104,11 +104,11 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > ## NUESTRO RECORRIDO
 > - **Dic-2025:** campeones nacionales (Roboliga Argentina (UAI)) con un robot monolítico sobre la placa Zircon.
 > - **2026:** rediseño a **3 placas** reutilizando el cerebro campeón (Zircon) como CENTRAL y sumando percepción (TOP) y piso (DOWN) — *continuidad, no descarte*.
-> - **May–Jun 2026:** bring-up de las 3 placas físicas, ~30 sesiones de banco documentadas, suite de tests de 180 → **652 tests / 47 suites / 0 fallos** (medido 2026-06-05 18:39 ART con `scripts/run-host-tests.sh`).
+> - **May–Jun 2026:** bring-up de las 3 placas físicas, ~30 sesiones de banco documentadas, suite de tests de 180 → **658 tests / 47 suites / 0 fallos** (medido 2026-06-05 19:50 ART con `scripts/run-host-tests.sh`).
 > - **Jun–Jul 2026:** Incheon. Estrategia declarada del equipo: **invertir en aprendizaje**, jugar partidos honestos y capturar datos.
 >
 > ### 🤖 Innovación 2026 — cómo trabajamos (metodología "VIBE", asistida por IA)
-> Adoptamos un flujo asistido por IA (Claude) que llamamos **VIBE**: la IA **acelera** el diseño y la documentación, y el **equipo de 18 años decide, valida en banco y es el único responsable** de lo que se sube al robot. Cuatro frentes: **VIBE PCB Design** (EasyEDA comandado por Claude vía MCP), **VIBE 3D Design** (Fusion 360 vía MCP — recién empezando), **VIBE Coding** (firmware C++ con red de seguridad de 652 tests host) y **Claude para documentar y gestionar** el proyecto (TDP, contratos de datos byte-a-byte, *journal*). Compartimos la **metodología** —no solo el código— como aporte a la comunidad de RoboCupJunior.
+> Adoptamos un flujo asistido por IA (Claude) que llamamos **VIBE**: la IA **acelera** el diseño y la documentación, y el **equipo de 18 años decide, valida en banco y es el único responsable** de lo que se sube al robot. Cuatro frentes: **VIBE PCB Design** (EasyEDA comandado por Claude vía MCP), **VIBE 3D Design** (Fusion 360 vía MCP — recién empezando), **VIBE Coding** (firmware C++ con red de seguridad de 658 tests host) y **Claude para documentar y gestionar** el proyecto (TDP, contratos de datos byte-a-byte, *journal*). Compartimos la **metodología** —no solo el código— como aporte a la comunidad de RoboCupJunior.
 >
 > ### 🛣️ Próximo paso (roadmap declarado)
 > **Comunicación robot-a-robot** (arquero ↔ delantero) por **ESP-NOW** vía la placa COMM (ESP32-C6, ya en el robot): compartir pose, si cada uno ve la pelota y su estado para **coordinar estrategia**. Falta integrarlo al WorldSnapshot y validarlo en banco — fiel a nuestra disciplina, la conducta cooperativa "duerme" hasta que el dato fluya, sin regresión. También planeamos pasar a **4 ruedas omni** con **motores más cortos, con encoders** (más estabilidad y control, y espacio liberado para el **kicker** y el **dribbler**, que quedan para el año próximo).
@@ -133,7 +133,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 **TEXTO EXACTO (impreso):**
 
 > ## OPEN SOURCE (TODO publicado, MIT)
-> - **Software:** firmware completo de las 3 placas (C++17) + visión (MicroPython) + **652 tests / 47 suites / 0 fallos** (medido 2026-06-05 18:39 ART con `scripts/run-host-tests.sh`) + scripts de banco.
+> - **Software:** firmware completo de las 3 placas (C++17) + visión (MicroPython) + **658 tests / 47 suites / 0 fallos** (medido 2026-06-05 19:50 ART con `scripts/run-host-tests.sh`) + scripts de banco.
 > - **Hardware:** proyectos **EasyEDA** completos de TOP y DOWN (esquemático + PCB + Gerbers + BOM + Pick&Place); CENTRAL = Zircon Rev v15 (esquemático público).
 > - **Cómo, no solo qué:** documentos vivos **FUENTES-DE-VERDAD** (un doc canónico por tema), **MAPA-DE-DATOS** (cada mensaje: tipo/tamaño/pin/frecuencia/quién lo llena y consume) y **diario de ingeniería** con cada iteración.
 >
@@ -191,7 +191,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > - **Cinemática omni-3 pura:** `v_i = -vx·sin(θ_i) + vy·cos(θ_i) + ω·R`, con saturación **proporcional** (escala las 3 ruedas para preservar la trayectoria).
 > - **Arquero que anticipa:** apunta a la **X predicha** = `pos + v·lookahead` (no a la X actual).
 
-`[FOTO: captura de pantalla de la suite de 652 tests host pasando en verde (terminal run-host-tests.sh) — Fig.3]`
+`[FOTO: captura de pantalla de la suite de 658 tests host pasando en verde (terminal run-host-tests.sh) — Fig.3]`
 `[DIAGRAMA: flowchart de la FSM táctica dual — ATTACKER: WAIT_START→KICKOFF→SEARCH→POSITION→APPROACH (+LINE_AVOID); GOALKEEPER: WAIT_START→PATROL→INTERCEPT→CLEAR (+LINE_AVOID); EMERGENCY_LINE bypassa la FSM. (El empuje al arco NO es un estado: ocurre dentro de APPROACH.) Fuente lista: el diagrama Mermaid de docs/competencia/assets/diagramas.md (verificado vs strategy.cpp); detalle en docs/firmware/ESTRATEGIA-ALTO-NIVEL.md — Fig.4 · archivo docs/competencia/assets/fig4_fsm.png (gen_diagramas.py)]`
 
 ---
@@ -220,7 +220,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > | 3 motores DC + 3 ruedas omni | Motor "TT" + rueda omni KIWI | 3+3 | Nuevo | **motor pendiente** (TT ~USD 3 vs Pololu HP USD 23.95) |
 > | **TOTAL por robot** | — | — | — | **≈ USD 1.000 nuevo · ≈ USD 770 reusando CENTRAL** (ref. int.; 2 robots ≈ USD 1.800–2.000) |
 >
-> **Tiempo de desarrollo:** rediseño 2026 ≈ **8 semanas** de ingeniería intensiva (mayo–junio), sobre la base del robot campeón 2025; esfuerzo total ≈ **4 meses** (feb–jun 2026) trazable en `journal/`. Suite de tests creciendo **180 → 246 → 262 → 324 → 354 → 545 → 652** (medido 2026-06-05 18:39 ART con `scripts/run-host-tests.sh`; ver Fig.8).
+> **Tiempo de desarrollo:** rediseño 2026 ≈ **8 semanas** de ingeniería intensiva (mayo–junio), sobre la base del robot campeón 2025; esfuerzo total ≈ **4 meses** (feb–jun 2026) trazable en `journal/`. Suite de tests creciendo **180 → 246 → 262 → 324 → 354 → 545 → 658** (medido 2026-06-05 19:50 ART con `scripts/run-host-tests.sh`; ver Fig.8).
 >
 > **Precios reales disponibles en el repo (unitarios LCSC, citados verbatim en BOM.md):** fototransistor ALS-PT19 ≈ 0.116 · CD4051BM 0.96 · LED 0402 0.016 · diodo B5819W 0.024 USD.
 
@@ -270,7 +270,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > ## MÉTODOS DE TEST (repetibles por cualquier equipo)
 > **M1 — Verificación host-native (sin la placa).** La lógica vive en módulos C++ puros; se compilan con
 > `g++ -std=gnu++17 -I src/shared lib/Unity/src/unity.c src/shared/*.cpp test/test_X/*.cpp` y se corre el binario.
-> **Resultado: 652 tests / 47 suites / 0 fallos** (medido 2026-06-05 18:39 ART con `scripts/run-host-tests.sh`). **Cifra viva —** la re-medimos cada sesión y sigue subiendo; por eso va con fecha y hora, nunca queda desfasada. Esquiva el antivirus que bloqueaba PlatformIO.
+> **Resultado: 658 tests / 47 suites / 0 fallos** (medido 2026-06-05 19:50 ART con `scripts/run-host-tests.sh`). **Cifra viva —** la re-medimos cada sesión y sigue subiendo; por eso va con fecha y hora, nunca queda desfasada. Esquiva el antivirus que bloqueaba PlatformIO.
 >
 > **M2 — Power-cycle obligatorio en bring-up I²C.** Las direcciones de los VL53L7CX y los OTOS **persisten con 3V3**; un reset no alcanza. Protocolo: *flashear → cortar y reponer energía (10 s) → abrir monitor*. (Sin esto: falso negativo "ningún sensor responde".)
 >
@@ -278,7 +278,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 >
 > **M4 — Diagnóstico que reusa los parsers de producción.** Los ~40 sketches de banco **no reimplementan** el decodificador: validan `payload_len` contra `sizeof` y detectan *staleness*/CRC/SEQ-gap.
 
-`[GRÁFICO: barras del crecimiento de la suite de tests — 180 → 246 → 262 → 324 → 354 → 545 → 652 — Fig.8 · archivo docs/competencia/assets/fig8_test_growth.png (gen_figuras.py)]`
+`[GRÁFICO: barras del crecimiento de la suite de tests — 180 → 246 → 262 → 324 → 354 → 545 → 658 — Fig.8 · archivo docs/competencia/assets/fig8_test_growth.png (gen_figuras.py)]`
 `[GRÁFICO: barras de error de odometría OTOS por superficie — A4-lámina 9.5% error, A4-limpio 0%, cartón 6.5% — Fig.9 · archivo docs/competencia/assets/fig9_otos_error.png (gen_figuras.py)]`
 `[FOTO: sesión de banco con monitor serial decodificando un WorldSnapshot / diag_central_motors — Fig.10]`
 `[FOTO: el bodge de los 4 LP de ToF cableados a GPIO 9/10/11/12 (historia visual fuerte) — Fig.11]`
@@ -293,7 +293,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 **TEXTO EXACTO (impreso, breve):**
 
 > ## VISITÁ NUESTRO ROBOT
-> Demostramos en vivo: **(1)** la suite de **652 tests / 47 suites / 0 fallos** corriendo en la notebook, **(2)** el frenado de borde **<15 ms**, **(3)** el arquero que anticipa. Preguntanos cómo replicar cualquiera.
+> Demostramos en vivo: **(1)** la suite de **658 tests / 47 suites / 0 fallos** corriendo en la notebook, **(2)** el frenado de borde **<15 ms**, **(3)** el arquero que anticipa. Preguntanos cómo replicar cualquiera.
 > `[QR a repo]`  ·  `[QR a video TDP <3 min]`
 
 **Checklist interno del equipo (NO impreso) para asegurar Excellent en Presentation:**
@@ -329,6 +329,6 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 - [ ] Costos de **referencia internacional ya cargados** (≈USD 1.000 nuevo / 770 reusando CENTRAL). Falta del equipo: **precio Zircon suelto, motor, tipo de cambio ARS/USD y horas**.
 - [ ] Tomar y colocar **todas las `[FOTO:]`** (Fig.1–11) etiquetadas y citadas.
 - [x] ✅ Generadas 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Falta solo maquetarlas en el A1.
-- [ ] Confirmar el **número de tests vivo** al cierre (verificado **652 tests / 47 suites / 0 fallos** el 2026-06-05 18:39 ART con `scripts/run-host-tests.sh`; re-correr antes de imprimir).
+- [ ] Confirmar el **número de tests vivo** al cierre (verificado **658 tests / 47 suites / 0 fallos** el 2026-06-05 18:39 ART con `scripts/run-host-tests.sh`; re-correr antes de imprimir).
 - [ ] Verificar que el poster cabe en **A1 apaisado (≤70.7×100 cm)** y es legible a 1.5 m.
 - [ ] Generar los **QR** (repo + video TDP).

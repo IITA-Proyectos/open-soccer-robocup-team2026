@@ -15,7 +15,7 @@ escala: Developing=0 · Satisfactory=1 · Proficient=3 · Excellent=5 (Sportsman
 >
 > ⚠️ **Bloqueante transversal:** Poster y TDP deben entregarse en **INGLÉS** (requisito duro). Hoy todo está en español de trabajo. Sin traducir, varios criterios no pueden puntuar Excellent.
 >
-> ✅ **ACTUALIZADO 2026-06-05:** la traducción EN ya está hecha — los 6 deliverables EN viven en `docs/competencia/en/` (TDP, POSTER, BOM, ENTREVISTA-PREP, VIDEO-GUION, README) + ONE-PAGER, verificados sin español filtrado. Queda correr el corrector ortográfico EN antes de imprimir. Los estimados "hoy" más abajo reflejan todavía la versión de trabajo ES y NO incorporan aún este avance ni los demás resueltos del 2026-06-05 (nombre IITA unificado, conteo único 652/47/0); ver notas inline.
+> ✅ **ACTUALIZADO 2026-06-05:** la traducción EN ya está hecha — los 6 deliverables EN viven en `docs/competencia/en/` (TDP, POSTER, BOM, ENTREVISTA-PREP, VIDEO-GUION, README) + ONE-PAGER, verificados sin español filtrado. Queda correr el corrector ortográfico EN antes de imprimir. Los estimados "hoy" más abajo reflejan todavía la versión de trabajo ES y NO incorporan aún este avance ni los demás resueltos del 2026-06-05 (nombre IITA unificado, conteo único 658/47/0); ver notas inline.
 
 ---
 
@@ -59,7 +59,7 @@ Archivo: `docs/competencia/POSTER.md` (maqueta A1 apaisado, máx 70.7×100 cm) �
 
 | Componente | Criterio | Pts máx | Dónde lo cubrimos (archivo + sección) | Nivel apuntado | Estimado hoy | Qué falta para el máximo |
 |---|---|---:|---|---|---:|---|
-| Poster | **Abstract** (resume cada componente crítico, lenguaje científico, intención de compartir) | 5 | `POSTER.md` Zona B "ABSTRACT" | Excellent | **Proficient (3)** | ✅ Traducción HECHA 2026-06-05 (`en/POSTER.md`); **matizar el 403/33** (no sobrevender capacidad operativa: visión sin calibrar es el bloqueante #1) — nota: la cifra ya es 652/47/0. |
+| Poster | **Abstract** (resume cada componente crítico, lenguaje científico, intención de compartir) | 5 | `POSTER.md` Zona B "ABSTRACT" | Excellent | **Proficient (3)** | ✅ Traducción HECHA 2026-06-05 (`en/POSTER.md`); **matizar el 403/33** (no sobrevender capacidad operativa: visión sin calibrar es el bloqueante #1) — nota: la cifra ya es 658/47/0. |
 | Poster | **Method / Robot Production / Design** (producción completa + justificación + lenguaje/sensores + BOM + costo + tiempo) | 5 | `POSTER.md` Zonas C-D-E-F + `BOM.md` §1-§3 | Excellent | **Proficient (3)** | **Cerrar el BOM con costos** y costo total (elemento OBLIGATORIO "tiempo y costo de desarrollo"); reemplazar la tabla débil de Zona E por la de `BOM.md`. |
 | Poster | **Data / Results / Discussion** (datos de test + modificaciones MAYORES por el testing + gráficos/tablas + método repetible) | 5 | `POSTER.md` Zonas G-H (tabla 8 iteraciones testeo→dato→modificación + 4 métodos de test) | Excellent | **Proficient (3)** | Producir **Fig.8** (crecimiento de tests) y **Fig.9** (error odometría por superficie) como gráficos reales; reetiquetar CPU/latencias (objetivo, no medición). |
 | Poster | **Photos / Images** (abundantes, excelente calidad, etiquetadas y citadas) | 5 | `POSTER.md` Fig.1-11 (placeholders) + repo: 5 PDFs de esquemático (TOP/DOWN/Zircon) | Excellent | **Developing (0)** ⚠️ | **CERO imágenes existen en el repo.** Tomar/generar las 11 figuras (robot, equipo, banco, diagramas, 2 gráficos) y guardarlas en `docs/competencia/assets/`. **Cap más duro del poster.** |
@@ -75,8 +75,8 @@ Archivo de preparación: `docs/competencia/ENTREVISTA-PREP.md` (Show&Tell + Team
 
 | Componente | Criterio | Pts máx | Dónde lo cubrimos (archivo + sección) | Nivel apuntado | Estimado hoy | Qué falta para el máximo |
 |---|---|---:|---|---|---:|---|
-| Interview | **Teamwork & Communication** (colaboración fluida, roles claros, TODOS contribuyen) | 5 | `ENTREVISTA-PREP.md` §1 (Show&Tell 90s repartido) + §2 (roles por área) + §5 (protocolo pase de palabra) | Excellent | **Proficient (3)** | ✅ roster 2026-06-05: María Virginia Viollaz (visión/estrategia) / Elías Cordero (electro-mecánica); traducir a inglés (✅ traducción HECHA 2026-06-05, deliverable EN en `en/`) y ensayar; confirmar quién viaja; unificar el conteo de tests (✅ RESUELTO 2026-06-05: 652/47/0 único en todos). |
-| Interview | **Technical Understanding** (fluidez técnica fuerte + resolución de problemas) | 5 | `ENTREVISTA-PREP.md` §4 (6 categorías con dato+por qué; 4 historias 💡 testeo→dato→cambio, verificadas contra código) | Excellent | **Proficient (3)** | ✅ RESUELTO 2026-06-05: cifra ya actualizada a **652/47/0** (la pantalla dirá 652 si corren el runner). Queda: cerrar `[GAP]` tocables (ESP-NOW partner, chasis 2026). |
+| Interview | **Teamwork & Communication** (colaboración fluida, roles claros, TODOS contribuyen) | 5 | `ENTREVISTA-PREP.md` §1 (Show&Tell 90s repartido) + §2 (roles por área) + §5 (protocolo pase de palabra) | Excellent | **Proficient (3)** | ✅ roster 2026-06-05: María Virginia Viollaz (visión/estrategia) / Elías Cordero (electro-mecánica); traducir a inglés (✅ traducción HECHA 2026-06-05, deliverable EN en `en/`) y ensayar; confirmar quién viaja; unificar el conteo de tests (✅ RESUELTO 2026-06-05: 658/47/0 único en todos). |
+| Interview | **Technical Understanding** (fluidez técnica fuerte + resolución de problemas) | 5 | `ENTREVISTA-PREP.md` §4 (6 categorías con dato+por qué; 4 historias 💡 testeo→dato→cambio, verificadas contra código) | Excellent | **Proficient (3)** | ✅ RESUELTO 2026-06-05: cifra ya actualizada a **658/47/0** (la pantalla dirá 658 si corren el runner). Queda: cerrar `[GAP]` tocables (ESP-NOW partner, chasis 2026). |
 | Interview | **Task Execution** (completa eficiente + enfoques innovadores) | 5 | `ENTREVISTA-PREP.md` §3 (plan 30s, mapa de archivos, flash offline, reuso de módulos puros + fallback byte-idéntico) | Excellent | **Satisfactory (1)** | ✅ RESUELTO 2026-06-05: rutas §3.2 ya con prefijo `software/teensy/Soccer 2026/`. Queda: aclarar que el runner cubre módulos puros (shared+down) y el resto es on-target; verificar `pio` desde el cwd correcto (en vivo). |
 | **Subtotal Interview** | | **5** | | | **≈9-11 / 15 internos ≈ 3 / 5 hoy** | Techo en Proficient hasta traducir + arreglar rutas + fijar números. |
 
@@ -101,7 +101,7 @@ Archivo: `docs/competencia/VIDEO-GUION.md` (guion <3 min, feature: testing host-
 
 | Componente | Criterio | Pts máx | Dónde lo cubrimos (archivo + sección) | Nivel apuntado | Estimado hoy | Qué falta para el máximo |
 |---|---|---:|---|---|---:|---|
-| Video | **Easy to follow / un competidor par lo entiende** (criterio único, techo = Satisfactory=1) | 1 | `VIDEO-GUION.md` Bloques 1-5 (problema→solución→demo 47 suites verdes→receta→cierre, ~2:55, subtítulos EN) | Satisfactory (=1, máximo) | **0 hoy (guion, no video)** | **Grabar el video** con subtítulos EN. ✅ RESUELTO 2026-06-05: el comando en pantalla (Paso 3: `cd "software/teensy/Soccer 2026"` + `lib/Unity/src`) ya está corregido en el guion y la cifra ya está alineada a 652/47/0. **Lo único que queda para el punto es GRABAR.** |
+| Video | **Easy to follow / un competidor par lo entiende** (criterio único, techo = Satisfactory=1) | 1 | `VIDEO-GUION.md` Bloques 1-5 (problema→solución→demo 47 suites verdes→receta→cierre, ~2:55, subtítulos EN) | Satisfactory (=1, máximo) | **0 hoy (guion, no video)** | **Grabar el video** con subtítulos EN. ✅ RESUELTO 2026-06-05: el comando en pantalla (Paso 3: `cd "software/teensy/Soccer 2026"` + `lib/Unity/src`) ya está corregido en el guion y la cifra ya está alineada a 658/47/0. **Lo único que queda para el punto es GRABAR.** |
 | **Subtotal Video** | | **1** | | | **1 cuando se produzca** | El guion soporta el punto completo; el punto solo existe con el archivo de video renderizado. |
 
 ---
@@ -120,15 +120,15 @@ Sin archivo dedicado — es conducta en vivo. Plan en `MEJORAS-PENDIENTES.md` §
 
 | Fuente | Cifra que aparece | Estado |
 |---|---|---|
-| `TDP.md`, `POSTER.md`, `ENTREVISTA-PREP.md`, `BOM.md` | ~~403 tests / 33 envs (2026-06-03)~~ → **652 / 47 / 0** | ✅ Actualizado 2026-06-05 |
+| `TDP.md`, `POSTER.md`, `ENTREVISTA-PREP.md`, `BOM.md` | ~~403 tests / 33 envs (2026-06-03)~~ → **658 / 47 / 0** | ✅ Actualizado 2026-06-05 |
 | MEMORY del equipo | 470 / 37 (post-merge) | Histórico intermedio |
-| `scripts/run-host-tests.sh` corrido 2026-06-05 18:39 ART | **652 tests / 47 suites / 0 fallos (exit 0)** | **Verificado** |
-| `VIDEO-GUION.md` | 652 / 44 | Ya actualizado |
-| Deliverables EN (`docs/competencia/en/`) + Fig.8 | 652 / 47 / 0 | ✅ Actualizado 2026-06-05 |
+| `scripts/run-host-tests.sh` corrido 2026-06-05 18:39 ART | **658 tests / 47 suites / 0 fallos (exit 0)** | **Verificado** |
+| `VIDEO-GUION.md` | 658 / 47 | Ya actualizado |
+| Deliverables EN (`docs/competencia/en/`) + Fig.8 | 658 / 47 / 0 | ✅ Actualizado 2026-06-05 |
 
 > **Acción:** correr el runner el día previo a entregar/grabar y **propagar UNA sola cifra** a los 5 deliverables + README + MEMORY. Tres cifras distintas en circulación = munición para un juez adversarial y riesgo de que dos integrantes digan números distintos (mata Teamwork & Communication).
 >
-> ✅ **RESUELTO 2026-06-05:** cifra única **652/47/0** ya propagada a los 12 deliverables ES+EN + Fig.8. Queda solo re-correr el runner el día previo a entregar por si la cifra cambió.
+> ✅ **RESUELTO 2026-06-05:** cifra única **658/47/0** ya propagada a los 12 deliverables ES+EN + Fig.8. Queda solo re-correr el runner el día previo a entregar por si la cifra cambió.
 
 ---
 

@@ -25,7 +25,7 @@ The **block titles map 1:1 to the rubric criterion** so the JUDGE can see at a g
 
 | Rubric criterion (Short Form Video TDP, 0/1) | Level targeted | Where it is met in this script |
 |---|---|---|
-| **"Easy to follow / a peer competitor understands it"** (Satisfactory = 1) | **Satisfactory (= maximum, 1 pt)** | Problem → solution → how-to-replicate structure (blocks 1–5); ~145 wpm pace; EN subtitles; jargon explained; on-screen demo of 47 suites passing green (652 tests / 47 suites / 0 failures, measured 2026-06-05 18:39 ART via scripts/run-host-tests.sh) |
+| **"Easy to follow / a peer competitor understands it"** (Satisfactory = 1) | **Satisfactory (= maximum, 1 pt)** | Problem → solution → how-to-replicate structure (blocks 1–5); ~145 wpm pace; EN subtitles; jargon explained; on-screen demo of 47 suites passing green (658 tests / 47 suites / 0 failures, measured 2026-06-05 19:50 ART via scripts/run-host-tests.sh) |
 | **"Shows THE feature the team is MOST proud of"** | Met | Block 1 names the feature within the first 12 s: **host-native testing of embedded firmware** |
 | **"Another competitor learns from it"** (replicability — RCJ gold standard) | Met | Block 4 gives the **exact recipe** (pure modules + `g++` + vendored Unity) so any team can copy it |
 
@@ -37,7 +37,7 @@ We chose **host-native testing of embedded firmware** as the "feature we're most
 
 1. **It is the only one that can be demonstrated LITERALLY on screen in seconds.** A video can show **40 test suites passing green in a terminal** — the judge and any competitor *see* the proof, we don't just tell them about it. The other features (3-board fail-safe, ToF trilateration, an anticipating goalkeeper) are powerful but are currently **"host-verified only" and NOT field-validated** (vision not yet recalibrated = blocker #1; kinematics uncalibrated; pose never comes back `valid`); presenting them as finished would be dishonest and risky.
 2. **It solves a pain that EVERY RCJ team has:** verifying embedded firmware without burning bench hours or depending on the physical board. A peer competitor walks away with something they **can apply to their own robot on Monday**. That is exactly what the criterion rewards ("learn from it").
-3. **It has a real, fresh, verifiable number TODAY.** We ran the suite on **2026-06-05** and it returned **652 tests / 47 suites / 0 failures (measured 2026-06-05 18:39 ART via scripts/run-host-tests.sh)** in seconds, 100% offline. It is not a promise: it is reproducible with `bash scripts/run-host-tests.sh`.
+3. **It has a real, fresh, verifiable number TODAY.** We ran the suite on **2026-06-05** and it returned **658 tests / 47 suites / 0 failures (measured 2026-06-05 19:50 ART via scripts/run-host-tests.sh)** in seconds, 100% offline. It is not a promise: it is reproducible with `bash scripts/run-host-tests.sh`.
 4. **It has a concrete, relatable origin story:** the antivirus **Avast** was blocking PlatformIO's registry (`pio test` couldn't download Unity), so the team **routed around it** by vendoring Unity and compiling with `g++`. A real obstacle → a clever fix → now anyone can replicate it.
 5. **It is the most "replicable"**, and replicability is RCJ's gold standard. The recipe fits in 20 seconds of screen time.
 
@@ -70,8 +70,8 @@ We chose **host-native testing of embedded firmware** as the "feature we're most
 | 0:48 | "The idea is simple: we split the firmware in two. On one side, **PURE modules** in C++ —no Arduino, no `Serial`, no `Wire`— that hold ALL of the decision logic. On the other, a thin Arduino glue layer that only wires those modules to the pins." | [IMG: animated 2-layer diagram: "PURE C++ (logic)" on top, "Arduino glue (thin)" below, with an arrow; highlight `src/shared/`] | **Diagram:** "src/shared/ = PURE modules (no Arduino)  ·  glue = thin" |
 | 1:04 | "Because those modules don't depend on hardware, we compile and run them on the PC with `g++`, using the Unity framework we keep stored inside the repo. No internet, no registry, no Avast in the way." | [IMG: capture of the `bash scripts/run-host-tests.sh` command starting to run] | **Text:** "Compile with `g++` + vendored Unity → runs on the laptop, 100% offline" |
 | 1:18 | "And here's what we see when we run the suite, right now:" | [IMG: **REAL screencast** of the terminal printing line by line `PASS test_proto`, `PASS test_kinematics`, `PASS test_localization`… sped up] | **Text (appears at the end):** "live run · 2026-06-05" |
-| 1:26 | "Forty-seven test suites. Six hundred and fifty-two cases. Zero failures. In seconds, without touching the robot." | [IMG: freeze on the final line `Tests: 652 | Failures: 0  (Envs: 47 | OK: 47)`; zoom and highlight] | **Big number:** "652 tests / 47 suites / 0 failures · in seconds"<br>[FIGURE: docs/competencia/assets/fig8_test_growth.png] |
-| 1:36 | *(optional, cuttable if it runs past 3:00)* "And it's not magic all at once: the suite grew traceably session by session —180, 246, 324, 403… up to 652— every bug we found became a test that never slips by again." | [IMG: animated bar chart of the growth 180→246→324→403→652 — use `docs/competencia/assets/fig8_test_growth.png` (gen_figuras.py)] | **Graphic:** "Tests over time: 180 → 246 → 324 → 403 → 545 → 652" |
+| 1:26 | "Forty-seven test suites. Six hundred and fifty-eight cases. Zero failures. In seconds, without touching the robot." | [IMG: freeze on the final line `Tests: 658 | Failures: 0  (Envs: 47 | OK: 47)`; zoom and highlight] | **Big number:** "658 tests / 47 suites / 0 failures · in seconds"<br>[FIGURE: docs/competencia/assets/fig8_test_growth.png] |
+| 1:36 | *(optional, cuttable if it runs past 3:00)* "And it's not magic all at once: the suite grew traceably session by session —180, 246, 324, 403… up to 658— every bug we found became a test that never slips by again." | [IMG: animated bar chart of the growth 180→246→324→403→658 — use `docs/competencia/assets/fig8_test_growth.png` (gen_figuras.py)] | **Graphic:** "Tests over time: 180 → 246 → 324 → 403 → 545 → 658" |
 
 ## BLOCK 4 — How YOU replicate it (criterion: "another competitor learns from it" — the heart of the point) · 1:48–2:30
 
@@ -97,7 +97,7 @@ We chose **host-native testing of embedded firmware** as the "feature we're most
 # SHOT LIST (what to film / capture, in priority order)
 
 ### A. Screencasts (the most important — they are the on-screen proof)
-1. **[CAPTURE — CRITICAL]** REAL screencast of `bash scripts/run-host-tests.sh` running from start to finish, with the final line `Tests: 652 | Failures: 0  (Envs: 47 | OK: 47)` clearly legible. *(Verified 2026-06-05 18:39 ART: the suite returns exactly that, exit code 0.)* Record in a terminal with a large font and a high-contrast theme.
+1. **[CAPTURE — CRITICAL]** REAL screencast of `bash scripts/run-host-tests.sh` running from start to finish, with the final line `Tests: 658 | Failures: 0  (Envs: 47 | OK: 47)` clearly legible. *(Verified 2026-06-05 18:39 ART: the suite returns exactly that, exit code 0.)* Record in a terminal with a large font and a high-contrast theme.
 2. **[CAPTURE]** The command, preceded by `cd "software/teensy/Soccer 2026"`, then `g++ -std=gnu++17 -I src/shared -I lib/Unity/src lib/Unity/src/unity.c src/shared/*.cpp test/test_X/test_main.cpp -o ...` (from `scripts/run-host-tests.sh`: flags on line 43, compile on line 80) on screen, highlighting that the real includes are `-I src/shared -I lib/Unity/src` (NOT `-I src/down`, NOT `lib/Unity`) and that it links `src/shared/*.cpp`.
 3. **[CAPTURE]** Recreate (or use a real screenshot of) the **Avast / PlatformIO registry error** blocking `pio test` (context: TASK-025). If the exact error can't be recreated, show the note in `docs/ESTADO-ACTUAL.md` that documents it.
 4. **[CAPTURE]** Folder tree showing `lib/Unity/` and `test/test_*/` (there are **40+ test folders**).
@@ -106,7 +106,7 @@ We chose **host-native testing of embedded firmware** as the "feature we're most
 
 ### B. Diagrams to produce (motion graphics)
 1. **[DIAGRAM]** The **2 layers**: "PURE C++ modules (`src/shared/`, no Arduino)" on top ↔ "Arduino glue (thin)" below, with an arrow. Reusable in Blocks 3 and 4.
-2. **[DIAGRAM]** **Test-growth bar chart**: 180 → 246 → 324 → 403 → 545 → 652 (dates: snapshots from `docs/ESTADO-ACTUAL.md`; 545 verified 2026-06-04). Pre-rendered figure available: `docs/competencia/assets/fig8_test_growth.png` (gen_figuras.py).
+2. **[DIAGRAM]** **Test-growth bar chart**: 180 → 246 → 324 → 403 → 545 → 658 (dates: snapshots from `docs/ESTADO-ACTUAL.md`; 545 verified 2026-06-04). Pre-rendered figure available: `docs/competencia/assets/fig8_test_growth.png` (gen_figuras.py).
 3. **[GRAPHIC]** "Replicate it in 3 steps" card with the 3 steps.
 
 ### C. Robot / team footage (B-roll)
@@ -122,11 +122,11 @@ We chose **host-native testing of embedded firmware** as the "feature we're most
 - **Duration:** target **< 3:00** (hard rubric limit). Count: ~410 words of narration at **~145 wpm** ≈ **2:50** + tails ≈ **2:55**. The *optional* Block 3 narration (growth chart) is the first cut if time has to be reclaimed.
 - **Language / subtitles:** the video is **narrated AND subtitled in English** (the rubric/judges are international); this EN script is the one that gets recorded. Keep **burned-in English subtitles** for the whole video. All **on-screen overlay text is in English**.
 - **Audio:** clear voice, no music covering the narration; soft, low background music. Narrate slowly in Block 4 (the 3 steps are what the competitor needs to retain).
-- **Terminal legibility:** font ≥ 18 pt, high-contrast theme, zoom/highlight on the line `Tests: 652 | Failures: 0  (Envs: 47 | OK: 47)`. This is the key moment: the judge has to READ the number.
+- **Terminal legibility:** font ≥ 18 pt, high-contrast theme, zoom/highlight on the line `Tests: 658 | Failures: 0  (Envs: 47 | OK: 47)`. This is the key moment: the judge has to READ the number.
 - **Technical honesty (don't oversell):** the video focuses on what is **verified and demonstrable** (the suite runs and passes today). Do not claim that features not bench-validated "work on the field." This protects Sportsmanship and credibility with the judge.
 - **Real data already verified (use verbatim):**
-  - **652 tests / 47 suites / 0 failures (measured 2026-06-05 18:39 ART via scripts/run-host-tests.sh)** (exit code 0). *(NOTE: the rubric and other deliverables cited a lower previous cap; the number rose to 652 tests / 47 suites — it is verified in this session and is the figure to publish.)*
-  - Traceable growth: **180 → 246 → 262 → 324 → 354 → 403 → 545 → 652** (snapshots in `docs/ESTADO-ACTUAL.md`).
+  - **658 tests / 47 suites / 0 failures (measured 2026-06-05 19:50 ART via scripts/run-host-tests.sh)** (exit code 0). *(NOTE: the rubric and other deliverables cited a lower previous cap; the number rose to 658 tests / 47 suites — it is verified in this session and is the figure to publish.)*
+  - Traceable growth: **180 → 246 → 262 → 324 → 354 → 403 → 545 → 658** (snapshots in `docs/ESTADO-ACTUAL.md`).
   - Exact command and recipe: `scripts/run-host-tests.sh` (lines 32–34).
   - Origin: Avast was blocking PlatformIO's registry → **TASK-025**; fix = Unity vendored in `lib/Unity` + `g++`.
   - License **MIT**, public repo: https://github.com/IITA-Proyectos/open-soccer-robocup-team2026 (org `IITA-Proyectos`).
@@ -148,5 +148,5 @@ We chose **host-native testing of embedded firmware** as the "feature we're most
 | 6 | **[CLIP: timelapse of flashing the Teensy + moving the robot by hand]** to illustrate "slow and expensive" | Footage | Block 2 (0:18) |
 | 7 | **[CAPTURE: real Avast/PlatformIO error blocking `pio test`]** — recreate or screenshot; if not, show the TASK-025 note in `ESTADO-ACTUAL.md` | Capture | Block 2 (0:34) |
 | 8 | **[DECISION]** confirm English voice-over is recorded (vs. any fallback); lock before recording the narration | Production | Whole video |
-| 9 | **[VERIFY at the end]** re-run `scripts/run-host-tests.sh` on the recording day to confirm the figure is still **652/47/0** (or update the overlaid number if it changed because of new tests) | Data | Block 3 (1:26, 1:36) |
-| 10 | **[OPTIONAL]** confirm the exact dates of each growth-chart snapshot (180→…→652) if the bars are to be dated | Data | Block 3 (1:36, optional narration) |
+| 9 | **[VERIFY at the end]** re-run `scripts/run-host-tests.sh` on the recording day to confirm the figure is still **658/47/0** (or update the overlaid number if it changed because of new tests) | Data | Block 3 (1:26, 1:36) |
+| 10 | **[OPTIONAL]** confirm the exact dates of each growth-chart snapshot (180→…→658) if the bars are to be dated | Data | Block 3 (1:36, optional narration) |

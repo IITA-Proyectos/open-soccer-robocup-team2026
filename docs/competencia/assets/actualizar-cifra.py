@@ -231,6 +231,29 @@ def build_md_replacers(old_n, old_m, new_n, new_m, stamp):
     replacers.append(("final cadena crecimiento '...545 -> N'",
                       _sub_fn_callable(pat_chain, _chain_repl)))
 
+    # 4f) Overlay del runner sobreimpreso/citado: "Tests: {old_N}" -> "Tests: {new_N}".
+    replacers.append(("'Tests: N' (overlay del runner)",
+                      _sub_fn(re.compile(r"Tests: %d(?!\d)" % old_n),
+                              "Tests: %d" % new_n)))
+
+    # 4g) Formas en PROSA del numero (corren DESPUES de 4a, asi la forma canonica
+    #     "{old_N} tests / {old_M} suites" ya quedo resuelta y no se re-toca):
+    #       "{old_N} tests", "{old_N} host", "{old_N}-host...", "{old_N}-test..."
+    replacers.append(("'N tests' (prosa)",
+                      _sub_fn(re.compile(r"\b%d tests\b" % old_n), "%d tests" % new_n)))
+    replacers.append(("'N host' (prosa)",
+                      _sub_fn(re.compile(r"\b%d host\b" % old_n), "%d host" % new_n)))
+    replacers.append(("'N-host/-test' (prosa)",
+                      _sub_fn_callable(re.compile(r"\b%d-(host|test)" % old_n),
+                                       lambda m: "%d-%s" % (new_n, m.group(1)))))
+
+    # 4h) Endpoint de la cadena de crecimiento en CUALQUIER forma de flecha/palabra:
+    #       "-> {old_N}", "→ {old_N}", "up to {old_N}", "hasta {old_N}".
+    replacers.append(("endpoint cadena (flecha / up to / hasta)",
+                      _sub_fn_callable(
+                          re.compile(r"((?:->|→|up to|hasta)\s*)%d(?!\d)" % old_n),
+                          lambda m: "%s%d" % (m.group(1), new_n))))
+
     return replacers
 
 
@@ -372,6 +395,27 @@ def print_checklist(new_n, new_m):
 # ============================================================================
 # Helpers / main
 # ============================================================================
+def check_stragglers(md_files, old_n):
+    """Tras --apply, avisa si quedo alguna aparicion del numero VIEJO que las reglas
+    no agarraron (formas en prosa raras, pares stale tipo 'N / 44', etc.). NO toca
+    nada: solo lista file:line para que el operador lo resuelva a mano. Las cifras
+    DELETREADAS (sin digitos) no aparecen aca -> van en el checklist manual."""
+    pat = re.compile(r"\b%d\b" % old_n)
+    hits = []
+    for path in md_files:
+        for i, line in enumerate(read_text(path).splitlines(), 1):
+            if pat.search(line):
+                hits.append((os.path.relpath(path, REPO_ROOT), i, line.strip()[:90]))
+    print("")
+    if hits:
+        print("!! STRAGGLERS: quedan %d aparicion(es) del numero viejo (%d) que las "
+              "reglas NO tocaron — revisar/corregir a mano:" % (len(hits), old_n))
+        for rel, ln, txt in hits:
+            print("   %s:%d  %s" % (rel, ln, txt))
+    else:
+        print("[straggler-check] OK: no quedan apariciones del numero viejo (%d)." % old_n)
+
+
 def abort(msg):
     print("ABORT: %s" % msg, file=sys.stderr)
     sys.exit(2)
@@ -423,6 +467,12 @@ def main():
     changed_fig = update_gen_figuras(new_n, stamp, apply)
     if changed_fig or apply:
         regen_fig8(apply)
+
+    # 5b) Chequeo de stragglers: SOLO tras --apply (en dry-run el disco aun tiene la
+    #     cifra vieja, asi que el chequeo no seria significativo). Lista lo que las
+    #     reglas no agarraron para que el operador lo cierre a mano.
+    if apply and old_n != new_n:
+        check_stragglers(md_files, old_n)
 
     # 6) Checklist manual.
     print_checklist(new_n, new_m)

@@ -41,7 +41,7 @@ TEST_MILESTONES = [
     ("Jun 03", 403),
     ("Jun 03\n(merge)", 470),
     ("Jun 04", 545),
-    ("Jun 05\n18:39", 652),
+    ("Jun 05\n19:50", 658),
 ]
 
 def fig8():

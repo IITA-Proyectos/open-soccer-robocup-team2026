@@ -26,7 +26,7 @@ print: 1 side, A4 or US Letter, portrait
 
 ## Verified without the board
 
-- **652 tests / 47 suites / 0 failures** *(living figure: measured 2026-06-05 18:39 ART; grows every session → higher by Incheon)*, host-native (`g++`), **100% offline.**
+- **658 tests / 47 suites / 0 failures** *(living figure: measured 2026-06-05 19:50 ART; grows every session → higher by Incheon)*, host-native (`g++`), **100% offline.**
 - Decision logic lives in **pure C++ modules** (no Arduino / Wire / Serial); they compile and run on a laptop with no robot attached. Verification cycle: seconds.
 - Run it yourself: `scripts/run-host-tests.sh`.
 

@@ -124,6 +124,18 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 
 ---
 
+## (e) MEJORAS DE INGENIERÍA / ROADMAP (control + motores)
+
+> Ideas de modificación a futuro (registradas 2026-06-05). Separan una **restricción de seguridad ACTUAL** de **mejoras post-Incheon / mejores motores**. Detalle técnico en `docs/ESTADO-MADUREZ-FEATURES.md` y en la memoria del coach.
+
+| # | Prio | Idea | Estado / fundamento |
+|---|---|---|---|
+| E1 | **P0 SEGURIDAD (actual)** | **Cap de potencia de motores al ~70%.** Los motores 2026 son **DC con escobillas COMUNES de 5V** alimentados a **7,4V (LiPo 2S)** → si superan ~70% de duty **se queman**. | Restricción dura HOY. **Pendiente: verificar si el firmware ya limita al 70% efectivo** (hay `MAX_SPEED_MM_S`/saturación de ruedas, pero capea velocidad, no necesariamente % de duty). Si no, fix de seguridad gateado (con OK del equipo + `pio`). |
+| E2 | Futuro | **Upgrade de motores** a unidades que toleren 7,4V (idea ya en el roadmap mecánico: motores más cortos con encoders). | Habilita usar >70% y desbloquea E3. En la **definición de motores** del robot-def queda anotado `tipo = brushed 5V DC común → modificar a futuro`. |
+| E3 | Futuro (post-mejores-motores) | **Mapa de velocidad por POSICIÓN ABSOLUTA + DIRECCIÓN de movimiento**: 100% en zona central; bajar al acercarse a los bordes para no salirse — pero **solo si se va HACIA el borde** (si está en el borde pero se aleja, puede ir al 100%). | **Estudiar en profundidad**; **otros equipos ya lo implementaron**. Con los motores 5V@7,4V el limitante real es el 70% (E1), no la salida de cancha. **Depende de pose absoluta válida** (eje X de ToF + `TOF_OFFSET_MM`), hoy NO cableada. Encaja como módulo PURO gateado con fallback byte-idéntico cuando se retome. |
+
+---
+
 ## Camino crítico sugerido (orden de ejecución)
 
 1. **Conseguir los datos duros** (A1-A8): nombre, región, roster, costos, specs mecánicas. Son P0 y desbloquean varios criterios a la vez.

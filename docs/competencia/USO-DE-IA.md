@@ -19,6 +19,8 @@ Usamos IA (principalmente **Claude**, operada por nosotros vía *Claude Code* y 
 
 La IA toca **siete frentes**: diseño de PCB (*VIBE PCB Design*), diseño 3D (*VIBE 3D Design*), programación de firmware (*VIBE Coding*), **testing**, **documentación**, **debugging**, y a futuro **reconocimiento de imágenes con redes neuronales (YOLO)**. En **todos**, hay un **humano que revisa, valida y aprueba** antes de que el cambio sea real, y una **red de seguridad objetiva** (gate de tests, validación de banco) que prueba que el cambio es correcto. Nada se "cree" porque lo dijo la IA: **se verifica**.
 
+**El propósito central de todo esto es uno: acelerar tiempos** — comprimir el ciclo de ingeniería completo, del **concepto** al **robot andando**. Nuestra meta declarada es recorrer las **siete etapas** (concepto → PCB → 3D → montaje → programación → documentación → testeo) en **30 días** con los materiales a mano, porque cada frente VIBE le quita el cuello de botella a una etapa. Lo desarrollamos a fondo en el §1.4, con el caveat honesto de que este año el ciclo fue más lento — pero por la importación de materiales en Argentina, no por el método.
+
 Este documento existe porque creemos que la transparencia es parte de la buena ingeniería. No escondemos que usamos IA: **explicamos por qué su uso es legítimo, educativo y verificable**, y exactamente dónde empieza y termina su rol.
 
 ---
@@ -41,6 +43,39 @@ En nuestro flujo, la IA **propone**; el humano **dispone**. Concretamente, ning�
 
 ### 1.3 Honestidad sobre los límites
 La IA en este proyecto **no** mide con osciloscopio, **no** suelda, **no** calibra la cámara en la cancha real, **no** decide la estrategia de juego por nosotros y **no** garantiza que algo funcione: solo lo hace plausible y rápido. Las cargas de CPU, las latencias, la calibración de visión y la validación de motores **son trabajo humano de banco**. Lo decimos explícitamente en el TDP y en este documento.
+
+### 1.4 El objetivo de fondo: acelerar tiempos — el ciclo de 30 días
+
+Todo lo anterior (la legitimidad, el *human-in-the-loop*, los límites honestos) describe **cómo** usamos IA. Esta subsección dice **para qué**. Y la respuesta es una sola, y es el corazón de nuestro proyecto:
+
+> **Usamos IA para ACELERAR TIEMPOS: comprimir el ciclo de ingeniería completo, desde el CONCEPTO hasta el ROBOT ANDANDO.**
+
+No usamos IA por moda ni para "parecer modernos". La usamos porque resuelve el problema más caro de cualquier equipo de robótica: **el tiempo que pasa entre tener una idea y tener un robot que la ejecuta en la cancha**. Ese *time-to-working-robot* es, históricamente, de meses. Nuestra apuesta —y la creemos posible— es bajarlo a **semanas**.
+
+**La meta concreta: el ciclo completo en 30 días.** Sostenemos que, con los materiales disponibles (motores, sensores, cámaras), un equipo que use IA con disciplina puede recorrer **las siete etapas completas** del desarrollo de un robot de competencia en **30 días**:
+
+1. **Diseño conceptual** — arquitectura del robot, estrategia de juego, división en subsistemas.
+2. **Diseño de PCB + fabricación** — esquemático, ruteo, Gerbers, BOM, pedido a fábrica.
+3. **Modelo 3D del chasis + impresión 3D** — CAD paramétrico de piezas y soportes, exportar e imprimir.
+4. **Montaje** — armado mecánico y electrónico del robot físico.
+5. **Programación** — firmware de las placas y la lógica de juego.
+6. **Documentación** — TDP, póster, contratos de datos, *journal*, entregables de rúbrica.
+7. **Testeo de programas** — verificación de la lógica y validación de comportamiento.
+
+**El ciclo completo.** No una etapa: las siete. Y **creemos que es posible** porque tenemos evidencia de que cada etapa, por separado, ya se comprime.
+
+**Por qué es posible: cada frente VIBE le quita el cuello de botella a una etapa.** La IA no acelera "el proyecto" en abstracto; acelera **cada eslabón** de la cadena, que es donde realmente se pierde el tiempo:
+
+- **VIBE PCB Design** (esquemático/ruteo asistido vía MCP, §4.1) comprime el **diseño electrónico**: lo más tedioso y propenso a error —mapear pines, generar pinouts, revisar netlists— deja de costar días.
+- **VIBE 3D Design** (Fusion 360 vía MCP, §4.2) comprime el **chasis**: el primer borrador imprimible de una pieza pasa de horas de CAD a minutos.
+- **VIBE Coding** (módulos puros + host-tests, §4.3 y §4.4) comprime **programación y testeo a la vez**, y con una ventaja decisiva: como la lógica se compila y se prueba en la PC **sin la placa**, se puede avanzar el cerebro del robot **antes de que el hardware exista**. La programación deja de estar bloqueada esperando el montaje.
+- **Documentación y debugging asistidos** (§4.5 y §4.6) comprimen el **cierre**: documentar al nivel que premia la rúbrica y diagnosticar fallas deja de ser el cuello de botella final.
+
+Sumadas, estas compresiones atacan **todas** las etapas del ciclo a la vez. Esa es la razón por la que un objetivo que suena agresivo —30 días— nos parece alcanzable: no depende de trabajar más horas, sino de que **ninguna etapa quede como cuello de botella**.
+
+**El caveat honesto (porque este documento no sobrevende).** Este año **no** logramos el ciclo de 30 días: fue más lento. Pero la causa **no fue el método** —fue la **provisión de materiales**. Importar componentes en Argentina es lento e impredecible: la aduana fracciona los pedidos y las piezas (motores, sensores, cámaras, conectores) llegan de a poco a lo largo de **semanas**. Buena parte de nuestro calendario lo fijó la logística de importación, no el ritmo de ingeniería.
+
+Y acá está la conexión más importante de todo el documento: **nuestra disciplina de host-testing nació justamente de esa lentitud de materiales.** Separar la lógica pura del hardware y compilarla/testearla en la PC con `g++` (§4.3, §4.4) fue, antes que una buena práctica de software, una **respuesta directa** a no tener el hardware completo: nos permitió construir y validar el cerebro del robot mientras los componentes seguían en tránsito. El cuello de botella físico nos **empujó** a la práctica que más acelera el cuello de botella de software. La meta de los 30 días sigue en pie; lo que aprendimos es que, cuando el método ya no es el límite, el límite se corre a la cadena de suministro — y hasta para eso, la IA nos dejó seguir avanzando.
 
 ---
 

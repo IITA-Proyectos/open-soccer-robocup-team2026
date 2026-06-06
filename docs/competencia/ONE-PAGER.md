@@ -12,6 +12,8 @@ impresion: 1 carilla, A4 o carta, vertical
 
 **Robot de fútbol omnidireccional de 3 placas (TOP / CENTRAL / DOWN) + visión OpenMV, sin pateador — convierte empujando la pelota por inercia.**
 
+**Diseño modular en 2 partes:** la **SUPERIOR** percibe, comunica y fusiona sensores (saber dónde está todo y a qué velocidad; a futuro, hablar con el robot compañero); la **INFERIOR** es el drive train + cerebro de decisión, con una placa auxiliar de piso que pre-procesa su info. Cada módulo se mejora y testea por separado, y abajo queda lugar para sumar kicker + dribbler.
+
 > Vení a saludarnos al pit. Todo lo de abajo es **open-source (MIT)**: copialo, forkealo y hacé un robot mejor que el nuestro.
 
 ---
@@ -51,4 +53,4 @@ URL del repo: `https://github.com/IITA-Proyectos/open-soccer-robocup-team2026`
 
 ---
 
-*IITA — Salta, Argentina · Campeones nacionales RoboCupJunior Soccer Argentina (dic 2025) → RoboCup 2026, Incheon. Invertimos en aprendizaje. Hecho para ser copiado.*
+*IITA — Salta, Argentina · Campeones nacionales RoboCupJunior Soccer Argentina (dic 2025) → RoboCup 2026, Incheon. **Evolución honesta:** ganamos el Nacional con un robot mucho más básico (1 cámara arriba, 3 sensores de luz abajo, sin ToF ni ultrasonido); el rediseño 2026 lo mejoró muchísimo reusando el cerebro campeón. Invertimos en aprendizaje. Hecho para ser copiado.*

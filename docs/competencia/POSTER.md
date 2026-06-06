@@ -102,8 +102,8 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 **TEXTO EXACTO (impreso):**
 
 > ## NUESTRO RECORRIDO
-> - **Dic-2025:** campeones nacionales (Roboliga Argentina (UAI)) con un robot monolítico sobre la placa Zircon.
-> - **2026:** rediseño a **3 placas** reutilizando el cerebro campeón (Zircon) como CENTRAL y sumando percepción (TOP) y piso (DOWN) — *continuidad, no descarte*.
+> - **Dic-2025 — campeones del Nacional con un robot MUCHO más básico:** arriba **una sola cámara** (sin ToF ni ultrasonido), abajo **solo 3 sensores de luz**, todo sobre la placa Zircon… y **aún así ganamos la 1ª competencia nacional de RoboCupJunior Soccer de Argentina**.
+> - **2026 — el salto:** mismo cerebro campeón (Zircon), mucha más percepción. Arriba: **2 cámaras + IMU + 4 ToF + ultrasonido**. Abajo: **anillo de 32 sensores + 2 OTOS**. Rediseño a **3 placas** sumando percepción (TOP) y piso (DOWN) — *continuidad, no descarte*.
 > - **May–Jun 2026:** bring-up de las 3 placas físicas, ~30 sesiones de banco documentadas, suite de tests de 180 → **658 tests / 47 suites / 0 fallos** (medido 2026-06-05 19:50 ART con `scripts/run-host-tests.sh`).
 > - **Jun–Jul 2026:** Incheon. Estrategia declarada del equipo: **invertir en aprendizaje**, jugar partidos honestos y capturar datos.
 >
@@ -113,6 +113,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > ### 🛣️ Próximo paso (roadmap declarado)
 > **Comunicación robot-a-robot** (arquero ↔ delantero) por **ESP-NOW** vía la placa COMM (ESP32-C6, ya en el robot): compartir pose, si cada uno ve la pelota y su estado para **coordinar estrategia**. Falta integrarlo al WorldSnapshot y validarlo en banco — fiel a nuestra disciplina, la conducta cooperativa "duerme" hasta que el dato fluya, sin regresión. También planeamos pasar a **4 ruedas omni** con **motores más cortos, con encoders** (más estabilidad y control, y espacio liberado para el **kicker** y el **dribbler**, que quedan para el año próximo).
 
+`[FOTO ANTES/DESPUÉS — Fig.1a: robot campeón del Nacional 2025 — versión básica: 1 cámara, 3 sensores de luz · Fig.1b: robot 2026 — 2 cámaras + IMU + 4 ToF + ultrasonido arriba, anillo de 32 sensores + 2 OTOS abajo. Mismo cerebro Zircon.]`
 `[FOTO: equipo IITA con el robot/trofeo en el Nacional 2025 (UAI) — etiquetar Fig.1]`
 
 > **Roles del equipo:**
@@ -148,6 +149,8 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 
 > ## MÉTODO Y DISEÑO — ¿Por qué 3 placas?
 > Cada placa procesa **donde está el sensor** y se decide en **el centro** (regla estándar de robótica móvil). Esto reduce el tráfico UART, apunta a dejar cada MCU **<30% de CPU** (*objetivo de diseño*, no medido con osciloscopio aún) y permite reemplazar una placa sin tocar las otras.
+>
+> **Diseño en 2 módulos, una interfaz de datos limpia:** el robot se parte en un **MÓDULO SUPERIOR = percepción + comunicación + fusión de sensores** (saber dónde está todo —pelota, arcos, obstáculos— y a qué velocidad se mueve, fusionado en el **WorldSnapshot**; a futuro, comunicarse con el robot **compañero** para compartir info) y un **MÓDULO INFERIOR = drive train + cerebro de decisión** (motores, drivers y lógica de juego; una placa auxiliar de piso —DOWN— manda su info de línea/odometría **ya pre-procesada** hacia arriba; a futuro, encoders). **Ventaja:** cada módulo se mejora y se testea por separado → **acelera tiempos** (ver "VIBE"). El inferior deja **lugar para KICKER + DRIBBLER** (este año no se hizo por falta de tiempo para montar motores más cortos → se hizo lo realizable: el delantero empuja por inercia).
 >
 > | Placa | MCU | Rol | Sensores / actuadores |
 > |---|---|---|---|

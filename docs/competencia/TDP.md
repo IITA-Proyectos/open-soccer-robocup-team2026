@@ -36,6 +36,13 @@ Dos robots omnidireccionales (base KIWI de 3 ruedas omni a 120°): **ROBOT1 = ar
 
 TOP fusiona todo en un **WorldSnapshot de 31 bytes** que envía a CENTRAL por UART a 100 Hz; DOWN difunde línea + odometría a CENTRAL y TOP (broadcast simétrico). La lógica de decisión vive en **módulos C++ puros** verificados con una suite **host-native (658 tests / 47 suites / 0 failures (measured 2026-06-05 19:50 ART via scripts/run-host-tests.sh))** que corre en una PC sin la placa.
 
+**Lectura en 2 módulos (la idea de diseño que organiza todo).** Aunque físicamente son 3 placas + COMM, conceptualmente el robot se diseñó como **DOS módulos** con responsabilidades claras y una interfaz de datos limpia entre ellos:
+
+- **MÓDULO SUPERIOR — percepción / comunicación.** Su trabajo es **SABER el estado del juego**: dónde están todos los elementos en la cancha (pelota, arcos, obstáculos), a qué **velocidad** se mueven y —a futuro— **comunicarse con el robot compañero** para compartir y complementar información. Es la **capa de fusión de sensores** (visión + IMU + ToF + ultrasonido → un modelo del mundo, el **WorldSnapshot**). Lo encarna la placa **TOP**.
+- **MÓDULO INFERIOR — drivetrain + cerebro de decisión.** Es la parte **MÓVIL** (motores y drivers) más el **cerebro que DECIDE la jugada** (la placa **CENTRAL** campeona, Zircon). Incluye una **placa auxiliar de piso (DOWN)** con sensores (luz/línea, odometría OTOS y, a futuro, encoders de motor) cuya información **no viaja cruda**: llega al módulo superior **pre-procesada y mejorada** (broadcast simétrico).
+- **La interfaz entre módulos es un contrato de datos byte-a-byte** (el WorldSnapshot de 31 B). Esto es lo que vuelve modular al diseño: cada módulo se **diseña, mejora y testea por separado**, y un módulo puede reemplazarse sin rehacer el otro. Esa independencia **acelera tiempos** —trabajo en paralelo y reemplazo aislado de un módulo— y conecta directamente con la meta de comprimir el ciclo concepto→robot que detallamos en §4.5.
+- **Puerta abierta en el módulo inferior:** el diseño deja **lugar para un KICKER y un DRIBBLER**. Hoy no se montaron porque exigían cambiar los motores por unos más **cortos** que liberaran espacio interno, y no había tiempo → se priorizó lo realizable en poco plazo (el delantero **empuja por inercia**). Al estar la decisión/movilidad encapsulada en el módulo inferior, sumarlos más adelante **no obliga a rediseñar el módulo superior**.
+
 ---
 
 # §1. ELECTRICAL — Diseño eléctrico replicable, con razonamiento basado en datos
@@ -383,6 +390,12 @@ Tres índices vivos combaten la deriva de docs: `FUENTES-DE-VERDAD.md` (un doc c
 ## 4.1 El recorrido del equipo
 
 Somos el equipo de **IITA (Salta, Argentina)**, **campeones nacionales** de RoboCupJunior Soccer en la Roboliga Argentina (UAI, diciembre 2025), clasificados a **Incheon 2026**. El robot 2026 **no parte de cero**: la placa **CENTRAL (Zircon Rev v15 + Teensy 4.1) es exactamente la que ganó el Nacional 2025**. La decisión estratégica fue **montar capacidad nueva alrededor de lo que ya funciona**, no reemplazarlo: TOP (percepción) y DOWN (piso) se suman como pre-procesadores. Si una placa nueva falla en Incheon, CENTRAL puede degradar a modo monolítico.
+
+**De dónde venimos: la evolución honesta 2025 → 2026.** En la **competencia nacional** el robot era **mucho más básico**: arriba **sólo una cámara** (sin ToF, sin ultrasonido); abajo **sólo 3 sensores de luz**. Aun así fue suficiente para competir y **ganar la primera edición de RoboCupJunior Soccer de Argentina** (campeones). El **rediseño 2026** lo mejora muchísimo: arriba **2 cámaras + IMU + 4 ToF + ultrasonido + árbitro**; abajo **anillo de 32 sensores de línea + 2 OTOS de odometría**. Lo importante es **cómo** se hizo esa evolución: **el diseño modular permitió mejorar sin tirar todo**. Se **reusó el cerebro CENTRAL (Zircon) campeón** y se le sumaron, como módulos independientes, la **percepción (TOP)** y el **piso (DOWN)** — exactamente el contrato de 2 módulos descripto en el resumen del robot. La interfaz de datos limpia entre módulos es lo que hizo viable saltar de "1 cámara + 3 sensores" a la plataforma de fusión sensorial actual **sin rehacer la base ganadora**.
+
+`[FOTO: robot del Nacional 2025 — versión básica: 1 cámara, 3 sensores de luz, sin ToF/ultrasonido]`
+
+`[FOTO: antes/después — robot Nacional 2025 (básico) junto al robot Incheon 2026 (2 cámaras + IMU + 4 ToF + ultrasonido arriba; anillo de 32 sensores + 2 OTOS abajo), mostrando que el módulo CENTRAL es el mismo]`
 
 La filosofía del equipo es **"invertir en aprendizaje, no en podio"**: un robot honesto, partidos jugados, y captura sistemática de cada lección en el `journal/` de ingeniería. Este TDP refleja esa honestidad: marcamos claramente qué está *validado en banco* vs *sólo verificado en host*, y publicamos hasta los falsos negativos que nos costaron tiempo (el power-cycle de los ToF, el árbitro por GPIO, el contrato de línea silenciosamente roto).
 

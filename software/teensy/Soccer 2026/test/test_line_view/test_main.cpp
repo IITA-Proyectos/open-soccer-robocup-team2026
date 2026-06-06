@@ -74,6 +74,49 @@ void test_stale_age_above_limit_is_true(void) {
 }
 
 // ============================================================================
+// lsv2_line_usable (combinador PURO: transporte fresco && muestra no rancia)
+// ============================================================================
+
+// fresh_rx && muestra fresca ⇒ usable.
+void test_usable_fresh_and_not_stale_is_true(void) {
+    LineStatusV2 s = make_sample(/*data_valid=*/1, /*age=*/10);
+    TEST_ASSERT_TRUE(lsv2_line_usable(/*fresh_rx=*/true, s, 50));
+    // age == max (borde, NO stale) sigue usable.
+    LineStatusV2 s_edge = make_sample(/*data_valid=*/1, /*age=*/50);
+    TEST_ASSERT_TRUE(lsv2_line_usable(/*fresh_rx=*/true, s_edge, 50));
+}
+
+// fresh_rx pero muestra rancia ⇒ NO usable (la frescura de transporte no salva
+// a una muestra vieja dentro de DOWN).
+void test_usable_fresh_but_stale_is_false(void) {
+    LineStatusV2 s = make_sample(/*data_valid=*/1, /*age=*/51);
+    TEST_ASSERT_FALSE(lsv2_line_usable(/*fresh_rx=*/true, s, 50));
+    LineStatusV2 s_old = make_sample(/*data_valid=*/1, /*age=*/200);
+    TEST_ASSERT_FALSE(lsv2_line_usable(/*fresh_rx=*/true, s_old, 50));
+}
+
+// !fresh_rx ⇒ NO usable, aunque la muestra sea perfectamente fresca (el enlace
+// está callado; nada que consumir).
+void test_usable_not_fresh_is_false(void) {
+    LineStatusV2 s = make_sample(/*data_valid=*/1, /*age=*/0);
+    TEST_ASSERT_FALSE(lsv2_line_usable(/*fresh_rx=*/false, s, 50));
+    // !fresh_rx domina incluso con muestra que de por sí no es stale.
+    LineStatusV2 s_edge = make_sample(/*data_valid=*/1, /*age=*/50);
+    TEST_ASSERT_FALSE(lsv2_line_usable(/*fresh_rx=*/false, s_edge, 50));
+}
+
+// sample_age_ms == 255 (N/A, edad desconocida) NO marca stale ⇒ con fresh_rx
+// la línea sigue usable (el sentinel no debe bloquear).
+void test_usable_age_sentinel_255_is_usable(void) {
+    LineStatusV2 s = make_sample(/*data_valid=*/1, /*age=*/255);
+    TEST_ASSERT_TRUE(lsv2_line_usable(/*fresh_rx=*/true, s, 50));
+    // Incluso con max_age=0 el sentinel no es stale ⇒ usable si fresh_rx.
+    TEST_ASSERT_TRUE(lsv2_line_usable(/*fresh_rx=*/true, s, 0));
+    // Pero sin fresh_rx, el sentinel no alcanza: NO usable.
+    TEST_ASSERT_FALSE(lsv2_line_usable(/*fresh_rx=*/false, s, 50));
+}
+
+// ============================================================================
 // MAIN
 // ============================================================================
 
@@ -83,5 +126,9 @@ int main(int, char**) {
     RUN_TEST(test_stale_age_sentinel_255_is_false);
     RUN_TEST(test_stale_age_within_limit_is_false);
     RUN_TEST(test_stale_age_above_limit_is_true);
+    RUN_TEST(test_usable_fresh_and_not_stale_is_true);
+    RUN_TEST(test_usable_fresh_but_stale_is_false);
+    RUN_TEST(test_usable_not_fresh_is_false);
+    RUN_TEST(test_usable_age_sentinel_255_is_usable);
     return UNITY_END();
 }

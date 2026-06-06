@@ -32,6 +32,10 @@ float lg_sensor_angle_deg(int i, int n);
 //   del cartesiano). El SIGNO y la CONVENCIÓN (0°=frente, horario+, escape=opuesto)
 //   se CONSERVAN — sólo cambia la magnitud/exactitud del ángulo, no su sentido.
 //   Es un fallback aceptable cuando la geometría completa no está disponible.
+//   (Verificado contra line_geometry.cpp: lg_compute() suma cos/sin = vector
+//   unitario en .cpp:20-21; lg_compute_xy() suma pos[i].x_mm/y_mm = posición
+//   real en .cpp:66-67; ambos usan escape = ángulo+180 y el mismo to_cd(),
+//   .cpp:27 y .cpp:76, por eso el signo/convención no cambia.) [audit 2026-06-05]
 GeomResult lg_compute(const bool* white, const float* sensor_angle_deg, int n);
 
 // Centroide CARTESIANO usando las posiciones (x, y) reales de cada sensor.

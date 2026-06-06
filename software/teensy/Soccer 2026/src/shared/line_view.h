@@ -91,6 +91,30 @@ inline bool lsv2_sample_is_stale(const LineStatusV2& s, uint8_t max_age_ms) {
         && s.sample_age_ms > max_age_ms;
 }
 
+// ¿La línea es USABLE para decidir? Combinador PURO que junta las DOS capas de
+// frescura — la del transporte y la de la muestra — en una sola compuerta, para
+// que el caller (hoy strategy.cpp:line_data_fresh(), ver wiring abajo) consuma
+// `sample_age_ms` sin reimplementar la regla §3.5.5 del contrato.
+//   • fresh_rx  = ¿llegó un frame reciente por el enlace? (frescura de
+//     TRANSPORTE; hoy la calcula world_model — el rx-watchdog del CENTRAL —, NO
+//     este header puro, que no tiene reloj). Espejo de line_data_fresh().
+//   • !lsv2_sample_is_stale(s, max_age_ms) = la MUESTRA dentro de DOWN no es
+//     rancia (frescura de DATO, sub-frame). Hereda toda la semántica del helper:
+//       - data_valid == 0      ⇒ stale=false ⇒ NO bloquea por esta vía (la
+//         compuerta maestra ya se aplica río arriba; ver nota).
+//       - sample_age_ms == 255 ⇒ N/A ("edad desconocida"), NO se trata como
+//         rancia ⇒ no bloquea (la línea sigue usable si fresh_rx).
+//       - sample_age_ms > max_age_ms ⇒ stale=true ⇒ NO usable.
+// Nota de compuerta maestra: este combinador NO chequea data_valid por sí mismo
+// (lsv2_sample_is_stale lo trata como "no stale"). El caller real ya gatea por
+// data_valid aguas arriba (world_model sólo marca fresh tras un frame válido); si
+// se usara en aislamiento, combinar con lsv2_line_present / s.data_valid según
+// el dato que se vaya a leer. ADITIVO: helper PURO, NO cableado a strategy.
+inline bool lsv2_line_usable(bool fresh_rx, const LineStatusV2& s,
+                             uint8_t max_age_ms) {
+    return fresh_rx && !lsv2_sample_is_stale(s, max_age_ms);
+}
+
 // Penetración en la línea, clampeada a uint8 para compat con el accessor viejo
 // `world_model_get_line_depth()`. Honra la compuerta maestra: si data_valid==0,
 // la profundidad no es confiable (el fallback por profundidad del PID lateral

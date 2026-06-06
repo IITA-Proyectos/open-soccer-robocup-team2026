@@ -112,6 +112,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 >
 > ### 🛣️ Próximo paso (roadmap declarado)
 > **Comunicación robot-a-robot** (arquero ↔ delantero) por **ESP-NOW** vía la placa COMM (ESP32-C6, ya en el robot): compartir pose, si cada uno ve la pelota y su estado para **coordinar estrategia**. Falta integrarlo al WorldSnapshot y validarlo en banco — fiel a nuestra disciplina, la conducta cooperativa "duerme" hasta que el dato fluya, sin regresión. También planeamos pasar a **4 ruedas omni** con **motores más cortos, con encoders** (más estabilidad y control, y espacio liberado para el **kicker** y el **dribbler**, que quedan para el año próximo).
+> **(FUTURO — año próximo)** Evolucionar la interfaz del diseño modular de **UART punto-a-punto** a un **bus CAN troncal** entre las 3 placas Teensy (robusto al ruido, un par de cables, escalable a N nodos) + una **4ª placa ESP32 gateway** que puentea el bus al exterior por inalámbrico: para el robot **compañero** y para **telemetría** — monitoreo en vivo estilo **Fórmula 1** (ver sensores en entrenamiento, registrar y analizar para mejorar el software).
 
 `[FOTO ANTES/DESPUÉS — Fig.1a: robot campeón del Nacional 2025 — versión básica: 1 cámara, 3 sensores de luz · Fig.1b: robot 2026 — 2 cámaras + IMU + 4 ToF + ultrasonido arriba, anillo de 32 sensores + 2 OTOS abajo. Mismo cerebro Zircon.]`
 `[FOTO: equipo IITA con el robot/trofeo en el Nacional 2025 (UAI) — etiquetar Fig.1]`

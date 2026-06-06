@@ -38,6 +38,7 @@ proposito: "Tener claro qué está pensado pero no operativo, en qué nivel de m
 |---|---|---|
 | **Mapa de velocidad posición+dirección** | Bajar velocidad cerca del borde **solo si se va hacia el borde** (100% si se aleja). Otros equipos ya lo hacen. | Estudio en profundidad + **depende de pose absoluta** (N2 abajo) + mejores motores (hoy limita el cap 70%). Ver `MEJORAS-PENDIENTES.md` (e). |
 | **Visión por YOLO (NN en NPU N6)** | Reemplazar umbrales LAB por red neuronal on-device (robusta a iluminación). | Dataset etiquetado + entrenar/cuantizar + desplegar en NPU + mantener LAB como fallback. Roadmap declarado (`USO-DE-IA.md` §4.7). |
+| **CANbus troncal + ESP32 gateway (telemetría F1)** | Bus CAN entre las 3 Teensy (en vez de UART punto-a-punto) + 4ª placa ESP32 que puentea el bus al exterior → robot compañero + **telemetría/monitoreo estilo Fórmula 1**. | Diseño del bus + 4ª placa; migrar el transporte del WorldSnapshot de UART a CAN; firmware del gateway + app de telemetría. Roadmap **año próximo**. Ver `MEJORAS-PENDIENTES.md` (e) E4 + TDP §4.6. |
 
 ---
 

@@ -29,7 +29,16 @@ DownModel g_dm{};
 DownModelCfg g_dmcfg = {
     /* imminent_depth        */ 6,
     /* adapt_alpha           */ 0.02f,
-    /* calib_min_margin      */ 120,
+    // calib_min_margin: separación verde/blanco mínima (counts) para confiar en el
+    // frame (data_valid). Banco 2026-06-06 (María, ROBOT1): márgenes estáticos reales
+    // 82–339 (5 flacos: S09=82, S16=88, S32=108, S15=110, S30=116). 120 era inalcanzable.
+    // CLAVE: con 60 arrancaba valid=1 pero a ~1-2 s la auto-adaptación del carpet
+    // (adapt_alpha → lc_adapt_carpet lleva el baseline 'verde' al valor en vivo) erosiona
+    // el margen del sensor más flaco (S09) por debajo de 60 → data_valid volvía a 0 (CALIB?).
+    // Bajado a 40 = 2× la banda de histéresis (±20), piso razonable que aguanta la erosión.
+    // Si reaparece CALIB? estable, S09 es el límite real (óptica/altura del sensor) o hay
+    // que subir su señal / reducir adapt_alpha. Ver docs/pruebas-banco/DOWN.md.
+    /* calib_min_margin      */ 40,
     /* lifted_debounce_ms    */ 100,
     /* lifted_min_sensors    */ (NUM_LINE_SENSORS * 7) / 8,
     /* lifted_delta_below    */ 80,

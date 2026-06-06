@@ -42,6 +42,7 @@
 #include "proto.h"
 #include "types.h"
 #include "line_view.h"
+#include "pose_view.h"   // pose_from_frame: rumbo del OTOS de la base (DOWN 0x11)
 #include "imu_zircon.h"
 
 using namespace iitasoccer;
@@ -59,6 +60,11 @@ constexpr int VEL_M3 = 100;
 constexpr int DIR_M1 = -1;
 constexpr int DIR_M2 = +1;   // contrario a M1
 constexpr int DIR_M3 = +1;   // acompaña
+
+// Signo que mapea "escapar a la derecha" (esc_lat>0) al g_patrol_dir. Si el robot
+// huye para el lado CONTRARIO al que deberia, invertir este valor (banco 2026-06-06).
+// Invertido a -1 en banco (María 2026-06-06): con +1 huía para el lado equivocado.
+constexpr int ESCAPE_DIR_SIGN = -1;
 
 // Correccion de centrado: PWM extra adelante/atras para volver a la linea.
 // Se aplica a M1 y M2 (que son los que mueven adelante/atras en este robot).
@@ -113,6 +119,16 @@ bool         g_have_lsv2    = false;
 uint32_t     g_last_lsv2_ms = 0;
 uint32_t     g_last_line_ms = 0;   // ultima vez que se vio linea presente
 
+// ---- Rumbo desde el OTOS de la base (DOWN lo difunde, 0x11 Pose2D) -----------
+// La CENTRAL no tiene giroscopio: usamos el heading del OTOS para mantener el
+// frente mientras patrulla (banco Maria 2026-06-06). g_otos_zero_deg = rumbo al
+// arrancar la patrulla (setpoint). Sin pose fresca -> sin correccion de giro.
+float        g_otos_heading_deg = 0.0f;
+float        g_otos_zero_deg    = 0.0f;
+bool         g_have_otos        = false;
+uint32_t     g_last_otos_ms     = 0;
+constexpr uint32_t OTOS_TIMEOUT_MS = 250;
+
 // ---- Estado -----------------------------------------------------------------
 enum class State : uint8_t { STOPPED, PATROL };
 State    g_state          = State::STOPPED;
@@ -133,6 +149,18 @@ bool botonApretadoEdge() {
         if (g_btn_filtered) return true;
     }
     return false;
+}
+
+// ENTER por el monitor serie = mismo efecto que el boton (pin 9). Para bancos
+// donde el boton fisico no es accesible (banco María 2026-06-06). Drena el resto
+// de los bytes y solo dispara con \n / \r (no con basura del USB).
+bool enterPorSerialEdge() {
+    bool adv = false;
+    while (Serial.available() > 0) {
+        const char c = static_cast<char>(Serial.read());
+        if (c == '\n' || c == '\r') adv = true;
+    }
+    return adv;
 }
 
 // ---- Motores (logica de Elias; M2 invertido) --------------------------------
@@ -166,11 +194,22 @@ void pid_reset() {
     g_pid_last_ms    = millis();
 }
 
-// Devuelve la correccion rotacional (en "unidades de PWM") para volver a 0 grados.
+// Wrap de un angulo a [-180, 180] grados (para el error de rumbo).
+float wrap180_deg(float a) {
+    while (a >  180.0f) a -= 360.0f;
+    while (a < -180.0f) a += 360.0f;
+    return a;
+}
+
+// Devuelve la correccion rotacional (en "unidades de PWM") para volver al rumbo
+// de arranque (g_otos_zero_deg), usando el heading del OTOS de la base.
 float pid_heading_correccion() {
-    if (!imu_is_ready()) return 0.0f;       // sin giroscopio -> sin correccion
-    const float heading = imu_get_heading();
-    const float error   = 0.0f - heading;   // queremos heading = 0
+    if (!g_have_otos || (millis() - g_last_otos_ms) > OTOS_TIMEOUT_MS)
+        return 0.0f;                        // sin rumbo fresco del OTOS -> sin correccion
+    const float heading = g_otos_heading_deg;
+    // Signo INVERTIDO (banco 2026-06-06): con (zero - heading) hacia "media luna"
+    // (realimentacion positiva). (heading - zero) corrige DEVUELTA al rumbo inicial.
+    const float error   = wrap180_deg(heading - g_otos_zero_deg);
 
     const uint32_t now = millis();
     float dt = (now - g_pid_last_ms) / 1000.0f;
@@ -233,12 +272,19 @@ void poll_down_link() {
     while (DOWN_UART.available() > 0) {
         const uint8_t b = static_cast<uint8_t>(DOWN_UART.read());
         if (g_decoder.feed(b)) {
+            const Frame& f = g_decoder.get_frame();
             LineStatusV2 ls{};
-            if (lsv2_from_frame(g_decoder.get_frame(), ls)) {
+            Pose2D pose{};
+            if (lsv2_from_frame(f, ls)) {
                 g_lsv2 = ls;
                 g_have_lsv2 = true;
                 g_last_lsv2_ms = millis();
                 if (linea_presente(ls)) g_last_line_ms = millis();
+            } else if (pose_from_frame(f, pose)) {
+                // Rumbo del OTOS de la base (0x11). heading_centideg = grados x100.
+                g_otos_heading_deg = pose.heading_centideg / 100.0f;
+                g_have_otos        = true;
+                g_last_otos_ms     = millis();
             }
         }
     }
@@ -263,9 +309,9 @@ void enter_state(State s) {
         parar();
         Serial.println(F(">>> PARADO. Apreta el boton para patrullar."));
     } else {
-        // Al arrancar: el frente ACTUAL del robot es el 0 deseado (apuntando al
-        // arco). Fijamos el cero del giroscopio aca y reseteamos el PID.
-        imu_recalibrate_heading_zero();
+        // Al arrancar: el frente ACTUAL del robot es el rumbo deseado (apuntando
+        // al arco). Fijamos el cero del rumbo (del OTOS) aca y reseteamos el PID.
+        g_otos_zero_deg = g_otos_heading_deg;
         pid_reset();
         Serial.println(F(">>> PATRULLANDO la linea del area."));
     }
@@ -282,7 +328,12 @@ void print_status(int corr_fb) {
     Serial.print(F(" cross="));
     if (g_lsv2.cross_track_mm == LSV2_NA_I16) Serial.print(F("N/A"));
     else { Serial.print(g_lsv2.cross_track_mm); Serial.print(F("mm")); }
+    Serial.print(F(" ang="));
+    if (g_lsv2.line_angle_centideg == LSV2_NA_I16) Serial.print(F("N/A"));
+    else { Serial.print(g_lsv2.line_angle_centideg / 100.0f, 0); Serial.print(F("deg")); }
     Serial.print(F(" corr=")); Serial.print(corr_fb);
+    Serial.print(F(" hdg=")); Serial.print(g_otos_heading_deg, 0);
+    Serial.print(F(" zero=")); Serial.print(g_otos_zero_deg, 0);
     Serial.print(F(" | frames=")); Serial.println(g_decoder.frames_decoded());
 }
 
@@ -305,13 +356,10 @@ void setup() {
 
     DOWN_UART.begin(DOWN_LINK_BAUD);
 
-    // Giroscopio: init robusto (no bloquea si falla). Mantener el robot QUIETO
-    // unos segundos durante el arranque para que calibre y capture el cero.
-    Serial.println(F(" Inicializando giroscopio (NO mover el robot)..."));
-    const bool imu_ok = imu_init();
-    Serial.print(F(" Giroscopio: "));
-    Serial.println(imu_ok ? F("OK (patrulla derecho con PID)")
-                          : F("NO detectado (patrulla SIN correccion de giro)"));
+    // Rumbo: la CENTRAL no tiene giroscopio -> usamos el heading del OTOS de la
+    // base (DOWN lo difunde por Serial1, 0x11 Pose2D). El cero del rumbo se captura
+    // al arrancar cada patrulla. Sin pose fresca del OTOS -> sin correccion de giro.
+    Serial.println(F(" Correccion de rumbo: OTOS de la base (DOWN), cero al arrancar la patrulla."));
 
     Serial.println();
     Serial.println(F("=================================================="));
@@ -326,6 +374,7 @@ void setup() {
     Serial.println(F(" *** SIN seguridad de levantado (solo watchdog de enlace) ***"));
 #endif
     Serial.println(F(" >>> SUJETA EL ROBOT o ruedas al aire la primera vez. <<<"));
+    Serial.println(F(" Boton (pin 9) o ENTER en el monitor: arranca / para la patrulla."));
 
     enter_state(State::STOPPED);
 }
@@ -333,7 +382,7 @@ void setup() {
 void loop() {
     poll_down_link();
 
-    if (botonApretadoEdge()) {
+    if (botonApretadoEdge() || enterPorSerialEdge()) {
         if (g_state == State::STOPPED) enter_state(State::PATROL);
         else                           enter_state(State::STOPPED);
     }
@@ -366,17 +415,30 @@ void loop() {
             if (g_lsv2.cross_track_mm != LSV2_NA_I16) {
                 const int cross = g_lsv2.cross_track_mm;
                 if (abs(cross) > DEADBAND_MM) {
-                    corr_fb = (cross > 0) ? CENTRADO_PWM_V : -CENTRADO_PWM_V;
+                    // Signo INVERTIDO (banco Maria 2026-06-06): con el signo previo el
+                    // robot se iba PARA ATRAS (se alejaba de la linea) en vez de
+                    // centrarse sobre ella. Asi el centrado tira HACIA la linea.
+                    corr_fb = (cross > 0) ? -CENTRADO_PWM_V : CENTRADO_PWM_V;
                 }
             }
 
             // --- Correccion de GIRO (PID de heading) ---
+            // Reactivada con el signo CORREGIDO (banco Maria 2026-06-06): la version
+            // anterior hacia "media luna" (realimentacion positiva) -> se invirtio el
+            // signo del error en pid_heading_correccion() para que MANTENGA el rumbo.
             const float corr_rot = pid_heading_correccion();
 
-            // Cambiar de lado de patrulla cada HALF_PERIOD_MS (barrido del arco).
-            if (millis() - g_phase_start_ms >= HALF_PERIOD_MS) {
-                g_patrol_dir = -g_patrol_dir;
-                g_phase_start_ms = millis();
+            // --- Direccion: ALEJARSE de la linea segun el angulo de escape ---
+            // (banco Maria 2026-06-06) En vez del barrido por tiempo, cuando hay
+            // linea presente movemos hacia el lado OPUESTO a ella. escape_angle
+            // apunta hacia adentro de la cancha (0=frente, +=derecha); su componente
+            // lateral sin(escape) dice si huir a la derecha (+) o izquierda (-).
+            if (g_lsv2.escape_angle_centideg != LSV2_NA_I16) {
+                const float esc_deg = g_lsv2.escape_angle_centideg / 100.0f;
+                const float esc_lat = sinf(esc_deg * DEG_TO_RAD);  // + = huir a la derecha
+                if (fabsf(esc_lat) > 0.25f) {   // hay un lado claro hacia donde huir
+                    g_patrol_dir = (esc_lat > 0) ? ESCAPE_DIR_SIGN : -ESCAPE_DIR_SIGN;
+                }
             }
 
             mover(g_patrol_dir, corr_fb, corr_rot);

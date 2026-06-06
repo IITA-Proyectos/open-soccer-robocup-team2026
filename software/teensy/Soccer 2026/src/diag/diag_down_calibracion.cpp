@@ -54,7 +54,10 @@ bool g_carpet_listo = false;
 bool g_blanco_listo = false;
 
 // Margen minimo para considerar que un sensor separa verde de blanco.
-constexpr uint16_t MIN_MARGIN = 80;
+// Alineado con calib_min_margin del firmware (comm_central.cpp). OJO: el firmware
+// AUN puede marcar CALIB? si la auto-adaptacion del carpet erosiona el margen en vivo
+// por debajo de este valor (ver nota en comm_central.cpp). Banco 2026-06-06: 80 -> 60 -> 40.
+constexpr uint16_t MIN_MARGIN = 40;
 
 // Deriva g_calib desde los promedios actuales del line_ring (carpet + white).
 void derivar_calib() {

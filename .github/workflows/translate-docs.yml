@@ -1,9 +1,15 @@
-name: Auto Translate Official Docs (ES -> EN)
+name: Auto Translate Deliverables (ES -> EN)
 
+# OPCIÓN A (2026-06-05): repuntado de docs/official/ a docs/competencia/.
+# Dispara cuando cambia un .md fuente (ES) en docs/competencia, EXCEPTO el target en/
+# (para no entrar en loop) y assets/. Solo en main.
 on:
   push:
+    branches: [main]
     paths:
-      - 'docs/official/es/**'
+      - 'docs/competencia/**'
+      - '!docs/competencia/en/**'
+      - '!docs/competencia/assets/**'
 
 permissions:
   contents: write
@@ -41,12 +47,13 @@ jobs:
       - name: Create Pull Request with translations
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "docs(en): auto-translation from docs/official/es"
+          commit-message: "docs(en): auto-translation from docs/competencia"
           title: "docs(en): auto-translation update"
           body: |
-            Automated translation from `docs/official/es` to `docs/official/en`.
-            - Source of truth: `docs/official/es/`
-            - `docs/official/en/` is AUTO-GENERATED (do not edit manually)
+            Automated translation from `docs/competencia` (ES) to `docs/competencia/en` (EN).
+            - Source of truth: `docs/competencia/` (Spanish)
+            - `docs/competencia/en/` is AUTO-GENERATED (do not edit manually)
+            - Only judge-facing deliverables are translated (see `DELIVERABLES` in `scripts/translate_docs.py`)
             - Review required for L2 (international competition docs)
           branch: bot/translate-docs
           base: main

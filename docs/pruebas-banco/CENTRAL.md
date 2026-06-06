@@ -1,5 +1,10 @@
 # TEST-CARDS de banco — Placa CENTRAL (Teensy 4.1 sobre Zircon Rev v15)
 
+> ✅ **ACTUALIZADO 2026-06-06 — programas que antes faltaban YA EXISTEN** (creados aditivos; verificar con `pio run -e <env>`, NO compilan en el gate host):
+> - **CARD CENTRAL-5 (brake vs COAST):** env **`diag_central_brake`** + `src/diag/diag_central_brake.cpp` ✅ creado.
+> - **CARD CENTRAL-7 (auto-reset WDOG1):** env **`central_robot1_wdt_hangtest`** (= `central_robot1_wdt` + `-DCENTRAL_WDT_HANG_TEST`) + hook gateado en `main_central.cpp` ✅ creado.
+> - **CARD CENTRAL-8 (cap 70%):** el módulo puro `motor_power_cap.h` existe; el **wiring** en `motors_zircon.cpp` + constante en `config_central.h` sigue PENDIENTE (cambia binario → sesión `pio`).
+
 > Tarjetas de verificación **rápidas** (idealmente <5 min) para la placa CENTRAL,
 > el master de motores del robot. Cada card es autocontenida: comando exacto,
 > qué esperar, cómo interpretar el resultado y **qué pegar de vuelta a la IA**.

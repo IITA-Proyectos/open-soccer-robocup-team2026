@@ -168,6 +168,22 @@ void loop() {
 
     g_loop_count++;
 
+#ifdef CENTRAL_WDT_HANG_TEST
+    // === Test de BANCO: colgar el loop a propósito para validar el auto-reset del WDOG1 ===
+    // Tras ~5 s de marcha normal (alimentando el WDT cada vuelta), dejamos de alimentarlo
+    // (bucle infinito). Con CENTRAL_ENABLE_WDT, el WDOG1 debe RESETEAR el Teensy a ~1 s →
+    // se ve en el Serial el reboot (vuelve a imprimir el banner de setup). SOLO banco:
+    // gateado OFF por default → binario de competencia byte-idéntico. Env: central_robot1_wdt_hangtest.
+    {
+        static uint32_t s_boot_ms = millis();
+        if (millis() - s_boot_ms > 5000) {
+            Serial.println("[CENTRAL] *** WDT HANG TEST: colgando el loop AHORA. El WDOG1 debe resetear en ~1 s. ***");
+            Serial.flush();
+            while (true) { /* sin watchdog_feed -> reset esperado del WDOG1 */ }
+        }
+    }
+#endif
+
     // === Supervisor de loop-time (R2) — barato, SIEMPRE activo ===
     // micros() al inicio de la vuelta; loop_monitor_update mide el dt contra la vuelta
     // anterior (wrap-safe) y guarda el peor caso + un promedio suave. Solo diagnóstico:

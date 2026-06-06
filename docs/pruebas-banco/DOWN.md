@@ -1,5 +1,10 @@
 # TEST-CARDS de banco — Placa DOWN (Teensy 4.0)
 
+> ✅ **ACTUALIZADO 2026-06-06 — programas que antes faltaban YA EXISTEN** (creados aditivos; verificar con `pio run -e <env>`, NO compilan en el gate host):
+> - **CARD DOWN-4 / DOWN-9 (tasa 1 kHz + carga por tick):** env **`diag_down_cpu`** + `src/diag/diag_down_cpu.cpp` ✅ creado.
+> - **CARD DOWN-8 (ROBOT2 sin OTOS):** env **`down_robot2`** (= `down` + `-DDOWN_NUM_OTOS_CONNECTED=0`) ✅ creado.
+> Donde abajo diga "NO existe / falta crear / BLOQUEADA" para estos, leer: **ya creado** (ver este banner).
+
 > Tarjetas de prueba CORTAS (idealmente <5 min) para validar la placa DOWN en el
 > banco, camino a Incheon. La placa DOWN lee 32 sensores de luz (4 muxes CD4051)
 > + 2 SparkFun OTOS, procesa línea y odometría, y los difunde a CENTRAL (Serial1,

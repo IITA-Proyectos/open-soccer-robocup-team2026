@@ -10,6 +10,7 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
 GOLDEN_PATH = os.path.join(_HERE, "tests", "golden_frame_v1.jsonl")
+GOLDEN_TOP_PATH = os.path.join(_HERE, "tests", "golden_top_v1.jsonl")
 
 
 @pytest.fixture
@@ -20,4 +21,10 @@ def golden_path():
 @pytest.fixture
 def golden_line():
     with open(GOLDEN_PATH, "r", encoding="utf-8") as f:
+        return f.readline().rstrip("\n")
+
+
+@pytest.fixture
+def golden_top_line():
+    with open(GOLDEN_TOP_PATH, "r", encoding="utf-8") as f:
         return f.readline().rstrip("\n")

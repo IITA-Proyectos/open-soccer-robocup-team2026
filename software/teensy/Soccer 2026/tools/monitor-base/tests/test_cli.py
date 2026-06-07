@@ -1,9 +1,19 @@
 """Test del entrypoint headless (--selftest), sin GUI ni display."""
-from monitor_base.__main__ import _parse_args, main, run_selftest
+from monitor_base.__main__ import (
+    _parse_args, main, run_selftest, run_selftest_top,
+)
 
 
 def test_selftest_runs_clean():
     assert run_selftest(frames=120) == 0
+
+
+def test_selftest_top_runs_clean():
+    assert run_selftest_top(frames=120) == 0
+
+
+def test_main_top_selftest_via_args():
+    assert main(["--top", "--selftest", "--selftest-frames", "80"]) == 0
 
 
 def test_selftest_detects_injected_dead():

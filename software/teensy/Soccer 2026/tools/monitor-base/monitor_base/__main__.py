@@ -35,6 +35,8 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
                    help="grabar la telemetría entrante a un .jsonl (para --replay/análisis)")
     p.add_argument("--sim-dead", default="",
                    help="con --sim: índices de sensores 'muertos' a inyectar, ej 5,17")
+    p.add_argument("--top", action="store_true",
+                   help="modo TOP (placa superior: cámaras/IMU/ToF/snapshot) en vez de la base")
     p.add_argument("--selftest", action="store_true",
                    help="smoke headless: procesa N frames del sim y sale (sin GUI)")
     p.add_argument("--selftest-frames", type=int, default=200,
@@ -99,10 +101,45 @@ def run_selftest(frames: int = 200, dead: Optional[List[int]] = None) -> int:
     return 0
 
 
+def run_selftest_top(frames: int = 200) -> int:
+    """Smoke headless de la vista TOP: procesa N frames del simulador TOP por el
+    parser real y reporta un resumen. Devuelve 0 si todo anduvo."""
+    from .protocol_top import parse_line_top
+    from .simulator_top import SimulatorTop
+
+    sim = SimulatorTop(rate_hz=20.0)
+    last = None
+    seen_ball = False
+    for _ in range(frames):
+        last = parse_line_top(sim.next_line())
+        seen_ball = seen_ball or last.cam.ball_visible
+    assert last is not None
+    print(f"[selftest-top] frames procesados : {frames}")
+    print(f"[selftest-top] último seq         : {last.seq}")
+    print(f"[selftest-top] IMU heading        : {last.imu.heading_deg:.1f} "
+          f"(L={last.imu.left_ok} R={last.imu.right_ok} valid={last.imu.heading_valid})")
+    print(f"[selftest-top] cámaras            : F={last.cam.front_ok} B={last.cam.back_ok} "
+          f"vio pelota={seen_ball}")
+    print(f"[selftest-top] ToF                : {last.tof.distances_mm} min={last.tof.min_mm}")
+    print(f"[selftest-top] snapshot           : valid={last.snap.valid} "
+          f"ref={last.snap.referee_name} flags={last.snap.flag_names}")
+    print("[selftest-top] OK")
+    return 0
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     args = _parse_args(argv)
     if args.selftest:
+        if args.top:
+            return run_selftest_top(args.selftest_frames)
         return run_selftest(args.selftest_frames, _dead_list(args.sim_dead))
+
+    if args.top:
+        print("La vista GUI del TOP todavía no está implementada en esta v1. "
+              "Usá: python -m monitor_base --top --selftest (chequeo headless). "
+              "El núcleo TOP (parser + simulador + tests) ya está; la GUI del campo "
+              "con pelota/arcos es el próximo paso.", file=sys.stderr)
+        return 2
 
     source = _build_source(args)
     try:

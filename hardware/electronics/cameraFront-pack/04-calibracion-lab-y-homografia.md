@@ -96,6 +96,13 @@ con margen ±10 alrededor.
 
 ## 3. Calibración de la homografía (específico al montaje frontal)
 
+> **➡️ Procedimiento vigente (reemplaza el método de "4 puntos a ojo" de §3.2):**
+> [`docs/firmware/CALIBRACION-HOMOGRAFIA-XY-N6.md`](../../../docs/firmware/CALIBRACION-HOMOGRAFIA-XY-N6.md).
+> Usa una **lona con grilla de puntos** que la cámara detecta sola
+> (`firmware/openmv/calib-homografia-n6.py`) + un **solver numpy en la PC**
+> (`vision-optimization-pack/tools/solve_homografia.py`, validado). Más rápido,
+> simple y repetible. Lo de abajo (§3.1–§3.4) queda como contexto conceptual.
+
 ### 3.1 Qué es la homografía
 
 La cámara frontal ve una imagen 2D pero la pelota está en el suelo 3D.

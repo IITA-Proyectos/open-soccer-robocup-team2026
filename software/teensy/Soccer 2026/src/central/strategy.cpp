@@ -651,9 +651,10 @@ MotorCommand goalkeeper_tick() {
             // movimiento, hasta que los sensores de piso detecten la línea.
             cmd.vx_mm_s = GK_GOTO_LINE_VX_RIGHT;          // +X = derecha
             cmd.vy_mm_s = static_cast<int16_t>(-GK_GOTO_LINE_VY_BACK);  // -Y = atrás
-            // Orientar el frente a la cancha mientras se reposiciona (fallback
-            // EXACTO ω=0 si arco propio no visible / heading inválido).
-            cmd.omega_centideg_s = gk_own_goal_orient_omega(now_ms);
+            // SIN rotar mientras se reposiciona (ω=0): rotar Y trasladar a la vez
+            // hacía que el arquero pareciera "girar" (la ω domina y las 3 ruedas
+            // giran igual). La orientación al frente la hace PATROL al llegar.
+            cmd.omega_centideg_s = 0;
 
             // Llegada: hay línea detectada y el dato es VÁLIDO (compuerta maestra).
             const bool line_here = world_model_line_detected()

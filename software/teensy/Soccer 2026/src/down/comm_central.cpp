@@ -21,6 +21,13 @@ namespace {
 FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
 
+#ifdef DOWN_DEBUG_TELEMETRY
+// Cache del último LineStatusV2 difundido a CENTRAL (exacto: el que viaja por el
+// cable, con sample_age_ms ya seteado). Lo lee la telemetría USB del modo DEBUG.
+LineStatusV2 g_last_lsv2{};
+bool         g_last_lsv2_valid = false;
+#endif
+
 // Value-init explícito ({}): garantiza por CÓDIGO el estado-limpio de TODA la
 // DownModel (watchdogs mw/sh, histéresis was_white[], tracker, surface, filtros,
 // calib) en vez de depender del zero-init de .bss. Sobrevive si alguien mueve
@@ -149,6 +156,12 @@ void comm_central_send_line_urgent() {
     // Difundir la línea a AMBAS placas (CENTRAL + TOP) con SEQ por enlace.
     down_tx_broadcast_line(s);
 
+#ifdef DOWN_DEBUG_TELEMETRY
+    // Snapshot del LineStatusV2 EXACTO que se difundió, para la telemetría USB.
+    g_last_lsv2       = s;
+    g_last_lsv2_valid = true;
+#endif
+
 #ifdef DOWN_DEBUG_SERIAL
     // Debug de bring-up (TASK-301): imprime por el USB, a ~4 Hz, lo esencial que
     // DOWN tiene listo para CENTRAL: ¿HAY LINEA? (line_present del DownModel —
@@ -206,5 +219,13 @@ uint32_t comm_central_get_frames_received() { return g_frames_received; }
 uint32_t comm_central_get_frames_sent()    { return down_tx_get_sent(0); }
 uint32_t comm_central_get_frames_dropped() { return down_tx_get_dropped(0); }
 uint32_t comm_central_get_crc_errors()      { return g_decoder.crc_errors(); }
+
+#ifdef DOWN_DEBUG_TELEMETRY
+bool comm_central_get_last_line_status(LineStatusV2& out) {
+    if (!g_last_lsv2_valid) return false;
+    out = g_last_lsv2;
+    return true;
+}
+#endif
 
 }  // namespace iitasoccer

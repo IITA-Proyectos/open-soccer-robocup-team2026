@@ -26,6 +26,9 @@
 #include "otos.h"
 #include "comm_top.h"
 #include "comm_central.h"
+#ifdef DOWN_DEBUG_TELEMETRY
+#include "down_telemetry_serial.h"
+#endif
 
 using namespace iitasoccer;
 
@@ -143,6 +146,10 @@ void setup() {
     watchdog_init_1s();
     Serial.println("[DOWN] watchdog (WDOG1, 1 s) armado");
 #endif
+
+#ifdef DOWN_DEBUG_TELEMETRY
+    down_telemetry_init();
+#endif
 }
 
 void loop() {
@@ -187,4 +194,8 @@ void loop() {
         g_since_top_send = 0;
         comm_top_send_status();
     }
+
+#ifdef DOWN_DEBUG_TELEMETRY
+    down_telemetry_tick();
+#endif
 }

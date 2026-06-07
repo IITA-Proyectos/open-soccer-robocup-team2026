@@ -93,7 +93,7 @@
 - **Qué esperar si PASA:** el robot se desliza lateral **mirando al frente** (sin girar) ~30 cm a cada lado. Serial imprime el estado `STRAFE`/`PAUSE` y la dirección.
 - **Resultados posibles:**
   - **A)** Traslación lateral limpia, deriva mínima → `WHEEL_ANGLES` OK.
-  - **B)** El robot **rota / hace círculos** mientras debería ir recto → la cinemática genérica no corresponde al montaje real (caso conocido María 2026-06-01). Puede estar dominado por `WHEEL_ANGLES` mal y/o por `MOTOR_INVERT` mal — **resolver CENTRAL-1/2 ANTES** de concluir sobre los ángulos.
+  - **B)** El robot **rota / hace círculos** mientras debería ir recto → la cinemática genérica no corresponde al montaje real (caso conocido María 2026-06-01). Puede estar dominado por `WHEEL_ANGLES` mal y/o por `MOTOR_INVERT` mal — **resolver CENTRAL-1/2 ANTES** de concluir sobre los ángulos. (Para ROBOT1 `MOTOR_INVERT` YA está validado = `{+1,-1,+1}`; el residual de "círculos" en R1 es atribuible a `WHEEL_ANGLES`, no a `MOTOR_INVERT`. La sospecha de "`MOTOR_INVERT` mal" aplica a ROBOT2, que es esta sección.)
   - **C)** Va en diagonal constante → un solo motor invertido o un ángulo de rueda errado.
 - **Feedback a devolver a la IA:** describir literal lo observado, p.ej.
   `strafe_robot1: el robot gira en círculo en sentido horario en vez de ir de costado` o `va recto de costado, deriva ~5cm en 30cm`. Si hay físico medido de los ángulos de montaje de las ruedas, pegarlos (grados desde +X).

@@ -35,7 +35,10 @@ enum class AtkPhase : uint8_t {
     WAIT_START, KICKOFF, SEARCH, POSITION, APPROACH, LINE_AVOID
 };
 enum class GkPhase : uint8_t {
-    WAIT_START, PATROL, INTERCEPT, CLEAR, LINE_AVOID
+    // GOTO_LINE (índice 1): al recibir START, el arquero va en DIAGONAL atrás-y-a-la
+    // -derecha (un solo movimiento) hasta que los sensores de piso detectan la línea
+    // de su arco; recién ahí pasa a PATROL. Reposicionamiento inicial repetible.
+    WAIT_START, GOTO_LINE, PATROL, INTERCEPT, CLEAR, LINE_AVOID
 };
 
 // === Vista del mundo que consume la FSM (lo que world_model expone) ===
@@ -59,6 +62,11 @@ struct GkWorldView {
     bool     ball_visible;
     float    ball_x_mm;
     float    ball_y_mm;
+    // GOTO_LINE: ¿los sensores de piso detectan la línea AHORA? (world_model_line_detected
+    // gateado por line_fresh) → condición de llegada. + tiempo para el timeout de seguridad.
+    bool     line_present;          // hay línea detectada (más sensible que imminent_exit)
+    uint32_t now_ms;
+    uint32_t goto_line_started_ms;  // timestamp guardado al entrar a GOTO_LINE
 };
 
 // === Constantes de tuning de la FSM ===
@@ -75,8 +83,9 @@ struct AtkTuning {
 };
 
 struct GkTuning {
-    float clear_trigger_mm;         // GK_CLEAR_TRIGGER_MM           (250)
-    float clear_release_mm;         // GK_CLEAR_RELEASE_MM           (400)
+    float    clear_trigger_mm;      // GK_CLEAR_TRIGGER_MM           (250)
+    float    clear_release_mm;      // GK_CLEAR_RELEASE_MM           (400)
+    uint32_t goto_line_timeout_ms;  // GK_GOTO_LINE_TIMEOUT_MS       (4000) — safety
 };
 
 // Factories con los valores que strategy.cpp usa hoy. Un test que use estos
@@ -105,6 +114,9 @@ struct AtkDecision {
 
 struct GkDecision {
     GkPhase next_phase;
+    // ¿el caller debe guardar now_ms como goto_line_started (entró a GOTO_LINE)?
+    // Análogo a AtkDecision.start_kickoff_timer.
+    bool    start_goto_line_timer;
 };
 
 // === Funciones puras de decisión ===

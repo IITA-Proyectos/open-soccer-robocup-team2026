@@ -35,9 +35,9 @@
 //   - PLACA CENTRAL flasheada con este sketch (Zircon Rev v15 + Teensy 4.1).
 //   - PLACA TOP corriendo y enviando WorldSnapshot por Serial7 (RX7 pin28) a 230400.
 //     (la cadena DOWN→TOP→CENTRAL tiene que estar al menos a nivel TOP→CENTRAL).
-//   - TASK-036 cerrada → motores validados, mapeo motor↔rueda conocido,
-//     conflicto pines 7/8 resuelto. Sin esto, los resultados del PID son
-//     basura porque algún motor puede no responder.
+//   - Pre-requisito CUMPLIDO: TASK-036 cerrada — motores ROBOT1 validados
+//     (MOTOR_INVERT={+1,-1,+1}, M2/U17 invertido), conflicto 7/8 resuelto.
+//     (El banner de runtime, línea ~213, ya lo refleja.)
 //   - Batería cargada (los H-bridges NO se alimentan por USB).
 //   - Robot SUJETO al banco o ruedas al aire, O cancha despejada con espacio
 //     suficiente (avanza ~900 mm en 3 s a 300 mm/s).

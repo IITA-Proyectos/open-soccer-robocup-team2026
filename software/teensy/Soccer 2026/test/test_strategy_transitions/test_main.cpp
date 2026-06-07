@@ -320,11 +320,57 @@ void test_gk_match_stopped_forces_wait_start(void) {
     TEST_ASSERT_EQUAL(GkPhase::WAIT_START, d.next_phase);
 }
 
-void test_gk_wait_start_to_patrol_when_match_runs(void) {
+void test_gk_wait_start_to_goto_line_when_match_runs(void) {
+    // Al recibir START, NO va directo a PATROL: primero GOTO_LINE (reposicionarse
+    // en diagonal a la línea del arco) y pide arrancar el timer.
     GkWorldView w = gk_w();
     w.match_running = true;
     GkDecision d = gk_decide_transition(GkPhase::WAIT_START, w, T_GK);
+    TEST_ASSERT_EQUAL(GkPhase::GOTO_LINE, d.next_phase);
+    TEST_ASSERT_TRUE(d.start_goto_line_timer);
+}
+
+void test_gk_goto_line_to_patrol_when_line_found(void) {
+    // Llega a la línea (sensores de piso) → PATROL.
+    GkWorldView w = gk_w();
+    w.line_fresh = true;
+    w.line_present = true;
+    w.now_ms = 1000;
+    w.goto_line_started_ms = 1000;   // recién entró, NO es timeout
+    GkDecision d = gk_decide_transition(GkPhase::GOTO_LINE, w, T_GK);
     TEST_ASSERT_EQUAL(GkPhase::PATROL, d.next_phase);
+}
+
+void test_gk_goto_line_holds_until_line_or_timeout(void) {
+    // Sin línea y sin timeout → sigue en GOTO_LINE (manejando la diagonal).
+    GkWorldView w = gk_w();
+    w.line_present = false;
+    w.now_ms = 1500;
+    w.goto_line_started_ms = 1000;   // 500 ms < timeout 4000
+    GkDecision d = gk_decide_transition(GkPhase::GOTO_LINE, w, T_GK);
+    TEST_ASSERT_EQUAL(GkPhase::GOTO_LINE, d.next_phase);
+}
+
+void test_gk_goto_line_to_patrol_on_timeout(void) {
+    // Nunca encontró la línea pero venció el timeout de SEGURIDAD → PATROL igual
+    // (no quedar manejando en diagonal para siempre).
+    GkWorldView w = gk_w();
+    w.line_present = false;
+    w.goto_line_started_ms = 1000;
+    w.now_ms = 1000 + T_GK.goto_line_timeout_ms;   // justo en el borde
+    GkDecision d = gk_decide_transition(GkPhase::GOTO_LINE, w, T_GK);
+    TEST_ASSERT_EQUAL(GkPhase::PATROL, d.next_phase);
+}
+
+void test_gk_goto_line_line_not_fresh_does_not_arrive(void) {
+    // line_present pero dato NO fresco → no cuenta como llegada (fail-safe).
+    GkWorldView w = gk_w();
+    w.line_present = true;
+    w.line_fresh = false;
+    w.now_ms = 1100;
+    w.goto_line_started_ms = 1000;
+    GkDecision d = gk_decide_transition(GkPhase::GOTO_LINE, w, T_GK);
+    TEST_ASSERT_EQUAL(GkPhase::GOTO_LINE, d.next_phase);
 }
 
 void test_gk_patrol_to_intercept_when_ball_seen(void) {
@@ -450,7 +496,11 @@ int main(int, char**) {
 
     // GK
     RUN_TEST(test_gk_match_stopped_forces_wait_start);
-    RUN_TEST(test_gk_wait_start_to_patrol_when_match_runs);
+    RUN_TEST(test_gk_wait_start_to_goto_line_when_match_runs);
+    RUN_TEST(test_gk_goto_line_to_patrol_when_line_found);
+    RUN_TEST(test_gk_goto_line_holds_until_line_or_timeout);
+    RUN_TEST(test_gk_goto_line_to_patrol_on_timeout);
+    RUN_TEST(test_gk_goto_line_line_not_fresh_does_not_arrive);
     RUN_TEST(test_gk_patrol_to_intercept_when_ball_seen);
     RUN_TEST(test_gk_intercept_to_clear_when_ball_close);
     RUN_TEST(test_gk_intercept_holds_when_ball_far_and_visible);

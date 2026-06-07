@@ -1,18 +1,20 @@
 // diag_central_motors.cpp — Test individual de los 3 motores del Zircon Rev v15
 //
+// ESTADO ROBOT1: mapeo motor<->driver<->sentido VALIDADO en banco (M1=U5 normal,
+// M2=U17 invertido HW, M3=U7 normal). Este sketch sigue util para RE-verificar
+// tras rearmar o para mapear ROBOT2.
+//
 // Para qué sirve:
 //   Validar EN BANCO que los 3 motores del robot están cableados, que el PWM
 //   funciona en todo su rango, y mapear qué número de motor (1, 2, 3 según el
 //   firmware) corresponde a qué motor FÍSICO del robot.
 //
-//   Bonus: este sketch también sirve para diagnosticar empíricamente el
-//   conflicto pines 7/8 (motor vs Serial2 hacia DOWN). Si el motor del
-//   driver U17 (pines 7/8/6) NO se mueve cuando le toca el turno, los pines
-//   7/8 NO están cableados al H-bridge — son sólo Serial2. Si se mueve, los
-//   pines 7/8 SÍ son del motor y hay que migrar Serial2 a otro UART libre
-//   (ej. Serial7 en pines 28/29) en el firmware central de producción.
+//   Bonus: el "conflicto 7/8" está RESUELTO (7/8 = motor 2/U17; el link
+//   DOWN->CENTRAL se movió a Serial1). Los pines 7/8/6 son del driver U17
+//   (motor 2), NO de Serial2. Este sketch confirma empíricamente que el motor
+//   del driver U17 se mueve cuando le toca el turno.
 //   Ver hardware/electronics/central-board-pack/01-pinout-y-hardware.md §8
-//   para el detalle del conflicto.
+//   para el detalle.
 //
 // Procedimiento operativo:
 //   1. Flashear:                   pio run -e diag_central_motors -t upload
@@ -69,7 +71,7 @@ struct MotorPins {
 
 constexpr MotorPins MOTORS[3] = {
     { "MOTOR 1 - driver U5  (INA=2, INB=5, PWM=3)",  2, 5,  3 },
-    { "MOTOR 2 - driver U17 (INA=8, INB=7, PWM=6)  [posible conflicto Serial2]", 8, 7, 6 },
+    { "MOTOR 2 - driver U17 (INA=8, INB=7, PWM=6)  [7/8 RESUELTO: motor 2/U17; DOWN->CENTRAL=Serial1]", 8, 7, 6 },
     { "MOTOR 3 - driver U7  (INA=11, INB=12, PWM=4)", 11, 12, 4 },
 };
 
@@ -92,6 +94,10 @@ constexpr uint32_t MIN_DWELL_MS   = 300;    // ignora apretones los primeros 300
 // Cuando los 3 empujen para donde corresponde, esos mismos signos son los que
 // van al firmware de producción (config_central.h / motors_zircon.cpp).
 // ============================================================
+// RESULTADO YA CONOCIDO ROBOT1: el sentido correcto es {+1,-1,+1} (M2/U17
+// INVERTIDO por HW), validado banco 2026-06-01 + re-confirmado 2026-06-06.
+// Fuente canonica = MOTOR_INVERT en config_central.h. Este {+1,+1,+1} es solo
+// el arranque neutro para RE-validar o para mapear ROBOT2.
 constexpr int MOTOR_DIR[3] = { +1, +1, +1 };
 
 // Multiplicador GLOBAL: invierte los 3 motores a la vez (se combina con
@@ -254,8 +260,8 @@ void enter_state(State s) {
             g_motor_active = 1;
             Serial.println(">>> Arrancando MOTOR 2");
             Serial.print  ("    "); Serial.println(MOTORS[1].label);
-            Serial.println("    Si NO se mueve: confirma que los pines 7/8 son");
-            Serial.println("    Serial2 hacia DOWN (no del motor). Resuelve P0.");
+            Serial.println("    Conflicto 7/8 RESUELTO: 7/8 = motor 2/U17;");
+            Serial.println("    link DOWN->CENTRAL = Serial1. ROBOT1: M2/U17 invertido HW.");
             Serial.println("    Anota: motor 2 = rueda ____");
             break;
         }

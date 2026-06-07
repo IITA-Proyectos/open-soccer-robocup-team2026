@@ -28,6 +28,7 @@
 #include "comm_central.h"      // envía snapshot al CENTRAL
 #include "localization_runtime.h"  // fusión TOF+IMU → pose absoluta en cancha
 #include "types.h"
+#include "goal_polarity.h"         // autodetección color arco rival/propio
 #ifdef TOP_DEBUG_TELEMETRY
 #include "top_telemetry_serial.h"
 #endif
@@ -134,23 +135,40 @@ WorldSnapshot build_snapshot() {
     s.ball_vx_mm_s    = cameras_get_ball_vx_mm_s();
     s.ball_vy_mm_s    = cameras_get_ball_vy_mm_s();
 
-    // Arcos — mapping de colores → opp/own.
-    // TODO: este mapping (yellow=opp, blue=own) está hardcoded. La polaridad
-    // real depende del lado de cancha asignado por árbitro al inicio del
-    // partido. Cuando se integre el comando del árbitro (referee_cmd) con
-    // mensaje "play side", revisar y posiblemente invertir. Pendiente Enzo.
-    s.goal_opp_visible        = cameras_goal_yellow_visible() ? 1 : 0;
-    s.goal_opp_angle_centideg = cameras_get_goal_yellow_angle_centideg();
-    s.goal_opp_distance_mm    = cameras_get_goal_yellow_distance_mm();
-    // Arco propio (azul) — schema v3. Antes sólo se mandaba la visibilidad y se
-    // DESCARTABA el ángulo/distancia que cameras_fusion (fuse_goal_dual) YA computa.
-    // Ahora viajan los 3 campos, EXACTAMENTE como el arco rival (mismo patrón):
-    // los getters de fusión ya devuelven 0/0 cuando el arco no está visible
-    // (ver fuse_goal_dual → else: angle=0, distance=0), que es el MISMO sentinel
-    // que goal_opp. El consumidor (CENTRAL) gatea por goal_own_visible.
-    s.goal_own_visible        = cameras_goal_blue_visible() ? 1 : 0;
-    s.goal_own_angle_centideg = cameras_get_goal_blue_angle_centideg();
-    s.goal_own_distance_mm    = cameras_get_goal_blue_distance_mm();
+    // Arcos — mapping de colores → opp/own, AUTODETECTADO por las cámaras.
+    // El arco que el robot tiene AL FRENTE es el RIVAL; el de ATRÁS, el PROPIO
+    // (goal_polarity.h). Se infiere de la visibilidad+ángulo fusionado y se FIJA
+    // con un latch anti-rebote (estable todo el partido).
+    // FAIL-SAFE: hasta que el latch confirme con certeza, se usa el default previo
+    // (YELLOW_IS_OPP) → comportamiento IDÉNTICO al mapeo hardcoded de antes.
+    // El robot DEBE arrancar mirando a la cancha (frente al arco rival).
+    static GoalPolarityLatch g_goal_pol{};   // value-init = UNKNOWN (= sin fijar)
+    const bool   yv = cameras_goal_yellow_visible();
+    const bool   bv = cameras_goal_blue_visible();
+    const float  ya = cameras_get_goal_yellow_angle_centideg() / 100.0f;
+    const float  ba = cameras_get_goal_blue_angle_centideg() / 100.0f;
+    goal_polarity_latch_update(g_goal_pol, goal_polarity_infer(yv, ya, bv, ba));
+    const bool blue_is_opp =
+        goal_polarity_effective(g_goal_pol, GoalPolarity::YELLOW_IS_OPP)
+            == GoalPolarity::BLUE_IS_OPP;
+
+    // RIVAL (al que atacamos) y PROPIO (el que defendemos), según la polaridad.
+    if (blue_is_opp) {
+        s.goal_opp_visible        = cameras_goal_blue_visible() ? 1 : 0;
+        s.goal_opp_angle_centideg = cameras_get_goal_blue_angle_centideg();
+        s.goal_opp_distance_mm    = cameras_get_goal_blue_distance_mm();
+        s.goal_own_visible        = cameras_goal_yellow_visible() ? 1 : 0;
+        s.goal_own_angle_centideg = cameras_get_goal_yellow_angle_centideg();
+        s.goal_own_distance_mm    = cameras_get_goal_yellow_distance_mm();
+    } else {
+        // Default / fail-safe: amarillo=rival, azul=propio (mapeo previo).
+        s.goal_opp_visible        = cameras_goal_yellow_visible() ? 1 : 0;
+        s.goal_opp_angle_centideg = cameras_get_goal_yellow_angle_centideg();
+        s.goal_opp_distance_mm    = cameras_get_goal_yellow_distance_mm();
+        s.goal_own_visible        = cameras_goal_blue_visible() ? 1 : 0;
+        s.goal_own_angle_centideg = cameras_get_goal_blue_angle_centideg();
+        s.goal_own_distance_mm    = cameras_get_goal_blue_distance_mm();
+    }
 
     // Obstáculo más cercano (de ToFs + HC-SR04).
     s.min_obstacle_mm = sensors_tof_get_min_distance_mm();

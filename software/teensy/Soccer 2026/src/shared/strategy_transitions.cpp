@@ -21,6 +21,7 @@ GkTuning gk_tuning_default() {
     GkTuning t{};
     t.clear_trigger_mm = 250.0f;
     t.clear_release_mm = 400.0f;
+    t.goto_line_timeout_ms = 4000;   // GK_GOTO_LINE_TIMEOUT_MS (safety)
     return t;
 }
 
@@ -157,6 +158,18 @@ GkDecision gk_decide_transition(GkPhase current,
     switch (phase) {
         case GkPhase::WAIT_START:
             if (w.match_running) {
+                // Primero ir a la línea del arco (diagonal), NO directo a PATROL.
+                phase = GkPhase::GOTO_LINE;
+                d.start_goto_line_timer = true;
+            }
+            break;
+
+        case GkPhase::GOTO_LINE:
+            // Llegó a la línea (sensores de piso) → PATROL; o timeout de SEGURIDAD
+            // (no quedar manejando en diagonal para siempre si nunca la encuentra).
+            // Resta unsigned wrap-safe para el timeout.
+            if ((w.line_fresh && w.line_present)
+                || (w.now_ms - w.goto_line_started_ms >= t.goto_line_timeout_ms)) {
                 phase = GkPhase::PATROL;
             }
             break;

@@ -58,7 +58,10 @@ enum class AtkState : uint8_t {
     WAIT_START, KICKOFF, SEARCH, POSITION, APPROACH, LINE_AVOID
 };
 enum class GkState : uint8_t {
-    WAIT_START, PATROL, INTERCEPT, CLEAR, LINE_AVOID
+    // GOTO_LINE (índice 1, espejo de GkPhase en strategy_transitions.h): al recibir
+    // START, el arquero va en DIAGONAL atrás-y-a-la-derecha (un solo movimiento) hasta
+    // que los sensores de piso detectan la línea del arco; recién ahí pasa a PATROL.
+    WAIT_START, GOTO_LINE, PATROL, INTERCEPT, CLEAR, LINE_AVOID
 };
 
 AtkState g_atk_state = AtkState::WAIT_START;
@@ -67,6 +70,9 @@ GkState  g_gk_state  = GkState::WAIT_START;
 // Estado auxiliar del kickoff (timer) — válido solo cuando g_atk_state == KICKOFF.
 uint32_t g_kickoff_started_ms = 0;
 bool     g_match_was_running = false;   // detecta flanco "STOP → RUN" para KICKOFF
+
+// Timer de GOTO_LINE (arquero) — guardado al entrar; para el timeout de seguridad.
+uint32_t g_goto_line_started_ms = 0;
 
 // === PIDs ===
 HeadingPID g_heading_pid;
@@ -110,6 +116,16 @@ constexpr float GK_PATROL_SPEED_MM_S          = 150.0f;
 constexpr float GK_INTERCEPT_KP_VS_BALL_X     = 4.0f;
 constexpr float GK_LATERAL_SETPOINT_DEPTH     = 1.0f;
 constexpr float GK_LINE_RETREAT_SPEED         = 250.0f;
+
+// GOTO_LINE: reposicionamiento inicial. Al recibir START, el arquero va en
+// DIAGONAL (un solo movimiento) ATRÁS (-Y, hacia su arco) y a la DERECHA (+X)
+// hasta que los sensores de piso detectan la línea. Marco robot: +X=derecha,
+// +Y=frente. Supone arranque en el rincón IZQUIERDO del arco → la diagonal lo
+// lleva al CENTRO. Si arrancan del otro lado, invertir el signo de GK_GOTO_LINE_VX.
+// 🔧 needs_bench: tunear velocidades y el signo de X según el lado de arranque.
+constexpr int16_t GK_GOTO_LINE_VX_RIGHT   = 180;   // +X = derecha (mm/s)
+constexpr int16_t GK_GOTO_LINE_VY_BACK    = 180;   // hacia atrás → se aplica como -Y
+constexpr uint32_t GK_GOTO_LINE_TIMEOUT_MS = 4000; // safety: si no encuentra la línea → PATROL
 
 // Arquero — Capa 3 (WP-3-GK): strafe PARALELO a la línea lateral usando el
 // cross_track REAL (distancia perpendicular firmada del centro del robot a la
@@ -622,6 +638,31 @@ MotorCommand goalkeeper_tick() {
         case GkState::WAIT_START: {
             g_state_name = "GK_WAIT_START";
             if (world_model_match_running()) {
+                // NO va directo a PATROL: primero se reposiciona sobre su línea.
+                transition_gk(GkState::GOTO_LINE);
+                g_goto_line_started_ms = now_ms;
+            }
+            return cmd;
+        }
+
+        case GkState::GOTO_LINE: {
+            g_state_name = "GK_GOTO_LINE";
+            // Diagonal ATRÁS (-Y, hacia el arco) + DERECHA (+X) en UN solo
+            // movimiento, hasta que los sensores de piso detecten la línea.
+            cmd.vx_mm_s = GK_GOTO_LINE_VX_RIGHT;          // +X = derecha
+            cmd.vy_mm_s = static_cast<int16_t>(-GK_GOTO_LINE_VY_BACK);  // -Y = atrás
+            // Orientar el frente a la cancha mientras se reposiciona (fallback
+            // EXACTO ω=0 si arco propio no visible / heading inválido).
+            cmd.omega_centideg_s = gk_own_goal_orient_omega(now_ms);
+
+            // Llegada: hay línea detectada y el dato es VÁLIDO (compuerta maestra).
+            const bool line_here = world_model_line_detected()
+                                && world_model_line_data_valid();
+            // Timeout de SEGURIDAD: no quedar manejando en diagonal para siempre
+            // si nunca encuentra la línea (resta unsigned wrap-safe).
+            const bool timed_out =
+                (now_ms - g_goto_line_started_ms) >= GK_GOTO_LINE_TIMEOUT_MS;
+            if (line_here || timed_out) {
                 transition_gk(GkState::PATROL);
             }
             return cmd;
@@ -787,6 +828,7 @@ void strategy_init() {
     g_gk_state = GkState::WAIT_START;
     g_match_was_running = false;
     g_kickoff_started_ms = 0;
+    g_goto_line_started_ms = 0;
     heading_pid_reset(g_heading_pid);
     lateral_pid_reset(g_lateral_pid_gk);
 }

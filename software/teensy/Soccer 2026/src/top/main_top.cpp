@@ -28,6 +28,9 @@
 #include "comm_central.h"      // envía snapshot al CENTRAL
 #include "localization_runtime.h"  // fusión TOF+IMU → pose absoluta en cancha
 #include "types.h"
+#ifdef TOP_DEBUG_TELEMETRY
+#include "top_telemetry_serial.h"
+#endif
 
 using namespace iitasoccer;
 
@@ -213,6 +216,10 @@ void setup() {
 
     digitalWrite(PIN_LED_STATUS, HIGH);
     Serial.println("[TOP] cerebro sensorial listo, enviando snapshots a CENTRAL (WDT 1s armado)");
+
+#ifdef TOP_DEBUG_TELEMETRY
+    top_telemetry_init();
+#endif
 }
 
 void loop() {
@@ -250,6 +257,10 @@ void loop() {
         WorldSnapshot snap = build_snapshot();
         comm_central_send_snapshot(snap);
     }
+
+#ifdef TOP_DEBUG_TELEMETRY
+    top_telemetry_tick();
+#endif
 
     // === Debug ===
     if (g_since_debug >= 500) {

@@ -4,9 +4,10 @@ title: "Modo DEBUG/telemetría + calibración automática en el firmware de DOWN
 date_created: 2026-06-06
 assigned: [mariaviollaz, gviollaz]
 priority: P0
-status: pending
+status: in-progress
 estimated_hours: 10
 blocks: [TASK-305]
+status_note: "v1 implementada — módulo+protocolo+test host verde; glue Arduino + env pio-pendientes (banco)"
 tags: [firmware, down, tooling, telemetria, calibracion, prioritaria]
 ---
 
@@ -27,15 +28,29 @@ Es el **próximo desarrollo PRIORITARIO** del equipo (pedido 2026-06-06). Hoy el
 6. Documentar el protocolo (esquema versionado) junto al diseño.
 
 ## 4. Criterio de cierre
-- [ ] `pio run -e down` (competencia) compila y el binario es byte-idéntico al actual (flag OFF).
-- [ ] `pio run -e down_debug_telemetry -t upload` emite el stream por USB a tasa estable.
-- [ ] El stream incluye raw[32], white[32], calib y la LineStatusV2 real (la misma que va a CENTRAL).
-- [ ] Comandos de calib (carpet/blanco/auto/guardar-EEPROM) funcionan vía USB.
-- [ ] Módulo puro de (de)serialización del frame con test host en verde (gate).
-- [ ] Protocolo documentado y versionado.
+- [ ] `pio run -e down` (competencia) compila y el binario es byte-idéntico al actual (flag OFF). *(pendiente: verificar con pio en banco — el gate host no compila Teensy)*
+- [ ] `pio run -e down_debug_telemetry -t upload` emite el stream por USB a tasa estable. *(env y glue implementados; pendiente compilar/flashear)*
+- [x] El stream incluye raw[32], white[32], calib y la LineStatusV2 real (la misma que va a CENTRAL). *(cubierto por el módulo puro + golden)*
+- [ ] Comandos de calib (carpet/blanco/auto/guardar-EEPROM) funcionan vía USB. *(parser puro listo y testeado; falta validar la ejecución del glue en banco)*
+- [x] Módulo puro de (de)serialización del frame con test host en verde (gate). *(`test_telemetry_down`, 16 tests; gate 50 envs / 705 tests / 0 fallos)*
+- [x] Protocolo documentado y versionado. *(`docs/firmware/TELEMETRIA-DOWN.md`, schema v1)*
 
 ## 5. Notas / decisiones
-- (vacío — completar al ejecutar)
+- **2026-06-07 — v1 implementada.** Arquitectura del diseño (§3) seguida al pie: módulo puro
+  host-testeable + glue Arduino gateado + protocolo versionado.
+  - Módulo PURO: `src/shared/telemetry_down.{h,cpp}` (serializa snapshot DOWN → 1 línea **JSON
+    Lines**; parsea comandos host→firmware con `td_parse_command`).
+  - Test host: `test/test_telemetry_down/test_main.cpp` (16 tests, en el gate **50 envs / 705
+    tests / 0 fallos**) con **golden frame** byte-idéntico = contrato cross-lenguaje con la app PC.
+  - Glue Arduino: `src/down/down_telemetry_serial.{cpp,h}` + env `[env:down_debug_telemetry]`,
+    **gateado con `-DDOWN_DEBUG_TELEMETRY`** → competencia byte-idéntico (flag OFF).
+  - Contrato: `docs/firmware/TELEMETRIA-DOWN.md` (schema v1, USB CDC `Serial` @115200; anillo de
+    32 sensores + LineStatusV2 a CENTRAL + odometría OTOS + comandos STREAM/RATE/CAL/OTOS).
+- **Host-verificado:** módulo puro + gate verde. **pio-pendiente (banco):** glue Arduino + env
+  (`pio run -e down_debug_telemetry`) — acá no compila Teensy.
+- Issues relacionadas: #14 / #15 / #16.
 
 ## 6. Cambios de estado
 - 2026-06-06 — creada (pending). Pedido del coach como desarrollo prioritario.
+- 2026-06-07 — **in-progress / v1 implementada** (módulo + protocolo + test host verde; glue
+  Arduino + env `down_debug_telemetry` pendientes de `pio` por el equipo en banco).

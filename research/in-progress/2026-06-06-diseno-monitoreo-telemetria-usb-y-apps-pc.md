@@ -72,3 +72,53 @@ Clave: NO es un sketch de diag aparte — es un **MODO DEBUG del firmware de com
 - Modo debug/telemetría en `src/down/` y `src/top/` (gateado) + un `[env:down_debug_telemetry]` / `[env:top_debug_telemetry]`.
 - Protocolo documentado (esquema versionado).
 - Tareas: TASK-304/305 (base, P0), TASK-205/206 (superior, P1).
+
+## 7. Estado de implementación (2026-06-07)
+
+**FASE 1 (BASE) — v1 implementada.** TASK-304 (firmware debug/telemetría + calib en DOWN) y
+TASK-305 (app PC de base) tienen su **v1** lista, siguiendo la arquitectura de §3 al pie de la
+letra (módulo puro host-testeable + glue Arduino gateado + app PC host-pura + protocolo
+versionado). Lo construido, con sus rutas reales (todo bajo `software/teensy/Soccer 2026/`):
+
+### 7.1 Firmware (TASK-304)
+- **Módulo PURO** `src/shared/telemetry_down.{h,cpp}`: serializa el snapshot de DOWN a **una
+  línea JSON** (JSON Lines) y parsea los comandos de texto host→firmware (`td_parse_command`).
+  Es la lógica de §3.1/§3.3 extraída fuera de Arduino para que el gate la verifique.
+- **Test host** `test/test_telemetry_down/test_main.cpp` (16 tests), incluido en el gate host
+  (**50 envs / 705 tests / 0 fallos**). Incluye un **golden frame** byte-idéntico
+  (`test_td_serialize_golden_exact`) que es el contrato cross-lenguaje con la app de PC.
+- **Glue Arduino** `src/down/down_telemetry_serial.{cpp,h}` + env **`[env:down_debug_telemetry]`**,
+  **gateado con `-DDOWN_DEBUG_TELEMETRY`** → con el flag OFF (envs de competencia `down`/
+  `down_lean`/`down_wdt`) el binario es **byte-idéntico** (regla del proyecto cumplida).
+- **Contrato versionado** documentado en `docs/firmware/TELEMETRIA-DOWN.md` (schema v1, JSON
+  Lines por USB CDC `Serial` @115200, independiente de los UART inter-placa): anillo de 32
+  sensores de luz (`raw`/`white`/`carpet`/`white_cal`), la **LineStatusV2** real que viaja a
+  CENTRAL, odometría OTOS fusionada, y los comandos host→firmware (STREAM, RATE, CAL
+  CARPET/WHITE/AUTO/SAVE/LOAD, OTOS RESET).
+
+### 7.2 App PC (TASK-305)
+- `tools/monitor-base/` (Python): GUI del anillo de 32 sensores, la línea detectada, la
+  interpretación que viaja a CENTRAL (LineStatusV2) y la odometría OTOS, + calibración asistida.
+  Tiene **simulador** (`--sim`) y **replay** (`--replay`) para iterar **SIN robot**, y tests
+  pytest. Consume el mismo golden (`tools/monitor-base/tests/golden_frame_v1.jsonl`) que el test
+  C++ → ambos lados validan el mismo string. *(La está terminando otro hilo.)*
+
+### 7.3 Qué quedó verificado vs pendiente
+- ✅ **Host-verificado (escritorio, sin hardware):** módulo puro + golden (gate host verde,
+  50/705/0) y la app Python (pytest + simulador/replay). Cero impacto en el binario de
+  competencia (flag OFF → byte-idéntico).
+- ⏳ **pio-pendiente (lo verifica el equipo, acá no compila Teensy):** el **glue Arduino** y el
+  env `[env:down_debug_telemetry]` requieren `pio run -e down_debug_telemetry` (compilar/flashear)
+  para cerrar. También confirmar que `pio run -e down` sigue byte-idéntico.
+
+### 7.4 Próximos pasos
+1. **Banco (cierre de FASE 1):** flashear `pio run -e down_debug_telemetry -t upload`, correr la
+   app (`python -m monitor_base --port COMx`), mover el robot sobre las líneas y **calibrar**
+   (carpet/blanco/auto → guardar a EEPROM); diagnosticar sensores muertos/pegados. Cerrar los
+   criterios de TASK-304/305.
+2. **FASE 2 (P1) — SUPERIOR:** arrancar **TASK-205/206** (TOP) reutilizando este patrón
+   (módulo puro + glue gateado + app PC + protocolo versionado).
+3. **FASE 3 (futuro, roadmap E4):** migrar el transporte USB → CAN troncal + ESP32 gateway
+   (telemetría estilo F1 inalámbrica / robot-a-robot).
+
+> Issues relacionadas: #14 / #15 / #16.

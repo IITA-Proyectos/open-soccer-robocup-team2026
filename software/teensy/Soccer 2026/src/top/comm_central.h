@@ -24,4 +24,10 @@ uint32_t comm_central_get_frames_lost();
 // Snapshots dropeados en TX por buffer lleno (SI-02): 0 en operacion normal.
 uint32_t comm_central_get_frames_tx_dropped();
 
+#ifdef TOP_DEBUG_TELEMETRY
+// Copia el ÚLTIMO WorldSnapshot difundido a la CENTRAL (para la telemetría USB
+// del modo DEBUG). Retorna false si todavía no se envió ninguno.
+bool comm_central_get_last_snapshot(WorldSnapshot& out);
+#endif
+
 }  // namespace iitasoccer

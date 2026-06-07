@@ -16,6 +16,13 @@ uint32_t g_frames_tx_dropped = 0;  // SI-02: snapshots dropeados por buffer TX l
 uint8_t  g_send_seq = 0;
 LinkSeqTracker g_seq{};   // gap de SEQ del enlace CENTRAL→TOP (RX) (P1-SEQ-LINK-HEALTH)
 
+#ifdef TOP_DEBUG_TELEMETRY
+// Cache del último WorldSnapshot difundido a CENTRAL, para la telemetría USB
+// del modo DEBUG. (Patrón espejo del cache de LineStatusV2 en la DOWN.)
+WorldSnapshot g_last_snap{};
+bool          g_last_snap_valid = false;
+#endif
+
 constexpr long UART_BAUD = 230400;
 
 void handle_frame(const Frame& f) {
@@ -53,6 +60,11 @@ int comm_central_tick() {
 }
 
 void comm_central_send_snapshot(const WorldSnapshot& snap) {
+#ifdef TOP_DEBUG_TELEMETRY
+    // Snapshot del WorldSnapshot que se está difundiendo, para la telemetría USB.
+    g_last_snap       = snap;
+    g_last_snap_valid = true;
+#endif
     Frame f{};
     f.type = MsgType::WORLD_SNAPSHOT;
     f.seq = g_send_seq++;
@@ -79,5 +91,13 @@ uint32_t comm_central_get_frames_sent()     { return g_frames_sent; }
 uint32_t comm_central_get_frames_received() { return g_frames_received; }
 uint32_t comm_central_get_frames_lost()     { return g_seq.lost; }
 uint32_t comm_central_get_frames_tx_dropped() { return g_frames_tx_dropped; }
+
+#ifdef TOP_DEBUG_TELEMETRY
+bool comm_central_get_last_snapshot(WorldSnapshot& out) {
+    if (!g_last_snap_valid) return false;
+    out = g_last_snap;
+    return true;
+}
+#endif
 
 }  // namespace iitasoccer

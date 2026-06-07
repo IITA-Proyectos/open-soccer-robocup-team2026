@@ -381,6 +381,155 @@ loop main_down.cpp:161-163). Contadores SIEMPRE activos: `g_tick_count` y
 
 ---
 
+## Subsistema 6 — Telemetría USB + app monitor-base
+
+Env: `[env:down_debug_telemetry]` (platformio.ini:1045) = `[env:down]` +
+`-DDOWN_DEBUG_TELEMETRY`. Glue Arduino GATEADO: `src/down/down_telemetry_serial.{h,cpp}`
+(todo el cuerpo dentro de `#ifdef DOWN_DEBUG_TELEMETRY`); hook en
+`src/down/main_down.cpp:150-152` (`down_telemetry_init`) y `:198-200` (`down_telemetry_tick`);
+getter `comm_central_get_last_line_status()` (`comm_central.h:44`). Módulo PURO
+host-testeado: `src/shared/telemetry_down.{h,cpp}`. Contrato: `docs/firmware/TELEMETRIA-DOWN.md`.
+App de PC: `tools/monitor-base/` (`python -m monitor_base`).
+
+> El firmware emite JSON Lines (un objeto por línea, `\n`) por el USB CDC (`Serial`,
+> 115200), independiente de los UART inter-placa. Con el flag OFF (`down`/`down_lean`/
+> `down_wdt`) el binario de competencia es **byte-idéntico** (todo `#ifdef`'d).
+> ⚠️ El glue Arduino NO se compila en el gate host (g++) — esta card lo verifica POR
+> PRIMERA VEZ con `pio`.
+
+### CARD DOWN-10: Telemetría USB + app monitor-base (validar glue + calibrar)
+
+- **Objetivo:** verificar que el modo debug de telemetría COMPILA y FLASHEA (nunca se
+  probó en host), que NO rompe el binario de competencia, y que la app de PC
+  `monitor-base` levanta el stream, muestra los 32 sensores / línea a CENTRAL /
+  odometría OTOS, y calibra y persiste la calib en EEPROM.
+- **Placa:** DOWN (Teensy 4.0), ROBOT1, conectada por USB a la PC.
+- **Programa / env:** `cd "software/teensy/Soccer 2026" && pio run -e down_debug_telemetry -t upload`
+- **¿Existe el programa?:** SÍ. `[env:down_debug_telemetry]` (platformio.ini:1045),
+  glue `src/down/down_telemetry_serial.cpp`, app `tools/monitor-base/`. Nada que crear.
+  PERO el glue Arduino NUNCA se compiló en el host → el paso 1 es el gate real.
+- **Setup físico:** placa DOWN ROBOT1, los 4 muxes + 2 OTOS conectados, sobre el
+  carpet verde, con una LÍNEA BLANCA real accesible para pasar el anillo encima. USB
+  de la Teensy a la PC. Tené anotado el COM de la Teensy (Windows: Administrador de
+  dispositivos → Puertos COM; o el que reporta `pio device list`).
+
+- **Paso 1 — Compila el glue (PRIMERO, no se verificó en host):**
+  `pio run -e down_debug_telemetry`
+  - **Que esperar si PASA:** `SUCCESS`, sin errores de compilación ni de linker.
+  - **Si FALLA:** anotá el **error EXACTO** (archivo:línea + mensaje del compilador,
+    p.ej. símbolo no declarado / firma que no matchea). Este es el **PRIMER BLOQUEANTE**
+    a resolver — sin esto no hay telemetría; no sigas con los pasos de abajo.
+  - **Feedback a devolver a la IA:** "compila OK" O pegá las ~10 líneas del error de pio
+    (desde la primera línea con `error:`).
+
+- **Paso 2 — No-regresión de competencia (binario byte-idéntico):**
+  `pio run -e down` debe seguir compilando igual que siempre.
+  - **Que esperar si PASA:** `SUCCESS`. En la tabla de tamaños de pio, **RAM/Flash del
+    `[env:down]` IGUALES** a antes (el flag OFF no agrega ni un byte). Idealmente: guardá
+    `.pio/build/down/firmware.hex` antes y después y compará tamaño/contenido (debe ser idéntico).
+  - **Que esperar si FALLA:** si `down` cambia de tamaño respecto al baseline → algo del
+    código nuevo se coló FUERA del `#ifdef DOWN_DEBUG_TELEMETRY`. Reportar; NO promover.
+  - **Feedback a devolver a la IA:** pegá las dos líneas `RAM: ...% / Flash: ...%` del
+    `[env:down]` (idealmente las de antes y después) y confirmá si son iguales.
+
+- **Paso 3 — Flashear y confirmar banner:**
+  `pio run -e down_debug_telemetry -t upload`, después `pio device monitor -b 115200`.
+  - **Que esperar si PASA:** tras el boot normal de DOWN aparece, UNA vez,
+    `[DOWN-TELEM] v1 ready` (`down_telemetry_serial.cpp:219`), y enseguida EMPIEZAN a
+    fluir líneas JSON `{"v":1,"seq":N,"t_ms":...,"ring":{...},"line":{...},"otos":{...},"diag":{...}}`
+    con `seq` creciendo (stream ON por default, 20 Hz). **Cerrá el monitor de pio antes
+    del paso 4** (el COM no se puede abrir desde dos lados).
+  - **Resultados posibles:** A) banner + JSON con `seq` subiendo → PASS. B) banner pero
+    NO salen líneas JSON → el stream arrancó OFF o el tick no corre; reportar. C) JSON
+    ilegible/cortado → revisar baud (115200) y que el monitor no esté reescalando.
+  - **Feedback a devolver a la IA:** confirmá que viste `[DOWN-TELEM] v1 ready` y pegá
+    UNA línea JSON completa.
+
+- **Paso 4 — Correr la app monitor-base:**
+  `pip install pyserial` (solo si hace falta; el resto usa stdlib), después
+  `python -m monitor_base --port COMx` (COM de la Teensy).
+  > Smoke previo sin robot (opcional, confirma que la app corre): `python -m monitor_base --selftest`
+  > debe terminar en `[selftest] OK` con código 0.
+  - **Que esperar si PASA:** abre la ventana con el anillo de 32 sensores en su
+    geometría real y los paneles (línea / LineStatusV2 / OTOS); el `seq`/contadores se
+    actualizan en vivo (no congelado).
+  - **Resultados posibles:** A) ventana abre y actualiza → PASS. B) `No se pudo iniciar
+    la GUI (...)` → falta tkinter/display; reportar el mensaje (probar `--selftest`).
+    C) abre pero NO actualiza → no llega telemetría: COM equivocado, o el monitor de pio
+    quedó abierto tomando el puerto. Reportar.
+  - **Feedback a devolver a la IA:** "ventana abre y actualiza" O pegá el error de la
+    consola (y el resultado de `--selftest`).
+
+- **Paso 5 — Diagnóstico de sensores (0 muertos):** moviendo el robot, pasá la línea
+  blanca por TODO el anillo.
+  - **Que esperar si PASA:** los 32 sensores oscilan (cambian de color con el valor
+    crudo y se resaltan al ver blanco); NINGUNO queda en **rojo** (muerto/pegado/saturado).
+  - **Resultados posibles:** A) los 32 reaccionan, 0 rojos → PASS. B) uno o más en rojo
+    → muertos/mal soldados; anotá los índices (cuadra con CARD DOWN-5). C) 8 consecutivos
+    rojos → un mux caído.
+  - **Feedback a devolver a la IA:** "los 32 reaccionan, 0 rojos" O listá los índices en
+    rojo (ej: "S14 y S27 en rojo").
+
+- **Paso 6 — Línea a CENTRAL (LineStatusV2):** cruzá una línea blanca bajo el anillo.
+  - **Que esperar si PASA:** el panel de `LineStatusV2` (lo que VIAJA a la CENTRAL) pasa
+    a present=SÍ con un ángulo y un cross-track coherentes con cómo cruzás la línea
+    (sobre verde: present=NO / valid según calib).
+  - **Resultados posibles:** A) present/ángulo/cross-track coherentes → PASS. B) nunca
+    marca present aunque haya línea, o el ángulo salta sin sentido → reportar (puede ser
+    calib: hacer el paso 8 primero). C) `valid=0` siempre → calib floja/ batería baja
+    (ver MEMORY: batería <7.6 V degrada la línea).
+  - **Feedback a devolver a la IA:** anotá present/ángulo/cross-track sobre verde y sobre
+    la línea, y si `valid` es 1.
+
+- **Paso 7 — Odometría OTOS:** deslizá el robot unos cm sobre el piso.
+  - **Que esperar si PASA:** en el panel OTOS, x/y/heading CAMBIAN al mover; los
+    indicadores L y R (izq U5/Wire, der U6/Wire1) en **verde** (sanos). `OTOS RESET`
+    vuelve la pose a 0/0/0.
+  - **Resultados posibles:** A) x/y/hdg cambian y L/R verdes → PASS. B) un lado rojo
+    (L o R) → ese OTOS no responde (cuadra con CARD DOWN-7); reportar cuál. C) pose no
+    cambia con L/R verdes → el OTOS no "ve" el piso (textura/altura); reportar.
+  - **Feedback a devolver a la IA:** "x/y/hdg cambian, L y R verdes" O qué lado está rojo /
+    si la pose no se mueve.
+
+- **Paso 8 — Calibración asistida + persistencia EEPROM:**
+  1. CAL AUTO ON → pasá el robot LENTO por VERDE y por BLANCO (captura min/max por sensor).
+  2. CAL AUTO OFF (fija carpet=min, white=max).
+  3. CAL SAVE (persiste a EEPROM).
+  4. **Power-cycle** la Teensy (o re-abrí la app) → CAL LOAD.
+  - Alternativa manual: CAL CARPET (anillo sobre verde, quieto) + CAL WHITE (anillo sobre
+    la línea blanca) en vez de AUTO ON/OFF.
+  - **Que esperar si PASA:** tras AUTO OFF, los umbrales por sensor separan verde de
+    blanco (la app no marca sensores con margen bajo / sospechosos); tras CAL SAVE +
+    power-cycle + CAL LOAD, la calibración cargada es la misma (los 32 vuelven a separar
+    verde/blanco igual; la app no vuelve a marcar sospechosos).
+  - **Resultados posibles:** A) AUTO calibra, SAVE/LOAD persiste, 0 sospechosos → PASS.
+    B) quedan sensores sospechosos (margen bajo) → recapturá blanco con más cobertura, o
+    son sensores débiles; anotá los índices (cuadra con DOWN-6, margen objetivo ≥ ~40–80
+    counts). C) tras power-cycle + CAL LOAD la calib NO vuelve (sensores otra vez
+    sospechosos) → la persistencia EEPROM falló; reportar.
+  - **Feedback a devolver a la IA:** confirmá el flujo (AUTO ON→OFF→SAVE→power-cycle→LOAD),
+    cuántos sensores quedan sospechosos, y si la calib SOBREVIVIÓ al power-cycle.
+
+- **Paso 9 — Grabar / replay round-trip (opcional):**
+  `python -m monitor_base --port COMx --record sesion.jsonl` (movés el robot un rato y
+  cerrás), después `python -m monitor_base --replay sesion.jsonl`.
+  - **Que esperar si PASA:** al cerrar el record, la consola dice `Grabados N frames en
+    sesion.jsonl` (N>0); el `--replay` reproduce esa sesión mostrando los mismos
+    movimientos/valores que grabaste (round-trip OK).
+  - **Resultados posibles:** A) graba N>0 y el replay reproduce igual → PASS. B) graba 0
+    frames → no llegó telemetría durante el record (COM/stream); reportar. C) replay no
+    abre el archivo / formato → reportar el error.
+  - **Feedback a devolver a la IA:** "grabó N frames, replay reproduce igual" O el error.
+
+- **Tiempo estimado:** 12–15 min (sin contar power-cycle).
+- **NOTA / BLOQUEANTE:** si el **Paso 1 NO compila**, ese es el primer bloqueante a
+  resolver — el glue Arduino nunca pasó por un compilador para Teensy; pegá el error
+  exacto y NO sigas con los pasos 3+ hasta que `pio run -e down_debug_telemetry` dé
+  `SUCCESS`. El Paso 2 (no-regresión de `[env:down]`) es independiente y se puede correr
+  igual.
+
+---
+
 ## Resumen de envs/diags
 
 | Card | Env | ¿Existe? | Archivo |
@@ -393,6 +542,7 @@ loop main_down.cpp:161-163). Contadores SIEMPRE activos: `g_tick_count` y
 | DOWN-7 | `diag_down` | SÍ (174) | src/diag/main_diag_down.cpp:82-158 |
 | DOWN-8 | `down_robot2` | **NO — falta crear** (DOWN_NUM_OTOS_CONNECTED=0) | firmware ya soporta NUM_OTOS=0: otos.cpp:81,86,162 |
 | DOWN-9 | `diag_down_cpu` (directo) / `diag_down` (indirecto) | parcial | line_ring.cpp:142-144 |
+| DOWN-10 | `down_debug_telemetry` + app `tools/monitor-base` | SÍ (platformio.ini:1045) — glue NO host-compilado, verificar con `pio run -e down_debug_telemetry` | src/down/down_telemetry_serial.cpp, src/shared/telemetry_down.{h,cpp}, docs/firmware/TELEMETRIA-DOWN.md |
 
 **Faltantes a crear (NO en esta tarea — son cards de "needs-firmware"):**
 1. `[env:diag_down_cpu]` + `src/diag/diag_down_cpu.cpp` — imprime

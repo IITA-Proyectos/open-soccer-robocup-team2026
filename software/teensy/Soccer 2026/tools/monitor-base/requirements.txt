@@ -1,0 +1,12 @@
+# Dependencias de la app de base (monitor-base).
+#
+# El núcleo (parser, geometría, salud, calib, simulador, GUI) usa SOLO la stdlib
+# de Python (incluido tkinter, que viene con CPython en Windows). No hace falta
+# instalar nada para --sim / --replay / --selftest.
+#
+# pyserial SOLO se necesita para conectarse al Teensy real (--port):
+pyserial>=3.5
+
+# Para correr los tests automáticos:
+#   pip install pytest
+#   python -m pytest

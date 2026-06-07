@@ -205,4 +205,15 @@ bool     otos_is_left_ready()   { return g_left_health.alive; }
 bool     otos_is_right_ready()  { return g_right_health.alive; }
 uint32_t otos_get_tick_count()  { return g_tick_count; }
 
+#ifdef DOWN_DEBUG_TELEMETRY
+// Lecturas por-OTOS (sin fusionar) — exponen los globals que otos_tick() ya
+// mantiene para el análisis diferencial. Sólo se compilan en el modo telemetría.
+float otos_get_left_x_mm()         { return g_left_x; }
+float otos_get_left_y_mm()         { return g_left_y; }
+float otos_get_left_heading_deg()  { return g_left_h; }
+float otos_get_right_x_mm()        { return g_right_x; }
+float otos_get_right_y_mm()        { return g_right_y; }
+float otos_get_right_heading_deg() { return g_right_h; }
+#endif
+
 }  // namespace iitasoccer

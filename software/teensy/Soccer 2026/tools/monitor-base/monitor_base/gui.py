@@ -15,6 +15,7 @@ from tkinter import ttk
 from typing import Optional
 
 from . import geometry
+from .boot_status import BootStatusTracker
 from .calibration import CalibrationAssistant
 from .protocol import Frame
 from .sensor_health import Health, SensorHealthTracker
@@ -40,6 +41,7 @@ class MonitorApp:
         self.recorder = recorder
         self.health = SensorHealthTracker(n=n)
         self.calib = CalibrationAssistant(n=n)
+        self.boot = BootStatusTracker()   # qué calib cargó la placa al boot
         self.last: Optional[Frame] = None
         self.frame_count = 0
         self.last_seq = -1
@@ -158,6 +160,7 @@ class MonitorApp:
             bt = self.source.last_text()
             if bt:
                 self._last_board = bt
+                self.boot.update(bt)
         had_error = self._drain_errors()
         if frames:
             self._render(frames[-1])
@@ -295,6 +298,11 @@ class MonitorApp:
         widget.insert("1.0", text)
 
     def _set_status(self, text: str) -> None:
+        # Antepone de forma persistente qué calibración cargó la placa al boot
+        # (de EEPROM ✓ vs FAIL-SAFE), para no perder de vista qué está operativo.
+        calib = self.boot.last_calib_status()
+        if calib:
+            text = f"[{calib}]  {text}"
         self.status.config(text=text)
 
     def _on_close(self) -> None:

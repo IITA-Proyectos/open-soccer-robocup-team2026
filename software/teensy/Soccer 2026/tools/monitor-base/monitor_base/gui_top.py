@@ -15,6 +15,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Optional
 
+from .boot_status import BootStatusTracker
 from .protocol_top import TopFrame
 from .sources import FrameSource
 
@@ -34,6 +35,7 @@ class MonitorTopApp:
         self.frame_count = 0
         self.last_seq = -1
         self.dropped = 0
+        self.boot = BootStatusTracker()   # qué calib cargó la placa al boot
 
         root.title("IITA Soccer — Monitor del campo (TOP) v1")
         self._cx = self._cy = RADAR_PX / 2
@@ -150,6 +152,7 @@ class MonitorTopApp:
             bt = self.source.last_text()
             if bt:
                 self._last_board = bt
+                self.boot.update(bt)
         had_error = self._drain_errors()
         if frames:
             self._render(frames[-1])
@@ -286,6 +289,11 @@ class MonitorTopApp:
         widget.insert("1.0", text)
 
     def _set_status(self, text: str) -> None:
+        # Antepone de forma persistente qué calibración cargó la placa al boot
+        # (de EEPROM ✓ vs FAIL-SAFE), para no perder de vista qué está operativo.
+        calib = self.boot.last_calib_status()
+        if calib:
+            text = f"[{calib}]  {text}"
         self.status.config(text=text)
 
     def _on_close(self) -> None:

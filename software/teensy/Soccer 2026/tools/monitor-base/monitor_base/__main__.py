@@ -23,9 +23,11 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     src.add_argument("--sim", action="store_true",
                      help="usar el simulador (sin robot) [default]")
     src.add_argument("--port", metavar="COMx",
-                     help="puerto serie del Teensy DOWN (p.ej. COM5 o /dev/ttyACM0)")
+                     help="puerto serie del Teensy (COM5, /dev/ttyACM0, o 'auto' para detectarlo)")
     src.add_argument("--replay", metavar="ARCHIVO.jsonl",
                      help="reproducir una grabación de telemetría")
+    p.add_argument("--list-ports", action="store_true",
+                   help="lista los puertos serie disponibles (cuál parece el Teensy) y sale")
     p.add_argument("--baud", type=int, default=115200, help="baud (default 115200)")
     p.add_argument("--rate", type=float, default=20.0,
                    help="tasa Hz para sim/replay (default 20)")
@@ -140,8 +142,31 @@ def run_selftest_top(frames: int = 200) -> int:
     return 0
 
 
+def list_ports() -> int:
+    """Lista los puertos serie y marca cuál parece el Teensy."""
+    from .sources import list_serial_ports, autodetect_port
+    ports = list_serial_ports()
+    if not ports:
+        print("No hay puertos serie (o falta pyserial: pip install pyserial).")
+        return 1
+    auto = autodetect_port()
+    print("Puertos serie disponibles:")
+    for p in ports:
+        mark = "  <-- probable Teensy" if p["is_teensy"] else ""
+        star = " *" if p["device"] == auto else ""
+        print(f"  {p['device']:<8}{star}  {p['description']}{mark}")
+    if auto:
+        print(f"\nAutodetección elegiría: {auto}")
+        print(f"Corré:  python -m monitor_base --port {auto}   (o  --port auto)")
+    else:
+        print("\nNo pude elegir uno solo automáticamente; pasá el COM con --port COMx.")
+    return 0
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     args = _parse_args(argv)
+    if args.list_ports:
+        return list_ports()
     if args.selftest:
         if args.top:
             return run_selftest_top(args.selftest_frames)

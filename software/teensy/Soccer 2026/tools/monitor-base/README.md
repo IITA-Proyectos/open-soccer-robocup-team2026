@@ -32,6 +32,8 @@ telemetría USB del firmware DOWN. Es la FASE 1 (P0) del sistema de monitoreo
 # Robot real (Teensy DOWN flasheada con env down_debug_telemetry):
 python -m monitor_base --port COM5          # Windows
 python -m monitor_base --port /dev/ttyACM0  # Linux/Mac
+python -m monitor_base --port auto           # autodetecta el Teensy
+python -m monitor_base --list-ports          # lista los COM y cuál parece el Teensy
 
 # Sin robot, para desarrollar/demostrar:
 python -m monitor_base --sim

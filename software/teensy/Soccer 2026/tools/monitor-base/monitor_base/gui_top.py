@@ -146,9 +146,20 @@ class MonitorTopApp:
         frames = self.source.poll()
         for f in frames:
             self._consume(f)
+        if hasattr(self.source, "last_text"):
+            bt = self.source.last_text()
+            if bt:
+                self._last_board = bt
+        had_error = self._drain_errors()
         if frames:
             self._render(frames[-1])
-        self._drain_errors()
+        elif not had_error:
+            bt = getattr(self, "_last_board", None)
+            if bt:
+                self._set_status(f"esperando datos… la placa dice: «{bt}»")
+            elif self.last is None:
+                self._set_status("esperando datos… ¿flasheaste top_robot1_debug_telemetry y "
+                                 "conectaste la batería? (la TOP tarda ~40 s en bootear por los ToF)")
         self.root.after(self.poll_ms, self._tick)
 
     def _consume(self, f: TopFrame) -> None:
@@ -162,7 +173,7 @@ class MonitorTopApp:
             self.recorder.write(f)
         self.last = f
 
-    def _drain_errors(self) -> None:
+    def _drain_errors(self) -> bool:
         msgs = []
         while True:
             try:
@@ -171,6 +182,8 @@ class MonitorTopApp:
                 break
         if msgs:
             self._set_status("⚠ " + " | ".join(msgs[-2:]))
+            return True
+        return False
 
     def _render(self, f: TopFrame) -> None:
         c = self.canvas

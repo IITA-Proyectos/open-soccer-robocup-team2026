@@ -154,9 +154,20 @@ class MonitorApp:
         frames = self.source.poll()
         for f in frames:
             self._consume(f)
+        if hasattr(self.source, "last_text"):
+            bt = self.source.last_text()
+            if bt:
+                self._last_board = bt
+        had_error = self._drain_errors()
         if frames:
             self._render(frames[-1])
-        self._drain_errors()
+        elif not had_error:
+            bt = getattr(self, "_last_board", None)
+            if bt:
+                self._set_status(f"esperando datos… la placa dice: «{bt}»")
+            elif self.last is None:
+                self._set_status("esperando datos… ¿flasheaste down_debug_telemetry y "
+                                 "conectaste la batería? (la placa tarda ~2 s en bootear)")
         self.root.after(self.poll_ms, self._tick)
 
     def _consume(self, f: Frame) -> None:
@@ -172,7 +183,7 @@ class MonitorApp:
             self.recorder.write(f)
         self.last = f
 
-    def _drain_errors(self) -> None:
+    def _drain_errors(self) -> bool:
         msgs = []
         while True:
             try:
@@ -181,6 +192,8 @@ class MonitorApp:
                 break
         if msgs:
             self._set_status("⚠ " + " | ".join(msgs[-2:]))
+            return True
+        return False
 
     def _render(self, f: Frame) -> None:
         statuses = self.health.status()
@@ -257,10 +270,14 @@ class MonitorApp:
         probs = [s for s in statuses if s.is_problem]
         margins = f.ring.margins
         weak = [(i, m) for i, m in enumerate(margins) if m < 40]
+        waiting = [s for s in statuses if s.is_waiting]
         lines = []
         if probs:
             ids = ", ".join(f"S{s.index}({s.health.value})" for s in probs)
-            lines.append(f"PROBLEMA: {ids}")
+            lines.append(f"PROBLEMA (muerto/pegado): {ids}")
+        elif waiting and not self.health.is_moving():
+            lines.append(f"robot QUIETO: movelo sobre la línea para chequear los "
+                         f"sensores ({len(waiting)} en espera)")
         else:
             lines.append("sensores: todos responden ✓")
         if self.calib.active:

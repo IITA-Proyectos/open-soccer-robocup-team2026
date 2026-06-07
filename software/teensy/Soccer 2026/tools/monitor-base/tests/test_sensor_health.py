@@ -25,12 +25,45 @@ def test_oscillating_is_ok_constant_is_dead():
     assert [s.index for s in t.problems()] == [3]
 
 
-def test_saturation_high_and_low():
-    t = SensorHealthTracker(n=2, min_samples=64)
-    _feed(t, 80, lambda k: [1023, 0])
+def test_saturation_high_low_only_when_moving():
+    # SAT se reporta sólo si el robot SE MUEVE (otros sensores varían).
+    t = SensorHealthTracker(n=4, min_samples=64)
+
+    def builder(k):
+        osc = 150 if (k % 2 == 0) else 820   # 0,1 oscilan -> robot moviéndose
+        return [osc, osc, 1023, 0]           # 2 pegado arriba, 3 abajo
+    _feed(t, 80, builder)
     st = t.status()
-    assert st[0].health == Health.SAT_HIGH
-    assert st[1].health == Health.SAT_LOW
+    assert t.is_moving() is True
+    assert st[2].health == Health.SAT_HIGH
+    assert st[3].health == Health.SAT_LOW
+
+
+def test_stationary_sensors_are_waiting_not_dead():
+    # Robot QUIETO (nada varía) -> NINGÚN sensor se declara muerto (no se puede
+    # juzgar). Esto evita la pantalla llena de rojo en banco con el robot parado.
+    t = SensorHealthTracker(n=4, min_samples=64)
+    _feed(t, 80, lambda k: [200, 300, 1023, 0])   # todos constantes
+    st = t.status()
+    assert t.is_moving() is False
+    assert all(s.health == Health.WAITING for s in st)
+    assert t.problems() == []
+    assert t.waiting_count() == 4
+
+
+def test_dead_flag_requires_movement():
+    # El mismo sensor pegado: WAITING si el robot está quieto, DEAD si se mueve.
+    t = SensorHealthTracker(n=4, min_samples=64)
+    _feed(t, 80, lambda k: [500, 500, 500, 512])  # todo quieto
+    assert t.status_of(3).health == Health.WAITING
+    t.reset()
+
+    def moving(k):
+        osc = 150 if (k % 2 == 0) else 820
+        return [osc, osc, osc, 512]               # 0,1,2 varían; 3 pegado
+    _feed(t, 80, moving)
+    assert t.is_moving() is True
+    assert t.status_of(3).health == Health.DEAD
 
 
 def test_unknown_before_min_samples():

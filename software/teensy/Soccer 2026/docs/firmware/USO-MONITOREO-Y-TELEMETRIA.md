@@ -66,9 +66,10 @@ Cada placa tiene **un mismo firmware** que se puede compilar de dos maneras:
 1. **PC con Python 3** (ya instalado). La app no necesita nada raro para `--sim`/`--replay`.
 2. Para conectar al **robot real** (`--port`): `pip install pyserial`.
 3. **PlatformIO** (`pio`) para compilar/flashear el Teensy (lo que ya usás para el firmware).
-4. **Saber el puerto COM** del Teensy: Windows → *Administrador de dispositivos* → *Puertos
-   (COM y LPT)* → "USB Serial Device (COMx)". O `pio device list`. (Si conectás ABAJO y ARRIBA
-   a la vez, son **dos COM distintos**, uno por placa.)
+4. **Saber el puerto COM** del Teensy. La forma más fácil: `python -m monitor_base --list-ports`
+   (lista los COM y marca cuál parece el Teensy). O usá directamente **`--port auto`** y la app
+   lo detecta sola. A mano: Windows → *Administrador de dispositivos* → *Puertos (COM y LPT)* →
+   "USB Serial Device (COMx)". (Si conectás ABAJO y ARRIBA a la vez, son **dos COM distintos**.)
 
 ---
 
@@ -156,6 +157,10 @@ telemetría flasheado**; no encienden ni apagan el modo, sólo lo operan:
 
 | Síntoma | Causa probable | Solución |
 |---|---|---|
+| **Se queda en "iniciando…" / no arranca** (típico al conectar la batería) | Al conectar la batería la placa **se resetea y bootea** (~2 s en DOWN; la TOP ~40 s por los ToF) y el USB re-enumera | La app **ahora se reconecta sola** y **muestra lo que dice la placa** en la barra de estado (*«…la placa dice: [DOWN] calibrando carpet…»*). Esperá el boot; si se queda en una línea fija, esa línea te dice **dónde** se colgó — pasámela. |
+| **Sin batería**: OTOS en `L:o-- R:o--`, línea `data_valid=0` / `CALIB_SUSPECT`, sensores en rojo | Los OTOS y los LEDs de los sensores se alimentan de la **batería, NO del USB** | **Alimentá el robot con la batería cargada** (>7,6 V). Con USB solo no arrancan los OTOS ni se separan verde/blanco. |
+| Casi todos los sensores en **rojo "dead"** con el robot quieto | Falso positivo: un sensor "no varía" si **no lo movés** sobre una línea | **Ya corregido:** con el robot quieto la app dice *"robot QUIETO: movelo sobre la línea"* en vez de marcar muertos. Sólo marca DEAD si un sensor no varía **mientras otros sí** (robot moviéndose). |
+| **No sé el COM** | — | `python -m monitor_base --list-ports` (marca el Teensy) o `--port auto`. |
 | La ventana abre pero **no llegan datos** / "cross-track N/A" | La placa NO está flasheada con el env de telemetría, o COM equivocado, o **otro programa tiene el puerto** | Flashear `*_debug_telemetry`; cerrar `pio device monitor` / Serial Monitor del Arduino IDE / otra instancia de la app; confirmar COM |
 | `pyserial no está instalado` | Falta la lib (sólo para `--port`) | `pip install pyserial` (no hace falta para `--sim`/`--replay`) |
 | `schema de telemetría no soportado: v=X (la app entiende v=Y)` | El firmware y la app son de **versiones distintas** del repo | Reflashear la placa desde el **mismo checkout** que la app, o `git pull`. *(Validado: firmware v1 + app v2 → la app lo rechaza limpio, sin mostrar basura.)* |

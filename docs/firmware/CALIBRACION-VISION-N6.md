@@ -91,17 +91,22 @@ Con autos ON la luz cambia y rompe los LAB. Para partido va todo fijo.
 
 ---
 
-## Paso 4 — Homografía (Y ≈ distancia)  [si hay tiempo]
+## Paso 4 — Homografía (posición XY ≈ distancia)  [si hay tiempo]
 
-Esto convierte pixeles a cm y hace que la `Y` sea ~la distancia a la pelota.
+Esto convierte pixeles a cm y hace que `(X, Y)` sea la posición real de la pelota
+(X = izq/der, Y = distancia adelante).
 
-1. Poné 4 puntos de posición conocida en el suelo (frente para la frontal, detrás
-   para la trasera) y leé sus pixeles → calculá `H_MATRIX` (4 correspondencias).
-   Cada cámara tiene **su propia** H.
-2. Medí la altura real de la cámara → `CAM_HEIGHT_CM`.
-3. Validá: pelota a 30 / 50 / 80 / 100 cm reales → la `Y` reportada tiene que dar
-   esas distancias con **<10% de error**. Ajustá `CAMERA_UNIT_TO_MM` en el TOP
-   (`src/top/cameras_runtime.cpp`, hoy placeholder = 10.0) contra la cancha.
+> **➡️ Procedimiento completo y CONFIABLE (lona con grilla + tool de captura +
+> solver de PC):** [`CALIBRACION-HOMOGRAFIA-XY-N6.md`](CALIBRACION-HOMOGRAFIA-XY-N6.md).
+> Ese doc reemplaza el método viejo de "4 puntos a ojo": usa una lona con grilla
+> de puntos que la cámara detecta sola (`calib-homografia-n6.py`) y un solver
+> numpy en la PC (`solve_homografia.py`, validado). Más rápido, simple y repetible
+> en Incheon.
+
+Resumen: lona con grilla → `calib-homografia-n6.py` imprime correspondencias →
+`solve_homografia.py` calcula `H_MATRIX` → pegar en `cam-*-n6.py` → medir
+`CAM_HEIGHT_CM` → validar con pelota a 30/50/80/100 cm (<10% error) → ajustar
+`CAMERA_UNIT_TO_MM` del TOP (`src/top/cameras_runtime.cpp`, hoy = 10.0; cm → 10.0).
 
 > El Paso 4 es "calidad de distancia". Para que el robot **vea y persiga** la
 > pelota alcanza con los Pasos 1–3; priorizá esos si el tiempo aprieta.

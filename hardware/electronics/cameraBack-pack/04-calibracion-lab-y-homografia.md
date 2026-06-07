@@ -65,6 +65,14 @@ la frontal).
 
 ## 3. Calibración de la homografía (específico al montaje trasero)
 
+> **➡️ Procedimiento vigente (reemplaza el método de "4 puntos a ojo"):**
+> [`docs/firmware/CALIBRACION-HOMOGRAFIA-XY-N6.md`](../../../docs/firmware/CALIBRACION-HOMOGRAFIA-XY-N6.md).
+> Usa una **lona con grilla de puntos** que la cámara detecta sola
+> (`firmware/openmv/calib-homografia-n6.py`) + un **solver numpy en la PC**
+> (`vision-optimization-pack/tools/solve_homografia.py`, validado). La trasera
+> calibra con la lona DETRÁS del robot; su H es distinta a la frontal. Lo de abajo
+> queda como contexto conceptual.
+
 ### 3.1 Por qué la homografía es DISTINTA a la frontal
 
 La matriz `H` depende de:

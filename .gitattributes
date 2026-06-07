@@ -1,0 +1,2 @@
+# Archivos binarios — sin conversión de fin de línea (autocrlf=true los corrompería).
+*.pdf binary

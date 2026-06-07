@@ -69,6 +69,8 @@ Vista superior:
 Diámetro total: ~160-180mm (dentro de 200mm Soccer limit)
 ```
 
+> ⚠️ NOTA: este montaje (0deg/120deg/240deg) es un TEMPLATE conceptual KIWI generico y NO es la geometria del robot 2026. El robot real (ROBOT1) usa drivers U5/U17/U7 con WHEEL_ANGLES_DEG={60,-60,180} (ver config_central.h y docs/firmware/DIAG-CENTRAL-MOTORS.md). La disposicion VALIDADA es: M1/U5=+60deg delantera-derecha, M2/U17=-60deg delantera-izquierda (INVERTIDO HW), M3/U7=180deg trasera.
+
 ---
 
 ## 3. NIVELES DE CONTROL

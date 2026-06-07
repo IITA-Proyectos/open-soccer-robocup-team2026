@@ -491,6 +491,8 @@ nativo, pero ya no es el único camino. Ver
   TASK-024 (rol/polaridad), TASK-032 (ToF U2 en HW), TASK-035 (localización),
   TASK-200 (heading IMU→CENTRAL + loop), TASK-037 (drive-straight), TASK-003 (Wire1 remap).
 
+> ✅ SUPERADO (2026-06-07): el sentido de los 3 motores ROBOT1 ya está validado (MOTOR_INVERT={+1,-1,+1}, M2/U17 invertido, banco 2026-06-01 re-confirmado 2026-06-06) y el conflicto 7/8 está resuelto (2026-05-31). Fila canónica: FUENTES-DE-VERDAD.md:38. Tabla de disposición: docs/firmware/DIAG-CENTRAL-MOTORS.md. Lo único de banco que queda es la GEOMETRÍA WHEEL_ANGLES y ROBOT2.
+
 ### 🏁 Avance 2026-05-29 — BANCO: motores CENTRAL + enlace físico DOWN↔CENTRAL
 - **Motores del CENTRAL andan** (`diag_central_motors` en banco): identificados
   motor 1/2/3 + definida la orientación (horario/antihorario) de cada uno. Los

@@ -58,15 +58,17 @@ Detalle: journal `2026-06-03-banco-resultados-arbitro-strafe-y-bno-freeze.md`.
 | # | Tema | Prioridad | Dónde se cierra |
 |---|---|---|---|
 | 1 | `diag_central_strafe` usa `inverse_kinematics(WHEEL_ANGLES_DEG={60,-60,180}` TENTATIVO) → puede dar círculos; FASE B se contamina | P1 (P0 para que el arquero ande derecho) | Banco: FASE A primero |
-| 2 | **Contradicción M2**: 2026-05-29 dijo `{+1,+1,+1}` sin inversión; 2026-06-01 dijo "M2 INA/INB invertido por HW". `motors_zircon` no tiene signo por motor | P1 | Banco: TASK-036 en ESTE robot |
+| 2 | **RESUELTO: M2 invertido es la verdad validada; `motors_zircon` SÍ aplica `MOTOR_INVERT={+1,-1,+1}` (commit 2898719). Lo de "`motors_zircon` no tiene signo por motor" quedó STALE.** | — (cerrado) | Banco: TASK-036 en ESTE robot |
 | 3 | **Doble arquero** (producción cinemática vs banco control-directo+BNO-muerto) | P2 (decisión) | Decisión de Gustavo (abajo) |
 | 4 | **Signo de omega (runaway)**: `+omega` = horario físico; CLEAR ya usa heading_pid sin validar HW | P1 (gate de v2 y de CLEAR) | Banco: TASK-037 giro chico |
 
 ## Secuencia de banco recomendada (ORDEN)
 
-1. **TASK-036** (`diag_central_motors`) en **este** robot → cerrar Tema 2 (¿M2
-   invertido sí/no? sentido definitivo de los 3). ⚠️ El conflicto 7/8 YA está
-   resuelto (UART movido a Serial1) — ignorar la parte vieja de "migrar Serial2".
+1. **TASK-036** (`diag_central_motors`) en **este** robot. El **sentido definitivo de
+   los 3 YA está cerrado** (M1=+1, M2=-1, M3=+1; M2 invertido por HW validado en banco
+   María/Elías, RE-CONFIRMADO 2026-06-06 commit 8956d10). Lo que queda de banco acá es
+   **WHEEL_ANGLES (geometría) y el mapeo a rueda física, NO el sentido**. ⚠️ El conflicto
+   7/8 YA está resuelto (UART movido a Serial1) — ignorar la parte vieja de "migrar Serial2".
 2. **Link DOWN→CENTRAL** (`diag_central_comm_down`, TASK-100) → cable al **pin 0**
    (NO pin 7 — ahí ahora va el motor 2). Mirar `frames↑ / CRC≈0`.
 3. **`diag_central_strafe` FASE A** → ¿lateral limpio o círculos? Si da círculos,

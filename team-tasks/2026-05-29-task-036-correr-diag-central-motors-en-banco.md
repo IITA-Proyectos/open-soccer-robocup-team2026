@@ -18,10 +18,15 @@ related: [team-tasks/2026-05-15-task-011-confirmar-pin-kicker-solenoide-zircon.m
 > por reasignación de UART (link DOWN→CENTRAL = **Serial1 0/1**, TOP→CENTRAL =
 > **Serial7 28/29**; 7/8 quedan para el motor 2). **Ignorar** todo lo de abajo sobre
 > "cerrar el conflicto 7/8 / migrar Serial2 a Serial7" — es histórico. (2) Sigue
-> pendiente y es lo importante: **mapeo motor↔rueda + veredicto de la polaridad de
-> M2** (2026-05-29 dio `{+1,+1,+1}` sin inversión, pero 2026-06-01 reportó M2
-> INA/INB invertido por HW — **reconciliar en ESTE robot**). Contexto y secuencia:
+> pendiente lo importante: **mapeo motor↔rueda física**. La **polaridad de M2 ya está
+> RECONCILIADA Y VALIDADA: M2 INVERTIDO → `MOTOR_INVERT={+1,-1,+1}` (banco 2026-06-01,
+> re-confirmado 2026-06-06 commit 8956d10)**. El `{+1,+1,+1}` del 2026-05-29 quedó
+> superado. Contexto y secuencia:
 > [TASK-101](2026-06-03-task-101-banco-mitad-inferior-cinematica-y-fork-arquero.md).
+
+> 📌 **Alcance del `pending`:** SOLO falta nombrar la correspondencia
+> motor↔rueda-física (der/izq del par delantero); el sentido/identidad de los
+> 3 motores YA está cerrado.
 
 ## Resumen
 

@@ -38,6 +38,7 @@ namespace iitasoccer {
     // VALIDADO en banco (María/Elías, diag_central_line_sweep_robot1): el motor 2
     // (driver U17, pines 8/7/6) tiene INA/INB cruzados por HW → va invertido.
     // Fuente: docs/firmware/DIAG-CENTRAL-MOTORS.md + journal 2026-05-29 / 2026-06-01.
+    // + RE-CONFIRMADO banco 2026-06-06 (commit 8956d10) tras rearmar el robot: se mueve derecho + esquiva la línea.
     constexpr int MOTOR_INVERT[3] = { +1, -1, +1 };
 #elif defined(ROBOT2)  // Delantero
     constexpr int PIN_INA1 = 8;
@@ -78,12 +79,16 @@ constexpr int    BNO055_HEADING_SAMPLES = 10;
 
 // ============================================================
 // Cinemática del robot (TENTATIVO — confirmar con montaje físico real)
+// (TENTATIVO = los ÁNGULOS de rueda; el sentido/identidad de los 3 motores ROBOT1 YA está validado, ver MOTOR_INVERT)
 // ============================================================
 constexpr float PI_F            = 3.14159265358979323846f;
 constexpr float WHEEL_RADIUS_MM = 100.0f;   // distancia del centro a cada rueda
 
 // Configuración tentativa: ruedas a 60°, -60°, 180°. Convención frente = +Y.
 // ⚠️ Confirmar con Enzo + medir en el robot armado.
+// Disposición ROBOT1 (índice = número de motor = rueda): M1/idx0=+60°=delantera DERECHA · M2/idx1=-60°=delantera IZQUIERDA · M3/idx2=180°=TRASERA (centro).
+// M3=trasera CONFIRMADO en banco (lateral puro → M3=0). Der/izq del par delantero = geométrico (ligado a estos ángulos TENTATIVOS), falta nombrarlo en banco.
+// OJO: lo TENTATIVO acá son los ÁNGULOS de rueda (geometría), NO el sentido/identidad de los motores (eso YA está validado → ver MOTOR_INVERT).
 constexpr float WHEEL_ANGLES_DEG[3] = { 60.0f, -60.0f, 180.0f };
 
 // ============================================================

@@ -672,6 +672,8 @@ omega en saturación, etc.). Capitalizables a 2027; ninguno bloquea Incheon.
 - **Cómo evaluar que funciona:** Host-native: no aplica directo (toca Serial HW). Revisión de código + banco: inyectar burst por USB y medir que el brake no se atrasa. Criterio: latencia de brake <15 ms aun con USB cargado.
 
 ### 43. (P2 · motion · bug) motors_zircon no aplica inversion por-motor; M2 esta invertido por HW
+> ✅ RESUELTO 2026-06-03 (commit 2898719): MOTOR_INVERT[3]={+1,-1,+1} existe en config_central.h y se aplica en motors_zircon.cpp; M2/U17 compensado. Riesgo mitigado.
+
 **Esfuerzo:** 1-2 h codigo + banco para confirmar que motor(es) invertir.  
 **¿Requiere tu intervención?** Sí — Confirmar en banco con motors_set_one(idx, +pwm) que motor(es) giran al reves del sentido esperado, y fijar el array de inversion. Decision de diseno: invertir por SW (este fix) vs re-soldar INA/INB (Enzo).  
 **¿Requiere testeo en HW para cerrar?** Sí — **confianza:** alta — **documentado:** sí  

@@ -32,11 +32,12 @@ def _heat_color(raw: int) -> str:
 
 class MonitorApp:
     def __init__(self, root: tk.Tk, source: FrameSource, n: int = 32,
-                 poll_ms: int = 50):
+                 poll_ms: int = 50, recorder=None):
         self.root = root
         self.source = source
         self.n = n
         self.poll_ms = poll_ms
+        self.recorder = recorder
         self.health = SensorHealthTracker(n=n)
         self.calib = CalibrationAssistant(n=n)
         self.last: Optional[Frame] = None
@@ -167,6 +168,8 @@ class MonitorApp:
         self.last_seq = f.seq
         self.health.update(f.ring.raw)
         self.calib.update(f.ring.raw)
+        if self.recorder is not None:
+            self.recorder.write(f)
         self.last = f
 
     def _drain_errors(self) -> None:
@@ -280,11 +283,13 @@ class MonitorApp:
     def _on_close(self) -> None:
         try:
             self.source.stop()
+            if self.recorder is not None:
+                self.recorder.close()
         finally:
             self.root.destroy()
 
 
-def run(source: FrameSource, n: int = 32) -> None:
+def run(source: FrameSource, n: int = 32, recorder=None) -> None:
     root = tk.Tk()
-    MonitorApp(root, source, n=n)
+    MonitorApp(root, source, n=n, recorder=recorder)
     root.mainloop()

@@ -36,6 +36,9 @@ python -m monitor_base --sim --sim-dead 7,18   # inyecta sensores "muertos"
 # Reproducir una grabación .jsonl:
 python -m monitor_base --replay grabacion.jsonl
 
+# Grabar la sesión a archivo mientras mirás (para replay/análisis offline):
+python -m monitor_base --port COM5 --record sesion.jsonl
+
 # Smoke headless (sin ventana — sirve en CI / para verificar que corre):
 python -m monitor_base --selftest
 ```

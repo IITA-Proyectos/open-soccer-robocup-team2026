@@ -31,6 +31,8 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
                    help="tasa Hz para sim/replay (default 20)")
     p.add_argument("--no-loop", action="store_true",
                    help="con --replay: no repetir en bucle")
+    p.add_argument("--record", metavar="ARCHIVO.jsonl", default=None,
+                   help="grabar la telemetría entrante a un .jsonl (para --replay/análisis)")
     p.add_argument("--sim-dead", default="",
                    help="con --sim: índices de sensores 'muertos' a inyectar, ej 5,17")
     p.add_argument("--selftest", action="store_true",
@@ -109,7 +111,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"No se pudo iniciar la GUI ({e}). "
               f"Probá --selftest para un chequeo sin ventana.", file=sys.stderr)
         return 2
-    gui.run(source)
+
+    recorder = None
+    if args.record:
+        from .recorder import Recorder
+        recorder = Recorder(args.record)
+        print(f"Grabando telemetría en {args.record}")
+    try:
+        gui.run(source, recorder=recorder)
+    finally:
+        if recorder is not None:
+            recorder.close()
+            print(f"Grabados {recorder.count} frames en {args.record}")
     return 0
 
 

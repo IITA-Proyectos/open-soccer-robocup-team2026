@@ -15,12 +15,13 @@ from .protocol import (
 from .sensor_health import SensorHealthTracker, SensorStatus, Health
 from .calibration import CalibrationAssistant, SensorCalib
 from .simulator import Simulator
+from .recorder import Recorder
 
 __all__ = [
     "Frame", "LineStatus", "Otos", "Ring", "ProtocolError",
     "parse_line", "parse_obj", "decode_flags", "SCHEMA_VERSION",
     "SensorHealthTracker", "SensorStatus", "Health",
-    "CalibrationAssistant", "SensorCalib", "Simulator",
+    "CalibrationAssistant", "SensorCalib", "Simulator", "Recorder",
 ]
 
 __version__ = "1.0.0"

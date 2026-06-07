@@ -9,6 +9,10 @@ transporte (JSON Lines por USB CDC `Serial`@115200) y misma disciplina: con el f
 (envs `top_robot1`/`top_robot2`) el binario de competencia es **byte-idéntico** (todo el
 código nuevo en `#ifdef TOP_DEBUG_TELEMETRY`).
 
+> 📖 **Cómo activar/desactivar y usar en banco** (reflasheo, recuperar competencia, etc.):
+> [`USO-MONITOREO-Y-TELEMETRIA.md`](USO-MONITOREO-Y-TELEMETRIA.md). Este doc es el **contrato
+> técnico** (qué campos, qué tipos); el de USO es el **procedimiento operativo**.
+
 ## 1. Frame firmware→host (schema 1)
 
 ```json

@@ -10,6 +10,10 @@ telemetría USB del firmware DOWN. Es la FASE 1 (P0) del sistema de monitoreo
 > qué línea detecta, **qué le manda a la CENTRAL**, y la pose de los OTOS — sin
 > leer 32 números crudos en el Serial Monitor.
 
+> 📖 **¿Cómo se activa/desactiva y se usa en banco** (¿hay que reflashear?, ¿cómo vuelvo a
+> competencia?, calibración que persiste, diagnóstico de problemas)? → guía paso a paso:
+> [`docs/firmware/USO-MONITOREO-Y-TELEMETRIA.md`](../../docs/firmware/USO-MONITOREO-Y-TELEMETRIA.md).
+
 ## Qué muestra
 
 - **Anillo de 32 sensores** en su **geometría real del PCB** (3 anillos, espejo de

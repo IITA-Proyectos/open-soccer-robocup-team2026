@@ -12,6 +12,10 @@ Este es el contrato versionado entre el **firmware de DOWN** (emite) y la **app 
 (consume). Misma disciplina que los contratos de wire: si cambia el layout, subir
 `TELEMETRY_DOWN_SCHEMA` y regenerar el golden de ambos lados.
 
+> 📖 **Cómo activar/desactivar y usar en banco** (reflasheo, recuperar competencia,
+> calibración que persiste, troubleshooting): [`USO-MONITOREO-Y-TELEMETRIA.md`](USO-MONITOREO-Y-TELEMETRIA.md).
+> Este doc es el **contrato técnico**; el de USO es el **procedimiento operativo**.
+
 > ⚠️ El modo telemetría es un **MODO DEBUG gateado** del firmware de competencia, NO un
 > sketch aparte. Con el flag OFF (todos los envs de competencia: `down`, `down_lean`,
 > `down_wdt`) el binario es **byte-idéntico** — todo el código nuevo vive dentro de

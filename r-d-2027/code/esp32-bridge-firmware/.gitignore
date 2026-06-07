@@ -1,0 +1,8 @@
+# config.h tiene WiFi credentials / MAC del peer / OTA password — NO se commitea.
+include/config.h
+
+# PlatformIO local
+.pio/
+.pioenvs/
+.piolibdeps/
+.vscode/

@@ -28,7 +28,9 @@ namespace iitasoccer {
 
 // Versión del esquema de telemetría. Subir si cambia el layout del JSON.
 // La app de PC valida este número (campo "v") y rechaza esquemas desconocidos.
-constexpr uint8_t TELEMETRY_DOWN_SCHEMA = 1;
+//   v1 (2026-06-07): anillo 32 + LineStatusV2 + OTOS fusionado.
+//   v2 (2026-06-07): + lecturas por-OTOS izq/der (lx/ly/lh/rx/ry/rh) para el arquero.
+constexpr uint8_t TELEMETRY_DOWN_SCHEMA = 2;
 
 constexpr int TD_MAX_SENSORS = 32;
 
@@ -77,6 +79,14 @@ struct TelemetryDownFrame {
     float    otos_vy_mm_s;
     float    otos_omega_rad_s;
     float    otos_slip_mm_s;
+    // Lecturas por-OTOS SIN fusionar (schema v2): el diferencial izq/der que usa
+    // el arquero para verificar que avanza derecho sobre la línea.
+    float    otos_left_x_mm;
+    float    otos_left_y_mm;
+    float    otos_left_heading_deg;
+    float    otos_right_x_mm;
+    float    otos_right_y_mm;
+    float    otos_right_heading_deg;
 
     // ── Diagnóstico ──
     uint8_t  lifted;          // 0/1 (line_ring_is_lifted)

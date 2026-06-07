@@ -13,7 +13,8 @@ from typing import List, Optional
 
 # Versión de schema que esta app entiende (campo "v"). Espejo de
 # TELEMETRY_DOWN_SCHEMA en telemetry_down.h.
-SCHEMA_VERSION = 1
+#   v2: agrega lecturas por-OTOS izq/der (lx/ly/lh/rx/ry/rh) para el arquero.
+SCHEMA_VERSION = 2
 
 # Sentinels N/A — espejo de TD_NA_I16 / TD_NA_U16 (y de LineStatusV2).
 NA_I16 = -32768
@@ -102,6 +103,14 @@ class Otos:
     vy_mm_s: float
     omega_rad_s: float
     slip_mm_s: float
+    # Lecturas por-OTOS sin fusionar (schema v2). Útiles para ver el diferencial
+    # izq/der que usa el arquero para confirmar que avanza derecho sobre la línea.
+    left_x_mm: float = 0.0
+    left_y_mm: float = 0.0
+    left_heading_deg: float = 0.0
+    right_x_mm: float = 0.0
+    right_y_mm: float = 0.0
+    right_heading_deg: float = 0.0
 
     @property
     def has_pose(self) -> bool:
@@ -192,6 +201,10 @@ def parse_obj(obj: dict, raw: str = "") -> Frame:
             vy_mm_s=float(o["vy"]),
             omega_rad_s=float(o["w"]),
             slip_mm_s=float(o["slip"]),
+            left_x_mm=float(o["lx"]), left_y_mm=float(o["ly"]),
+            left_heading_deg=float(o["lh"]),
+            right_x_mm=float(o["rx"]), right_y_mm=float(o["ry"]),
+            right_heading_deg=float(o["rh"]),
         )
 
         d = obj["diag"]

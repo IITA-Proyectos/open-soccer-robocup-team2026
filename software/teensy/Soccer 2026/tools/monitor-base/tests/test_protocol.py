@@ -12,7 +12,7 @@ from monitor_base.protocol import (
 
 def test_golden_parses_all_fields(golden_line):
     f = parse_line(golden_line)
-    assert f.v == SCHEMA_VERSION == 1
+    assert f.v == SCHEMA_VERSION == 2
     assert f.seq == 7
     assert f.t_ms == 123456
 
@@ -48,6 +48,13 @@ def test_golden_parses_all_fields(golden_line):
     assert f.otos.omega_rad_s == pytest.approx(0.123)
     assert f.otos.slip_mm_s == pytest.approx(1.50)
     assert f.otos.has_pose is True
+    # Lecturas por-OTOS (schema v2)
+    assert f.otos.left_x_mm == pytest.approx(120.10)
+    assert f.otos.left_y_mm == pytest.approx(-65.20)
+    assert f.otos.left_heading_deg == pytest.approx(11.50)
+    assert f.otos.right_x_mm == pytest.approx(126.80)
+    assert f.otos.right_y_mm == pytest.approx(-70.40)
+    assert f.otos.right_heading_deg == pytest.approx(13.18)
 
     # Diag
     assert f.lifted is False
@@ -57,13 +64,14 @@ def test_golden_parses_all_fields(golden_line):
 
 def test_na_sentinels_become_none():
     line = (
-        '{"v":1,"seq":0,"t_ms":0,'
+        '{"v":2,"seq":0,"t_ms":0,'
         '"ring":{"n":1,"raw":[100],"white":0,"carpet":[150],"white_cal":[800]},'
         '"line":{"schema":2,"valid":0,"present":0,'
         f'"angle_cd":{NA_I16},"escape_cd":{NA_I16},"pen_mm":{NA_U16},'
         f'"xtrack_mm":{NA_I16},"non":0,"flags":0,"q":0,"age_ms":255}},'
         '"otos":{"n":0,"lok":0,"rok":0,"x":0,"y":0,"hdg":0,"vx":0,"vy":0,'
-        '"w":0,"slip":0},"diag":{"lifted":0,"ltick":0,"ltick_us":0}}'
+        '"w":0,"slip":0,"lx":0,"ly":0,"lh":0,"rx":0,"ry":0,"rh":0},'
+        '"diag":{"lifted":0,"ltick":0,"ltick_us":0}}'
     )
     f = parse_line(line)
     assert f.line.angle_deg is None

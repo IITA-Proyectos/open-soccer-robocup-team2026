@@ -39,11 +39,13 @@ static void make_golden_frame(TelemetryDownFrame& f) {
     f.otos_x_mm = 123.45f; f.otos_y_mm = -67.80f; f.otos_heading_deg = 12.34f;
     f.otos_vx_mm_s = 5.0f; f.otos_vy_mm_s = -3.20f;
     f.otos_omega_rad_s = 0.123f; f.otos_slip_mm_s = 1.50f;
+    f.otos_left_x_mm = 120.10f; f.otos_left_y_mm = -65.20f; f.otos_left_heading_deg = 11.50f;
+    f.otos_right_x_mm = 126.80f; f.otos_right_y_mm = -70.40f; f.otos_right_heading_deg = 13.18f;
     f.lifted = 0; f.line_tick_count = 100000; f.line_tick_us = 250;
 }
 
 static const char* GOLDEN =
-    "{\"v\":1,\"seq\":7,\"t_ms\":123456,\"ring\":{\"n\":32,\"raw\":"
+    "{\"v\":2,\"seq\":7,\"t_ms\":123456,\"ring\":{\"n\":32,\"raw\":"
     "[100,110,120,130,140,150,160,170,180,190,200,210,220,230,240,250,260,270,"
     "280,290,300,310,320,330,340,350,360,370,380,390,400,410],\"white\":196611,"
     "\"carpet\":[150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,"
@@ -54,7 +56,9 @@ static const char* GOLDEN =
     "\"escape_cd\":16750,\"pen_mm\":42,\"xtrack_mm\":-8,\"non\":5,\"flags\":1,"
     "\"q\":88,\"age_ms\":3},\"otos\":{\"n\":2,\"lok\":1,\"rok\":0,\"x\":123.45,"
     "\"y\":-67.80,\"hdg\":12.34,\"vx\":5.00,\"vy\":-3.20,\"w\":0.123,"
-    "\"slip\":1.50},\"diag\":{\"lifted\":0,\"ltick\":100000,\"ltick_us\":250}}\n";
+    "\"slip\":1.50,\"lx\":120.10,\"ly\":-65.20,\"lh\":11.50,\"rx\":126.80,"
+    "\"ry\":-70.40,\"rh\":13.18},\"diag\":{\"lifted\":0,\"ltick\":100000,"
+    "\"ltick_us\":250}}\n";
 
 // ============================================================================
 // SERIALIZACIÓN — golden exacto
@@ -82,7 +86,7 @@ void test_td_serialize_na_sentinels(void) {
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"escape_cd\":-32768"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"xtrack_mm\":-32768"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"pen_mm\":65535"));
-    TEST_ASSERT_NOT_NULL(strstr(buf, "\"v\":1"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"v\":2"));
 }
 
 void test_td_serialize_respects_num_sensors(void) {

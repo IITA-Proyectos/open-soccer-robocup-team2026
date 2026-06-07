@@ -90,6 +90,13 @@ void emit_frame() {
     f.otos_vy_mm_s     = otos_get_vy_mm_s();
     f.otos_omega_rad_s = otos_get_omega_rad_s();
     f.otos_slip_mm_s   = otos_get_slip_estimate();
+    // Lecturas por-OTOS sin fusionar (schema v2, getters gateados).
+    f.otos_left_x_mm         = otos_get_left_x_mm();
+    f.otos_left_y_mm         = otos_get_left_y_mm();
+    f.otos_left_heading_deg  = otos_get_left_heading_deg();
+    f.otos_right_x_mm        = otos_get_right_x_mm();
+    f.otos_right_y_mm        = otos_get_right_y_mm();
+    f.otos_right_heading_deg = otos_get_right_heading_deg();
 
     // ── Diagnóstico ──
     f.lifted          = line_ring_is_lifted() ? 1 : 0;

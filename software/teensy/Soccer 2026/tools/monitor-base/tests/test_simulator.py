@@ -8,7 +8,7 @@ def test_lines_parse_and_schema():
     sim = Simulator(noise=0)
     for _ in range(50):
         f = parse_line(sim.next_line())
-        assert f.v == 1
+        assert f.v == 2
         assert f.ring.n == 32
         assert len(f.ring.raw) == 32
         assert f.otos.n == 2

@@ -63,4 +63,17 @@ bool     otos_is_left_ready();   // OTOS izquierdo (U5 → Wire / I2C bus 0) san
 bool     otos_is_right_ready();  // OTOS derecho  (U6 → Wire1 / I2C bus 1) sano (lecturas OK)
 uint32_t otos_get_tick_count();
 
+#ifdef DOWN_DEBUG_TELEMETRY
+// Lecturas por-OTOS SIN fusionar (la pose de cada sensor, ya en mm/deg). Para la
+// telemetría de banco del arquero: ver el diferencial izq/der en vivo. GATEADO →
+// no se compilan en competencia (binario byte-idéntico). Devuelven el último
+// valor cacheado por otos_tick(); 0 si ese OTOS no está conectado/vivo.
+float otos_get_left_x_mm();
+float otos_get_left_y_mm();
+float otos_get_left_heading_deg();
+float otos_get_right_x_mm();
+float otos_get_right_y_mm();
+float otos_get_right_heading_deg();
+#endif
+
 }  // namespace iitasoccer

@@ -110,6 +110,9 @@ class Simulator:
             "x": round(x, 2), "y": round(y, 2), "hdg": round(hdg, 2),
             "vx": round(15.0 * math.cos(t * 0.3), 2), "vy": 30.0,
             "w": round(0.035 * math.cos(t * 0.2), 3), "slip": 0.0,
+            # diferencial izq/der chico (los 2 OTOS están a ±~lado del centro).
+            "lx": round(x - 8.0, 2), "ly": round(y, 2), "lh": round(hdg - 0.4, 2),
+            "rx": round(x + 8.0, 2), "ry": round(y, 2), "rh": round(hdg + 0.4, 2),
         }
 
     def next_obj(self) -> Dict:
@@ -122,7 +125,7 @@ class Simulator:
             if w:
                 bits |= (1 << i)
         obj = {
-            "v": 1, "seq": self.seq, "t_ms": self.t_ms,
+            "v": 2, "seq": self.seq, "t_ms": self.t_ms,
             "ring": {
                 "n": self.n, "raw": raw, "white": bits,
                 "carpet": list(self.carpet), "white_cal": list(self.white_cal),

@@ -1,8 +1,12 @@
-# Telemetría USB de la placa DOWN — contrato v1
+# Telemetría USB de la placa DOWN — contrato v2
 
-**Estado:** v1 (2026-06-07). Módulo puro `src/shared/telemetry_down.{h,cpp}` (host-testeado,
+**Estado:** v2 (2026-06-07). Módulo puro `src/shared/telemetry_down.{h,cpp}` (host-testeado,
 gate `test_telemetry_down`). Glue Arduino `src/down/down_telemetry_serial.cpp` (GATEADO
 `-DDOWN_DEBUG_TELEMETRY`, env `down_debug_telemetry`). App de PC: `tools/monitor-base/`.
+
+**Historial de schema:** v1 = anillo 32 + LineStatusV2 + OTOS fusionado. **v2** = agrega las
+lecturas por-OTOS izq/der sin fusionar (`lx/ly/lh/rx/ry/rh`) para la **vista de arquero**
+(`python -m monitor_base --arquero`), que prueba el seguidor de línea + el diferencial OTOS.
 
 Este es el contrato versionado entre el **firmware de DOWN** (emite) y la **app de PC**
 (consume). Misma disciplina que los contratos de wire: si cambia el layout, subir
@@ -23,17 +27,18 @@ Este es el contrato versionado entre el **firmware de DOWN** (emite) y la **app 
   muy por debajo del techo del USB CDC (~1 MB/s).
 - **Dirección host→firmware:** comandos de texto, una línea por comando (ver §4).
 
-## 2. Frame firmware→host (schema 1)
+## 2. Frame firmware→host (schema 2)
 
 Un objeto JSON con esta forma (claves en orden de emisión; los `…` son los 32 valores):
 
 ```json
-{"v":1,"seq":7,"t_ms":123456,
+{"v":2,"seq":7,"t_ms":123456,
  "ring":{"n":32,"raw":[…32…],"white":196611,"carpet":[…32…],"white_cal":[…32…]},
  "line":{"schema":2,"valid":1,"present":1,"angle_cd":-1250,"escape_cd":16750,
          "pen_mm":42,"xtrack_mm":-8,"non":5,"flags":1,"q":88,"age_ms":3},
  "otos":{"n":2,"lok":1,"rok":0,"x":123.45,"y":-67.80,"hdg":12.34,
-         "vx":5.00,"vy":-3.20,"w":0.123,"slip":1.50},
+         "vx":5.00,"vy":-3.20,"w":0.123,"slip":1.50,
+         "lx":120.10,"ly":-65.20,"lh":11.50,"rx":126.80,"ry":-70.40,"rh":13.18},
  "diag":{"lifted":0,"ltick":100000,"ltick_us":250}}
 ```
 
@@ -41,7 +46,7 @@ Un objeto JSON con esta forma (claves en orden de emisión; los `…` son los 32
 
 | Ruta | Tipo | Unidad / rango | Significado |
 |------|------|----------------|-------------|
-| `v` | uint8 | =1 | `TELEMETRY_DOWN_SCHEMA`. La app rechaza otros valores. |
+| `v` | uint8 | =2 | `TELEMETRY_DOWN_SCHEMA`. La app rechaza otros valores. |
 | `seq` | uint32 | — | Contador monotónico de frame (detectar pérdidas). |
 | `t_ms` | uint32 | ms | `millis()` al emitir. |
 | `ring.n` | uint8 | 1..32 | `NUM_LINE_SENSORS` (32 en la placa de competencia). |
@@ -67,6 +72,8 @@ Un objeto JSON con esta forma (claves en orden de emisión; los `…` son los 32
 | `otos.vx` / `otos.vy` | float | mm/s | Velocidad (marco robot). |
 | `otos.w` | float | rad/s | Velocidad angular. |
 | `otos.slip` | float | mm/s | Estimación de slip diferencial (0 = sin slip; sólo 2-OTOS). |
+| `otos.lx`/`otos.ly`/`otos.lh` | float | mm,mm,° | **(v2)** Pose del OTOS IZQUIERDO (U5) sin fusionar. |
+| `otos.rx`/`otos.ry`/`otos.rh` | float | mm,mm,° | **(v2)** Pose del OTOS DERECHO (U6) sin fusionar. El diferencial izq/der confirma que el robot avanza derecho sobre la línea. |
 | `diag.lifted` | 0/1 | — | Robot levantado (datos de línea no confiables). |
 | `diag.ltick` | uint32 | — | `line_ring_get_tick_count` (cuenta de muestreos). |
 | `diag.ltick_us` | uint32 | µs | Duración del último tick = carga de CPU del muestreo. |

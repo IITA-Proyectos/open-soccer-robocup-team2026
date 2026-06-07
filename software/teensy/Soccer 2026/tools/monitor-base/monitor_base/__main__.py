@@ -37,6 +37,8 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
                    help="con --sim: índices de sensores 'muertos' a inyectar, ej 5,17")
     p.add_argument("--top", action="store_true",
                    help="modo TOP (placa superior: cámaras/IMU/ToF/snapshot) en vez de la base")
+    p.add_argument("--arquero", action="store_true",
+                   help="vista de ARQUERO (seguidor de línea + OTOS izq/der): para probar en banco")
     p.add_argument("--selftest", action="store_true",
                    help="smoke headless: procesa N frames del sim y sale (sin GUI)")
     p.add_argument("--selftest-frames", type=int, default=200,
@@ -97,6 +99,9 @@ def run_selftest(frames: int = 200, dead: Optional[List[int]] = None) -> int:
     print(f"[selftest] OTOS              : x={last.otos.x_mm:.1f} "
           f"y={last.otos.y_mm:.1f} hdg={last.otos.heading_deg:.1f} "
           f"L={last.otos.left_ok} R={last.otos.right_ok}")
+    print(f"[selftest] OTOS izq/der (v2) : L=({last.otos.left_x_mm:.1f},"
+          f"{last.otos.left_y_mm:.1f}) R=({last.otos.right_x_mm:.1f},"
+          f"{last.otos.right_y_mm:.1f})")
     print(f"[selftest] sensores problema : {[s.index for s in problems]}")
     print(f"[selftest] auto-calib muestras: {calib._samples}")
     expected_dead = sorted(dead or [])
@@ -153,6 +158,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.top:
             from . import gui_top
             gui_top.run_top(source, recorder=recorder)
+        elif args.arquero:
+            from . import gui_gk
+            gui_gk.run_gk(source, recorder=recorder)
         else:
             from . import gui
             gui.run(source, recorder=recorder)

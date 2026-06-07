@@ -43,6 +43,21 @@ python -m monitor_base --port COM5 --record sesion.jsonl
 python -m monitor_base --selftest
 ```
 
+### Vista de ARQUERO (seguidor de línea + OTOS)
+
+Para **probar en banco el seguidor de línea del arquero** (se queda centrado sobre la línea
+de su arco y barre lateralmente):
+
+```bash
+python -m monitor_base --arquero --sim       # sin robot
+python -m monitor_base --arquero --port COM5  # robot real (env down_debug_telemetry)
+```
+
+Muestra: un **medidor de cross-track** (mm a la línea, objetivo 0), el **arco trasero** del
+anillo resaltado (los sensores que ven la línea del arco) con la flecha de la línea, y la
+**estela de la trayectoria por OTOS** con **cada OTOS izq/der por separado** (para ver el
+diferencial / que avance derecho). Requiere telemetría **schema v2**.
+
 ### Vista del campo (placa TOP, FASE 2)
 
 La misma app tiene una **vista TOP** (`--top`): un **radar robot-céntrico** (el robot al
@@ -78,7 +93,7 @@ Núcleo PURO (testeable, sin GUI) + una vista delgada en Tkinter:
 | `calibration.py` | Asistente de auto-calib (min/max, umbral, margen, sospechosos). |
 | `simulator.py` / `simulator_top.py` | Genera telemetría sintética DOWN / TOP (sin robot) por el formato real. |
 | `sources.py` | Fuentes serial / replay / sim (DOWN y TOP, parser inyectable) + helpers puros. |
-| `gui.py` / `gui_top.py` | Vista Tkinter de la base (anillo) / del campo TOP (radar). |
+| `gui.py` / `gui_gk.py` / `gui_top.py` | Vista Tkinter base (anillo) / arquero (línea+OTOS) / campo TOP (radar). |
 | `recorder.py` | Graba la telemetría entrante a `.jsonl` (`--record`). |
 | `__main__.py` | CLI (`--sim/--port/--replay/--record/--selftest/--top`) + selftests headless. |
 

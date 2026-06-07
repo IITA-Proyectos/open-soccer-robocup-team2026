@@ -33,6 +33,13 @@ def test_arg_parsing_defaults():
     assert not args.port and not args.replay
 
 
+def test_arg_parsing_modes():
+    assert _parse_args(["--arquero", "--sim"]).arquero is True
+    assert _parse_args(["--top", "--sim"]).top is True
+    base = _parse_args(["--sim"])
+    assert not base.top and not base.arquero
+
+
 def test_arg_parsing_mutually_exclusive():
     import pytest
     with pytest.raises(SystemExit):

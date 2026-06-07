@@ -104,16 +104,22 @@ int td_serialize_jsonl(char* buf, int cap, const TelemetryDownFrame& f) {
         (unsigned)f.quality, (unsigned)f.sample_age_ms);
     if (off < 0) return -1;
 
-    // Objeto otos.
+    // Objeto otos (schema v2: incluye lecturas por-OTOS izq/der lx/ly/lh/rx/ry/rh).
     off = td_append(buf, cap, off,
         "\"otos\":{\"n\":%u,\"lok\":%u,\"rok\":%u,"
         "\"x\":%.2f,\"y\":%.2f,\"hdg\":%.2f,"
-        "\"vx\":%.2f,\"vy\":%.2f,\"w\":%.3f,\"slip\":%.2f},",
+        "\"vx\":%.2f,\"vy\":%.2f,\"w\":%.3f,\"slip\":%.2f,"
+        "\"lx\":%.2f,\"ly\":%.2f,\"lh\":%.2f,"
+        "\"rx\":%.2f,\"ry\":%.2f,\"rh\":%.2f},",
         (unsigned)f.otos_count, (unsigned)(f.otos_left_ok ? 1 : 0),
         (unsigned)(f.otos_right_ok ? 1 : 0),
         td_fz(f.otos_x_mm), td_fz(f.otos_y_mm), td_fz(f.otos_heading_deg),
         td_fz(f.otos_vx_mm_s), td_fz(f.otos_vy_mm_s),
-        td_fz(f.otos_omega_rad_s), td_fz(f.otos_slip_mm_s));
+        td_fz(f.otos_omega_rad_s), td_fz(f.otos_slip_mm_s),
+        td_fz(f.otos_left_x_mm), td_fz(f.otos_left_y_mm),
+        td_fz(f.otos_left_heading_deg),
+        td_fz(f.otos_right_x_mm), td_fz(f.otos_right_y_mm),
+        td_fz(f.otos_right_heading_deg));
     if (off < 0) return -1;
 
     // Objeto diag + cierre + newline.

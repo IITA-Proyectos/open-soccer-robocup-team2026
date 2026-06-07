@@ -43,6 +43,20 @@ python -m monitor_base --port COM5 --record sesion.jsonl
 python -m monitor_base --selftest
 ```
 
+### Vista del campo (placa TOP, FASE 2)
+
+La misma app tiene una **vista TOP** (`--top`): un **radar robot-céntrico** (el robot al
+centro, su frente hacia arriba) con la pelota, los arcos amarillo/azul, los ToF, una
+brújula de heading, y el panel del **WorldSnapshot que TOP manda a la CENTRAL**. Botones
+IMU ZERO / IMU SAVE / stream / rate.
+
+```bash
+python -m monitor_base --top --sim            # campo simulado (sin robot)
+python -m monitor_base --top --port COM6       # placa TOP real (env top_robot1_debug_telemetry)
+python -m monitor_base --top --replay top.jsonl
+python -m monitor_base --top --selftest        # smoke headless
+```
+
 `--port` requiere `pip install pyserial`. El resto usa solo la stdlib de Python
 (incluido tkinter, que viene con CPython en Windows).
 
@@ -58,14 +72,15 @@ Núcleo PURO (testeable, sin GUI) + una vista delgada en Tkinter:
 
 | Módulo | Rol |
 |--------|-----|
-| `protocol.py` | Parser del contrato JSON Lines v1 (espejo de `telemetry_down.h`). |
+| `protocol.py` / `protocol_top.py` | Parser del contrato JSON Lines v1 (espejo de `telemetry_down.h` / `telemetry_top.h`). |
 | `geometry.py` | LUT de las 32 posiciones físicas (espejo de `sensor_geometry.cpp`). |
 | `sensor_health.py` | Detector de sensores muertos/pegados/saturados (rango en ventana). |
 | `calibration.py` | Asistente de auto-calib (min/max, umbral, margen, sospechosos). |
-| `simulator.py` | Genera telemetría sintética (sin robot) por el formato real. |
-| `sources.py` | Fuentes serial / replay / sim (hilo + cola) + helpers puros. |
-| `gui.py` | Vista Tkinter (anillo, paneles, botones). |
-| `__main__.py` | CLI + modo `--selftest` headless. |
+| `simulator.py` / `simulator_top.py` | Genera telemetría sintética DOWN / TOP (sin robot) por el formato real. |
+| `sources.py` | Fuentes serial / replay / sim (DOWN y TOP, parser inyectable) + helpers puros. |
+| `gui.py` / `gui_top.py` | Vista Tkinter de la base (anillo) / del campo TOP (radar). |
+| `recorder.py` | Graba la telemetría entrante a `.jsonl` (`--record`). |
+| `__main__.py` | CLI (`--sim/--port/--replay/--record/--selftest/--top`) + selftests headless. |
 
 ## Tests
 

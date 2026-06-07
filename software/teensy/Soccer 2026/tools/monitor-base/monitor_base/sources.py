@@ -17,7 +17,13 @@ import time
 from typing import Callable, Iterable, Iterator, List, Optional
 
 from .protocol import Frame, ProtocolError, is_telemetry_line, parse_line
+from .protocol_top import parse_line_top
 from .simulator import Simulator
+from .simulator_top import SimulatorTop
+
+# Una "fuente" empuja objetos parseados (Frame de la base o TopFrame del TOP).
+# El parser concreto se pasa por inyección (parse_line / parse_line_top).
+Parser = Callable[[str], object]
 
 
 # ── Helpers puros (testeables sin hilos) ─────────────────────────────────────
@@ -126,12 +132,33 @@ class SimSource(FrameSource):
             time.sleep(period)
 
 
+class SimTopSource(FrameSource):
+    """Simulador de la placa TOP (sin robot) — empuja TopFrame."""
+
+    def __init__(self, rate_hz: float = 20.0, **sim_kwargs):
+        super().__init__()
+        self.rate_hz = rate_hz
+        self._sim = SimulatorTop(rate_hz=rate_hz, **sim_kwargs)
+
+    def _run(self) -> None:
+        period = 1.0 / self.rate_hz
+        while not self._stop.is_set():
+            line = self._sim.next_line()
+            try:
+                self._push(parse_line_top(line))
+            except ProtocolError as e:
+                self._push_error(str(e))
+            time.sleep(period)
+
+
 class ReplaySource(FrameSource):
-    def __init__(self, path: str, rate_hz: float = 20.0, loop: bool = True):
+    def __init__(self, path: str, rate_hz: float = 20.0, loop: bool = True,
+                 parser: Parser = parse_line):
         super().__init__()
         self.path = path
         self.rate_hz = rate_hz
         self.loop = loop
+        self.parser = parser
 
     def _run(self) -> None:
         period = 1.0 / self.rate_hz
@@ -145,7 +172,7 @@ class ReplaySource(FrameSource):
                 if self._stop.is_set():
                     return
                 try:
-                    self._push(parse_line(ln))
+                    self._push(self.parser(ln))
                 except ProtocolError as e:
                     self._push_error(str(e))
                 time.sleep(period)
@@ -156,10 +183,11 @@ class ReplaySource(FrameSource):
 class SerialSource(FrameSource):
     """Lee del Teensy real por USB. Requiere pyserial (`pip install pyserial`)."""
 
-    def __init__(self, port: str, baud: int = 115200):
+    def __init__(self, port: str, baud: int = 115200, parser: Parser = parse_line):
         super().__init__()
         self.port = port
         self.baud = baud
+        self.parser = parser
         self._serial = None
 
     def _open(self):
@@ -194,7 +222,7 @@ class SerialSource(FrameSource):
                 if not is_telemetry_line(line):
                     continue
                 try:
-                    self._push(parse_line(line))
+                    self._push(self.parser(line))
                 except ProtocolError as e:
                     self._push_error(str(e))
         finally:

@@ -39,3 +39,19 @@ def test_tof_no_reading_appears():
         if None in f.tof.distances_mm:
             saw_none = True
     assert saw_none
+
+
+def test_top_record_roundtrip(tmp_path):
+    # El Recorder graba el raw_json del TopFrame; se relee con el parser TOP.
+    from monitor_base.recorder import Recorder
+    path = tmp_path / "top.jsonl"
+    sim = SimulatorTop()
+    frames = [parse_line_top(sim.next_line()) for _ in range(12)]
+    rec = Recorder(str(path))
+    for f in frames:
+        rec.write(f)
+    rec.close()
+    with open(path, encoding="utf-8") as fh:
+        back = [parse_line_top(ln) for ln in fh if ln.strip()]
+    assert rec.count == 12
+    assert [b.seq for b in back] == [f.seq for f in frames]

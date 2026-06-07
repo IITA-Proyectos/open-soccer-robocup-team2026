@@ -49,7 +49,15 @@ def _dead_list(s: str) -> List[int]:
 
 
 def _build_source(args: argparse.Namespace):
-    from .sources import ReplaySource, SerialSource, SimSource
+    from .sources import ReplaySource, SerialSource, SimSource, SimTopSource
+    if args.top:
+        from .protocol_top import parse_line_top
+        if args.port:
+            return SerialSource(args.port, baud=args.baud, parser=parse_line_top)
+        if args.replay:
+            return ReplaySource(args.replay, rate_hz=args.rate,
+                                loop=not args.no_loop, parser=parse_line_top)
+        return SimTopSource(rate_hz=args.rate)
     if args.port:
         return SerialSource(args.port, baud=args.baud)
     if args.replay:
@@ -134,20 +142,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             return run_selftest_top(args.selftest_frames)
         return run_selftest(args.selftest_frames, _dead_list(args.sim_dead))
 
-    if args.top:
-        print("La vista GUI del TOP todavía no está implementada en esta v1. "
-              "Usá: python -m monitor_base --top --selftest (chequeo headless). "
-              "El núcleo TOP (parser + simulador + tests) ya está; la GUI del campo "
-              "con pelota/arcos es el próximo paso.", file=sys.stderr)
-        return 2
-
     source = _build_source(args)
-    try:
-        from . import gui
-    except Exception as e:  # noqa: BLE001 — tkinter sin display, etc.
-        print(f"No se pudo iniciar la GUI ({e}). "
-              f"Probá --selftest para un chequeo sin ventana.", file=sys.stderr)
-        return 2
 
     recorder = None
     if args.record:
@@ -155,7 +150,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         recorder = Recorder(args.record)
         print(f"Grabando telemetría en {args.record}")
     try:
-        gui.run(source, recorder=recorder)
+        if args.top:
+            from . import gui_top
+            gui_top.run_top(source, recorder=recorder)
+        else:
+            from . import gui
+            gui.run(source, recorder=recorder)
+    except Exception as e:  # noqa: BLE001 — tkinter sin display, etc.
+        print(f"No se pudo iniciar la GUI ({e}). "
+              f"Probá --selftest para un chequeo sin ventana.", file=sys.stderr)
+        return 2
     finally:
         if recorder is not None:
             recorder.close()

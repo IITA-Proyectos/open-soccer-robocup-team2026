@@ -47,14 +47,17 @@ EXPOSURE_US = 37000     # ⚠️ solo se usa si BRING_UP=False. RE-MEDIR en la N
 HMIRROR = True
 VFLIP   = True
 
-# ⚠️ La trasera necesita SU PROPIA H_MATRIX (4 puntos en el suelo DETRÁS del robot).
-# Esta es la del generic — NO sirve para la trasera. Recalibrar.
+# ⚙️ H_MATRIX = la MISMA calibrada de la frontal (Elías 2026-06-07, ultra-wide, VGA).
+# DECISIÓN PROVISORIA (Gustavo 2026-06-07): hasta tener una calibración propia, las
+# 4 cámaras (frontal+trasera de ROBOT1 y de ROBOT2) usan ESTA homografía. Cuando haya
+# otra calibración → recalibrar cada cámara por separado. Distancias desde el CENTRO
+# DEL LENTE (no del robot). Atada a VGA. Ver docs/firmware/CALIBRACION-HOMOGRAFIA-XY-N6.md.
 H_MATRIX = [
-    [ 4.49341044e-02, -9.48228474e-01,  7.78932109e+02],
-    [-2.39913185e+00, -5.65934886e-02,  3.91128921e+02],
-    [-1.81344856e-03,  1.15408531e-01,  1.00000000e+00],
+    [ 7.54504107e-01,  1.54808424e-02, -1.96304100e+02],
+    [-1.40623499e-01, -2.05684020e-01,  2.30315983e+02],
+    [-7.07447958e-03,  8.46088118e-02,  1.00000000e+00],
 ]
-CAM_HEIGHT_CM  = 18.7                    # ⚠️ MEDIR (puede diferir del frontal)
+CAM_HEIGHT_CM  = 18.7                    # altura cámara (cm) — provisoria = frontal (medir la trasera real)
 BALL_RADIUS_CM = 13.5 / (2 * math.pi)
 
 # ⚠️ RECALIBRAR los 3 thresholds LAB en la N6 (sensor distinto al H7):
@@ -116,7 +119,7 @@ def crc8(data):
 # --- Inicialización del sensor (módulo `sensor`, IGUAL que el generic que funciona) ---
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
-sensor.set_framesize(sensor.QVGA)
+sensor.set_framesize(sensor.VGA)   # ✅ VGA 640×480: resolución donde se calibró la H (2026-06-07). NO cambiar sin recalibrar. (fps menor que QVGA → medir en banco.)
 if BRING_UP:
     sensor.set_auto_whitebal(True)
     sensor.set_auto_gain(True)

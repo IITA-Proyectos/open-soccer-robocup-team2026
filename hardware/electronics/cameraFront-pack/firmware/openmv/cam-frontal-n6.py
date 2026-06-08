@@ -21,7 +21,8 @@
 # ║         (frontal = conector U8). Probar 1/2/3.                             ║
 # ║ [LAB]   Recalibrar los 3 thresholds en la N6 (sensor PAG7936 ≠ H7) con el   ║
 # ║         Threshold Editor del IDE, en la luz real. SIN ESTO NO DETECTA.     ║
-# ║ [HOMOG] H_MATRIX es placeholder; recalibrar para ESTA cámara.             ║
+# ║ [HOMOG] H_MATRIX ✅ CALIBRADA 2026-06-07 (Elías, ultra-wide, VGA). Distancias ║
+# ║         desde el CENTRO DEL LENTE (no del robot). Atada a VGA.              ║
 # ║ [FLIP]  HMIRROR/VFLIP = montaje 180° (conector arriba). Verificar preview. ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
@@ -50,13 +51,17 @@ EXPOSURE_US = 37000     # ⚠️ solo se usa si BRING_UP=False. RE-MEDIR en la N
 HMIRROR = True
 VFLIP = True
 
-# ⚠️ RECALIBRAR H_MATRIX (4 puntos conocidos en el suelo). Placeholder de desarrollo.
+# ✅ H_MATRIX CALIBRADA en banco 2026-06-07 (Elías) — cámara FRONTAL ROBOT1, lente
+# ULTRA-WIDE, framesize VGA. Distancias en cm DESDE EL CENTRO DEL LENTE (no del
+# centro del robot → restar offset lente→centro aguas abajo). La H depende de la
+# resolución: ESTÁ ATADA A VGA. NO cambiar framesize sin recalibrar.
+# Fuente: vision-frontal-calibrada.py + docs/firmware/CALIBRACION-HOMOGRAFIA-XY-N6.md.
 H_MATRIX = [
-    [4.49341044e-02, -9.48228474e-01,  7.78932109e+02],
-    [-2.39913185e+00, -5.65934886e-02,  3.91128921e+02],
-    [-1.81344856e-03,  1.15408531e-01,  1.00000000e+00],
+    [ 7.54504107e-01,  1.54808424e-02, -1.96304100e+02],
+    [-1.40623499e-01, -2.05684020e-01,  2.30315983e+02],
+    [-7.07447958e-03,  8.46088118e-02,  1.00000000e+00],
 ]
-CAM_HEIGHT_CM = 18.7                    # ⚠️ MEDIR altura de la cámara sobre el suelo
+CAM_HEIGHT_CM = 18.7                    # altura de la cámara sobre el suelo (cm) — banco 2026-06-07
 BALL_RADIUS_CM = 13.5 / (2 * math.pi)    # radio pelota = circunferencia / 2π
 
 # ⚠️ RECALIBRAR los 3 thresholds LAB en la N6 (sensor distinto al H7):
@@ -118,7 +123,7 @@ def crc8(data):
 # --- Inicialización del sensor (módulo `sensor`, IGUAL que el generic que funciona) ---
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
-sensor.set_framesize(sensor.QVGA)
+sensor.set_framesize(sensor.VGA)   # ✅ VGA 640×480: resolución donde se calibró la H (2026-06-07). NO cambiar sin recalibrar. (fps menor que QVGA → medir en banco.)
 if BRING_UP:
     # Como el generic que muestra color: WB + gain en auto, exposición por default.
     sensor.set_auto_whitebal(True)

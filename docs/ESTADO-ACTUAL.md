@@ -183,11 +183,16 @@ nativo, pero ya no es el único camino. Ver
 ## Bloqueantes Incheon (los 2 que importan)
 
 1. **COMM — firmware flasheado ✅ (2026-06-01); E2E del árbitro RESUELTO ✅ (2026-06-02, TASK-039).** El árbitro RCJ **NO viaja por UART**: señaliza como **NIVEL GPIO** hacia el TOP (Teensy 4.0) en **pin 5 = OUT1 (PLAY/STOP)** y **pin 6 = OUT2 (PLAY/STOP)** (en la práctica, en PLAY sube SOLO UNO de los dos —no son espejo—). Nivel: **0 = juego PARADO, 1 = juego EN CURSO (3.3 V)**. Firmware: `src/top/comm_arbiter.cpp::read_referee_gpio()` lee los pines 5/6 con `INPUT_PULLDOWN` y `match_running = (pin5 OR pin6)` (en PLAY sube SOLO UNO de los dos pines —el otro queda en 0— por eso AND nunca daba GO y OR sí; probado en banco 2026-06-02, Gustavo. Sigue siendo fail-safe: si se desconecta el cable del COMM, ambos pines leen 0 con `INPUT_PULLDOWN` → `match_running=false` → STOP). El probe temporal se removió de `main_top.cpp`. El **UART del módulo COMM (TOP `Serial2`, pines 7/8) queda SOLO para partner ESP-NOW / status** — el viejo `COMM_REFEREE_CMD` por UART quedó **obsoleto**. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART). El robot ya recibe START/STOP por GPIO → homologa el árbitro. TASK-006/TASK-039.
-2. **Cámaras sin recalibrar para iluminación Incheon** → no ve la pelota. TASK-022.
-   La migración H7→N6 y los bugs P0 ya están resueltos; **lo único que falta es
-   calibración de banco** (LAB + UART + exposición + H). Kit + procedimiento listos
-   (2026-06-03): `calib-lab-n6.py` en ambos packs + [`docs/firmware/CALIBRACION-VISION-N6.md`](firmware/CALIBRACION-VISION-N6.md).
-   El item #6 del análisis (velocidad de pelota en el TOP) **ya está hecho** (ver Avance 2026-06-03).
+2. **Cámaras — calibración de DISTANCIA ✅ HECHA (Elías, 2026-06-07)**, integrada a
+   producción **v2** (homografía portada a `cam-*-n6.py` @**VGA**; misma H para las 4 cámaras,
+   decisión provisoria). TASK-022 ya **no** es "sin calibrar". **Lo que queda (banco, lo hace
+   el equipo):** (a) **deploy coordinado** — re-flashear las 2 cámaras (v2 @VGA con la H nueva)
+   **+ el TOP** juntos (CRC OK / sin pelota fantasma); (b) medir y restar el **offset
+   lente→centro del robot** (las distancias son desde el lente, no del centro); (c) **fps a
+   VGA**; (d) **lock de exposición/WB/gain + LAB bajo luz de Incheon** + estabilidad; (e)
+   distancias vs regla. Doc: [`CALIBRACION-HOMOGRAFIA-XY-N6.md`](firmware/CALIBRACION-HOMOGRAFIA-XY-N6.md)
+   §Resultado + `journal/2026-06-07-calibracion-distancia-camara-frontal-elias.md`. (Migración
+   H7→N6, bugs P0 y velocidad de pelota ya estaban resueltos — Avance 2026-06-03.)
 
 ### Avance 2026-06-03 (pt.3) — Visión P1 [CÓDIGO]: tests del parser + robustez detección + kit calib + análisis eje X
 - **Agente de visión**, ítems [CÓDIGO] que NO necesitan banco (los P0 de higiene ya estaban hechos).

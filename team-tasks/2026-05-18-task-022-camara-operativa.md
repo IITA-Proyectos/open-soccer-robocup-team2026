@@ -4,7 +4,7 @@ title: "Cámara operativa: sentinel, crash bytearray, exposición fija, calibrac
 date_created: 2026-05-18
 assigned: [mariaviollaz]
 priority: P0
-status: pending
+status: calib-distancia-HECHA-2026-06-07-falta-deploy-v2-y-validacion-banco
 estimated_hours: 24
 blocks: [percepción de pelota/arcos en Incheon]
 tags: [vision, camara, openmv, firmware, calibracion]
@@ -98,6 +98,31 @@ Progreso contra el "Criterio de cierre":
 (3) calibrar distancia mm con el ultra-wide; (4) idealmente, prueba bajo luz de
 Incheon. **La cierra el equipo humano** (Claude no cierra TASKs de hardware).
 
+### 2026-06-07 — ✅ Calibración de distancia HECHA (Elías) + integrada a v2
+
+**Elías calibró en banco la homografía de distancias de la cámara FRONTAL del ROBOT1**
+(lente ultra-wide, resolución **VGA**). Entregó `vision-frontal-calibrada.py`.
+
+- ✅ **Homografía calibrada** → `H_MATRIX` real (ver
+  `docs/firmware/CALIBRACION-HOMOGRAFIA-XY-N6.md` §Resultado + journal del día).
+- ✅ **Integrada a producción v2:** la H se portó a `cam-frontal-n6.py` + `cam-trasera-n6.py`
+  (mismo H para las 4 cámaras, decisión provisoria de Gustavo) a framesize **VGA**; el
+  artefacto v1 de Elías se subió como prueba (NO se flashea: protocolo viejo). `py_compile` OK.
+- ⚠️ **Distancias desde el CENTRO DEL LENTE, no del robot** → falta medir y restar el offset.
+
+Progreso del "Criterio de cierre":
+- [x] **Distancias calibradas** (homografía real con el ultra-wide @VGA) — *falta verificar
+      contra regla con la H ya portada a v2*.
+- [x] Script por cámara con su homografía (hoy compartida, decisión provisoria).
+- [ ] Cámara tapada → `ball_visible=false` (sentinel v2) — verificar tras el deploy.
+- [ ] Lock de exposición/WB/gain (la calib se hizo con autos ON) + estabilidad + luz Incheon.
+
+**Lo que queda para cerrar (banco, lo hace el equipo):** (1) **deploy coordinado** —
+re-flashear las 2 cámaras (v2 @VGA con la H nueva) **+ el TOP** juntos y ver CRC OK / sin
+fantasma; (2) **medir el offset lente→centro** y aplicarlo; (3) **fps a VGA**; (4) lock de
+exposición + estabilidad + luz Incheon; (5) distancias vs regla. **Claude no cierra TASKs de
+hardware** — el deploy y la validación los confirma el equipo.
+
 ## Cambios de estado
 
 - 2026-05-18: creada por Claude tras la evaluación crítica del firmware, a
@@ -107,3 +132,8 @@ Incheon. **La cierra el equipo humano** (Claude no cierra TASKs de hardware).
   estabilidad, lock de exposición y calibración de distancia (con el ultra-wide,
   que vuelve obligatoria la recalibración). Nota agregada por Claude (Opus 4.8)
   a pedido de Gustavo.
+- 2026-06-07: ✅ calibración de **DISTANCIA hecha por Elías** (homografía frontal,
+  ultra-wide, VGA) → **portada a producción v2** (`cam-*-n6.py`, misma H para las 4
+  cámaras, decisión provisoria de Gustavo). Status → `calib-distancia-HECHA-falta-deploy-v2`.
+  Queda: deploy coordinado cámaras+TOP, offset lente→centro, lock exposición, validación
+  de banco. Integración + docs por Claude (Opus 4.8), a pedido de Gustavo.

@@ -27,6 +27,50 @@ firmware-source: >
 
 ---
 
+## ✅ RESULTADO DE CALIBRACIÓN — frontal ROBOT1 (Elías, 2026-06-07)
+
+**Primera calibración real de distancias.** Cámara **frontal** del ROBOT1, lente
+**ultra-wide**, resolución **VGA (640×480)**. Fuente: `vision-frontal-calibrada.py`
+(artefacto de banco) → portada a `cam-frontal-n6.py` (producción v2).
+
+```python
+H_MATRIX = [
+    [ 7.54504107e-01,  1.54808424e-02, -1.96304100e+02],
+    [-1.40623499e-01, -2.05684020e-01,  2.30315983e+02],
+    [-7.07447958e-03,  8.46088118e-02,  1.00000000e+00],
+]
+CAM_HEIGHT_CM  = 18.7                      # altura cámara sobre el suelo
+BALL_RADIUS_CM = 13.5 / (2 * math.pi)      # ≈ 2.15 cm
+# X,Y físicos = H·(u,v) corregidos por perspectiva ×(h−r)/h
+```
+
+| Parámetro | Valor | Nota |
+|---|---|---|
+| Resolución | **VGA 640×480** | "intermedia" (ni la más baja ni la más alta) — **la H está ATADA a esta resolución** |
+| Lente | **ultra-wide** | la H absorbe la distorsión de barril para ESTE lente/ángulo |
+| Altura cámara `h` | 18.7 cm | — |
+| Orientación | `hmirror=True`, `vflip=True` | montaje 180° |
+| Origen de las distancias | **CENTRO DEL LENTE** | ⚠️ **NO** el centro del robot (ver abajo) |
+
+> ### ⚠️ Las distancias son DESDE EL LENTE, no desde el centro del robot
+> La FSM razona con la pelota relativa al **robot**. La cámara reporta cm desde el
+> **centro del lente** (montado adelante/arriba). **Falta medir y restar el offset
+> lente→centro** aguas abajo (TOP o CENTRAL). Sin eso, la distancia a la pelota queda
+> corrida unos cm. → tema-a-analizar abierto (TASK de banco).
+
+> ### Decisión provisoria (Gustavo): MISMA H para las 4 cámaras
+> Hasta tener otra calibración, frontal+trasera de ROBOT1 y de ROBOT2 usan esta misma
+> `H`. Aplicado en `cam-frontal-n6.py` y `cam-trasera-n6.py`. Después → una por cámara.
+
+> ### Protocolo: el artefacto es v1; producción es v2
+> `vision-frontal-calibrada.py` usa el protocolo **v1** (9 bytes, sin CRC, X crudo).
+> Producción (`cam-*-n6.py`) + el parser del TOP están en **v2** (11 bytes, X+100
+> simétrico, CRC8 + END). **La `H` se portó a v2** (misma distancia física, encoding
+> correcto). NO flashear el v1. **Deploy coordinado:** re-flashear las 2 cámaras + TOP
+> juntos. Detalle en `journal/2026-06-07-calibracion-distancia-camara-frontal-elias.md`.
+
+---
+
 ## TL;DR — la decisión: lona con grilla, NO pelota en puntos sueltos
 
 **Recomendado: una LONA/HOJA impresa con una grilla de puntos negros**, que la

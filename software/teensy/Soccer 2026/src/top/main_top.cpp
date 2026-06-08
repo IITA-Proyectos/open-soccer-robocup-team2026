@@ -256,6 +256,25 @@ void loop() {
     cameras_tick();        // OpenMV front (Serial3) + back (Serial5)
 
     // === Sensores periódicos ===
+#ifdef TOP_BNO_TOF_DECONFLICT
+    // ROBOT1: el BNO comparte el bus `Wire` con los 4 ToF. Si el read multi-byte del
+    // BNO cae PEGADO a un read de ToF, el yaw se CONGELA (banco 2026-06-08; mismo
+    // mecanismo que el band-aid de 20 Hz en sensors_imu.cpp:259). DECONFLICT: corremos
+    // el ToF primero y, si corrió en esta pasada, SALTEAMOS el read del BNO hasta la
+    // próxima pasada (donde no hay ToF) → el read del BNO queda AISLADO en el bus.
+    // El BNO lee igual a 20 Hz (gate interno de sensors_imu_tick); sólo se corre la
+    // FASE para que no choque. ROBOT2 tiene el BNO en Wire1 (bus aparte) → usa el #else.
+    bool tof_ran_this_pass = false;
+    if (g_since_tof_tick >= TOF_TICK_INTERVAL_MS) {
+        g_since_tof_tick = 0;
+        sensors_tof_tick();
+        tof_ran_this_pass = true;
+    }
+    if (g_since_imu_tick >= IMU_TICK_INTERVAL_MS && !tof_ran_this_pass) {
+        g_since_imu_tick = 0;
+        sensors_imu_tick();
+    }
+#else
     if (g_since_imu_tick >= IMU_TICK_INTERVAL_MS) {
         g_since_imu_tick = 0;
         sensors_imu_tick();
@@ -264,6 +283,7 @@ void loop() {
         g_since_tof_tick = 0;
         sensors_tof_tick();
     }
+#endif
     if (g_since_loc_tick >= 33) {  // ~30 Hz — matchea cadencia de los TOFs
         g_since_loc_tick = 0;
         iitasoccer::localization_runtime_tick();

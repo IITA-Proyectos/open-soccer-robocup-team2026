@@ -59,11 +59,21 @@ void motors_init() {
 }
 
 void motors_apply_command(const MotorCommand& cmd) {
+    // SLOW-MO DE BANCO (gateado): escala TODO el comando (vx/vy/omega) para poder OBSERVAR
+    // la conducta del arquero sin que sea brusco. Cae sobre la velocidad antes de la
+    // cinemática → baja parejo el PWM de las 3 ruedas (el piso MOTOR_MIN_PWM=0 por default no
+    // interfiere). DEFAULT 1.0 = SIN EFECTO → binario de competencia IDÉNTICO. Se activa solo
+    // con -DCENTRAL_SLOW_MOTION (env central_robotN_slow). ⚠️ NO usar en competencia.
+#ifdef CENTRAL_SLOW_MOTION
+    constexpr float MOTION_SCALE = 0.4f;   // ~40% para banco/observación
+#else
+    constexpr float MOTION_SCALE = 1.0f;
+#endif
     // Convertir centideg/s a rad/s para la cinemática
     const float omega_rad_s = static_cast<float>(cmd.omega_centideg_s)
-                            * (PI_F / 18000.0f);
-    const float vx = static_cast<float>(cmd.vx_mm_s);
-    const float vy = static_cast<float>(cmd.vy_mm_s);
+                            * (PI_F / 18000.0f) * MOTION_SCALE;
+    const float vx = static_cast<float>(cmd.vx_mm_s) * MOTION_SCALE;
+    const float vy = static_cast<float>(cmd.vy_mm_s) * MOTION_SCALE;
 
     WheelSpeeds ws = inverse_kinematics(vx, vy, omega_rad_s, WHEELS);
     saturate_wheels(ws, MAX_SPEED_MM_S);

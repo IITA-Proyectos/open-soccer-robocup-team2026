@@ -113,10 +113,12 @@ constexpr float MAX_SPEED_MM_S  = 1000.0f; // velocidad máxima estimada del rob
 // al de hoy. El equipo sube MOTOR_MIN_PWM en banco (típico 25-45) hasta que las 3
 // ruedas arranquen parejo a baja velocidad; MOTOR_PWM_NOISE_THRESH filtra el jitter
 // del comando para no zumbar parado. NO subir estos valores en competencia sin tunear.
-constexpr int MOTOR_MIN_PWM          = 40;  // ✅ banco 2026-06-08: en strafe las ruedas delanteras
-                                            // quedaban en ~19 PWM (bajo el stiction → no arrancaban;
-                                            // M3 movía a ~38). 40 las levanta por encima del arranque.
-                                            // (0 = OFF; típico 25-45; bajar si arrancan a menos.)
+constexpr int MOTOR_MIN_PWM          = 70;  // ✅ banco 2026-06-08: piso de PWM (deadzone + carga).
+                                            // A 40 las delanteras giran LIBRES pero no mueven el robot
+                                            // EN EL PISO (falta torque bajo carga). 70 les da más empuje.
+                                            // 🔧 TUNEAR ACÁ: si en el piso TODAVÍA no arrancan, subí (90,
+                                            // 110...). Si arrancan y va muy rápido/brusco, bajá. ⚠️ NO
+                                            // pasar ~150 (motores brushed 5V a 7.4V se queman > ~70%).
 constexpr int MOTOR_PWM_NOISE_THRESH = 5;   // |pwm| <= esto → 0 (filtra ruido, no zumba parado)
 
 // ============================================================

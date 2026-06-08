@@ -270,9 +270,22 @@ void sensors_imu_tick() {
         const bool present = g_ready[i];  // band-aid: sin ping i2c_present (1 transaccion I2C menos por sensor)
         if (present) {
             in[i].present     = true;
+#ifdef TOP_BNO_READ_NOINTERRUPTS
+            // EXPERIMENTO (2026-06-08, hipótesis Gustavo): proteger el read multi-byte del BNO
+            // de las INTERRUPCIONES (ultrasónico HC-SR04 + UARTs de DOWN/CENTRAL/cámaras) que se
+            // lo corrompen en main_top (carga alta) pero no en el diag (carga baja). Trade-off:
+            // ~2 ms con IRQ off por tick (20 Hz) → puede perderse algún byte de UART (recuperable
+            // por CRC; el enlace DOWN puede mostrar más seqGap durante el test). El WDOG1 (hardware,
+            // 1 s) sigue de backstop. Si ESTO destraba el yaw → la causa son las interrupciones;
+            // si no → es el bus compartido y el fix es BNO→bus aparte (Wire1).
+            noInterrupts();
+#endif
             in[i].heading_deg = heading_no_mount(i, read_raw_yaw(*g_bno[i]));
             in[i].gyro_z_dps  = HEADING_SIGN * read_gyro_z(*g_bno[i]);
             in[i].calib_gyro  = read_gyro_calib(*g_bno[i]);
+#ifdef TOP_BNO_READ_NOINTERRUPTS
+            interrupts();
+#endif
         } else {
             in[i].present = false; in[i].heading_deg = 0.0f;
             in[i].gyro_z_dps = 0.0f; in[i].calib_gyro = 0;

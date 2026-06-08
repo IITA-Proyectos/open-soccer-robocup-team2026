@@ -17,8 +17,8 @@ const MotorPins MOTOR_PINS[3] = {
 };
 
 // Configuración de las 3 ruedas omni del robot.
-// El indice i alinea: Motor_i <-> MOTOR_PINS[i]/MOTOR_INVERT[i] (driver) <-> WHEEL_ANGLES_DEG[i] (geometria) <-> posicion fisica.
-// ROBOT1: i=0 M1/U5 +60deg delantera-derecha · i=1 M2/U17 -60deg delantera-izquierda (INVERTIDO HW) · i=2 M3/U7 180deg trasera.
+// El indice i alinea: Motor_i <-> MOTOR_PINS[i]/MOTOR_INVERT[i]/MOTOR_GAIN[i] (driver) <-> WHEEL_ANGLES_DEG[i] (geometria) <-> posicion fisica.
+// ROBOT1 (confirmado Gustavo 2026-06-08): i=0 M1/U5 330deg delantera-IZQUIERDA · i=1 M2/U17 210deg delantera-DERECHA (INVERTIDO HW) · i=2 M3/U7 90deg trasera.
 const WheelConfig WHEELS[3] = {
     { WHEEL_ANGLES_DEG[0] * PI_F / 180.0f, WHEEL_RADIUS_MM },
     { WHEEL_ANGLES_DEG[1] * PI_F / 180.0f, WHEEL_RADIUS_MM },
@@ -87,6 +87,11 @@ void motors_apply_command(const MotorCommand& cmd) {
         // muerta del motor y raspa/stalled. Con MOTOR_MIN_PWM>0 (banco) lo eleva al
         // piso. DEFAULT MOTOR_MIN_PWM=0 → no-op → binario de competencia idéntico.
         pwm = apply_pwm_floor(pwm, MOTOR_MIN_PWM, MOTOR_PWM_NOISE_THRESH);
+        // Ganancia POR RUEDA (compensa la fricción distinta de cada rueda — las delanteras
+        // oblicuas tienen más fricción que la trasera). Se aplica al PWM FINAL (DESPUÉS del
+        // piso) para poder BAJAR la trasera, que con el piso alto se adelantaba y hacía ROTAR
+        // el robot en el strafe. DEFAULT {1,1,1} (en ROBOT2) = sin efecto. Ver config_central.h.
+        pwm = static_cast<int>(static_cast<float>(pwm) * MOTOR_GAIN[i]);
         apply_pwm_to_motor(i, pwm);
     }
 }

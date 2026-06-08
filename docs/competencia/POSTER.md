@@ -217,12 +217,12 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > | IMU BNO055 | Bosch BNO055 (U10/U11) | 2 (1 sano) | Nuevo | **~USD 35 c/u** (ref. int.) |
 > | ToF VL53L7CX | ST VL53L7CX (módulo Pololu) | 4 | Nuevo | **USD 19.95 c/u** (ref. int.) |
 > | OTOS SparkFun | SparkFun OTOS (U5/U6) | 2 | Nuevo | **USD 84.95 c/u** (ref. int.) |
-> | PCB Zircon Rev v15 (CENTRAL) | Robomov Zircon Rev v15 (COTS) | 1 | **Reusado** | **~USD 200** (precio Robomov suelto pendiente — kit USD 529) |
+> | PCB Zircon Rev v15 (CENTRAL) | Robomov Zircon Rev v15 (COTS) | 1 | **Reusado** | **USD 250** (ref. máx.; suelto pendiente — kit USD 529) |
 > | Mux CD4051BM | TI CD4051BM (LCSC `C353976`) | 4 | Nuevo | 0.96 |
 > | Regulador buck MP1584-EN | MP1584-EN (módulo SIP) | 6 | Nuevo | **USD 0.90 c/u** (ref. int.) |
-> | Batería LiPo 2S 7.4 V | LiPo 2S (mAh/C a confirmar) | 1–2 | Nuevo | **~USD 10–25** (specs pendientes) |
-> | 3 motores DC + 3 ruedas omni | Motor "TT" + rueda omni KIWI | 3+3 | Nuevo | **motor pendiente** (TT ~USD 3 vs Pololu HP USD 23.95) |
-> | **TOTAL por robot** | — | — | — | **≈ USD 1.000 nuevo · ≈ USD 770 reusando CENTRAL** (ref. int.; 2 robots ≈ USD 1.800–2.000) |
+> | Batería LiPo 2S 7.4 V | **LiPo 2S 6800 mAh** (≈50 Wh; C/marca a confirmar) | 1 | Nuevo | **USD 42.99** (ref. Gens Ace 50C) |
+> | 3 motores DC + 3 ruedas omni | Motor "TT" + rueda omni KIWI | 3+3 | Nuevo | **USD 23.95 c/u motor** (ref. máx. Pololu HP; TT ~3) + ruedas 6.50 |
+> | **TOTAL por robot** | — | — | — | **≈ USD 1.168 nuevo · ≈ USD 887 reusando CENTRAL** (ref. int., valor más alto/ítem; 2 robots ≈ USD 2.055–2.336) |
 >
 > **Tiempo de desarrollo:** rediseño 2026 ≈ **8 semanas** de ingeniería intensiva (mayo–junio), sobre la base del robot campeón 2025; esfuerzo total ≈ **4 meses** (feb–jun 2026) trazable en `journal/`. Suite de tests creciendo **180 → 246 → 262 → 324 → 354 → 545 → 658** (medido 2026-06-05 19:50 ART con `scripts/run-host-tests.sh`; ver Fig.8).
 >
@@ -330,7 +330,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 
 - [ ] **TRADUCIR TODO al inglés** (requisito duro de rúbrica) y correr corrector ortográfico.
 - [x] ✅ Identidad COMPLETA 2026-06-05: equipo IITA Low Battery Messi · región Roboliga Argentina 2025 (UAI) · roster (María Virginia Viollaz / Elías Cordero + coach Enzo Juárez Velázquez / mentora Cecilia Budeguer).
-- [ ] Costos de **referencia internacional ya cargados** (≈USD 1.000 nuevo / 770 reusando CENTRAL). Falta del equipo: **precio Zircon suelto, motor, tipo de cambio ARS/USD y horas**.
+- [ ] Costos de **referencia internacional ya cargados** (valor más alto/ítem: ≈USD 1.168 nuevo / 887 reusando CENTRAL; 2 robots ≈2.055–2.336). Batería **6800 mAh** cargada. Falta del equipo: **precio Zircon suelto, motor real, C-rating/marca batería, tipo de cambio ARS/USD y horas**.
 - [ ] Tomar y colocar **todas las `[FOTO:]`** (Fig.1–11) etiquetadas y citadas.
 - [x] ✅ Generadas 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Falta solo maquetarlas en el A1.
 - [ ] Confirmar el **número de tests vivo** al cierre (verificado **658 tests / 47 suites / 0 fallos** el 2026-06-05 18:39 ART con `scripts/run-host-tests.sh`; re-correr antes de imprimir).

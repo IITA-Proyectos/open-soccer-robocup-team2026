@@ -175,10 +175,10 @@ Los **6 sensores I²C cuelgan del mismo bus `Wire` (pines 18/19)**: 2 BNO055 (0x
 | LED 0402 | 32 | 0.016 |
 | Diodo B5819W | 4–6 | 0.024 |
 | MP1584-EN (buck) | 6 | 0.90 c/u — ref. int. |
-| ESP32-C6 / Zircon / LiPo | 1 c/u | 4.53 / ~200 reusado / ~10–25 — ref. int. |
-| **TOTAL / robot** | — | **≈ USD 1.000 nuevo · ≈ USD 770 reusando CENTRAL** (ref. int.) |
+| ESP32-C6 / Zircon / LiPo 2S 6800 mAh | 1 c/u | 4.53 / 250 reusado / 42.99 — ref. int. |
+| **TOTAL / robot** | — | **≈ USD 1.168 nuevo · ≈ USD 887 reusando CENTRAL** (ref. int., valor más alto por ítem) |
 
-> **Costo total (referencia internacional, verificado 2026-06-05):** ≈ **USD 1.000/robot** (todo nuevo) · ≈ **USD 770/robot** reusando el CENTRAL Zircon + Teensy 4.1 del 2025 · ≈ **USD 1.800–2.000** los 2 robots. Desglose con URLs en `BOM-COSTOS-TEMPLATE.md`. **Pendiente del equipo (chico):** precio del **Zircon** suelto (Robomov publica el kit a USD 529), modelo de **motor** (TT ~USD 3 vs Pololu HP USD 23.95), **tipo de cambio ARS/USD** del día y **horas** de desarrollo. El costo *landed* local es **mayor** por las restricciones de importación argentinas.
+> **Costo total (referencia internacional, un solo valor = el más alto por ítem):** ≈ **USD 1.168/robot** (todo nuevo) · ≈ **USD 887/robot** reusando el CENTRAL Zircon + Teensy 4.1 del 2025 · ≈ **USD 2.055–2.336** los 2 robots. Batería: **LiPo 2S 7.4 V 6800 mAh (≈50 Wh)**. Desglose por línea en `BOM.md §1`/§3.1 + URLs en `BOM-COSTOS-TEMPLATE.md`. **Pendiente del equipo (chico):** precio del **Zircon** suelto (Robomov publica el kit a USD 529), modelo de **motor** (se usó la cota alta Pololu HP USD 23.95; el TT genérico es ~USD 3), **C-rating/marca/peso** de la batería, **tipo de cambio ARS/USD** del día y **horas** de desarrollo. El costo *landed* local es **mayor** por las restricciones de importación argentinas.
 
 ---
 

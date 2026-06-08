@@ -28,16 +28,15 @@
 //   residual es DERIVA y no se corrige acá. La distancia es OPEN-LOOP por TIEMPO
 //   (a S mm/s, 30 cm tardan 300/S s) — los "30 cm" son nominales, calibrar.
 //
-// ⚠️⚠️ CAVEAT DE CINEMÁTICA (mismo que diag_central_strafe — leer):
+// ✅ CINEMÁTICA YA CALIBRADA (2026-06-08, Gustavo) — mismo que diag_central_strafe:
 //   Mueve los motores vía motors_apply_command() -> inverse_kinematics() con
-//   WHEEL_ANGLES_DEG={60,-60,180} (TENTATIVO, config_central.h:72, sin medir).
-//   El banco del 2026-06-01 (María) encontró que la cinemática genérica da
-//   CÍRCULOS y que en ese robot el M2 tiene la polaridad INA/INB invertida por HW
-//   (y motors_zircon.cpp no tiene inversión por motor). => el "lateral" puede
-//   salir en diagonal / rotando por la cinemática, no solo por la deriva. El
-//   arquero que SÍ anduvo en banco (diag_central_line_sweep) usa control directo
-//   de motores. Reconciliar el substrato de movimiento (TASK-101) antes de creer
-//   los 30 cm. Ver journal/2026-06-01-arquero-seguidor-linea-y-calibracion.md.
+//   WHEEL_ANGLES_DEG={330,210,90} (config_central.h): la disposición física real
+//   M1=del-IZQUIERDA, M2=del-DERECHA (INVERTIDA HW vía MOTOR_INVERT), M3=TRASERA.
+//   El viejo {60,-60,180} daba CÍRCULOS (eje +Y vs +X de la fórmula) → RESUELTO.
+//   Strafe puro: M1/M2 al MISMO lado (+0.5·vx), la TRASERA (M3) la que más empuja
+//   (−vx). Piso de PWM POR RUEDA (MOTOR_MIN_PWM[3]={70,70,42}): las delanteras
+//   oblicuas necesitan más que la trasera paralela. PENDIENTE banco: tuneo fino del
+//   lateral (que no rote) + confirmar sentido. Ver journal 2026-06-08.
 //
 // Convención (kinematics.h): +X = derecha, +Y = frente. Lateral = vx (vy=0).
 //   IZQUIERDA = -vx, DERECHA = +vx.  (Invertible con -DDIAG_ARB_INVERT_LR.)

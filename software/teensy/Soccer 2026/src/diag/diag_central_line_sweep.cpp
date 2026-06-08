@@ -50,7 +50,16 @@ using namespace iitasoccer;
 namespace {
 
 // ===================== AJUSTES ===============================================
-// Velocidades base de los motores para el avance lateral (0..255).
+// DISPOSICIÓN FÍSICA DE MOTORES (settled 2026-06-08, Gustavo) — 3 omni a 120°:
+//   M1 = delantera IZQUIERDA (driver U5,  2/5/3)
+//   M2 = delantera DERECHA   (driver U17, 8/7/6, INVERTIDO por HW)
+//   M3 = TRASERA / centro    (driver U7,  11/12/4)
+//   Los 3 giran HORARIO mirados desde el centro (comando +). Canónico: config_central.h.
+// ⚠️ Este sketch usa CONTROL DIRECTO de motores (DIR_M* abajo, calibrado en MARZO), NO la
+//    cinemática {330,210,90}. En la cinemática un strafe puro da M1/M2 al MISMO lado + M3
+//    fuerte; acá M1/M2 van CONTRARIOS porque mueven adelante/atrás (centrado) y M3 hace el
+//    lateral. Los DIR_M* son del control directo, no de la cinemática → reconciliar en banco.
+// Velocidades base de los motores (0..255). M3 (trasera) lleva más porque hace el lateral.
 constexpr int VEL_M1 = 55;
 constexpr int VEL_M2 = 55;
 constexpr int VEL_M3 = 100;

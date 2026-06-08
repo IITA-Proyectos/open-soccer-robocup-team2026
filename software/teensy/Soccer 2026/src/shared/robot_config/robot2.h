@@ -66,12 +66,13 @@ constexpr int MOTOR_INVERT[3] = { +1, -1, +1 };     // [R1={+1,-1,+1}] TODO: con
 // Cinematica omni-3. HOY comun a ambos (config_central.h, fuera del #if ROBOT).
 // Si las ruedas de R2 montan a otros angulos, esto se vuelve per-robot AQUI.
 constexpr float WHEEL_RADIUS_MM      = 100.0f;       // [R1=100] tentativo // TODO: confirmar en banco
-constexpr float WHEEL_ANGLES_DEG[3]  = { 60.0f, -60.0f, 180.0f };  // [R1 igual] "da circulos" // TODO: confirmar en banco
+constexpr float WHEEL_ANGLES_DEG[3]  = { 330.0f, 210.0f, 90.0f };  // [R1 igual] calibrado 2026-06-08 (M1=del-izq,M2=del-der,M3=trasera) // R2: confirmar en banco
 
-// Piso de PWM (deadzone). DEFAULT 0 = OFF = binario identico. Subir en banco
-// (tipico 25-45) hasta que las 3 ruedas arranquen parejo a baja velocidad.
-constexpr int MOTOR_MIN_PWM          = 0;            // [R1=0] // TODO: tunear en banco
-constexpr int MOTOR_PWM_NOISE_THRESH = 0;            // [R1=0]
+// Piso de PWM POR RUEDA (deadzone). En R1 es {70,70,42} (delanteras oblicuas necesitan mas
+// piso que la trasera paralela). Aca NEUTRO {0,0,0} hasta calibrar el delantero (pines
+// rotados -> idx2 NO es la trasera; el banco define que indice sube/baja).
+constexpr int MOTOR_MIN_PWM[3]       = { 0, 0, 0 };  // [R1={70,70,42}] // TODO: tunear en banco
+constexpr int MOTOR_PWM_NOISE_THRESH = 0;            // [R1=5]
 
 constexpr int   MAX_PWM         = 255;               // constante del core (comun)
 constexpr float MAX_SPEED_MM_S  = 1000.0f;           // [R1=1000] estimado (comun)

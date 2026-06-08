@@ -20,19 +20,16 @@
 //    en world_model (world_model_get_otos_heading_deg / _otos_is_fresh). v2 = sumar
 //    un HeadingPID sobre ese heading. NO requiere mensaje nuevo ni placa TOP.]
 //
-// ⚠️⚠️ CAVEAT DE CINEMÁTICA (leer ANTES de interpretar la deriva — FASE B):
+// ✅ CINEMÁTICA YA CALIBRADA (2026-06-08, Gustavo en banco) — reemplaza el caveat viejo:
 //   Este sketch comanda vx vía motors_apply_command() → inverse_kinematics() con
-//   WHEEL_ANGLES_DEG={60,-60,180}, marcado TENTATIVO en config_central.h:72 (sin
-//   medir con Enzo). La sesión de banco del 2026-06-01 (María) encontró que la
-//   cinemática genérica da CÍRCULOS y que en ese robot el motor M2 tiene la
-//   polaridad INA/INB INVERTIDA por hardware — y motors_zircon.cpp NO tiene
-//   inversión por motor. Resultado esperado: el movimiento lateral puede salir en
-//   diagonal / rotando por la cinemática, NO sólo por la deriva open-loop. Si pasa
-//   eso, la "deriva" de FASE B estaría dominada por la cinemática, no por la falta
-//   de heading-hold. El arquero que SÍ anduvo en banco (diag_central_line_sweep)
-//   usa CONTROL DIRECTO de motores (M1/M2 contrarios + M3 acompaña), no esta
-//   cinemática. Reconciliar el substrato de movimiento ANTES de concluir sobre v2.
-//   Ver journal/2026-06-01-arquero-seguidor-linea-y-calibracion.md.
+//   WHEEL_ANGLES_DEG={330,210,90} (config_central.h), la DISPOSICIÓN FÍSICA REAL:
+//   M1=delantera-IZQUIERDA, M2=delantera-DERECHA (INVERTIDA por HW vía MOTOR_INVERT),
+//   M3=TRASERA. El viejo {60,-60,180} daba CÍRCULOS (estaba en eje +Y y la fórmula usa
+//   +X) → RESUELTO. En un strafe puro: M1/M2 giran al MISMO lado (+0.5·vx) y la TRASERA
+//   (M3) es la que más empuja (−vx). El piso de PWM es POR RUEDA (MOTOR_MIN_PWM[3]=
+//   {70,70,42}): las delanteras oblicuas necesitan más piso que la trasera paralela
+//   (el PWM no es proporcional a la velocidad, distinto por rueda).
+//   PENDIENTE de banco: tuneo fino del lateral (que NO rote) + confirmar el SENTIDO.
 //
 // ⚠️ DISTANCIA OPEN-LOOP (aproximada):
 //   CENTRAL no recibe odometría. La distancia se hace por TIEMPO: a S mm/s, 30 cm

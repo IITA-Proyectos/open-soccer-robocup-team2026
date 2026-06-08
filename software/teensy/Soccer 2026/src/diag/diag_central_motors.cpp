@@ -69,10 +69,11 @@ struct MotorPins {
     int pwm;
 };
 
+// Posición física (settled 2026-06-08): M1=delantera-IZQ · M2=delantera-DER · M3=trasera. Ver config_central.h.
 constexpr MotorPins MOTORS[3] = {
-    { "MOTOR 1 - driver U5  (INA=2, INB=5, PWM=3)",  2, 5,  3 },
-    { "MOTOR 2 - driver U17 (INA=8, INB=7, PWM=6)  [7/8 RESUELTO: motor 2/U17; DOWN->CENTRAL=Serial1]", 8, 7, 6 },
-    { "MOTOR 3 - driver U7  (INA=11, INB=12, PWM=4)", 11, 12, 4 },
+    { "MOTOR 1 - driver U5  (INA=2, INB=5, PWM=3)   [rueda DELANTERA IZQUIERDA]",  2, 5,  3 },
+    { "MOTOR 2 - driver U17 (INA=8, INB=7, PWM=6)   [rueda DELANTERA DERECHA, INVERTIDA HW] [7/8 RESUELTO]", 8, 7, 6 },
+    { "MOTOR 3 - driver U7  (INA=11, INB=12, PWM=4) [rueda TRASERA]", 11, 12, 4 },
 };
 
 constexpr int PIN_BUTTON = 9;     // Botón 1 (pullup interno) — LOW = apretado

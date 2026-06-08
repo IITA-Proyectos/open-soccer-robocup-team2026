@@ -392,8 +392,9 @@ motors_apply_command(cmd) (motors_zircon.cpp:113-138)
      │
      ├── WheelSpeeds ws = inverse_kinematics(vx, vy, omega_rad_s, WHEELS)
      │       v_i = -vx·sin(θ_i) + vy·cos(θ_i) + omega·R   (kinematics.h:33-38)
-     │       WHEELS[3] = {60°, -60°, 180°} × 100 mm radio  (motors_zircon.cpp:20-24)
-     │       ⚠️ WHEEL_ANGLES_DEG y WHEEL_RADIUS_MM son TENTATIVOS (config_central.h:65-68)
+     │       WHEELS[3] = {330°, 210°, 90°} × 100 mm radio  (M1=del-IZQ · M2=del-DER · M3=trasera)
+     │       ✅ WHEEL_ANGLES_DEG CALIBRADO 2026-06-08 (config_central.h). WHEEL_RADIUS_MM y el
+     │          SENTIDO de la traslación quedan a confirmar en banco (tuneo fino del lateral).
      │
      ├── saturate_wheels(ws, MAX_SPEED_MM_S=1000.0f)         [proporcional, preserva dirección]
      │

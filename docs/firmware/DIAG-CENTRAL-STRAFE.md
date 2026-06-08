@@ -12,10 +12,12 @@ requested-by: "Gustavo Viollaz (@gviollaz)"
 # `diag_central_strafe` — Patrulla lateral del arquero (OPEN-LOOP)
 
 > **🔬 Resultado de banco 2026-06-03** (corrido vía el hermano `diag_central_arbitro_strafe`,
-> mismo path de motores): al moverse **solo gira el motor 1**. Causa: cinemática
-> `{60,-60,180}` → lateral puro da **M3=0 (esperado**, rueda trasera kiwi) y M1=M2=±0.866·vx,
-> pero a `vx=150`/`MAX_SPEED=1000` el PWM es ~13% → **M2 stalled por deadzone**. **Subir
-> velocidad** (`-DDIAG_STRAFE_SPEED_MM_S=600`) para sacar el par delantero del umbral.
+> mismo path de motores): al moverse **solo gira el motor 1**. Causa: la cinemática vieja
+> `{60,-60,180}` estaba **en el eje equivocado** (daba círculos) y subdimensionaba el par.
+> Con la cinemática CALIBRADA 2026-06-08 (`WHEEL_ANGLES_DEG = {330, 210, 90}`), lateral puro
+> da **M1=M2=+0.5·vx (mismo lado)** y **M3=−vx (la trasera es la que más empuja**, no 0).
+> El piso de PWM ahora es **POR RUEDA** (`MOTOR_MIN_PWM[3] = {70, 70, 42}`: delanteras
+> oblicuas 70 > trasera paralela 42) para que ninguna quede stalled por deadzone.
 > Ver journal `2026-06-03-banco-resultados-arbitro-strafe-y-bno-freeze.md` + TASK-101.
 
 ## Para qué sirve
@@ -78,20 +80,17 @@ Telemetría cada 250 ms: `state | vx`.
 > **Robot SUJETO o ruedas al aire** al principio (puede salir disparado). Batería
 > cargada (los H-bridges NO van por USB).
 
-> ⚠️⚠️ **LEER ANTES DE INTERPRETAR LA DERIVA (FASE B).** Este sketch mueve los
+> ⚠️ **LEER ANTES DE INTERPRETAR LA DERIVA (FASE B).** Este sketch mueve los
 > motores vía `motors_apply_command()` → `inverse_kinematics()` con
-> `WHEEL_ANGLES_DEG={60,-60,180}` (marcado **TENTATIVO**, sin medir — `config_central.h:72`).
-> La sesión de banco del **2026-06-01** ([journal](../../journal/2026-06-01-arquero-seguidor-linea-y-calibracion.md))
-> ya encontró que **la cinemática genérica da CÍRCULOS** y que en ese robot el
-> **motor M2 tiene la polaridad INA/INB invertida por hardware** — y
-> `motors_zircon.cpp` **no** tiene inversión por motor. Por eso el movimiento
-> lateral puede salir **en diagonal / rotando por la cinemática**, no sólo por la
-> deriva open-loop. **Si pasa eso, la "deriva" de FASE B está dominada por la
-> cinemática, no por la falta de heading-hold** — y la conclusión "hace falta v2"
-> sería un falso positivo. El arquero que **sí** anduvo en banco
-> (`diag_central_line_sweep`) usa **control directo** de motores, no esta
-> cinemática. **Reconciliar el substrato de movimiento antes de concluir sobre v2**
-> (ver "Riesgos" en el reporte coach 2026-06-03 / journal del día).
+> `WHEEL_ANGLES_DEG = {330, 210, 90}` (**CALIBRADO 2026-06-08** con la disposición física
+> real — antes era `{60,-60,180}`, que estaba en el eje equivocado y daba CÍRCULOS).
+> El **motor M2 (U17) tiene la polaridad INA/INB invertida por hardware** y eso ya está
+> honrado: `config_central.h` define `MOTOR_INVERT[3] = {+1,-1,+1}` y `motors_zircon.cpp`
+> lo aplica. Con la cinemática calibrada el lateral ya **no** sale en diagonal por la
+> cinemática. **Pendiente de banco: SOLO el tuneo fino del lateral (que no rote) +
+> confirmar el SENTIDO de la traslación** — si traslada al revés, sacar el +180 de los
+> ángulos (el giro queda arreglado igual). Si todavía aparece deriva grande tras el tuneo,
+> recién ahí decide si "hace falta v2" (heading-hold con OTOS).
 
 **FASE A — Movimiento lateral + dirección.**
 - Apretás el botón → el robot se mueve **de costado** (NO adelante/atrás), **izquierda primero**.

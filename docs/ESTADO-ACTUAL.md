@@ -26,11 +26,15 @@ tipo: indice-operacional
 > **🏁 BANCO 2026-06-03 (3 placas) — leer:** (1) ✅ **El árbitro mueve a la CENTRAL.**
 > `diag_central_arbitro_strafe` validó en banco que el START/STOP del árbitro
 > (COMM→GPIO 5/6→TOP→flag MATCH_RUNNING→Serial7→CENTRAL) dispara/frena la conducta.
-> Primera vez que el árbitro mueve el robot end-to-end. (2) ⚠️ **Al moverse, solo gira
-> el motor 1.** Vía `inverse_kinematics({60,-60,180})`, un lateral puro da M3=0
-> (esperado: rueda trasera kiwi) y M1=M2=±0.866·vx pero a `vx=150`/`MAX_SPEED=1000` el
-> PWM es ~13% → M1 raspa, M2 stalled (deadzone). Primer test: `-DDIAG_ARB_SPEED_MM_S=600`.
-> Detalle → TASK-101 + journal `2026-06-03-banco-resultados-arbitro-strafe-y-bno-freeze.md`.
+> Primera vez que el árbitro mueve el robot end-to-end. (2) ✅ **RESUELTO 2026-06-08:**
+> ese día solo giraba el motor 1 porque `inverse_kinematics({60,-60,180})` estaba en el
+> eje equivocado (daba círculos) y subdimensionaba el par. Con la cinemática CALIBRADA
+> `WHEEL_ANGLES_DEG={330,210,90}` (M1=del-IZQ · M2=del-DER · M3=trasera) un lateral puro
+> da M1=M2=+0.5·vx (mismo lado) y M3=−vx (la trasera es la que más empuja). El piso de PWM
+> pasó a ser POR RUEDA (`MOTOR_MIN_PWM[3]={70,70,42}`: delanteras oblicuas 70 > trasera
+> paralela 42) para sacar a las ruedas del deadzone. **Pendiente de banco: SOLO el tuneo
+> fino del lateral + confirmar el sentido.** Detalle → TASK-101 + journal
+> `2026-06-03-banco-resultados-arbitro-strafe-y-bno-freeze.md`.
 > (3) ⚠️ **El heading del BNO (TOP) se CONGELA en producción** (`top_robot1`): el snapshot
 > llega sano por Serial7 (0 CRC, frames OK) y x/y cambian, pero `hdg` quedó clavado en
 > −108.3°. Causa: contención BNO+ToF en `Wire` (`sensors_imu.cpp:167`), band-aid insuficiente.
@@ -505,7 +509,7 @@ nativo, pero ya no es el único camino. Ver
   TASK-024 (rol/polaridad), TASK-032 (ToF U2 en HW), TASK-035 (localización),
   TASK-200 (heading IMU→CENTRAL + loop), TASK-037 (drive-straight), TASK-003 (Wire1 remap).
 
-> ✅ SUPERADO (2026-06-07): el sentido de los 3 motores ROBOT1 ya está validado (MOTOR_INVERT={+1,-1,+1}, M2/U17 invertido, banco 2026-06-01 re-confirmado 2026-06-06) y el conflicto 7/8 está resuelto (2026-05-31). Fila canónica: FUENTES-DE-VERDAD.md:38. Tabla de disposición: docs/firmware/DIAG-CENTRAL-MOTORS.md. Lo único de banco que queda es la GEOMETRÍA WHEEL_ANGLES y ROBOT2.
+> ✅ SUPERADO (2026-06-08): el sentido de los 3 motores ROBOT1 ya está validado (MOTOR_INVERT={+1,-1,+1}, M2/U17 invertido, banco 2026-06-01 re-confirmado 2026-06-06) y el conflicto 7/8 está resuelto (2026-05-31). La GEOMETRÍA quedó CALIBRADA 2026-06-08: WHEEL_ANGLES_DEG={330,210,90} (M1=del-IZQ · M2=del-DER · M3=trasera) + piso de PWM POR RUEDA MOTOR_MIN_PWM={70,70,42}. Fila canónica: FUENTES-DE-VERDAD.md:38. Tabla de disposición: docs/firmware/DIAG-CENTRAL-MOTORS.md. Lo único de banco que queda es el TUNEO FINO del lateral (que no rote) + confirmar el SENTIDO de la traslación, y ROBOT2.
 
 ### 🏁 Avance 2026-05-29 — BANCO: motores CENTRAL + enlace físico DOWN↔CENTRAL
 - **Motores del CENTRAL andan** (`diag_central_motors` en banco): identificados

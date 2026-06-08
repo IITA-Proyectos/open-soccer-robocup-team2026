@@ -25,7 +25,7 @@
 
 ## Índice de subsistemas
 1. [Motores ROBOT2 — pines / inversión](#1-motores-robot2)
-2. [Cinemática — WHEEL_ANGLES (da círculos)](#2-cinematica-wheel_angles)
+2. [Cinemática — WHEEL_ANGLES (tuneo fino del lateral + sentido)](#2-cinematica-wheel_angles)
 3. [Freno (brake vs coast del Zircon)](#3-freno-brake-vs-coast)
 4. [Watchdog de hardware (WDOG1)](#4-watchdog-de-hardware)
 5. [Cap de potencia 70% (incluye wiring)](#5-cap-de-potencia-70)
@@ -79,8 +79,8 @@
 <a name="2-cinematica-wheel_angles"></a>
 ## 2. Cinemática (WHEEL_ANGLES)
 
-### CARD CENTRAL-3: ¿La cinemática traslada o da círculos?
-- **Objetivo:** verificar si `WHEEL_ANGLES_DEG={60,-60,180}` (TENTATIVO, `config_central.h:88`) produce **traslación pura** o **círculos**. El strafe abre lazo con `omega=0`: si las ruedas/ángulos están bien, va de costado sin rotar.
+### CARD CENTRAL-3: ¿La cinemática traslada limpio? (tuneo fino + sentido)
+- **Objetivo:** con `WHEEL_ANGLES_DEG={330,210,90}` (**CALIBRADO 2026-06-08**, `config_central.h:113`), confirmar que el strafe es **traslación pura** y hacer el **tuneo fino del lateral** (que no rote) + **confirmar el SENTIDO** de la traslación (si va al revés, sacar el +180 → `{150,30,270}`). El strafe abre lazo con `omega=0`: si las ruedas/ángulos están bien, va de costado sin rotar. (La vieja `{60,-60,180}` estaba en el eje equivocado y daba círculos; ya corregida — esto es ajuste fino, no diagnóstico de círculos.)
 - **Placa:** CENTRAL (Teensy 4.1).
 - **Programa / env (arquero):** `cd "software/teensy/Soccer 2026" && pio run -e diag_central_strafe_robot1 -t upload`
   - delantero: `-e diag_central_strafe_robot2`
@@ -93,7 +93,7 @@
 - **Qué esperar si PASA:** el robot se desliza lateral **mirando al frente** (sin girar) ~30 cm a cada lado. Serial imprime el estado `STRAFE`/`PAUSE` y la dirección.
 - **Resultados posibles:**
   - **A)** Traslación lateral limpia, deriva mínima → `WHEEL_ANGLES` OK.
-  - **B)** El robot **rota / hace círculos** mientras debería ir recto → la cinemática genérica no corresponde al montaje real (caso conocido María 2026-06-01). Puede estar dominado por `WHEEL_ANGLES` mal y/o por `MOTOR_INVERT` mal — **resolver CENTRAL-1/2 ANTES** de concluir sobre los ángulos. (Para ROBOT1 `MOTOR_INVERT` YA está validado = `{+1,-1,+1}`; el residual de "círculos" en R1 es atribuible a `WHEEL_ANGLES`, no a `MOTOR_INVERT`. La sospecha de "`MOTOR_INVERT` mal" aplica a ROBOT2, que es esta sección.)
+  - **B)** El robot **rota residual** mientras debería ir recto → resta tuneo fino del lateral. Para ROBOT1 los ángulos ya están CALIBRADOS (`{330,210,90}`) y `MOTOR_INVERT={+1,-1,+1}` validado, así que un residual chico es ajuste fino (no los "círculos" de la vieja `{60,-60,180}`). Para ROBOT2 (esta sección) `MOTOR_INVERT` sigue sin validar → **resolver CENTRAL-1/2 ANTES** de concluir sobre los ángulos de R2.
   - **C)** Va en diagonal constante → un solo motor invertido o un ángulo de rueda errado.
 - **Feedback a devolver a la IA:** describir literal lo observado, p.ej.
   `strafe_robot1: el robot gira en círculo en sentido horario en vez de ir de costado` o `va recto de costado, deriva ~5cm en 30cm`. Si hay físico medido de los ángulos de montaje de las ruedas, pegarlos (grados desde +X).

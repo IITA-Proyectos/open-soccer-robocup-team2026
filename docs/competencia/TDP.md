@@ -190,11 +190,12 @@ Los **6 sensores I²C cuelgan del mismo bus `Wire` (pines 18/19)**: 2 BNO055 (0x
 
 **Decisión:** base omnidireccional **KIWI de 3 ruedas omni a 120°**, sin kicker físico.
 **Por qué:** la base de 3 ruedas omni da movimiento holonómico (traslación + rotación independientes) con menos motores/peso que una base de 4 ruedas; eliminar el kicker quita componentes, energía y puntos de falla — el delantero **empuja la pelota por inercia** al alinearse con el arco rival.
-**Trade-off:** la geometría KIWI tiene una rueda trasera (a 180°) que **no aporta a un strafe lateral puro** (proyección = 0). Esto es correcto por geometría, pero exige cuidado con la zona muerta de PWM (ver iteración 2.4).
+**Trade-off:** en la geometría KIWI real (ángulos `{330, 210, 90}` respecto a +X), la **rueda trasera (a 90°) NO aporta al avance frontal puro** (proyección = 0), pero es la que **más empuja en el strafe lateral** (−vx, contra +0.5·vx de cada delantera). Esto es correcto por geometría; exige cuidado con la zona muerta de PWM, y como cada rueda ve distinta fricción, el piso de PWM es **por rueda** (ver iteración A).
 
 | Parámetro | Valor en firmware | Estado |
 |---|---|---|
-| `WHEEL_ANGLES_DEG` | {60, -60, 180} (frente = +Y) | **TENTATIVO — confirmar en montaje físico** |
+| `WHEEL_ANGLES_DEG` | {330, 210, 90} (M1=del-IZQ · M2=del-DER · M3=trasera; ángulo desde +X) | **CALIBRADO 2026-06-08** (banco) |
+| `MOTOR_MIN_PWM[3]` (piso de PWM por rueda) | {70, 70, 42} | **CALIBRADO 2026-06-08** (delanteras oblicuas 70 > trasera paralela 42) |
 | `WHEEL_RADIUS_MM` (centro→rueda) | 100.0 | **TENTATIVO — medir en robot armado** |
 | `MAX_SPEED_MM_S` | 1000 | estimado |
 
@@ -224,21 +225,21 @@ Los **6 sensores I²C cuelgan del mismo bus `Wire` (pines 18/19)**: 2 BNO055 (0x
 
 ## 2.4 Iteraciones de diseño mecánico (con datos)
 
-### Iteración A — Strafe del arquero: "sólo gira el motor 1" (zona muerta de PWM + geometría KIWI)
+### Iteración A — Strafe del arquero: de "sólo gira el motor 1" a la cinemática calibrada
 - **Problema:** con el árbitro en START y comando de strafe lateral, **sólo giraba M1**; M2 y M3 quedaban quietos.
-- **Qué probamos:** banco `diag_central_arbitro_strafe_robot1` con comando lateral puro (vx, vy=0, ω=0), análisis rueda por rueda contra `WHEEL_ANGLES={60,-60,180}`.
-- **Dato:** para lateral puro, M1(60°) y M2(-60°) reciben ±0.866·vx; con vx=150 mm/s y MAX_SPEED=1000 → PWM ≈ **33/255 = ~13 %**, **debajo del umbral de arranque**. M1 (menos fricción) raspa y gira; M2 se queda clavado (stall). M3(180°) da proyección lateral **exactamente 0 → quieto, CORRECTO** (geometría KIWI esperada).
-- **Modificación:** diagnóstico = **no es bug de motor, es PWM bajo + geometría**. Propuesta de banco: subir velocidad (`-DDIAG_ARB_SPEED_MM_S=600` ≈ 52 % PWM). Candidata de diseño (CA-01): compensación de deadzone con piso `MOTOR_MIN_PWM` (~25–45), calibrada por robot. **Trade-off:** un piso de PWM demasiado alto hace al robot "saltar" desde reposo; por eso queda en 0 hasta calibrar por robot en banco.
+- **Qué probamos:** banco `diag_central_arbitro_strafe_robot1` con comando lateral puro (vx, vy=0, ω=0), análisis rueda por rueda. Se descubrió que la cinemática vieja `{60,-60,180}` estaba **en el eje equivocado** (usaba el eje +Y mientras la fórmula proyecta sobre +X) → daba círculos y subdimensionaba el par del par delantero.
+- **Dato (cinemática calibrada 2026-06-08, `WHEEL_ANGLES={330,210,90}` desde +X):** para lateral puro, M1(330°) y M2(210°) reciben **+0.5·vx cada una (mismo lado)** y la trasera M3(90°) recibe **−vx → es la que más empuja**. El avance frontal puro invierte los roles: M1/M2 a ±0.866·vy y M3=0. Además, cada rueda ve distinta fricción según su ángulo de ataque, así que el PWM **no** es proporcional a la velocidad de rueda y necesita un piso por rueda.
+- **Modificación:** (1) corregir los ángulos a `{330,210,90}` (giro y traslación quedan bien); (2) reemplazar el viejo piso escalar único (y un efímero `MOTOR_GAIN`) por **`MOTOR_MIN_PWM[3] = {70, 70, 42}`** — un piso de PWM **por rueda**: las delanteras trabajan oblicuas (60°, más fricción del rodillo → piso 70) y la trasera trabaja paralela al strafe (menos fricción → piso 42). **Trade-off:** un piso demasiado alto hace al robot "saltar" desde reposo; por eso se calibró por rueda y por robot en banco. **Pendiente de banco: SOLO el tuneo fino del lateral (que no rote) + confirmar el sentido de la traslación.**
 
 ### Iteración B — Motor 2 invertido por hardware
 - **Problema:** el motor 2 (driver U17) gira al revés → la cinemática daría trayectorias invertidas (círculos).
 - **Dato:** INA/INB cruzados por HW en el Zircon (validado en banco).
 - **Modificación:** `MOTOR_INVERT = {+1,-1,+1}` en un único punto. **Restricción:** ROBOT2 hereda el array sin validar (drivers rotados) — pendiente de banco.
 
-### Iteración C — Cinemática KIWI: ¿daba círculos?
-- **Problema:** hipótesis inicial de que `WHEEL_ANGLES` daba círculos en vez de rectas (geometría sin medir).
-- **Dato:** el banco de strafe (Iteración A) mostró que **M3=0 en lateral puro es correcto**, reduciendo la sospecha de "círculos" a un problema de deadzone/PWM, no de ángulos.
-- **Modificación:** se mantienen los valores como TENTATIVOS pendientes de medición física. **Procedimiento de medición documentado** (`docs/omni3-drive-system.md §4`): `wheel_radius` real = marcar rueda, rodar 1 vuelta, distancia/2π; `robot_radius` real = centro a punto de contacto.
+### Iteración C — Cinemática KIWI: por qué daba círculos y cómo se corrigió
+- **Problema:** la cinemática vieja `WHEEL_ANGLES={60,-60,180}` daba **círculos** en vez de rectas.
+- **Dato:** la causa raíz fue que esos ángulos estaban definidos sobre el eje **+Y**, mientras la fórmula de cinemática inversa proyecta sobre **+X**; además faltaba el +180 que corresponde porque los 3 motores giran en sentido horario desde el centro. Con la disposición física real (M1=delantera izquierda, M2=delantera derecha, M3=trasera) los ángulos correctos desde +X son **`{330, 210, 90}`**.
+- **Modificación:** `WHEEL_ANGLES_DEG = {330, 210, 90}` (**CALIBRADO 2026-06-08** en banco): el giro y la traslación ya salen rectos. `WHEEL_RADIUS_MM` (100.0) sigue **TENTATIVO** hasta medirlo en el robot armado. **Procedimiento de medición documentado** (`docs/omni3-drive-system.md §4`): `wheel_radius` real = marcar rueda, rodar 1 vuelta, distancia/2π; `robot_radius` real = centro a punto de contacto. **Pendiente de banco: SOLO el tuneo fino del lateral + confirmar el sentido de la traslación.**
 
 ### Iteración D — Lámina protectora del OTOS y textura de superficie
 - **Problema:** lecturas ópticas subóptimas con la lámina protectora del plato.
@@ -500,7 +501,7 @@ La próxima mejora declarada de nuestro roadmap es la **comunicación en tiempo 
 - [GAP] **Motor 2026:** modelo, V, RPM, torque, reducción, encoder sí/no.
 - [GAP] **Rueda omni 2026:** diámetro, material, rodillos.
 - [GAP] **CAD/STL/GCode del chasis 2026** + parámetros de impresión + espaciado de la pila de placas + materiales del chasis + protección/bumpers/tapa.
-- [GAP] Validación en banco de `WHEEL_ANGLES` / `WHEEL_RADIUS` con el robot armado.
+- [GAP] Medición en banco de `WHEEL_RADIUS` con el robot armado (`WHEEL_ANGLES` ya CALIBRADO 2026-06-08; resta solo el tuneo fino del lateral + confirmar el sentido de la traslación).
 
 **Software / validación**
 - [GAP] **Recalibración de visión** (TASK-022) — bloqueante #1.

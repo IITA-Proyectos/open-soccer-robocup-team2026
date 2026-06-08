@@ -63,7 +63,7 @@ A) PRÓXIMO DESARROLLO PRIORITARIO (P0): sistema de monitoreo/telemetría USB + 
 B) BANCO (equipo + robot): #1 recalibrar visión (TASK-022, LAB+homografía, env diag_cam_acceptance) →
    gatea los pts de Gameplay. Activar flags gateados validando en banco (central_robot1_wdt, down_wdt,
    down_lean, top_robot1_bnofreeze) — test-cards EXACTAS en docs/pruebas-banco/{TOP,CENTRAL,DOWN}.md.
-   Brake-vs-COAST, WHEEL_ANGLES (da círculos), motores ROBOT2, pose absoluta. Único cambio de binario
+   Brake-vs-COAST, lateral del arquero (tuneo fino + sentido; WHEEL_ANGLES ya calibrado {330,210,90} 2026-06-08), motores ROBOT2, pose absoluta. Único cambio de binario
    pendiente: cablear el cap 70% de potencia (motores 5V@7,4V se queman) — CARD CENTRAL-8.
 C) DATOS/EQUIPO (docs/competencia/CUESTIONARIO-DATOS-EQUIPO.md): precio Zircon suelto, motor, TC del día,
    horas, FOTOS (robot/PCBs/anillo + robot básico del Nacional para el antes/después), GRABAR video (<3min

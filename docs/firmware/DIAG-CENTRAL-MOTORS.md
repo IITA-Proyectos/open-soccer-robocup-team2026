@@ -24,14 +24,14 @@ requested-by: "Gustavo Viollaz (@gviollaz)"
 
 | Motor (firmware) | Driver | Pines INA/INB/PWM | Sentido (MOTOR_INVERT) | Ángulo rueda | Posición física |
 |---|---|---|---|---|---|
-| Motor 1 | U5  | 2 / 5 / 3   | **+1** (normal)             | +60deg | Delantera **derecha** ¹ |
-| Motor 2 | U17 | 8 / 7 / 6   | **-1** (INVERTIDO por HW)   | -60deg | Delantera **izquierda** ¹ |
-| Motor 3 | U7  | 11 / 12 / 4 | **+1** (normal)             | 180deg | **Trasera** (centro) ² |
+| Motor 1 | U5  | 2 / 5 / 3   | **+1** (normal)             | 330deg | Delantera **izquierda** ¹ |
+| Motor 2 | U17 | 8 / 7 / 6   | **-1** (INVERTIDO por HW)   | 210deg | Delantera **derecha** ¹ |
+| Motor 3 | U7  | 11 / 12 / 4 | **+1** (normal)             | 90deg | **Trasera** (centro) ² |
 
-¹ El lado derecha/izquierda del par delantero está DERIVADO de los ángulos (tentativos); falta nombrarlo/medirlo en banco (ligado a `WHEEL_ANGLES`).
+¹ El lado izquierda/derecha del par delantero quedó DEFINIDO con la disposición física real (CALIBRADO 2026-06-08, Gustavo, banco): M1 = delantera IZQUIERDA, M2 = delantera DERECHA. Ligado a `WHEEL_ANGLES_DEG = {330, 210, 90}`.
 ² M3 = trasera CONFIRMADO en banco: en lateral puro su aporte es 0 (rueda trasera kiwi). Fuente: journal `2026-06-03-banco-resultados-arbitro-strafe-y-bno-freeze.md`, journal 2026-06-01.
 
-El sentido/identidad de los 3 motores está cerrado. Lo único que sigue tentativo es la GEOMETRÍA fina de ángulos (`WHEEL_ANGLES_DEG`) y el ROBOT2/delantero — ver Pendientes.
+El sentido/identidad de los 3 motores está cerrado y la disposición/posición ya está DEFINIDA (CALIBRADO 2026-06-08). Lo que sigue pendiente de banco es SOLO el tuneo fino del lateral (que no rote) + confirmar el sentido de la traslación, y el ROBOT2/delantero — ver Pendientes.
 
 ## Para qué sirve
 
@@ -170,11 +170,11 @@ robustez" abajo — antes saltaba solo y eso ya está arreglado).
 
 | Motor (firmware) | Pines | Driver | Rueda física | ¿Gira? | Sentido (MOTOR_INVERT) |
 |---|---|---|---|---|---|
-| Motor 1 | INA=2, INB=5, PWM=3 | U5 | Delantera **derecha** (+60deg, geom. tentativa) | ☑ Sí | **+1** (normal) |
-| Motor 2 | INA=8, INB=7, PWM=6 | U17 | Delantera **izquierda** (-60deg, geom. tentativa) | ☑ Sí | **-1** (INVERTIDO por HW) |
-| Motor 3 | INA=11, INB=12, PWM=4 | U7 | **TRASERA** (centro, 180deg, confirmado banco) | ☑ Sí | **+1** (normal) |
+| Motor 1 | INA=2, INB=5, PWM=3 | U5 | Delantera **izquierda** (330deg, CALIBRADO 2026-06-08) | ☑ Sí | **+1** (normal) |
+| Motor 2 | INA=8, INB=7, PWM=6 | U17 | Delantera **derecha** (210deg, CALIBRADO 2026-06-08) | ☑ Sí | **-1** (INVERTIDO por HW) |
+| Motor 3 | INA=11, INB=12, PWM=4 | U7 | **TRASERA** (centro, 90deg, confirmado banco) | ☑ Sí | **+1** (normal) |
 
-> **Nota:** der/izq del par delantero = geométrico tentativo, falta nombrarlo en banco. Datos validados en banco María/Elías 2026-06-01 (`diag_central_line_sweep_robot1`), re-confirmados 2026-06-06 (commit 8956d10).
+> **Nota:** izq/der del par delantero ya DEFINIDO (CALIBRADO 2026-06-08, Gustavo, banco). Datos de sentido validados en banco María/Elías 2026-06-01 (`diag_central_line_sweep_robot1`), re-confirmados 2026-06-06 (commit 8956d10). Pendiente de banco: SOLO el tuneo fino del lateral + confirmar el sentido de la traslación.
 
 > **Por qué "visto de arriba" y no "de frente":** las 3 ruedas miran para lados
 > distintos, así que el sentido propio de cada una no dice nada. Lo que importa
@@ -254,11 +254,11 @@ El sketch tenía dos bugs de banco, ya corregidos (host-verificados, compila):
 | # | Pendiente | Cómo se cierra |
 |---|---|---|
 | 1 | ~~**Veredicto pines 7/8 (TASK-036)**~~ → ✅ **RESUELTO 2026-05-31 por reasignación de UART** (no por aislar el motor): el link DOWN→CENTRAL se movió a **Serial1 (0/1)** y TOP→CENTRAL a **Serial7 (28/29)**, dejando los pines **7/8 exclusivos del motor 2 (U17)**. Ya no hay que decidir Serial2 vs Serial7 — el link es **Serial1**. | Cerrado. |
-| 2 | **Correspondencia geométrica exacta de la rueda física** (nombrar/medir der vs izq del par delantero — hoy DERIVADO de los ángulos tentativos). ⚠️ NO es la identidad driver/pines/sentido: eso ya está VALIDADO (ver tabla "Disposición de motores ROBOT1"). | Correr este diag + nombrar empíricamente los lados del par delantero en banco (ligado a `WHEEL_ANGLES_DEG`) |
+| 2 | ~~**Correspondencia geométrica exacta de la rueda física**~~ → ✅ **DEFINIDA** (CALIBRADO 2026-06-08): M1 = delantera IZQUIERDA, M2 = delantera DERECHA, M3 = trasera; `WHEEL_ANGLES_DEG = {330, 210, 90}`. Queda SOLO el tuneo fino del lateral (que no rote) + confirmar el sentido de la traslación. | Banco: `diag_central_strafe_robot1` para tunear el lateral y confirmar el sentido. |
 | 3 | **Orientación / sentido por motor (`MOTOR_INVERT`)** | ROBOT1 validado: **M2 (U17) invertido → `{+1,-1,+1}`**, ya en `config_central.h` + `motors_zircon.cpp` (banco María/Elías 2026-06-01). **Falta ROBOT2/delantero**: correr este diag en el delantero y cargar su `MOTOR_INVERT` (ahí U17 es el motor 1). |
 | 4 | Convención global de giro (`+omega` = horario/antihorario) | `diag_central_drive` + IMU/heading (ver caja ⚠️ arriba) |
 | 5 | ~~Confirmar `PIN_KICKER_SOL` (TASK-011)~~ — **CANCELADO**: el robot no tiene kicker físico (empuja por inercia); TASK-011 cancelada. | — |
-| 6 | Cinemática real (`WHEEL_ANGLES_DEG`, `WHEEL_RADIUS_MM`) — marcada **tentativa** en `config_central.h:62-69` | Sketch de movimientos vectoriales con los 3 motores identificados |
+| 6 | Cinemática real — `WHEEL_ANGLES_DEG = {330, 210, 90}` **CALIBRADO 2026-06-08** en `config_central.h`; falta confirmar `WHEEL_RADIUS_MM` y el SENTIDO de la traslación en banco | `diag_central_strafe_robot1` (tuneo fino del lateral + confirmar sentido) |
 | 7 | Saturación con los 3 motores simultáneos | Idem (movimientos vectoriales) |
 | 8 | Encoders | Fuera de scope Incheon |
 

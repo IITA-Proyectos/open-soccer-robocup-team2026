@@ -145,7 +145,7 @@ metodo: "Cada fila se verificó contra el código real (archivo:línea citado). 
 
 | Constante | Clasificación | Card de banco (placa · diag) |
 |---|---|---|
-| `WHEEL_ANGLES_DEG` (da círculos) | NEEDS-BENCH | **CENTRAL** — `diag_central_strafe`/`diag_central_drive` en el robot armado. (H) |
+| `WHEEL_ANGLES_DEG` ✅ calibrado `{330,210,90}` 2026-06-08; resta tuneo fino lateral + sentido | NEEDS-BENCH | **CENTRAL** — `diag_central_strafe` en el robot armado (ya traslada; falta que NO rote). (H) |
 | `MOTOR_INVERT` ROBOT2 | NEEDS-BENCH | **CENTRAL (R2)** — `diag_central_motors` en el delantero. (H) |
 | brake vs COAST | NEEDS-BENCH | **CENTRAL** — medir frenado (= M9). |
 | `TOF_OFFSET_MM` (placeholder 95) | NEEDS-BENCH | **TOP** — medir radio real; alimenta trilateración. (H) |

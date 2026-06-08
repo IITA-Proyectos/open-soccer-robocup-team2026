@@ -197,15 +197,17 @@ v_i = -vx · sin(θ_i) + vy · cos(θ_i) + ω · R
 ```
 
 Donde:
-- `θ_i` = ángulo físico de la rueda i respecto al frente del robot (en radianes).
+- `θ_i` = ángulo de POSICIÓN de la rueda i desde el eje **+X** del robot (derecha), antihorario.
 - `R` = distancia del centro del robot al centro de cada rueda (en mm).
 - `v_i` = velocidad lineal deseada en la circunferencia de la rueda i (en mm/s).
 
-**Convención IITA** (a confirmar con montaje físico real):
-- `θ_1 = 60°` → rueda derecha-frente.
-- `θ_2 = -60°` → rueda izquierda-frente.
-- `θ_3 = 180°` → rueda atrás centro.
-- `R = 100 mm` (radio del robot, tentativo).
+**Convención IITA — disposición física REAL (calibrada 2026-06-08, Gustavo):**
+- `θ_1 = 330°` → rueda **delantera IZQUIERDA** (M1/U5).
+- `θ_2 = 210°` → rueda **delantera DERECHA** (M2/U17, invertida por HW).
+- `θ_3 = 90°`  → rueda **TRASERA / centro** (M3/U7).
+- `R = 100 mm` (radio del robot, **tentativo — medir en el armado**).
+  (Los 3 motores giran horario desde el centro → se suma 180° a {150,30,270} → {330,210,90}.
+  Fuente canónica: `config_central.h`. El viejo {60,-60,180} estaba sobre +Y y daba CÍRCULOS.)
 
 Implementación en `src/shared/kinematics.h` (ya escrita, con 11 tests unitarios validando avanzar/lateral/rotación/diagonal/saturación).
 

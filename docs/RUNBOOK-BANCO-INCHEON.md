@@ -316,21 +316,26 @@ es **IDÉNTICO** (el `LineStatusV2` sale de `dm_update`, no de ese pipeline).
 > firmware no puede cerrar (necesitan robot + medición). Sujetá el robot en todo
 > lo que mueva motores.
 
-### 3.1 — WHEEL_ANGLES / cinemática "da círculos"
+### 3.1 — WHEEL_ANGLES / lateral: tuneo fino + confirmar sentido
 
-- **Síntoma:** al mandar un lateral puro, el robot **gira en vez de trasladar**;
-  o al moverse solo gira un motor.
-- **Causa probable:** `WHEEL_ANGLES_DEG[3] = {60, -60, 180}`
-  (`src/central/config_central.h:87`) es **tentativo**; y a velocidades bajas un
-  lateral puro deja motores en deadzone (banco 2026-06-03: `vx=150`/`MAX_SPEED=1000`
-  → PWM ~13 % → M1 raspa, M2 stalled). Detalle: TASK-101.
+- **Estado:** `WHEEL_ANGLES_DEG[3] = {330, 210, 90}` (`src/central/config_central.h:113`)
+  está **CALIBRADO 2026-06-08** (Gustavo, banco): la disposición/posición/sentido de
+  los 3 motores quedó DEFINIDA (M1=del-IZQ · M2=del-DER · M3=trasera). La vieja
+  `{60,-60,180}` estaba en el eje equivocado y daba círculos; ya corregida.
+- **Pendiente de banco (lo único que queda):** el **tuneo fino del lateral** (que
+  no rote) y **confirmar el SENTIDO** de la traslación.
+- **Síntoma a vigilar:** si el lateral sale **al revés**, hay que sacar el +180 de
+  los ángulos → `{150, 30, 270}` (el giro queda arreglado igual; esto es solo
+  dirección). Si queda un giro residual chico, es ajuste fino; ya **no** deberían
+  aparecer "círculos". El piso de PWM ahora es **POR RUEDA**
+  (`MOTOR_MIN_PWM[3] = {70, 70, 42}`: delanteras oblicuas 70 > trasera paralela 42),
+  así ninguna rueda queda en deadzone. Detalle: TASK-101.
 - **Qué medir:** que un comando de traslación pura (vx, omega=0) mueva el robot
-  DERECHO sin rotar; ajustar `WHEEL_ANGLES_DEG` y/o subir la velocidad de prueba.
+  DERECHO sin rotar y hacia el lado pedido; ajustar el sentido si va al revés.
 - **Comando:**
   ```
   pio run -e diag_central_strafe_robot1 -t upload          # patrulla lateral open-loop
-  # arrancá con más velocidad para sacar los motores de deadzone:
-  # flags: -DDIAG_STRAFE_SPEED_MM_S=600  -DDIAG_STRAFE_DISTANCE_MM=400  -DDIAG_STRAFE_INVERT_LR
+  # flags útiles: -DDIAG_STRAFE_SPEED_MM_S=600  -DDIAG_STRAFE_DISTANCE_MM=400  -DDIAG_STRAFE_INVERT_LR
   pio device monitor -b 115200
   ```
   (Doc: `docs/firmware/DIAG-CENTRAL-STRAFE.md`.) **No promover ningún cambio de

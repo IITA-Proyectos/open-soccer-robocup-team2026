@@ -12,10 +12,12 @@ requested-by: "Gustavo Viollaz (@gviollaz)"
 # `diag_central_arbitro_strafe` — Patrulla del arquero con START/STOP del árbitro
 
 > **🔬 Resultado de banco 2026-06-03:** ✅ **el gate del árbitro ANDA** (START/STOP
-> mueve/frena la CENTRAL). ⚠️ **Al moverse solo gira el motor 1**: por la cinemática
-> `{60,-60,180}` un lateral puro da **M3=0 (esperado**, rueda trasera kiwi) y
-> M1=M2=±0.866·vx, pero a `vx=150`/`MAX_SPEED=1000` el PWM es ~13% → M1 raspa, **M2
-> stalled (deadzone)**. **Primer test: subir velocidad** `-DDIAG_ARB_SPEED_MM_S=600`.
+> mueve/frena la CENTRAL). ⚠️ **Al moverse solo gira el motor 1**: la cinemática vieja
+> `{60,-60,180}` estaba en el eje equivocado (daba círculos) y subdimensionaba el par.
+> Con la cinemática CALIBRADA 2026-06-08 (`WHEEL_ANGLES_DEG = {330, 210, 90}`), lateral
+> puro da **M1=M2=+0.5·vx (mismo lado)** y **M3=−vx (la trasera es la que más empuja**,
+> no 0). El piso de PWM ahora es **POR RUEDA** (`MOTOR_MIN_PWM[3] = {70, 70, 42}`:
+> delanteras oblicuas 70 > trasera paralela 42) para que ninguna quede stalled por deadzone.
 > Detalle: journal `2026-06-03-banco-resultados-arbitro-strafe-y-bno-freeze.md` + TASK-101.
 
 ## Qué hace (lo pedido)
@@ -88,10 +90,11 @@ LED: parpadeo lento = esperando START · fijo = moviéndose · parpadeo rápido 
 1. **OPEN-LOOP, sin heading** (la CENTRAL no tiene BNO): `omega=0`. Cualquier
    rotación residual es **deriva** y no se corrige. Distancia **por tiempo**
    (nominal — calibrar con regla y `-DDIAG_ARB_SPEED_MM_S`/`-DDIAG_ARB_DISTANCE_MM`).
-2. **Cinemática TENTATIVA**: usa `inverse_kinematics(WHEEL_ANGLES_DEG={60,-60,180})`
-   sin calibrar. El banco 2026-06-01 vio **círculos** + **M2 con polaridad invertida
-   por HW**. El "lateral" puede salir diagonal/rotando por la cinemática, no solo
-   por deriva. Reconciliar el substrato de movimiento → **TASK-101**.
+2. **Cinemática CALIBRADA 2026-06-08**: usa `inverse_kinematics(WHEEL_ANGLES_DEG={330,210,90})`.
+   La vieja `{60,-60,180}` estaba en el eje equivocado y daba **círculos**; ya corregida.
+   El M2 (U17) va **invertido por HW** y eso ya está honrado (`MOTOR_INVERT={+1,-1,+1}`).
+   Pendiente de banco: SOLO el tuneo fino del lateral (que no rote) + confirmar el
+   SENTIDO de la traslación. → **TASK-101**.
 
 ## Plan de prueba en hardware real
 

@@ -95,7 +95,7 @@
 | Aplicar PWM a los motores | `software/teensy/Soccer 2026/src/central/motors_zircon.{h,cpp}` | PWM 8-bit 0-255. `MOTOR_INVERT={+1,-1,+1}` (M2/U17 va invertido por HW) |
 | Ajustar un lazo de control | `software/teensy/Soccer 2026/src/shared/pids.{h,cpp}` | heading + lateral + distancia. **OJO: clamp del HeadingPID ≤327** (ω·100 es int16, 360 desborda) |
 | Anticipar la pelota (arquero) | `software/teensy/Soccer 2026/src/shared/ball_predict.{h,cpp}` | `lookahead_s=0.2`, `max_lead_mm=400` (tuneables) |
-| Constantes del robot (velocidad, geometría) | `software/teensy/Soccer 2026/src/central/config_central.h` | `MAX_SPEED_MM_S=1000`, `WHEEL_ANGLES_DEG={60,-60,180}` (⚠️ tentativos) |
+| Constantes del robot (velocidad, geometría) | `software/teensy/Soccer 2026/src/central/config_central.h` | `MAX_SPEED_MM_S=1000`, `WHEEL_ANGLES_DEG={330,210,90}` (M1=del-IZQ · M2=del-DER · M3=trasera, CALIBRADO 2026-06-08), `MOTOR_MIN_PWM[3]={70,70,42}` (piso de PWM por rueda). Pendiente de banco: tuneo fino del lateral + confirmar el sentido. |
 
 ### 3.3 — Cómo cargamos firmware rápido (tener esto preparado ANTES)
 - **Build/flash embebido**: `pio run -e central_robot1 -t upload` (o `top_robot1` / `down`). El entorno compila **100% offline** (libs vendoreadas en `lib/`), así que **no dependemos de internet del venue**.
@@ -271,8 +271,9 @@ otro equipo lo replique — si quieren les pasamos el repo." (Refuerza Documenta
 - **Visión sin recalibrar para Incheon:** "El código de visión está sólido y testeado; lo que falta es
   **calibración de banco** (LAB + homografía) para la iluminación del venue. Tenemos el kit listo para
   recalibrar en <5 min." (Es nuestro bloqueante real #1 — no esconderlo.)
-- **Cinemática tentativa:** "Los ángulos y el radio de rueda están como **tentativos** en el código porque
-  faltaba medir el robot armado; el módulo es puro y testeado, solo hay que cargar las constantes reales."
+- **Cinemática:** "Los **ángulos de rueda ya están calibrados** (`{330,210,90}`, banco 2026-06-08, con la
+  disposición física real: M1 delantera-izquierda, M2 delantera-derecha, M3 trasera); resta medir el **radio**
+  del robot armado y el **tuneo fino del lateral**. El módulo de cinemática es puro y testeado."
 - **1 sola IMU sana:** "Corremos con **1 BNO055 sano + 4 ToF**; la segunda IMU falló y está documentado el
   riesgo. La pose igual computa."
 - **Heading que se congela:** "Detectamos que la IMU y los ToF compiten en el bus I²C y el heading se

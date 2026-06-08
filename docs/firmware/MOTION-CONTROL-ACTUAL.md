@@ -105,3 +105,26 @@ El arquero vive del **strafe lateral corto y del arranque/frenado preciso**. Por
 **Ninguno es P0:** ninguno bloquea que el robot compita o desclasifique. El P0 real del arquero sigue siendo aguas arriba (visión sin recalibrar, hardware-up). Estos cuatro son refinamientos de control que mejoran el rendimiento en cancha, no habilitan la participación.
 
 > **Regla del repo:** ninguno de estos cuatro puede marcarse `done` por Claude. Cambian el binario de motor → cierre solo por el equipo con la placa en banco, midiendo distancia de frenado / drift / latencia de arranque con criterio numérico y plan de prueba en hardware real.
+
+---
+
+## Addendum 2026-06-08 — el arquero 2025 DEDICADO (lo más relevante para el strafe de HOY)
+
+Al excavar el histórico apareció un archivo **sin extensión** que el análisis automático había saltado: `software/_deprecated-2025/robot-arquero/definitivo-arquero_6-9-2026` — el **arquero 2025 real**. Sus valores de strafe son los más directamente aplicables a lo que se está tuneando ahora. Detalle completo en `MOTION-CONTROL-HISTORICO.md` (apéndice arquero). Lo crítico:
+
+### Contradicción de ratio delantera/trasera (¡clave para el tuneo!)
+
+| | Delanteras (M1/M2) | Trasera (M3) | Lazo de rumbo |
+|---|---|---|---|
+| **Arquero 2025 (strafe)** | **50** | **89–100** (la MÁS fuerte) | **gyro continuo** (ramas por `error`) |
+| **2026 HOY (piso strafe)** | **70** | **42** (la más DÉBIL) | **NO** (BNO roto → omega gateado a 0) |
+
+Son **ratios opuestos**. Y no es que uno esté "mal": el 2025 le ponía a la trasera ~2× las delanteras porque **geométricamente la trasera hace ~2× la velocidad en un strafe** (es la paralela al movimiento), y **el drift que eso genera lo corregía en vivo con el giróscopo** (subía/bajaba M3 entre 40/89/100 según `error`). El 2026, con el **BNO roto**, no tiene ese lazo, así que para que no rote en lazo abierto hubo que **bajar la trasera** (42) — un parche, no la solución de fondo.
+
+### La lección para 2026
+
+- El parche `{70,70,42}` **sirve para sobrevivir con el BNO roto** (lazo abierto, que no rote). Está bien como puente.
+- La **solución de fondo** es el **strafe con corrección giroscópica continua** del arquero 2025: subir M3 a lo geométrico (~89) y dejar que el lazo de rumbo corrija el drift. Eso **depende de tener el BNO sano** (ver TASK-207, BNO→Wire2). Con BNO sano + ese lazo, la trasera vuelve a poder ser la rueda fuerte.
+- **Valores de arranque concretos para tunear el strafe 2026** (del arquero 2025, a re-validar en banco, respetando el cap ~70%): delanteras **50** / trasera **89** centrado; `error>0` → trasera **100**; `error<0` → delanteras **65/40** + trasera **40**; impulso de arranque **×1.8 por 40 ms**; anti-trabado en el borde = **350 ms** de strafe forzado; velocidad **×1.5** al ver la pelota.
+
+> En una frase: **el arquero 2025 YA resolvía el strafe — con la trasera fuerte y el giróscopo corrigiendo. El camino del 2026 es recuperar ese lazo (BNO sano), no pelearse con el piso en lazo abierto.**

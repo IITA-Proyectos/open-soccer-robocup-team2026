@@ -292,3 +292,74 @@ Estos son **los números más representativos hallados en el histórico real** (
 - **Delay de arranque de la trasera:** **no encontrado** (la trasera se apaga, no se retrasa). No es una técnica que el histórico tenga.
 - **Rampa de desaceleración:** **no encontrada** (solo rampa de aceleración en el pateo).
 - **Heading como feedback continuo en los robots de competencia:** los delanteros 2025 usaban el gyro **solo como gate** (kp=0.3, corrección nunca aplicada a motores); el PID real cerrado sobre motores **solo vive en los sketches de prueba**. Portar ese PID a la FSM de juego es la mejora más jugosa.
+
+---
+
+## Apéndice — ARQUERO 2025 DEDICADO (definitivo-arquero_6-9-2026)
+
+> Agregado 2026-06-08: este archivo NO tiene extensión `.cpp`, por eso el análisis automático inicial lo saltó. Es el arquero 2025 real (el rol que se está rearmando para 2026), así que sus valores son los MÁS relevantes.
+
+El arquero es un chasis KIWI (3 ruedas a 120°): M1/M2 = las dos ruedas **delanteras** (oblicuas), M3 = la rueda **trasera**. Su comportamiento dominante es **patrullar lateralmente sobre la línea del arco** (estado `moverce_derecha`/`moverce_izquierda`), invirtiendo el sentido cuando pisa blanco, y cuando ve la pelota cerca y centrada (`Xp <= 140` y `abs(Yp) <= 3`) ejecuta la secuencia de **despeje** (patada adelante + pausa + retroceso hasta la línea + reposicionamiento). El strafe lateral lo hace con dos funciones proporcionales (`adproporcional`/`aiproporcional`) que reparten PWM asimétricamente entre delanteras y trasera **y corrigen el drift con el giróscopo** vía la variable `error`. Config analizada = `ROBOT1` (archivo:10).
+
+### Valores por técnica (arquero)
+
+| Técnica | Valor real | archivo:línea | Nota |
+|---|---|---|---|
+| **Impulso inicial anti-inercia (arranque)** | M1=M2=PWM 90 (`1.8*50`), M3=PWM 153 (`1.8*85`), durante **40 ms** | :1018-1022 | Único pulso "alto" de arranque. Baja a los valores de `adproporcional` (50/50/89) → ver tabla de movimientos. Multiplicador 1.8 hardcodeado. |
+| **Strafe lateral (régimen normal)** | delanteras 50, trasera 89 (`pd=1`) | :189-191, :213-215 | Trasera mucho más fuerte que las delanteras (es la que empuja el lateral en KIWI). |
+| **Strafe lateral acelerado (ve pelota)** | `pd=1.5` → delanteras 75, trasera ~133 | :1047, :1095 | Al ver pelota fuera de centro multiplica TODO por 1.5 (50% más rápido para interceptar). `pd` vuelve a 1 al perder la pelota (:1065, :1113). |
+| **Corrección anti-trabado en el borde (impulso lateral forzado)** | mismo PWM que el strafe (`adproporcional`/`aiproporcional`), forzado **350 ms** | :1130, :1142 | NO es PWM alto: es tiempo forzado de strafe en un sentido para despegarse del blanco y no oscilar errático. Comentario propio del código (:1127). |
+| **Delay de arranque de la trasera (M3)** | **No encontrado** como retardo temporizado. | — | En `avanzar()` y `avanzar_patear()` la trasera está **apagada permanentemente** (PWM3=0), no retardada. Es "M3 off en avance", NO un delay anti-inercia escalonado. Ver sección Diferencias. |
+| **Freno anticipado de la trasera** | **No encontrado.** | — | No hay apagado escalonado de M3 antes que M1/M2. El frenado es `parar()` (las 3 a la vez). |
+| **Auto-calibración por giroscopio del freno/drift** | **No encontrado** para freno. Sí hay corrección de drift en marcha (no de freno). | :73, :334-340 | `kp=0.3`; `error = currentYaw - initialYaw` normalizado a ±180; `correccion=error*kp` se **calcula pero NO se aplica** explícitamente — la corrección real del strafe está hardcodeada en los `if(error)` de las funciones proporcionales. |
+| **Freno por reversa / plugging** | **No encontrado** como técnica dedicada de frenado. | — | El único "ir para atrás" es el retroceso de despeje (movimiento útil), no un pulso de reversa para frenar. Frenado = coast (`parar()` pone INA=INB=0). |
+| **Rampa de aceleración/desaceleración** | **No encontrada** en el arquero. | :174-178 | `avanzar_patear()` arranca a PWM máximo inmediato (sin rampa). Confirmado por el doc previo (R3). |
+| **Deadzone / piso** | Zona muerta de pelota: actúa hacia la pelota si `abs(Yp) >= 5`, patea si `abs(Yp) <= 3` | :1038, :1045, :1086, :1093 | Entre 3 y 5 hace `parar()` (gap muerto — ver Contraste). No es deadzone de PWM sino de la señal de visión. |
+| **Tipo de freno** | **Coast** (las 3 ruedas a INA=INB=0, PWM=0) | :146-150 | `parar()`. No hay short-brake (ambos IN en 1) ni reversa de frenado. |
+| **Cómo decide a qué lado moverse** | Por **signo de Yp** (posición lateral de la pelota): `Yp<0`→derecha, `Yp>=0`→izquierda | :1049-1058, :1097-1106 | Y el límite del recorrido lo da la **línea blanca** (s1/s2): al pisar blanco invierte sentido vía impulso. NO usa color de arco para patrullar. |
+| **Decisión de despeje (patear)** | Pelota cerca y centrada: `Xp <= 140` (`tolerancia_cercania`) **y** `abs(Yp) <= 3` | :1038, :1086 | `tolerancia_cercania=140` (:110), más alta que el delantero (50) → reacciona de más lejos. |
+| **Disparador de fin de retroceso de despeje** | Retrocede hasta pisar blanco (`s1||s2||s3`) — **sin timeout** | :1190 | Si los sensores fallan, retrocede sin tope (riesgo documentado en doc previo, BUG 2). |
+
+### PWM por movimiento (arquero)
+
+| Movimiento | PWM delanteras (M1 / M2) | PWM trasera (M3) | archivo:línea | Nota |
+|---|---|---|---|---|
+| Impulso inicial (boot) | 90 / 90 | 153 | :1018-1020 | `1.8*50` y `1.8*85`, 40 ms. |
+| **Strafe derecha — centrado** (`error∈[-1,1]`) | 50 / 50 | 89 | :213-215 | `adproporcional`, `pd=1`. Comentarios del código sugieren valores viejos 60/60/99. |
+| **Strafe derecha — error>0** | 50 / 50 | 100 | :219-223 | Sube trasera para compensar drift. |
+| **Strafe derecha — error<0** | 65 / 40 | 40 | :227-231 | Reparte distinto delantera izq/der + baja trasera. |
+| **Strafe izquierda — centrado** (`error∈[-1,1]`) | 50 / 50 | 89 | :189-191 | `aiproporcional`, `pd=1`. |
+| **Strafe izquierda — error>0** | 50 / 50 | 40 | :195-199 | |
+| **Strafe izquierda — error<0** | 40 / 65 | 100 | :203-207 | Espejo del strafe derecha. |
+| Strafe acelerado (ve pelota) | ×1.5 sobre los de arriba (75/75, trasera ~133) | — | :1047, :1095 | `pd=1.5`. |
+| Avanzar (reposicionar) | 100 / 100 | **0** (apagada) | :151-155 | Trasera off en avance. Sin corrección de heading. |
+| Patear adelante (`avanzar_patear`) | `patadM1`=250 / `patadM2`=150 | **0** | :174-178, :54-55 | PWM máximo inmediato, sin rampa. M3 off. |
+| Patear atrás (`retroceder_patear`) | 250 / 150 | **0** | :180-184 | Solo lo usa el delantero; en el arquero el retroceso de despeje es otro (abajo). |
+| Retroceso de despeje (`PATEANDO_atras_arquero`) | 150 / 150 | **0** | :1186-1188 | Retrocede hasta blanco. M3 off. |
+| Parar (freno) | 0 / 0 (coast) | 0 (coast) | :146-150 | INA=INB=0. |
+
+**Secuencia de despeje (tiempos):** pausa inicial 200 ms (:1154) → patada adelante 450 ms (:1165) → pausa 1000 ms (:1177) → retroceso hasta blanco (sin tope) → avanzar 1000 ms para reposicionar (:1200) → vuelve a `moverce_derecha`.
+
+### Diferencias clave vs el delantero 2025
+
+- **El arquero es el único que SÍ aplica corrección giroscópica continua durante el desplazamiento** (en el strafe, vía `aiproporcional`/`adproporcional` con ramas por `error`). El delantero calcula `error`/`correccion` pero su `avanzar()` no la usa.
+- **Strafe lateral en lugar de avance recto**: el movimiento dominante del arquero NO es ir adelante sino desplazarse de costado sobre la línea, con la **trasera (M3) como rueda dominante** (PWM 89-100 vs 40-65 de las delanteras). En el delantero el patrón dominante es girar/avanzar.
+- **Trasera apagada (M3=0) en todos los movimientos longitudinales** (avanzar, patear, retroceso de despeje). En el strafe, al revés: M3 es la más fuerte. No hay delay ni freno escalonado de M3 — es on/off según el eje del movimiento.
+- **Sin rampa de pateo**: el arquero arranca la patada a PWM máximo (250/150) de golpe; el delantero tenía aceleración progresiva. Posible patinaje en el despeje (a testear en banco).
+- **Reacciona de más lejos**: `tolerancia_cercania=140` vs 50 del delantero — coherente con intercepción defensiva.
+- **Velocidad adaptativa** (`pd` 1→1.5 al ver pelota) es propia del arquero.
+- **Frenado idéntico y simple**: ambos usan `parar()` = coast. Ninguno usa plugging ni short-brake.
+
+### Contraste con los docs de análisis previos
+
+- **`analisis-arquero-legacy.md`** analizó OTRO archivo (`legacy/.../arquero-base.ino`, un esqueleto con loop vacío y bugs de BNO no inicializado). **No aplica a este archivo**: acá el BNO sí se inicializa en `setup()` (`bno.begin()` + `setExtCrystalUse(true)`, :246-250) y el loop tiene la FSM completa. Sus hallazgos (loop vacío, `potencia` no declarada, BNO sin init) son del esqueleto, no del definitivo. Confirmado.
+- **`analisis-definitivo-arquero.md`** SÍ analizó este mismo archivo, pero a nivel de flujo/bugs, no extrajo los PWM por rueda — esta es la pieza que faltaba. Confirmo lo que dice y agrego números:
+  - Confirma el **strafe con corrección giroscópica** (§1.2) → verificado: ramas `if(error)` en :189-207 / :213-231.
+  - Confirma **`pd=1.5` al ver pelota** (§1.2) → verificado :1047/:1095.
+  - Confirma **impulsos anti-trabado de 350 ms** (§1.2) → verificado :1130/:1142; **aclaro que NO son PWM alto sino tiempo forzado de strafe** (el doc previo no lo aclaraba).
+  - Confirma **sin rampa de pateo** (R3) y **coast** → verificado :174-178.
+  - **GAP MORTAL 3<abs(Yp)<5** (BUG 1, §2): verificado en :1038/:1045 y :1086/:1093 — entre 3 y 5 hace `parar()` y se queda congelado. Sigue presente.
+  - **`currentYaw` RAW en vez de `error` normalizado** (BUG 4): verificado en los estados CENTRANDO/línea (:606, :642, etc.). OJO: esos estados son del DELANTERO (código muerto desde el flujo del arquero, que arranca en `impulso_inicial`); el strafe del arquero sí usa `error` normalizado. El bug existe pero no se alcanza patrullando.
+  - **s3 no chequeado en patrulla** (R2): verificado — `moverce_derecha`/`izquierda` solo miran `s1||s2` (:1070, :1117). Confirmado.
+  - **Retroceso de despeje sin timeout** (BUG 2): verificado :1190. Confirmado.
+  - El multiplicador `1.8` del impulso inicial y los valores exactos 50/89/100/40/65 del strafe **no figuran en los docs previos** — quedan documentados acá por primera vez.

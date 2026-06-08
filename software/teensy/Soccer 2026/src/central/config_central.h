@@ -78,18 +78,24 @@ constexpr int    BNO055_GYRO_CALIB_MS   = 2000;
 constexpr int    BNO055_HEADING_SAMPLES = 10;
 
 // ============================================================
-// Cinemática del robot (TENTATIVO — confirmar con montaje físico real)
-// (TENTATIVO = los ÁNGULOS de rueda; el sentido/identidad de los 3 motores ROBOT1 YA está validado, ver MOTOR_INVERT)
+// Cinemática del robot — ÁNGULOS CALIBRADOS 2026-06-08 con la disposición física real (Gustavo).
+// (Pendiente SOLO confirmar el SENTIDO en banco con diag_central_strafe; el sentido/identidad de los
+//  motores ya estaba validado por MOTOR_INVERT. Ver el detalle en WHEEL_ANGLES_DEG abajo.)
 // ============================================================
 constexpr float PI_F            = 3.14159265358979323846f;
 constexpr float WHEEL_RADIUS_MM = 100.0f;   // distancia del centro a cada rueda
 
-// Configuración tentativa: ruedas a 60°, -60°, 180°. Convención frente = +Y.
-// ⚠️ Confirmar con Enzo + medir en el robot armado.
-// Disposición ROBOT1 (índice = número de motor = rueda): M1/idx0=+60°=delantera DERECHA · M2/idx1=-60°=delantera IZQUIERDA · M3/idx2=180°=TRASERA (centro).
-// M3=trasera CONFIRMADO en banco (lateral puro → M3=0). Der/izq del par delantero = geométrico (ligado a estos ángulos TENTATIVOS), falta nombrarlo en banco.
-// OJO: lo TENTATIVO acá son los ÁNGULOS de rueda (geometría), NO el sentido/identidad de los motores (eso YA está validado → ver MOTOR_INVERT).
-constexpr float WHEEL_ANGLES_DEG[3] = { 60.0f, -60.0f, 180.0f };
+// ✅ CALIBRADO 2026-06-08 con la DISPOSICIÓN FÍSICA REAL (Gustavo): 3 ruedas omni a 120°.
+// θ = ángulo de POSICIÓN de cada rueda desde +X (derecha), antihorario (lo que usa inverse_kinematics).
+//   M1 (idx0) = delantera IZQUIERDA → posición 150° desde +X
+//   M2 (idx1) = delantera DERECHA   → posición  30° desde +X
+//   M3 (idx2) = TRASERA (centro)    → posición 270° desde +X
+// ⚠️ Los 3 motores giran HORARIO mirados desde el centro (= positivo) → OPUESTO a la convención
+// antihoraria de la fórmula → se suma 180° a cada uno: {150,30,270}+180 = {330,210,90}. Eso convierte
+// vx/vy en TRASLACIÓN (el viejo {60,-60,180} estaba expresado en eje +Y → la fórmula usa +X → daba
+// CÍRCULOS). ⚠️ VERIFICAR SENTIDO en banco con diag_central_strafe_robot1: si traslada AL REVÉS,
+// sacar el +180 → {150.0f, 30.0f, 270.0f} (el giro YA queda arreglado igual; esto es solo dirección).
+constexpr float WHEEL_ANGLES_DEG[3] = { 330.0f, 210.0f, 90.0f };  // M1=del-IZQ · M2=del-DER · M3=trasera (omni 120°)
 
 // ============================================================
 // Control de motores

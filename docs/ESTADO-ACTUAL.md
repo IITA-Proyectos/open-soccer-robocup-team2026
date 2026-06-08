@@ -182,6 +182,15 @@ nativo, pero ya no es el único camino. Ver
 
 ## Bloqueantes Incheon (los 2 que importan)
 
+> ⚠️ **BNO heading — PROBLEMA ABIERTO, NO bloqueante (TASK-207, 2026-06-08).** El heading del BNO055
+> NO anda en producción (`main_top`): `hdg=0.0`/`flags=0x0`; en `diag_top_all` SÍ trackea. **Causa:
+> contención del BNO055 en el bus `Wire` compartido con los 4 ToF, bajo la carga de `main_top`.** El
+> SOFTWARE está AGOTADO (100 kHz + 20 Hz + deconflict + noInterrupts → los 4 fallaron). **Fix = BNO a
+> bus aparte (Wire2 24/25), como ROBOT2** (hardware + 1 línea fw). **NO bloquea Incheon:** el arquero
+> degrada con gracia → navega por **línea (DOWN) + cámara (pelota/arcos) + heading del OTOS** (no del
+> BNO); `central_gate_heading_omega` pone ω=0 si `heading_valid=0` (no orienta con rumbo falso). Solo
+> pierde la orientación fina por giroscopio. Detalle: `journal/2026-06-08-bno-contencion-bus-debug-y-arquero-sin-bno.md`.
+
 1. **COMM — firmware flasheado ✅ (2026-06-01); E2E del árbitro RESUELTO ✅ (2026-06-02, TASK-039).** El árbitro RCJ **NO viaja por UART**: señaliza como **NIVEL GPIO** hacia el TOP (Teensy 4.0) en **pin 5 = OUT1 (PLAY/STOP)** y **pin 6 = OUT2 (PLAY/STOP)** (en la práctica, en PLAY sube SOLO UNO de los dos —no son espejo—). Nivel: **0 = juego PARADO, 1 = juego EN CURSO (3.3 V)**. Firmware: `src/top/comm_arbiter.cpp::read_referee_gpio()` lee los pines 5/6 con `INPUT_PULLDOWN` y `match_running = (pin5 OR pin6)` (en PLAY sube SOLO UNO de los dos pines —el otro queda en 0— por eso AND nunca daba GO y OR sí; probado en banco 2026-06-02, Gustavo. Sigue siendo fail-safe: si se desconecta el cable del COMM, ambos pines leen 0 con `INPUT_PULLDOWN` → `match_running=false` → STOP). El probe temporal se removió de `main_top.cpp`. El **UART del módulo COMM (TOP `Serial2`, pines 7/8) queda SOLO para partner ESP-NOW / status** — el viejo `COMM_REFEREE_CMD` por UART quedó **obsoleto**. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART). El robot ya recibe START/STOP por GPIO → homologa el árbitro. TASK-006/TASK-039.
 2. **Cámaras — calibración de DISTANCIA ✅ HECHA (Elías, 2026-06-07)**, integrada a
    producción **v2** (homografía portada a `cam-*-n6.py` @**VGA**; misma H para las 4 cámaras,

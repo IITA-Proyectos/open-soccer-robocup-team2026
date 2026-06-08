@@ -20,7 +20,7 @@
 # ║ [UART]  UART_PORT: confirmar cuál UART de la N6 va al Serial5 del Teensy   ║
 # ║         (trasera = conector U9). Probar 1/2/3.                             ║
 # ║ [LAB]   Recalibrar los 3 thresholds en la N6 (PAG7936 ≠ H7). SIN ESTO no detecta.║
-# ║ [HOMOG] H_MATRIX: la trasera necesita SU PROPIA H (4 puntos DETRÁS del robot)║
+# ║ [HOMOG] H_MATRIX ✅ = la MISMA calibrada de la frontal (provisorio 2026-06-07). ║
 # ║ [FLIP]  HMIRROR/VFLIP: montaje 180°; puede diferir del frontal (verificar). ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 

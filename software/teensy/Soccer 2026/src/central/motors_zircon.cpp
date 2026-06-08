@@ -17,7 +17,7 @@ const MotorPins MOTOR_PINS[3] = {
 };
 
 // Configuración de las 3 ruedas omni del robot.
-// El indice i alinea: Motor_i <-> MOTOR_PINS[i]/MOTOR_INVERT[i]/MOTOR_GAIN[i] (driver) <-> WHEEL_ANGLES_DEG[i] (geometria) <-> posicion fisica.
+// El indice i alinea: Motor_i <-> MOTOR_PINS[i]/MOTOR_INVERT[i]/MOTOR_MIN_PWM[i] (driver) <-> WHEEL_ANGLES_DEG[i] (geometria) <-> posicion fisica.
 // ROBOT1 (confirmado Gustavo 2026-06-08): i=0 M1/U5 330deg delantera-IZQUIERDA · i=1 M2/U17 210deg delantera-DERECHA (INVERTIDO HW) · i=2 M3/U7 90deg trasera.
 const WheelConfig WHEELS[3] = {
     { WHEEL_ANGLES_DEG[0] * PI_F / 180.0f, WHEEL_RADIUS_MM },
@@ -61,8 +61,9 @@ void motors_init() {
 void motors_apply_command(const MotorCommand& cmd) {
     // SLOW-MO DE BANCO (gateado): escala TODO el comando (vx/vy/omega) para poder OBSERVAR
     // la conducta del arquero sin que sea brusco. Cae sobre la velocidad antes de la
-    // cinemática → baja parejo el PWM de las 3 ruedas (el piso MOTOR_MIN_PWM=0 por default no
-    // interfiere). DEFAULT 1.0 = SIN EFECTO → binario de competencia IDÉNTICO. Se activa solo
+    // cinemática → baja parejo el PWM de las 3 ruedas. ⚠️ OJO: el piso por rueda MOTOR_MIN_PWM[i]
+    // actúa DESPUÉS y puede LEVANTAR el PWM ya escalado (estos motores no andan lento → el piso
+    // gana). DEFAULT 1.0 = SIN EFECTO → binario de competencia IDÉNTICO. Se activa solo
     // con -DCENTRAL_SLOW_MOTION (env central_robotN_slow). ⚠️ NO usar en competencia.
 #ifdef CENTRAL_SLOW_MOTION
     constexpr float MOTION_SCALE = 0.7f;   // banco/observación. (0.4 quedaba bajo el stiction
@@ -83,15 +84,12 @@ void motors_apply_command(const MotorCommand& cmd) {
 
     for (int i = 0; i < 3; ++i) {
         int pwm = wheel_speed_to_pwm(ws.wheel[i], MAX_SPEED_MM_S, MAX_PWM);
-        // Piso de PWM (deadzone compensation): a vx/vy bajos el PWM cae en la zona
-        // muerta del motor y raspa/stalled. Con MOTOR_MIN_PWM>0 (banco) lo eleva al
-        // piso. DEFAULT MOTOR_MIN_PWM=0 → no-op → binario de competencia idéntico.
-        pwm = apply_pwm_floor(pwm, MOTOR_MIN_PWM, MOTOR_PWM_NOISE_THRESH);
-        // Ganancia POR RUEDA (compensa la fricción distinta de cada rueda — las delanteras
-        // oblicuas tienen más fricción que la trasera). Se aplica al PWM FINAL (DESPUÉS del
-        // piso) para poder BAJAR la trasera, que con el piso alto se adelantaba y hacía ROTAR
-        // el robot en el strafe. DEFAULT {1,1,1} (en ROBOT2) = sin efecto. Ver config_central.h.
-        pwm = static_cast<int>(static_cast<float>(pwm) * MOTOR_GAIN[i]);
+        // Piso de PWM POR RUEDA (deadzone bajo carga): a vx/vy bajos el PWM cae en la zona
+        // muerta del motor y raspa/stalled. MOTOR_MIN_PWM[i] (por rueda, config_central.h) lo
+        // eleva al piso de ESA rueda — las delanteras oblicuas necesitan más que la trasera
+        // (si la trasera lleva el mismo piso se adelanta y hace ROTAR el robot en el strafe).
+        // DEFAULT {0,0,0} (ROBOT2) → no-op → binario neutro.
+        pwm = apply_pwm_floor(pwm, MOTOR_MIN_PWM[i], MOTOR_PWM_NOISE_THRESH);
         apply_pwm_to_motor(i, pwm);
     }
 }

@@ -40,14 +40,17 @@ namespace iitasoccer {
     // Fuente: docs/firmware/DIAG-CENTRAL-MOTORS.md + journal 2026-05-29 / 2026-06-01.
     // + RE-CONFIRMADO banco 2026-06-06 (commit 8956d10) tras rearmar el robot: se mueve derecho + esquiva la línea.
     constexpr int MOTOR_INVERT[3] = { +1, -1, +1 };
-    // Ganancia de PWM POR RUEDA (compensa la fricción distinta) — banco 2026-06-08, Gustavo.
-    // Las DELANTERAS (idx0/idx1) trabajan OBLICUAS a 60° → más fricción de rodillos → menos
-    // velocidad por PWM. La TRASERA (idx2/M3) es más eficiente → con el piso alto se "adelanta"
-    // y hace ROTAR el robot en el strafe → se BAJA. (El PWM NO es proporcional a la velocidad
-    // real; es distinto por rueda.) Se aplica DESPUÉS del piso (motors_zircon.cpp).
-    // 🔧 TUNEAR idx2 (M3): si TODAVÍA rota en el strafe → bajalo (0.5, 0.4…); si la trasera
-    // queda muy floja → subilo hacia 1.0. Orden {M1, M2, M3}.
-    constexpr float MOTOR_GAIN[3] = { 1.0f, 1.0f, 0.6f };
+    // Piso de PWM POR RUEDA (deadzone bajo carga) — banco 2026-06-08, Gustavo.
+    // El PWM mínimo para que la rueda ARRANQUE depende de la fricción que ve esa rueda. Hallazgo:
+    // las DELANTERAS (idx0/idx1) trabajan OBLICUAS a 60° (sus rodillos ruedan de costado) → MUCHA
+    // más fricción → necesitan MÁS piso. La TRASERA (idx2/M3) va PARALELA al strafe → arranca con
+    // MENOS; si le ponés el mismo piso que a las delanteras, se ADELANTA y hace ROTAR el robot.
+    // (El PWM NO es proporcional a la velocidad real: es distinto por rueda.)
+    // 🔧 TUNEAR: delanteras (idx0/idx1) → SUBÍ si no empujan el robot en el piso (70→90…).
+    //           trasera   (idx2)       → BAJÁ si el robot ROTA en el strafe (42→35…); SUBÍ si la
+    //                                      trasera queda floja y el strafe sale débil de atrás.
+    // ⚠️ NO pasar ~150 (motores brushed 5V a 7.4V se queman > ~70%). Orden {M1, M2, M3}.
+    constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 42 };
 #elif defined(ROBOT2)  // Delantero
     constexpr int PIN_INA1 = 8;
     constexpr int PIN_INB1 = 7;
@@ -69,10 +72,10 @@ namespace iitasoccer {
     // (que en el delantero es el índice 0), el array correcto sería { -1, +1, +1 }.
     // El banco lo dirime.
     constexpr int MOTOR_INVERT[3] = { +1, -1, +1 };  // = ROBOT1, sin validar en delantero
-    // Ganancia por rueda NEUTRA en el delantero (sin tunear). ⚠️ NO copiar el {1,1,0.6} del
-    // arquero: acá los pines están ROTADOS → idx2 NO es la rueda trasera. El banco define qué
-    // índice bajar cuando se calibre el strafe del delantero.
-    constexpr float MOTOR_GAIN[3] = { 1.0f, 1.0f, 1.0f };
+    // Piso de PWM por rueda OFF en el delantero (sin tunear → binario neutro). ⚠️ NO copiar el
+    // {70,70,42} del arquero: acá los pines están ROTADOS → idx2 NO es la rueda trasera. El banco
+    // define qué índice sube/baja cuando se calibre el strafe del delantero.
+    constexpr int MOTOR_MIN_PWM[3] = { 0, 0, 0 };
 #else
     #error "Debe definirse ROBOT1 (arquero) o ROBOT2 (delantero) en build_flags"
 #endif
@@ -118,25 +121,16 @@ constexpr float MAX_SPEED_MM_S  = 1000.0f; // velocidad máxima estimada del rob
 // Piso de PWM (deadzone compensation) — porta el IMPULSO_INICIAL del delantero 2025.
 // A vx/vy bajos el PWM de rueda cae en la zona muerta del motor → raspa / se queda
 // stalled (banco: "a vx=150 solo gira el motor 1"). apply_pwm_floor() (kinematics.h)
-// eleva todo PWM no-nulo por debajo de MOTOR_MIN_PWM hasta ese piso (conservando el
-// signo) y manda 0 cuando |pwm| <= MOTOR_PWM_NOISE_THRESH.
+// eleva todo PWM no-nulo por debajo del piso hasta ese piso (conservando el signo) y
+// manda 0 cuando |pwm| <= MOTOR_PWM_NOISE_THRESH.
 //
-// ⚠️ DEFAULT = 0 ⇒ apply_pwm_floor es NO-OP ⇒ el binario de competencia es IDÉNTICO
-// al de hoy. El equipo sube MOTOR_MIN_PWM en banco (típico 25-45) hasta que las 3
-// ruedas arranquen parejo a baja velocidad; MOTOR_PWM_NOISE_THRESH filtra el jitter
-// del comando para no zumbar parado. NO subir estos valores en competencia sin tunear.
-constexpr int MOTOR_MIN_PWM          = 70;  // ✅ banco 2026-06-08: piso de PWM (deadzone + carga).
-                                            // A 40 las delanteras giran LIBRES pero no mueven el robot
-                                            // EN EL PISO (falta torque bajo carga). 70 les da más empuje.
-                                            // 🔧 TUNEAR ACÁ: si en el piso TODAVÍA no arrancan, subí (90,
-                                            // 110...). Si arrancan y va muy rápido/brusco, bajá. ⚠️ NO
-                                            // pasar ~150 (motores brushed 5V a 7.4V se queman > ~70%).
+// ⚠️ EL PISO ES POR RUEDA: MOTOR_MIN_PWM[3] está definido POR-ROBOT arriba, en el bloque
+// #if (ROBOT1 = {70,70,42}; ROBOT2 = {0,0,0} neutro hasta calibrar). Es por rueda porque
+// la fricción que ve cada una es distinta: las DELANTERAS van oblicuas (más fricción →
+// piso más alto) y la TRASERA paralela (menos → piso más bajo, si no se adelanta y rota).
+// 🔧 Tuneo del arquero: cambiar MOTOR_MIN_PWM[idx] en la rama ROBOT1 del #if de arriba.
+// MOTOR_PWM_NOISE_THRESH (abajo) es global (filtra el jitter del comando para no zumbar parado).
 constexpr int MOTOR_PWM_NOISE_THRESH = 5;   // |pwm| <= esto → 0 (filtra ruido, no zumba parado)
-
-// MOTOR_GAIN[3] (ganancia de PWM POR RUEDA — compensa la fricción distinta de cada rueda) está
-// definido POR-ROBOT arriba, en el bloque #if (ROBOT1 = {1,1,0.6} con la trasera bajada; ROBOT2 =
-// {1,1,1} neutro hasta calibrar el delantero). Se aplica DESPUÉS del piso en motors_zircon.cpp.
-// 🔧 Tuneo del arquero: cambiar idx2 (M3) en la rama ROBOT1 del #if de arriba.
 
 // ============================================================
 // UARTs inter-placa (reasignados 2026-05-31 — ver MAPA-CONEXIONES-3-PLACAS.md)

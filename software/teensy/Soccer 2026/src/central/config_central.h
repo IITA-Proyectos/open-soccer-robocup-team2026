@@ -113,8 +113,11 @@ constexpr float MAX_SPEED_MM_S  = 1000.0f; // velocidad máxima estimada del rob
 // al de hoy. El equipo sube MOTOR_MIN_PWM en banco (típico 25-45) hasta que las 3
 // ruedas arranquen parejo a baja velocidad; MOTOR_PWM_NOISE_THRESH filtra el jitter
 // del comando para no zumbar parado. NO subir estos valores en competencia sin tunear.
-constexpr int MOTOR_MIN_PWM          = 0;  // piso de arranque (0 = OFF, banco: 25-45)
-constexpr int MOTOR_PWM_NOISE_THRESH = 0;  // |pwm| <= esto → 0 (filtra ruido del comando)
+constexpr int MOTOR_MIN_PWM          = 40;  // ✅ banco 2026-06-08: en strafe las ruedas delanteras
+                                            // quedaban en ~19 PWM (bajo el stiction → no arrancaban;
+                                            // M3 movía a ~38). 40 las levanta por encima del arranque.
+                                            // (0 = OFF; típico 25-45; bajar si arrancan a menos.)
+constexpr int MOTOR_PWM_NOISE_THRESH = 5;   // |pwm| <= esto → 0 (filtra ruido, no zumba parado)
 
 // ============================================================
 // UARTs inter-placa (reasignados 2026-05-31 — ver MAPA-CONEXIONES-3-PLACAS.md)

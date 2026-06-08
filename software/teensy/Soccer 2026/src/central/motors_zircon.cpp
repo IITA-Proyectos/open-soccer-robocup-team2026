@@ -65,7 +65,10 @@ void motors_apply_command(const MotorCommand& cmd) {
     // interfiere). DEFAULT 1.0 = SIN EFECTO → binario de competencia IDÉNTICO. Se activa solo
     // con -DCENTRAL_SLOW_MOTION (env central_robotN_slow). ⚠️ NO usar en competencia.
 #ifdef CENTRAL_SLOW_MOTION
-    constexpr float MOTION_SCALE = 0.4f;   // ~40% para banco/observación
+    constexpr float MOTION_SCALE = 0.7f;   // banco/observación. (0.4 quedaba bajo el stiction
+                                           // del motor → NO se movía. Estos motores tienen poco
+                                           // rango lento: < ~30 PWM no arrancan. Si igual no mueve,
+                                           // subir a 0.85; si es muy rápido, NO bajar de ~0.6.)
 #else
     constexpr float MOTION_SCALE = 1.0f;
 #endif

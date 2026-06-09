@@ -4,8 +4,9 @@ date: 2026-06-03
 status: vivo
 audiencia: "Virginia — operativa en el banco / Incheon"
 firmware-source: >
-  hardware/electronics/cameraFront-pack/firmware/openmv/{cam-frontal-n6.py, calib-lab-n6.py}
-  hardware/electronics/cameraBack-pack/firmware/openmv/{cam-trasera-n6.py, calib-lab-n6.py}
+  PRODUCCIÓN (se copia como main.py en las 2 cámaras): hardware/electronics/camaras-openmv/main.py
+  Kit de calibración: hardware/electronics/camera{Front,Back}-pack/firmware/openmv/calib-lab-n6.py
+  (los cam-*-n6.py de los packs quedaron DEPRECADOS — ver banner ⛔ en sus headers)
 environment: "OpenMV IDE (versión que liste 'OpenMV N6') → USB-C → ▶ Run"
 author: "Claude Opus 4.8 (Anthropic), vía Claude Code"
 requested-by: "Gustavo Viollaz (@gviollaz)"
@@ -13,10 +14,17 @@ requested-by: "Gustavo Viollaz (@gviollaz)"
 
 # Calibrar las cámaras N6 para que el robot VEA — TASK-022
 
-> **Esto es el bloqueante #1 real para Incheon.** Las 2 cámaras ya muestran color
-> y transmiten los 9 bytes (migración H7→N6 resuelta, bugs P0 corregidos). Lo
-> ÚNICO que falta es **calibrar el color con la cámara en la mano y la luz real**.
-> Sin esto, las cámaras mandan datos pero no detectan la pelota.
+> **✅ CALIBRACIÓN LAB HECHA — banco 2026-06-09 (Gustavo).** Los 3 thresholds quedaron
+> calibrados para la N6 (sensor PAG7936); detecta pelota + arcos. **Valores finales:**
+> - **naranja** (pelota → 201): `(21, 67, 18, 79, -32, 127)`
+> - **amarillo** (arco → 202): `(17, 70, -27, 14, 38, 111)`
+> - **azul** (arco → 203): `(4, 38, -13, 57, -64, -4)`  *(azul ajustado 36→38 el 2026-06-09)*
+>
+> **Fuente única (producción, va en las 2 cámaras): `hardware/electronics/camaras-openmv/main.py`.**
+> Si tuneás más, cambiá ahí y propagá al resto.
+>
+> ⚠️ **Igual conviene REHACERLO en Incheon** bajo la luz del venue (los LAB dependen de la
+> iluminación). El procedimiento de abajo es para eso (~15 min repetibles, kit `calib-lab-n6.py`).
 
 > ⚠️ **Hay que rehacer esto en Incheon** bajo la luz del venue (los thresholds LAB
 > dependen de la iluminación). Por eso el objetivo es un proceso de ~15 min

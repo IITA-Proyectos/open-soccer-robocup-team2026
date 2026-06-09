@@ -74,7 +74,7 @@ r = 13.5/(2*math.pi)  # radio pelota (cm)
 
 naranja_threshold = (21, 67, 18, 79, -32, 127)    # Pelota naranja
 amarillo_threshold = (17, 70, -27, 14, 38, 111) # Arco amarillo
-azul_threshold = (4, 36, -13, 57, -64, -4)    # Arco azul
+azul_threshold = (4, 38, -13, 57, -64, -4)    # Arco azul (calibrado N6 2026-06-09; azul 36->38)
 
 
 # ----- Funciones -----

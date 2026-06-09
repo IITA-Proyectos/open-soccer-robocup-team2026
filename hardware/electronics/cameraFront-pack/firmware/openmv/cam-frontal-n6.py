@@ -77,10 +77,11 @@ H_MATRIX = [
 CAM_HEIGHT_CM = 18.7                    # altura de la cámara sobre el suelo (cm) — banco 2026-06-07
 BALL_RADIUS_CM = 13.5 / (2 * math.pi)    # radio pelota = circunferencia / 2π
 
-# ⚠️ RECALIBRAR los 3 thresholds LAB en la N6 (sensor distinto al H7):
+# ✅ Thresholds LAB CALIBRADOS para N6 (sensor PAG7936) — banco 2026-06-09 (Gustavo).
+# Fuente única: hardware/electronics/camaras-openmv/main.py.
 NARANJA_THRESHOLD = (21, 67, 18, 79, -32, 127)    # pelota naranja  → header 201
 AMARILLO_THRESHOLD = (17, 70, -27, 14, 38, 111)    # arco amarillo   → header 202
-AZUL_THRESHOLD = (4, 36, -13, 57, -64, -4)     # arco azul       → header 203
+AZUL_THRESHOLD = (4, 38, -13, 57, -64, -4)     # arco azul       → header 203
 
 NARANJA_PIXELS_MIN = 20
 AMARILLO_PIXELS_MIN = 600

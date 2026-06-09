@@ -80,7 +80,7 @@ r = 13.5/(2*math.pi)  # radio pelota (cm)
 # ----- Umbrales LAB (calibración) -----
 naranja_threshold = (21, 67, 18, 79, -32, 127)    # Pelota naranja  -> header 201
 amarillo_threshold = (17, 70, -27, 14, 38, 111)   # Arco amarillo   -> header 202
-azul_threshold = (4, 36, -13, 57, -64, -4)        # Arco azul       -> header 203
+azul_threshold = (4, 38, -13, 57, -64, -4)        # Arco azul       -> header 203
 
 # ===== Contrato v2 (formato seguro que parsea el TOP) — packet de 11 bytes =====
 SENTINEL_CODED = 255    # X_coded==255 y Y_coded==255  ->  objeto NO detectado

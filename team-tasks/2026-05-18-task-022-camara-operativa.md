@@ -4,7 +4,7 @@ title: "Cámara operativa: sentinel, crash bytearray, exposición fija, calibrac
 date_created: 2026-05-18
 assigned: [mariaviollaz]
 priority: P0
-status: calib-distancia-HECHA-2026-06-07-falta-deploy-v2-y-validacion-banco
+status: calib-COLORES-Y-DISTANCIA-CERRADA-2026-06-08-falta-deploy-coordinado-y-validacion-banco
 estimated_hours: 24
 blocks: [percepción de pelota/arcos en Incheon]
 tags: [vision, camara, openmv, firmware, calibracion]
@@ -137,3 +137,15 @@ hardware** — el deploy y la validación los confirma el equipo.
   cámaras, decisión provisoria de Gustavo). Status → `calib-distancia-HECHA-falta-deploy-v2`.
   Queda: deploy coordinado cámaras+TOP, offset lente→centro, lock exposición, validación
   de banco. Integración + docs por Claude (Opus 4.8), a pedido de Gustavo.
+- 2026-06-08: ✅ **CALIBRACIÓN CERRADA** (Gustavo confirma en banco: **colores LAB**
+  calibrados + **distancia/homografía** de Elías). ⚠️ Importante: el script de PRODUCCIÓN
+  que junta TODO lo que anda (colores calibrados + **LED indicador de detección** + **recorte
+  inferior** ROI 3% + homografía de Elías @VGA + **comunicación v2 con CRC**) **NO es** el
+  `cam-*-n6.py` de los packs (esa reescritura no tenía LED ni colores ni recorte → no detectaba,
+  quedó DEPRECADA con banner). **El de producción, que va en las 2 cámaras, es:**
+  **`hardware/electronics/camaras-openmv/main.py`** (derivado del `mainopenmvcomvieja.py` que
+  anda + el contrato v2; README al lado). **Lo que queda de TASK-022 NO es calibración** → es
+  deploy + validación de banco: (1) re-flasheo coordinado 2 cámaras + TOP juntos (CRC OK / sin
+  fantasma con cámara tapada), (2) offset lente→centro, (3) lock de exposición/WB/gain, (4)
+  distancias vs regla (<10%), (5) fps a VGA + estabilidad bajo luz Incheon. **Esos los cierra el
+  equipo en banco** (Claude no cierra TASKs de hardware). Edición por Claude (Opus 4.8) a pedido de Gustavo.

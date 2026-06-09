@@ -1,3 +1,15 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║ ⛔ NO USAR EN PRODUCCIÓN — SUPERSEDIDO 2026-06-08                          ║
+# ║ Reescritura "from scratch": SIN LED, colores PLACEHOLDER (no calibrados),  ║
+# ║ recorte DESACTIVADO (BALL_ROI=None). Es la que probaste y NO andaba.       ║
+# ║                                                                            ║
+# ║ ✅ EL SCRIPT DE PRODUCCIÓN (va en las 2 cámaras) es:                       ║
+# ║       hardware/electronics/camaras-openmv/main.py                          ║
+# ║ (LED + colores calibrados + recorte inferior + homografía de Elías +       ║
+# ║  comunicación v2 con CRC). Flashealo ESE como main.py.                     ║
+# ║ Este archivo queda SOLO como referencia del contrato v2 / la homografía.   ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+#
 # cam-trasera-n6.py — Cámara TRASERA del robot Soccer 2026 — OpenMV N6 (STM32N6)
 #
 # Basado en el `current-generic.py` que SÍ funciona en la N6 (fw 4.8.1): usa el

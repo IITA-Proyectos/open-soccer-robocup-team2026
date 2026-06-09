@@ -4,7 +4,7 @@ title: "CRC + fin de trama en el enlace de cámara OpenMV→TOP (con tests del p
 date_created: 2026-05-18
 assigned: [mariaviollaz]
 priority: P0
-status: pending
+status: crc-END-implementado-2026-06-08-falta-tests-parser-y-validacion-banco
 estimated_hours: 12
 blocks: [confiabilidad de visión en partido]
 tags: [firmware, vision, comunicacion, camara, openmv]
@@ -63,3 +63,12 @@ _(completar al ejecutar — registrar fps medido y decisión proto.h vs CRC8)_
 
 - 2026-05-18: creada por Claude tras la verificación independiente, a pedido de
   Gustavo Viollaz.
+- 2026-06-08: ✅ **CRC8 + END implementados en ambos extremos.** Cámara: el script de
+  producción `hardware/electronics/camaras-openmv/main.py` arma el contrato v2 (11 bytes:
+  3 headers + 6 coords codificadas [0,200] + **CRC8 = XOR de los 9 bytes de datos** + **END=254**;
+  "no detectado" = sentinel 255,255). TOP: parser con `cam_crc8()` en `cameras.h`. El framing
+  legacy 9 B sin checksum queda en `main-comunicacion-vieja.py` (referencia, NO se flashea).
+  **NO cerrada** — falta de banco: (1) **tests host-native del parser** de cámara (paso 1 del
+  criterio: basura/paquete partido/resync — todavía NO escritos); (2) **fps medido** antes/después
+  (<10% caída); (3) deploy coordinado cámaras+TOP + **inyección de ruido** (EMI de motores) → 0
+  coords falsas aceptadas. Esos los cierra el equipo en banco. Nota por Claude (Opus 4.8) a pedido de Gustavo.

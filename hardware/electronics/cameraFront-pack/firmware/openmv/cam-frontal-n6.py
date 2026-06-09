@@ -1,3 +1,16 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║ ⛔ NO USAR EN PRODUCCIÓN — SUPERSEDIDO 2026-06-08                          ║
+# ║ Esta es la reescritura "from scratch": SIN LED, colores PLACEHOLDER (no    ║
+# ║ calibrados → "SIN ESTO NO DETECTA"), recorte DESACTIVADO (BALL_ROI=None).  ║
+# ║ Es la que probaste y NO andaba.                                            ║
+# ║                                                                            ║
+# ║ ✅ EL SCRIPT DE PRODUCCIÓN (va en las 2 cámaras) es:                       ║
+# ║       hardware/electronics/camaras-openmv/main.py                          ║
+# ║ (detección que ANDA: LED + colores calibrados + recorte inferior +         ║
+# ║  homografía de Elías 2026-06-07 + comunicación v2 con CRC). Flashealo ESE.  ║
+# ║ Este archivo queda SOLO como referencia del contrato v2 / la homografía.   ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+#
 # cam-frontal-n6.py — Cámara FRONTAL del robot Soccer 2026 — OpenMV N6 (STM32N6)
 #
 # Basado en el `current-generic.py` que SÍ funciona (muestra color) en esta N6

@@ -7,9 +7,14 @@
 # venue en Incheon). NO transmite por UART, NO compite: sólo te ayuda a leer el
 # color real del objeto y a verificar que el threshold lo agarra limpio.
 #
-# Es un script APARTE a propósito: no toca `cam-frontal-n6.py` / `cam-trasera-n6.py`
-# (el path de competencia que ya anda). Cuando terminás de calibrar, copiás los
-# 3 tuples que imprime este script a la cámara de producción.
+# Es un script APARTE a propósito: no toca la cámara de producción
+# (`camaras-openmv/main.py`, que ya anda). Cuando terminás de calibrar, copiás los
+# 3 tuples a producción.
+#
+# ★ ARRANCA DE LOS VALORES YA CALIBRADOS (banco 2026-06-09): la consola muestra, por
+#   color, un "★ AJUSTE sobre el actual" que EXTIENDE el threshold probado para cubrir
+#   la luz de hoy — re-calibrás SOBRE lo que funciona, NO desde cero. (También imprime
+#   el "tuple desde cero" por si alguna vez querés empezar limpio.)
 #
 # NOVEDAD (recalibración <5 min, doc 04 #9): este script CICLA los 3 colores
 # SOLO. En cada frame mide los 3 (naranja/amarillo/azul) y la consola imprime
@@ -63,11 +68,14 @@ MARGEN_AB = 6             # margen para canales A y B (color) — None → usa M
 PROBE_FRAC = 0.18         # tamaño de la sonda central como fracción del frame (0.18 ≈ 18%)
 PRINT_EACH = 12           # imprimir cada N frames (para no inundar la consola)
 
-# Thresholds ACTUALES (arrancá con los de producción; pegá acá lo que vayas afinando):
+# ★ Thresholds CALIBRADOS N6 — banco 2026-06-09 (Gustavo, sensor PAG7936). Fuente: camaras-openmv/main.py.
+# El kit ARRANCA de estos valores YA PROBADOS con la luz actual. Si en Incheon (otra luz) hay que
+# ajustar, NO se re-deriva desde cero: se EXTIENDE este baseline para cubrir la nueva lectura (ver la
+# línea "★ AJUSTE sobre el actual" en la consola) → conservás lo que funciona y sólo lo agrandás.
 THRESHOLDS = {
     "naranja":  (21, 67,  18, 79, -32, 127),    # pelota  → header 201
     "amarillo": (17, 70, -27, 14,  38, 111),    # arco    → header 202
-    "azul":     ( 4, 36, -13, 57, -64,  -4),    # arco    → header 203
+    "azul":     ( 4, 38, -13, 57, -64,  -4),    # arco    → header 203  (azul 36→38, 2026-06-09)
 }
 PIXELS_MIN = {"naranja": 20, "amarillo": 600, "azul": 300}
 
@@ -139,6 +147,22 @@ def sugerir_tuple(st):
     bmin = clamp(int(st.b_min()) - mab, -128, 127)
     bmax = clamp(int(st.b_max()) + mab, -128, 127)
     return (lmin, lmax, amin, amax, bmin, bmax)
+
+
+def sugerir_ajuste(st, thr):
+    # ★ AJUSTE SOBRE EL VALOR YA PROBADO (recomendado para re-calibrar en Incheon):
+    # extiende el threshold actual `thr` lo justo para INCLUIR lo que lee la sonda
+    # ahora (UNIÓN de rangos). Conserva lo que ya funcionaba y sólo lo agranda para
+    # cubrir la nueva luz — NO arranca de cero como sugerir_tuple().
+    n = sugerir_tuple(st)   # (Lmin,Lmax,Amin,Amax,Bmin,Bmax) desde la sonda + margen
+    return (
+        clamp(min(thr[0], n[0]),    0, 100),   # L min (el más bajo de los dos)
+        clamp(max(thr[1], n[1]),    0, 100),   # L max (el más alto)
+        clamp(min(thr[2], n[2]), -128, 127),   # A min
+        clamp(max(thr[3], n[3]), -128, 127),   # A max
+        clamp(min(thr[4], n[4]), -128, 127),   # B min
+        clamp(max(thr[5], n[5]), -128, 127),   # B max
+    )
 
 
 def medir_blobs(img, color):
@@ -217,7 +241,9 @@ while True:
                     int(st.a_min()), int(st.a_max()),
                     int(st.b_min()), int(st.b_max()),
                     st.l_mean(), st.a_mean(), st.b_mean()))
-                print("      TUPLE sugerido (mL{} mAB{}): {}".format(
+                print("      tuple desde cero (mL{} mAB{}): {}".format(
                     _m_l(), _m_ab(), sugerir_tuple(st)))
+                print("      ★ AJUSTE sobre el actual (extiende lo ya probado): {}".format(
+                    sugerir_ajuste(st, THRESHOLDS[color])))
             print("      threshold actual agarra: {} blobs, mayor = {} px (min pedido {})".format(
                 n_c, big_c, pmin))

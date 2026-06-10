@@ -56,7 +56,14 @@ Adafruit_BNO055* const g_bno[IMU_FUSION_N]  = { &g_bno_primary, &g_bno_secondary
 const uint8_t          g_addr[IMU_FUSION_N] = { BNO055_LEFT_I2C_ADDR, BNO055_LEFT_I2C_ADDR };
 #else
 // --- Los 2 BNO en el mismo bus Wire (ver cabecera) ---
+#ifdef TOP_BNO1_ON_WIRE2
+// PLAN B HARDWARE (banco demo 2026-06-11): BNO1 de robot1 en BUS PROPIO Wire2
+// (24/25, back-pads) — la arquitectura que en robot2 demostró cero contención.
+// Requiere mover físicamente SDA/SCL del BNO a los pads 24/25 (alim queda igual).
+Adafruit_BNO055 g_bno_left (55, BNO055_LEFT_I2C_ADDR,  &Wire2);
+#else
 Adafruit_BNO055 g_bno_left (55, BNO055_LEFT_I2C_ADDR,  &Wire);
+#endif
 Adafruit_BNO055 g_bno_right(56, BNO055_RIGHT_I2C_ADDR, &Wire);
 Adafruit_BNO055* const g_bno[IMU_FUSION_N]  = { &g_bno_left, &g_bno_right };
 const uint8_t          g_addr[IMU_FUSION_N] = { BNO055_LEFT_I2C_ADDR, BNO055_RIGHT_I2C_ADDR };
@@ -233,12 +240,12 @@ bool sensors_imu_init() {
                             // (diag_bno_tof_slow: yaw sigue el giro con los 4 ToF activos).
                             // 400 kHz solo servia con ToF-solo (quad_live) o BNO-solo
                             // (diag_bno_left). Costo: boot ~40 s (carga firmware de los 4 ToF).
-#if defined(ROBOT2)
-    // ROBOT2: bus del BNO PRIMARIO — Wire2 (pines 24/25 NATIVOS del Teensy 4.0,
-    // LPI2C4; SIN setSCL/setSDA — 24/25 son los default de Wire2, corrección
-    // 2026-06-09). Ahí vive SOLO el 2º BNO (cero ToF -> cero contención; el
-    // motivo del freeze de R1 no existe en este bus). Mismo clock que robot2.h
-    // (I2C_CLOCK_HZ=100k, conservador; banco puede probar 400k al estar solo).
+#if defined(ROBOT2) || defined(TOP_BNO1_ON_WIRE2)
+    // Bus Wire2 (pines 24/25 NATIVOS del Teensy 4.0, LPI2C4; SIN setSCL/setSDA —
+    // 24/25 son los default de Wire2, corrección 2026-06-09). Ahí vive SOLO un BNO
+    // (cero ToF -> cero contención; el motivo del freeze de R1 no existe en este
+    // bus). ROBOT2: su PRIMARIO. ROBOT1 con TOP_BNO1_ON_WIRE2: su BNO1 mudado
+    // (plan B del banco demo 2026-06-11). Clock conservador 100k.
     Wire2.begin();
     Wire2.setClock(100000);
 #endif

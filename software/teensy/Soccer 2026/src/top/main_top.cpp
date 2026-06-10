@@ -266,13 +266,27 @@ void loop() {
     // FASE para que no choque. ROBOT2 usa el #else: su BNO PRIMARIO vive en Wire2
     // (24/25, bus propio sin ToF) — pero ojo: su SECUNDARIO sí comparte Wire con los
     // ToF y NO tiene este deconflict (tema-a-analizar, revisión 2026-06-10).
-    bool tof_ran_this_pass = false;
+    // FIX 2026-06-11 (banco demo): el deconflict POR-PASADA quedó ROTO cuando el
+    // loop pasó de ~6 Hz a ~200k pasadas/s (round-robin + payload recortado): la
+    // "próxima pasada" ahora llega ~5 µs después del read de ToF → el read del BNO
+    // quedaba PEGADO igual. Evidencia: el BNO trasplantado desde robot2 congeló
+    // IDÉNTICO al original → el problema es el ENTORNO del bus, no los chips.
+    // Ahora la separación es TEMPORAL: el BNO solo se lee si pasaron
+    // ≥ TOP_BNO_TOF_GAP_MS desde el final del último read de ToF. Con ToF cada
+    // 30 ms y gap de 8 ms queda una ventana limpia de ~7-20 ms por ciclo — el BNO
+    // mantiene su cadencia interna de 20 Hz sin tocar al ToF.
+#ifndef TOP_BNO_TOF_GAP_MS
+#define TOP_BNO_TOF_GAP_MS 8
+#endif
+    static uint32_t s_last_tof_end_ms = 0;
     if (g_since_tof_tick >= TOF_TICK_INTERVAL_MS) {
         g_since_tof_tick = 0;
         sensors_tof_tick();
-        tof_ran_this_pass = true;
+        s_last_tof_end_ms = millis();
     }
-    if (g_since_imu_tick >= IMU_TICK_INTERVAL_MS && !tof_ran_this_pass) {
+    const bool bus_quiet =
+        (millis() - s_last_tof_end_ms) >= (uint32_t)TOP_BNO_TOF_GAP_MS;
+    if (g_since_imu_tick >= IMU_TICK_INTERVAL_MS && bus_quiet) {
         g_since_imu_tick = 0;
         sensors_imu_tick();
     }

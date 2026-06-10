@@ -238,6 +238,21 @@ constexpr uint32_t GK_LINE_AVOID_COOLDOWN_MS  = 400;  // sin re-disparo tras vol
 // propio pero el heading del BNO es válido. 0° = el frente capturado al boot (el robot
 // se enciende mirando al arco rival) → "siempre mirando al frente".
 constexpr float GK_GYRO_HOLD_TARGET_DEG       = 0.0f;
+
+// ── PATRULLA v3 SEGMENTADA (banco 2026-06-09, último log: el strafe CONTINUO genera
+// un yaw físico ~80°/s — sesgo del mix de pisos + reversas — que la corrección en
+// movimiento (≤40°/s) no puede pelear → giro sin fin). El patrón VALIDADO del banco
+// era MOVER-PARAR-MOVER (el diag de strafe). v3 = tramo corto de strafe → freno →
+// si quedó chueco, RE-ORIENTAR PARADO con pulsos de rotación pura (con floor_scale
+// la rotación pura SÍ funciona; en pulsos porque sale rápida) → tramo al otro lado.
+constexpr uint32_t GK_PATROL_SEG_MS        = 1200; // duración del tramo de strafe
+constexpr uint32_t GK_PATROL_STOP_MS       = 300;  // freno entre tramos (mide rumbo quieto)
+constexpr float    GK_REORIENT_ENTER_DEG   = 15.0f;// error de rumbo que dispara re-orientación
+constexpr float    GK_REORIENT_MS_PER_DEG  = 3.0f; // duración del pulso ∝ error (rotación real ~250°/s)
+constexpr uint32_t GK_REORIENT_PULSE_MIN_MS = 60;
+constexpr uint32_t GK_REORIENT_PULSE_MAX_MS = 220;
+constexpr uint32_t GK_REORIENT_SETTLE_MS   = 250;  // quieto tras el pulso (rumbo fresco)
+constexpr uint8_t  GK_REORIENT_MAX_PULSES  = 4;    // tope de pulsos por parada
 // ORIENTACIÓN POR CÁMARA — DESHABILITADA hasta validar (banco 2026-06-09): el signo
 // del gyro de robot2 se CONFIRMÓ correcto (izquierda → hdg sube), por lo tanto la J/U
 // del retroceso la causaba la rama (1) de la cascada: el target derivado del ángulo
@@ -908,33 +923,88 @@ MotorCommand goalkeeper_tick() {
 
         case GkState::PATROL: {
             g_state_name = "GK_PATROL";
-            // Patrulla LATERAL pura (diseño Gustavo v2): el arquero ya se despegó de
-            // la línea (avanzó ~10 cm) → acá NO hay PID de borde (saturaba y giraba).
-            // Va de izquierda a derecha mirando al frente; si deriva hacia atrás y
-            // toca la línea, el guard de imminent lo hace AVANZAR de nuevo.
-            static int direction = 1;
-            static uint32_t last_change = 0;
+            // ── PATRULLA v3 SEGMENTADA (mover-parar-corregir-mover) ──
+            // El strafe continuo acumulaba yaw físico (~80°/s) imposible de pelear
+            // en movimiento. Ahora: tramo corto → freno → si quedó chueco, pulsos
+            // de ROTACIÓN PURA parado (lo que el banco validó que funciona) → tramo
+            // al otro lado. Límites por pose deciden la dirección de cada tramo.
+            static int      direction   = 1;
+            static uint8_t  pphase      = 0;   // 0=MOVE 1=STOP 2=PULSO 3=ASENTAR
+            static uint32_t pphase_t0   = 0;
+            static uint32_t pulse_ms    = 0;
+            static uint8_t  pulse_count = 0;
+            if (pphase_t0 == 0) pphase_t0 = now_ms;
 
-            // LÍMITES POR POSE DEL TOP (cierra el gap R3): con pose confiable, la
-            // oscilación REBOTA en [centro ± rango] → cubre la boca del arco sin
-            // irse al lateral (no dejar el arco libre). Sin pose → timer (fallback).
-            if (gk_pose_ok()) {
-                const float x = world_model_get_my_x_mm();
-                if (x > GK_PATROL_X_CENTER_MM + GK_PATROL_X_HALF_RANGE_MM && direction > 0) {
-                    direction = -1; last_change = now_ms;
-                } else if (x < GK_PATROL_X_CENTER_MM - GK_PATROL_X_HALF_RANGE_MM && direction < 0) {
-                    direction = +1; last_change = now_ms;
-                }
-            } else if (now_ms - last_change > static_cast<uint32_t>(GK_PATROL_OSCILLATE_PERIOD_MS)) {
-                direction = -direction;
-                last_change = now_ms;
+            // Error de rumbo (envuelto a ±180) — solo con heading válido.
+            const bool hv = world_model_heading_valid();
+            float hdg_err = 0.0f;
+            if (hv) {
+                hdg_err = GK_GYRO_HOLD_TARGET_DEG - world_model_get_my_heading_deg();
+                while (hdg_err > 180.0f)  hdg_err -= 360.0f;
+                while (hdg_err < -180.0f) hdg_err += 360.0f;
             }
-            cmd.vx_mm_s = clamp_velocity_mm_s(direction * GK_PATROL_SPEED_MM_S);
-            cmd.vy_mm_s = 0;   // sin PID de borde (v2): la línea quedó atrás
 
-            // Orientación: cascada arco-propio → GYRO HOLD (mirando al frente
-            // aunque la cámara no vea el arco) → ω=0. Diseño de Gustavo 2026-06-09.
-            cmd.omega_centideg_s = gk_orient_omega(now_ms);
+            switch (pphase) {
+                case 0: {   // MOVE: tramo de strafe con hold suave
+                    cmd.vx_mm_s = clamp_velocity_mm_s(direction * GK_PATROL_SPEED_MM_S);
+                    cmd.vy_mm_s = 0;
+                    cmd.omega_centideg_s = gk_orient_omega(now_ms);
+                    bool seg_end = (now_ms - pphase_t0) >= GK_PATROL_SEG_MS;
+                    // Límite por pose: corta el tramo al llegar al borde del arco.
+                    if (gk_pose_ok()) {
+                        const float x = world_model_get_my_x_mm();
+                        if ((x > GK_PATROL_X_CENTER_MM + GK_PATROL_X_HALF_RANGE_MM && direction > 0) ||
+                            (x < GK_PATROL_X_CENTER_MM - GK_PATROL_X_HALF_RANGE_MM && direction < 0)) {
+                            seg_end = true;
+                        }
+                    }
+                    if (seg_end) { pphase = 1; pphase_t0 = now_ms; }
+                    break;
+                }
+                case 1: {   // STOP: frenar, medir rumbo quieto, decidir
+                    // cmd queda en 0 → el mixer re-arma el impulso para el próximo tramo.
+                    if ((now_ms - pphase_t0) >= GK_PATROL_STOP_MS) {
+                        const float aerr = (hdg_err < 0.0f) ? -hdg_err : hdg_err;
+                        if (hv && aerr > GK_REORIENT_ENTER_DEG &&
+                            pulse_count < GK_REORIENT_MAX_PULSES) {
+                            // Quedó chueco → pulso de rotación pura hacia el frente.
+                            float ms = aerr * GK_REORIENT_MS_PER_DEG;
+                            if (ms < GK_REORIENT_PULSE_MIN_MS) ms = GK_REORIENT_PULSE_MIN_MS;
+                            if (ms > GK_REORIENT_PULSE_MAX_MS) ms = GK_REORIENT_PULSE_MAX_MS;
+                            pulse_ms  = static_cast<uint32_t>(ms);
+                            pphase    = 2; pphase_t0 = now_ms;
+                        } else {
+                            // Derecho (o tope de pulsos) → próximo tramo. Dirección por pose.
+                            pulse_count = 0;
+                            if (gk_pose_ok()) {
+                                const float x = world_model_get_my_x_mm();
+                                if (x > GK_PATROL_X_CENTER_MM + GK_PATROL_X_HALF_RANGE_MM)      direction = -1;
+                                else if (x < GK_PATROL_X_CENTER_MM - GK_PATROL_X_HALF_RANGE_MM) direction = +1;
+                                else direction = -direction;
+                            } else {
+                                direction = -direction;
+                            }
+                            pphase = 0; pphase_t0 = now_ms;
+                        }
+                    }
+                    break;
+                }
+                case 2: {   // PULSO: rotación pura breve hacia el frente
+                    cmd.omega_centideg_s = static_cast<int16_t>(
+                        (hdg_err >= 0.0f ? +1 : -1) * GK_ORIENT_OMEGA_MAX_DEGPS * 100.0f);
+                    if ((now_ms - pphase_t0) >= pulse_ms) {
+                        ++pulse_count;
+                        pphase = 3; pphase_t0 = now_ms;
+                    }
+                    break;
+                }
+                case 3: {   // ASENTAR: quieto, dejar que el rumbo se lea fresco
+                    if ((now_ms - pphase_t0) >= GK_REORIENT_SETTLE_MS) {
+                        pphase = 1; pphase_t0 = now_ms;   // re-evaluar en STOP
+                    }
+                    break;
+                }
+            }
 
 #ifndef GK_IGNORE_BALL
             // (Banco 2026-06-09: con -DGK_IGNORE_BALL la patrulla NO sale a la pelota

@@ -38,9 +38,14 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 
 ---
 
-## (b) FOTOS / DIAGRAMAS A PRODUCIR — el repo tiene CERO imágenes hoy
+## (b) FOTOS / DIAGRAMAS A PRODUCIR — ✅ 4 figuras generadas; FALTAN las FOTOS
 
-> **Hallazgo verificado:** `find` sobre todo el repo da **0 archivos .png/.jpg/.jpeg/.svg**. Esto deja Poster→Photos en **Developing (0)** y le quita a Data/Results el "mostrado claro con gráficos". Es el **cap más duro del poster**. Único activo gráfico real: los 5 PDFs de esquemático (`hardware/electronics/pcb_design/{top,down}_board/Schematic_*.pdf`, `Zircon.pdf`) — sirven como figura de esquemático recortada.
+> **Actualización 2026-06-05/10:** ya existen en `docs/competencia/assets/` 4 figuras
+> generadas: `fig2_dataflow.png`, `fig4_fsm.png`, `fig8_test_growth.png`,
+> `fig9_otos_error.png` (= ítems B7/B8/B9/B10 de la tabla). **Lo que sigue faltando y
+> nadie puede generar por software: las FOTOS reales (B1-B6: robot, equipo, banco,
+> bodge) y los QR (B13).** Sigue siendo el cap más duro del poster. Activo gráfico
+> extra: los 5 PDFs de esquemático (`Schematic_*.pdf`, `Zircon.pdf`).
 >
 > Guardar todo en `docs/competencia/assets/`.
 

@@ -112,6 +112,8 @@ El §2 quedó resuelto el mismo día, con medición antes/después por el contad
   sensado caído (guard); arranque pisando línea; rebote en ambos costados ≥4
   ciclos; REACQ acotado; frente ±45°; 3 ciclos STOP→GO.
 - Después: fase pelota (`central_robot2_arquero`) — INTERCEPT/CLEAR.
-- Fix de raíz del TOP lento: esperando la medición Δloop del panel del TOP.
+- Fix de raíz del TOP lento: ✅ RESUELTO el mismo día (ver §4). Queda para el próximo
+  banco: verificar `top[fr]` subiendo ~+50 por línea en el panel de la CENTRAL, y que
+  ROBOT1 herede los fixes (A VERIFICAR) al volver de reparación.
 - Si el "no meterse al área" es además requisito de reglamento, verificarlo
   contra `competition/rules/` (no se afirma de memoria).

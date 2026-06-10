@@ -221,8 +221,9 @@ Diag de calibración con census de sospechosos: `[env:diag_down_calibracion]` �
 ### CARD DOWN-6: Calibración + censo de "sospechosos"
 
 - **Objetivo:** calibrar verde/blanco real del campo y verificar que los 32 separan
-  verde de blanco (margen ≥ 80 counts). Guarda la calib en EEPROM (la usa el
-  firmware de competencia al boot).
+  verde de blanco (margen ≥ 40 counts — umbral bajado en banco 2026-06-06, commit
+  8956d10: con batería floja los márgenes reales caen; calibrar con batería cargada).
+  Guarda la calib en EEPROM (la usa el firmware de competencia al boot).
 - **Placa:** DOWN (Teensy 4.0).
 - **Programa / env:** `cd "software/teensy/Soccer 2026" && pio run -e diag_down_calibracion -t upload`
 - **¿Existe el programa?:** SÍ. `[env:diag_down_calibracion]` (platformio.ini:702)
@@ -241,7 +242,7 @@ Diag de calibración con census de sospechosos: `[env:diag_down_calibracion]` �
 - **Resultados posibles:**
   - A) `sospechosos: 0 / 32` → PASS. Escribí `s` para guardar la calib en EEPROM.
   - B) `sospechosos: N / 32` con N>0 → esos sensores no separan verde/blanco
-    (margen < 80). Pueden ser sombra/cobertura mala al capturar blanco (recapturá
+    (margen < 40). Pueden ser sombra/cobertura mala al capturar blanco (recapturá
     `b`) o sensor débil. Listar los SN.
   - C) Todos sospechosos / margen negativo → la captura de verde y blanco quedó
     invertida o el blanco no se apoyó bien. Recalibrar (`c` y `b` de nuevo).

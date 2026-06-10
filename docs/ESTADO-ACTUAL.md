@@ -105,7 +105,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - **Diags de banco (CENTRAL, `src/diag/`):** `diag_central_motors` (motores + `MOTOR_DIR`), **`diag_central_strafe`** (patrulla lateral del arquero — **open-loop**, omega=0, sin BNO en CENTRAL; ahora que el OTOS llega a CENTRAL por broadcast se le puede sumar heading-hold = v2 — [doc](firmware/DIAG-CENTRAL-STRAFE.md)), `diag_central_drive_straight` (+Y con heading del TOP), `diag_central_comm_down` (link DOWN→CENTRAL), `diag_central_rx_all` (decodifica DOWN+TOP juntos).
 
 ### TOP (Teensy 4.0)
-- `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (4 ToF VL53L7CX en bus único `Wire`, lib `Adafruit_VL53L7CX`. ✅ Bodge de Enzo 2026-05-30: los 4 ToF con LP en pines {9,10,11,12} (activo-alto), enumeran a 0x2A..0x2D, confirmado en banco. El bus `Wire2` (24/25) del TOP quedó liberado (corrección 2026-06-09: el bus de 24/25 es `Wire2`/LPI2C4, no `Wire1`; es donde va el 2º BNO — TASK-207). ⚠️ Probar ToF SIEMPRE con power-cycle (las direcciones I²C persisten). El firmware vivo `sensors_tof.cpp` todavía lee 1 ToF — extender a los 4 es HAL Sprint B. Plan: escalar a 6 ToF (4 fijos + 2 móviles para pelota). Ver journal 2026-05-30), `comm_*`
+- `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (4 ToF VL53L7CX en bus único `Wire`, lib `Adafruit_VL53L7CX`. ✅ Bodge de Enzo 2026-05-30: los 4 ToF con LP en pines {9,10,11,12} (activo-alto), enumeran a 0x2A..0x2D, confirmado en banco. El bus `Wire2` (24/25) del TOP quedó liberado (corrección 2026-06-09: el bus de 24/25 es `Wire2`/LPI2C4, no `Wire1`; es donde va el 2º BNO — TASK-207). ⚠️ Probar ToF SIEMPRE con power-cycle (las direcciones I²C persisten). El firmware vivo `sensors_tof.cpp` YA lee los 4 ToF (round-robin UN sensor por tick `a6c0366` + payload VL53L7CX recortado `bf8ddd4` — banco 2026-06-10, loop del TOP 6 Hz→190k/s). Plan: escalar a 6 ToF (4 fijos + 2 móviles para pelota). Ver journal 2026-05-30), `comm_*`
 - `src/shared/localization.cpp` — trilateracion geometrica directa (Sprint 1
   aprobado 2026-05-25, ver `docs/superpowers/specs/2026-05-25-localization-sprint1-trilateration-design.md`).
   Validacion en hardware pendiente: TASK-035.
@@ -606,10 +606,10 @@ nativo, pero ya no es el único camino. Ver
   por bodge de Enzo (2026-05-30)**: los 4 ToF enumeran en `Wire` (LP pines
   {9,10,11,12}). TASK-033 (cuántos ToF) decidida por los hechos: 4. Solución de
   fondo (rutear en PCB) queda para TOP rev 1.1 post-Incheon.
-- **HAL Sprint B**: extender `sensors_tof.cpp` para enumerar los 4 ToF al boot
-  (hoy lee 1). Ya NO bloqueado por TASK-038 (pines confirmados en banco). Falta:
-  el código de enumeración + confirmar ranging (`diag_top_tof_quad_live`) +
-  mapear dirección→posición física.
+- ~~**HAL Sprint B**: extender `sensors_tof.cpp` a los 4 ToF~~ → ✅ **RESUELTO**:
+  enumeración de los 4 activa por default desde 2026-06-01 (`TOP_ENABLE_MULTI_TOF`)
+  y lectura validada en banco 2026-06-10 (round-robin `a6c0366` + payload recortado
+  `bf8ddd4`). Queda solo: mapear dirección→posición física tapando cada sensor.
 - **Conflicto pin 10**: el bodge usa el pin 10 como LP de ToF, pero ese pin era
   el dipswitch de rol → reubicar la lectura de rol (anotado en pinout_robot1.h).
 - HAL para CENTRAL (replicar el patrón en src/central/config_central.h).

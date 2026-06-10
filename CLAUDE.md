@@ -98,21 +98,22 @@ Desde 2026-05-29, el repo soporta hasta **3 agentes Claude trabajando en
 paralelo**, uno por placa (CENTRAL, TOP, DOWN), sin pisarse mutuamente.
 Cada agente vive en su propia **git worktree** con su propio branch.
 
-### Setup físico en el disco
+### Setup físico en el disco (ACTUALIZADO 2026-06-10 — verificado con `git worktree list`)
 
 ```
 C:/Users/violl/iitasoccer/
-├── open-soccer-robocup-team2026/   ← repo principal (Gustavo: merges + visión global)
-│                                       branch: main
-├── soccer-agente-central/           ← worktree CENTRAL
-│                                       branch: agente/central
-├── soccer-agente-top/               ← worktree TOP
-│                                       branch: agente/top
-└── soccer-agente-down/              ← worktree DOWN
-                                        branch: agente/down
+├── open-soccer-robocup-team2026/   ← dir histórico — branch: agente/vision
+│                                       ⛔ NO mergear ni trabajar main acá
+└── soccer-main/                     ← worktree MAIN (Gustavo: merges + visión global)
+                                        branch: main  ⭐ ACÁ se trabaja main
 ```
 
-Los 4 directorios son **el mismo repo git** (comparten `.git/objects/`),
+⚠️ Las worktrees `soccer-agente-{central,top,down}` del setup original 2026-05-29
+**fueron removidas** (sus ramas ya están mergeadas a main). El texto de abajo
+describe el esquema multi-agente por si se reactiva — **antes de asumir el layout,
+correr `git worktree list`**.
+
+Los directorios listados son **el mismo repo git** (comparten `.git/objects/`),
 cada uno con su **working tree e índice independientes**. Lo que hace un
 agente en su worktree NO afecta a las otras hasta que Gustavo mergea.
 
@@ -127,12 +128,12 @@ hoy 2026-05-29 los AGENT-SCOPE locales son la única fuente).
 
 ### Cuándo abrir sesión en cada worktree
 
-- **Trabajo en una placa específica** → abrir Claude Code en
-  `soccer-agente-{central,top,down}/`. Ahí el agente edita libremente su
-  placa y commitea a su branch.
+- **Trabajo en una placa específica** → abrir Claude Code en su worktree
+  `soccer-agente-*` (si se re-crean; hoy no existen). Ahí el agente edita
+  libremente su placa y commitea a su branch.
 - **Merges, visión global, decisiones cross-placa** → abrir Claude en
-  `open-soccer-robocup-team2026/` (repo principal). Ahí mergeás los
-  branches `agente/*` a `main` y coordinás trabajo grande.
+  **`soccer-main/`** (worktree en `main`). ⛔ NO en
+  `open-soccer-robocup-team2026/`, que quedó en `agente/vision`.
 
 ### Reglas no negociables del multi-agente
 
@@ -150,7 +151,7 @@ hoy 2026-05-29 los AGENT-SCOPE locales son la única fuente).
 ### Cómo mergear los branches `agente/*` a main
 
 ```bash
-cd ~/iitasoccer/open-soccer-robocup-team2026
+cd ~/iitasoccer/soccer-main        # ⛔ NO open-soccer-robocup-team2026 (está en agente/vision)
 git fetch
 git merge --no-ff agente/central     # uno por uno, secuencial
 git merge --no-ff agente/top

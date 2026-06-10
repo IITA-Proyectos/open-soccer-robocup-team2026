@@ -263,7 +263,9 @@ void loop() {
     // el ToF primero y, si corrió en esta pasada, SALTEAMOS el read del BNO hasta la
     // próxima pasada (donde no hay ToF) → el read del BNO queda AISLADO en el bus.
     // El BNO lee igual a 20 Hz (gate interno de sensors_imu_tick); sólo se corre la
-    // FASE para que no choque. ROBOT2 tiene el BNO en Wire1 (bus aparte) → usa el #else.
+    // FASE para que no choque. ROBOT2 usa el #else: su BNO PRIMARIO vive en Wire2
+    // (24/25, bus propio sin ToF) — pero ojo: su SECUNDARIO sí comparte Wire con los
+    // ToF y NO tiene este deconflict (tema-a-analizar, revisión 2026-06-10).
     bool tof_ran_this_pass = false;
     if (g_since_tof_tick >= TOF_TICK_INTERVAL_MS) {
         g_since_tof_tick = 0;

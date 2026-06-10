@@ -347,10 +347,13 @@ es **IDÉNTICO** (el `LineStatusV2` sale de `dm_update`, no de ese pipeline).
   `WHEEL_ANGLES_DEG` sin que ROBOT1 quede byte-idéntico hasta validar** —editar
   config es decisión del equipo con la medición.
 
-### 3.2 — Motores ROBOT2 (sin testear) + mapeo motor↔rueda
+### 3.2 — Motores ROBOT2 ✅ VALIDADO (banco 2026-06-09) + mapeo motor↔rueda
 
-- **Síntoma:** ROBOT2 (delantero) nunca se validó; `MOTOR_INVERT` de ROBOT2 está
-  copiado de ROBOT1 (`{+1,-1,+1}`, "sin validar en delantero", config_central.h:62).
+- **Estado:** banco Gustavo 2026-06-09 (`diag_central_motors` sobre robot2 armado):
+  pines IGUALES a R1 (NO rotados) y `MOTOR_INVERT={+1,+1,+1}` (el U17 de ESA placa
+  Zircon no está invertido por HW), con `MOTOR_MIN_PWM={70,70,107}` + impulso inicial
+  + freno anticipado de la trasera — ya aplicado en config_central.h (rama ROBOT2).
+  La card de abajo queda como referencia para re-validar SOLO si se cambia la placa.
 - **Qué medir:** que los 3 H-bridge del Zircon de ROBOT2 energicen y giren en el
   sentido correcto; mapear motor firmware 1/2/3 → rueda física + sentido.
 - **Comando:**

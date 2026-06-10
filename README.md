@@ -32,12 +32,11 @@ open-soccer-robocup-team2026/
 │   └── mechanical/          #   Impresión 3D, piezas manuales, ensamblaje
 ├── software/                # Todo el código
 │   ├── teensy/Soccer 2026/  #   ⭐ Firmware VIVO 3 placas (PlatformIO) — src/{central,top,down,shared,diag}
-│   ├── staging/             #   Sketches y experimentos por subsistema
-│   ├── robot-arquero/       #   Material específico del arquero (ROBOT1)
-│   ├── robot-delantero/     #   Material específico del delantero (ROBOT2)
-│   ├── vision/              #   Código de cámara OpenMV
+│   ├── staging/             #   Sketches y experimentos por subsistema (congelado)
+│   ├── robot-v2/            #   Material específico de ROBOT2 (cámaras + placas)
 │   ├── communication/       #   Comunicación entre placas / robots
-│   └── libraries/zirconLib/ #   Librería de la placa Zircon
+│   ├── libraries/           #   (legacy; el código vivo está en teensy/)
+│   └── _deprecated-2025/    #   Código 2025 congelado (NO flashear)
 ├── skills/                  # Playbooks técnicos del dominio (knowledge base, no auto-invocables)
 ├── competition/             # Reglas, cronograma, poster técnico
 │   ├── rules/

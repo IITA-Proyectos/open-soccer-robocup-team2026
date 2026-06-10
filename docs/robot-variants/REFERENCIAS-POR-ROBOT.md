@@ -60,9 +60,9 @@ de cantidad de periféricos, en el env (no por robot):
 | `DOWN_NUM_MUXES_CONNECTED` | `config_down.h:32-35` (`#ifndef`→1) | 1 (8 sensores) | `platformio.ini:101` → **4** (32 sensores) |
 | `DOWN_NUM_OTOS_CONNECTED` | `config_down.h:37-40` (`#ifndef`→1) | 1 | `platformio.ini:102` → **2** |
 
-- **HAY UN SOLO `[env:down]`** (`platformio.ini:92-113`). No existe `down_robot1` / `down_robot2`.
-  → Hoy DOWN compila idéntico para ambos robots; para R2 (sin OTOS) hay que crear un env nuevo
-  o cambiar el flag. Ver §5.
+- **HAY UN SOLO `[env:down]`** (`platformio.ini:92-113`). ⚠️ **Actualización 2026-06-06
+  (post-auditoría):** ya existe **`[env:down_robot2]`** (= `down` + `-DDOWN_NUM_OTOS_CONNECTED=0`,
+  creado en banco). Para R2 (sin OTOS) flashear `down_robot2`; `[env:down]` queda para ROBOT1. Ver §5.
 
 **Conclusión del mecanismo:** la selección por robot está **fragmentada en 3 lugares**
 (macro TOP, macro CENTRAL, flags DOWN) y NO existe un único "robot definition". Ese es el objetivo

@@ -14,8 +14,10 @@ namespace iitasoccer {
 // ============================================================
 // LP (XSHUT) de los 4 TOFs — bodge físico de Enzo
 // ============================================================
-// Mismo diseño que R1: 4 ToF en `Wire` (18/19) con LP individual; Wire1
-// (24/25) liberado para la placa DOWN. En R1 los pines LP {9,10,11,12}
+// Mismo diseño que R1: 4 ToF en `Wire` (18/19) con LP individual; Wire2
+// (24/25 — es Wire2/LPI2C4, NO "Wire1"; corrección 2026-06-09) ocupado por
+// el BNO PRIMARIO de R2 (el enlace a DOWN es UART, no I²C).
+// En R1 los pines LP {9,10,11,12}
 // (activo-ALTO) quedaron CONFIRMADOS en banco (2026-05-30, ver journal).
 // R2 es una construcción manual separada: se asumen los mismos pines, pero
 // ⚠️ FALTA correr el banco en R2 (diag_top_tof_census, mismo procedimiento
@@ -48,7 +50,7 @@ constexpr uint8_t TOF_I2C_ADDR_ASSIGNED[4] = {
 #define ROBOT_HAS_TOF_BACK  1
 #define ROBOT_HAS_TOF_LEFT  1
 #define ROBOT_HAS_TOF_RIGHT 1
-#define ROBOT_HAS_OTOS      1   // R2 (delantero) con OTOS
+#define ROBOT_HAS_OTOS      0   // R2: su DOWN va SIN OTOS (no llegaron; env down_robot2 con OTOS=0)
 
 constexpr int NUM_TOF_ACTIVE = 4;
 

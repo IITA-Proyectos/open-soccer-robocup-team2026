@@ -37,9 +37,9 @@ programación — ya es independiente. (Teensy 4.0 tiene 7 UART y la 4.1 tiene 8
 | **`Serial`** (USB) | — | — | PC | — | flasheo + monitor (debug) |
 | **`Serial1`** | 0 | 1 | ← DOWN | 230400 | recibe odometría OTOS (pose + vel) + línea (`LineStatusV2`, broadcast; cacheada, no consumida aún) |
 | **`Serial2`** | 7 | 8 | ↔ COMM (ESP32-C6) | 115200 | **partner ESP-NOW / status** (el árbitro NO viene por acá; ver §1.1) |
-| **`Serial3`** | 15 | 14 | ← cámara **frontal** (U8) | 19200 | blobs pelota/arcos (9 bytes) |
+| **`Serial3`** | 15 | 14 | ← cámara **frontal** (U8) | 19200 | blobs pelota/arcos (11 bytes, contrato v2 CRC8) |
 | **`Serial4`** | 16 | 17 | → CENTRAL | 230400 | envía `WORLD_SNAPSHOT` (100 Hz) |
-| **`Serial5`** | 21 | 20 | ← cámara **trasera** | 19200 | blobs pelota/arcos (9 bytes) |
+| **`Serial5`** | 21 | 20 | ← cámara **trasera** | 19200 | blobs pelota/arcos (11 bytes, contrato v2 CRC8) |
 
 > **⚠️ FIX 2026-06-02 (Gustavo, banco):** el Teensy 4.0 del TOP **NO expone `Serial7` (28/29)
 > en el borde** — son pads SMD traseros, no cableables con header. TASK-204 había puesto el
@@ -57,7 +57,7 @@ El comando del árbitro RCJ (PLAY/STOP del partido) llega al TOP como **nivel di
 | Pin TOP | Señal | Nivel |
 |---------|-------|-------|
 | **5** | OUT1 (PLAY/STOP) | **0 = juego PARADO · 1 = juego EN CURSO (3.3 V)** |
-| **6** | OUT2 (espejo de OUT1) | igual que OUT1 |
+| **6** | OUT2 (segunda salida — **NO es espejo**: en PLAY sube SOLO uno de los dos) | misma semántica que OUT1; el firmware combina por **OR** |
 
 - Firmware (`src/top/comm_arbiter.cpp`): `read_referee_gpio()` lee los pines 5/6 con `INPUT_PULLDOWN`; `match_running = (pin5 O pin6)` en alto (**OR**). En PLAY el COMM sube **solo uno** de los dos pines (5 *o* 6) y el otro queda en 0 (probado en banco 2026-06-02, Gustavo): por eso el viejo AND nunca daba GO y el OR sí. Sigue siendo *fail-safe*: si se desconecta el cable del COMM, ambos pines leen 0 por el `INPUT_PULLDOWN` → `match_running=false` (STOP).
 - El `Serial2` (7/8) del enlace a COMM queda **SOLO para partner ESP-NOW / status**; el viejo frame `COMM_REFEREE_CMD` por UART quedó **obsoleto**.

@@ -235,8 +235,10 @@ se re-arma el reloj.
   el ×10 % explícito puede ser redundante. Decisión a confirmar con el equipo.
 - **No combinar con `CENTRAL_SLOW_MOTION`** al medir el kickstart: el `MOTION_SCALE=0.7` baja el base antes
   de la cinemática y los números del banco no coincidirían con competencia.
-- **ROBOT2 (delantero) queda con factor 10 (no-op)** a propósito: pines rotados, `MOTOR_MIN_PWM={0,0,0}` sin
-  calibrar.
+- **ROBOT2 — SUPERADO 2026-06-09 (banco):** pines NO rotados (iguales a R1),
+  `MOTOR_INVERT={+1,+1,+1}`, `MOTOR_MIN_PWM={70,70,107}` y `MOTOR_EFF_X100={100,100,131}`
+  validados en banco (config_central.h, rama ROBOT2). El kickstart de R2 usa impulso FIJO
+  con cap por rueda {130,130,140} (motors_zircon.cpp).
 
 ---
 

@@ -33,14 +33,13 @@ moverse. El arquero casi no usa los ToF → un env de banco sin ToF ahorra 3.4 s
 
 ## FASE 0 — Fixes de escritorio (Claude, con OK de Gustavo; gate + banco después)
 - [x] **GOTO_LINE recto atrás** (vx=0, vy=350) — APLICADO 2026-06-09 (orden de Gustavo).
-- [ ] **F0.a Velocidades GK a régimen fiel**: `GK_PATROL_SPEED` 150→420 · `GK_LINE_RETREAT_SPEED`
-      250→420 · `GK_GOTO_LINE_VY_BACK` 350→420 · clamp mínimo 420 al vx de INTERCEPT.
-      (Cota: `gk_motion_speed`; el strafe validado de robot2 ya corre a ese régimen efectivo.)
-- [ ] **F0.b Anti-flapping PATROL↔LINE_AVOID**:
-      (1) setpoint de patrulla "apenas pisando": `GK_CROSS_TRACK_SETPOINT_MM` 0 → +40 mm
-      (el anillo toca el borde con 2-4 sensores, no centrado con 6+);
-      (2) histéresis del disparo: entrar a LINE_AVOID con ≥8 sensores (o penetración honda),
-      salir con ≤3 + cooldown 300 ms antes de re-disparar.
+- [x] **F0.a Velocidades GK** (cerrado DISTINTO en banco 2026-06-09/10): `GK_LINE_RETREAT_SPEED`=420 ✅
+      · `GK_GOTO_LINE_VY_BACK`=420 ✅ · `GK_PATROL_SPEED` queda en **200 A PROPÓSITO** (con
+      `CENTRAL_FLOOR_SCALE` el strafe bajo es fiel; más rápido el arquero se pasa de largo —
+      NO subir sin banco) · clamp mínimo al vx de INTERCEPT: descartado (FLOOR_SCALE escala uniforme).
+- [x] **F0.b Anti-flapping** — SUPERADO por la patrulla v3.2/v3.3 (2026-06-10): ya no hay PID de
+      cross_track ni LINE_AVOID alcanzable para el GK; la respuesta a línea es por ÁNGULO
+      (atrás→avanzar, costado→rebotar) con debounce+cooldown en el router. Ver FASE 4/5.
 - [ ] **F0.c Slow-mo + pisos = incompatible**: documentar/avisar que `central_*_slow` con pisos
       altos distorsiona ×5.4 — para observar lento, bajar VELOCIDAD comandada manteniendo ≥régimen
       fiel, no escalar.

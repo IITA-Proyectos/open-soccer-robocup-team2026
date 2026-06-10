@@ -78,7 +78,7 @@ constexpr uint8_t TOF_I2C_ADDR_ASSIGNED[4] = {
 #define ROBOT_HAS_TOF_BACK  1
 #define ROBOT_HAS_TOF_LEFT  1
 #define ROBOT_HAS_TOF_RIGHT 1
-#define ROBOT_HAS_OTOS      0   // R1 (arquero) sin OTOS
+#define ROBOT_HAS_OTOS      1   // R1: su DOWN lleva los 2 OTOS (env down; corrección 2026-06-10 — estaba invertido con R2)
 
 // Cantidad de TOFs activos (calcular a mano según los HAS_* arriba).
 // 4 ToF fijos confirmados enumerando. Ver NUM_TOF / NUM_TOF_MAX en

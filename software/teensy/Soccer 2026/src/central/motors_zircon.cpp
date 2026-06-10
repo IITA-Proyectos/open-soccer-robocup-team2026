@@ -4,6 +4,9 @@
 #ifdef CENTRAL_MOTOR_KICKSTART
 #include "motor_kickstart.h"   // impulso inicial anti-inercia (módulo PURO, técnica 2025)
 #endif
+#ifdef CENTRAL_FLOOR_SCALE
+#include "motor_floor_scale.h" // piso por ESCALADO UNIFORME + eficiencia (módulo PURO)
+#endif
 #include <Arduino.h>
 
 namespace iitasoccer {
@@ -114,6 +117,30 @@ void motors_apply_command(const MotorCommand& cmd) {
     WheelSpeeds ws = inverse_kinematics(vx, vy, omega_rad_s, WHEELS);
     saturate_wheels(ws, MAX_SPEED_MM_S);
 
+#ifdef CENTRAL_FLOOR_SCALE
+    // ── PISO POR ESCALADO UNIFORME (banco 2026-06-09: el clamp por-rueda se comía las
+    // correcciones de gyro a velocidad de patrulla → el arquero PERDÍA EL FRENTE). Se
+    // computan los 3 PWM juntos y motor_floor_scale (puro, testeado) los lleva al piso
+    // ESCALANDO PROPORCIONALMENTE: la dirección y las correcciones finas se conservan;
+    // el strafe puro cae EXACTO en la mezcla validada {70,70,107}. Cap térmico 150
+    // también proporcional. Componentes ≤ ruido → 0 (sin bang-bang).
+    int pwm_scaled[3];
+    for (int i = 0; i < 3; ++i) {
+        pwm_scaled[i] = wheel_speed_to_pwm(ws.wheel[i], MAX_SPEED_MM_S, MAX_PWM);
+    }
+    {
+        FloorScaleCfg fscfg;
+        for (int i = 0; i < 3; ++i) {
+            fscfg.floor_pwm[i] = MOTOR_MIN_PWM[i];
+            fscfg.eff_x100[i]  = MOTOR_EFF_X100[i];
+        }
+        fscfg.noise_thresh = MOTOR_PWM_NOISE_THRESH;
+        fscfg.burn_cap     = 150;   // límite térmico motores 5V @ 7,4V
+        motor_floor_scale(pwm_scaled, fscfg);
+    }
+    for (int i = 0; i < 3; ++i) {
+        int pwm = pwm_scaled[i];
+#else
     for (int i = 0; i < 3; ++i) {
         int pwm = wheel_speed_to_pwm(ws.wheel[i], MAX_SPEED_MM_S, MAX_PWM);
         // Piso de PWM POR RUEDA (deadzone bajo carga): a vx/vy bajos el PWM cae en la zona
@@ -122,6 +149,7 @@ void motors_apply_command(const MotorCommand& cmd) {
         // (si la trasera lleva el mismo piso se adelanta y hace ROTAR el robot en el strafe).
         // DEFAULT {0,0,0} (ROBOT2) → no-op → binario neutro.
         pwm = apply_pwm_floor(pwm, MOTOR_MIN_PWM[i], MOTOR_PWM_NOISE_THRESH);
+#endif
 #ifdef CENTRAL_REAR_BRAKE_LEAD
         // Freno anticipado: con el cut activo la TRASERA (idx 2) corta a 0 mientras las
         // delanteras siguen. Va ANTES del kickstart: el 0 re-arma el disparador del

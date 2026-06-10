@@ -59,6 +59,11 @@ namespace iitasoccer {
     // 🔧 TUNEAR: delanteras (idx0/idx1) → SUBÍ si no empujan el robot en el piso (70→90…).
     // ⚠️ NO pasar ~150 (motores brushed 5V a 7.4V se queman > ~70%). Orden {M1, M2, M3}.
     constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 107 };  // ⚠️ A VERIFICAR EN BANCO R1 (parte de R2)
+    // Eficiencia relativa PWM→velocidad por rueda (×100) — para el piso por ESCALADO
+    // UNIFORME (-DCENTRAL_FLOOR_SCALE, motor_floor_scale.h). Derivada del banco R2:
+    // la trasera alineada rinde ~1.31× más velocidad por PWM que las oblicuas
+    // (2:1 de velocidad con 107/70=1.53 de PWM → 2/1.53≈1.31). ⚠️ R1 A VERIFICAR.
+    constexpr int MOTOR_EFF_X100[3] = { 100, 100, 131 };
 #elif defined(ROBOT2)  // Delantero
     // ✅ BANCO 2026-06-09 (Gustavo, diag_central_motors en robot2 armado): la DISPOSICIÓN
     // resultó IGUAL a ROBOT1 — M1=U5(2/5/3)=delantera-IZQUIERDA · M2=U17(8/7/6)=delantera-
@@ -87,6 +92,12 @@ namespace iitasoccer {
     // 🔧 TUNEAR: delanteras (idx0/idx1) ↑ si no empujan el robot en el piso (70→90…);
     //            trasera (idx2) ↓ si el robot ROTA en el strafe. ⚠️ NO pasar ~150 (queman).
     constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 107 }; // banco 2026-06-09: trasera barrida 42→...→105→107.
+    // Eficiencia relativa PWM→velocidad por rueda (×100) — piso por ESCALADO UNIFORME
+    // (-DCENTRAL_FLOOR_SCALE, motor_floor_scale.h). ✅ DERIVADA DEL BANCO R2 2026-06-09:
+    // la trasera (alineada al strafe) rinde ~1.31× más velocidad por PWM que las
+    // delanteras oblicuas: el strafe derecho salió con PWM 107/70 = 1.53 cuando la
+    // cinemática pide velocidad 2:1 → eficiencia = 2/1.53 ≈ 1.31.
+    constexpr int MOTOR_EFF_X100[3] = { 100, 100, 131 };
                                                       // OJO: en el strafe la trasera DEBE ir al
                                                       // DOBLE de velocidad que las delanteras
                                                       // (cinemática: fronts 0.5·vx, rear 1.0·vx);

@@ -73,11 +73,12 @@ namespace iitasoccer {
     constexpr int PIN_PWM3 = 4;
 
     constexpr int MOTOR_INVERT[3] = { +1, +1, +1 };  // ✅ banco 2026-06-09: los 3 horario sin invertir
-    // Piso de PWM por rueda OFF hasta tunear el strafe del delantero en banco. Con la
-    // disposición confirmada (= R1), los índices ya significan lo mismo que en el arquero:
-    // idx0/idx1 = delanteras (oblicuas, piso alto) · idx2 = trasera (paralela, piso bajo).
-    // El {70,70,42} de R1 sirve de PUNTO DE PARTIDA al calibrar (motores/peso pueden diferir).
-    constexpr int MOTOR_MIN_PWM[3] = { 0, 0, 0 };
+    // Piso de PWM por rueda — ACTIVADO en banco 2026-06-09: en el strafe de robot2 la trasera
+    // movía pero las DELANTERAS no rompían la inercia (~19 PWM, mitad geométrica del strafe).
+    // Mismo síntoma y mismo fix que el arquero. Punto de partida = los valores de R1.
+    // 🔧 TUNEAR: delanteras (idx0/idx1) ↑ si no empujan el robot en el piso (70→90…);
+    //            trasera (idx2) ↓ si el robot ROTA en el strafe. ⚠️ NO pasar ~150 (queman).
+    constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 42 };  // banco 2026-06-09, partida = R1
 #else
     #error "Debe definirse ROBOT1 (arquero) o ROBOT2 (delantero) en build_flags"
 #endif

@@ -1,6 +1,9 @@
 #include "motors_zircon.h"
 #include "config_central.h"
 #include "kinematics.h"
+#ifdef CENTRAL_MOTOR_KICKSTART
+#include "motor_kickstart.h"   // impulso inicial anti-inercia (módulo PURO, técnica 2025)
+#endif
 #include <Arduino.h>
 
 namespace iitasoccer {
@@ -24,6 +27,20 @@ const WheelConfig WHEELS[3] = {
     { WHEEL_ANGLES_DEG[1] * PI_F / 180.0f, WHEEL_RADIUS_MM },
     { WHEEL_ANGLES_DEG[2] * PI_F / 180.0f, WHEEL_RADIUS_MM },
 };
+
+#ifdef CENTRAL_MOTOR_KICKSTART
+// IMPULSO INICIAL anti-inercia (gateado, default OFF → binario idéntico sin el flag).
+// Técnica del robot 2025 portada (docs/firmware/MOTION-CONTROL-HISTORICO.md §1): al
+// detectar la transición parado→comando de CADA rueda, durante una ventana corta el
+// PWM se multiplica (1.8× por 40 ms, cap duro 153 < ~70% que quema los motores) para
+// ROMPER el rozamiento estático; pasada la ventana fluye el PWM de régimen. El cálculo
+// es el módulo PURO motor_kickstart (host-testeado); acá solo vive el cronómetro.
+bool     g_kick_active[3]   = { false, false, false };
+uint32_t g_kick_start_ms[3] = { 0, 0, 0 };
+constexpr int KICKSTART_WINDOW_MS  = 40;   // 2025: 40 ms (arquero, factor 1.8)
+constexpr int KICKSTART_FACTOR_X10 = 18;   // ×1.8
+constexpr int KICKSTART_PWM_CAP    = 153;  // = 1.8×85 del 2025; bajo el límite de quemado
+#endif
 
 void apply_pwm_to_motor(int motor_idx, int pwm_signed) {
     if (motor_idx < 0 || motor_idx >= 3) return;
@@ -90,6 +107,26 @@ void motors_apply_command(const MotorCommand& cmd) {
         // (si la trasera lleva el mismo piso se adelanta y hace ROTAR el robot en el strafe).
         // DEFAULT {0,0,0} (ROBOT2) → no-op → binario neutro.
         pwm = apply_pwm_floor(pwm, MOTOR_MIN_PWM[i], MOTOR_PWM_NOISE_THRESH);
+#ifdef CENTRAL_MOTOR_KICKSTART
+        // Impulso inicial: boost 1.8× por 40 ms SOLO en la transición parado→comando
+        // de esta rueda (ver bloque de estado arriba). Actúa sobre el PWM final (post
+        // piso). pwm==0 re-arma el disparador para el próximo arranque.
+        {
+            const uint32_t kick_now = millis();
+            if (pwm == 0) {
+                g_kick_active[i] = false;
+            } else {
+                if (!g_kick_active[i]) {
+                    g_kick_active[i]   = true;
+                    g_kick_start_ms[i] = kick_now;
+                }
+                pwm = motor_kickstart_pwm(pwm,
+                                          static_cast<int>(kick_now - g_kick_start_ms[i]),
+                                          KICKSTART_WINDOW_MS, KICKSTART_FACTOR_X10,
+                                          KICKSTART_PWM_CAP);
+            }
+        }
+#endif
         apply_pwm_to_motor(i, pwm);
     }
 }

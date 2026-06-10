@@ -37,6 +37,14 @@ const WheelConfig WHEELS[3] = {
 // es el módulo PURO motor_kickstart (host-testeado); acá solo vive el cronómetro.
 bool     g_kick_active[3]   = { false, false, false };
 uint32_t g_kick_start_ms[3] = { 0, 0, 0 };
+#endif
+
+#ifdef CENTRAL_REAR_BRAKE_LEAD
+// Freno anticipado de la trasera (ver motors_zircon.h). El caller manda el timing.
+bool g_rear_cut = false;
+#endif
+
+#ifdef CENTRAL_MOTOR_KICKSTART
 constexpr int KICKSTART_WINDOW_MS  = 40;   // ventana del impulso (2025: 40 ms)
 // IMPULSO FIJO (banco robot2 2026-06-09, decisión de Gustavo): el ×1.8 multiplicativo
 // dejaba el golpe DESPAREJO (delanteras 126, trasera 42×1.8=75 → no rompía inercia).
@@ -44,7 +52,9 @@ constexpr int KICKSTART_WINDOW_MS  = 40;   // ventana del impulso (2025: 40 ms)
 // cap 130 ⇒ cualquier base llega al cap ⇒ impulso fijo = 130, conservando el signo.
 // (130 queda bajo el límite de quemado ~150 de los motores 5V a 7,4V.)
 constexpr int KICKSTART_FACTOR_X10 = 99;   // ×9.9: garantiza que toda rueda llegue al cap
-constexpr int KICKSTART_PWM_CAP    = 130;  // ⇒ el impulso ES este valor (fijo, todas las ruedas)
+// Impulso FIJO POR RUEDA (banco robot2 2026-06-09): la trasera "se quedaba" al arrancar
+// con 130 → su golpe sube a 140 (transitorio de 40 ms, tolerable; NO pasar ~150).
+constexpr int KICKSTART_PWM_CAP[3] = { 130, 130, 140 };  // {M1, M2, M3=trasera}
 #endif
 
 void apply_pwm_to_motor(int motor_idx, int pwm_signed) {
@@ -112,6 +122,12 @@ void motors_apply_command(const MotorCommand& cmd) {
         // (si la trasera lleva el mismo piso se adelanta y hace ROTAR el robot en el strafe).
         // DEFAULT {0,0,0} (ROBOT2) → no-op → binario neutro.
         pwm = apply_pwm_floor(pwm, MOTOR_MIN_PWM[i], MOTOR_PWM_NOISE_THRESH);
+#ifdef CENTRAL_REAR_BRAKE_LEAD
+        // Freno anticipado: con el cut activo la TRASERA (idx 2) corta a 0 mientras las
+        // delanteras siguen. Va ANTES del kickstart: el 0 re-arma el disparador del
+        // impulso → el próximo arranque de la trasera vuelve a pegar el golpe inicial.
+        if (i == 2 && g_rear_cut) pwm = 0;
+#endif
 #ifdef CENTRAL_MOTOR_KICKSTART
         // Impulso inicial: boost 1.8× por 40 ms SOLO en la transición parado→comando
         // de esta rueda (ver bloque de estado arriba). Actúa sobre el PWM final (post
@@ -128,7 +144,7 @@ void motors_apply_command(const MotorCommand& cmd) {
                 pwm = motor_kickstart_pwm(pwm,
                                           static_cast<int>(kick_now - g_kick_start_ms[i]),
                                           KICKSTART_WINDOW_MS, KICKSTART_FACTOR_X10,
-                                          KICKSTART_PWM_CAP);
+                                          KICKSTART_PWM_CAP[i]);
             }
         }
 #endif
@@ -157,5 +173,9 @@ void motors_brake() {
 void motors_set_one(int motor_idx, int pwm_signed) {
     apply_pwm_to_motor(motor_idx, pwm_signed);
 }
+
+#ifdef CENTRAL_REAR_BRAKE_LEAD
+void motors_set_rear_cut(bool cut) { g_rear_cut = cut; }
+#endif
 
 }  // namespace iitasoccer

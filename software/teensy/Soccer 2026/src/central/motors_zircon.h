@@ -36,4 +36,13 @@ void motors_brake();
 //   pwm == 0     → libre
 void motors_set_one(int motor_idx, int pwm_signed);
 
+#ifdef CENTRAL_REAR_BRAKE_LEAD
+// FRENO ANTICIPADO DE LA TRASERA (técnica 2025; banco robot2 2026-06-09). Con cut=true,
+// motors_apply_command fuerza PWM=0 en la rueda TRASERA (idx 2) mientras las delanteras
+// siguen. El CALLER (diag/FSM, que es quien sabe cuándo termina el movimiento) lo activa
+// en los últimos ms del tramo: la trasera rueda de más por inercia y desacomoda el robot
+// al frenar. Gateado: sin -DCENTRAL_REAR_BRAKE_LEAD esta API no existe (binario idéntico).
+void motors_set_rear_cut(bool cut);
+#endif
+
 }  // namespace iitasoccer

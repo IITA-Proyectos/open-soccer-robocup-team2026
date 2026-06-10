@@ -40,17 +40,25 @@ namespace iitasoccer {
     // Fuente: docs/firmware/DIAG-CENTRAL-MOTORS.md + journal 2026-05-29 / 2026-06-01.
     // + RE-CONFIRMADO banco 2026-06-06 (commit 8956d10) tras rearmar el robot: se mueve derecho + esquiva la línea.
     constexpr int MOTOR_INVERT[3] = { +1, -1, +1 };
-    // Piso de PWM POR RUEDA (deadzone bajo carga) — banco 2026-06-08, Gustavo.
-    // El PWM mínimo para que la rueda ARRANQUE depende de la fricción que ve esa rueda. Hallazgo:
-    // las DELANTERAS (idx0/idx1) trabajan OBLICUAS a 60° (sus rodillos ruedan de costado) → MUCHA
-    // más fricción → necesitan MÁS piso. La TRASERA (idx2/M3) va PARALELA al strafe → arranca con
-    // MENOS; si le ponés el mismo piso que a las delanteras, se ADELANTA y hace ROTAR el robot.
-    // (El PWM NO es proporcional a la velocidad real: es distinto por rueda.)
+    // Piso de PWM POR RUEDA (deadzone bajo carga). Física (banco R1 06-08 + R2 06-09, Gustavo):
+    // el PWM mínimo para que la rueda ARRANQUE depende de la fricción que ve ESA rueda — las
+    // DELANTERAS (idx0/idx1) trabajan OBLICUAS a 60° (sus rodillos ruedan de costado) → MUCHA
+    // más fricción → necesitan MÁS piso. La TRASERA (idx2/M3) va ALINEADA al strafe → menos
+    // fricción. (El PWM NO es proporcional a la velocidad real y es DISTINTO por rueda.)
+    // ⚠️ DOBLE HISTORIA del idx2 (trasera) — leer ANTES de tunear:
+    // (a) Banco R1 2026-06-08: idx2 se BAJÓ a 42 porque con piso alto el robot ROTABA en el
+    //     strafe (la trasera, con menos fricción, se adelantaba a las delanteras).
+    // (b) Banco R2 2026-06-09 (diag_central_strafe_robot2_kick, barrido 42→50→70→85→95→100→
+    //     105→107): la trasera necesita ~107 para SOSTENER la relación 2:1 de velocidad del
+    //     strafe (cinemática: fronts 0.5·vx, rear 1.0·vx). Por ser rueda alineada (menos
+    //     fricción que las oblicuas) lo logra con ~1.5x el PWM de las delanteras (107 vs 70),
+    //     no 2x.
+    // (c) Decisión Gustavo 2026-06-09: R1 PARTE de los valores validados en banco R2.
+    // ⚠️ A VERIFICAR EN BANCO R1: si R1 ROTA en el strafe con 107, bajar idx2 GRADUALMENTE
+    //    (107→95→85→…); la historia del 42 está en git.
     // 🔧 TUNEAR: delanteras (idx0/idx1) → SUBÍ si no empujan el robot en el piso (70→90…).
-    //           trasera   (idx2)       → BAJÁ si el robot ROTA en el strafe (42→35…); SUBÍ si la
-    //                                      trasera queda floja y el strafe sale débil de atrás.
     // ⚠️ NO pasar ~150 (motores brushed 5V a 7.4V se queman > ~70%). Orden {M1, M2, M3}.
-    constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 42 };
+    constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 107 };  // ⚠️ A VERIFICAR EN BANCO R1 (parte de R2)
 #elif defined(ROBOT2)  // Delantero
     // ✅ BANCO 2026-06-09 (Gustavo, diag_central_motors en robot2 armado): la DISPOSICIÓN
     // resultó IGUAL a ROBOT1 — M1=U5(2/5/3)=delantera-IZQUIERDA · M2=U17(8/7/6)=delantera-
@@ -78,7 +86,7 @@ namespace iitasoccer {
     // Mismo síntoma y mismo fix que el arquero. Punto de partida = los valores de R1.
     // 🔧 TUNEAR: delanteras (idx0/idx1) ↑ si no empujan el robot en el piso (70→90…);
     //            trasera (idx2) ↓ si el robot ROTA en el strafe. ⚠️ NO pasar ~150 (queman).
-    constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 95 };  // banco 2026-06-09: trasera 42→50→70→85→95.
+    constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 107 }; // banco 2026-06-09: trasera barrida 42→...→105→107.
                                                       // OJO: en el strafe la trasera DEBE ir al
                                                       // DOBLE de velocidad que las delanteras
                                                       // (cinemática: fronts 0.5·vx, rear 1.0·vx);
@@ -134,7 +142,8 @@ constexpr float MAX_SPEED_MM_S  = 1000.0f; // velocidad máxima estimada del rob
 // manda 0 cuando |pwm| <= MOTOR_PWM_NOISE_THRESH.
 //
 // ⚠️ EL PISO ES POR RUEDA: MOTOR_MIN_PWM[3] está definido POR-ROBOT arriba, en el bloque
-// #if (ROBOT1 = {70,70,42}; ROBOT2 = {0,0,0} neutro hasta calibrar). Es por rueda porque
+// #if (R2 = {70,70,107} validado banco 2026-06-09; R1 parte de esos mismos valores —
+// ⚠️ A VERIFICAR EN BANCO R1, ver la doble historia del idx2 arriba). Es por rueda porque
 // la fricción que ve cada una es distinta: las DELANTERAS van oblicuas (más fricción →
 // piso más alto) y la TRASERA paralela (menos → piso más bajo, si no se adelanta y rota).
 // 🔧 Tuneo del arquero: cambiar MOTOR_MIN_PWM[idx] en la rama ROBOT1 del #if de arriba.

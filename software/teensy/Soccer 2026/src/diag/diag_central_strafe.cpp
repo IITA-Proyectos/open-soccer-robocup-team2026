@@ -95,6 +95,19 @@ constexpr uint32_t PAUSE_MS        = 800;   // pausa entre tramos
 constexpr uint32_t DEBOUNCE_MS     = 50;    // antirebote estable (anti-ruido de motor)
 constexpr uint32_t PRINT_PERIOD_MS = 250;
 
+#ifdef CENTRAL_REAR_BRAKE_LEAD
+// FRENO ANTICIPADO DE LA TRASERA (banco robot2 2026-06-09; técnica 2025, valores del
+// módulo motor_brake.h host-testeado: 60 ms @ VEL=100 ×1.1 robot más pesado = 66 ms).
+// En los últimos REAR_LEAD_MS del tramo la trasera corta (PWM 0) y las delanteras
+// terminan solas — la inercia de la trasera la hace rodar de más y desacomoda el robot.
+// 🔧 Tunear con -DDIAG_STRAFE_REAR_LEAD_MS=N (subí si sigue rodando; bajá si la cola frena antes).
+#ifndef DIAG_STRAFE_REAR_LEAD_MS
+  constexpr uint32_t REAR_LEAD_MS = 66;
+#else
+  constexpr uint32_t REAR_LEAD_MS = DIAG_STRAFE_REAR_LEAD_MS;
+#endif
+#endif
+
 // IZQUIERDA = -vx (convención +X = derecha). Invertible si el banco lo muestra al revés.
 #ifdef DIAG_STRAFE_INVERT_LR
   constexpr float LEFT_SIGN = +1.0f;
@@ -166,6 +179,9 @@ void print_status() {
 void enter_state(State s) {
     g_state = s;
     g_state_start_ms = millis();
+#ifdef CENTRAL_REAR_BRAKE_LEAD
+    motors_set_rear_cut(false);   // cada cambio de estado re-arma la trasera
+#endif
     switch (s) {
         case State::WAITING:
             motors_stop();
@@ -240,6 +256,10 @@ void loop() {
 
         case State::STRAFE:
             if (advance) { enter_state(State::STOPPED); break; }
+#ifdef CENTRAL_REAR_BRAKE_LEAD
+            // Últimos REAR_LEAD_MS del tramo: trasera corta, delanteras terminan solas.
+            motors_set_rear_cut((now - g_state_start_ms) + REAR_LEAD_MS >= STRAFE_DURATION_MS);
+#endif
             apply_strafe(g_dir);
             if (now - g_state_start_ms > STRAFE_DURATION_MS) enter_state(State::PAUSE);
             break;

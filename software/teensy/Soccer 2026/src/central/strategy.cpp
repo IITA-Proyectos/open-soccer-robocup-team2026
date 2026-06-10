@@ -146,6 +146,23 @@ constexpr int16_t GK_GOTO_LINE_VX_RIGHT   = 0;     // recto atrás (era 180 diag
 constexpr int16_t GK_GOTO_LINE_VY_BACK    = 420;   // hacia atrás → se aplica como -Y
 constexpr uint32_t GK_GOTO_LINE_TIMEOUT_MS = 4000; // safety: si no encuentra la línea → PATROL
 
+// ── TRIMS del retroceso (banco 2026-06-09, 3ª pasada: "deriva suave a la DERECHA") ──
+// La deriva yendo atrás tiene DOS componentes y cada una tiene su perilla:
+// (a) TRASLACIONAL (desliza de costado MIRANDO al frente — el gyro NO la ve; viene de
+//     asimetría de fuerza M1 vs M2): se compensa con un empuje lateral constante.
+//     ⚠️ TOPE FÍSICO ±19 mm/s: más, y la componente que le toca a la TRASERA supera el
+//     umbral de ruido (5 PWM) → el piso la dispara a 107 = patada lateral. Dentro de
+//     ±19, el trim viaja por las delanteras (que van a ~93 PWM, sobre su piso) y la
+//     trasera queda en silencio.
+// (b) DE RUMBO (rota despacio y el PID, topeado a 10°/s, corrige con atraso): se
+//     compensa sesgando el RUMBO objetivo unos grados al lado contrario.
+// 🔧 CALIBRAR EN BANCO (deriva A LA DERECHA → ambos trims hacia la IZQUIERDA):
+//     1º subí/bajá VX_TRIM de a 5 (−15 → −19 → −10…) mirando el camino;
+//     2º si todavía termina chueco DE RUMBO, tocá HEADING_TRIM de a 1°.
+//     Deriva a la IZQUIERDA → signos opuestos. 0 = sin compensación.
+constexpr float GK_GOTO_LINE_VX_TRIM_MM_S    = -15.0f;  // − = empuje a la IZQ (máx ±19)
+constexpr float GK_GOTO_LINE_HEADING_TRIM_DEG = 0.0f;   // + = sesgar rumbo a la IZQ (CCW)
+
 // AVANCE POST-LÍNEA (diseño de Gustavo, banco 2026-06-09 v2): al tocar la línea el
 // arquero NO se queda sobre ella (quedarse pegado hacía que el PID de borde saturara
 // → giraba sobre su eje a gran velocidad). En cambio AVANZA ~10 cm para despegarse y
@@ -318,7 +335,9 @@ inline bool gk_pose_ok() {
         && world_model_get_my_pose_confidence() >= GK_POSE_CONF_MIN;
 }
 
-inline int16_t gk_orient_omega(uint32_t now_ms) {
+// target_trim_deg: sesgo opcional del rumbo objetivo (perilla de banco — hoy lo usa
+// el retroceso de GOTO_LINE para compensar deriva de rumbo; + = CCW/izquierda).
+inline int16_t gk_orient_omega(uint32_t now_ms, float target_trim_deg = 0.0f) {
     const float heading = world_model_get_my_heading_deg();
     const GkOwnGoalOrient o = gk_own_goal_orient(
         world_model_goal_own_visible(),
@@ -328,11 +347,11 @@ inline int16_t gk_orient_omega(uint32_t now_ms) {
     float omega = 0.0f;
     if (o.set_heading) {
         // (1) referencia absoluta: de espaldas al arco propio.
-        heading_pid_set_target(g_heading_pid, o.heading_target_deg);
+        heading_pid_set_target(g_heading_pid, o.heading_target_deg + target_trim_deg);
         omega = heading_pid_tick(g_heading_pid, heading, now_ms);
     } else if (world_model_heading_valid()) {
         // (2) GYRO HOLD: rumbo del boot (0° = mirando al frente).
-        heading_pid_set_target(g_heading_pid, GK_GYRO_HOLD_TARGET_DEG);
+        heading_pid_set_target(g_heading_pid, GK_GYRO_HOLD_TARGET_DEG + target_trim_deg);
         omega = heading_pid_tick(g_heading_pid, heading, now_ms);
     } else {
         return 0;   // (3) sin heading válido → ω=0 (fail-safe de siempre).
@@ -758,11 +777,16 @@ MotorCommand goalkeeper_tick() {
             if (g_goto_line_phase == 0) {
                 // ── Fase 0: RETROCESO recto con GYRO HOLD hasta tocar la línea ──
                 g_state_name = "GK_GOTO_LINE";
-                cmd.vx_mm_s = GK_GOTO_LINE_VX_RIGHT;          // 0 = recto atrás
+                // vx = trim anti-deriva traslacional (banco: derivaba suave a la
+                // derecha mirando al frente — eso el gyro NO lo ve; ver el bloque
+                // de TRIMS arriba; tope físico ±19 mm/s por el piso de la trasera).
+                cmd.vx_mm_s = static_cast<int16_t>(
+                    static_cast<float>(GK_GOTO_LINE_VX_RIGHT) + GK_GOTO_LINE_VX_TRIM_MM_S);
                 cmd.vy_mm_s = static_cast<int16_t>(-GK_GOTO_LINE_VY_BACK);  // -Y = atrás
-                // GYRO HOLD: el recto-atrás es inestable por geometría (trasera=0;
-                // cualquier asimetría guiña) → PID de heading lo mantiene derecho.
-                cmd.omega_centideg_s = gk_orient_omega(now_ms);
+                // GYRO HOLD (+ trim de rumbo opcional): el recto-atrás es inestable
+                // por geometría (trasera=0; cualquier asimetría guiña) → PID de
+                // heading lo mantiene derecho.
+                cmd.omega_centideg_s = gk_orient_omega(now_ms, GK_GOTO_LINE_HEADING_TRIM_DEG);
 
                 const bool line_here = world_model_line_detected()
                                     && world_model_line_data_valid();

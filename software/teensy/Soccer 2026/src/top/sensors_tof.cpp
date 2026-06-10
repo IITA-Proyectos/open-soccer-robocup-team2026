@@ -297,23 +297,34 @@ void sensors_tof_tick() {
     // chico (~milisegundos en 400 kHz); si hay frame nuevo, getRangingData
     // lo trae y promediamos las zonas validas.
 #ifdef TOP_ENABLE_MULTI_TOF
-    // Poll de los 4 ToF enumerados (no bloqueante).
+    // ROUND-ROBIN (banco 2026-06-10): UN ToF por tick, rotando — NO los 4 juntos.
+    // MEDIDO en banco (panel [TOP], robot2): con los 4 getRangingData() en la misma
+    // pasada el loop del TOP caia a ~6 Hz (Δloop = +3 por linea de panel de 500 ms)
+    // → el WorldSnapshot llegaba a ~4 Hz a la CENTRAL → la FSM controlaba el rumbo
+    // con heading de 250-500 ms de atraso (ping-pong de pulsos del arquero, J/U de
+    // la reversa) y los RX de camaras rozaban overflow (resyncs). Causa: cada
+    // getRangingData() del VL53L7CX trae un bloque grande de resultados por Wire a
+    // 100 kHz (decenas de ms) — 4 por pasada ≈ 160 ms bloqueado.
+    // Con 1 por tick (TOF_TICK_INTERVAL_MS=30) cada sensor se refresca cada ~120 ms:
+    // su ranging interno es 15 Hz (~66 ms/frame) asi que casi siempre hay frame
+    // listo, y la frescura P1-TOF-STALE (250 ms) queda con margen 2×.
+    // ⚠️ ROBOT1 hereda este cambio (mismo codigo) — A VERIFICAR en su banco al volver.
     const uint32_t now = millis();
-    for (int i = 0; i < NUM_TOF; ++i) {
-        if (!g_ready[i]) continue;
-        if (g_tof_multi[i].isDataReady() &&
-            g_tof_multi[i].getRangingData(&g_tof_results)) {
-            // getRangingData() OK = el sensor responde por I2C -> lectura FRESCA
-            // (aunque mean sea NO_READING = "nada en rango", es una respuesta
-            // valida y reciente, no un dato colgado). Sellamos la frescura.
-            g_distances_mm[i] = mean_valid_zones(g_tof_results, TOF_RESOLUTION_ZONES);
-            g_last_ok_ms[i]   = now;
-            g_ever_ok[i]      = true;
-        }
-        // si getRangingData() devuelve false, NO tocamos g_last_ok_ms[i]: el valor
-        // cacheado se mantiene SOLO mientras siga fresco; tras TOF_STALE_TIMEOUT_MS
-        // sin un read bueno, el getter lo expira a TOF_NO_READING (P1-TOF-STALE).
+    static uint8_t s_rr = 0;
+    const uint8_t i = s_rr;
+    s_rr = static_cast<uint8_t>((s_rr + 1) % NUM_TOF);
+    if (g_ready[i] && g_tof_multi[i].isDataReady() &&
+        g_tof_multi[i].getRangingData(&g_tof_results)) {
+        // getRangingData() OK = el sensor responde por I2C -> lectura FRESCA
+        // (aunque mean sea NO_READING = "nada en rango", es una respuesta
+        // valida y reciente, no un dato colgado). Sellamos la frescura.
+        g_distances_mm[i] = mean_valid_zones(g_tof_results, TOF_RESOLUTION_ZONES);
+        g_last_ok_ms[i]   = now;
+        g_ever_ok[i]      = true;
     }
+    // si getRangingData() devuelve false, NO tocamos g_last_ok_ms[i]: el valor
+    // cacheado se mantiene SOLO mientras siga fresco; tras TOF_STALE_TIMEOUT_MS
+    // sin un read bueno, el getter lo expira a TOF_NO_READING (P1-TOF-STALE).
 #else
     if (g_ready[TOF_FRONTAL_IDX]) {
         if (g_tof_frontal.isDataReady()) {

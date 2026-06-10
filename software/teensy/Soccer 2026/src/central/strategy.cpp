@@ -55,7 +55,11 @@ const char* g_state_name = "INIT";
 //   ATK: KICKOFF (set play inicial), POSITION (behind-the-ball orbit)
 //   GK:  CLEAR (despeje cuando la pelota está cerca)
 enum class AtkState : uint8_t {
-    WAIT_START, KICKOFF, SEARCH, POSITION, APPROACH, LINE_AVOID
+    WAIT_START, KICKOFF, SEARCH, POSITION, APPROACH, LINE_AVOID,
+    // v2 delantero (2026-06-11, spec Gustavo = movimiento validado del robot 2025):
+    // PUSH = empuje comprometido full-adelante por tiempo fijo (el "pateo" 2025);
+    // PUSH_BACK = retroceso corto post-empuje (despegarse de pelota/línea, 2025).
+    PUSH, PUSH_BACK
 };
 enum class GkState : uint8_t {
     // GOTO_LINE (índice 1, espejo de GkPhase en strategy_transitions.h): al recibir
@@ -70,6 +74,8 @@ GkState  g_gk_state  = GkState::WAIT_START;
 // Estado auxiliar del kickoff (timer) — válido solo cuando g_atk_state == KICKOFF.
 uint32_t g_kickoff_started_ms = 0;
 bool     g_match_was_running = false;   // detecta flanco "STOP → RUN" para KICKOFF
+// Timer del empuje (PUSH/PUSH_BACK) — se setea al entrar a cada fase.
+uint32_t g_atk_push_started_ms = 0;
 
 // Timer de GOTO_LINE (arquero) — guardado al entrar; para el timeout de seguridad.
 uint32_t g_goto_line_started_ms = 0;
@@ -103,7 +109,9 @@ LateralPID g_lateral_pid_gk;
 // Delantero — Nivel 1
 constexpr float ATK_SEARCH_VY_MM_S       = 200.0f;
 constexpr float ATK_SEARCH_OMEGA_DEG_S   = 60.0f;
-constexpr float ATK_APPROACH_MAX_SPEED   = 600.0f;
+// v2 (2026-06-11, spec Gustavo): acercarse LENTO (movimiento 2025) — la potencia
+// va en el EMPUJE comprometido (PUSH), no en el acercamiento. 600→400.
+constexpr float ATK_APPROACH_MAX_SPEED   = 400.0f;
 constexpr float ATK_APPROACH_MIN_SPEED   = 200.0f;
 constexpr float ATK_APPROACH_CLOSE_MM    = 50.0f;
 constexpr float ATK_APPROACH_FAR_MM      = 500.0f;
@@ -115,7 +123,16 @@ constexpr float ATK_ATTACK_LINE_TOL_DEG        = 30.0f;    // si ángulo ball �
 constexpr float ATK_POSITION_REACHED_MM        = 80.0f;    // distancia target POSITION para pasar a APPROACH
 constexpr float ATK_KICK_DIST_MM               = 80.0f;    // pelota más cerca que esto + alineado → comprometer EMPUJE (sin kicker físico)
 constexpr float ATK_KICK_ANGLE_DEG             = 12.0f;    // tolerancia angular para considerarse alineado al arco (empuje)
-constexpr float ATK_POSITION_MAX_SPEED         = 500.0f;
+constexpr float ATK_POSITION_MAX_SPEED         = 400.0f;   // v2: orbit sereno (era 500)
+// EMPUJE comprometido (v2 2026-06-11 = "PATEANDO" del robot 2025, que pateaba con
+// rampa a ~94% PWM 500 ms y retrocedía 200 ms): cerca + alineado al eje de ataque
+// → full adelante por tiempo FIJO sin re-mirar la pelota (a esa distancia las
+// cámaras la pierden contra el paragolpes; el 2025 también pateaba "a ciegas"),
+// después retroceso corto para despegarse de la pelota/línea del área.
+constexpr float    ATK_PUSH_SPEED_MM_S      = 700.0f;
+constexpr uint32_t ATK_PUSH_MS              = 500;
+constexpr float    ATK_PUSH_BACK_SPEED_MM_S = 300.0f;
+constexpr uint32_t ATK_PUSH_BACK_MS         = 250;
 constexpr float ATK_KICKOFF_SPEED_MM_S         = 500.0f;
 constexpr uint32_t ATK_KICKOFF_DURATION_MS     = 250;      // boost inicial al frente al arrancar match
 
@@ -594,6 +611,28 @@ void transition_gk(GkState new_state) {
 
 // === FSM Delantero ===
 
+static inline float atk_norm180(float a) {
+    while (a > 180.0f)  a -= 360.0f;
+    while (a < -180.0f) a += 360.0f;
+    return a;
+}
+
+// EJE DE ATAQUE (v2 2026-06-11, spec Gustavo = robot 2025): la dirección "hacia el
+// arco rival" RELATIVA al robot sale de la CÁMARA si ve el arco; si no, FALLBACK
+// al 0 del BNO (por protocolo el robot se enciende mirando al arco rival → heading
+// absoluto 0 ≈ eje de ataque). Antes, sin arco visible el delantero NO orbitaba
+// (empujaba la pelota para cualquier lado); ahora siempre tiene un eje.
+struct AttackAxis { bool valid; float rel_deg; };
+static AttackAxis atk_attack_axis(float heading) {
+    if (world_model_goal_opp_visible()) {
+        return {true, world_model_get_goal_opp_angle_deg()};
+    }
+    if (world_model_heading_valid()) {
+        return {true, atk_norm180(-heading)};   // relativo: apuntar al 0 absoluto
+    }
+    return {false, 0.0f};
+}
+
 MotorCommand attacker_tick() {
     MotorCommand cmd{};
     const uint32_t now_ms = millis();
@@ -683,14 +722,14 @@ MotorCommand attacker_tick() {
             cmd.vy_mm_s = static_cast<int16_t>(ATK_SEARCH_VY_MM_S);
             cmd.omega_centideg_s = omega_degps_to_centideg(ATK_SEARCH_OMEGA_DEG_S);  // #9
             if (world_model_ball_visible()) {
-                // Si vemos arco rival y la pelota NO está alineada, primero
-                // POSITION (orbit). Si está alineada o no vemos arco, APPROACH
-                // directo (fallback).
+                // v2: el eje de ataque sale de la CÁMARA o del 0 del BNO (spec
+                // 2025) — con eje disponible, pelota desalineada → POSITION
+                // (orbit). Solo sin NINGÚN eje (ni arco ni heading) APPROACH directo.
                 const float bx = world_model_get_ball_x_mm();
                 const float by = world_model_get_ball_y_mm();
-                if (world_model_goal_opp_visible()) {
-                    const float goal_angle = world_model_get_goal_opp_angle_deg();
-                    const bool aligned = ball_is_in_attack_line(bx, by, goal_angle,
+                const AttackAxis ax = atk_attack_axis(heading);
+                if (ax.valid) {
+                    const bool aligned = ball_is_in_attack_line(bx, by, ax.rel_deg,
                                                                 ATK_ATTACK_LINE_TOL_DEG);
                     transition_atk(aligned ? AtkState::APPROACH : AtkState::POSITION);
                 } else {
@@ -709,15 +748,17 @@ MotorCommand attacker_tick() {
                 transition_atk(AtkState::SEARCH);
                 return cmd;
             }
-            if (!world_model_goal_opp_visible()) {
-                // Perdí el arco: degradar a APPROACH directo (Nivel 1).
+            const AttackAxis ax = atk_attack_axis(heading);
+            if (!ax.valid) {
+                // Sin NINGÚN eje (ni arco por cámara ni heading del BNO):
+                // degradar a APPROACH directo (Nivel 1).
                 transition_atk(AtkState::APPROACH);
                 return cmd;
             }
 
             const float bx = world_model_get_ball_x_mm();
             const float by = world_model_get_ball_y_mm();
-            const float goal_angle = world_model_get_goal_opp_angle_deg();
+            const float goal_angle = ax.rel_deg;   // cámara o 0-del-BNO (v2, spec 2025)
 
             const BehindBallTarget tgt = compute_behind_ball_target(
                 bx, by, goal_angle, ATK_BEHIND_BALL_GAP_MM);
@@ -770,23 +811,28 @@ MotorCommand attacker_tick() {
                 return cmd;
             }
 
-            // Si la pelota dejó de estar alineada con el arco (la perdimos al
-            // costado), volver a POSITION para rodearla otra vez.
-            if (world_model_goal_opp_visible()) {
-                const float goal_angle = world_model_get_goal_opp_angle_deg();
-                if (!ball_is_in_attack_line(bx, by, goal_angle,
+            // Si la pelota dejó de estar alineada con el eje de ataque (la
+            // perdimos al costado), volver a POSITION para rodearla otra vez.
+            // v2: eje = cámara O 0-del-BNO (antes solo cámara).
+            const AttackAxis ax = atk_attack_axis(heading);
+            if (ax.valid) {
+                if (!ball_is_in_attack_line(bx, by, ax.rel_deg,
                                              ATK_ATTACK_LINE_TOL_DEG + 10.0f)) {
                     // Histéresis +10° para no oscilar entre APPROACH↔POSITION.
                     transition_atk(AtkState::POSITION);
                     return cmd;
                 }
-                // Geometría de alineación para empuje (sin kicker físico): aquí
-                // el robot ya está cerca y apuntando al arco. No dispara nada —
-                // sigue avanzando hacia la pelota (abajo) para empujarla por
-                // inercia. Conservamos el chequeo para documentar el punto de
-                // empuje alineado por si en el futuro se cuelga una conducta.
-                (void)is_aligned_to_push(bx, by, goal_angle,
-                                          ATK_KICK_DIST_MM, ATK_KICK_ANGLE_DEG);
+                // EMPUJE COMPROMETIDO (v2 = "pateo" del robot 2025): pelota cerca
+                // + robot apuntando al eje de ataque → PUSH (full adelante por
+                // tiempo fijo). Antes este chequeo era solo documental y el robot
+                // llegaba a la pelota al MÍNIMO de velocidad (~200 mm/s): empuje
+                // débil. Ahora el gol se busca de verdad.
+                if (dist < ATK_KICK_DIST_MM &&
+                    std::fabs(ax.rel_deg) <= ATK_KICK_ANGLE_DEG) {
+                    g_atk_push_started_ms = now_ms;
+                    transition_atk(AtkState::PUSH);
+                    return cmd;
+                }
             }
 
             // Heading target: orientar el frente hacia la pelota.
@@ -832,6 +878,41 @@ MotorCommand attacker_tick() {
                 const DriveStraightCmd ds = drive_straight_compute(ds_in, ds_cfg);
                 // ds.vy_mm_s = corrección lateral; se suma al eje +X del robot.
                 cmd.vx_mm_s = static_cast<int16_t>(static_cast<float>(cmd.vx_mm_s) + ds.vy_mm_s);
+            }
+            return cmd;
+        }
+
+        case AtkState::PUSH: {
+            g_state_name = "ATK_PUSH";
+            // EMPUJE comprometido (v2 2026-06-11 = "PATEANDO_adelante" del 2025):
+            // full adelante por tiempo FIJO, SIN re-mirar la pelota (contra el
+            // paragolpes las cámaras la pierden; el 2025 también pateaba a ciegas).
+            // El rumbo se sostiene hacia el eje de ataque con el gyro: el empuje
+            // sale DERECHO al arco. El kickstart de motores le da el golpe inicial.
+            const AttackAxis ax = atk_attack_axis(heading);
+            if (ax.valid) {
+                heading_pid_set_target(g_heading_pid, heading + ax.rel_deg);
+                const float omega = central_gate_heading_omega(
+                    world_model_heading_valid(),
+                    heading_pid_tick(g_heading_pid, heading, now_ms));
+                cmd.omega_centideg_s = omega_degps_to_centideg(omega);
+            }
+            cmd.vy_mm_s = static_cast<int16_t>(ATK_PUSH_SPEED_MM_S);
+            if (now_ms - g_atk_push_started_ms >= ATK_PUSH_MS) {
+                g_atk_push_started_ms = now_ms;     // re-armar timer para PUSH_BACK
+                transition_atk(AtkState::PUSH_BACK);
+            }
+            return cmd;
+        }
+
+        case AtkState::PUSH_BACK: {
+            g_state_name = "ATK_PUSH_BACK";
+            // Retroceso corto post-empuje ("PATEANDO_atras" del 2025): despegarse
+            // de la pelota y de la línea del área antes de volver a buscar (evita
+            // quedar pegado al borde con el freno de emergencia encima).
+            cmd.vy_mm_s = static_cast<int16_t>(-ATK_PUSH_BACK_SPEED_MM_S);
+            if (now_ms - g_atk_push_started_ms >= ATK_PUSH_BACK_MS) {
+                transition_atk(AtkState::SEARCH);
             }
             return cmd;
         }

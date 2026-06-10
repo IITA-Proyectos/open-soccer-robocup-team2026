@@ -199,8 +199,17 @@ constexpr int16_t  GK_ADVANCE_SPEED_MM_S = 300;   // suave para observar (los pi
 // Banco 2026-06-09 (2ª iteración): el avance fijo de 350 ms a veces NO despegaba del
 // todo (motores bajo carga rinden menos) → loop avance↔toque. Ahora avanza HASTA QUE
 // LA LÍNEA DEJE DE VERSE y un margen extra; el timeout es la red de seguridad.
-constexpr uint32_t GK_ADVANCE_MS         = 350;   // margen EXTRA tras dejar de ver línea
+// v3.3 (banco 2026-06-10): margen 350→100 ms. Con 350 (~10 cm) la patrulla quedaba
+// tan adelante que el anillo JAMÁS veía la línea → el rebote lateral no podía
+// disparar y "no se guiaba de la línea" (Gustavo). Con ~3 cm la línea queda al
+// borde trasero del anillo: visible de guía, sin pisarla de lleno.
+constexpr uint32_t GK_ADVANCE_MS         = 100;   // margen EXTRA tras dejar de ver línea
 constexpr uint32_t GK_ADVANCE_TIMEOUT_MS = 1500;  // tope duro de la fase de avance
+// Re-ENGANCHE de línea en patrulla (v3.3): si en una parada la línea no está a la
+// vista (el strafe derivó adelante), retroceder despacio hasta re-verla (la línea
+// es LA referencia de la patrulla — sin verla, los rebotes no funcionan).
+constexpr int16_t  GK_PATROL_REACQ_VY_MM_S = 200; // retroceso suave de re-enganche
+constexpr uint32_t GK_PATROL_REACQ_MAX_MS  = 700; // tope (no insistir si no aparece)
 
 // LÍMITES DE PATRULLA POR POSE DEL TOP (diseño de Gustavo — cubre el gap R3): la
 // oscilación lateral REBOTA en [centro ± rango] usando my_x de la trilateración del
@@ -258,15 +267,26 @@ constexpr float GK_GYRO_HOLD_TARGET_DEG       = 0.0f;
 // Fixes: pulsos más cortos + CORTE EN VIVO al acercarse al frente (no duración fija)
 // + más asentamiento (la inercia termina de girar tras soltar) + umbral de entrada
 // más alto (un error chico apenas inclina el lateral: cos20°=0.94, no vale el pulso).
+// v3.2 (banco 2026-06-10, diseño Gustavo): la patrulla se guía por la LÍNEA BLANCA
+// — mantiene el sentido tramo tras tramo hasta TOCAR la línea lateral (DOWN la ve
+// directo: dato físico y rápido, no pasa por el TOP) y ahí REBOTA al otro lado. La
+// pose del TOP queda como límite secundario (visión sin recalibrar = confianza
+// floja) y un tope de tramos de fail-safe. Pulsos DOMESTICADOS para el heading
+// LENTO real: el snapshot del TOP llega a ~4 Hz (no 100 Hz — loop del TOP frenado
+// por I²C de ToF, ver journal 2026-06-10) → con dato de hasta 250 ms de atraso un
+// pulso chico es lotería: umbral de entrada más alto, pulsos más cortos, menos
+// pulsos por parada y asentamiento que cubra ≥2 muestras frescas a 4 Hz.
 constexpr uint32_t GK_PATROL_SEG_MS        = 1200; // duración del tramo de strafe
 constexpr uint32_t GK_PATROL_STOP_MS       = 300;  // freno entre tramos (mide rumbo quieto)
-constexpr float    GK_REORIENT_ENTER_DEG   = 20.0f;// error que dispara re-orientación
+constexpr uint32_t GK_PATROL_BOUNCE_COOLDOWN_MS = 800; // 1 rebote por toque de línea
+constexpr uint8_t  GK_PATROL_MAX_SEGS_SAME_DIR  = 3;   // fail-safe sin línea ni pose
+constexpr float    GK_REORIENT_ENTER_DEG   = 35.0f;// error que dispara re-orientación
 constexpr float    GK_REORIENT_EXIT_DEG    = 25.0f;// CORTE EN VIVO del pulso (anticipa la inercia)
 constexpr float    GK_REORIENT_MS_PER_DEG  = 2.0f; // tope de duración ∝ error (rotación real ~300°/s)
-constexpr uint32_t GK_REORIENT_PULSE_MIN_MS = 50;
-constexpr uint32_t GK_REORIENT_PULSE_MAX_MS = 120;
-constexpr uint32_t GK_REORIENT_SETTLE_MS   = 400;  // quieto tras el pulso (inercia + rumbo fresco)
-constexpr uint8_t  GK_REORIENT_MAX_PULSES  = 4;    // tope de pulsos por parada
+constexpr uint32_t GK_REORIENT_PULSE_MIN_MS = 40;
+constexpr uint32_t GK_REORIENT_PULSE_MAX_MS = 80;
+constexpr uint32_t GK_REORIENT_SETTLE_MS   = 700;  // quieto tras el pulso (inercia + ≥2 snapshots a 4 Hz)
+constexpr uint8_t  GK_REORIENT_MAX_PULSES  = 2;    // tope de pulsos por parada
 // ORIENTACIÓN POR CÁMARA — DESHABILITADA hasta validar (banco 2026-06-09): el signo
 // del gyro de robot2 se CONFIRMÓ correcto (izquierda → hdg sube), por lo tanto la J/U
 // del retroceso la causaba la rama (1) de la cascada: el target derivado del ángulo
@@ -842,9 +862,17 @@ MotorCommand goalkeeper_tick() {
             // ATRÁS → la respuesta a tocarla es AVANZAR ~10 cm (fase 1 de GOTO_LINE),
             // NO el retreat por ángulo de LINE_AVOID (con los pisos salía en
             // direcciones basura y el robot giraba sobre su eje a gran velocidad).
-            g_goto_line_phase       = 1;
-            g_gk_advance_started_ms = now_ms;
-            transition_gk(GkState::GOTO_LINE);
+            // v3.2 (banco 2026-06-10): PERO si la línea está al COSTADO durante la
+            // patrulla (la lateral del área/cancha), avanzar NO la saca de ahí — eso
+            // lo resuelve el REBOTE del MOVE (invierte el sentido del strafe). Solo
+            // se avanza si la línea está realmente ATRÁS.
+            const float la_imm    = world_model_get_line_angle_deg();
+            const bool  la_behind = (la_imm > 135.0f || la_imm < -135.0f);
+            if (la_behind || g_gk_state != GkState::PATROL) {
+                g_goto_line_phase       = 1;
+                g_gk_advance_started_ms = now_ms;
+                transition_gk(GkState::GOTO_LINE);
+            }
         }
     } else {
         g_gk_imminent_since_ms = 0;   // imminent se apagó → re-armar el debounce
@@ -941,7 +969,6 @@ MotorCommand goalkeeper_tick() {
         }
 
         case GkState::PATROL: {
-            g_state_name = "GK_PATROL";
             // ── PATRULLA v3 SEGMENTADA (mover-parar-corregir-mover) ──
             // El strafe continuo acumulaba yaw físico (~80°/s) imposible de pelear
             // en movimiento. Ahora: tramo corto → freno → si quedó chueco, pulsos
@@ -952,7 +979,17 @@ MotorCommand goalkeeper_tick() {
             static uint32_t pphase_t0   = 0;
             static uint32_t pulse_ms    = 0;
             static uint8_t  pulse_count = 0;
+            static uint8_t  same_dir_segs  = 0;   // tramos seguidos en el mismo sentido (v3.2)
+            static uint32_t bounce_gate_ms = 0;   // cooldown del rebote por línea (v3.2)
+            static uint8_t  reacq_dry      = 0;   // re-enganches SEGUIDOS sin hallar línea (guard)
             if (pphase_t0 == 0) pphase_t0 = now_ms;
+
+            // El panel muestra la SUB-FASE (diagnóstico banco 2026-06-10): con solo
+            // "GK_PATROL" no se distingue si el desastre pasa en el tramo o en el pulso.
+            static const char* kPatrolPhaseName[5] =
+                {"GK_PATROL_MOVE", "GK_PATROL_STOP", "GK_PATROL_PULSE",
+                 "GK_PATROL_SETTLE", "GK_PATROL_REACQ"};
+            g_state_name = kPatrolPhaseName[(pphase < 5) ? pphase : 0];
 
             // Centro de la ventana: el AUTO-CAPTURADO al llegar al puesto (fallback
             // a la constante si la pose no estaba disponible en ese momento).
@@ -970,6 +1007,23 @@ MotorCommand goalkeeper_tick() {
 
             switch (pphase) {
                 case 0: {   // MOVE: tramo de strafe PURO (ω=0)
+                    // REBOTE POR LÍNEA (v3.2, diseño Gustavo): el límite lateral REAL
+                    // de la patrulla es la línea blanca que ve DOWN. Línea al COSTADO
+                    // (o adelante) → rebotar al otro lado. Línea ATRÁS (~±180°) NO
+                    // rebota: esa es la del área y la maneja el router de arriba
+                    // (avanzar a despegarse).
+                    if (line_data_fresh() && world_model_line_detected() &&
+                        (now_ms - bounce_gate_ms) >= GK_PATROL_BOUNCE_COOLDOWN_MS) {
+                        const float la = world_model_get_line_angle_deg();
+                        const bool  la_behind = (la > 135.0f || la < -135.0f);
+                        if (!la_behind) {
+                            direction      = (la >= 0.0f) ? -1 : +1;  // alejarse de la línea
+                            bounce_gate_ms = now_ms;
+                            same_dir_segs  = 0;
+                            pphase = 1; pphase_t0 = now_ms;  // frenar y arrancar al otro lado
+                            break;
+                        }
+                    }
                     cmd.vx_mm_s = clamp_velocity_mm_s(direction * GK_PATROL_SPEED_MM_S);
                     cmd.vy_mm_s = 0;
                     // ω=0 A PROPÓSITO (v3.1): mezclar corrección de giro con el strafe
@@ -1005,17 +1059,38 @@ MotorCommand goalkeeper_tick() {
                             pulse_ms  = static_cast<uint32_t>(ms);
                             pphase    = 2; pphase_t0 = now_ms;
                         } else {
-                            // Derecho (o tope de pulsos) → próximo tramo. Dirección por pose.
+                            // Derecho (o tope de pulsos) → próximo tramo. v3.2: el sentido
+                            // se MANTIENE tramo tras tramo hasta tocar la línea (rebote en
+                            // MOVE) — la patrulla recorre el arco de línea a línea, como
+                            // pidió el banco. La pose (si es confiable) sigue acotando, y
+                            // el tope de tramos evita strafe infinito si línea y pose
+                            // fallan a la vez.
                             pulse_count = 0;
+                            bool flipped = false;
                             if (gk_pose_ok()) {
                                 const float x = world_model_get_my_x_mm();
-                                if (x > xc + GK_PATROL_X_HALF_RANGE_MM)      direction = -1;
-                                else if (x < xc - GK_PATROL_X_HALF_RANGE_MM) direction = +1;
-                                else direction = -direction;
-                            } else {
-                                direction = -direction;
+                                if (x > xc + GK_PATROL_X_HALF_RANGE_MM)      { direction = -1; flipped = true; }
+                                else if (x < xc - GK_PATROL_X_HALF_RANGE_MM) { direction = +1; flipped = true; }
                             }
-                            pphase = 0; pphase_t0 = now_ms;
+                            if (flipped) {
+                                same_dir_segs = 0;
+                            } else if (++same_dir_segs >= GK_PATROL_MAX_SEGS_SAME_DIR) {
+                                same_dir_segs = 0;
+                                direction = -direction;   // fail-safe: sin referencia, oscilar
+                            }
+                            // v3.3: antes de largar el tramo, RE-ENGANCHAR la línea si no
+                            // está a la vista — la patrulla vive pegada a la línea, no a
+                            // 10 cm (sin línea en el anillo el rebote no puede guiar).
+                            // GUARD anti-"caminar al arco" (banco 2026-06-10): si el
+                            // re-enganche venció 2 veces SEGUIDAS sin encontrar línea
+                            // (sensado caído: batería floja/calibración → valid=0), NO
+                            // seguir retrocediendo a ciegas — el requisito duro es no
+                            // meterse al arco. Patrulla donde está hasta re-ver línea.
+                            const bool line_in_view = line_data_fresh() &&
+                                                      world_model_line_detected();
+                            if (line_in_view) reacq_dry = 0;
+                            pphase = (line_in_view || reacq_dry >= 2) ? 0 : 4;
+                            pphase_t0 = now_ms;
                         }
                     }
                     break;
@@ -1038,6 +1113,20 @@ MotorCommand goalkeeper_tick() {
                 case 3: {   // ASENTAR: quieto, dejar que el rumbo se lea fresco
                     if ((now_ms - pphase_t0) >= GK_REORIENT_SETTLE_MS) {
                         pphase = 1; pphase_t0 = now_ms;   // re-evaluar en STOP
+                    }
+                    break;
+                }
+                case 4: {   // RE-ENGANCHE (v3.3): atrás despacio hasta re-VER la línea
+                    cmd.vx_mm_s = 0;
+                    cmd.vy_mm_s = static_cast<int16_t>(-GK_PATROL_REACQ_VY_MM_S);  // -Y = atrás
+                    cmd.omega_centideg_s = gk_gyro_hold_omega(now_ms, 0.0f);
+                    const bool touched = line_data_fresh() && world_model_line_detected();
+                    if (touched) {
+                        reacq_dry = 0;
+                        pphase = 0; pphase_t0 = now_ms;   // línea al borde → tramo lateral
+                    } else if ((now_ms - pphase_t0) >= GK_PATROL_REACQ_MAX_MS) {
+                        ++reacq_dry;                       // venció sin línea (guard arriba)
+                        pphase = 0; pphase_t0 = now_ms;
                     }
                     break;
                 }

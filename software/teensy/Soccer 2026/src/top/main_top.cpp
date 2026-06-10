@@ -351,6 +351,15 @@ void loop() {
         Serial.print(" rx=");
         Serial.print(comm_arbiter_get_frames_received());
         Serial.print("]");
+        // Modo de reloj del BNO en el panel (banco 2026-06-10: el banner de boot
+        // se pierde antes de que el monitor conecte → imposible saber qué build
+        // corre; con el token en el panel no hay ambigüedad nunca más).
+        Serial.print(" osc=");
+#ifdef TOP_BNO_INTERNAL_OSC
+        Serial.print("INT");
+#else
+        Serial.print("EXT");
+#endif
         Serial.print(" resync=");
         Serial.println(cameras_resyncs_total());
     }

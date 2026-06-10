@@ -199,7 +199,9 @@ bool init_one_bno(Adafruit_BNO055& bno) {
     }
 #ifndef TOP_BNO_INTERNAL_OSC
     bno.setExtCrystalUse(true);
+    Serial.println("[IMU] reloj BNO: CRISTAL EXTERNO (default)");
 #else
+    Serial.println("[IMU] reloj BNO: OSCILADOR INTERNO (TOP_BNO_INTERNAL_OSC, banco)");
     // OSCILADOR INTERNO (banco 2026-06-10, robot1): el BNO-L de R1 quedó con el
     // yaw CONGELADO tras un golpe (ackea I²C pero hdg clavado en -160.2 girándolo
     // a mano). Modo de falla conocido del BNO055: el golpe daña el cristal externo

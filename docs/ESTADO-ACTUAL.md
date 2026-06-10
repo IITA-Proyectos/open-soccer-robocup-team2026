@@ -39,10 +39,12 @@ tipo: indice-operacional
 > (4) 🔧 **ESTADO HW DE ROBOT1 (banco escritorio 2026-06-10 noche, Gustavo — NO re-diagnosticar):**
 > · **Cámaras ×2: ANDAN** — script v2 ya flasheado, `pkts_F/B` subiendo, `resync=0`, pelota
 >   trackeada por ambas. NO tocar.
-> · **BNO-L (Wire 0x28): yaw CONGELADO post-golpe** — ackea I²C (`imu_L=Y`) pero `hdg` clavado
->   en −160.2 girándolo a mano. Sospecha: cristal externo 32 kHz dañado (falla clásica BNO055)
->   → probar `top_robot1_oscint` (oscilador interno, env nuevo). Si no revive: trasplante del
->   BNO secundario de robot2 (R2 controla con el PRIMARIO de Wire2, puede prestarlo).
+> · **BNO-L (Wire 0x28): MUERTO confirmado** — yaw congelado post-golpe; ackea I²C (`imu_L=Y`)
+>   pero el hdg se clava tras fusionar un instante al boot (valor distinto cada boot). Probado
+>   SIN éxito: power-cycle total Y oscilador interno (`top_robot1_oscint`) → daño interno del
+>   chip. **Plan: TRASPLANTE del BNO secundario de robot2** (el de `Wire` 18/19; R2 controla
+>   con su PRIMARIO de Wire2 y puede prestarlo). ⚠️ Al trasplantar, DESCONECTAR el muerto
+>   (sigue ackeando en 0x28 = choque de dirección). Pasos exactos: DEMO-2026-06-11-PLAN §2.1.
 > · **BNO-R (0x29): MUERTO desde antes** (unidad quemada) — `imu_R=N` es lo esperado, no es noticia.
 > · **TOP de R1 heredó los fixes**: loop ~220k/s, ToF 4/4 (`min_obst` ok).
 

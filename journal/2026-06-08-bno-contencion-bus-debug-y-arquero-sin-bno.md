@@ -56,3 +56,13 @@ APARTE (Wire2, pines 24/25), exactamente como ROBOT2.** Ver **TASK-207**.
 ## Archivos / commits
 - Firmware: `82e7fbd` (revert noInterrupts), `3101f02` (quitar freeze-detect), `15443b7` (deconflict).
 - Pendiente: **TASK-207** (BNO→Wire2 24/25, hardware + 1 línea de firmware).
+
+---
+
+**CORRECCIÓN 2026-06-09 (i²c scan corregido, commit 9da8e9e):** el comentario viejo del código
+citado arriba ("BNO a Wire1, bus aparte", `sensors_imu.cpp:262`) usaba el nombre EQUIVOCADO del
+bus: el bus de los pines **24/25** del Teensy 4.0 es **`Wire2`** (LPI2C4), no `Wire1` (LPI2C3 =
+16/17). El scan de banco confirmó en ROBOT2: **BNO2 0x28 VIVO en `Wire2` (24/25)**, solo en su bus
+(sin ToF) → es el **PRIMARIO/confiable**; el BNO que comparte `Wire` (18/19) con los 4 ToF es el
+SECUNDARIO (el que se congela). El fix de ROBOT1 = agregarle un BNO en `Wire2` como primario.
+(No reescribo lo de arriba: la cita del código viejo queda como estaba; esto solo aclara el nombre.)

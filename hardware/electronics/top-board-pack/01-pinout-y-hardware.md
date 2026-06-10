@@ -49,7 +49,7 @@ fuentes:
 |---|---|---|
 | MCU **Teensy 4.0** (U14) | 1 | Cortex-M7 a 600 MHz, 1 MB RAM, 2 MB flash, **7 UARTs hardware** |
 | Cámaras **OpenMV N6** (antes H7 Plus) | 2 | UART (Serial3 frontal + **Serial5** trasera), 19200 baud, protocolo viejo 9 bytes/packet |
-| **BNO055** IMU | 2 | Ambos en `Wire` (18/19): LEFT=0x28, RIGHT=0x29 (pad ADR a 3V3). Recableado 2026-05-31 → `Wire1` (24/25) libre para DOWN |
+| **BNO055** IMU | 2 | Buses separados (0x28 ambos): **PRIMARIO** solo en `Wire2` (LPI2C4, 24/25), **SECUNDARIO** en `Wire` (18/19) con los ToF. *(corrección 2026-06-09: el bus de 24/25 es `Wire2`, no `Wire1`.)* |
 | Sensor ToF **VL53L7CX** | 4 fijos (plan: 6) | TODOS en `Wire` (I²C0), LP individual por pin. Enumeran a 0x2A..0x2D. 8×8 SPAD multizona. Plan de escalado: +2 móviles para pelota |
 | Ultrasonido **HC-SR04** | 1 | TRIG=pin 4 / ECHO=pin 3 (banco 2026-05-31). Frontal, fallback de ToF |
 | Conector a placa **COMM** (ESP32-C6) | 1 | UART (**Serial2, pines 7/8**, 115200). Bridge a árbitros + ESP-NOW partner (fix 2026-06-02) |
@@ -79,32 +79,45 @@ fuentes:
 ### 2.1 Buses I²C — distribución crítica
 
 > **🔧 ACTUALIZACIÓN 2026-05-30 (recableado de Enzo, confirmado en banco).**
-> Los **4 ToF se movieron al bus `Wire` (I²C0, 18/19)**, con la pata **LP** de
-> cada uno cableada por bodge a un pin del Teensy. Esto **liberó `Wire1`
-> (24/25)** — ahora reservado para comunicación con la placa **DOWN**, NO para
-> ToF. La tabla refleja el estado nuevo.
+> Los **4 ToF se movieron al bus `Wire` (LPI2C1, 18/19)**, con la pata **LP** de
+> cada uno cableada por bodge a un pin del Teensy. La tabla refleja el estado nuevo.
+>
+> **🔧 CORRECCIÓN 2026-06-09 (i2c scan en banco, commit 9da8e9e).** El Teensy 4.0 tiene
+> **3 buses I²C**: `Wire` (LPI2C1, 18/19) · `Wire1` (LPI2C3, 16/17) · **`Wire2` (LPI2C4,
+> 24/25)**. El **2º BNO055 está físicamente en los pines 24/25** (pads traseros, "debajo"
+> del Teensy) = bus **`Wire2`**, NO `Wire1`. El repo lo llamaba mal "Wire1" porque 24/25
+> se confundían con Wire1. Scan confirmado (ROBOT2): BNO secundario 0x28 en `Wire` (18/19)
+> + 4 ToF (0x29→0x2A..0x2D); **BNO primario 0x28 en `Wire2` (24/25)**; `Wire1` (16/17)
+> vacío.
 
 | Bus | API Arduino | Pin Arduino SDA | Pin Arduino SCL | Periféricos | Dirección I²C |
 |---|---|---|---|---|---|
-| **I²C #0** | `Wire` | **18** | **19** | BNO055 izq (U10) + BNO055 der (U11) + **los 4 ToF** (U2/U3/U5/U17) | BNO izq=0x28, BNO der=0x29 (ADR a 3V3); ToF=0x2A/0x2B/0x2C/0x2D (vía LP) |
-| **I²C #1** | `Wire1` | **25** ⚠️ remap | **24** ⚠️ remap | **(libre para placa DOWN)** — el 2do BNO se movió a `Wire` (0x29) el 2026-05-31 | — |
+| **LPI2C1** | `Wire` | **18** | **19** | BNO055 **SECUNDARIO** (U10) + **los 4 ToF** (U2/U3/U5/U17) | BNO=0x28; ToF=0x2A/0x2B/0x2C/0x2D (vía LP) |
+| **LPI2C4** | **`Wire2`** | **25** ⚠️ remap | **24** ⚠️ remap | BNO055 **PRIMARIO** (U11) — solo en su bus, sin ToF | 0x28 |
+| LPI2C3 | `Wire1` | 16 | 17 | **vacío** (16/17 los toma Serial4 = UART a CENTRAL) | — |
 
-> **Remap crítico de `Wire1`** (Q3 confirmado por análisis PCB, 2026-05-10):
-> los pines default de `Wire1` en Teensy 4.0 son 16/17, pero esos están
-> ocupados por **Serial4 (UART hacia CENTRAL; fix 2026-06-02)**. El PCB **ruteó `Wire1` a los
-> pines 24/25**. El firmware debe hacer:
+> **Convención primario/secundario (decisión Gustavo 2026-06-09):** el BNO055 **PRIMARIO**
+> está **solo en `Wire2` (24/25), sin ToF** → no sufre contención I²C con los ToF → es el
+> **más confiable** y la fuente de heading preferida. El **SECUNDARIO** comparte `Wire`
+> (18/19) con los 4 ToF y es el que se **congela** cuando el read del BNO choca con los ToF
+> → es el respaldo. (Fix de fondo de ROBOT1: hoy tiene 1 BNO en `Wire` con los ToF =
+> posición secundaria; el fix es agregarle un BNO en `Wire2` solo, como primario.)
+>
+> **Remap de `Wire2`** (pines 24/25): los pines default de `Wire2` en Teensy 4.0 son 24/25,
+> pero la librería Wire suele requerir fijar SDA/SCL antes de `begin()`. El firmware debe
+> hacer (sobre la instancia del bus de 24/25):
 > ```cpp
-> Wire1.setSCL(24);    // ANTES de Wire1.begin()
-> Wire1.setSDA(25);
-> Wire1.begin();
+> Wire2.setSCL(24);    // ANTES de Wire2.begin()
+> Wire2.setSDA(25);
+> Wire2.begin();
 > ```
-> Pendiente físicamente confirmar con TASK-003.
+> ⚠️ El código vivo aún nombra esta instancia `Wire1` por el error histórico — al
+> recablear/renombrar, el bus físico de 24/25 es **`Wire2` (LPI2C4)**.
 
-Los 2 BNO055 son 0x28 de fábrica, pero el 2do tiene el **pad ADR puenteado a 3V3
-→ 0x29**, así que ambos conviven en `Wire` (recableado 2026-05-31; esto liberó
-`Wire1` para DOWN). Los **4 ToF se enumeran al boot** en `Wire`: arrancan todos en 0x29
-de fábrica, se duermen todos por LP, se despierta uno por uno y a cada uno se
-le asigna 0x2A → 0x2B → 0x2C → 0x2D. **Ninguno queda en 0x29.**
+Los 2 BNO055 son **0x28** ambos (no chocan porque van en **buses distintos**: primario en
+`Wire2`, secundario en `Wire`). Los **4 ToF se enumeran al boot** en `Wire`: arrancan todos
+en 0x29 de fábrica, se duermen todos por LP, se despierta uno por uno y a cada uno se le
+asigna 0x2A → 0x2B → 0x2C → 0x2D. **Ninguno queda en 0x29.**
 
 > ⚠️ **PROCEDIMIENTO OBLIGATORIO al probar/enumerar ToF.** Las direcciones I²C
 > de los VL53L7CX **persisten mientras el módulo tenga 3V3** — un reset del
@@ -122,7 +135,7 @@ le asigna 0x2A → 0x2B → 0x2C → 0x2D. **Ninguno queda en 0x29.**
 | **`Serial3`** | **15** | **14** | U8 "UART-CAMERA1" | OpenMV **cámara 1** (frontal) | 19200 | Protocolo viejo OpenMV (9 bytes/packet). ✅ FORMATO OK en banco. |
 | **`Serial4`** | **16** | **17** | U15 "UART_COMM_OUT" | placa **CENTRAL** | 230400 | **Envía `WORLD_SNAPSHOT` (100 Hz)** por TX4=pin 17. **Link a CENTRAL movido acá (fix 2026-06-02)**: el Teensy 4.0 no expone Serial7 28/29 en el borde. Cable TX4 pin 17 → **CENTRAL RX7 pin 28** (CENTRAL es Teensy 4.1, recibe en su Serial7). |
 | **`Serial5`** | **21** | **20** | (pin 21 — confirmar conector) | OpenMV **cámara 2** (trasera) | 19200 | **Cámara trasera soldada acá** (RX pin 21) — ✅ confirmado en banco 2026-05-31 (`diag_top_cameras`, FORMATO OK). |
-| Serial6 | ~~25~~ | ~~24~~ | — | **BLOQUEADO** | — | Pines tomados por `Wire1` remap |
+| Serial6 | ~~25~~ | ~~24~~ | — | **BLOQUEADO** | — | Pines tomados por **`Wire2`** (LPI2C4 = BNO055 primario; corrección 2026-06-09, antes decía `Wire1`) |
 | ~~`Serial7`~~ | ~~28~~ | ~~29~~ | — | **NO cableable** | — | El **Teensy 4.0 no expone Serial7 (28/29) en el borde** (pads SMD traseros). Por eso el link a CENTRAL está en **Serial4 (16/17)**, no acá (fix 2026-06-02). |
 
 ### 2.3 Sensores ToF — pines LP (bodge, confirmados en banco 2026-05-30)
@@ -219,8 +232,8 @@ Pin Arduino **13** (LED_BUILTIN).
 | 20 | TX5 (Serial5) → cámara trasera (sin uso; la cam sólo transmite) | ✅ 2026-05-31 |
 | 21 | RX5 (Serial5) ← **cámara trasera** (datos, soldada 2026-05-31) | ✅ banco |
 | 22, 23 | libres (candidatos para reubicar el dipswitch de rol) | ✅ |
-| **24** | **SCL1 (Wire1 REMAP)** — BNO055 der + **libre para placa DOWN** (ya NO ToF, bodge 2026-05-30) | ⚠️ confirmar |
-| **25** | **SDA1 (Wire1 REMAP)** — BNO055 der + **libre para placa DOWN** (ya NO ToF) | ⚠️ confirmar |
+| **24** | **SCL2 (`Wire2` = LPI2C4)** — BNO055 **PRIMARIO** (solo en su bus, sin ToF). *(corrección 2026-06-09: el bus de 24/25 es `Wire2`, no `Wire1`.)* | ⚠️ confirmar |
+| **25** | **SDA2 (`Wire2` = LPI2C4)** — BNO055 **PRIMARIO** (solo en su bus, sin ToF) | ⚠️ confirmar |
 | 28, 29 | **NO cableables** — el Teensy 4.0 no expone Serial7 (28/29) en el borde (pads SMD traseros). El link a CENTRAL está en Serial4 (16/17), no acá (fix 2026-06-02) | ✅ |
 | 26–33 | libres | ✅ |
 
@@ -228,7 +241,7 @@ Pin Arduino **13** (LED_BUILTIN).
 
 | # | Pendiente | Asignado | Bloqueante para |
 |---|---|---|---|
-| 1 | Confirmar `Wire1` remap a pines 24/25 con multímetro (TASK-003) | Enzo | I²C bus 1 funcionando → 1 BNO055 + 2 ToF |
+| 1 | Confirmar **`Wire2`** (LPI2C4) en pines 24/25 con multímetro (TASK-003) | Enzo | bus del BNO055 primario funcionando *(corrección 2026-06-09: el bus de 24/25 es `Wire2`, no `Wire1`)* |
 | 2 | ✅ Pines 20/21 (Serial5) = **cámara trasera** (confirmado en banco 2026-05-31). El link a CENTRAL está en **Serial4 (16/17)** (fix 2026-06-02: el Teensy 4.0 no expone Serial7 28/29 en el borde). | ✅ | — |
 | 3 | ✅ HC-SR04 cableado en **pines 3/4** (banco 2026-05-31) → el "conflicto pin 7" ya no existe (pin 7 libre). | ✅ | — |
 | 3b | ✅ parcial: cámara trasera confirmada en **Serial5 (pin 21)** con FORMATO OK (2026-05-31). Falta validar el link a CENTRAL en **Serial4** (cable TX4 pin 17 → CENTRAL RX7 pin 28) (fix 2026-06-02). | Gustavo | snapshot a CENTRAL |

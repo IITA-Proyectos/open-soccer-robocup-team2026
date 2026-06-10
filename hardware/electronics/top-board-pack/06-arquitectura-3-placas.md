@@ -132,7 +132,7 @@ El Teensy 4.1 (Cortex-M7 a 600 MHz) tiene mucha capacidad libre para estrategia 
 | Responsabilidad | Detalle |
 |-----------------|---------|
 | Visión multi-cámara | Procesa 2 OpenMV N6 via UART. Cada cámara reporta blobs (pelota, arco propio, arco rival). ARRIBA fusiona ambas vistas. |
-| IMU dual (heading absoluto) | 2 BNO055 **ambos en el bus `Wire`** (18/19): LEFT=0x28, RIGHT=0x29 (pad ADR a 3V3). Modo IMUPLUS para evitar interferencia magnética de motores. Si uno falla, sigue el otro. Esto liberó `Wire1` (24/25) para la placa DOWN. |
+| IMU dual (heading absoluto) | 2 BNO055 en **buses separados** (0x28 ambos): **PRIMARIO** solo en `Wire2` (LPI2C4, pines **24/25**), **SECUNDARIO** en `Wire` (18/19) con los 4 ToF. Modo IMUPLUS para evitar interferencia magnética de motores. Si uno falla, sigue el otro. El primario (sin ToF) es la fuente de heading preferida. *(corrección 2026-06-09: el bus de 24/25 es `Wire2`, no `Wire1`; el repo confundía 24/25 con Wire1.)* |
 | Obstáculos cercanos | 4 sensores ToF VL53L7CX (todos en `Wire`, LP individual por bodge, dir 0x2A..0x2D — recableado 2026-05-30) + HC-SR04 frontal (gateado off). Reporta distancia mínima en cada cuadrante. Plan: 6 ToF (4 fijos + 2 móviles para pelota). |
 | Comunicación con árbitros | Bridge UART hacia placa COMM (ESP32-C6) que implementa el protocolo oficial RCJ Communication Module y reporta start/stop/halftime al ARRIBA. |
 | Comunicación con partner | ESP-NOW transparente vía placa COMM. Recibe pose y pelota del robot compañero, lo agrega al world snapshot. |
@@ -148,7 +148,7 @@ El Teensy 4.1 (Cortex-M7 a 600 MHz) tiene mucha capacidad libre para estrategia 
 ### Inputs
 
 - 2 OpenMV cámaras (UART Serial3 + Serial5).
-- 2 BNO055 (I2C Wire + Wire1).
+- 2 BNO055 (I2C: primario en `Wire2` 24/25, secundario en `Wire` 18/19; corrección 2026-06-09 — el bus de 24/25 es `Wire2`, no `Wire1`).
 - 4 ToF VL53L7CX (I2C, todos en `Wire` con LP individual — recableado 2026-05-30).
 - 1 HC-SR04 ultrasonido (GPIO TRIG/ECHO).
 - Placa COMM (UART Serial2 del TOP, RX pin 7 / TX pin 8, 115200) — comandos árbitros + datos partner.

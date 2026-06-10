@@ -9,7 +9,8 @@
 //
 // Inputs:
 //   • 2 cámaras OpenMV (Serial3 + Serial5)
-//   • 2 BNO055 IMU (I2C Wire + Wire1 remap 24/25)
+//   • 2 BNO055 IMU (I2C buses separados: PRIMARIO en Wire2 24/25, SECUNDARIO en Wire 18/19;
+//     corrección 2026-06-09 — el bus de 24/25 es Wire2 (LPI2C4), no Wire1)
 //   • 4 ToF + 1 HC-SR04 (I2C dual + GPIO)
 //   • Odometría OTOS desde ABAJO (Serial1)
 //   • Comm árbitros + partner ESP-NOW (Serial4 → placa COMM)

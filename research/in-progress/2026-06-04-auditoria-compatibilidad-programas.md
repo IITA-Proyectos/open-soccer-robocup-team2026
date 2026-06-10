@@ -130,7 +130,7 @@ Por **accion**, que es lo accionable, el desglose es: **deprecar-mover ~16**, **
 
 | Archivo | tipo | veredicto | Que comentario miente | tiene_env |
 |---|---|---|---|---|
-| `src/diag/diag_top_i2c_scan.cpp` | diag | compatible | omite 0x2D; "otro BNO en Wire1" optimista (0x29 fallado) | si `[env:diag_top_i2c_scan]` |
+| `src/diag/diag_top_i2c_scan.cpp` | diag | compatible | omite 0x2D; "otro BNO en Wire2 (24/25)" optimista (0x29 fallado; bus de 24/25 = `Wire2`/LPI2C4, no `Wire1` — corrección 2026-06-09) | si `[env:diag_top_i2c_scan]` |
 | `src/diag/diag_pose_live.cpp` | diag | comentarios-stale | L21/L178 ejes invertidos (X=largo) vs constantes correctas; 400k con ToF activos | si `[env:diag_pose_live]` |
 | `src/diag/diag_central_atras_adelante.cpp` | programa-anterior | compatible | "conflicto Serial2 7/8" stale (link a DOWN se movio a Serial1) | si `[env:diag_central_atras_adelante]` |
 | `src/diag/diag_central_drive_straight.cpp` | diag | comentarios-stale | dice "WorldSnapshot por Serial1"; runtime ya usa Serial7; "v2" stale (hoy v3) | si drive_robot1/robot2 |
@@ -158,7 +158,7 @@ marcados "compatible" pero con un comentario a tocar.)
 | Archivo | tipo | veredicto | Que arreglar | tiene_env |
 |---|---|---|---|---|
 | `src/diag/diag_sensors_tof_live.cpp` | diag | incompatible-fixable | env base NO compila (falta -DROBOT); banner stale 0x29/HC-SR04 6/7 (vivo 4/3); imprime solo tof[0] | parcial: base no compila; `_robot1/_robot2` si |
-| `src/diag/diag_top_bno.cpp` | diag | comentarios-stale | RIGHT en Wire1 24/25 (arquitectura vieja); vivo = ambos BNO en Wire, RIGHT=0x29; 400k con ToF activos | si `[env:diag_top_bno]` |
+| `src/diag/diag_top_bno.cpp` | diag | comentarios-stale | RIGHT en **Wire2 (24/25)** (bus de 24/25 = `Wire2`/LPI2C4, no `Wire1` — corrección 2026-06-09); ese bus-aparte vuelve a ser el fix canónico (TASK-207, ROBOT2 BNO2 0x28 en Wire2); 400k con ToF activos | si `[env:diag_top_bno]` |
 
 ### 3e. accion = DEJAR (compatible, sin tocar) — resumen
 
@@ -263,7 +263,7 @@ Edicion puntual de comentario/banner, sin tocar logica:
   quitar "v2".
 - `src/diag/diag_central_rx_all.cpp` L24: "WorldSnapshot 27B" -> "31B (v3)".
 - `src/diag/diag_central_atras_adelante.cpp`: quitar nota "conflicto Serial2 7/8".
-- `src/diag/diag_top_i2c_scan.cpp`: agregar 0x2D, suavizar "otro BNO en Wire1".
+- `src/diag/diag_top_i2c_scan.cpp`: agregar 0x2D, suavizar "otro BNO en Wire1" → debe decir **Wire2 (24/25)** (el bus de 24/25 es `Wire2`/LPI2C4, no `Wire1` — corrección 2026-06-09).
 - `src/down/comm_top.h` L8; `src/shared/cameras_fusion.{h,cpp}`; `src/shared/ball_velocity.{h,cpp}`
   (v2 -> v3).
 - `scripts/visualize_down_sensors.py` ~L31: ruta -> `src/diag/main_diag_down.cpp`.
@@ -278,11 +278,14 @@ Edicion puntual de comentario/banner, sin tocar logica:
    dejar solo `_robot1`/`_robot2` (774/778), o agregarle un `-DROBOT1` por defecto. (ii) Corregir
    banner stale: "0x29 / 1 ToF frontal" -> "4 ToF 0x2A-0x2D"; HC-SR04 "TRIG=6/ECHO=7" -> "4/3".
    (iii) opcional: imprimir tof[0..3], no solo tof[0].
-2. **`src/diag/diag_top_bno.cpp`** — modelo de HW obsoleto (RIGHT en Wire1 24/25). Para hacerlo
-   util: mover RIGHT a `Wire` 0x29 (ambos BNO en el mismo bus, recableado 2026-05-31) y dormir
-   los ToF o bajar a 100 kHz si se dejan activos. Alternativa mas barata: **deprecarlo** y usar
-   `diag_bno_dual_live` (ya vigente) en su lugar. Decision del equipo: si nadie usa la variante
-   Wire1, va a 3a (deprecar) en vez de arreglarse.
+2. **`src/diag/diag_top_bno.cpp`** — el modelo de HW asume RIGHT en **Wire2 (24/25)** (el bus de
+   24/25 es `Wire2`/LPI2C4, no `Wire1` — corrección 2026-06-09).
+   > ⚠️ **Recomendación REVERTIDA (2026-06-09, TASK-207).** Esta acción decía "mover RIGHT a
+   > `Wire` 0x29 (ambos BNO en el mismo bus)". Eso es justo lo que CAUSÓ la contención/freeze.
+   > La decisión actual es la inversa: el 2º BNO va a un **bus APARTE (`Wire2` 24/25)** como
+   > PRIMARIO (confirmado en ROBOT2: BNO2 0x28 vivo en `Wire2`). O sea: la variante "BNO en el
+   > bus de 24/25" NO se deprecía — es el diseño bueno. Mantener `diag_top_bno` con RIGHT en
+   > `Wire2` (o usar `diag_bno_dual_live` si soporta el 2º bus); a 100 kHz si se dejan ToF.
 
 ---
 

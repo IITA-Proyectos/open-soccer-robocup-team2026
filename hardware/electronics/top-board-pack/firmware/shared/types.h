@@ -9,13 +9,14 @@
 //
 // Estos structs viajan como payload del protocolo UART (ver proto.h).
 //
-// NOTA HARDWARE (TOP board):
-//   Wire1 (I2C bus 1) está físicamente remapeado a pines 24 (SCL1) y 25 (SDA1)
-//   en la placa TOP. El firmware DEBE llamar antes de Wire1.begin():
-//     Wire1.setSCL(24);
-//     Wire1.setSDA(25);
-//   Serial4 (RX4/TX4) queda en pines default 16/17.
-//   Ver hardware/electronics/mapa-pines-placas-nuevas.md sección Q3.
+// NOTA HARDWARE (TOP board) — corrección de bus 2026-06-09 (copia congelada):
+//   El 2º BNO055 está en los pines 24/25 de la placa TOP. El bus físico de 24/25 es
+//   **Wire2 (LPI2C4)**, NO Wire1 — el repo confundía 24/25 con Wire1 (i2c scan banco,
+//   commit 9da8e9e). El firmware (vivo) debe fijar SDA/SCL del bus de 24/25 antes de begin():
+//     Wire2.setSCL(24);
+//     Wire2.setSDA(25);
+//   Wire1 real (LPI2C3) son los pines 16/17, ocupados por Serial4 (RX4/TX4) → Wire1 vacío.
+//   Ver hardware/electronics/top-board-pack/01-pinout-y-hardware.md.
 
 #pragma once
 #include <stdint.h>

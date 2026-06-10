@@ -47,7 +47,7 @@ programación — ya es independiente. (Teensy 4.0 tiene 7 UART y la 4.1 tiene 8
 > (`snap_fresh=N`). Mapeo REAL del TOP: **`Serial2` (7/8) = COMM**, **`Serial4` (16/17) =
 > CENTRAL**. El lado CENTRAL (Teensy **4.1**) SÍ tiene 28/29 en el borde → su `Serial7` queda igual.
 
-*Libres:* `Serial6` (24/25) no se usa como UART (esos pines los toma `Wire1`) · `Serial7` (28/29) = pads traseros del 4.0, **no usables**.
+*Libres:* `Serial6` (24/25) no se usa como UART (esos pines los toma **`Wire2`** = LPI2C4, el bus del BNO055 primario; ver §3) · `Serial7` (28/29) = pads traseros del 4.0, **no usables**.
 
 #### 1.1 Árbitro RCJ (START/STOP) — **NIVEL GPIO, no UART**
 *(fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)*
@@ -108,13 +108,29 @@ I²C es un **bus**: muchos chips comparten **los mismos 2 pines** (SDA + SCL) y 
 distinguen por **dirección**, no por pin. "Comparten pines" a propósito. Es un
 periférico distinto de los UART y del USB.
 
-### TOP — todo en un solo bus `Wire`
+### TOP — 3 buses I²C del Teensy 4.0
+> **🔧 CORRECCIÓN 2026-06-09 (i2c scan en banco, commit 9da8e9e):** el Teensy 4.0 tiene
+> **3 buses I²C**: `Wire` (LPI2C1, pines 18/19) · `Wire1` (LPI2C3, pines 16/17) · `Wire2`
+> (LPI2C4, pines **24/25**). El 2º BNO055 del TOP está **físicamente en los pines 24/25**
+> (pads traseros, "debajo" del Teensy) = bus **`Wire2`**. El repo lo llamaba mal "Wire1"
+> porque 24/25 se confundían con Wire1; el bus real de 24/25 es **`Wire2`**. `Wire1` (16/17)
+> queda vacío.
+
 | Bus | SDA | SCL | Chips (dirección) |
 |-----|-----|-----|-------------------|
-| **`Wire`** (I²C0) | **18** | **19** | BNO055 **LEFT** (0x28) + BNO055 **RIGHT** (0x29, pad ADR a 3V3) + **4 ToF** VL53L7CX (0x2A · 0x2B · 0x2C · 0x2D) |
-| `Wire1` (I²C1) | 25 | 24 (remap) | **libre** (quedó libre al mover el 2º BNO a `Wire`) |
+| **`Wire`** (LPI2C1) | **18** | **19** | BNO055 **SECUNDARIO** (0x28) + **4 ToF** VL53L7CX (0x2A · 0x2B · 0x2C · 0x2D) |
+| **`Wire2`** (LPI2C4) | **25** | **24** | BNO055 **PRIMARIO** (0x28) — solo en su bus, sin ToF |
+| `Wire1` (LPI2C3) | 16 | 17 | **vacío** (pines tomados por Serial4 = UART a CENTRAL) |
 
-- **Los 6 sensores (2 BNO + 4 ToF) cuelgan de los MISMOS 2 pines (18/19).**
+- **El BNO055 primario está SOLO en `Wire2` (24/25)** y el secundario comparte `Wire`
+  (18/19) con los 4 ToF. Ambos son 0x28 (no chocan porque están en buses distintos).
+- **Convención primario/secundario (decisión Gustavo 2026-06-09):** el BNO que está **solo
+  en su bus** (`Wire2`, sin ToF) **no sufre contención I²C con los ToF** → es el **más
+  confiable** y la **fuente de heading preferida** = **PRIMARIO**. El que comparte bus con
+  los 4 ToF es el que se **congela** cuando el read del BNO choca con los ToF → es el
+  **respaldo** = **SECUNDARIO**. (Esto define además el fix de fondo de ROBOT1: hoy ROBOT1
+  tiene 1 BNO en `Wire` con los ToF = posición "secundaria"; el fix es agregarle un BNO en
+  `Wire2` solo, como primario.)
 - Los 4 ToF arrancan todos en 0x29 (chocarían) → cada uno tiene una pata **LP** a un
   GPIO (**pines {9, 10, 11, 12}**, eso **NO es I²C**, es GPIO) que al boot los despierta
   de a uno y les reasigna 0x2A..0x2D. ⚠️ Las direcciones **persisten con 3V3** →
@@ -141,7 +157,7 @@ firmware queda como compat: si no hay sensor, `imu_init()` cae por timeout y no 
 
 ## 4. ¿Hay algún pin compartido problemático?
 
-- **I²C vs UART:** en ninguna placa se pisan. TOP: I²C en 18/19 (+24/25 `Wire1`), UART en 0/1·7/8·14/15·16/17·20/21. DOWN: I²C en 18/19 + 16/17 (`Wire1`), UART en 0/1·20/21. CENTRAL: sin I²C.
+- **I²C vs UART:** en ninguna placa se pisan. TOP: I²C en 18/19 (`Wire`) + 24/25 (**`Wire2`**, BNO055 primario), UART en 0/1·7/8·14/15·16/17·20/21. DOWN: I²C en 18/19 (`Wire`) + 16/17 (`Wire1`), UART en 0/1·20/21. CENTRAL: sin I²C.
 - **USB vs todo:** el USB (`Serial`) es independiente — nunca compite con UART ni I²C.
 - **✅ Conflicto 7/8 RESUELTO (2026-05-31):** en la **CENTRAL**, el link DOWN→CENTRAL se movió a `Serial1` (0/1), así que los pines 7/8 quedan para el motor 2 (U17). ⚠️ Ojo: el "7/8" del **TOP** es otra cosa — ahí `Serial2` (7/8) = COMM; son placas distintas, no colisionan.
 - **🔧 FIX UART TOP (2026-06-02):** el Teensy 4.0 del TOP no expone `Serial7` (28/29 = back-pads). Mapeo corregido: **COMM → `Serial2` (7/8)**, **CENTRAL → `Serial4` (16/17)**. **No quedan conflictos de UART abiertos.**

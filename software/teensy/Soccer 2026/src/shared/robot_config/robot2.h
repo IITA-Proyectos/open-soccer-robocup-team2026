@@ -82,31 +82,38 @@ constexpr float MAX_SPEED_MM_S  = 1000.0f;           // [R1=1000] estimado (comu
 //    Mapea sensors_imu.cpp + pinout_common.h. ⚠️ DELTA-R2 GRANDE: 2 buses.
 // ============================================================================
 // R2 tiene 2 BNO FUNCIONALES, uno por bus I2C, AMBOS en la misma direccion 0x28
-// (no se distinguen por direccion → se distinguen por BUS). Soldaron los cables
-// del 2do BNO en la parte INFERIOR del Teensy 4.0 para sacar Wire1.
+// (no se distinguen por direccion → se distinguen por BUS). El 2do BNO se soldó a la
+// parte INFERIOR del Teensy 4.0 (back-pad) = pines 24/25 = bus **Wire2** (LPI2C4).
+// ⚠️ CORRECCION 2026-06-09: 24/25 es Wire2, NO Wire1 (Wire1 = 16/17). CONFIRMADO en
+// banco (diag_top_i2c_scan, commit 9da8e9e): BNO2 0x28 VIVO en Wire2; Wire1 vacío.
 //   [R1: 2 slots LEFT/RIGHT en el MISMO Wire, 0x28 / 0x29; hoy solo 1 sano (0x28).]
 //
-// ⚠️ Esto REQUIERE CAMBIO DE CODIGO en sensors_imu.cpp (hoy ambos BNO estan
-// hardcodeados a &Wire y el 2do se detecta por chip-id en 0x29). El robot-def
-// describe el HW; el rewiring del .cpp para leer {bus,addr} por sensor se hace en
-// la sesion de migracion con pio. Ver ROBOT-DEFINITION-DESIGN.md §IMU.
+// ★ CONVENCION PRIMARIO/SECUNDARIO (Gustavo 2026-06-09): el BNO PRIMARIO (fuente de
+// heading preferida) es el que está SOLO en Wire2 (sin ToF → sin contencion i2c → NO
+// se congela). El SECUNDARIO es el que comparte Wire(18/19) con los 4 ToF (respaldo).
+// → en la tabla: indice 0 = PRIMARIO (Wire2) · indice 1 = SECUNDARIO (Wire).
+//
+// ⚠️ REQUIERE CAMBIO DE CODIGO en sensors_imu.cpp (hoy ambos BNO hardcodeados a &Wire).
+// El read del PRIMARIO por Wire2 + la prioridad primario→secundario está PENDIENTE
+// (gateado ROBOT2). El robot-def describe el HW. Ver ROBOT-DEFINITION-DESIGN.md §IMU.
 constexpr int     IMU_NUM_BNO = 2;                   // DELTA-R2: 2 BNO funcionales
 
-// Tabla {bus, addr} por BNO. bus: 0 = Wire (18/19), 1 = Wire1 (24/25).
-// En R2 ambos en 0x28 pero en buses DISTINTOS.  // TODO: confirmar en banco
-constexpr uint8_t IMU_BNO_BUS [2] = { 0, 1 };       // BNO[0]=Wire, BNO[1]=Wire1  // DELTA-R2
+// Tabla {bus, addr} por BNO. bus: 0 = Wire (18/19) · 2 = Wire2 (24/25). (Wire1 = 16/17, vacío.)
+// Indice 0 = PRIMARIO (Wire2, solo) · indice 1 = SECUNDARIO (Wire, con los 4 ToF).
+// Ambos en 0x28 pero en buses DISTINTOS.  // CONFIRMADO banco 2026-06-09
+constexpr uint8_t IMU_BNO_BUS [2] = { 2, 0 };       // BNO[0]=PRIM Wire2 · BNO[1]=SEC Wire  // DELTA-R2
 constexpr uint8_t IMU_BNO_ADDR[2] = { 0x28, 0x28 }; // ambos 0x28               // DELTA-R2
 
 // Signo del heading (chip CW+ → firmware CCW+). Medido en banco R1 = -1.
-// Si en R2 el BNO se monto con otra orientacion, el signo puede diferir.
+// Si en R2 el BNO PRIMARIO se monto con otra orientacion, el signo puede diferir.
 constexpr float HEADING_SIGN = -1.0f;               // [R1=-1.0] // TODO: confirmar en banco
 
 // Intervalo de lectura y clock I2C. En R1 estan castigados (50ms / 100kHz) por la
-// contencion BNO+ToF en el MISMO Wire. En R2, con el 2do BNO en Wire1 (bus aparte),
-// la contencion podria no existir → oportunidad de leer mas rapido / 400 kHz en
-// ese bus. NO bloqueante; arrancar igual que R1 y optimizar en banco.
-constexpr uint32_t BNO_READ_INTERVAL_MS = 50;       // [R1=50] // TODO: revisar en banco (Wire1)
-constexpr uint32_t I2C_CLOCK_HZ         = 100000;   // [R1=100000] // TODO: probar 400k en Wire1
+// contencion BNO+ToF en el MISMO Wire. En R2, con el BNO PRIMARIO en Wire2 (bus aparte,
+// SIN ToF), la contencion no existe en ese bus → oportunidad de leer mas rapido / 400 kHz
+// en Wire2. NO bloqueante; arrancar igual que R1 y optimizar en banco.
+constexpr uint32_t BNO_READ_INTERVAL_MS = 50;       // [R1=50] // TODO: revisar en banco (Wire2)
+constexpr uint32_t I2C_CLOCK_HZ         = 100000;   // [R1=100000] // TODO: probar 400k en Wire2 (primario solo)
 
 // ============================================================================
 // 3. ToF (placa TOP — Teensy 4.0)

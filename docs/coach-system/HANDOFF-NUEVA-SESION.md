@@ -38,7 +38,7 @@ ESTADO ACTUAL (verificado 2026-06-07):
 - Conceptos ya integrados en los deliverables: "acelerar tiempos / ciclo en 30 días", DISEÑO MODULAR
   (superior=percepción/fusión · inferior=drivetrain+decisión), evolución desde el robot campeón
   nacional básico, y roadmap CANbus+ESP32+telemetría F1. Doc profundo de uso de IA: docs/competencia/USO-DE-IA.md.
-- ROBOT2 (delantero) en armado: sin OTOS, 2 BNO en Wire/Wire1 (misma dir 0x28), ToF rotados 90°/uno a
+- ROBOT2 (delantero) en armado: sin OTOS, 2 BNO en Wire/Wire2 (24/25; misma dir 0x28; el de Wire2 solo/sin ToF = PRIMARIO), ToF rotados 90°/uno a
   40°/modelo distinto, motores a confirmar. Prep: docs/robot-variants/ + src/shared/robot_config/robot2.h
   (seed aditivo, NO cableado, ROBOT1 byte-idéntico).
 

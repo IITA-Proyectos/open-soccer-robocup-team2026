@@ -66,9 +66,12 @@ El último firmware imprime, apenas arranca:
 3. **Resoldar:** SDA/SCL, las patas de cada BNO y ToF, los cables del bodge, y el **puente
    ADR→3V3 del 2º BNO** (intermitente: a veces ACKea, a veces no).
 4. **2º BNO:** confirmar PS0/PS1 a GND (modo I²C) y alimentación; si sigue, probar reemplazo.
-5. **Lo más robusto (si nada alcanza):** **separar los 4 ToF a `Wire1` (24/25)** y dejar
+5. **Lo más robusto (si nada alcanza):** **separar los 4 ToF a `Wire2` (24/25)** y dejar
    los 2 BNO solos en `Wire` (18/19). Menos carga por bus + elimina el choque en 0x29.
-   Requiere bodge del I²C de los ToF + cambio chico de firmware (ToF → `Wire1`).
+   Requiere bodge del I²C de los ToF + cambio chico de firmware (ToF → `Wire2`).
+   > **Corrección 2026-06-09:** el bus de los pines 24/25 es **`Wire2`** (LPI2C4), no `Wire1`
+   > (i²c scan corregido, commit 9da8e9e). Decisión actual (TASK-207): el 2º BNO va a `Wire2`
+   > (solo, como PRIMARIO), no los ToF — el de `Wire2` sin ToF es el más confiable.
 
 ## Estado del firmware (commiteado, WIP bring-up)
 
@@ -96,5 +99,5 @@ En `src/top/` quedó (mejoras que conviene mantener):
 - Firmware: `src/top/sensors_imu.cpp`, `src/top/sensors_tof.{h,cpp}`, `src/top/main_top.cpp`.
 - Diag que funciona (solo LEFT + ToF): `src/diag/diag_pose_live.cpp` (`pio run -e diag_pose_live`).
 - Diag de direcciones: `src/diag/diag_bno_addr_check.cpp`, `diag_top_i2c_scan.cpp`.
-- Pinout: `src/top/pinout_common.h` (I²C 18/19, Wire1 24/25) + `pinout_robot1.h` (LP {9,10,11,12}, pin-10 conflicto).
+- Pinout: `src/top/pinout_common.h` (I²C 18/19, **Wire2 24/25**) + `pinout_robot1.h` (LP {9,10,11,12}, pin-10 conflicto). (El bus de 24/25 es `Wire2`/LPI2C4, no `Wire1` — corregido 2026-06-09.)
 - Relacionado: TASK-038 (XSHUT/bodge), TASK-039 (COMM árbitro).

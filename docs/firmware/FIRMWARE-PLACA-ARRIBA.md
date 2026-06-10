@@ -75,19 +75,30 @@ La placa ARRIBA es el módulo más complejo computacionalmente del robot. Su car
 > hardware sobre ToF: los **4 ToF VL53L7CX cuelgan TODOS del bus `Wire`** (I²C0,
 > 18/19), cada uno con su pata **LP** cableada por bodge a un pin del Teensy
 > (**{9,10,11,12}, activo-alto**), y **enumeran a 0x2A/0x2B/0x2C/0x2D** (NO
-> 0x52..0x58). Esto **liberó `Wire1` (24/25) para la placa DOWN**. ⚠️ Las
+> 0x52..0x58). ⚠️ Las
 > direcciones I²C persisten con 3V3 → power-cycle obligatorio al enumerar.
 > El UART TOP→CENTRAL es **Serial4 (RX 16 / TX 17)** (fix 2026-06-02: el Teensy 4.0
 > NO expone Serial7 28/29 en el borde —son pads SMD traseros, no cableables con
 > header—; COMM=Serial2 7/8, CENTRAL=Serial4 16/17). La cámara trasera quedó en Serial5.
 > Pinout canónico: `hardware/electronics/top-board-pack/01-pinout-y-hardware.md`.
 > Detalle: `journal/2026-05-30-top-tof-4-en-bus-unico-enumeracion-ok.md`.
+>
+> **🔧 CORRECCIÓN BNO/I²C 2026-06-09 (i2c scan en banco, commit 9da8e9e).** El Teensy 4.0
+> tiene **3 buses I²C**: `Wire` (LPI2C1, 18/19) · `Wire1` (LPI2C3, 16/17) · **`Wire2`
+> (LPI2C4, 24/25)**. Los **2 BNO055 van en buses SEPARADOS** (0x28 ambos): el **PRIMARIO**
+> está **solo en `Wire2` (24/25), sin ToF** → es el más confiable (no sufre contención con
+> los ToF) = fuente de heading preferida; el **SECUNDARIO** comparte `Wire` (18/19) con los
+> 4 ToF (es el que se congela cuando el read choca con los ToF) = respaldo. El bus de los
+> pines 24/25 es **`Wire2`**, NO `Wire1` — el repo confundía 24/25 con Wire1. (Fix de fondo
+> de ROBOT1: hoy 1 BNO en `Wire` con los ToF = posición secundaria; conviene agregar un BNO
+> en `Wire2` solo, como primario.) Donde más abajo el doc diga "ambos BNO en `Wire`" o
+> "`Wire1` (24/25)", está superado por esta nota.
 
 | Componente | Cantidad | Conexión | Notas técnicas |
 |-----------|----------|----------|----------------|
 | MCU Teensy 4.0 | 1 | — | Cortex-M7 600 MHz, 1 MB RAM, 2 MB flash |
 | Cámaras OpenMV N6 (antes H7 Plus) | 2 | UART (Serial3 frontal + Serial5 trasera) | 19200 baud, protocolo viejo 9 bytes/packet |
-| BNO055 IMU | 2 | I2C: **ambos en Wire (18/19)** | LEFT=0x28, RIGHT=0x29 (ADR a 3V3). Wire1 (24/25) quedó LIBRE para DOWN (recableado 2026-05-31; ver §Buses I2C + sensors_imu.cpp) |
+| BNO055 IMU | 2 | I2C buses separados (0x28 ambos) | **PRIMARIO** solo en `Wire2` (LPI2C4, 24/25), **SECUNDARIO** en `Wire` (18/19) con los ToF (corrección 2026-06-09: el bus de 24/25 es `Wire2`, no `Wire1`; ver §Buses I2C + sensors_imu.cpp) |
 | Sensor ToF VL53L7CX | 4 fijos (plan: 6) | **TODOS en `Wire` (I²C0)**, LP individual por bodge | 8×8 SPAD multizona. Dir 0x2A..0x2D. Plan: +2 móviles para pelota |
 | Ultrasonido HC-SR04 | 1 | TRIG=pin 4 / ECHO=pin 3 | Frontal, fallback de ToF, lectura bloqueante 25 ms (banco 2026-05-31) |
 | Árbitro RCJ (START/STOP) | — | **GPIO: pin 5 = OUT1 (PLAY/STOP), pin 6 = OUT2 (espejo de OUT1)** | Nivel 0 = juego PARADO, 1 = juego EN CURSO (3.3V). NO viene por UART (fix 2026-06-02 / TASK-039) |
@@ -102,13 +113,17 @@ La placa ARRIBA es el módulo más complejo computacionalmente del robot. Su car
 
 | Bus | SDA | SCL | Periféricos | Tráfico estimado |
 |-----|-----|-----|-------------|------------------|
-| Wire (I2C0) | 18 | 19 | BNO055 #1 (0x28) + **los 4 ToF** (0x2A/0x2B/0x2C/0x2D) | ~30 KHz transacciones |
-| Wire1 (I2C1) | 25 (remap) | 24 (remap) | **(libre para placa DOWN)** — el 2do BNO se movió a `Wire` (0x29) el 2026-05-31 | ~30 KHz |
+| Wire (LPI2C1) | 18 | 19 | BNO055 **SECUNDARIO** (0x28) + **los 4 ToF** (0x2A/0x2B/0x2C/0x2D) | ~30 KHz transacciones |
+| **Wire2** (LPI2C4) | 25 (remap) | 24 (remap) | BNO055 **PRIMARIO** (0x28) — solo en su bus, sin ToF | ~30 KHz |
+| Wire1 (LPI2C3) | 16 | 17 | **vacío** (16/17 los toma Serial4 = UART a CENTRAL) | — |
 
-Los 2 BNO055 quedaron **ambos en el bus `Wire`** (18/19): LEFT=0x28 y RIGHT=0x29
-(pad ADR del 2do puenteado a 3V3, recableado 2026-05-31), lo que liberó `Wire1`
-(24/25) para la placa DOWN. Los **4 ToF cuelgan del mismo bus `Wire`**
-(recableado 2026-05-30) y se enumeran al boot por su pin **LP** (bodge):
+Los 2 BNO055 van en **buses I²C separados** (0x28 ambos, corrección 2026-06-09): el
+**PRIMARIO** solo en `Wire2` (LPI2C4, 24/25) y el **SECUNDARIO** en `Wire` (18/19) junto
+con los 4 ToF. El primario, al estar solo en su bus sin ToF, no sufre la contención que
+**congela el yaw** → es la fuente de heading preferida; el secundario es el respaldo. El bus
+de los pines 24/25 es **`Wire2`**, no `Wire1` (el repo confundía 24/25 con Wire1). Los
+**4 ToF cuelgan del bus `Wire`** (recableado 2026-05-30) y se enumeran al boot por su pin
+**LP** (bodge):
 arrancan todos en 0x29, se duermen todos, se despierta uno por uno y a cada uno
 se le asigna **0x2A → 0x2B → 0x2C → 0x2D** (ninguno queda en 0x29). Pines LP
 confirmados en banco: **{9,10,11,12}, activo-alto**. ⚠️ Las direcciones I²C de
@@ -137,7 +152,7 @@ reset del Teensy no las borra).
 > pin 28 RX7 + GND). El lado CENTRAL es un Teensy 4.1 y SÍ recibe en su Serial7 (pin 28):
 > ese extremo no cambia.
 
-Quedan libres Serial6 (BLOQUEADO por Wire1 remap, pines 24/25); Serial7 NO es usable en el Teensy 4.0 (28/29 son pads SMD traseros, sin header en el borde).
+Quedan libres Serial6 (BLOQUEADO por **`Wire2`** remap, pines 24/25 = BNO055 primario; corrección 2026-06-09, antes decía `Wire1`); Serial7 NO es usable en el Teensy 4.0 (28/29 son pads SMD traseros, sin header en el borde).
 
 ---
 

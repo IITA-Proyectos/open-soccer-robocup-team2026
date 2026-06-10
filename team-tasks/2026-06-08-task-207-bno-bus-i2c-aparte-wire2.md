@@ -21,6 +21,21 @@ El BNO055 es un mal ciudadano I²C (viola el protocolo en buses cargados — for
 **El software está AGOTADO** (probados y fallidos: 100 kHz, 20 Hz, deconflict, noInterrupts —
 ver `journal/2026-06-08-bno-contencion-bus-debug-y-arquero-sin-bno.md`). El fix es de hardware.
 
+## ✅ Hallazgo confirmado en banco (2026-06-09, i²c scan corregido, commit 9da8e9e)
+El Teensy 4.0 tiene **3 buses I²C**: `Wire` (LPI2C1, 18/19) · `Wire1` (LPI2C3, 16/17) ·
+**`Wire2` (LPI2C4, 24/25)**. El repo venía llamando MAL "Wire1" al bus de pines 24/25; el
+correcto es **`Wire2`**. Scan confirmado en ROBOT2: **BNO1 0x28 en `Wire` (18/19) + 4 ToF**;
+**BNO2 0x28 VIVO en `Wire2` (24/25)**; `Wire1` (16/17) vacío.
+
+## Convención PRIMARIO/SECUNDARIO (decisión Gustavo 2026-06-09)
+- **BNO PRIMARIO = el que está SOLO en su bus (`Wire2` 24/25, sin ToF)** → sin contención I²C
+  con los ToF → es el **MÁS CONFIABLE** y la fuente de heading **preferida**. (El que comparte
+  bus con los ToF es el que se CONGELA.)
+- **BNO SECUNDARIO = el que comparte `Wire` (18/19) con los 4 ToF** → respaldo.
+- **Fix de fondo de ROBOT1:** hoy ROBOT1 tiene 1 BNO en `Wire` (con los ToF) = posición
+  "secundaria"; el fix es agregarle un BNO en `Wire2` (solo) como **PRIMARIO** (= lo que ya
+  tiene ROBOT2).
+
 ## El robot ANDA sin esto (no es bloqueante de Incheon)
 El arquero degrada con gracia: navega por **línea (DOWN) + cámara (pelota/arcos) + heading del OTOS**
 (no del BNO). Pierde solo la orientación fina por giroscopio. Por eso es **P1, no P0**.
@@ -48,5 +63,11 @@ El arquero degrada con gracia: navega por **línea (DOWN) + cámara (pelota/arco
 
 ## Notas
 - 2026-06-08: creada tras agotar el software (Claude Opus 4.8, pedido de Gustavo).
-- Histórico: el BNO de ROBOT1 estuvo en Wire1/aparte y lo movieron a `Wire` el 2026-05-31 para liberar
-  el bus para DOWN — ese movimiento es el origen de la contención. ROBOT2 quedó con el bus aparte.
+- 2026-06-09: **i²c scan corregido (commit 9da8e9e)** → el bus de los pines 24/25 es **`Wire2`**
+  (LPI2C4), NO `Wire1`. Confirmado en ROBOT2 que el **2º BNO está VIVO en `Wire2` (24/25) en
+  0x28**, solo en su bus (sin ToF). Eso valida la convención primario/secundario de arriba:
+  el de `Wire2` (solo) es el PRIMARIO/confiable. Donde la task decía "como ROBOT2", ahora
+  está confirmado por scan, no asumido.
+- Histórico: el BNO de ROBOT1 estuvo en un bus aparte y lo movieron a `Wire` el 2026-05-31 para
+  liberar el bus para DOWN — ese movimiento es el origen de la contención. ROBOT2 quedó con el
+  bus aparte (`Wire2` 24/25).

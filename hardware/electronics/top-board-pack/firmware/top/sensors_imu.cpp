@@ -15,10 +15,16 @@ namespace iitasoccer {
 
 namespace {
 
-// Dos instancias del BNO055 — una en cada bus I2C.
+// Dos instancias del BNO055 — una en cada bus I2C (buses SEPARADOS, 0x28 ambos).
 // Adafruit_BNO055 constructor: (sensorID, address, &Wire_instance).
+//   left  = SECUNDARIO → Wire  (LPI2C1, 18/19) compartido con los 4 ToF (respaldo).
+//   right = PRIMARIO   → bus de los pines 24/25.
+// ⚠️ CORRECCIÓN 2026-06-09 (copia congelada): el bus físico de 24/25 es **Wire2 (LPI2C4)**,
+//    NO Wire1 — el repo confundía 24/25 con Wire1. La instancia conserva el símbolo Wire1
+//    por el error histórico; el firmware VIVO (software/teensy/Soccer 2026/src/) debe usar
+//    Wire2. El PRIMARIO (solo en su bus, sin ToF) es la fuente de heading preferida.
 Adafruit_BNO055 g_imu_left (55, BNO055_LEFT_I2C_ADDR,  &Wire);
-Adafruit_BNO055 g_imu_right(56, BNO055_RIGHT_I2C_ADDR, &Wire1);
+Adafruit_BNO055 g_imu_right(56, BNO055_RIGHT_I2C_ADDR, &Wire1);  // Wire1 = nombre histórico del bus físico Wire2 (24/25)
 
 bool  g_left_ready = false;
 bool  g_right_ready = false;
@@ -80,21 +86,22 @@ float normalize_heading(float h) {
 }  // namespace
 
 bool sensors_imu_init() {
-    // I2C bus 0 (Wire) — pines default 18/19. No requiere remap.
+    // Wire (LPI2C1) — pines default 18/19. Bus del BNO SECUNDARIO + los 4 ToF.
     Wire.begin();
 
-    // I2C bus 1 (Wire1) — REMAPEADO a pines 24/25 (Q3 resolución).
-    Wire1.setSCL(WIRE1_SCL_PIN);
-    Wire1.setSDA(WIRE1_SDA_PIN);
+    // Bus de los pines 24/25 = Wire2 (LPI2C4) físico; instancia nombrada Wire1 por el
+    // error histórico (corrección 2026-06-09). Bus del BNO PRIMARIO, solo, sin ToF.
+    Wire1.setSCL(WIRE1_SCL_PIN);   // pin 24 = SCL del bus físico Wire2
+    Wire1.setSDA(WIRE1_SDA_PIN);   // pin 25 = SDA del bus físico Wire2
     Wire1.begin();
 
-    Serial.println("[IMU] Init BNO055 LEFT (Wire / I2C0)...");
+    Serial.println("[IMU] Init BNO055 SECUNDARIO (Wire / LPI2C1, 18/19, con ToF)...");
     g_left_ready = init_one_bno(g_imu_left);
-    Serial.println(g_left_ready ? "[IMU] LEFT OK" : "[IMU] LEFT FAIL (continuando)");
+    Serial.println(g_left_ready ? "[IMU] SECUNDARIO OK" : "[IMU] SECUNDARIO FAIL (continuando)");
 
-    Serial.println("[IMU] Init BNO055 RIGHT (Wire1 / I2C1)...");
+    Serial.println("[IMU] Init BNO055 PRIMARIO (Wire2 / LPI2C4, 24/25, solo)...");
     g_right_ready = init_one_bno(g_imu_right);
-    Serial.println(g_right_ready ? "[IMU] RIGHT OK" : "[IMU] RIGHT FAIL (continuando)");
+    Serial.println(g_right_ready ? "[IMU] PRIMARIO OK" : "[IMU] PRIMARIO FAIL (continuando)");
 
     if (g_left_ready)  g_left_offset  = capture_offset(g_imu_left);
     if (g_right_ready) g_right_offset = capture_offset(g_imu_right);

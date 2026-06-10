@@ -121,7 +121,7 @@ El Teensy 4.1 (Cortex-M7 a 600 MHz) tiene mucha capacidad libre para estrategia 
 | Responsabilidad | Detalle |
 |-----------------|---------|
 | Visión multi-cámara | Procesa 2 OpenMV H7/H7+ via UART. Cada cámara reporta blobs (pelota, arco propio, arco rival). ARRIBA fusiona ambas vistas. |
-| IMU dual (heading absoluto) | 2 BNO055 en buses I2C separados (Wire bus 0 + Wire1 bus 1 remapeado a pines 24/25). Modo IMUPLUS para evitar interferencia magnética de motores. Si uno falla, sigue el otro. |
+| IMU dual (heading absoluto) | 2 BNO055 en buses I2C separados (0x28 ambos): **PRIMARIO** solo en `Wire2` (LPI2C4, pines **24/25**), **SECUNDARIO** en `Wire` (18/19, bus 0) junto con los 4 ToF. Modo IMUPLUS para evitar interferencia magnética de motores. Si uno falla, sigue el otro. El primario (sin ToF) es la fuente de heading preferida. *(corrección 2026-06-09: el bus de 24/25 es `Wire2`, no `Wire1` — el repo confundía 24/25 con Wire1.)* |
 | Obstáculos cercanos | 4 sensores ToF VL53L7CX (2 en cada bus I2C) + 1 HC-SR04 frontal. Reporta distancia mínima en cada cuadrante. |
 | Comunicación con árbitros | Bridge UART hacia placa COMM (ESP32-C6) que implementa el protocolo oficial RCJ Communication Module y reporta start/stop/halftime al ARRIBA. |
 | Comunicación con partner | ESP-NOW transparente vía placa COMM. Recibe pose y pelota del robot compañero, lo agrega al world snapshot. |
@@ -137,7 +137,7 @@ El Teensy 4.1 (Cortex-M7 a 600 MHz) tiene mucha capacidad libre para estrategia 
 ### Inputs
 
 - 2 OpenMV cámaras (UART Serial3 + Serial5).
-- 2 BNO055 (I2C Wire + Wire1).
+- 2 BNO055 (I2C: primario en `Wire2` 24/25, secundario en `Wire` 18/19 con los ToF; corrección 2026-06-09 — el bus de 24/25 es `Wire2`, no `Wire1`).
 - 4 ToF VL53L7CX (I2C, repartidos en 2 buses).
 - 1 HC-SR04 ultrasonido (GPIO TRIG/ECHO).
 - Placa COMM (UART Serial4) — comandos árbitros + datos partner.

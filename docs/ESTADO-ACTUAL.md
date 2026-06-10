@@ -79,7 +79,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 - **Diags de banco (CENTRAL, `src/diag/`):** `diag_central_motors` (motores + `MOTOR_DIR`), **`diag_central_strafe`** (patrulla lateral del arquero — **open-loop**, omega=0, sin BNO en CENTRAL; ahora que el OTOS llega a CENTRAL por broadcast se le puede sumar heading-hold = v2 — [doc](firmware/DIAG-CENTRAL-STRAFE.md)), `diag_central_drive_straight` (+Y con heading del TOP), `diag_central_comm_down` (link DOWN→CENTRAL), `diag_central_rx_all` (decodifica DOWN+TOP juntos).
 
 ### TOP (Teensy 4.0)
-- `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (4 ToF VL53L7CX en bus único `Wire`, lib `Adafruit_VL53L7CX`. ✅ Bodge de Enzo 2026-05-30: los 4 ToF con LP en pines {9,10,11,12} (activo-alto), enumeran a 0x2A..0x2D, confirmado en banco. `Wire1` liberado para DOWN. ⚠️ Probar ToF SIEMPRE con power-cycle (las direcciones I²C persisten). El firmware vivo `sensors_tof.cpp` todavía lee 1 ToF — extender a los 4 es HAL Sprint B. Plan: escalar a 6 ToF (4 fijos + 2 móviles para pelota). Ver journal 2026-05-30), `comm_*`
+- `src/top/main_top.cpp` + `cameras_runtime`, `cameras`, `sensors_imu`, `sensors_tof` (4 ToF VL53L7CX en bus único `Wire`, lib `Adafruit_VL53L7CX`. ✅ Bodge de Enzo 2026-05-30: los 4 ToF con LP en pines {9,10,11,12} (activo-alto), enumeran a 0x2A..0x2D, confirmado en banco. El bus `Wire2` (24/25) del TOP quedó liberado (corrección 2026-06-09: el bus de 24/25 es `Wire2`/LPI2C4, no `Wire1`; es donde va el 2º BNO — TASK-207). ⚠️ Probar ToF SIEMPRE con power-cycle (las direcciones I²C persisten). El firmware vivo `sensors_tof.cpp` todavía lee 1 ToF — extender a los 4 es HAL Sprint B. Plan: escalar a 6 ToF (4 fijos + 2 móviles para pelota). Ver journal 2026-05-30), `comm_*`
 - `src/shared/localization.cpp` — trilateracion geometrica directa (Sprint 1
   aprobado 2026-05-25, ver `docs/superpowers/specs/2026-05-25-localization-sprint1-trilateration-design.md`).
   Validacion en hardware pendiente: TASK-035.
@@ -427,7 +427,8 @@ nativo, pero ya no es el único camino. Ver
 ### Avance 2026-05-30 — TOP: ✅ los 4 ToF enumeran en bus único (bodge LP OK)
 - Enzo recableó la placa TOP: los **4 ToF al bus principal `Wire` (18/19)** +
   bodge de la pata **LP** de cada ToF a un pin del Teensy (reusando la traza de
-  INT), para **liberar `Wire1` (24/25)** hacia la placa DOWN.
+  INT), para **liberar el bus `Wire2` (24/25)** del TOP (corrección 2026-06-09: el bus de
+  los pines 24/25 es `Wire2`/LPI2C4, no `Wire1`; es donde va el 2º BNO — TASK-207).
 - Diagnóstico de banco (5 sketches nuevos: `diag_top_i2c_scan`,
   `diag_top_tof_lp_discover`, `diag_top_tof_enumerate`, `diag_top_tof_census`,
   `diag_top_tof_quad_live`). **Veredicto (tras power-cycle): los 4 LP
@@ -438,7 +439,8 @@ nativo, pero ya no es el único camino. Ver
   bus arranca sucio. Un primer diagnóstico sin power-cycle dio un FALSO
   NEGATIVO ("ningún LP funciona", commit `096108a`) que quedó refutado y
   corregido.
-- **Habilita**: `Wire1` libre para DOWN + **localización 2D por trilateración**
+- **Habilita**: bus `Wire2` (24/25) del TOP libre (corrección 2026-06-09: 24/25 = `Wire2`,
+  no `Wire1`; bus del 2º BNO — TASK-207) + **localización 2D por trilateración**
   con 4 ToF reales.
 - **TASK-201** (multímetro de continuidad LP) **degradada**: ya confirmado por
   banco, queda opcional.
@@ -507,7 +509,7 @@ nativo, pero ya no es el único camino. Ver
   en ambas puntas; falta cablear + validar el stream por protocolo.
 - **Se DESTRABAN** (ya no bloqueadas por "TOP sin armar"): TASK-022 (cámara operativa),
   TASK-024 (rol/polaridad), TASK-032 (ToF U2 en HW), TASK-035 (localización),
-  TASK-200 (heading IMU→CENTRAL + loop), TASK-037 (drive-straight), TASK-003 (Wire1 remap).
+  TASK-200 (heading IMU→CENTRAL + loop), TASK-037 (drive-straight), TASK-003 (remap del bus de 24/25 en TOP — ese bus es `Wire2`/LPI2C4, no `Wire1`; corrección 2026-06-09, ver TASK-207).
 
 > ✅ SUPERADO (2026-06-08): el sentido de los 3 motores ROBOT1 ya está validado (MOTOR_INVERT={+1,-1,+1}, M2/U17 invertido, banco 2026-06-01 re-confirmado 2026-06-06) y el conflicto 7/8 está resuelto (2026-05-31). La GEOMETRÍA quedó CALIBRADA 2026-06-08: WHEEL_ANGLES_DEG={330,210,90} (M1=del-IZQ · M2=del-DER · M3=trasera) + piso de PWM POR RUEDA MOTOR_MIN_PWM={70,70,42}. Fila canónica: FUENTES-DE-VERDAD.md:38. Tabla de disposición: docs/firmware/DIAG-CENTRAL-MOTORS.md. Lo único de banco que queda es el TUNEO FINO del lateral (que no rote) + confirmar el SENTIDO de la traslación, y ROBOT2.
 

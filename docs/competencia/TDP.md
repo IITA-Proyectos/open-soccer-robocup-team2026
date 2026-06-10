@@ -95,14 +95,14 @@ Los **6 sensores I²C cuelgan del mismo bus `Wire` (pines 18/19)**: 2 BNO055 (0x
 
 **Decisión clave (data-driven):** **I²C a 100 kHz** y leer el BNO a **20 Hz** (no 100 Hz).
 **Por qué:** el BNO055 y los VL53L7CX **no coexisten** en el mismo bus a alta velocidad: con los ToF rangeando, la lectura multi-byte del BNO se corrompe.
-**Dato:** a 400 kHz (o 100 kHz con el BNO leído fuerte) **el yaw se congela**; a **100 kHz + BNO @20 Hz** el heading sigue OK en banco (boot ~40 s). Es un *band-aid*: el fix de fondo (anotado en el código) es mover el BNO a un bus aparte (`Wire1`). **Estado real honesto:** el BNO RIGHT (0x29) es una **unidad fallada**; el robot corre con 1 BNO sano (0x28) + 4 ToF, todos estables.
+**Dato:** a 400 kHz (o 100 kHz con el BNO leído fuerte) **el yaw se congela**; a **100 kHz + BNO @20 Hz** el heading sigue OK en banco (boot ~40 s). Es un *band-aid*: el fix de fondo (anotado en el código) es mover el BNO a un bus aparte (`Wire2`, pines 24/25). Esto fija la convención de heading: el BNO que está **solo en su bus (`Wire2`, sin ToF) es el PRIMARIO** —sin contención I²C con los ToF, por eso es el más confiable—; el que comparte `Wire` (18/19) con los 4 ToF es el **SECUNDARIO** (respaldo, y el que se congela). **Estado real honesto:** el BNO RIGHT (0x29) es una **unidad fallada**; el robot corre con 1 BNO sano (0x28) + 4 ToF, todos estables.
 
 ### Iteración eléctrica de referencia — enumerar 4 ToF en un solo bus
 
 **Problema:** los 4 VL53L7CX arrancan en 0x29 → chocan. El análisis forense del schematic/PCB rev 1.0 reveló que los 4 pads XSHUT/LPn estaban **intencionalmente sin rutear** (8 flags No-Connect explícitos, 0 nets en el netlist). La línea `PIN_TOF_XSHUT` del config era ficción heredada del diseño aspiracional.
 **Qué probamos:** búsqueda forense de strings XSHUT/LPn en los JSON SCH+PCB (0 matches); **bodge físico** (Enzo) cableando la pata LP de cada ToF a un GPIO reusando la traza de INT; 5 sketches de diagnóstico incrementales.
 **Dato:** tras power-cycle, los 4 LP funcionan en pines **{9, 10, 11, 12}** (activo-alto) y enumeran a 0x2A–0x2D. **Lección reproducible:** las direcciones I²C de los VL53L7CX **persisten mientras haya 3V3** — hay que **power-ciclar, no resetear**, o el bus arranca sucio y la enumeración da un falso negativo ("ningún LP funciona").
-**Modificación:** `PIN_TOF_XSHUT = {9,10,11,12}`, `NUM_TOF_ACTIVE = 4`; `Wire1` (24/25) liberado para DOWN; localización 2D por trilateración desbloqueada a nivel HW. **Conflicto colateral anotado:** el pin 10 (LP del ToF[1]) choca con el dipswitch de rol → reubicar. Rutear XSHUT en el PCB queda como item P0 del wishlist de TOP rev 1.1 (post-Incheon).
+**Modificación:** `PIN_TOF_XSHUT = {9,10,11,12}`, `NUM_TOF_ACTIVE = 4`; `Wire2` (24/25) liberado (es el bus del 2º BNO del fix del freeze); localización 2D por trilateración desbloqueada a nivel HW. **Conflicto colateral anotado:** el pin 10 (LP del ToF[1]) choca con el dipswitch de rol → reubicar. Rutear XSHUT en el PCB queda como item P0 del wishlist de TOP rev 1.1 (post-Incheon).
 
 ## 1.4 PLACA DOWN — anillo de línea y odometría
 

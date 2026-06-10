@@ -56,18 +56,27 @@ acelerómetro de ese sensor registra una aceleración brusca que corrompe su
 estimación de orientación. El otro puede haber absorbido el impacto de forma
 diferente y seguir midiendo correctamente.
 
-| Sensor | Bus | Dirección | Modo |
-|--------|-----|-----------|------|
-| BNO055 izquierdo | Wire | 0x28 | IMUPLUS |
-| BNO055 derecho | Wire | 0x29 | IMUPLUS |
+> **Corrección 2026-06-09 (banco, i²c scan, commit 9da8e9e — TASK-207).** El diseño original
+> ponía los 2 BNO en el mismo bus `Wire` (0x28 + 0x29). El **scan real de ROBOT2** mostró que
+> los 2 BNO están en **buses SEPARADOS**, ambos en 0x28: uno en `Wire` (18/19, con los 4 ToF) y
+> el otro en **`Wire2` (24/25)** solo. El de `Wire2` (sin ToF → sin contención) es el
+> **PRIMARIO/confiable** (el que comparte bus con los ToF es el que se CONGELA = SECUNDARIO).
+> Tabla actualizada abajo. (El 0x29-en-`Wire` del diseño viejo era la unidad RIGHT, que además
+> resultó FALLADA — el robot corre con 1 BNO sano.)
+
+| Sensor | Bus | Dirección | Rol | Modo |
+|--------|-----|-----------|-----|------|
+| BNO055 PRIMARIO (confiable) | **Wire2** (24/25) | 0x28 | fuente preferida (sin ToF, no se congela) | IMUPLUS |
+| BNO055 SECUNDARIO (respaldo) | Wire (18/19) | 0x28 | respaldo (comparte bus con los 4 ToF) | IMUPLUS |
 
 ### Lógica de fusión en cascada
 
 Cada **10 ms** la placa TOP lee los dos sensores y toma una decisión en cascada:
 
 ```
-BNO055 izquierdo              BNO055 derecho
- Wire · 0x28 · IMUPLUS         Wire · 0x29 · IMUPLUS
+BNO055 PRIMARIO              BNO055 SECUNDARIO
+ Wire2(24/25)·0x28·IMUPLUS    Wire(18/19)·0x28·IMUPLUS
+ (solo, no se congela)        (comparte bus con los 4 ToF)
          \                           /
           \                         /
            [   Calcular diff        ]

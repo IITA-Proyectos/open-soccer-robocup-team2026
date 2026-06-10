@@ -121,7 +121,7 @@ El Teensy 4.1 (Cortex-M7 a 600 MHz) tiene mucha capacidad libre para estrategia 
 | Responsabilidad | Detalle |
 |-----------------|---------|
 | Visión multi-cámara | Procesa 2 OpenMV H7/H7+ via UART. Cada cámara reporta blobs (pelota, arco propio, arco rival). ARRIBA fusiona ambas vistas. |
-| IMU dual (heading absoluto) | 2 BNO055 **ambos en el bus `Wire` (18/19)**: LEFT=0x28, RIGHT=0x29 (pad ADR puenteado a 3V3). Modo IMUPLUS para evitar interferencia magnética de motores. Si uno falla, sigue el otro. Esto liberó `Wire1` (24/25) para la placa DOWN. |
+| IMU dual (heading absoluto) | 2 BNO055 en **buses I²C separados** (0x28 ambos): **PRIMARIO** solo en `Wire2` (LPI2C4, pines **24/25**) — el más confiable, sin contención con los ToF; **SECUNDARIO** en `Wire` (18/19) compartido con los 4 ToF (respaldo). Modo IMUPLUS para evitar interferencia magnética de motores. Si uno falla, sigue el otro. *(corrección 2026-06-09: el bus de 24/25 es `Wire2`, no `Wire1`; el repo confundía 24/25 con Wire1.)* |
 | Obstáculos cercanos | 4 sensores ToF VL53L7CX **todos en el bus `Wire`** (LP por bodge {9,10,11,12} → 0x2A..0x2D) + 1 HC-SR04 frontal (gateado off). Reporta distancia mínima en cada cuadrante. |
 | Recepción del árbitro (START/STOP) | El comando del árbitro RCJ llega al ARRIBA como **nivel GPIO (no UART)**: pin 5 = OUT1 (PLAY/STOP) y pin 6 = OUT2 (espejo de OUT1), leídos con `INPUT_PULLDOWN`. Nivel 0 = juego PARADO, nivel 1 (3.3V) = juego EN CURSO. `match_running = (pin5 OR pin6)` → en PLAY sube SOLO UNO de los dos pines (probado en banco 2026-06-02, Gustavo); por eso se usa OR. Sigue siendo fail-safe a STOP: si el cable se desconecta, ambos pines leen 0 (`INPUT_PULLDOWN`) → `match_running=false`. ARRIBA inyecta `match_running` en el `WORLD_SNAPSHOT`. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART) |
 | Comunicación con partner | ESP-NOW transparente vía placa COMM. Recibe pose y pelota del robot compañero, lo agrega al world snapshot. |
@@ -137,7 +137,7 @@ El Teensy 4.1 (Cortex-M7 a 600 MHz) tiene mucha capacidad libre para estrategia 
 ### Inputs
 
 - 2 OpenMV cámaras (UART Serial3 frontal + Serial5 trasera — la trasera quedó soldada en Serial5; el link a CENTRAL va por Serial4, pines 16/17).
-- 2 BNO055 (ambos en `Wire`: 0x28 + 0x29).
+- 2 BNO055 (0x28 ambos, en buses separados: primario en `Wire2` 24/25, secundario en `Wire` 18/19 con los ToF; corrección 2026-06-09).
 - 4 ToF VL53L7CX (todos en `Wire`, LP por bodge → 0x2A..0x2D).
 - 1 HC-SR04 ultrasonido (GPIO TRIG/ECHO).
 - Árbitro RCJ (GPIO) — pin 5 = OUT1 (PLAY/STOP) + pin 6 = OUT2, `INPUT_PULLDOWN`. 0 = parado, 1 (3.3V) = en curso; `match_running = pin5 OR pin6` (en PLAY sube solo uno; sigue fail-safe a STOP: ambos en 0 si se desconecta). (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART)
@@ -324,6 +324,16 @@ Con dos unidades en posiciones físicas diferentes, ARRIBA puede:
 - Continuar operando si uno falla.
 
 Costo: dos chips de ~$15 USD cada uno. Beneficio: confiabilidad muy superior.
+
+**Buses separados + primario/secundario (corrección 2026-06-09).** Los 2 BNO055 van en
+**buses I²C distintos** (ambos 0x28): el **PRIMARIO** está solo en `Wire2` (LPI2C4, pines
+24/25) y el **SECUNDARIO** comparte `Wire` (18/19) con los 4 ToF. El primario es la fuente
+de heading preferida porque, al no compartir bus con los ToF, **no sufre la contención I²C
+que congela el yaw** (el BNO que comparte bus con los ToF es el que se congela). El bus de
+los pines 24/25 es **`Wire2`**, no `Wire1` — el repo confundía 24/25 con Wire1 hasta el i2c
+scan del 2026-06-09 (commit 9da8e9e). *Fix de fondo de ROBOT1:* hoy tiene 1 BNO en `Wire`
+(con los ToF) = posición secundaria; conviene agregarle un BNO en `Wire2` solo, como
+primario.
 
 ### ¿Por qué dos OTOS en ABAJO?
 

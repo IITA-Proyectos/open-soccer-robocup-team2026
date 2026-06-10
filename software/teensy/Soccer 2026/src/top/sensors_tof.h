@@ -3,7 +3,8 @@
 // Hardware (estado vivo, banco 2026-05-30 — supera el esquema viejo de abajo):
 //   • Los 4 ToF VL53L7CX cuelgan del bus ÚNICO Wire (I2C0, 18/19) y enumeran a
 //     0x2A..0x2D vía las patas LP {9,10,11,12} (bodge de Enzo; TOP_ENABLE_MULTI_TOF).
-//   • Wire1 (24/25) quedó LIBRE para la placa DOWN.
+//   • Wire2 (24/25, LPI2C4) — en R1 libre; en R2 es el bus del 2º BNO PRIMARIO.
+//     (Corrección 2026-06-09: 24/25 = Wire2, NO "Wire1"; Wire1 real = 16/17.)
 //   • HC-SR04 → TRIG=pin 4, ECHO=pin 3 (NO 6/7; ver pinout_common.h).
 //   ⚠️ Probar SIEMPRE con power-cycle (las direcciones I2C de los VL53L7CX persisten).
 //   Lib usada: Adafruit_VL53L7CX (la STM32duino tiene bug en Teensy 4.0).

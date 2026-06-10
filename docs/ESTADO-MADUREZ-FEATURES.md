@@ -48,7 +48,7 @@ proposito: "Tener claro qué está pensado pero no operativo, en qué nivel de m
 |---|---|---|---|
 | **Recalibración de visión (TASK-022)** | Herramientas listas (`calib-lab-n6.py`, `diag_cam_acceptance`, `CALIBRACION-VISION-N6.md`); el parsing/wire está N4. | Ejecutar la calibración LAB + homografía en la luz real. | **Banco (bloqueante #1).** El robot no ve la pelota hasta hacerlo. |
 | **Robot-definition único** | Diseño + seed `robot_config/robot2.h` (aditivo, en curso vía workflow). | Cablear los config existentes para que tiren del robot-def, byte-idéntico, con `pio`. | Compilación Teensy (no se puede acá) + revisión. (H) |
-| **2 BNO en 2 buses (ROBOT2)** | Diseño claro: 2 BNO misma dir base (0x28) en Wire + Wire1. | Cambio en `sensors_imu.cpp` para leer un BNO por bus, gateado per-robot. | Banco (hardware ROBOT2) + `pio`. |
+| **2 BNO en 2 buses (ROBOT2)** | Confirmado en banco 2026-06-09 (commit 9da8e9e): 2 BNO misma dir base (0x28), uno en `Wire` (18/19, con los 4 ToF) y el otro en **`Wire2` (24/25)** solo (antes mal llamado "Wire1"). El de `Wire2` (sin ToF, sin contención) es el **PRIMARIO/confiable**; el de `Wire` (con ToF, se congela) es el **SECUNDARIO**. | Cambio en `sensors_imu.cpp` para leer un BNO por bus, gateado per-robot. Es el fix de fondo de ROBOT1 (TASK-207). | Banco (hardware ROBOT2) + `pio`. |
 | **ESP-NOW robot-a-robot** | Hardware listo (ESP32-C6); roadmap declarado. | Integración firmware COMM + protocolo + validación. | Banco. |
 
 ---

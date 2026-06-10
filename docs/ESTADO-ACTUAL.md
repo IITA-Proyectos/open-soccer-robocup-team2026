@@ -32,7 +32,9 @@ tipo: indice-operacional
 > `WHEEL_ANGLES_DEG={330,210,90}` (M1=del-IZQ · M2=del-DER · M3=trasera) un lateral puro
 > da M1=M2=+0.5·vx (mismo lado) y M3=−vx (la trasera es la que más empuja). El piso de PWM
 > pasó a ser POR RUEDA (`MOTOR_MIN_PWM[3]={70,70,42}`: delanteras oblicuas 70 > trasera
-> paralela 42) para sacar a las ruedas del deadzone. **Pendiente de banco: SOLO el tuneo
+> paralela 42) para sacar a las ruedas del deadzone. ⚠️ **El `{70,70,42}` quedó SUPERADO
+> 2026-06-09 → `{70,70,107}` + impulso inicial + freno anticipado de la trasera (banco R2;
+> ver «Avance 2026-06-09» abajo).** **Pendiente de banco: SOLO el tuneo
 > fino del lateral + confirmar el sentido.** Detalle → TASK-101 + journal
 > `2026-06-03-banco-resultados-arbitro-strafe-y-bno-freeze.md`.
 > (3) ⚠️ **El heading del BNO (TOP) se CONGELA en producción** (`top_robot1`): el snapshot
@@ -70,7 +72,7 @@ Lista rápida: `down-board-pack/`, `central-board-pack/`, `top-board-pack/`,
 ### CENTRAL (Teensy 4.1, Zircon Rev v15)
 - `src/central/main_central.cpp` — entry
 - `src/central/strategy.cpp` — FSM ATK + GK Nivel 2 (KICKOFF/SEARCH/POSITION/APPROACH + PATROL/INTERCEPT/CLEAR + LINE_AVOID). **El cerebro.**
-- `src/central/motors_zircon.{h,cpp}` — PWM 3 motores omni (sin kicker físico: el robot empuja la pelota por inercia)
+- `src/central/motors_zircon.{h,cpp}` — PWM 3 motores omni (sin kicker físico: el robot empuja la pelota por inercia). **Motion lateral ESTÁNDAR (banco R2 2026-06-09, decisión Gustavo — vale para TODO movimiento lateral en TODOS los programas):** piso de PWM por rueda `MOTOR_MIN_PWM={70,70,107}` + impulso inicial fijo `{130,130,140}` PWM ×40 ms (gateado `-DCENTRAL_MOTOR_KICKSTART`) + freno anticipado de la trasera 66 ms (`motors_set_rear_cut()`, gateado `-DCENTRAL_REAR_BRAKE_LEAD`, hoy cableado solo en `diag_central_strafe.cpp`). **R2 VALIDADO en banco; R1 arranca de los mismos valores — A VERIFICAR EN BANCO R1.** Fila canónica: `FUENTES-DE-VERDAD.md` (CENTRAL — motores).
 - `src/central/imu_zircon.{h,cpp}` — BNO055 (⚠️ ya NO se conecta en CENTRAL desde 2026-05-31; compat gateado por `-DCENTRAL_HAS_LOCAL_BNO`, off; el heading viene de ARRIBA)
 - `src/central/world_model.{h,cpp}` — espejo del WorldSnapshot
 - `src/central/comm_top.{h,cpp}` — recibe WorldSnapshot del TOP por **`Serial7` (RX7 = pin 28)** (reasignado 2026-05-31: antes Serial1, se movió a Serial7 cuando el link a DOWN tomó Serial1)
@@ -206,6 +208,40 @@ nativo, pero ya no es el único camino. Ver
    distancias vs regla. Doc: [`CALIBRACION-HOMOGRAFIA-XY-N6.md`](firmware/CALIBRACION-HOMOGRAFIA-XY-N6.md)
    §Resultado + `journal/2026-06-07-calibracion-distancia-camara-frontal-elias.md`. (Migración
    H7→N6, bugs P0 y velocidad de pelota ya estaban resueltos — Avance 2026-06-03.)
+
+### Avance 2026-06-09 — Motores: MOTION LATERAL ESTÁNDAR validado en banco ROBOT2 (3 técnicas)
+- **Banco R2 (Gustavo, `diag_central_strafe_robot2_kick`): "anda bien".** Antes de esto, en el
+  strafe de R2 la trasera movía pero las delanteras no rompían la inercia, y al frenar la
+  inercia de la trasera desacomodaba el robot. Tres técnicas lo resolvieron y quedaron como
+  **ESTÁNDAR para TODO movimiento lateral, en TODOS los programas** (decisión Gustavo 2026-06-09):
+  1. **Piso de PWM por rueda `MOTOR_MIN_PWM={70,70,107}`** — la trasera se barrió
+     42→50→70→85→95→100→105→**107**. Física aprendida: el PWM NO es proporcional a la
+     velocidad y es DISTINTO por rueda; en el strafe la trasera debe girar al DOBLE que las
+     delanteras (cinemática: fronts 0.5·vx, rear 1.0·vx) pero como va ALINEADA (menos fricción
+     que las oblicuas) lo logra con ~1.5× el PWM (107 vs 70), no 2×.
+  2. **Impulso inicial fijo por rueda `{130,130,140}` PWM ×40 ms** en la transición
+     parado→comando (gateado `-DCENTRAL_MOTOR_KICKSTART`; factor ×9.9 + cap por rueda =
+     impulso fijo; la trasera pide 140 porque "se quedaba").
+  3. **Freno anticipado de la trasera** (gateado `-DCENTRAL_REAR_BRAKE_LEAD`):
+     `motors_set_rear_cut()` corta la trasera (idx2) a 0 en los últimos **66 ms** del tramo
+     (tunable `-DDIAG_STRAFE_REAR_LEAD_MS`) mientras las delanteras terminan.
+     **HOY cableado solo en `diag_central_strafe.cpp`.**
+- **Además (mismo banco): motores R2 calibrados** — pines **IGUALES a R1 (NO rotados**, la
+  suposición "rotados" venía del delantero 2025) y `MOTOR_INVERT={+1,+1,+1}` (el U17 de esa
+  placa NO está invertido por HW).
+- **ROBOT1: arranca de los MISMOS valores** ({70,70,107} + {130,130,140} + 66 ms) por decisión
+  de Gustavo — ⚠️ **A VERIFICAR EN BANCO R1** (su `{70,70,42}` viejo era del banco 2026-06-08:
+  la trasera se bajó porque rotaba en el strafe; si R1 rota con 107, bajar idx2 gradualmente).
+- **Tema-a-analizar (NO implementado):** llevar el freno anticipado al lateral de la FSM del
+  arquero (patrol/intercept) — el corte necesita saber cuándo TERMINA el movimiento, y en el
+  control continuo de la FSM no existe ese evento (es glue futuro; `strategy.cpp` no se toca).
+- **Pendiente equipo (sesión `pio` + banco):** activar los flags en los envs de producción
+  (cambia el binario — es lo pedido; OJO: todo env con `build_src_filter` explícito que active
+  `-DCENTRAL_MOTOR_KICKSTART` necesita `+<shared/motor_kickstart.cpp>`, como ya hace
+  `diag_central_strafe_robot2_kick`) + crear/usar un strafe-kick de R1 para la verificación.
+- Canónico: fila «CENTRAL — motores» de `FUENTES-DE-VERDAD.md` + `config_central.h` +
+  `motors_zircon.cpp` + `MOTION-CONTROL-PLAN-2026.md`. Journal:
+  `2026-06-09-banco-robot2-bringup-sensores-y-bno-wire2.md` (sección motores).
 
 ### Avance 2026-06-03 (pt.3) — Visión P1 [CÓDIGO]: tests del parser + robustez detección + kit calib + análisis eje X
 - **Agente de visión**, ítems [CÓDIGO] que NO necesitan banco (los P0 de higiene ya estaban hechos).
@@ -512,6 +548,7 @@ nativo, pero ya no es el único camino. Ver
   TASK-200 (heading IMU→CENTRAL + loop), TASK-037 (drive-straight), TASK-003 (remap del bus de 24/25 en TOP — ese bus es `Wire2`/LPI2C4, no `Wire1`; corrección 2026-06-09, ver TASK-207).
 
 > ✅ SUPERADO (2026-06-08): el sentido de los 3 motores ROBOT1 ya está validado (MOTOR_INVERT={+1,-1,+1}, M2/U17 invertido, banco 2026-06-01 re-confirmado 2026-06-06) y el conflicto 7/8 está resuelto (2026-05-31). La GEOMETRÍA quedó CALIBRADA 2026-06-08: WHEEL_ANGLES_DEG={330,210,90} (M1=del-IZQ · M2=del-DER · M3=trasera) + piso de PWM POR RUEDA MOTOR_MIN_PWM={70,70,42}. Fila canónica: FUENTES-DE-VERDAD.md:38. Tabla de disposición: docs/firmware/DIAG-CENTRAL-MOTORS.md. Lo único de banco que queda es el TUNEO FINO del lateral (que no rote) + confirmar el SENTIDO de la traslación, y ROBOT2.
+> ⚠️ Actualización 2026-06-09: el `{70,70,42}` de arriba quedó SUPERADO como valor final → `MOTOR_MIN_PWM={70,70,107}` + impulso inicial `{130,130,140}`×40 ms + freno anticipado trasera 66 ms (banco R2; R1 mismos valores A VERIFICAR). ROBOT2 ya quedó validado (pines NO rotados, MOTOR_INVERT={+1,+1,+1}). Ver «Avance 2026-06-09».
 
 ### 🏁 Avance 2026-05-29 — BANCO: motores CENTRAL + enlace físico DOWN↔CENTRAL
 - **Motores del CENTRAL andan** (`diag_central_motors` en banco): identificados

@@ -4,6 +4,46 @@
 > **Autor del draft:** Claude Opus 4.8 (Anthropic). **Solicitado por:** Gustavo Viollaz.
 > **Scope:** plan de portado del control de movimiento del arquero 2025 al pipeline 2026 (CENTRAL / Zircon Teensy 4.1).
 
+---
+
+## ⚡ ACTUALIZACIÓN 2026-06-09 — resultado de banco ROBOT2 (lee esto primero)
+
+Banco de Gustavo con `diag_central_strafe_robot2_kick` (**"anda bien"**). Estado real de las capas:
+
+| Capa | Estado 2026-06-09 |
+|---|---|
+| **Capa 1 — piso de PWM por rueda** | ✅ **VALIDADA EN BANCO ROBOT2** con `MOTOR_MIN_PWM = {70, 70, 107}` (el banco REFUTÓ la hipótesis ×1.1 de este plan — ver nota en la Capa 1) |
+| **Capa 2a — impulso inicial (kickstart)** | ✅ **VALIDADA EN BANCO ROBOT2**: impulso fijo `{130, 130, 140}` PWM × 40 ms |
+| **Capa 2b — freno anticipado de la trasera** | ✅ **cableado y validado en los diags de strafe** (corte de la trasera en los últimos 66 ms del tramo). Es la mitad del 2b |
+| **Capa 2b — plugging (reversa)** | ⏳ **PENDIENTE** (sin implementar ni validar) |
+| **Capa 3 — cascada de heading** | ⏳ **PENDIENTE** (sin cambios) |
+
+**Política (decisión de Gustavo 2026-06-09):** las 3 técnicas validadas (piso + impulso + freno anticipado)
+se usan **SIEMPRE que el robot se mueva LATERALMENTE, en TODOS los programas**. Eso significa que los flags
+`-DCENTRAL_MOTOR_KICKSTART` y `-DCENTRAL_REAR_BRAKE_LEAD` se prenden **también en envs de producción**
+(cambia el binario de competencia a propósito — supera el "todos default OFF" original de este plan para esas
+dos técnicas; el resto sigue gateado OFF). ⚠️ OJO build: todo env con `build_src_filter` EXPLÍCITO que active
+`-DCENTRAL_MOTOR_KICKSTART` necesita `+<shared/motor_kickstart.cpp>` en el filtro (los envs que compilan todo
+`src/` no lo necesitan — verificar el filtro real de cada env antes de tocar).
+
+### Valores FINALES por robot
+
+| Qué (dónde vive) | ROBOT2 — ✅ validado banco 2026-06-09 | ROBOT1 — mismos valores, ⚠️ A VERIFICAR EN BANCO R1 |
+|---|---|---|
+| Piso de PWM por rueda `MOTOR_MIN_PWM[3]` (`config_central.h`) | `{70, 70, 107}` — delanteras oblicuas 70 · trasera 107 (barrido de la trasera: 42→50→70→85→95→100→105→107) | `{70, 70, 107}` — el `{70,70,42}` viejo de R1 era de SU banco 2026-06-08 (la trasera se bajó porque rotaba en el strafe); **si R1 rota con 107, bajar gradualmente** |
+| Impulso inicial por rueda (kickstart, `motors_zircon.cpp`, flag `-DCENTRAL_MOTOR_KICKSTART`) | `{130, 130, 140}` PWM × **40 ms** en la transición parado→comando de cada rueda (implementado como factor ×9.9 + cap POR RUEDA = impulso fijo; la trasera necesitaba 140 porque "se quedaba") | igual `{130, 130, 140}` × 40 ms |
+| Freno anticipado de la trasera (`motors_set_rear_cut()` en el mixer, flag `-DCENTRAL_REAR_BRAKE_LEAD`) | corta la TRASERA (idx 2) a 0 en los últimos **66 ms** del tramo (tunable `-DDIAG_STRAFE_REAR_LEAD_MS`) mientras las delanteras terminan — hoy cableado SOLO en `diag_central_strafe.cpp` | igual, 66 ms |
+
+**Física aprendida (hallazgo de Gustavo, confirmado en banco):** el PWM **NO es proporcional a la velocidad**
+y es **DISTINTO por rueda**. En el strafe la trasera debe girar al DOBLE de velocidad que las delanteras
+(cinemática: fronts 0.5·vx, rear 1.0·vx), pero como rueda ALINEADA al movimiento (menos fricción que las
+oblicuas) lo logra con **~1.5× el PWM (107 vs 70), no 2×**.
+
+El resto del documento se conserva como estaba el 2026-06-08 (es el plan original); donde el banco lo superó,
+hay notas fechadas en cada capa.
+
+---
+
 ## Advertencia (leer antes de tocar nada)
 
 1. **TODO lo que propone este plan está GATEADO por flags de build con default OFF.** Con los flags
@@ -82,6 +122,13 @@ calculado (Capa 2), y eligen la fuente de feedback que mantiene el rumbo derecho
 
 ### Capa 1 — Valores de PWM por movimiento (base = arquero 2025 ×1.1)
 
+> **✅ Estado 2026-06-09 — el PISO POR RUEDA quedó VALIDADO EN BANCO ROBOT2:** `MOTOR_MIN_PWM = {70, 70, 107}`
+> (delanteras oblicuas 70 · trasera 107; barrido 42→50→70→85→95→100→105→107). El banco **refutó** la hipótesis
+> ×1.1 de la tabla de abajo (piso `{77,77,46}` con trasera BAJA): la trasera necesita piso **ALTO** porque debe
+> girar al doble que las delanteras y el PWM no es proporcional a la velocidad (ver "Física aprendida" arriba).
+> ROBOT1 arranca de los mismos `{70,70,107}` — **A VERIFICAR EN BANCO R1** (si rota, bajar la trasera).
+> Las **velocidades GK** de esta capa (PATROL 430, INTERCEPT 588, etc.) siguen siendo plan, **NO validadas**.
+
 **Qué hace.** El insight central: con los ángulos actuales `{330, 210, 90}` un **strafe puro** ya produce
 el ratio del arquero 2025 — delanteras `0.5·vx`, trasera `1.0·vx`, es decir **2:1 (trasera fuerte)**, igual
 que el 2025. **No hace falta tocar la cinemática ni el mixer.** Alcanza con **elegir** las velocidades de
@@ -138,6 +185,14 @@ RETREAT=275 y piso {77,77,46}. **El piso ×1.1 se gatea en la misma rama `#ifdef
 
 ### Capa 2a — Impulso inicial anti-inercia (kickstart) en CENTRAL
 
+> **✅ Estado 2026-06-09 — VALIDADA EN BANCO ROBOT2** (env `diag_central_strafe_robot2_kick`, "anda bien").
+> Valores finales: impulso **FIJO por rueda `{130, 130, 140}` PWM × 40 ms** en la transición parado→comando.
+> La implementación real difiere del draft de abajo: factor `×9.9` (`KICKSTART_FACTOR_X10=99`) + **cap POR
+> RUEDA** `{130,130,140}` — el factor satura siempre contra el cap, así que en la práctica es un impulso fijo
+> (no el ×1.8 con cap único 153 del plan). La trasera necesitaba 140 porque con menos "se quedaba".
+> Por decisión de Gustavo, `-DCENTRAL_MOTOR_KICKSTART` va ON en TODOS los programas con movimiento lateral
+> (también producción). ROBOT1: mismos valores, **A VERIFICAR EN BANCO R1**.
+
 **Qué hace.** Reproduce el "impulso inicial" del arquero 2025: al detectar la transición **parado→comando**,
 multiplica el PWM base de cada rueda por un factor (~1.8) durante una ventana corta (~40 ms) para vencer el
 rozamiento estático (stiction), y al cerrarse la ventana deja pasar el PWM base sin tocar. **No es una rampa:
@@ -186,6 +241,18 @@ se re-arma el reloj.
 ---
 
 ### Capa 2b — Freno: plugging (reversa) + freno anticipado de la trasera
+
+> **Estado 2026-06-09 — PARCIAL.** El **freno anticipado de la trasera quedó ✅ cableado y validado en los
+> diags de strafe**: `motors_set_rear_cut()` en el mixer (gateado `-DCENTRAL_REAR_BRAKE_LEAD`) corta la
+> TRASERA (idx 2) a 0 en los últimos **66 ms** del tramo (tunable `-DDIAG_STRAFE_REAR_LEAD_MS`) mientras las
+> delanteras terminan — sin esto la inercia de la trasera desacomoda el robot al frenar. Hoy está cableado
+> **SOLO en `diag_central_strafe.cpp`**. El **plugging (reversa) sigue PENDIENTE** (sin implementar ni validar).
+>
+> **Tema-a-analizar (NO implementado a propósito): llevar el corte anticipado al lateral de la FSM del arquero**
+> (`strategy.cpp`, PATROL/INTERCEPT — zona prohibida sin análisis previo). El corte necesita saber **cuándo
+> TERMINA el movimiento**; en el control continuo de la FSM ese evento no existe (el strafe termina por evento
+> asíncrono — pisó línea / interceptó — no por tiempo). Es glue futuro, mismo punto que ya marca el caveat
+> "movimientos de duración conocida" más abajo.
 
 **Qué hace.** Dos primitivas de freno puras portadas del 2025:
 1. **Plugging (freno por reversa).** Dado el último comando de rueda y los ms desde el STOP, devuelve un PWM
@@ -240,6 +307,8 @@ flag: `motors_plug_brake()` cae a `motors_stop()` (coast normal) → binario id�
 ---
 
 ### Capa 3 — Lazo de control en cascada (fuente de rumbo/deriva del strafe del arquero)
+
+> **Estado 2026-06-09: PENDIENTE, sin cambios.** Sigue siendo plan.
 
 **Qué hace.** Implementa la **cascada de prioridad** de feedback de rumbo para corregir la deriva del strafe.
 Dos funciones puras: `select_heading_source(...)` elige la mejor fuente disponible, y
@@ -325,6 +394,12 @@ dato.**
 ## Estrategia de gating
 
 Cada capa tiene su flag, su env y su binario. **Todos default OFF → competencia byte-idéntica.**
+
+> **Actualización 2026-06-09:** este "todos default OFF" quedó **superado para 2 flags** por decisión de
+> Gustavo: `-DCENTRAL_MOTOR_KICKSTART` y `-DCENTRAL_REAR_BRAKE_LEAD` se prenden **también en envs de
+> PRODUCCIÓN** (las técnicas van siempre que el robot se mueva lateralmente; cambia el binario a propósito).
+> En los comentarios del `platformio.ini`, R1 queda marcado **A VERIFICAR EN BANCO R1**. El resto de los
+> flags (`GK_PWM_2025_TUNE`, `CENTRAL_PLUG_BRAKE`, `CENTRAL_HEADING_CASCADE`) sigue default OFF.
 
 | Flag de build | Env de banco | Capa | Toca el binario solo si | Estado HW |
 |---|---|---|---|---|

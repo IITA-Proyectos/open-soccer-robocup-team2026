@@ -19,6 +19,13 @@ requested-by: "Gustavo Viollaz (@gviollaz)"
 > no 0). El piso de PWM ahora es **POR RUEDA** (`MOTOR_MIN_PWM[3] = {70, 70, 42}`:
 > delanteras oblicuas 70 > trasera paralela 42) para que ninguna quede stalled por deadzone.
 > Detalle: journal `2026-06-03-banco-resultados-arbitro-strafe-y-bno-freeze.md` + TASK-101.
+>
+> ⚠️ **Actualización 2026-06-09 (banco R2):** el `{70,70,42}` de arriba quedó SUPERADO →
+> piso `{70, 70, 107}` (trasera barrida 42→107) + **impulso inicial `{130,130,140}`×40 ms**
+> (`-DCENTRAL_MOTOR_KICKSTART`) + **freno anticipado de la trasera 66 ms**
+> (`-DCENTRAL_REAR_BRAKE_LEAD`) = **estándar de todo movimiento lateral**. R2 validado;
+> R1 mismos valores **A VERIFICAR EN BANCO** (si rota con 107, bajar la trasera gradualmente).
+> Canónico: fila «CENTRAL — motores» de `FUENTES-DE-VERDAD.md` + `MOTION-CONTROL-PLAN-2026.md`.
 
 ## Qué hace (lo pedido)
 

@@ -330,6 +330,11 @@ es **IDÉNTICO** (el `LineStatusV2` sale de `dm_update`, no de ese pipeline).
   aparecer "círculos". El piso de PWM ahora es **POR RUEDA**
   (`MOTOR_MIN_PWM[3] = {70, 70, 42}`: delanteras oblicuas 70 > trasera paralela 42),
   así ninguna rueda queda en deadzone. Detalle: TASK-101.
+  ⚠️ **Actualización 2026-06-09 (banco R2):** piso → `{70, 70, 107}` (trasera barrida
+  42→107) + impulso inicial `{130,130,140}`×40 ms + freno anticipado de la trasera 66 ms
+  = **estándar de todo movimiento lateral**. R2 validado; R1 mismos valores A VERIFICAR
+  (si R1 rota con 107, bajar la trasera gradualmente). Card: `docs/pruebas-banco/CENTRAL.md`
+  CARD CENTRAL-3b.
 - **Qué medir:** que un comando de traslación pura (vx, omega=0) mueva el robot
   DERECHO sin rotar y hacia el lado pedido; ajustar el sentido si va al revés.
 - **Comando:**

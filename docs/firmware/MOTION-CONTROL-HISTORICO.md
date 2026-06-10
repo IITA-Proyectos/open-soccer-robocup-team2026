@@ -286,6 +286,19 @@ Estos son **los números más representativos hallados en el histórico real** (
 | **PWM avance recto** | delanteras **100**, trasera **0** | delantero (`:159-161`) |
 | **PWM órbita** | laterales **24**, trasera **72** (trasera 3×) | delantero (`:615-617`) |
 
+> **Nota 2026-06-09 — portado al 2026 (la historia de arriba NO se reescribe):** el **impulso anti-inercia
+> (arranque arquero)** y el **freno anticipado de la trasera** ya fueron **portados al firmware 2026 y
+> VALIDADOS EN BANCO en ROBOT2** (Gustavo, env `diag_central_strafe_robot2_kick`, "anda bien"). Valores
+> FINALES 2026 (distintos de los candidatos 2025 de esta tabla, que se conservan como referencia histórica):
+> impulso **fijo por rueda `{130, 130, 140}` PWM × 40 ms** en la transición parado→comando (gateado
+> `-DCENTRAL_MOTOR_KICKSTART`); corte de la trasera a 0 en los últimos **66 ms** del tramo lateral (gateado
+> `-DCENTRAL_REAR_BRAKE_LEAD`, tunable `-DDIAG_STRAFE_REAR_LEAD_MS`); más el **piso de PWM por rueda
+> `MOTOR_MIN_PWM = {70, 70, 107}`** — el deadzone que el histórico nunca tuvo (delanteras oblicuas 70 ·
+> trasera 107; en el strafe la trasera gira al doble pero, alineada, lo logra con ~1.5× el PWM, no 2×).
+> ROBOT1 arranca con los mismos valores, **A VERIFICAR EN BANCO R1**. El plugging (reversa), las rampas y el
+> PID de heading portado a la FSM siguen pendientes. Detalle: `MOTION-CONTROL-PLAN-2026.md` (tabla de valores
+> finales por robot) y `MOTION-CONTROL-ACTUAL.md` (addendum 2026-06-09).
+
 **Gaps del histórico que 2026 podría cubrir (NO existían en ningún programa):**
 - **Deadzone / piso de PWM:** **no encontrado** en ningún programa. Con PID grande una rueda puede caer a 0 y "morir". Candidato a agregar.
 - **Short-brake activo (`INA=INB=1`):** **no encontrado.** Todos frenan por coast (+ reversa los delanteros). Técnica nunca probada por el equipo.

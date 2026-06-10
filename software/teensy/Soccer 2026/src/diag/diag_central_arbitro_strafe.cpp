@@ -34,9 +34,18 @@
 //   M1=del-IZQUIERDA, M2=del-DERECHA (INVERTIDA HW vía MOTOR_INVERT), M3=TRASERA.
 //   El viejo {60,-60,180} daba CÍRCULOS (eje +Y vs +X de la fórmula) → RESUELTO.
 //   Strafe puro: M1/M2 al MISMO lado (+0.5·vx), la TRASERA (M3) la que más empuja
-//   (−vx). Piso de PWM POR RUEDA (MOTOR_MIN_PWM[3]={70,70,42}): las delanteras
-//   oblicuas necesitan más que la trasera paralela. PENDIENTE banco: tuneo fino del
-//   lateral (que no rote) + confirmar sentido. Ver journal 2026-06-08.
+//   (−vx). Piso de PWM POR RUEDA (MOTOR_MIN_PWM[3]={70,70,107}, banco robot2
+//   2026-06-09; R1 parte de esos valores — A VERIFICAR EN BANCO R1): las delanteras
+//   oblicuas necesitan más piso para ARRANCAR, pero la trasera (alineada, 2x la
+//   velocidad en el strafe) necesita ~1.5x el PWM para SOSTENER la relación 2:1.
+//
+// ✅ TÉCNICAS DE MOTION LATERAL (banco robot2 2026-06-09, activas vía build_flags):
+//   - CENTRAL_MOTOR_KICKSTART: impulso fijo {130,130,140} PWM x 40 ms en cada
+//     transición parado→comando (vive en motors_zircon.cpp, acá no hay que hacer nada).
+//   - CENTRAL_REAR_BRAKE_LEAD: freno ANTICIPADO de la trasera — este sketch corta la
+//     M3 (motors_set_rear_cut) en los últimos REAR_LEAD_MS de cada tramo mientras las
+//     delanteras terminan; sin esto la inercia de la trasera desacomoda el robot al
+//     frenar. Mismo patrón que diag_central_strafe.
 //
 // Convención (kinematics.h): +X = derecha, +Y = frente. Lateral = vx (vy=0).
 //   IZQUIERDA = -vx, DERECHA = +vx.  (Invertible con -DDIAG_ARB_INVERT_LR.)
@@ -54,6 +63,8 @@
 //   -DDIAG_ARB_DISTANCE_MM=400    distancia por tramo (default 300 = 30 cm)
 //   -DDIAG_ARB_PAUSE_MS=3000      pausa entre tramos (default 3000 = 3 s)
 //   -DDIAG_ARB_INVERT_LR          invierte izquierda/derecha
+//   -DDIAG_ARB_REAR_LEAD_MS=66    ventana del freno anticipado de la trasera
+//                                 (solo con CENTRAL_REAR_BRAKE_LEAD; default 66 ms)
 //
 // Atribución:
 //   Author: Claude Opus 4.8 (Anthropic)
@@ -96,6 +107,19 @@ constexpr uint32_t STRAFE_DURATION_MS =
     static_cast<uint32_t>((STRAFE_DISTANCE_MM / STRAFE_SPEED_MM_S) * 1000.0f);
 
 constexpr uint32_t PRINT_PERIOD_MS = 250;
+
+#ifdef CENTRAL_REAR_BRAKE_LEAD
+// FRENO ANTICIPADO DE LA TRASERA (banco robot2 2026-06-09; técnica 2025, valores del
+// módulo motor_brake.h host-testeado: 60 ms @ VEL=100 ×1.1 robot más pesado = 66 ms).
+// En los últimos REAR_LEAD_MS del tramo la trasera corta (PWM 0) y las delanteras
+// terminan solas — la inercia de la trasera la hace rodar de más y desacomoda el robot.
+// 🔧 Tunear con -DDIAG_ARB_REAR_LEAD_MS=N (subí si sigue rodando; bajá si la cola frena antes).
+#ifndef DIAG_ARB_REAR_LEAD_MS
+  constexpr uint32_t REAR_LEAD_MS = 66;
+#else
+  constexpr uint32_t REAR_LEAD_MS = DIAG_ARB_REAR_LEAD_MS;
+#endif
+#endif
 
 // IZQUIERDA = -vx (convención +X = derecha). Invertible si el banco lo muestra al revés.
 #ifdef DIAG_ARB_INVERT_LR
@@ -155,6 +179,9 @@ void start_patrol() {
     g_dir            = LEFT_SIGN;   // IZQUIERDA primero
     g_phase          = Phase::STRAFE;
     g_phase_start_ms = millis();
+#ifdef CENTRAL_REAR_BRAKE_LEAD
+    motors_set_rear_cut(false);   // (re)arranque de patrulla re-arma la trasera
+#endif
     Serial.println(F(">>> ARBITRO = START -> arranca patrulla (IZQUIERDA primero)."));
 }
 
@@ -234,6 +261,9 @@ void loop() {
     //     un STOP en medio de un tramo frena AHORA, no espera al fin del tramo). ---
     if (!running) {
         motors_stop();
+#ifdef CENTRAL_REAR_BRAKE_LEAD
+        motors_set_rear_cut(false);   // STOP del árbitro re-arma la trasera
+#endif
         if (g_running_prev) {
             Serial.println(F(">>> ARBITRO = STOP -> FRENO. Esperando START."));
         }
@@ -253,11 +283,18 @@ void loop() {
     // --- Patrulla lateral: STRAFE (tramo) -> PAUSA 3 s -> alternar lado -> ... ---
     switch (g_phase) {
         case Phase::STRAFE:
+#ifdef CENTRAL_REAR_BRAKE_LEAD
+            // Últimos REAR_LEAD_MS del tramo: trasera corta, delanteras terminan solas.
+            motors_set_rear_cut((now - g_phase_start_ms) + REAR_LEAD_MS >= STRAFE_DURATION_MS);
+#endif
             apply_strafe(g_dir);
             digitalWrite(PIN_LED, HIGH);   // fijo = moviéndose
             if (now - g_phase_start_ms > STRAFE_DURATION_MS) {
                 g_phase = Phase::PAUSE;
                 g_phase_start_ms = now;
+#ifdef CENTRAL_REAR_BRAKE_LEAD
+                motors_set_rear_cut(false);   // cambio de fase re-arma la trasera
+#endif
                 Serial.println(F(">>> PAUSA 3 s"));
             }
             break;
@@ -269,6 +306,9 @@ void loop() {
                 g_dir = -g_dir;                 // alternar IZQUIERDA <-> DERECHA
                 g_phase = Phase::STRAFE;
                 g_phase_start_ms = now;
+#ifdef CENTRAL_REAR_BRAKE_LEAD
+                motors_set_rear_cut(false);   // tramo nuevo arranca con la trasera armada
+#endif
                 Serial.print(F(">>> ")); Serial.println(g_dir < 0 ? F("IZQUIERDA") : F("DERECHA"));
             }
             break;

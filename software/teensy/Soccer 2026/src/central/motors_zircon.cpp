@@ -155,6 +155,14 @@ void motors_apply_command(const MotorCommand& cmd) {
 void motors_stop() {
     for (int i = 0; i < 3; ++i) {
         apply_pwm_to_motor(i, 0);
+#ifdef CENTRAL_MOTOR_KICKSTART
+        // Re-armar el impulso inicial: sin esto, una parada vía motors_stop() (PAUSE de los
+        // diags, watchdog, stop de la FSM) dejaba g_kick_active=true y el PRÓXIMO arranque
+        // de esa rueda salía SIN golpe (hallazgo workflow 2026-06-09: las delanteras solo
+        // kickeaban el primer tramo; la trasera sí re-armaba porque el rear-cut la pasa
+        // por apply_command con 0).
+        g_kick_active[i] = false;
+#endif
     }
 }
 
@@ -167,6 +175,9 @@ void motors_brake() {
         digitalWrite(p.ina, HIGH);
         digitalWrite(p.inb, HIGH);
         analogWrite(p.pwm, 0);
+#ifdef CENTRAL_MOTOR_KICKSTART
+        g_kick_active[i] = false;   // re-armar el impulso (igual que motors_stop)
+#endif
     }
 }
 

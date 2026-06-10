@@ -103,3 +103,58 @@ Gustavo flasheo `top_robot2` (produccion, commit 0f503f2) y el banco dio:
   el congelamiento que robot1 nunca pudo resolver por software NO ocurre. Ver TASK-207.
 - Falta en la cadena: DOWN (down_robot2) -> diag_central_rx_all -> motores (diag_central_motors,
   pines rotados de R2) -> central_robot2.
+
+## Addendum 2026-06-09 (banco motores R2) — MOTION LATERAL ESTÁNDAR: piso 107 + impulso fijo + freno anticipado
+
+**Quién:** Gustavo (banco, robot2) · Claude (firmware/docs). **Veredicto:** `diag_central_strafe_robot2_kick` — **"anda bien"**.
+
+Se siguió la cadena hasta los motores de robot2 y salió mejor de lo esperado:
+
+- **Motores R2 calibrados (diag_central_motors):** la disposición resultó **IGUAL a ROBOT1** —
+  M1=U5(2/5/3)=delantera-IZQ · M2=U17(8/7/6)=delantera-DER · M3=U7(11/12/4)=trasera. La
+  suposición vieja "pines ROTADOS" (heredada del delantero 2025) es **FALSA** en el robot2 2026.
+  Y el U17 de ESTA placa **NO está invertido por HW** (en la Zircon de R1 sí) →
+  `MOTOR_INVERT={+1,+1,+1}` validado.
+- **Barrido del piso de la trasera 42→107:** en el strafe, con el piso heredado de R1
+  (`{70,70,42}`) la trasera quedaba lenta y el strafe arqueaba. Se barrió el idx2:
+  **42→50→70→85→95→100→105→107**. Con **107** la trasera sostiene el strafe →
+  `MOTOR_MIN_PWM={70,70,107}`.
+- **Impulso inicial fijo por rueda `{130,130,140}` PWM ×40 ms** (gateado
+  `-DCENTRAL_MOTOR_KICKSTART`, factor ×9.9 + cap por rueda = impulso fijo): sin esto las
+  delanteras no rompían la inercia desde parado, y la trasera necesitó **140** porque
+  "se quedaba".
+- **Freno anticipado de la trasera (66 ms)** (gateado `-DCENTRAL_REAR_BRAKE_LEAD`):
+  `motors_set_rear_cut()` corta la trasera (idx2) a 0 en los **últimos 66 ms del tramo**
+  (tunable `-DDIAG_STRAFE_REAR_LEAD_MS`) mientras las delanteras terminan — sin esto la
+  inercia de la trasera desacomodaba el robot al frenar. **HOY cableado solo en
+  `diag_central_strafe.cpp`.**
+- **La física aprendida (hallazgo de Gustavo, confirmado en banco):** el PWM **NO es
+  proporcional a la velocidad** y es **DISTINTO por rueda**. En el strafe la trasera debe girar
+  al **DOBLE** de velocidad que las delanteras (cinemática: fronts 0.5·vx, rear 1.0·vx), pero
+  como rueda **ALINEADA** (mucha menos fricción que las oblicuas a 60°) lo logra con **~1.5× el
+  PWM** (107 vs 70), no 2×.
+
+**Decisión de Gustavo (POLÍTICA):** estas **3 técnicas quedan como ESTÁNDAR para TODO
+movimiento LATERAL, en TODOS los programas** (no solo el diag). Y **ROBOT1 ARRANCA de los
+MISMOS valores** ({70,70,107} + {130,130,140} + lead 66 ms) — ⚠️ **A VERIFICAR EN BANCO R1**:
+su `{70,70,42}` viejo era del banco R1 2026-06-08, donde la trasera se bajó porque el robot
+**rotaba** en el strafe; si R1 rota con 107, bajar idx2 gradualmente (la historia quedó en el
+comentario de `config_central.h` y en git).
+
+**Tema-a-analizar (NO implementado — el cerebro no se toca):** llevar el freno anticipado al
+lateral de la FSM del arquero (patrol/intercept en `strategy.cpp`). El corte necesita saber
+cuándo **TERMINA** el movimiento; en el control continuo de la FSM ese evento no existe → es
+glue futuro. *risk-no-fix:* el arquero se desacomoda un poco en cada cambio de dirección de la
+patrulla (igual que hoy — no es regresión). *risk-fix:* tocar `strategy.cpp` (zona prohibida) o
+inventar un detector de fin-de-tramo frágil. *tiempo:* ~2-4 h diseño + banco, post verificación R1.
+
+**Pendiente equipo (sesión `pio` + banco):** activar `-DCENTRAL_MOTOR_KICKSTART` +
+`-DCENTRAL_REAR_BRAKE_LEAD` en los envs de producción (cambia el binario — es lo pedido por la
+política; OJO: todo env con `build_src_filter` explícito necesita `+<shared/motor_kickstart.cpp>`,
+como ya hace `diag_central_strafe_robot2_kick`) + env espejo `diag_central_strafe_robot1_kick`
+para la verificación de R1 (test-card: `docs/pruebas-banco/CENTRAL.md` CARD CENTRAL-3b).
+
+**Docs actualizados (esta sesión):** `FUENTES-DE-VERDAD.md` (fila CENTRAL—motores),
+`ESTADO-ACTUAL.md` (Avance 2026-06-09), `docs/robot-variants/REFERENCIAS-POR-ROBOT.md`
+(MOTOR_MIN_PWM / MOTOR_INVERT / pines R2), `docs/pruebas-banco/CENTRAL.md` (cards 1/2/3 + 3b
+nueva), `docs/competencia/TDP.md` (§2.1/§2.4 iteración con datos).

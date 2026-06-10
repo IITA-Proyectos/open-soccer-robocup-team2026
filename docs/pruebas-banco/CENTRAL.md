@@ -37,6 +37,10 @@
 ## 1. Motores ROBOT2
 
 ### CARD CENTRAL-1: Mapa físico de los 3 motores R2
+> ✅ **HECHA — banco 2026-06-09 (Gustavo):** la disposición de R2 resultó **IGUAL a R1** —
+> M1=U5(2/5/3)=delantera-IZQ · M2=U17(8/7/6)=delantera-DER · M3=U7(11/12/4)=trasera.
+> La suposición "drivers ROTADOS" venía del delantero 2025 y es FALSA en el robot2 2026.
+> Ya cargado en `config_central.h` (rama ROBOT2). Se conserva la card como procedimiento.
 - **Objetivo:** confirmar qué "Motor N" del firmware mueve qué rueda física del **delantero (ROBOT2)** y que los 3 H-bridge energizan. Importa porque `robot2.h` advierte que R2 puede tener los drivers ROTADOS o mal soldados respecto a R1.
 - **Placa:** CENTRAL (Teensy 4.1).
 - **Programa / env:** `cd "software/teensy/Soccer 2026" && pio run -e diag_central_motors -t upload`
@@ -58,6 +62,9 @@
 - **Tiempo estimado:** 4 min.
 
 ### CARD CENTRAL-2: Sentido de giro / MOTOR_INVERT R2
+> ✅ **HECHA — banco 2026-06-09 (Gustavo):** los 3 motores de R2 giraron HORARIO con el drive
+> directo del diag → **`MOTOR_INVERT={+1,+1,+1}`** (el U17 de ESA placa NO está invertido por
+> HW, a diferencia de la Zircon de R1). Ya cargado en `config_central.h` (rama ROBOT2).
 - **Objetivo:** validar el array `MOTOR_INVERT[3]` para ROBOT2 (hoy copiado de R1 `{+1,-1,+1}` **sin validar**, con la trampa de índices documentada en `config_central.h:50` y `robot2.h`).
 - **Placa:** CENTRAL (Teensy 4.1).
 - **Programa / env:** `cd "software/teensy/Soccer 2026" && pio run -e diag_central_motors -t upload` (misma corrida que CENTRAL-1, mirando el SENTIDO).
@@ -80,6 +87,11 @@
 ## 2. Cinemática (WHEEL_ANGLES)
 
 ### CARD CENTRAL-3: ¿La cinemática traslada limpio? (tuneo fino + sentido)
+> ✅ **ROBOT2: VALIDADO en banco 2026-06-09 (Gustavo, `diag_central_strafe_robot2_kick` — "anda bien")**
+> con el **motion lateral estándar** (3 técnicas): piso por rueda `MOTOR_MIN_PWM={70,70,107}`
+> (trasera barrida 42→107) + impulso inicial `{130,130,140}` PWM ×40 ms (`-DCENTRAL_MOTOR_KICKSTART`)
+> + freno anticipado de la trasera 66 ms (`-DCENTRAL_REAR_BRAKE_LEAD`). Para **ROBOT1**, que arranca
+> de esos MISMOS valores, ver la **CARD CENTRAL-3b** (verificación pendiente).
 - **Objetivo:** con `WHEEL_ANGLES_DEG={330,210,90}` (**CALIBRADO 2026-06-08**, `config_central.h:113`), confirmar que el strafe es **traslación pura** y hacer el **tuneo fino del lateral** (que no rote) + **confirmar el SENTIDO** de la traslación (si va al revés, sacar el +180 → `{150,30,270}`). El strafe abre lazo con `omega=0`: si las ruedas/ángulos están bien, va de costado sin rotar. (La vieja `{60,-60,180}` estaba en el eje equivocado y daba círculos; ya corregida — esto es ajuste fino, no diagnóstico de círculos.)
 - **Placa:** CENTRAL (Teensy 4.1).
 - **Programa / env (arquero):** `cd "software/teensy/Soccer 2026" && pio run -e diag_central_strafe_robot1 -t upload`
@@ -98,6 +110,24 @@
 - **Feedback a devolver a la IA:** describir literal lo observado, p.ej.
   `strafe_robot1: el robot gira en círculo en sentido horario en vez de ir de costado` o `va recto de costado, deriva ~5cm en 30cm`. Si hay físico medido de los ángulos de montaje de las ruedas, pegarlos (grados desde +X).
 - **Tiempo estimado:** 5 min.
+
+### CARD CENTRAL-3b: Motion lateral estándar en ROBOT1 — verificar los valores validados de R2
+- **Objetivo:** verificar en el **arquero (ROBOT1)** los valores del motion lateral estándar que R2 validó en banco 2026-06-09: piso `MOTOR_MIN_PWM={70,70,107}` + impulso inicial `{130,130,140}` PWM ×40 ms + freno anticipado de la trasera 66 ms. R1 ARRANCA de esos valores por decisión de Gustavo (2026-06-09), pero su historia previa avisa: el `{70,70,42}` viejo de R1 era del banco 2026-06-08, donde la trasera se BAJÓ porque con piso alto el robot **rotaba** en el strafe.
+- **Placa:** CENTRAL (Teensy 4.1) del ROBOT1.
+- **Programa / env:** la base es `diag_central_strafe_robot1`, pero ⚠️ **ese env HOY no activa las 3 técnicas** (los flags `-DCENTRAL_MOTOR_KICKSTART` / `-DCENTRAL_REAR_BRAKE_LEAD` solo están en `diag_central_strafe_robot2_kick`). Falta un env espejo `diag_central_strafe_robot1_kick` (= `diag_central_strafe_robot1` + esos 2 flags; **OJO**: su `build_src_filter` explícito necesita además `+<shared/motor_kickstart.cpp>`, copiar el patrón del env `_robot2_kick` en `platformio.ini`). Compila el equipo (sesión `pio`).
+- **Setup físico:** ROBOT1 en el piso de la cancha (NO al aire), ~1 m libre a cada lado, batería CARGADA (>7,6 V — batería floja invalida el test).
+- **Pasos:**
+  1. Flashear el env con las 3 técnicas activas, monitor `-b 115200`.
+  2. Botón pin 9 (o ENTER) → patrulla lateral IZQ → pausa → DER → loop.
+  3. Observar: arranque (¿rompen la inercia las 3 ruedas?), trayectoria (¿recto sin rotar?), frenada (¿se desacomoda la cola al parar?).
+- **Qué esperar si PASA (criterio):** el robot **strafea derecho SIN rotar** (las delanteras arrancan sin quedarse, la trasera sostiene la relación 2:1) y **NO se desacomoda al frenar** (el corte anticipado de la trasera evita que su inercia patee la cola).
+- **Resultados posibles:**
+  - **A)** Strafea derecho y frena limpio → R1 confirma los valores de R2; quitar la leyenda "A VERIFICAR EN BANCO R1" de `config_central.h`.
+  - **B)** **Rota** durante el strafe → la trasera de R1 se adelanta con 107: bajar `MOTOR_MIN_PWM[2]` GRADUALMENTE (107→95→85→…; la historia del 42 está en git y en el comentario de `config_central.h`).
+  - **C)** Las delanteras no rompen la inercia → subir idx0/idx1 (70→90…; NO pasar ~150, los motores 5V a 7,4 V se queman).
+  - **D)** Se desacomoda al frenar → tunear `-DDIAG_STRAFE_REAR_LEAD_MS` (subir si la cola sigue rodando; bajar si frena antes de tiempo).
+- **Feedback a devolver a la IA:** pegar literal, p.ej. `R1 strafea derecho sin rotar con {70,70,107}, frena sin desacomodarse` o `R1 ROTA con 107; con 85 va derecho` + el lead usado si se tocó.
+- **Tiempo estimado:** 8 min (más el env nuevo si no existe).
 
 ### CARD CENTRAL-4: Avance recto con HeadingPID (drive)
 - **Objetivo:** validar la cadena completa de avance con corrección de heading: `WorldSnapshot → world_model → HeadingPID → kinematics → motores`. Confirma que adelante/atrás salen rectos (cinemática + signo de heading juntos).

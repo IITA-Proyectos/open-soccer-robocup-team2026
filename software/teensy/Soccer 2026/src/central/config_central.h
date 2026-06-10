@@ -140,6 +140,18 @@ constexpr float WHEEL_RADIUS_MM = 100.0f;   // distancia del centro a cada rueda
 // sacar el +180 → {150.0f, 30.0f, 270.0f} (el giro YA queda arreglado igual; esto es solo dirección).
 constexpr float WHEEL_ANGLES_DEG[3] = { 330.0f, 210.0f, 90.0f };  // M1=del-IZQ · M2=del-DER · M3=trasera (omni 120°)
 
+// ⚠️ SIGNO DEL TÉRMINO DE GIRO (banco robot2 2026-06-09 — hallazgo clave): el +180°
+// sumado a WHEEL_ANGLES corrige la TRASLACIÓN (sin/cos cambian de signo) pero el
+// término de giro ω·R de la cinemática NO depende del ángulo → quedó SIN corregir.
+// Con motores que giran HORARIO-desde-el-centro a comando positivo, una ω positiva
+// (CCW) del cerebro producía rotación física OPUESTA → todo PID de rumbo AMPLIFICABA
+// el error en vez de corregirlo (banco: hdg −3.7→−71.5 con el gyro-hold ACTIVO,
+// clavándose justo en el bail-out de 45° = la firma de la realimentación positiva;
+// explica las J/U/círculos del día y, retroactivamente, parte de los "círculos"
+// históricos de robot1). Fix: el mixer invierte ω. Aplica a AMBOS robots (ambos con
+// los 3 motores horario validados en banco).
+constexpr float OMEGA_SIGN = -1.0f;
+
 // ============================================================
 // Control de motores
 // ============================================================

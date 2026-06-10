@@ -936,9 +936,14 @@ MotorCommand goalkeeper_tick() {
             // aunque la cámara no vea el arco) → ω=0. Diseño de Gustavo 2026-06-09.
             cmd.omega_centideg_s = gk_orient_omega(now_ms);
 
+#ifndef GK_IGNORE_BALL
+            // (Banco 2026-06-09: con -DGK_IGNORE_BALL la patrulla NO sale a la pelota
+            //  — env central_robot2_arquero_patrol. La pelota visible secuestraba el
+            //  test: PATROL→CLEAR→INTERCEPT en loop y el rumbo quedaba a ±90°.)
             if (world_model_ball_visible()) {
                 transition_gk(GkState::INTERCEPT);
             }
+#endif
             return cmd;
         }
 
@@ -1038,11 +1043,16 @@ MotorCommand goalkeeper_tick() {
             const float ball_angle_rel = std::atan2(bx, by) * (180.0f / M_PI);
             heading_pid_set_target(g_heading_pid,
                                    world_model_get_my_heading_deg() + ball_angle_rel);
-            const float omega = central_gate_heading_omega(
+            float omega = central_gate_heading_omega(
                 world_model_heading_valid(),
                 heading_pid_tick(g_heading_pid,
                                  world_model_get_my_heading_deg(),
                                  now_ms));
+            // Tope de giro del CLEAR (banco 2026-06-09): sin tope (clamp 327°/s) el
+            // despeje encaraba la pelota con trompos violentos. Mismo límite que el
+            // resto del arquero; el empuje sale igual (vx/vy van directo a la pelota).
+            if (omega >  GK_ORIENT_OMEGA_MAX_DEGPS) omega =  GK_ORIENT_OMEGA_MAX_DEGPS;
+            if (omega < -GK_ORIENT_OMEGA_MAX_DEGPS) omega = -GK_ORIENT_OMEGA_MAX_DEGPS;
             cmd.omega_centideg_s = omega_degps_to_centideg(omega);  // satura int16 (anti sign-flip, #9)
             return cmd;
         }

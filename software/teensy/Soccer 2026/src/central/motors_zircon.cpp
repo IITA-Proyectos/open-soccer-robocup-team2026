@@ -108,8 +108,12 @@ void motors_apply_command(const MotorCommand& cmd) {
 #else
     constexpr float MOTION_SCALE = 1.0f;
 #endif
-    // Convertir centideg/s a rad/s para la cinemática
-    const float omega_rad_s = static_cast<float>(cmd.omega_centideg_s)
+    // Convertir centideg/s a rad/s para la cinemática. OMEGA_SIGN = -1 (banco
+    // 2026-06-09): el término ω·R no se corrige con el +180 de WHEEL_ANGLES →
+    // con motores horario-desde-el-centro la rotación salía INVERTIDA y todo PID
+    // de rumbo amplificaba el error (ver config_central.h).
+    const float omega_rad_s = OMEGA_SIGN
+                            * static_cast<float>(cmd.omega_centideg_s)
                             * (PI_F / 18000.0f) * MOTION_SCALE;
     const float vx = static_cast<float>(cmd.vx_mm_s) * MOTION_SCALE;
     const float vy = static_cast<float>(cmd.vy_mm_s) * MOTION_SCALE;

@@ -74,6 +74,11 @@ bool     g_match_was_running = false;   // detecta flanco "STOP → RUN" para KI
 // Timer de GOTO_LINE (arquero) — guardado al entrar; para el timeout de seguridad.
 uint32_t g_goto_line_started_ms = 0;
 
+// Anti-flapping PATROL<->LINE_AVOID (banco 2026-06-09): el arquero PISA su línea por
+// diseño → imminent_exit no puede disparar la huida al primer tick.
+uint32_t g_gk_imminent_since_ms  = 0;  // desde cuándo persiste imminent_exit (0 = no activo)
+uint32_t g_gk_line_avoid_gate_ms = 0;  // último exit de LINE_AVOID / entrada a PATROL (cooldown)
+
 // === PIDs ===
 HeadingPID g_heading_pid;
 LateralPID g_lateral_pid_gk;
@@ -111,20 +116,29 @@ constexpr float DS_KP_HEADING = 3.0f;   // grados/s por grado (alineado con Head
 constexpr float DS_KP_LATERAL = 0.5f;   // amortigua ~media deriva lateral OTOS por tick
 
 // Arquero — Nivel 1
+// ⚠️ VELOCIDADES A RÉGIMEN FIEL (revisión matemática 2026-06-09): con los pisos de PWM
+// {70,70,107}, todo comando < ~420 mm/s queda DEBAJO del piso y la dirección sale
+// APLASTADA (la proporción entre ruedas se destruye; PATROL a 150 daba 1:1:1.5 en vez
+// de 0.5:0.5:1.0 = errático). 420 mm/s = el PWM crudo de la rueda dominante (trasera,
+// piso 107) queda SOBRE su piso → el mixer respeta la dirección pedida.
 constexpr float GK_PATROL_OSCILLATE_PERIOD_MS = 2000.0f;
-constexpr float GK_PATROL_SPEED_MM_S          = 150.0f;
+constexpr float GK_PATROL_SPEED_MM_S          = 420.0f;   // era 150 (bajo piso → errático)
 constexpr float GK_INTERCEPT_KP_VS_BALL_X     = 4.0f;
 constexpr float GK_LATERAL_SETPOINT_DEPTH     = 1.0f;
-constexpr float GK_LINE_RETREAT_SPEED         = 250.0f;
+constexpr float GK_LINE_RETREAT_SPEED         = 420.0f;   // era 250 (bajo piso → dirección basura)
 
-// GOTO_LINE: reposicionamiento inicial. Al recibir START, el arquero va en
-// DIAGONAL (un solo movimiento) ATRÁS (-Y, hacia su arco) y a la DERECHA (+X)
-// hasta que los sensores de piso detectan la línea. Marco robot: +X=derecha,
-// +Y=frente. Supone arranque en el rincón IZQUIERDO del arco → la diagonal lo
-// lleva al CENTRO. Si arrancan del otro lado, invertir el signo de GK_GOTO_LINE_VX.
-// 🔧 needs_bench: tunear velocidades y el signo de X según el lado de arranque.
-constexpr int16_t GK_GOTO_LINE_VX_RIGHT   = 180;   // +X = derecha (mm/s)
-constexpr int16_t GK_GOTO_LINE_VY_BACK    = 180;   // hacia atrás → se aplica como -Y
+// GOTO_LINE: reposicionamiento inicial. Al recibir START, el arquero va HACIA ATRÁS
+// (-Y, hacia su arco) hasta que los sensores de piso detectan la línea.
+// ⚠️ BANCO robot2 2026-06-09 (Gustavo): la versión DIAGONAL (vx=180,vy=-180) daba
+// CÍRCULOS amplios — con los pisos de PWM {70,70,107} las velocidades dispares del
+// diagonal (ruedas a -66/+246/-180 mm/s → PWM crudo 17/63/46) se APLASTAN al piso y
+// la dirección resultante es basura. RECTO ATRÁS es simétrico (M1/M2 ±iguales, M3=0)
+// → los pisos lo respetan → sale derecho. Orden de Gustavo: recto atrás. VX=0.
+constexpr int16_t GK_GOTO_LINE_VX_RIGHT   = 0;     // recto atrás (era 180 diagonal → círculos)
+// 420 mm/s: PWM crudo delanteras ~93 > piso 70 → fiel + rápido (era 180: "MUY LENTO").
+// El recto-atrás es inestable por geometría (trasera=0, cualquier asimetría guiña) →
+// se compensa con GYRO HOLD (diseño de Gustavo 2026-06-09): ω = PID al rumbo 0° del boot.
+constexpr int16_t GK_GOTO_LINE_VY_BACK    = 420;   // hacia atrás → se aplica como -Y
 constexpr uint32_t GK_GOTO_LINE_TIMEOUT_MS = 4000; // safety: si no encuentra la línea → PATROL
 
 // Arquero — Capa 3 (WP-3-GK): strafe PARALELO a la línea lateral usando el
@@ -133,9 +147,32 @@ constexpr uint32_t GK_GOTO_LINE_TIMEOUT_MS = 4000; // safety: si no encuentra la
 // lateral lleva cross_track -> setpoint (0 = pisar la línea, distancia
 // perpendicular nula) mientras la oscilación de PATROL / el seguimiento de bola
 // de INTERCEPT mueven al robot A LO LARGO de la línea => queda paralelo.
-// Setpoint 0 mm: el arquero se mantiene CENTRADO sobre la línea. (Si en banco se
-// quiere "flotar" a una distancia fija de la línea lateral, subir este valor.)
-constexpr float GK_CROSS_TRACK_SETPOINT_MM    = 0.0f;
+// ⚠️ REDISEÑO banco 2026-06-09 (Gustavo): "apenas pisando la línea", NO centrado.
+// Centrado (setpoint 0) ponía 6+ sensores en blanco → disparaba imminent_exit →
+// flapping violento PATROL<->LINE_AVOID (causa #1 del banco). Con la línea ~40 mm
+// DETRÁS del centro (cross_track + = línea adelante ⇒ setpoint NEGATIVO) el anillo
+// la toca con 2-4 sensores: patrulla el borde sin disparar la alarma de salida.
+constexpr float GK_CROSS_TRACK_SETPOINT_MM    = -40.0f;  // era 0 (centrado → flapping)
+
+// ⚠️ FIX DE EJE (banco 2026-06-09): la corrección de cross_track iba a vx — correcto
+// para una línea PARALELA al robot (línea lateral de cancha), pero la línea del ÁREA
+// que patrulla el arquero corre IZQUIERDA-DERECHA (a lo largo de X) → su distancia
+// perpendicular se corrige con **vy** (adelante/atrás), no con vx. La oscilación de
+// patrulla vive en vx (a lo largo de la línea) y la corrección en vy (mantener el
+// borde). 🔧 SIGNO A CONFIRMAR EN BANCO (Fase 4): si el robot se ALEJA de la línea
+// en vez de mantenerla, invertir GK_CT_VY_SIGN a -1.
+constexpr float GK_CT_VY_SIGN                 = +1.0f;
+
+// Anti-flapping PATROL<->LINE_AVOID (causa #1 del banco 2026-06-09):
+// la huida solo dispara si imminent_exit PERSISTE (no un roce de patrulla) y con
+// cooldown tras volver (que el PID tenga tiempo de levantar el robot al setpoint).
+constexpr uint32_t GK_LINE_AVOID_DEBOUNCE_MS  = 150;  // imminent debe persistir esto
+constexpr uint32_t GK_LINE_AVOID_COOLDOWN_MS  = 400;  // sin re-disparo tras volver a PATROL
+
+// GYRO HOLD (diseño de Gustavo 2026-06-09): rumbo a mantener cuando NO se ve el arco
+// propio pero el heading del BNO es válido. 0° = el frente capturado al boot (el robot
+// se enciende mirando al arco rival) → "siempre mirando al frente".
+constexpr float GK_GYRO_HOLD_TARGET_DEG       = 0.0f;
 
 // Arquero — Nivel 2
 constexpr float GK_CLEAR_TRIGGER_MM           = 250.0f;    // pelota más cerca que esto → CLEAR

@@ -36,6 +36,11 @@ void motors_brake();
 //   pwm == 0     → libre
 void motors_set_one(int motor_idx, int pwm_signed);
 
+// Último PWM signed APLICADO al motor i (post-pisos/escala/kickstart — lo que de
+// verdad llegó al H-bridge). Para telemetría/caja negra. Siempre disponible
+// (costo: 3 stores de int16 por apply — despreciable).
+int16_t motors_get_applied_pwm(int motor_idx);
+
 #ifdef CENTRAL_REAR_BRAKE_LEAD
 // FRENO ANTICIPADO DE LA TRASERA (técnica 2025; banco robot2 2026-06-09). Con cut=true,
 // motors_apply_command fuerza PWM=0 en la rueda TRASERA (idx 2) mientras las delanteras

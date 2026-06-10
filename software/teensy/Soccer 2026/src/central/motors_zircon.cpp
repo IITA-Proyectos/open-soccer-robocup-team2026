@@ -60,8 +60,13 @@ constexpr int KICKSTART_FACTOR_X10 = 99;   // ×9.9: garantiza que toda rueda ll
 constexpr int KICKSTART_PWM_CAP[3] = { 130, 130, 140 };  // {M1, M2, M3=trasera}
 #endif
 
+// Último PWM aplicado por motor (PRE-inversión de hardware: el signo es el "lógico"
+// del robot, no el del cableado). Lo lee motors_get_applied_pwm (telemetría/caja negra).
+int16_t g_applied_pwm[3] = {0, 0, 0};
+
 void apply_pwm_to_motor(int motor_idx, int pwm_signed) {
     if (motor_idx < 0 || motor_idx >= 3) return;
+    g_applied_pwm[motor_idx] = static_cast<int16_t>(pwm_signed);
     const MotorPins& p = MOTOR_PINS[motor_idx];
     // Sentido por motor: algunos drivers tienen INA/INB invertidos por hardware
     // (validado en banco — ver MOTOR_INVERT en config_central.h). Negar el PWM
@@ -211,6 +216,11 @@ void motors_brake() {
         g_kick_active[i] = false;   // re-armar el impulso (igual que motors_stop)
 #endif
     }
+}
+
+int16_t motors_get_applied_pwm(int motor_idx) {
+    if (motor_idx < 0 || motor_idx >= 3) return 0;
+    return g_applied_pwm[motor_idx];
 }
 
 void motors_set_one(int motor_idx, int pwm_signed) {

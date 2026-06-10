@@ -27,6 +27,9 @@
 #include "comm_top.h"
 #include "comm_down.h"
 #include "loop_monitor.h"   // supervisor de loop-time (PURO, host-testeable)
+#ifdef CENTRAL_BLACKBOX
+#include "blackbox.h"       // caja negra de corridas (gateada, envs *_bb)
+#endif
 
 using namespace iitasoccer;
 
@@ -224,6 +227,12 @@ void loop() {
             const int c = Serial.read();
             if (c == '\n' || c == '\r' || c == 'g' || c == 'G') cmd_go = true;
             else if (c == 's' || c == 'S')                      cmd_stop = true;
+#ifdef CENTRAL_BLACKBOX
+            // Caja negra (envs *_bb): 'd' = volcar CSV ahora · 'x' = borrar/re-armar.
+            // (El volcado AUTOMÁTICO ocurre solo en cada RUN→STOP.)
+            else if (c == 'd' || c == 'D') blackbox_dump();
+            else if (c == 'x' || c == 'X') blackbox_reset();
+#endif
         }
         // Ruido de motor en el pin 9 solo puede dar GO espurio (no-op si ya corre);
         // el STOP es exclusivo del teclado -> no hay parada fantasma en pleno test.
@@ -265,10 +274,16 @@ void loop() {
             // ARRIBA caído > 500 ms → SAFE_NO_TOP. Parar motores, parpadear LED.
             motors_stop();
             digitalWrite(PIN_LED_STATUS, (millis() / 200) % 2);
+#ifdef CENTRAL_BLACKBOX
+            blackbox_tick(MotorCommand{});   // timeline completa aun sin snapshot
+#endif
         } else {
             MotorCommand cmd = strategy_tick();
             motors_apply_command(cmd);
             digitalWrite(PIN_LED_STATUS, HIGH);  // OK
+#ifdef CENTRAL_BLACKBOX
+            blackbox_tick(cmd);              // graba lo decidido + lo aplicado
+#endif
         }
     }
 

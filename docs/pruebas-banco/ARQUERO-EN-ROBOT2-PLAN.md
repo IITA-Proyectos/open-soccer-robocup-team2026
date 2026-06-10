@@ -82,20 +82,48 @@ pines 5/6 del TOP (nivel GPIO, OR fail-safe) → snapshot → CENTRAL. Los envs 
 **recto hacia atrás** hasta pisar la línea → pasa a PATROL. **Criterio: trayectoria recta
 (±10 cm en 1 m), se detiene/transiciona al tocar la línea, < 3 s.**
 
-## FASE 4 — PATROL sin pelota (el corazón del arquero)
-Con F0.a+F0.b aplicados. **Criterio: oscila izq↔der (~2 s por lado) "apenas pisando" el borde
-de la línea, SIN entrar a LINE_AVOID** (monitorear `[CENTRAL] ... ev=` — el flag IMMINENT_EXIT
-no debe parpadear), sin rotar (heading hold con el BNO dual de robot2).
-Perillas: `GK_PATROL_SPEED` (velocidad), `GK_CROSS_TRACK_SETPOINT_MM` (cuánto pisa),
-período de oscilación.
+## FASE 4 — PATROL sin pelota — ACTUALIZADO a v3.3 "pegada a la línea" (2026-06-10)
+`central_robot2_arquero_patrol` (ignora la pelota). La patrulla es SEGMENTADA y PEGADA A LA
+LÍNEA: tramo lateral puro (1,2 s, ω=0) → freno → pulso(s) de frente SOLO si quedó >35° chueco
+→ re-enganche si no ve la línea (retrocede suave ≤0,7 s hasta re-verla) → tramo. La línea
+blanca es LA guía: línea LATERAL (<135°) → rebota el sentido; línea ATRÁS → sigue de largo.
+Sub-fase visible en el panel: `GK_PATROL_MOVE/STOP/PULSE/SETTLE/REACQ`.
 
-## FASE 5 — LINE_AVOID provocado
-Empujar el robot HACIA ADENTRO de la línea de cancha (no la del área). **Criterio: retrocede
-perpendicular a la línea y retoma PATROL, sin loop de escape.**
+**Checklist de CIERRE de la patrulla (banco, 2026-06-10):**
+1. **[P0]** 2 min de patrulla continua: el cuerpo **nunca** cruza la línea del área hacia el
+   arco (vale rozarla con el anillo; no vale que la línea pase del centro del robot).
+2. **[P0]** Sensado caído (tapar 2-3 sensores de línea, o batería ~7,6 V): tras 2 re-enganches
+   vacíos **deja de retroceder** (guard anti-caminar-al-arco) y patrulla donde está.
+3. **[P0]** GO arrancando ya pisando la línea / medio adentro del área → avanza a despegarse
+   y patrulla afuera.
+4. **[P1]** ≥4 idas y vueltas seguidas rebotando en AMBOS costados; nunca >3 tramos (~70 cm)
+   en un mismo sentido sin rebote.
+5. **[P1]** Cada `REACQ` dura <0,7 s y retrocede ≤15 cm; debe ser ocasional (si aparece en
+   TODAS las paradas → el margen de avance quedó largo: perilla `GK_ADVANCE_MS`).
+6. **[P1]** Frente contenido: nunca peor que ±45° en 2 min (±35° es lo esperable con el TOP
+   a ~4 Hz — ver nota abajo; mejor que eso requiere el fix del TOP).
+7. **[P1]** 3 ciclos STOP→GO (app del juez o `g`/`s`): secuencia completa cada vez + probar
+   con batería recién cargada y a media carga.
+
+## FASE 5 — Respuesta a línea por ÁNGULO (reemplaza el viejo "LINE_AVOID provocado")
+LINE_AVOID quedó INALCANZABLE para el arquero (v2+; el router decide por ángulo de línea).
+Probar las dos respuestas: empujar el robot HACIA su línea de atrás → **avanza** a despegarse
+(~3 cm tras dejar de verla); empujarlo contra una línea LATERAL → **rebota** el sentido de
+patrulla. **Criterio: ninguna respuesta es un giro violento ni lo mete al área.**
 
 ## FASE 6 — INTERCEPT + CLEAR con pelota (depende visión calibrada)
-Pelota visible moviéndose lateral → el arquero la sigue en X sobre su línea; pelota a <250 mm
-→ CLEAR (empuja) → vuelve. **Criterio: sigue la pelota sin perder la línea ni flapping.**
+`central_robot2_arquero` (la variante SIN `-DGK_IGNORE_BALL`). Pelota visible moviéndose
+lateral → el arquero la sigue en X sobre su línea (clamp por pose); pelota a <250 mm →
+CLEAR (empuja hacia ADELANTE) → vuelve. **Criterio: sigue la pelota sin perder la línea ni
+flapping.** ⚠️ Esperar al fix del TOP lento (abajo) para exigirle agilidad.
+
+## ⚠️ Conocido (banco 2026-06-10): el snapshot del TOP llega a ~4 Hz
+`top[fr]` sube ~+2 por línea de panel de la CENTRAL → el heading llega con 250-500 ms de
+atraso (el TOP lo manda a 100 Hz por diseño; el enlace está sano → el loop del TOP se
+arrastra). No bloquea la patrulla v3.3 (diseñada para esto), pero SÍ limita el frente fino
+y el INTERCEPT. Fix de raíz pendiente (refuerza TASK-014): medir Δ`loop=` del panel `[TOP]`
+por USB; sospecha: `getRangingData()` de 4×VL53L7CX en `Wire`@100 kHz + BNO secundario de
+robot2 sin `TOP_BNO_TOF_DECONFLICT`. Candidatos: poll de ToF round-robin + deconflict en robot2.
 
 ## Monitoreo durante TODAS las fases
 USB a la CENTRAL: la línea `[CENTRAL] ... down[rx crc lost rsy valid ev]` cada 500 ms.

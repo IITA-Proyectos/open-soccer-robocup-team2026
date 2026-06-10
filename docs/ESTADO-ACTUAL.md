@@ -1,7 +1,7 @@
 ---
 title: "Estado actual del robot — vivo, 1 página"
 date: 2026-05-29
-last-updated-by: "Claude (sesión 2026-06-02 — DOWN broadcast Capa 2+3 code-complete: drive-straight ATK + arquero por cross_track, fallback exacto)"
+last-updated-by: "Claude (sesión 2026-06-10 — banco arquero robot2: patrulla v3.3 pegada a la línea + hallazgo TOP a ~4 Hz)"
 status: vivo
 tipo: indice-operacional
 ---
@@ -12,6 +12,27 @@ tipo: indice-operacional
 > obligatoria** (después de `git pull`). Si lo que estás por hacer contradice
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
+
+> **🥅 BANCO 2026-06-09/10 (arquero en ROBOT2 — vale sobre menciones más abajo):**
+> (1) ✅ **Patrulla del arquero v3.2+v3.3 "PEGADA A LA LÍNEA"** (main `c11d770`): mantiene el
+> sentido tramo a tramo hasta tocar la línea LATERAL que ve DOWN → rebota; línea ATRÁS = guía
+> (avance corto ~3 cm para despegarse); sub-fase **RE-ENGANCHE** si la pierde + **guard
+> anti-caminar-al-arco** (2 re-enganches vacíos → no retrocede más: requisito duro = nunca
+> meterse al área). Pulsos de frente domesticados (35°, 40-80 ms, máx 2, settle 700 ms) →
+> **giros violentos eliminados en banco**. Checklist de cierre (7 puntos) →
+> `docs/pruebas-banco/ARQUERO-EN-ROBOT2-PLAN.md` FASE 4. LINE_AVOID quedó inalcanzable para el GK.
+> (2) ⚠️ **HALLAZGO: el WorldSnapshot del TOP llega a la CENTRAL a ~4 Hz, NO 100 Hz**
+> (`top[fr]` +2 por línea de panel; enlace sano 230400/CRC 0) → **el loop del TOP se arrastra
+> ~25×**. Todo lazo de rumbo trabajó siempre con heading 250-500 ms viejo (explica el ping-pong
+> de pulsos, el J/U de reversa, y generaliza el punto (3) del banco 2026-06-03 de abajo).
+> Sospecha: `getRangingData()` de 4×VL53L7CX en `Wire`@100 kHz + BNO secundario de robot2 SIN
+> `TOP_BNO_TOF_DECONFLICT` (el flag solo está en top_robot1). **Refuerza TASK-014** (loop TOP
+> no-bloqueante); medición pendiente: Δ`loop=` del panel `[TOP]` por USB. No bloquea la patrulla
+> v3.3 (diseñada para 4 Hz) pero SÍ el frente fino y el INTERCEPT ágil.
+> (3) ✅ **Juez desde la PC** (main `44b129b`, SOLO envs de banco del arquero): monitor serie de
+> la CENTRAL = juez (`g`/ENTER=GO, `s`=STOP; STOP→WAIT_START→`g` re-corre todo). En competencia
+> el flag no se define (GO/STOP real = app del juez por GPIO 5/6 del TOP).
+> Journal completo: `journal/2026-06-10-banco-arquero-juez-pc-patrulla-v32-v33-top-lento.md`.
 
 > **🔧 ÚLTIMO (2026-06-02 — vale sobre cualquier mención más abajo):** mapa UART final.
 > **TOP (Teensy 4.0):** S1←DOWN · **S2 (7/8)↔COMM** · S3←cam frontal · **S4 (16/17)→CENTRAL** · S5←cam trasera.

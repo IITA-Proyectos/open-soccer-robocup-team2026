@@ -117,13 +117,14 @@ lateral → el arquero la sigue en X sobre su línea (clamp por pose); pelota a 
 CLEAR (empuja hacia ADELANTE) → vuelve. **Criterio: sigue la pelota sin perder la línea ni
 flapping.** ⚠️ Esperar al fix del TOP lento (abajo) para exigirle agilidad.
 
-## ⚠️ Conocido (banco 2026-06-10): el snapshot del TOP llega a ~4 Hz
-`top[fr]` sube ~+2 por línea de panel de la CENTRAL → el heading llega con 250-500 ms de
-atraso (el TOP lo manda a 100 Hz por diseño; el enlace está sano → el loop del TOP se
-arrastra). No bloquea la patrulla v3.3 (diseñada para esto), pero SÍ limita el frente fino
-y el INTERCEPT. Fix de raíz pendiente (refuerza TASK-014): medir Δ`loop=` del panel `[TOP]`
-por USB; sospecha: `getRangingData()` de 4×VL53L7CX en `Wire`@100 kHz + BNO secundario de
-robot2 sin `TOP_BNO_TOF_DECONFLICT`. Candidatos: poll de ToF round-robin + deconflict en robot2.
+## ✅ RESUELTO (banco 2026-06-10 tarde): el TOP lento — snapshot de vuelta a 100 Hz
+Se midió con Δ`loop=` del panel `[TOP]`: **~6 Hz → ~190.000 vueltas/s** tras el fix doble
+(round-robin de ToF `a6c0366` + payload del VL53L7CX recortado con `-DVL53L7CX_DISABLE_*`).
+Validado por Gustavo: hdg trackea giro a mano, ToF dinámicos, `resync=0`. En la CENTRAL,
+`top[fr]` ahora debe subir ~+50 por línea de panel (antes +2) — verificarlo de paso en el
+próximo banco. **Perillas re-apretables ahora que el heading llega fresco** (próximo banco
+con cancha, NO sin probar): `GK_REORIENT_ENTER_DEG` 35→20 · `GK_REORIENT_SETTLE_MS` 700→400
+· `GK_REORIENT_MAX_PULSES` 2→3. ⚠️ ROBOT1 hereda los fixes del TOP — A VERIFICAR al volver.
 
 ## Monitoreo durante TODAS las fases
 USB a la CENTRAL: la línea `[CENTRAL] ... down[rx crc lost rsy valid ev]` cada 500 ms.

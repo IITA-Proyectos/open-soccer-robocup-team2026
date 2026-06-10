@@ -75,7 +75,37 @@ base a la línea blanca que limita el arco"*.
   máx 2 por parada, settle 700 ms (≥2 muestras frescas a 4 Hz). Resultado de
   banco: **giros violentos eliminados** (confirmado por Gustavo).
 
-## 4. Estado al cierre
+## 4. RESUELTO el mismo día: el TOP lento (sesión tarde, Gustavo en banco sin cancha)
+
+El §2 quedó resuelto el mismo día, con medición antes/después por el contador
+`loop=` del panel `[TOP]` (Δloop entre líneas de 500 ms):
+
+| | loop del TOP | snapshot a CENTRAL |
+|---|---|---|
+| Antes | **~6 Hz** (Δ=+3/línea) | ~4 Hz |
+| Round-robin ToF (`a6c0366`) | ~16 Hz (Δ=+8) | ~16 Hz |
+| + payload recortado | **~190.000/s** (Δ≈+95k) | **100 Hz (diseño)** |
+
+- **Causa raíz confirmada:** los 4 `getRangingData()` del VL53L7CX por pasada,
+  cada uno trayendo el bloque COMPLETO de resultados por `Wire`@100 kHz (~60 ms
+  por sensor — medido: con round-robin de a 1, el loop quedó en ~60 ms/pasada).
+- **Fix 1 — round-robin** (`a6c0366`): UN ToF por tick de 30 ms; cada sensor se
+  refresca cada ~120 ms (ranging interno 15 Hz; P1-TOF-STALE 250 ms, margen 2×).
+- **Fix 2 — payload**: `-DVL53L7CX_DISABLE_{AMBIENT_PER_SPAD, NB_SPADS_ENABLED,
+  SIGNAL_PER_SPAD, RANGE_SIGMA_MM, REFLECTANCE_PERCENT, MOTION_INDICATOR}` en
+  `top_robot1`/`top_robot2` (solo usamos `distance_mm` + `target_status`).
+  Los diags NO llevan los flags (siguen viendo el struct completo).
+- **Validación de banco (Gustavo):** hdg trackea el giro a mano (0→+18.6→−23.3→+15.7,
+  sin congelarse), ToF dinámicos (95→161 mm moviendo la mano), `resync=0`,
+  cámaras F/B vivas (hasta detectó pelota). TASK-014 baja P0→P2 (resta medir
+  CENTRAL/DOWN y formalizar presupuesto I²C del BNO).
+- **Implicancia para la patrulla:** los pulsos quedaron tuneados para heading a
+  4 Hz (umbral 35°, settle 700 ms). Con 100 Hz reales se pueden RE-APRETAR en un
+  próximo banco con cancha (umbral 35→20, settle 700→400, máx pulsos 2→3) — el
+  corte en vivo ahora sí ve el giro en tiempo real. NO cambiar sin banco.
+- ⚠️ ROBOT1 hereda ambos fixes (mismo código/env) — A VERIFICAR a su regreso.
+
+## 5. Estado al cierre
 
 - Pendiente de banco: checklist de cierre de la patrulla (7 puntos, en la
   conversación de la sesión y resumido acá): 2 min sin entrar al área; prueba de

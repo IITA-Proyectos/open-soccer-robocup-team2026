@@ -3,7 +3,7 @@ id: TASK-014
 title: "Loop de TOP no-bloqueante + medir período real del loop en hardware"
 date_created: 2026-05-18
 assigned: [mariaviollaz, elias]
-priority: P0
+priority: P2
 status: pending
 estimated_hours: 8
 blocks: [TASK-017, rediseño de ventanas de frescura, fail-safe de motores]
@@ -83,9 +83,30 @@ _(completar al ejecutar — registrar los números medidos acá y en el journal)
     hay que **mover el ECHO del pin 7** (Serial2 RX2) a un pin libre.
   Ver `journal/2026-05-29-auditoria-top-pre-incheon-top.md` (Tema B).
 
+- **2026-06-10 — NÚCLEO DE LA TASK RESUELTO EN BANCO (Gustavo, robot2).** El período
+  real del loop del TOP se midió SIN osciloscopio, con el contador `loop=` del panel
+  (Δloop entre líneas de 500 ms — instrumento equivalente al paso 3):
+  - **Antes: ~6 Hz** (Δloop=+3/línea) — ¡166 ms por vuelta! El bloqueante real NO era
+    el HC-SR04 ni el BNO que predecía esta TASK: eran los **4 `getRangingData()` del
+    VL53L7CX por pasada**, cada uno trayendo el bloque COMPLETO de resultados por
+    `Wire` a 100 kHz (~60 ms por sensor).
+  - **Fix 1 (`a6c0366`):** round-robin — UN ToF por tick → ~16 Hz.
+  - **Fix 2 (payload):** `-DVL53L7CX_DISABLE_*` de los bloques no usados (ambient,
+    señal/SPAD, sigma, reflectancia, motion) → transferencia ~5× más chica.
+  - **Después: ~190.000 vueltas/s** (Δloop≈+95.000/línea) — ~5 µs nominal, peor caso
+    ~10-15 ms (una lectura ToF recortada). El snapshot a CENTRAL vuelve a los 100 Hz
+    de diseño. Validado en banco: hdg trackea giro a mano (0→18→−23→+15), ToF
+    responden, `resync=0`, cámaras vivas.
+  Queda de la TASK (por eso baja P0→P2): medir período de CENTRAL (el panel ya
+  imprime `loop_us max/avg`) y DOWN, y acotar formalmente el I²C del BNO (hoy ya
+  no es crítico: 20 Hz + deconflict en R1, bus propio Wire2 en R2).
+
 ## Cambios de estado
 
 - 2026-05-18: creada por Claude tras la verificación independiente del protocolo
   de comms, a pedido de Gustavo Viollaz.
 - 2026-05-29: lado firmware del stall HC-SR04 resuelto (gateado por flag); resta
   acotar I²C BNO055 + medir período de loop en hardware. TASK sigue abierta P0.
+- 2026-06-10: período del TOP medido + causa raíz (ToF) corregida + re-medido en
+  banco por Gustavo (ver nota arriba). Baja a P2 (resta CENTRAL/DOWN + formalizar
+  presupuesto I²C del BNO).

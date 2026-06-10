@@ -21,14 +21,17 @@ tipo: indice-operacional
 > meterse al área). Pulsos de frente domesticados (35°, 40-80 ms, máx 2, settle 700 ms) →
 > **giros violentos eliminados en banco**. Checklist de cierre (7 puntos) →
 > `docs/pruebas-banco/ARQUERO-EN-ROBOT2-PLAN.md` FASE 4. LINE_AVOID quedó inalcanzable para el GK.
-> (2) ⚠️ **HALLAZGO: el WorldSnapshot del TOP llega a la CENTRAL a ~4 Hz, NO 100 Hz**
-> (`top[fr]` +2 por línea de panel; enlace sano 230400/CRC 0) → **el loop del TOP se arrastra
-> ~25×**. Todo lazo de rumbo trabajó siempre con heading 250-500 ms viejo (explica el ping-pong
-> de pulsos, el J/U de reversa, y generaliza el punto (3) del banco 2026-06-03 de abajo).
-> Sospecha: `getRangingData()` de 4×VL53L7CX en `Wire`@100 kHz + BNO secundario de robot2 SIN
-> `TOP_BNO_TOF_DECONFLICT` (el flag solo está en top_robot1). **Refuerza TASK-014** (loop TOP
-> no-bloqueante); medición pendiente: Δ`loop=` del panel `[TOP]` por USB. No bloquea la patrulla
-> v3.3 (diseñada para 4 Hz) pero SÍ el frente fino y el INTERCEPT ágil.
+> (2) ✅ **RESUELTO EL MISMO DÍA — el loop del TOP estaba a ~6 Hz; ahora ~190.000/s.**
+> Se midió (Δ`loop=` del panel `[TOP]`): el WorldSnapshot llegaba a ~4 Hz a la CENTRAL
+> (heading 250-500 ms viejo — explica el ping-pong de pulsos, el J/U de reversa, y generaliza
+> el punto (3) del banco 2026-06-03 de abajo). **Causa raíz: los 4 `getRangingData()` del
+> VL53L7CX por pasada, cada uno trayendo el bloque COMPLETO de resultados por `Wire`@100 kHz
+> (~60 ms/sensor).** Fix doble, validado en banco por Gustavo: **round-robin** (UN ToF por
+> tick, `a6c0366`) + **payload recortado** (`-DVL53L7CX_DISABLE_*` de los bloques no usados,
+> solo distance+status). Resultado: snapshot de vuelta a **100 Hz de diseño**, hdg trackea
+> giro a mano sin congelarse, ToF dinámicos, `resync=0`. **TASK-014 baja P0→P2** (resta
+> CENTRAL/DOWN). Los pulsos del arquero quedaron tuneados para 4 Hz → se pueden re-apretar
+> en un próximo banco (35°→20°, settle 700→400). ⚠️ ROBOT1 hereda ambos fixes — A VERIFICAR.
 > (3) ✅ **Juez desde la PC** (main `44b129b`, SOLO envs de banco del arquero): monitor serie de
 > la CENTRAL = juez (`g`/ENTER=GO, `s`=STOP; STOP→WAIT_START→`g` re-corre todo). En competencia
 > el flag no se define (GO/STOP real = app del juez por GPIO 5/6 del TOP).

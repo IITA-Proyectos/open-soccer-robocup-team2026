@@ -1,13 +1,16 @@
 // sensors_imu.h — Wrapper de los 2 BNO055 de la placa TOP.
 //
-// Hardware (recableado 2026-05-31, confirmado en banco con diag_bno_addr_check):
-//   BNO055 LEFT  → Wire (I2C bus 0, pines 18/19) @ 0x28 (ADR a GND/flotante)
-//   BNO055 RIGHT → Wire (I2C bus 0, pines 18/19) @ 0x29 (ADR puenteado a 3V3)
-//
-// AMBOS en el MISMO bus, en direcciones distintas. Esto LIBERA Wire1 (24/25)
-// para la comunicación con la placa DOWN. (Antes RIGHT vivía en Wire1 @ 0x28;
-// el recableado lo movió.) OJO: 0x29 es también la dir de fábrica de los ToF;
-// por eso los ToF se enumeran a 0x2A..0x2D al boot y no colisionan con RIGHT.
+// Hardware — POR ROBOT (la impl está gateada con #if defined(ROBOT2)):
+//   ROBOT1 (recableado 2026-05-31, banco diag_bno_addr_check):
+//     BNO055 LEFT  → Wire (18/19) @ 0x28 (ADR flotante)
+//     BNO055 RIGHT → Wire (18/19) @ 0x29 (ADR a 3V3) — unidad FALLADA, se saltea.
+//     OJO: 0x29 es también la dir de fábrica de los ToF; se enumeran a 0x2A..0x2D.
+//   ROBOT2 (banco 2026-06-09): 2 BNO en BUSES SEPARADOS, ambos @ 0x28:
+//     idx 0 = PRIMARIO   → Wire2 (24/25 nativos, LPI2C4) — SOLO en su bus, sin ToF
+//             → sin contención i2c → NO se congela. Es la fuente preferida.
+//     idx 1 = SECUNDARIO → Wire (18/19) — comparte bus con los 4 ToF. Respaldo.
+//     (Corrección 2026-06-09: 24/25 = Wire2, NO "Wire1"; Wire1 real = 16/17.)
+//     En los getters/diag, "LEFT"=idx0=PRIMARIO y "RIGHT"=idx1=SECUNDARIO en R2.
 //
 // Lecciones aplicadas de docs/internal/giroscopo-bno055-analisis-tecnico.md:
 //   • Modo IMUPLUS (acel + gyro, sin magnetómetro) → evita interferencia magnética

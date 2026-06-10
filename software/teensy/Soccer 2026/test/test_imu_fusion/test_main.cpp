@@ -92,6 +92,58 @@ void test_failover_when_one_dies() {
     TEST_ASSERT_FLOAT_WITHIN(0.5f, 33.0f, f.fused_heading_deg);
 }
 
+// ---- PRIORIDAD por índice (convención ROBOT2: PRIMARIO = idx0) ----
+// ROBOT2 tiene 2 BNO sanos e idénticos (ambos 0x28, distinto bus). Cuando los
+// dos están present con IGUAL salud y calib, y discrepan más que disagree_max
+// (impacto/falla), la fusión NO promedia: elige por calidad y, en EMPATE total
+// de salud+calib, cae al de MENOR índice (idx0 = primario). Esto es lo que hace
+// que poner el BNO de Wire2 en idx0 dé el failover "gratis": idx0 manda.
+void test_priority_idx0_on_full_tie() {
+    ImuFusion f; imu_fusion_init(f);
+    ImuFusionCfg cfg = imu_fusion_default_cfg();
+    ImuSensorCfg sc[2] = { imu_fusion_default_sensor_cfg(), imu_fusion_default_sensor_cfg() };
+    // Ambos OK, MISMA calib (3). Desacuerdo 120° > 30° => impacto, no promedia.
+    // Empate total de salud y calib => debe ganar idx0 (primario) = 10°, no 130°.
+    ImuSample in[2] = { mk(true, 10.0f, 0.0f, 3), mk(true, 130.0f, 0.0f, 3) };
+    imu_fusion_update(f, cfg, sc, in, 0.01f);
+    TEST_ASSERT_TRUE(f.fused_valid);
+    TEST_ASSERT_TRUE(f.impact_detected);                       // discrepan: no promedia
+    TEST_ASSERT_FLOAT_WITHIN(1.0f, 10.0f, f.fused_heading_deg); // gana idx0, NO ~70 ni 130
+}
+
+// ---- FAILOVER cuando muere el PRIMARIO (idx0) -> cae al SECUNDARIO (idx1) ----
+// Espejo del test_failover_when_one_dies, pero matando idx0 (el primario). Es
+// EL caso que sostiene la convención ROBOT2: si el BNO de Wire2 (idx0) deja de
+// ACK-ear, la fusión degrada sola al de Wire (idx1, secundario, con los ToF).
+void test_failover_when_idx0_dies_uses_idx1() {
+    ImuFusion f; imu_fusion_init(f);
+    ImuFusionCfg cfg = imu_fusion_default_cfg();
+    ImuSensorCfg sc[2] = { imu_fusion_default_sensor_cfg(), imu_fusion_default_sensor_cfg() };
+    // idx0 ausente varios ciclos -> DEAD; idx1 sano a 77°. Fusión = idx1.
+    for (uint16_t i = 0; i < cfg.dead_after_misses + 1; ++i) {
+        ImuSample in[2] = { mk(false, 0.0f, 0.0f, 0), mk(true, 77.0f, 0.0f, 3) };
+        imu_fusion_update(f, cfg, sc, in, 0.01f);
+    }
+    TEST_ASSERT_EQUAL(static_cast<int>(ImuHealth::DEAD), static_cast<int>(f.s[0].health));
+    TEST_ASSERT_EQUAL(static_cast<int>(ImuHealth::OK),   static_cast<int>(f.s[1].health));
+    TEST_ASSERT_TRUE(f.fused_valid);
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, 77.0f, f.fused_heading_deg);  // secundario manda
+}
+
+// ---- FAILOVER instantáneo: idx0 NO present desde el primer tick -> idx1 ----
+// Sin esperar a que idx0 acumule misses hasta DEAD: si en ESTE tick idx0 no
+// está present, ya no es 'usable' y la fusión usa idx1. Cubre el arranque donde
+// el primario aún no respondió pero el secundario sí.
+void test_idx0_absent_single_cycle_uses_idx1() {
+    ImuFusion f; imu_fusion_init(f);
+    ImuFusionCfg cfg = imu_fusion_default_cfg();
+    ImuSensorCfg sc[2] = { imu_fusion_default_sensor_cfg(), imu_fusion_default_sensor_cfg() };
+    ImuSample in[2] = { mk(false, 0.0f, 0.0f, 0), mk(true, 55.0f, 0.0f, 3) };
+    imu_fusion_update(f, cfg, sc, in, 0.01f);
+    TEST_ASSERT_TRUE(f.fused_valid);
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, 55.0f, f.fused_heading_deg);  // idx1, idx0 no present
+}
+
 void test_disagreement_triggers_impact_no_average() {
     ImuFusion f; imu_fusion_init(f);
     ImuFusionCfg cfg = imu_fusion_default_cfg();
@@ -208,6 +260,9 @@ int main() {
     RUN_TEST(test_single_sensor_drives_fusion);
     RUN_TEST(test_two_agree_average);
     RUN_TEST(test_failover_when_one_dies);
+    RUN_TEST(test_priority_idx0_on_full_tie);
+    RUN_TEST(test_failover_when_idx0_dies_uses_idx1);
+    RUN_TEST(test_idx0_absent_single_cycle_uses_idx1);
     RUN_TEST(test_disagreement_triggers_impact_no_average);
     RUN_TEST(test_glitch_rejected_one_cycle);
     RUN_TEST(test_fast_rotation_not_glitch);

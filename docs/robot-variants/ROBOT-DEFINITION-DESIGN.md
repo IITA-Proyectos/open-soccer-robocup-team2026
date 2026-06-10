@@ -1,7 +1,8 @@
 ---
 title: "Diseño del Robot Definition único — IITA Soccer 2026"
 date: 2026-06-05
-status: diseño + scaffold (perfil ROBOT2 creado; rewiring pendiente con PlatformIO)
+updated: 2026-06-09
+status: diseño + scaffold (perfil ROBOT2 creado; IMU 2-buses confirmado en banco robot2 2026-06-09 — read por Wire2 gateado ROBOT2 PENDIENTE de implementar+compilar; rewiring general pendiente con PlatformIO)
 relacionados: ["REFERENCIAS-POR-ROBOT.md (auditoría)", "../ESTADO-MADUREZ-FEATURES.md", "src/shared/robot_config/robot2.h (seed)"]
 ---
 
@@ -41,7 +42,7 @@ El perfil describe el HW; estos `.cpp` hoy asumen ROBOT1 y hay que parametrizarl
 
 | Subsistema | Hoy (hardcode) | Cambio para ROBOT2 |
 |---|---|---|
-| **IMU — 2 BNO en 2 buses** | `sensors_imu.cpp` instancia ambos BNO en `&Wire` y detecta el 2º por chip-id en `0x29`. | Leer la tabla `IMU_BNO_BUS[]`/`IMU_BNO_ADDR[]` del perfil y crear cada `Adafruit_BNO055` en su bus (`Wire`/`Wire2`), ambos en `0x28`. Wire2 requiere `Wire2.begin()` (cables soldados abajo del Teensy 4.0 → pines 24/25, bus LPI2C4). El BNO en `Wire2` está solo (sin ToF) → es el **PRIMARIO** (sin contención I²C, más confiable); el de `Wire` comparte bus con los 4 ToF → **SECUNDARIO**. |
+| **IMU — 2 BNO en 2 buses** | `sensors_imu.cpp` instancia ambos BNO en `&Wire` y detecta el 2º por chip-id en `0x29`. | Leer la tabla `IMU_BNO_BUS[]`/`IMU_BNO_ADDR[]` del perfil y crear cada `Adafruit_BNO055` en su bus (`Wire`/`Wire2`), ambos en `0x28`. Wire2 requiere `Wire2.begin()` (cables soldados abajo del Teensy 4.0 → pines 24/25, bus LPI2C4 — **nativos, sin remap**). El BNO en `Wire2` está solo (sin ToF) → es el **PRIMARIO** (sin contención I²C, no se congela, más confiable); el de `Wire` comparte bus con los 4 ToF → **SECUNDARIO** (respaldo). **Estado (2026-06-09, confirmado en banco robot2):** el 2do BNO está VIVO en `Wire2` (`diag_top_i2c_scan`, commit `9da8e9e`) y el perfil `robot2.h` YA codifica la convención (`IMU_BNO_BUS[2]={2,0}` → idx0=PRIM/Wire2, idx1=SEC/Wire; ambos `0x28`; `HEADING_SIGN`, `BNO_READ_INTERVAL_MS`, `I2C_CLOCK_HZ`). La fusión (`g_fusion`) ya prioriza el índice 0 y degrada al que esté `present` → poniendo el primario en idx0 el failover sale gratis. **PENDIENTE (gateado `#if defined(ROBOT2)`):** el read real del primario por `Wire2` en `sensors_imu.cpp` (hoy ambos BNO siguen hardcodeados a `&Wire`); ROBOT1 byte-idéntico (rama `#else` = código literal de hoy). No compilable acá → validar con `pio run -e top_robot1` (byte-diff del `.elf`) **y** `pio run -e top_robot2`. |
 | **ToF — modelo + FOV + rotación** | `sensors_tof.cpp` instancia `Adafruit_VL53L7CX` FIJO; `TOF_MOUNT_ANGLE_DEG` vive COMÚN en `pinout_common.h`; **no existe** constante de FOV. | Parametrizar el modelo por slot (`TOF_MODEL[]` → enum VL53L7CX/L5CX/L8CX; libs ya en `lib/`); mover `TOF_MOUNT_ANGLE_DEG` al perfil (per-robot, R2 rotado ~90°); agregar `TOF_FOV_DEG[]` (R2 tiene uno a ~40°) donde la lógica de obstáculo lo necesite. |
 | **OTOS — ninguno en R2** | un solo `[env:down]` con `-DDOWN_NUM_OTOS_CONNECTED=2`. | Crear `[env:down_robot2]` con `=0`. `otos.cpp` ya guarda `NUM_OTOS>=1/>=2` → odometría/pose caen al **fallback exacto** (drive_straight, GK paralelo, cross_track) sin OTOS. Cero código nuevo, solo el env + el perfil. |
 | **Motores ROBOT2 — pines/inversión dudosos** | `config_central.h` `#if ROBOT2` con `MOTOR_INVERT` copiado de R1. | El perfil lleva `PIN_INA/INB/PWM` por motor + `MOTOR_INVERT[]`. **Validar con `diag_central_motors` en R2** y fijar los reales (el usuario advierte posible error de armado: pines o dirección). (ROBOT1 ya está validado en banco: M1=U5 normal, M2=U17 invertido HW, M3=U7 normal → MOTOR_INVERT={+1,-1,+1}, re-confirmado 2026-06-06). El 'dudoso' aplica solo al delantero/ROBOT2. |
@@ -55,7 +56,7 @@ Puertos de comunicación entre placas y con las cámaras (UART Serial1/2/3/4/5 +
 
 ## 8. Próximos pasos
 1. (Banco/`pio`) Migración byte-idéntica §4 + crear `robot1.h`/`active_robot.h`.
-2. (Banco) Confirmar y fijar en `robot2.h` todos los `TODO-BANCO` cuando ROBOT2 esté armado: pines/inversión de motor, mount angles + qué ToF es el de 40°, modelo de ToF, addresses/bus de los 2 BNO, `TOF_OFFSET_MM`, homografías de cámara.
+2. (Banco) Confirmar y fijar en `robot2.h` todos los `TODO-BANCO` cuando ROBOT2 esté armado: pines/inversión de motor, mount angles + qué ToF es el de 40°, modelo de ToF, `TOF_OFFSET_MM`, homografías de cámara. (✅ **addresses/bus de los 2 BNO YA confirmados en banco 2026-06-09**: PRIM `0x28` en `Wire2`, SEC `0x28` en `Wire`.)
 3. (Código) Los 4 cambios de `.cpp` de §5 (IMU 2-buses, ToF modelo/FOV/ángulos, env down_robot2, motores).
 4. (Cámara) Generador `.py` ← robot-def para la homografía; recalibrar LAB en sede.
 

@@ -37,9 +37,14 @@ const WheelConfig WHEELS[3] = {
 // es el módulo PURO motor_kickstart (host-testeado); acá solo vive el cronómetro.
 bool     g_kick_active[3]   = { false, false, false };
 uint32_t g_kick_start_ms[3] = { 0, 0, 0 };
-constexpr int KICKSTART_WINDOW_MS  = 40;   // 2025: 40 ms (arquero, factor 1.8)
-constexpr int KICKSTART_FACTOR_X10 = 18;   // ×1.8
-constexpr int KICKSTART_PWM_CAP    = 153;  // = 1.8×85 del 2025; bajo el límite de quemado
+constexpr int KICKSTART_WINDOW_MS  = 40;   // ventana del impulso (2025: 40 ms)
+// IMPULSO FIJO (banco robot2 2026-06-09, decisión de Gustavo): el ×1.8 multiplicativo
+// dejaba el golpe DESPAREJO (delanteras 126, trasera 42×1.8=75 → no rompía inercia).
+// Ahora el arranque va DIRECTO a 130 PWM en TODAS las ruedas: factor alto (×9.9) +
+// cap 130 ⇒ cualquier base llega al cap ⇒ impulso fijo = 130, conservando el signo.
+// (130 queda bajo el límite de quemado ~150 de los motores 5V a 7,4V.)
+constexpr int KICKSTART_FACTOR_X10 = 99;   // ×9.9: garantiza que toda rueda llegue al cap
+constexpr int KICKSTART_PWM_CAP    = 130;  // ⇒ el impulso ES este valor (fijo, todas las ruedas)
 #endif
 
 void apply_pwm_to_motor(int motor_idx, int pwm_signed) {

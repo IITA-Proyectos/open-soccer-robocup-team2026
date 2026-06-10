@@ -78,7 +78,13 @@ namespace iitasoccer {
     // Mismo síntoma y mismo fix que el arquero. Punto de partida = los valores de R1.
     // 🔧 TUNEAR: delanteras (idx0/idx1) ↑ si no empujan el robot en el piso (70→90…);
     //            trasera (idx2) ↓ si el robot ROTA en el strafe. ⚠️ NO pasar ~150 (queman).
-    constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 42 };  // banco 2026-06-09, partida = R1
+    constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 95 };  // banco 2026-06-09: trasera 42→50→70→85→95.
+                                                      // OJO: en el strafe la trasera DEBE ir al
+                                                      // DOBLE de velocidad que las delanteras
+                                                      // (cinemática: fronts 0.5·vx, rear 1.0·vx);
+                                                      // los pisos aplanaban esa relación 2:1 → la
+                                                      // trasera quedaba lenta y el strafe arquea.
+                                                      // Ideal geométrico con fronts=70 → rear=140.
 #else
     #error "Debe definirse ROBOT1 (arquero) o ROBOT2 (delantero) en build_flags"
 #endif

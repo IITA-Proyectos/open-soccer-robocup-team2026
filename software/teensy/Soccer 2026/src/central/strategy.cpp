@@ -87,6 +87,13 @@ uint32_t g_gk_advance_started_ms = 0;
 uint32_t g_gk_advance_clear_ms   = 0;  // desde cuándo la línea dejó de verse (0 = aún se ve)
 uint32_t g_gk_start_seen_ms      = 0;  // 1er tick con match=GO (para el delay de arranque)
 
+// Centro de patrulla AUTO-CAPTURADO (banco 2026-06-09: el centro fijo 910 no coincidía
+// con la x real del puesto en la cancha → la ventana quedaba siempre a un costado y
+// cada tramo elegía LA MISMA dirección, "dos veces al mismo lado + giro"). Ahora el
+// centro = la x del robot al ENTRAR a patrullar (recién posicionado contra su línea,
+// frente a su arco) → la ventana queda centrada en el puesto REAL, sin calibración.
+float g_gk_patrol_x_center = -1.0f;    // <0 = sin capturar → usa GK_PATROL_X_CENTER_MM
+
 // === PIDs ===
 HeadingPID g_heading_pid;
 LateralPID g_lateral_pid_gk;
@@ -901,6 +908,11 @@ MotorCommand goalkeeper_tick() {
                 if (cleared || adv_timeout) {
                     g_gk_advance_clear_ms   = 0;
                     g_gk_line_avoid_gate_ms = now_ms;   // gracia anti re-disparo
+                    // AUTO-CAPTURA del centro de patrulla: acá el robot está EN su
+                    // puesto (recién despegado de su línea, frente a su arco).
+                    if (gk_pose_ok()) {
+                        g_gk_patrol_x_center = world_model_get_my_x_mm();
+                    }
                     transition_gk(GkState::PATROL);
                 }
             }
@@ -935,6 +947,11 @@ MotorCommand goalkeeper_tick() {
             static uint8_t  pulse_count = 0;
             if (pphase_t0 == 0) pphase_t0 = now_ms;
 
+            // Centro de la ventana: el AUTO-CAPTURADO al llegar al puesto (fallback
+            // a la constante si la pose no estaba disponible en ese momento).
+            const float xc = (g_gk_patrol_x_center >= 0.0f)
+                           ? g_gk_patrol_x_center : GK_PATROL_X_CENTER_MM;
+
             // Error de rumbo (envuelto a ±180) — solo con heading válido.
             const bool hv = world_model_heading_valid();
             float hdg_err = 0.0f;
@@ -953,8 +970,8 @@ MotorCommand goalkeeper_tick() {
                     // Límite por pose: corta el tramo al llegar al borde del arco.
                     if (gk_pose_ok()) {
                         const float x = world_model_get_my_x_mm();
-                        if ((x > GK_PATROL_X_CENTER_MM + GK_PATROL_X_HALF_RANGE_MM && direction > 0) ||
-                            (x < GK_PATROL_X_CENTER_MM - GK_PATROL_X_HALF_RANGE_MM && direction < 0)) {
+                        if ((x > xc + GK_PATROL_X_HALF_RANGE_MM && direction > 0) ||
+                            (x < xc - GK_PATROL_X_HALF_RANGE_MM && direction < 0)) {
                             seg_end = true;
                         }
                     }
@@ -978,8 +995,8 @@ MotorCommand goalkeeper_tick() {
                             pulse_count = 0;
                             if (gk_pose_ok()) {
                                 const float x = world_model_get_my_x_mm();
-                                if (x > GK_PATROL_X_CENTER_MM + GK_PATROL_X_HALF_RANGE_MM)      direction = -1;
-                                else if (x < GK_PATROL_X_CENTER_MM - GK_PATROL_X_HALF_RANGE_MM) direction = +1;
+                                if (x > xc + GK_PATROL_X_HALF_RANGE_MM)      direction = -1;
+                                else if (x < xc - GK_PATROL_X_HALF_RANGE_MM) direction = +1;
                                 else direction = -direction;
                             } else {
                                 direction = -direction;
@@ -1063,9 +1080,11 @@ MotorCommand goalkeeper_tick() {
             // LÍMITES POR POSE (diseño Gustavo): no perseguir la X de la pelota más
             // allá del rango del arco — al llegar al límite, no empujar más afuera.
             if (gk_pose_ok()) {
-                const float x = world_model_get_my_x_mm();
-                if ((x > GK_PATROL_X_CENTER_MM + GK_PATROL_X_HALF_RANGE_MM && cmd.vx_mm_s > 0) ||
-                    (x < GK_PATROL_X_CENTER_MM - GK_PATROL_X_HALF_RANGE_MM && cmd.vx_mm_s < 0)) {
+                const float x  = world_model_get_my_x_mm();
+                const float xc = (g_gk_patrol_x_center >= 0.0f)
+                               ? g_gk_patrol_x_center : GK_PATROL_X_CENTER_MM;
+                if ((x > xc + GK_PATROL_X_HALF_RANGE_MM && cmd.vx_mm_s > 0) ||
+                    (x < xc - GK_PATROL_X_HALF_RANGE_MM && cmd.vx_mm_s < 0)) {
                     cmd.vx_mm_s = 0;
                 }
             }

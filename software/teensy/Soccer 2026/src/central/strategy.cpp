@@ -85,6 +85,7 @@ uint32_t g_gk_line_avoid_gate_ms = 0;  // último exit de LINE_AVOID / entrada a
 uint8_t  g_goto_line_phase       = 0;
 uint32_t g_gk_advance_started_ms = 0;
 uint32_t g_gk_advance_clear_ms   = 0;  // desde cuándo la línea dejó de verse (0 = aún se ve)
+uint32_t g_gk_start_seen_ms      = 0;  // 1er tick con match=GO (para el delay de arranque)
 
 // === PIDs ===
 HeadingPID g_heading_pid;
@@ -145,6 +146,11 @@ constexpr float GK_LINE_RETREAT_SPEED         = 420.0f;   // era 250 (bajo piso 
 // diagonal (ruedas a -66/+246/-180 mm/s → PWM crudo 17/63/46) se APLASTAN al piso y
 // la dirección resultante es basura. RECTO ATRÁS es simétrico (M1/M2 ±iguales, M3=0)
 // → los pisos lo respetan → sale derecho. Orden de Gustavo: recto atrás. VX=0.
+// DELAY DE ARRANQUE (banco 2026-06-09, pedido de Gustavo: "no me da el tiempo para
+// acomodarlo"): tras el START del árbitro el arquero espera esto antes de moverse —
+// da tiempo a posicionarlo/soltarlo. 🔧 Para COMPETENCIA bajar a 0 (debe salir ya).
+constexpr uint32_t GK_START_DELAY_MS      = 2000;
+
 constexpr int16_t GK_GOTO_LINE_VX_RIGHT   = 0;     // recto atrás (era 180 diagonal → círculos)
 // 420 mm/s: PWM crudo delanteras ~93 > piso 70 → fiel + rápido (era 180: "MUY LENTO").
 // El recto-atrás es inestable por geometría (trasera=0, cualquier asimetría guiña) →
@@ -819,10 +825,16 @@ MotorCommand goalkeeper_tick() {
         case GkState::WAIT_START: {
             g_state_name = "GK_WAIT_START";
             if (world_model_match_running()) {
-                // NO va directo a PATROL: primero se reposiciona contra su línea.
-                transition_gk(GkState::GOTO_LINE);
-                g_goto_line_started_ms = now_ms;
-                g_goto_line_phase      = 0;   // fase RETROCESO
+                // DELAY DE ARRANQUE (banco): tiempo para acomodar el robot tras el GO.
+                if (g_gk_start_seen_ms == 0) g_gk_start_seen_ms = now_ms;
+                if ((now_ms - g_gk_start_seen_ms) >= GK_START_DELAY_MS) {
+                    // NO va directo a PATROL: primero se reposiciona contra su línea.
+                    transition_gk(GkState::GOTO_LINE);
+                    g_goto_line_started_ms = now_ms;
+                    g_goto_line_phase      = 0;   // fase RETROCESO
+                }
+            } else {
+                g_gk_start_seen_ms = 0;   // STOP re-arma el delay para el próximo GO
             }
             return cmd;
         }

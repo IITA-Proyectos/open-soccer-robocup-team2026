@@ -22,13 +22,24 @@ void motor_floor_scale(int pwm[3], const FloorScaleCfg& cfg) {
         if (!active[i]) w[i] = 0.0f;
     }
 
-    // 3) Factor de escalado UNIFORME: el máximo déficit piso/|pwm| entre las
-    //    ruedas activas (k ≥ 1). Multiplicar TODAS por k conserva la dirección
-    //    exacta y deja a cada activa en o sobre su piso.
+    // 3) Factor de escalado UNIFORME — definido SOLO por las ruedas PRINCIPALES
+    //    (≥35% de la mayor). ⚠️ Banco 2026-06-09: si una componente AUXILIAR chica
+    //    (ej. el aporte de ω en la trasera durante el avance: ~14 PWM vs piso 107)
+    //    participaba, exigía k≈8 → el cap térmico recortaba → LATIGAZOS a máxima
+    //    potencia girando "a lo loco". Las auxiliares no mandan: si tras el escalado
+    //    no llegan a su piso, van a 0 (su aporte direccional lo llevan las
+    //    principales, que conservan proporciones exactas).
+    float maxmag = 0.0f;
+    for (int i = 0; i < 3; ++i) {
+        const float mag = (w[i] < 0.0f) ? -w[i] : w[i];
+        if (active[i] && mag > maxmag) maxmag = mag;
+    }
+    const float part_min = 0.35f * maxmag;
     float k = 1.0f;
     for (int i = 0; i < 3; ++i) {
         if (!active[i]) continue;
         const float mag = (w[i] < 0.0f) ? -w[i] : w[i];
+        if (mag < part_min) continue;   // auxiliar: no define el escalado
         const float need = static_cast<float>(cfg.floor_pwm[i]) / mag;
         if (need > k) k = need;
     }

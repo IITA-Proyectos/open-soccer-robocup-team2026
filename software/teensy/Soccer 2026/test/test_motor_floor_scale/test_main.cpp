@@ -96,6 +96,21 @@ void test_all_quiet_stays_quiet(void) {
     TEST_ASSERT_EQUAL_INT(0, pwm[2]);
 }
 
+// ⚠️ REGRESIÓN del banco (gira "a lo loco"): AVANCE + corrección ω → la trasera lleva
+// una componente AUXILIAR (~14 PWM, sobre el ruido pero lejos de su piso 107). Si esa
+// auxiliar definiera k, exigiría k≈8 → cap térmico → latigazo a máxima potencia.
+// Política correcta: las PRINCIPALES (delanteras) definen k; la trasera auxiliar → 0.
+void test_aux_component_does_not_explode_scale(void) {
+    int pwm[3] = { 84, -49, 18 };   // avance vy + ω: M1/M2 principales, M3 auxiliar
+    FloorScaleCfg c = cfg();
+    motor_floor_scale(pwm, c);
+    TEST_ASSERT_EQUAL_INT(0, pwm[2]);                  // auxiliar bajo piso → 0
+    TEST_ASSERT_TRUE(pwm[0] <= 130 && pwm[0] >= 70);   // sin latigazo al cap
+    TEST_ASSERT_TRUE(pwm[1] <= -70 && pwm[1] >= -130);
+    const float ratio = static_cast<float>(pwm[0]) / static_cast<float>(-pwm[1]);
+    TEST_ASSERT_FLOAT_WITHIN(0.12f, 84.0f / 49.0f, ratio);  // proporción M1/M2 exacta
+}
+
 // Signos conservados en strafe al otro lado.
 void test_signs_preserved(void) {
     int pwm[3] = { -25, -25, 51 };
@@ -112,6 +127,7 @@ int main(int, char**) {
     RUN_TEST(test_backward_unchanged);
     RUN_TEST(test_burn_cap_scales_proportionally);
     RUN_TEST(test_all_quiet_stays_quiet);
+    RUN_TEST(test_aux_component_does_not_explode_scale);
     RUN_TEST(test_signs_preserved);
     return UNITY_END();
 }

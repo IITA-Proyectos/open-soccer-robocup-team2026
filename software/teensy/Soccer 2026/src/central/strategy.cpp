@@ -221,6 +221,16 @@ constexpr uint32_t GK_LINE_AVOID_COOLDOWN_MS  = 400;  // sin re-disparo tras vol
 // propio pero el heading del BNO es válido. 0° = el frente capturado al boot (el robot
 // se enciende mirando al arco rival) → "siempre mirando al frente".
 constexpr float GK_GYRO_HOLD_TARGET_DEG       = 0.0f;
+// ORIENTACIÓN POR CÁMARA — DESHABILITADA hasta validar (banco 2026-06-09): el signo
+// del gyro de robot2 se CONFIRMÓ correcto (izquierda → hdg sube), por lo tanto la J/U
+// del retroceso la causaba la rama (1) de la cascada: el target derivado del ángulo
+// del ARCO PROPIO visto por la cámara TRASERA — ángulo jamás validado en banco (la
+// homografía se calibró para DISTANCIAS de la frontal). Hasta validar goal_own_angle:
+// el arquero se orienta SOLO por gyro (probado confiable). Re-habilitar con true
+// cuando el banco confirme el ángulo de la trasera (la referencia absoluta corrige
+// el drift del gyro en partidos largos — vale la pena recuperarla después).
+constexpr bool GK_CAMERA_ORIENT_ENABLED      = false;
+
 // ⚠️ TOPE de ω del arquero — INTERACCIÓN CON LOS PISOS (análisis 2026-06-09): el
 // término ω·R entra a las 3 ruedas; en la TRASERA (piso 107) cualquier ω que supere
 // el umbral de ruido (≈11°/s → 5 PWM) haría SALTAR la trasera de 0 a ±107 PWM =
@@ -372,8 +382,10 @@ inline int16_t gk_orient_omega(uint32_t now_ms, float target_trim_deg = 0.0f) {
         heading,
         world_model_get_goal_own_angle_deg());
     float omega = 0.0f;
-    if (o.set_heading) {
-        // (1) referencia absoluta: de espaldas al arco propio.
+    if (GK_CAMERA_ORIENT_ENABLED && o.set_heading) {
+        // (1) referencia absoluta: de espaldas al arco propio. ⚠️ Gateada OFF
+        // (banco 2026-06-09): el ángulo de la cámara trasera causó la J/U del
+        // retroceso; re-habilitar tras validar goal_own_angle en banco.
         heading_pid_set_target(g_heading_pid, o.heading_target_deg + target_trim_deg);
         omega = heading_pid_tick(g_heading_pid, heading, now_ms);
     } else if (world_model_heading_valid()) {

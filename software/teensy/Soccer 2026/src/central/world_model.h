@@ -35,6 +35,9 @@ bool world_model_line_is_fresh();
 float world_model_get_my_x_mm();
 float world_model_get_my_y_mm();
 float world_model_get_my_heading_deg();
+// Confianza (0-100) de la pose del snapshot (trilateración del TOP). Para gatear el
+// uso de my_x/my_y (límites de patrulla del arquero por pose, diseño Gustavo 2026-06-09).
+uint8_t world_model_get_my_pose_confidence();
 
 bool  world_model_ball_visible();
 float world_model_get_ball_x_mm();

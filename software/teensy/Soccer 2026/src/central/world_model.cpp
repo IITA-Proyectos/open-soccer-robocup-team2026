@@ -68,6 +68,7 @@ bool world_model_line_is_fresh() {
 float world_model_get_my_x_mm()             { return static_cast<float>(g_snap.my_x_mm); }
 float world_model_get_my_y_mm()             { return static_cast<float>(g_snap.my_y_mm); }
 float world_model_get_my_heading_deg()      { return g_snap.my_heading_centideg / 100.0f; }
+uint8_t world_model_get_my_pose_confidence(){ return g_snap.my_pose_confidence; }
 
 bool  world_model_ball_visible()            { return g_snap.ball_visible != 0; }
 // Ventana de gracia (DORMIDO): true si vimos la pelota hace < window_ms. Mismo

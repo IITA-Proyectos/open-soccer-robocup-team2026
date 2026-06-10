@@ -173,6 +173,14 @@ constexpr uint32_t GK_LINE_AVOID_COOLDOWN_MS  = 400;  // sin re-disparo tras vol
 // propio pero el heading del BNO es válido. 0° = el frente capturado al boot (el robot
 // se enciende mirando al arco rival) → "siempre mirando al frente".
 constexpr float GK_GYRO_HOLD_TARGET_DEG       = 0.0f;
+// ⚠️ TOPE de ω del arquero — INTERACCIÓN CON LOS PISOS (análisis 2026-06-09): el
+// término ω·R entra a las 3 ruedas; en la TRASERA (piso 107) cualquier ω que supere
+// el umbral de ruido (≈11°/s → 5 PWM) haría SALTAR la trasera de 0 a ±107 PWM =
+// patada lateral enorme (bang-bang). Con ω ≤ 10°/s la trasera queda bajo el umbral
+// (→ 0) y la corrección fluye SUAVE por las delanteras. Corrige 90° en ~9 s — lento
+// pero ESTABLE; para mantener derecho un movimiento (drift de pocos grados) sobra.
+// 🔧 Subir solo junto con el fix de fondo del piso (escalado uniforme) en banco.
+constexpr float GK_ORIENT_OMEGA_MAX_DEGPS     = 10.0f;
 
 // Arquero — Nivel 2
 constexpr float GK_CLEAR_TRIGGER_MM           = 250.0f;    // pelota más cerca que esto → CLEAR
@@ -267,26 +275,38 @@ inline float gk_lateral_pid_output(uint32_t now_ms) {
     return lateral_pid_tick(g_lateral_pid_gk, depth, now_ms);
 }
 
-// Orientación del arquero respecto al ARCO PROPIO (schema v3). Bridge entre la
-// decisión PURA gk_own_goal_orient (world_model.h, host-testeada) y el HeadingPID
-// (Arduino). Devuelve la ω en centideg/s a aplicar a cmd.omega_centideg_s.
-//
-// FALLBACK EXACTO (no-regresión): si el arco propio NO es visible O heading_valid
-// es false, gk_own_goal_orient devuelve set_heading=false → devolvemos 0 SIN tocar
-// el setpoint del PID, exactamente como PATROL/INTERCEPT antes del schema v3 (no
-// orientaban: ω=0). La mejora SÓLO actúa con dato nuevo presente y heading válido.
-inline int16_t gk_own_goal_orient_omega(uint32_t now_ms) {
+// Orientación del arquero — CASCADA (diseño de Gustavo, banco 2026-06-09):
+//   1) ARCO PROPIO visible + heading válido → de espaldas al arco (referencia
+//      ABSOLUTA por cámara: además corrige el drift acumulado del gyro).
+//   2) Solo heading válido (cámara no ve el arco) → **GYRO HOLD**: mantener el
+//      rumbo 0° capturado al boot (el robot se enciende mirando al arco rival) →
+//      "siempre mirando al frente" aunque la visión no ayude. [NUEVO 2026-06-09 —
+//      antes acá ω=0 y el arquero quedaba sin orientación sin cámara.]
+//   3) heading inválido → ω=0 (no girar a ciegas; fail-safe de siempre).
+// Bridge entre la decisión PURA gk_own_goal_orient (world_model.h, host-testeada)
+// y el HeadingPID (Arduino). Devuelve ω en centideg/s para cmd.omega_centideg_s.
+inline int16_t gk_orient_omega(uint32_t now_ms) {
     const float heading = world_model_get_my_heading_deg();
     const GkOwnGoalOrient o = gk_own_goal_orient(
         world_model_goal_own_visible(),
         world_model_heading_valid(),
         heading,
         world_model_get_goal_own_angle_deg());
-    if (!o.set_heading) {
-        return 0;   // fallback EXACTO: sin rumbo nuevo → ω=0 (idéntico a hoy).
+    float omega = 0.0f;
+    if (o.set_heading) {
+        // (1) referencia absoluta: de espaldas al arco propio.
+        heading_pid_set_target(g_heading_pid, o.heading_target_deg);
+        omega = heading_pid_tick(g_heading_pid, heading, now_ms);
+    } else if (world_model_heading_valid()) {
+        // (2) GYRO HOLD: rumbo del boot (0° = mirando al frente).
+        heading_pid_set_target(g_heading_pid, GK_GYRO_HOLD_TARGET_DEG);
+        omega = heading_pid_tick(g_heading_pid, heading, now_ms);
+    } else {
+        return 0;   // (3) sin heading válido → ω=0 (fail-safe de siempre).
     }
-    heading_pid_set_target(g_heading_pid, o.heading_target_deg);
-    const float omega = heading_pid_tick(g_heading_pid, heading, now_ms);
+    // Tope anti-bang-bang con los pisos (ver GK_ORIENT_OMEGA_MAX_DEGPS).
+    if (omega >  GK_ORIENT_OMEGA_MAX_DEGPS) omega =  GK_ORIENT_OMEGA_MAX_DEGPS;
+    if (omega < -GK_ORIENT_OMEGA_MAX_DEGPS) omega = -GK_ORIENT_OMEGA_MAX_DEGPS;
     return omega_degps_to_centideg(omega);  // satura int16 (anti sign-flip, #9)
 }
 
@@ -668,7 +688,19 @@ MotorCommand goalkeeper_tick() {
     if (!world_model_match_running()) {
         transition_gk(GkState::WAIT_START);
     } else if (world_model_imminent_exit() && line_data_fresh()) {
-        transition_gk(GkState::LINE_AVOID);
+        // ANTI-FLAPPING (banco 2026-06-09, causa #1): el arquero PISA su línea por
+        // diseño → un roce de patrulla NO puede disparar la huida. LINE_AVOID solo
+        // entra si imminent_exit PERSISTE (debounce) y pasó el cooldown desde la
+        // última vuelta a PATROL (que el PID tenga tiempo de levantar el robot al
+        // setpoint "apenas pisando"). En LINE_AVOID no se re-dispara a sí mismo.
+        if (g_gk_imminent_since_ms == 0) g_gk_imminent_since_ms = now_ms;
+        const bool persisted = (now_ms - g_gk_imminent_since_ms) >= GK_LINE_AVOID_DEBOUNCE_MS;
+        const bool cooled    = (now_ms - g_gk_line_avoid_gate_ms) >= GK_LINE_AVOID_COOLDOWN_MS;
+        if (persisted && cooled && g_gk_state != GkState::LINE_AVOID) {
+            transition_gk(GkState::LINE_AVOID);
+        }
+    } else {
+        g_gk_imminent_since_ms = 0;   // imminent se apagó → re-armar el debounce
     }
 
     switch (g_gk_state) {
@@ -686,12 +718,14 @@ MotorCommand goalkeeper_tick() {
             g_state_name = "GK_GOTO_LINE";
             // Diagonal ATRÁS (-Y, hacia el arco) + DERECHA (+X) en UN solo
             // movimiento, hasta que los sensores de piso detecten la línea.
-            cmd.vx_mm_s = GK_GOTO_LINE_VX_RIGHT;          // +X = derecha
+            cmd.vx_mm_s = GK_GOTO_LINE_VX_RIGHT;          // 0 = recto atrás (banco 2026-06-09)
             cmd.vy_mm_s = static_cast<int16_t>(-GK_GOTO_LINE_VY_BACK);  // -Y = atrás
-            // SIN rotar mientras se reposiciona (ω=0): rotar Y trasladar a la vez
-            // hacía que el arquero pareciera "girar" (la ω domina y las 3 ruedas
-            // giran igual). La orientación al frente la hace PATROL al llegar.
-            cmd.omega_centideg_s = 0;
+            // GYRO HOLD (diseño de Gustavo 2026-06-09): el recto-atrás es inestable
+            // por geometría (trasera=0; cualquier asimetría de fricción guiña) → un
+            // PID de heading lo mantiene derecho. Correcciones chicas (~°/s) sobre
+            // vy=420 no distorsionan la dirección; si el heading no es válido, la
+            // cascada devuelve ω=0 (la conducta vieja).
+            cmd.omega_centideg_s = gk_orient_omega(now_ms);
 
             // Llegada: hay línea detectada y el dato es VÁLIDO (compuerta maestra).
             const bool line_here = world_model_line_detected()
@@ -701,6 +735,10 @@ MotorCommand goalkeeper_tick() {
             const bool timed_out =
                 (now_ms - g_goto_line_started_ms) >= GK_GOTO_LINE_TIMEOUT_MS;
             if (line_here || timed_out) {
+                // Gracia anti-flapping: al llegar A la línea el anillo la pisa fuerte
+                // (imminent puede estar alto) → darle el cooldown al PID de patrulla
+                // para levantar el robot al setpoint antes de habilitar LINE_AVOID.
+                g_gk_line_avoid_gate_ms = now_ms;
                 transition_gk(GkState::PATROL);
             }
             return cmd;
@@ -714,6 +752,7 @@ MotorCommand goalkeeper_tick() {
             cmd.vx_mm_s = static_cast<int16_t>(std::sin(rad) * GK_LINE_RETREAT_SPEED);
             cmd.vy_mm_s = static_cast<int16_t>(std::cos(rad) * GK_LINE_RETREAT_SPEED);
             if (!world_model_imminent_exit()) {
+                g_gk_line_avoid_gate_ms = now_ms;   // cooldown: sin re-disparo inmediato
                 transition_gk(GkState::PATROL);
             }
             return cmd;
@@ -721,13 +760,14 @@ MotorCommand goalkeeper_tick() {
 
         case GkState::PATROL: {
             g_state_name = "GK_PATROL";
-            // PID lateral: WP-3-GK lo lleva por cross_track (distancia
-            // perpendicular a la línea) para que el arquero se mantenga PARALELO
-            // a la línea lateral; fallback EXACTO a profundidad si cross_track es
-            // N/A (ver gk_lateral_pid_output).
-            const float vx_lateral_pid = gk_lateral_pid_output(now_ms);
+            // PID de cross_track (distancia perpendicular a la línea del ÁREA).
+            // ⚠️ FIX DE EJE banco 2026-06-09: la línea del área corre IZQ-DER (a lo
+            // largo de X) → su perpendicular se corrige con **vy** (adelante/atrás),
+            // no con vx (eso era para la línea LATERAL). Setpoint -40 mm = "apenas
+            // pisando" (diseño de Gustavo). Signo: GK_CT_VY_SIGN (confirmar banco).
+            const float ct_pid = gk_lateral_pid_output(now_ms);
 
-            // Oscilación lateral encima del PID — patrulla el área chica.
+            // Oscilación lateral pura en vx — patrulla A LO LARGO de la línea.
             static int direction = 1;
             static uint32_t last_change = 0;
             if (now_ms - last_change > static_cast<uint32_t>(GK_PATROL_OSCILLATE_PERIOD_MS)) {
@@ -735,17 +775,13 @@ MotorCommand goalkeeper_tick() {
                 last_change = now_ms;
             }
             const float vx_patrol = direction * GK_PATROL_SPEED_MM_S;
-            // clamp_velocity_mm_s: mismo patrón PID-sum que GK_INTERCEPT; defensivo
-            // y byte-idéntico a (int16_t) en el rango normal (path de falla: NaN->0,
-            // satura sin invertir signo).
-            cmd.vx_mm_s = clamp_velocity_mm_s(vx_patrol + vx_lateral_pid * 0.5f);
+            cmd.vx_mm_s = clamp_velocity_mm_s(vx_patrol);
+            // Corrección perpendicular en vy (mantener el borde de la línea).
+            cmd.vy_mm_s = clamp_velocity_mm_s(GK_CT_VY_SIGN * ct_pid * 0.5f);
 
-            // goal_own (#schema v3): si el arco propio es visible (y heading
-            // válido) orientar el frente a la cancha (de espaldas al arco propio)
-            // para que el arquero quede bien plantado. FALLBACK EXACTO: si no es
-            // visible o heading inválido, set_heading=false → NO seteamos rumbo →
-            // ω queda 0, idéntico a la conducta previa al schema v3.
-            cmd.omega_centideg_s = gk_own_goal_orient_omega(now_ms);
+            // Orientación: cascada arco-propio → GYRO HOLD (mirando al frente
+            // aunque la cámara no vea el arco) → ω=0. Diseño de Gustavo 2026-06-09.
+            cmd.omega_centideg_s = gk_orient_omega(now_ms);
 
             if (world_model_ball_visible()) {
                 transition_gk(GkState::INTERCEPT);
@@ -786,9 +822,9 @@ MotorCommand goalkeeper_tick() {
                 dist);
             (void)bt.kind;      // expuesto para observabilidad/tuning.
 
-            // PID lateral por cross_track (paralelo a la línea), con fallback
-            // EXACTO a profundidad si es N/A — mismo helper que PATROL.
-            const float vx_lateral_pid = gk_lateral_pid_output(now_ms);
+            // PID de cross_track — mismo FIX DE EJE que PATROL (banco 2026-06-09):
+            // la corrección perpendicular a la línea del área va en vy.
+            const float ct_pid = gk_lateral_pid_output(now_ms);
 
             // RESPUESTA A AMENAZA ACTIVADA: target_x ya trae más lead si bt.threat;
             // y el KP se escala por bt.kp_scale (1.0 si no es amenaza → idéntico a
@@ -798,12 +834,11 @@ MotorCommand goalkeeper_tick() {
             // clamp_velocity_mm_s: defensivo (target_x_mm * kp puede crecer si el
             // wire dejara pasar una X fuera de rango). Byte-idéntico a (int16_t)
             // en el rango normal; sólo satura/anula NaN en el path de falla.
-            cmd.vx_mm_s = clamp_velocity_mm_s(vx_intercept + vx_lateral_pid * 0.3f);
+            cmd.vx_mm_s = clamp_velocity_mm_s(vx_intercept);
+            cmd.vy_mm_s = clamp_velocity_mm_s(GK_CT_VY_SIGN * ct_pid * 0.3f);
 
-            // goal_own (#schema v3): mantener el frente hacia la cancha mientras
-            // intercepta sobre el eje X. FALLBACK EXACTO: sin arco propio visible o
-            // heading inválido → ω=0 (idéntico a antes del schema v3).
-            cmd.omega_centideg_s = gk_own_goal_orient_omega(now_ms);
+            // Orientación: cascada arco-propio → GYRO HOLD → ω=0 (2026-06-09).
+            cmd.omega_centideg_s = gk_orient_omega(now_ms);
 
             // Transición a CLEAR: la pelota llegó cerca → salir a despejar
             // en lugar de seguir solo el eje X.

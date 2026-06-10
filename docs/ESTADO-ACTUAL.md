@@ -36,6 +36,15 @@ tipo: indice-operacional
 > la CENTRAL = juez (`g`/ENTER=GO, `s`=STOP; STOP→WAIT_START→`g` re-corre todo). En competencia
 > el flag no se define (GO/STOP real = app del juez por GPIO 5/6 del TOP).
 > Journal completo: `journal/2026-06-10-banco-arquero-juez-pc-patrulla-v32-v33-top-lento.md`.
+> (4) 🔧 **ESTADO HW DE ROBOT1 (banco escritorio 2026-06-10 noche, Gustavo — NO re-diagnosticar):**
+> · **Cámaras ×2: ANDAN** — script v2 ya flasheado, `pkts_F/B` subiendo, `resync=0`, pelota
+>   trackeada por ambas. NO tocar.
+> · **BNO-L (Wire 0x28): yaw CONGELADO post-golpe** — ackea I²C (`imu_L=Y`) pero `hdg` clavado
+>   en −160.2 girándolo a mano. Sospecha: cristal externo 32 kHz dañado (falla clásica BNO055)
+>   → probar `top_robot1_oscint` (oscilador interno, env nuevo). Si no revive: trasplante del
+>   BNO secundario de robot2 (R2 controla con el PRIMARIO de Wire2, puede prestarlo).
+> · **BNO-R (0x29): MUERTO desde antes** (unidad quemada) — `imu_R=N` es lo esperado, no es noticia.
+> · **TOP de R1 heredó los fixes**: loop ~220k/s, ToF 4/4 (`min_obst` ok).
 
 > **🔧 ÚLTIMO (2026-06-02 — vale sobre cualquier mención más abajo):** mapa UART final.
 > **TOP (Teensy 4.0):** S1←DOWN · **S2 (7/8)↔COMM** · S3←cam frontal · **S4 (16/17)→CENTRAL** · S5←cam trasera.

@@ -197,7 +197,17 @@ bool init_one_bno(Adafruit_BNO055& bno) {
         if (millis() - start > INIT_TIMEOUT_MS) return false;
         delay(100);
     }
+#ifndef TOP_BNO_INTERNAL_OSC
     bno.setExtCrystalUse(true);
+#else
+    // OSCILADOR INTERNO (banco 2026-06-10, robot1): el BNO-L de R1 quedó con el
+    // yaw CONGELADO tras un golpe (ackea I²C pero hdg clavado en -160.2 girándolo
+    // a mano). Modo de falla conocido del BNO055: el golpe daña el cristal externo
+    // de 32 kHz → el reloj de la fusión muere → salidas congeladas con chip vivo.
+    // Con este flag NO se conmuta al cristal externo (queda el oscilador interno,
+    // levemente más drift) — si el cristal era el problema, el sensor revive.
+    // Solo en envs *_oscint de banco hasta validar.
+#endif
     delay(STABILIZE_MS);
     const uint32_t calib_start = millis();
     while (millis() - calib_start < GYRO_CALIB_MS) {

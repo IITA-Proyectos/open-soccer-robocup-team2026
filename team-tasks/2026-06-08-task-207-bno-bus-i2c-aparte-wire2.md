@@ -4,13 +4,23 @@ title: "BNO del TOP (ROBOT1) a un bus I²C APARTE (Wire2 24/25) — el shared bu
 date_created: 2026-06-08
 assigned: [enzo, gustavo]
 priority: P1
-status: pending
+status: ARQUITECTURA-VALIDADA-EN-ROBOT2-2026-06-09-falta-soldar-el-2do-bno-de-robot1
 blocks: [heading del arquero en produccion; orientacion fina]
 tags: [hardware, i2c, bno055, top, robot1]
 depends_on: []
 ---
 
 # TASK-207 — BNO de ROBOT1 a bus I²C aparte (Wire2)
+
+> ### ✅ 2026-06-09 — LA ARQUITECTURA QUEDÓ VALIDADA EN BANCO (en ROBOT2)
+> Gustavo corrió **`top_robot2` (PRODUCCIÓN)** con el firmware nuevo (commit `0f503f2`,
+> `sensors_imu.cpp` gateado `ROBOT2`: BNO PRIMARIO en `Wire2` 24/25 + SECUNDARIO en `Wire`):
+> **`imu_L=Y imu_R=Y`** (ambos BNO leyendo) y **el `hdg` TRACKEA el giro EN PRODUCCIÓN**
+> (con ToF + 2 cámaras + snapshot 100 Hz activos) y queda estable en reposo. **El freeze del
+> heading NO ocurre con el BNO en bus propio** — exactamente lo que esta task predecía.
+> **Para ROBOT1 queda SOLO el paso de hardware:** soldar su 2º BNO (o mover el actual) a los
+> pads 24/25 (Wire2) como en robot2 → el firmware ya existe y entra con el mismo gate.
+> (La cierra el equipo cuando el hardware de ROBOT1 esté hecho y validado.)
 
 ## Por qué (P1)
 El **heading del BNO055 NO funciona en producción (`main_top`)**: `hdg=0.0` / `flags=0x0`. En

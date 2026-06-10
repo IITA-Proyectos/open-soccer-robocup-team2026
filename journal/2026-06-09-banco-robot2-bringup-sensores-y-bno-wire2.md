@@ -92,3 +92,14 @@ no como "ya anda".
 - Una vez flasheado robot2: confirmar en `main_top` que el rumbo del **primario** sigue al giro
   **sin congelarse** (que era el síntoma del BNO de robot1) y que el failover al secundario degrada
   con gracia.
+
+## Addendum 2026-06-09 (tarde) — VALIDADO: top_robot2 PRODUCCION con los 2 BNO y heading vivo
+
+Gustavo flasheo `top_robot2` (produccion, commit 0f503f2) y el banco dio:
+- **`imu_L=Y imu_R=Y`** — PRIMARIO (Wire2 24/25) + SECUNDARIO (Wire 18/19) leyendo a la vez.
+- **El heading TRACKEA el giro EN PRODUCCION** (-1.7 -> 25 -> 47 -> 6.0 siguiendo el giro fisico,
+  estable en reposo) con ToF + 2 camaras (resync=0) + snapshot 100 Hz corriendo.
+- Es la validacion del FIX DE FONDO del freeze: con el BNO primario en bus propio (sin ToF),
+  el congelamiento que robot1 nunca pudo resolver por software NO ocurre. Ver TASK-207.
+- Falta en la cadena: DOWN (down_robot2) -> diag_central_rx_all -> motores (diag_central_motors,
+  pines rotados de R2) -> central_robot2.

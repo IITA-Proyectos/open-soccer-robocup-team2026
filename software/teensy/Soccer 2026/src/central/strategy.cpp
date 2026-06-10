@@ -80,9 +80,11 @@ uint32_t g_gk_imminent_since_ms  = 0;  // desde cuándo persiste imminent_exit (
 uint32_t g_gk_line_avoid_gate_ms = 0;  // último exit de LINE_AVOID / entrada a PATROL (cooldown)
 
 // GOTO_LINE en 2 fases (diseño Gustavo 2026-06-09 v2): 0 = RETROCESO (recto atrás con
-// gyro hasta tocar la línea) · 1 = AVANCE (despegarse ~10 cm y recién ahí PATROL).
+// gyro hasta tocar la línea) · 1 = AVANCE (despegarse hasta DEJAR DE VER la línea +
+// margen, con timeout) y recién ahí PATROL.
 uint8_t  g_goto_line_phase       = 0;
 uint32_t g_gk_advance_started_ms = 0;
+uint32_t g_gk_advance_clear_ms   = 0;  // desde cuándo la línea dejó de verse (0 = aún se ve)
 
 // === PIDs ===
 HeadingPID g_heading_pid;
@@ -181,7 +183,11 @@ constexpr float GK_GOTO_LINE_HEADING_TRIM_DEG = 0.0f;   // + = sesgar rumbo a la
 // direcciones impredecibles).
 constexpr int16_t  GK_ADVANCE_SPEED_MM_S = 300;   // suave para observar (los pisos lo
                                                   // dejan en ~70 PWM delanteras = recto)
-constexpr uint32_t GK_ADVANCE_MS         = 350;   // ≈10 cm al ritmo efectivo del piso
+// Banco 2026-06-09 (2ª iteración): el avance fijo de 350 ms a veces NO despegaba del
+// todo (motores bajo carga rinden menos) → loop avance↔toque. Ahora avanza HASTA QUE
+// LA LÍNEA DEJE DE VERSE y un margen extra; el timeout es la red de seguridad.
+constexpr uint32_t GK_ADVANCE_MS         = 350;   // margen EXTRA tras dejar de ver línea
+constexpr uint32_t GK_ADVANCE_TIMEOUT_MS = 1500;  // tope duro de la fase de avance
 
 // LÍMITES DE PATRULLA POR POSE DEL TOP (diseño de Gustavo — cubre el gap R3): la
 // oscilación lateral REBOTA en [centro ± rango] usando my_x de la trilateración del
@@ -236,14 +242,18 @@ constexpr float GK_GYRO_HOLD_TARGET_DEG       = 0.0f;
 // el drift del gyro en partidos largos — vale la pena recuperarla después).
 constexpr bool GK_CAMERA_ORIENT_ENABLED      = false;
 
-// ⚠️ TOPE de ω del arquero — INTERACCIÓN CON LOS PISOS (análisis 2026-06-09): el
-// término ω·R entra a las 3 ruedas; en la TRASERA (piso 107) cualquier ω que supere
-// el umbral de ruido (≈11°/s → 5 PWM) haría SALTAR la trasera de 0 a ±107 PWM =
-// patada lateral enorme (bang-bang). Con ω ≤ 10°/s la trasera queda bajo el umbral
-// (→ 0) y la corrección fluye SUAVE por las delanteras. Corrige 90° en ~9 s — lento
-// pero ESTABLE; para mantener derecho un movimiento (drift de pocos grados) sobra.
-// 🔧 Subir solo junto con el fix de fondo del piso (escalado uniforme) en banco.
+// TOPE de ω del arquero — depende del RÉGIMEN DE PISO del build:
+//   • Clamp por-rueda (viejo): ω > ~11°/s disparaba la trasera de 0 a 107 (bang-bang)
+//     → tope 10°/s (corrige 90° en ~9 s = "gira a paso de tortuga", banco 2026-06-09:
+//     el arquero quedaba chueco eternamente entre avances).
+//   • ESCALADO UNIFORME (-DCENTRAL_FLOOR_SCALE): las proporciones se conservan y el
+//     cero-o-fiel mata el bang-bang → se puede dar autoridad REAL: 40°/s corrige 90°
+//     en ~2.3 s, suficiente para enderezarse entre movimientos sin marear el strafe.
+#ifdef CENTRAL_FLOOR_SCALE
+constexpr float GK_ORIENT_OMEGA_MAX_DEGPS     = 40.0f;
+#else
 constexpr float GK_ORIENT_OMEGA_MAX_DEGPS     = 10.0f;
+#endif
 
 // Arquero — Nivel 2
 constexpr float GK_CLEAR_TRIGGER_MM           = 250.0f;    // pelota más cerca que esto → CLEAR
@@ -843,12 +853,26 @@ MotorCommand goalkeeper_tick() {
                     g_gk_advance_started_ms = now_ms;
                 }
             } else {
-                // ── Fase 1: AVANCE ~10 cm para despegarse de la línea ──
+                // ── Fase 1: AVANCE hasta DESPEGARSE de la línea (+margen, c/timeout) ──
                 g_state_name = "GK_ADVANCE";
                 cmd.vx_mm_s = 0;
                 cmd.vy_mm_s = GK_ADVANCE_SPEED_MM_S;          // +Y = adelante
                 cmd.omega_centideg_s = gk_gyro_hold_omega(now_ms, 0.0f);  // gyro puro (sin cámara)
-                if ((now_ms - g_gk_advance_started_ms) >= GK_ADVANCE_MS) {
+
+                // Despegue REAL: la línea tiene que DEJAR de verse y mantenerse así
+                // GK_ADVANCE_MS (margen). El avance fijo de antes a veces quedaba
+                // corto (motores bajo carga) → loop avance↔toque (banco 2026-06-09).
+                if (!world_model_line_detected()) {
+                    if (g_gk_advance_clear_ms == 0) g_gk_advance_clear_ms = now_ms;
+                } else {
+                    g_gk_advance_clear_ms = 0;    // la sigue viendo → reiniciar margen
+                }
+                const bool cleared = (g_gk_advance_clear_ms != 0)
+                    && (now_ms - g_gk_advance_clear_ms) >= GK_ADVANCE_MS;
+                const bool adv_timeout =
+                    (now_ms - g_gk_advance_started_ms) >= GK_ADVANCE_TIMEOUT_MS;
+                if (cleared || adv_timeout) {
+                    g_gk_advance_clear_ms   = 0;
                     g_gk_line_avoid_gate_ms = now_ms;   // gracia anti re-disparo
                     transition_gk(GkState::PATROL);
                 }

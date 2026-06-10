@@ -127,7 +127,11 @@ constexpr float DS_KP_LATERAL = 0.5f;   // amortigua ~media deriva lateral OTOS 
 // de 0.5:0.5:1.0 = errático). 420 mm/s = el PWM crudo de la rueda dominante (trasera,
 // piso 107) queda SOBRE su piso → el mixer respeta la dirección pedida.
 constexpr float GK_PATROL_OSCILLATE_PERIOD_MS = 2000.0f;
-constexpr float GK_PATROL_SPEED_MM_S          = 420.0f;   // era 150 (bajo piso → errático)
+// 200 = RITMO DE OBSERVACIÓN (banco 2026-06-09: a 420 "salía volando a los costados").
+// Con la patrulla ahora siendo strafe PURO (vy=0), comandar bajo es SEGURO: los pisos
+// la clavan en la mezcla {70,70,107} — exactamente la del diag de strafe que ya se vio
+// andar derecha y moderada. 🔧 Para competencia se puede subir (420 = fiel pleno).
+constexpr float GK_PATROL_SPEED_MM_S          = 200.0f;
 constexpr float GK_INTERCEPT_KP_VS_BALL_X     = 4.0f;
 constexpr float GK_LATERAL_SETPOINT_DEPTH     = 1.0f;
 constexpr float GK_LINE_RETREAT_SPEED         = 420.0f;   // era 250 (bajo piso → dirección basura)
@@ -175,8 +179,9 @@ constexpr float GK_GOTO_LINE_HEADING_TRIM_DEG = 0.0f;   // + = sesgar rumbo a la
 // durante la patrulla: la línea del arquero SIEMPRE está atrás → adelante siempre es
 // seguro (reemplaza al retreat por ángulo de LINE_AVOID, que con los pisos salía en
 // direcciones impredecibles).
-constexpr int16_t  GK_ADVANCE_SPEED_MM_S = 420;   // adelante (fiel sobre los pisos)
-constexpr uint32_t GK_ADVANCE_MS         = 240;   // ≈10 cm a 420 mm/s
+constexpr int16_t  GK_ADVANCE_SPEED_MM_S = 300;   // suave para observar (los pisos lo
+                                                  // dejan en ~70 PWM delanteras = recto)
+constexpr uint32_t GK_ADVANCE_MS         = 350;   // ≈10 cm al ritmo efectivo del piso
 
 // LÍMITES DE PATRULLA POR POSE DEL TOP (diseño de Gustavo — cubre el gap R3): la
 // oscilación lateral REBOTA en [centro ± rango] usando my_x de la trilateración del

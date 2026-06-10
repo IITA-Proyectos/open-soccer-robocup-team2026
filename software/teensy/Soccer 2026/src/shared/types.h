@@ -5,13 +5,13 @@
 //
 // Estos structs viajan como payload del protocolo UART (ver proto.h).
 //
-// NOTA HARDWARE (TOP board):
-//   Wire1 (I2C bus 1) está físicamente remapeado a pines 24 (SCL1) y 25 (SDA1)
-//   en la placa TOP. El firmware DEBE llamar antes de Wire1.begin():
-//     Wire1.setSCL(24);
-//     Wire1.setSDA(25);
-//   Serial4 (RX4/TX4) queda en pines default 16/17.
-//   Ver hardware/electronics/mapa-pines-placas-nuevas.md sección Q3.
+// NOTA HARDWARE (TOP board) — ⚠️ CORREGIDO 2026-06-09 (i2c scan, commit 9da8e9e):
+//   Los pines 24/25 de la placa TOP son **Wire2** (LPI2C4, nativo SCL2=24/SDA2=25),
+//   NO "Wire1" (el repo los mislabeleaba con un remap forzado Wire1.setSCL(24)).
+//   Wire2 los usa de FÁBRICA: basta `Wire2.begin()`, sin remap. En ROBOT2 ahí va el
+//   2º BNO PRIMARIO (confirmado en banco). Los pines 16/17 (que SON el Wire1 real del
+//   Teensy 4.0) los usa Serial4 (RX4/TX4) en el TOP, no I2C.
+//   Ver hardware/electronics/MAPA-CONEXIONES-3-PLACAS.md y robot2.h.
 
 #pragma once
 #include <stdint.h>

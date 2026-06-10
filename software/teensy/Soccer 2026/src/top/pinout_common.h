@@ -13,13 +13,18 @@ namespace iitasoccer {
 // ============================================================
 // I2C buses (TOP placa rev 1.0 — hardware fijo, ambos robots)
 // ============================================================
-constexpr int WIRE1_SCL_PIN = 24;
-constexpr int WIRE1_SDA_PIN = 25;
+// ⚠️ CORRECCIÓN 2026-06-09 (i2c scan, commit 9da8e9e): en el Teensy 4.0 los pines
+// 24/25 son de **Wire2** (LPI2C4, nativo SCL2=24/SDA2=25), NO de Wire1 (Wire1=16/17).
+// El repo los mislabeleaba "Wire1" con un remap forzado. Renombradas a WIRE2_*.
+// (Hoy SIN consumidores — son informativas del pin físico, no se usan en código.)
+constexpr int WIRE2_SCL_PIN = 24;
+constexpr int WIRE2_SDA_PIN = 25;
 
 // Recableado 2026-05-31 (confirmado en banco con diag_bno_addr_check):
-// los 2 BNO055 quedaron en el MISMO bus `Wire` (18/19), en direcciones
-// distintas. RIGHT tiene su pad ADR puenteado a 3V3 -> 0x29. Esto LIBERA
-// `Wire1` (24/25) para la comunicación con la placa DOWN.
+// los 2 BNO055 de ROBOT1 quedaron en el MISMO bus `Wire` (18/19), en direcciones
+// distintas. RIGHT tiene su pad ADR puenteado a 3V3 -> 0x29. Esto deja LIBRE el bus
+// **Wire2** (24/25) en R1. (En ROBOT2 ese bus Wire2 lleva el 2º BNO PRIMARIO —
+// confirmado en banco 2026-06-09, ver robot2.h.)
 // OJO: 0x29 lo comparten el BNO RIGHT y la dirección de fábrica de los ToF;
 // por eso los ToF se enumeran a 0x2A..0x2D al boot (ver topología ToF abajo)
 // y nunca quedan en 0x29 una vez enumerados.

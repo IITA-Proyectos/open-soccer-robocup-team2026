@@ -6,12 +6,17 @@
 //
 // Que hace
 // --------
-// Escanea direcciones 0x08..0x77 en:
-//   • Wire  (I2C0) = pines 18 (SDA0) / 19 (SCL0)   -> aca viven U2 (frontal) + U3 (trasero) + 1 BNO
-//   • Wire1 (I2C1) = pines 25 (SDA1) / 24 (SCL1)   -> aca viven U5 (izq) + U17 (der)
-//     (un 2do BNO 0x29 estuvo previsto en Wire1, pero esa unidad esta FALLADA:
-//      hoy el robot corre con 1 solo BNO 0x28 en Wire, asi que NO esperes verlo)
-//   (topologia confirmada por extraccion forense del schematic 2026-04-12)
+// Escanea direcciones 0x08..0x77 en los TRES buses i2c del Teensy 4.0 (pines NATIVOS):
+//   • Wire  (LPI2C1) = 18(SDA)/19(SCL)  -> BNO1 (0x28) + los 4 ToF (0x29 de fabrica)
+//   • Wire1 (LPI2C3) = 17(SDA)/16(SCL)
+//   • Wire2 (LPI2C4) = 25(SDA)/24(SCL)  -> pines del BACK-PAD, "DEBAJO" del Teensy
+//
+// ⚠️ CORRECCION 2026-06-09 (ROBOT2): la version vieja remapeaba Wire1 a 24/25 — PERO en
+//   el Teensy 4.0 los pines 24/25 son de Wire2 (LPI2C4), NO de Wire1 (LPI2C3). Wire1 no
+//   puede manejar esos pines -> el "escaneo de 24/25" via Wire1 nunca funciono. El 2do BNO
+//   de ROBOT2 (soldado a 24/25 "debajo" del Teensy) hay que buscarlo en Wire2.
+//   Si sale un BNO (0x28) en Wire2 -> ese es el 2do BNO. Si NO sale en ningun bus salvo
+//   Wire -> revisar soldadura / alimentacion / pull-ups del 2do BNO.
 //
 // Como leer la salida
 // -------------------
@@ -39,9 +44,8 @@
 
 namespace {
 
-// Pines del remap de Wire1 en la placa TOP (pinout_common.h: SCL1=24, SDA1=25).
-constexpr uint8_t WIRE1_SDA = 25;
-constexpr uint8_t WIRE1_SCL = 24;
+// Teensy 4.0: cada bus usa sus pines NATIVOS, no se remapea nada.
+//   Wire 18/19 · Wire1 16/17 · Wire2 24/25. (24/25 = Wire2, NO Wire1 — ver header.)
 
 // Devuelve una etiqueta humana para las direcciones que esperamos ver.
 const char* addr_hint(uint8_t addr) {
@@ -96,34 +100,34 @@ void setup() {
     while (!Serial && (millis() - t0) < 3000) { /* esperar USB hasta 3s */ }
 
     Serial.println("\n=========================================");
-    Serial.println("  TOP — Escaner I2C de los 2 buses");
-    Serial.println("  Wire (18/19)  +  Wire1 (25/24 remap)");
+    Serial.println("  TOP — Escaner I2C de los 3 buses");
+    Serial.println("  Wire 18/19 + Wire1 16/17 + Wire2 24/25");
+    Serial.println("  (2do BNO de robot2 = Wire2 24/25, 'debajo' del Teensy)");
     Serial.println("=========================================");
 
-    // Bus 0 (Wire) — pines 18/19 por hardware, no hace falta remap.
-    Wire.begin();
+    // Los 3 buses con sus pines NATIVOS del Teensy 4.0 (sin remap).
+    Wire.begin();      // 18/19
     Wire.setClock(400000);
-
-    // Bus 1 (Wire1) — remap a 25/24. ORDEN CRITICO en Teensy: setSCL/setSDA
-    // DEBEN ir ANTES de begin(), si no el remap no toma efecto y Wire1 usa los
-    // pines default (16/17) -> el escaneo de Wire1 no encontraria nada. Mismo
-    // orden que sensors_imu.cpp:83-85 y la nota de src/shared/types.h:10-12.
-    Wire1.setSCL(WIRE1_SCL);
-    Wire1.setSDA(WIRE1_SDA);
-    Wire1.begin();
+    Wire1.begin();     // 16/17
     Wire1.setClock(400000);
+    Wire2.begin();     // 24/25  <- aca va el 2do BNO de robot2 (back-pad)
+    Wire2.setClock(400000);
 }
 
 void loop() {
-    const int n0 = scan_bus(Wire,  "Wire  (I2C0, U2/U3 frontal/trasero)");
-    const int n1 = scan_bus(Wire1, "Wire1 (I2C1, U5/U17 izq/der)");
+    const int n0 = scan_bus(Wire,  "Wire  (18/19) -> BNO1 + 4 ToF");
+    const int n1 = scan_bus(Wire1, "Wire1 (16/17)");
+    const int n2 = scan_bus(Wire2, "Wire2 (24/25) -> 2do BNO de robot2 (back-pad)");
 
     Serial.print("\n[resumen] Wire=");
     Serial.print(n0);
-    Serial.print(" dispositivos, Wire1=");
+    Serial.print("  Wire1=");
     Serial.print(n1);
+    Serial.print("  Wire2=");
+    Serial.print(n2);
     Serial.println(" dispositivos.");
     Serial.println("Recordatorio: 0x29 = al menos 1 ToF (no distingue 2 en el mismo bus).");
+    Serial.println("2do BNO de robot2 -> deberia salir 0x28 en Wire2 (24/25).");
     Serial.println("Re-escaneo en 3 s...\n");
 
     // Parpadeo de vida + espera.

@@ -62,8 +62,23 @@ empujado): `LINEA` debe mostrar `present=1`, `on_line` subiendo/bajando suave, `
 cross/pen` con NÚMEROS estables (no N/A, no saltos ±30°). **Criterio: angle estable con ≥3
 sensores pisando; cross_track con signo coherente (adentro + / afuera −).**
 
+## Juez desde la PC (cuando la app del juez no funciona — agregado 2026-06-10)
+Los envs de banco del arquero (`central_robot2_arquero`, `_slow`, `_patrol`) llevan
+`-DCENTRAL_ENABLE_MANUAL_START`: **el monitor serie de la CENTRAL ES el juez**.
+```
+pio device monitor -b 115200        (en el puerto USB de la CENTRAL)
+g   (o ENTER)  →  GO    el arquero arranca su delay de 2 s y corre la secuencia completa
+s              →  STOP  la FSM vuelve a WAIT_START y los motores paran;
+                        re-acomodás el robot y mandás 'g' de nuevo = ciclo desde cero
+```
+También sigue valiendo el pulsador a GND en el pin 9 de la CENTRAL (= GO), si está cableado.
+⚠️ En COMPETENCIA el flag NO se define: el GO/STOP real llega de la **app del juez** por los
+pines 5/6 del TOP (nivel GPIO, OR fail-safe) → snapshot → CENTRAL. Los envs de competencia
+(`central_robot1`, `central_robot2`) quedan SIN este flag — arrancar sin árbitro desclasifica.
+
 ## FASE 3 — GOTO_LINE aislado (banco con cancha)
-`central_robot2_arquero` (NO slow). Robot en el centro del área mirando al frente → START →
+`central_robot2_arquero` (NO slow). Robot en el centro del área mirando al frente → GO
+(`g` en el monitor, o app del juez) →
 **recto hacia atrás** hasta pisar la línea → pasa a PATROL. **Criterio: trayectoria recta
 (±10 cm en 1 m), se detiene/transiciona al tocar la línea, < 3 s.**
 

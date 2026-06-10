@@ -206,21 +206,36 @@ void loop() {
     comm_down_tick();   // aplica LineStatusV2 al world_model
 
 #ifdef CENTRAL_ENABLE_MANUAL_START
-    // === F3 — Arranque manual fail-safe (SOLO banco, gateado) ===
-    // Si la placa COMM no manda START, forzar match_running con el pulsador
-    // (pin 9) o un ENTER por USB. Latch: una vez disparado, queda corriendo.
-    // Pre-start los motores estan detenidos -> sin ruido de motor en el pin.
+    // === F3 — JUEZ DESDE LA PC (SOLO banco, gateado) ===
+    // Para cuando la app del juez no funciona (banco 2026-06-09). Con el monitor
+    // serie de la CENTRAL abierto (pio device monitor), desde el teclado de la PC:
+    //   ENTER o 'g'  ->  GO   (fuerza match_running=true; el arquero arranca su
+    //                          delay de 2 s y corre la secuencia completa)
+    //   's'          ->  STOP (suelta el override -> sin juez real la FSM vuelve a
+    //                          WAIT_START y los motores paran; re-acomodas el robot
+    //                          y mandas 'g' de nuevo = ciclo completo desde cero)
+    // Tambien: pulsador en pin 9 a GND = GO (si esta cableado).
+    // En COMPETENCIA este flag NO se define: el GO/STOP real llega de la app del
+    // juez por los pines 5/6 del TOP -> snapshot -> world_model_match_running().
     {
-        static bool g_manual_started = false;
-        if (!g_manual_started) {
-            const bool btn = (digitalRead(PIN_MANUAL_START_BUTTON) == LOW);
-            bool ser = false;
-            while (Serial.available()) { if (Serial.read() == '\n') ser = true; }
-            if (btn || ser) {
-                g_manual_started = true;
-                world_model_set_force_match_running(true);
-                Serial.println("[CENTRAL] *** ARRANQUE MANUAL forzado (CENTRAL_ENABLE_MANUAL_START) ***");
-            }
+        static bool g_manual_running = false;
+        bool cmd_go = false, cmd_stop = false;
+        while (Serial.available()) {
+            const int c = Serial.read();
+            if (c == '\n' || c == '\r' || c == 'g' || c == 'G') cmd_go = true;
+            else if (c == 's' || c == 'S')                      cmd_stop = true;
+        }
+        // Ruido de motor en el pin 9 solo puede dar GO espurio (no-op si ya corre);
+        // el STOP es exclusivo del teclado -> no hay parada fantasma en pleno test.
+        if (digitalRead(PIN_MANUAL_START_BUTTON) == LOW) cmd_go = true;
+        if (cmd_stop) {
+            g_manual_running = false;
+            world_model_set_force_match_running(false);
+            Serial.println("[CENTRAL] *** STOP manual (juez PC) — 'g' o ENTER para GO ***");
+        } else if (cmd_go && !g_manual_running) {
+            g_manual_running = true;
+            world_model_set_force_match_running(true);
+            Serial.println("[CENTRAL] *** GO manual (juez PC) — 's' para STOP ***");
         }
     }
 #endif

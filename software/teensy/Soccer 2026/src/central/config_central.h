@@ -216,9 +216,11 @@ constexpr int   UART_DOWN_TX    = 1;   // Serial1 TX1                [informativ
 // ============================================================
 // Arranque manual fail-safe (F3) — SOLO banco, gateado por CENTRAL_ENABLE_MANUAL_START
 // ============================================================
-// Pulsador de arranque para cuando la placa COMM no manda START (bench testing).
+// Juez desde la PC para cuando la app del juez no funciona (bench testing):
+// con el monitor serie de la CENTRAL abierto, ENTER o 'g' = GO y 's' = STOP
+// (la FSM vuelve a WAIT_START y un 'g' nuevo re-arranca la secuencia completa).
 // ⚠️ Pin 9 ASUMIDO de diag_central_motors — CONFIRMAR que hay un pulsador cableado
-// al pin 9 (INPUT_PULLUP) en el Zircon; si no, usar ENTER por USB (backup). NUNCA
+// al pin 9 (INPUT_PULLUP) en el Zircon; si no, el teclado por USB alcanza. NUNCA
 // activar este flag en competencia (arrancar sin árbitro viola el protocolo RCJ).
 constexpr int PIN_MANUAL_START_BUTTON = 9;
 

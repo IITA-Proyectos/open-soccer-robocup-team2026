@@ -52,29 +52,31 @@ namespace iitasoccer {
     // ⚠️ NO pasar ~150 (motores brushed 5V a 7.4V se queman > ~70%). Orden {M1, M2, M3}.
     constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 42 };
 #elif defined(ROBOT2)  // Delantero
-    constexpr int PIN_INA1 = 8;
-    constexpr int PIN_INB1 = 7;
-    constexpr int PIN_PWM1 = 6;
+    // ✅ BANCO 2026-06-09 (Gustavo, diag_central_motors en robot2 armado): la DISPOSICIÓN
+    // resultó IGUAL a ROBOT1 — M1=U5(2/5/3)=delantera-IZQUIERDA · M2=U17(8/7/6)=delantera-
+    // DERECHA · M3=U7(11/12/4)=TRASERA — y los 3 giraron HORARIO (desde el centro) con el
+    // drive directo del diag (sin inversión). DOS correcciones vs lo que asumía el repo:
+    //   1. Los pines NO están rotados (la suposición "U17 = motor 1" venía del delantero
+    //      2025 y es FALSA en el robot2 2026 → tabla de pines = la de ROBOT1).
+    //   2. El U17 de ESTA placa NO está invertido por HW (en la Zircon de R1 sí) →
+    //      MOTOR_INVERT neutro {+1,+1,+1}.
+    constexpr int PIN_INA1 = 2;     // M1 = U5  → delantera IZQUIERDA
+    constexpr int PIN_INB1 = 5;
+    constexpr int PIN_PWM1 = 3;
 
-    constexpr int PIN_INA2 = 11;
-    constexpr int PIN_INB2 = 12;
-    constexpr int PIN_PWM2 = 4;
+    constexpr int PIN_INA2 = 8;     // M2 = U17 → delantera DERECHA (acá SIN inversión HW)
+    constexpr int PIN_INB2 = 7;
+    constexpr int PIN_PWM2 = 6;
 
-    constexpr int PIN_INA3 = 2;
-    constexpr int PIN_INB3 = 5;
-    constexpr int PIN_PWM3 = 3;
+    constexpr int PIN_INA3 = 11;    // M3 = U7  → TRASERA
+    constexpr int PIN_INB3 = 12;
+    constexpr int PIN_PWM3 = 4;
 
-    // Sentido por motor — por ahora IGUAL que ROBOT1 (decisión 2026-06-03).
-    // ⚠️ FALTA VERIFICAR EN BANCO si el delantero se comporta igual que el arquero:
-    // correr diag_central_motors en el delantero y confirmar si esto es así o no.
-    // OJO: en el delantero los pines están ROTADOS → el índice 1 de este array es
-    // el driver U7 (11/12/4), NO el U17. Si la inversión real es del driver U17
-    // (que en el delantero es el índice 0), el array correcto sería { -1, +1, +1 }.
-    // El banco lo dirime.
-    constexpr int MOTOR_INVERT[3] = { +1, -1, +1 };  // = ROBOT1, sin validar en delantero
-    // Piso de PWM por rueda OFF en el delantero (sin tunear → binario neutro). ⚠️ NO copiar el
-    // {70,70,42} del arquero: acá los pines están ROTADOS → idx2 NO es la rueda trasera. El banco
-    // define qué índice sube/baja cuando se calibre el strafe del delantero.
+    constexpr int MOTOR_INVERT[3] = { +1, +1, +1 };  // ✅ banco 2026-06-09: los 3 horario sin invertir
+    // Piso de PWM por rueda OFF hasta tunear el strafe del delantero en banco. Con la
+    // disposición confirmada (= R1), los índices ya significan lo mismo que en el arquero:
+    // idx0/idx1 = delanteras (oblicuas, piso alto) · idx2 = trasera (paralela, piso bajo).
+    // El {70,70,42} de R1 sirve de PUNTO DE PARTIDA al calibrar (motores/peso pueden diferir).
     constexpr int MOTOR_MIN_PWM[3] = { 0, 0, 0 };
 #else
     #error "Debe definirse ROBOT1 (arquero) o ROBOT2 (delantero) en build_flags"

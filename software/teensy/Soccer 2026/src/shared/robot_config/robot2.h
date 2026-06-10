@@ -39,29 +39,28 @@ namespace robot2 {
 // 1. MOTORES (placa CENTRAL — Teensy 4.1, Zircon Rev v15)
 //    Mapea config_central.h. PER-ROBOT. ⚠️ DELTA-R2 + TODO-BANCO (armado dudoso).
 // ============================================================================
-// Pines INA/INB/PWM por motor. En R2 los DRIVERS estan ROTADOS respecto a R1:
-//   R2: M1=U17(8/7/6)  M2=U7(11/12/4)  M3=U5(2/5/3)
-//   [R1=  M1=U5(2/5/3)  M2=U17(8/7/6)  M3=U7(11/12/4) ]
-// TODO-BANCO: el usuario advierte que los motores de R2 PUEDEN estar soldados en
-// PINES o DIRECCION distintos por error de armado. Correr diag_central_motors en
-// R2 y FIJAR aca los pines reales antes de competir.
-constexpr int PIN_INA1 = 8;   // M1 → driver U17   // TODO: confirmar en banco
-constexpr int PIN_INB1 = 7;                          // TODO: confirmar en banco
-constexpr int PIN_PWM1 = 6;                          // TODO: confirmar en banco
+// Pines INA/INB/PWM por motor. ✅ CONFIRMADO EN BANCO 2026-06-09 (Gustavo,
+// diag_central_motors en el robot2 armado): la disposición es IGUAL a R1 —
+//   R2 = R1: M1=U5(2/5/3)=del-IZQ · M2=U17(8/7/6)=del-DER · M3=U7(11/12/4)=TRASERA.
+// (La suposición vieja "drivers ROTADOS, M1=U17" venía del delantero 2025 → FALSA
+// en el robot2 2026. Fijado en config_central.h rama ROBOT2 el mismo día.)
+constexpr int PIN_INA1 = 2;   // M1 → U5  (delantera IZQUIERDA)  ✅ banco 2026-06-09
+constexpr int PIN_INB1 = 5;
+constexpr int PIN_PWM1 = 3;
 
-constexpr int PIN_INA2 = 11;  // M2 → driver U7     // TODO: confirmar en banco
-constexpr int PIN_INB2 = 12;                         // TODO: confirmar en banco
-constexpr int PIN_PWM2 = 4;                          // TODO: confirmar en banco
+constexpr int PIN_INA2 = 8;   // M2 → U17 (delantera DERECHA)    ✅ banco 2026-06-09
+constexpr int PIN_INB2 = 7;
+constexpr int PIN_PWM2 = 6;
 
-constexpr int PIN_INA3 = 2;   // M3 → driver U5     // TODO: confirmar en banco
-constexpr int PIN_INB3 = 5;                          // TODO: confirmar en banco
-constexpr int PIN_PWM3 = 3;                          // TODO: confirmar en banco
+constexpr int PIN_INA3 = 11;  // M3 → U7  (TRASERA)              ✅ banco 2026-06-09
+constexpr int PIN_INB3 = 12;
+constexpr int PIN_PWM3 = 4;
 
-// Sentido por motor (+1 normal, -1 invertido por HW). Copiado de R1 SIN validar.
-// ⚠️ OJO indices: en R2 los drivers estan rotados → el indice 1 de este array es
-// el driver U7 (11/12/4), NO el U17. Si la inversion real es del U17 (que en R2 es
-// el indice 0), el correcto seria { -1, +1, +1 }. El banco lo dirime.
-constexpr int MOTOR_INVERT[3] = { +1, -1, +1 };     // [R1={+1,-1,+1}] TODO: confirmar en banco
+// Sentido por motor (+1 normal, -1 invertido por HW). ✅ BANCO 2026-06-09: los 3
+// motores giraron HORARIO (desde el centro) con el drive directo del diag → SIN
+// inversión. DIFERENCIA REAL con R1: el U17 de la Zircon de R1 está invertido por
+// HW ({+1,-1,+1}); el de ESTA placa NO → neutro.
+constexpr int MOTOR_INVERT[3] = { +1, +1, +1 };     // ✅ banco 2026-06-09 [R1={+1,-1,+1}]
 
 // Cinematica omni-3. HOY comun a ambos (config_central.h, fuera del #if ROBOT).
 // Si las ruedas de R2 montan a otros angulos, esto se vuelve per-robot AQUI.

@@ -90,8 +90,19 @@ inline void watchdog_feed() {
 
 // NOTA: el rol NO se lee de un dipswitch (nombre historico). Se fija en build por
 // el flag -DROBOT1 (arquero) / -DROBOT2 (delantero); ver build_flags del env.
+//
+// OVERRIDE DE ROL (2026-06-09, robot1 en reparación): -DCENTRAL_FORCE_ROLE_GOALKEEPER
+// fuerza la FSM del ARQUERO sin cambiar el HARDWARE del build. Caso real: probar el
+// arquero en el CUERPO de robot2 → env central_robot2_arquero = -DROBOT2 (pines,
+// MOTOR_INVERT {+1,+1,+1} y pisos PROPIOS de robot2) + este flag (rol GK). ⚠️ NUNCA
+// flashear central_robot1 en robot2: su MOTOR_INVERT {+1,-1,+1} invierte el M2, que
+// en la Zircon de robot2 NO está invertido por HW → M2 al revés. Default OFF →
+// binarios de competencia idénticos.
 void apply_role_from_dipswitch() {
-#if defined(ROBOT1)
+#if defined(CENTRAL_FORCE_ROLE_GOALKEEPER)
+    strategy_set_role(RobotRole::GOALKEEPER);
+    Serial.println("[CENTRAL] Role: GOALKEEPER (FORZADO por flag de banco — hardware del build)");
+#elif defined(ROBOT1)
     strategy_set_role(RobotRole::GOALKEEPER);
     Serial.println("[CENTRAL] Role: GOALKEEPER (ROBOT1)");
 #elif defined(ROBOT2)

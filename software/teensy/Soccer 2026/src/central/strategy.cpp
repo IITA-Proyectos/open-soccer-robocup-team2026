@@ -252,13 +252,20 @@ constexpr float GK_GYRO_HOLD_TARGET_DEG       = 0.0f;
 // era MOVER-PARAR-MOVER (el diag de strafe). v3 = tramo corto de strafe → freno →
 // si quedó chueco, RE-ORIENTAR PARADO con pulsos de rotación pura (con floor_scale
 // la rotación pura SÍ funciona; en pulsos porque sale rápida) → tramo al otro lado.
+// v3.1 (banco 2026-06-09 noche): los pulsos eran una TORMENTA — con los pisos la
+// rotación mínima física es ~300°/s → cada pulso se pasaba (más inercia al soltar) →
+// el siguiente corregía al revés → ping-pong violento (±90-180° por panel en el log).
+// Fixes: pulsos más cortos + CORTE EN VIVO al acercarse al frente (no duración fija)
+// + más asentamiento (la inercia termina de girar tras soltar) + umbral de entrada
+// más alto (un error chico apenas inclina el lateral: cos20°=0.94, no vale el pulso).
 constexpr uint32_t GK_PATROL_SEG_MS        = 1200; // duración del tramo de strafe
 constexpr uint32_t GK_PATROL_STOP_MS       = 300;  // freno entre tramos (mide rumbo quieto)
-constexpr float    GK_REORIENT_ENTER_DEG   = 15.0f;// error de rumbo que dispara re-orientación
-constexpr float    GK_REORIENT_MS_PER_DEG  = 3.0f; // duración del pulso ∝ error (rotación real ~250°/s)
-constexpr uint32_t GK_REORIENT_PULSE_MIN_MS = 60;
-constexpr uint32_t GK_REORIENT_PULSE_MAX_MS = 220;
-constexpr uint32_t GK_REORIENT_SETTLE_MS   = 250;  // quieto tras el pulso (rumbo fresco)
+constexpr float    GK_REORIENT_ENTER_DEG   = 20.0f;// error que dispara re-orientación
+constexpr float    GK_REORIENT_EXIT_DEG    = 25.0f;// CORTE EN VIVO del pulso (anticipa la inercia)
+constexpr float    GK_REORIENT_MS_PER_DEG  = 2.0f; // tope de duración ∝ error (rotación real ~300°/s)
+constexpr uint32_t GK_REORIENT_PULSE_MIN_MS = 50;
+constexpr uint32_t GK_REORIENT_PULSE_MAX_MS = 120;
+constexpr uint32_t GK_REORIENT_SETTLE_MS   = 400;  // quieto tras el pulso (inercia + rumbo fresco)
 constexpr uint8_t  GK_REORIENT_MAX_PULSES  = 4;    // tope de pulsos por parada
 // ORIENTACIÓN POR CÁMARA — DESHABILITADA hasta validar (banco 2026-06-09): el signo
 // del gyro de robot2 se CONFIRMÓ correcto (izquierda → hdg sube), por lo tanto la J/U
@@ -962,10 +969,17 @@ MotorCommand goalkeeper_tick() {
             }
 
             switch (pphase) {
-                case 0: {   // MOVE: tramo de strafe con hold suave
+                case 0: {   // MOVE: tramo de strafe PURO (ω=0)
                     cmd.vx_mm_s = clamp_velocity_mm_s(direction * GK_PATROL_SPEED_MM_S);
                     cmd.vy_mm_s = 0;
-                    cmd.omega_centideg_s = gk_orient_omega(now_ms);
+                    // ω=0 A PROPÓSITO (v3.1): mezclar corrección de giro con el strafe
+                    // DEGENERA en estos motores — en el strafe las delanteras van chicas
+                    // (25 PWM crudo) y cualquier ω las desborda; el escalado + cap deja
+                    // la trasera bajo su piso → se apaga → bandazo a full de las
+                    // delanteras (gran parte del "giro continuo" de los logs). El strafe
+                    // PURO cae en la mezcla validada {70,70,107} que va derecha. El rumbo
+                    // se corrige PARADO (pulsos) — única forma fiel con estos pisos.
+                    cmd.omega_centideg_s = 0;
                     bool seg_end = (now_ms - pphase_t0) >= GK_PATROL_SEG_MS;
                     // Límite por pose: corta el tramo al llegar al borde del arco.
                     if (gk_pose_ok()) {
@@ -1006,10 +1020,16 @@ MotorCommand goalkeeper_tick() {
                     }
                     break;
                 }
-                case 2: {   // PULSO: rotación pura breve hacia el frente
+                case 2: {   // PULSO: rotación pura breve hacia el frente, con CORTE EN VIVO
                     cmd.omega_centideg_s = static_cast<int16_t>(
                         (hdg_err >= 0.0f ? +1 : -1) * GK_ORIENT_OMEGA_MAX_DEGPS * 100.0f);
-                    if ((now_ms - pphase_t0) >= pulse_ms) {
+                    // Corte EN VIVO (v3.1): la rotación real es ~300°/s (mínimo físico
+                    // con pisos) → no esperar la duración completa: soltar apenas el
+                    // error entra en la zona (la inercia recorre el resto). Anti
+                    // ping-pong de pulsos que se pasan de largo.
+                    const float aerr = (hdg_err < 0.0f) ? -hdg_err : hdg_err;
+                    const bool  close_enough = hv && (aerr <= GK_REORIENT_EXIT_DEG);
+                    if (close_enough || (now_ms - pphase_t0) >= pulse_ms) {
                         ++pulse_count;
                         pphase = 3; pphase_t0 = now_ms;
                     }

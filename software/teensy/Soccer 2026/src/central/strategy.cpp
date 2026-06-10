@@ -160,7 +160,12 @@ constexpr uint32_t GK_GOTO_LINE_TIMEOUT_MS = 4000; // safety: si no encuentra la
 //     1º subí/bajá VX_TRIM de a 5 (−15 → −19 → −10…) mirando el camino;
 //     2º si todavía termina chueco DE RUMBO, tocá HEADING_TRIM de a 1°.
 //     Deriva a la IZQUIERDA → signos opuestos. 0 = sin compensación.
-constexpr float GK_GOTO_LINE_VX_TRIM_MM_S    = -15.0f;  // − = empuje a la IZQ (máx ±19)
+constexpr float GK_GOTO_LINE_VX_TRIM_MM_S    = 0.0f;    // − = empuje a la IZQ (máx ±19).
+                                                        // ⚠️ banco 2026-06-09: VOLVIÓ a 0 para
+                                                        // aislar variables (con -15 salió una J —
+                                                        // sospecha = signo del heading / target de
+                                                        // cámara, no el trim; re-tunear DESPUÉS de
+                                                        // confirmar el signo del BNO de robot2).
 constexpr float GK_GOTO_LINE_HEADING_TRIM_DEG = 0.0f;   // + = sesgar rumbo a la IZQ (CCW)
 
 // AVANCE POST-LÍNEA (diseño de Gustavo, banco 2026-06-09 v2): al tocar la línea el
@@ -328,6 +333,28 @@ inline float gk_lateral_pid_output(uint32_t now_ms) {
 //   3) heading inválido → ω=0 (no girar a ciegas; fail-safe de siempre).
 // Bridge entre la decisión PURA gk_own_goal_orient (world_model.h, host-testeada)
 // y el HeadingPID (Arduino). Devuelve ω en centideg/s para cmd.omega_centideg_s.
+// GYRO HOLD PURO para el RETROCESO (banco 2026-06-09, 4ª pasada: con la cascada el
+// retroceso hizo una J/U — sospecha: o el target del arco propio por la cámara TRASERA
+// (ángulo nunca validado) o el signo del heading de robot2 invertido). Reglas:
+//   • SOLO gyro (rama 2 de la cascada): jamás perseguir a la cámara en una reversa ciega.
+//   • BAIL-OUT: si |error de rumbo| > 45°, ω=0 — un error que CRECE con el PID activo
+//     significa signo invertido o heading basura: mejor reversa abierta (recta-ish por
+//     simetría) que enroscarse en una U persiguiendo la corrección equivocada.
+inline int16_t gk_gyro_hold_omega(uint32_t now_ms, float target_trim_deg) {
+    if (!world_model_heading_valid()) return 0;
+    const float heading = world_model_get_my_heading_deg();
+    const float target  = GK_GYRO_HOLD_TARGET_DEG + target_trim_deg;
+    float err = target - heading;
+    while (err > 180.0f)  err -= 360.0f;
+    while (err < -180.0f) err += 360.0f;
+    if (err > 45.0f || err < -45.0f) return 0;   // bail-out: no perseguir errores grandes
+    heading_pid_set_target(g_heading_pid, target);
+    float omega = heading_pid_tick(g_heading_pid, heading, now_ms);
+    if (omega >  GK_ORIENT_OMEGA_MAX_DEGPS) omega =  GK_ORIENT_OMEGA_MAX_DEGPS;
+    if (omega < -GK_ORIENT_OMEGA_MAX_DEGPS) omega = -GK_ORIENT_OMEGA_MAX_DEGPS;
+    return omega_degps_to_centideg(omega);
+}
+
 // Pose del TOP utilizable para límites de patrulla: snapshot fresco + confianza
 // mínima de la trilateración (diseño Gustavo 2026-06-09: no alejarse del arco).
 inline bool gk_pose_ok() {
@@ -783,10 +810,9 @@ MotorCommand goalkeeper_tick() {
                 cmd.vx_mm_s = static_cast<int16_t>(
                     static_cast<float>(GK_GOTO_LINE_VX_RIGHT) + GK_GOTO_LINE_VX_TRIM_MM_S);
                 cmd.vy_mm_s = static_cast<int16_t>(-GK_GOTO_LINE_VY_BACK);  // -Y = atrás
-                // GYRO HOLD (+ trim de rumbo opcional): el recto-atrás es inestable
-                // por geometría (trasera=0; cualquier asimetría guiña) → PID de
-                // heading lo mantiene derecho.
-                cmd.omega_centideg_s = gk_orient_omega(now_ms, GK_GOTO_LINE_HEADING_TRIM_DEG);
+                // GYRO PURO (+ trim de rumbo opcional): en reversa ciega NUNCA usar
+                // el target de cámara (la J del banco) — solo el gyro, con bail-out.
+                cmd.omega_centideg_s = gk_gyro_hold_omega(now_ms, GK_GOTO_LINE_HEADING_TRIM_DEG);
 
                 const bool line_here = world_model_line_detected()
                                     && world_model_line_data_valid();
@@ -804,7 +830,7 @@ MotorCommand goalkeeper_tick() {
                 g_state_name = "GK_ADVANCE";
                 cmd.vx_mm_s = 0;
                 cmd.vy_mm_s = GK_ADVANCE_SPEED_MM_S;          // +Y = adelante
-                cmd.omega_centideg_s = gk_orient_omega(now_ms);
+                cmd.omega_centideg_s = gk_gyro_hold_omega(now_ms, 0.0f);  // gyro puro (sin cámara)
                 if ((now_ms - g_gk_advance_started_ms) >= GK_ADVANCE_MS) {
                     g_gk_line_avoid_gate_ms = now_ms;   // gracia anti re-disparo
                     transition_gk(GkState::PATROL);

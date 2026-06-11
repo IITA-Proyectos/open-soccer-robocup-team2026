@@ -35,6 +35,12 @@ struct __attribute__((packed)) BbRec {
     int16_t     pwm[3];     // PWM real aplicado por motor (signed, post-pisos/kick)
     int16_t     line_cd;    // ángulo de línea centi-grados (válido si line_det)
     uint16_t    min_obst;   // mm (ToF del TOP vía snapshot)
+    // v1.2 (práctica 2026-06-12): odometría de piso (OTOS de DOWN, Capa 1).
+    // En R1 sin BNO el OTOS ES el rumbo del delantero → sin estas columnas el
+    // empuje "recto" no se puede auditar post-corrida.
+    uint8_t     otos_fresh; // 1 = pose OTOS fresca este sample
+    int16_t     otos_x, otos_y;   // mm (marco OTOS, 0 = donde arrancó)
+    int16_t     otos_hdg_cd;      // yaw OTOS en centi-grados
 };
 
 DMAMEM BbRec g_buf[CENTRAL_BLACKBOX_CAP];
@@ -99,6 +105,10 @@ void bb_capture(const MotorCommand& cmd, bool emergency) {
     r.pwm[2]   = motors_get_applied_pwm(2);
     r.line_cd  = f_to_cd(world_model_get_line_angle_deg());
     r.min_obst = world_model_get_min_obstacle_mm();
+    r.otos_fresh  = world_model_otos_is_fresh() ? 1 : 0;
+    r.otos_x      = f_to_i16(world_model_get_otos_x_mm());
+    r.otos_y      = f_to_i16(world_model_get_otos_y_mm());
+    r.otos_hdg_cd = f_to_cd(world_model_get_otos_heading_deg());
 
     g_head = (g_head + 1) % CENTRAL_BLACKBOX_CAP;
     if (g_count < CENTRAL_BLACKBOX_CAP) ++g_count;
@@ -107,7 +117,7 @@ void bb_capture(const MotorCommand& cmd, bool emergency) {
 
 void blackbox_dump() {
     Serial.println();
-    Serial.print(F("=== BLACKBOX BEGIN v1.1 n="));
+    Serial.print(F("=== BLACKBOX BEGIN v1.2 n="));
     Serial.print(g_count);
     Serial.println(F(" ==="));
     // METADATA de corrida (v1.1, auditoría 2026-06-11): el hardware cambia cada
@@ -134,7 +144,8 @@ void blackbox_dump() {
     Serial.println(CENTRAL_BLACKBOX_CAP);
     Serial.println(F("t_ms,state,match,snap,ball_vis,goal_vis,hdg_valid,line,imminent,"
                      "hdg_deg,ball_x,ball_y,ball_vx,ball_vy,goal_deg,"
-                     "cmd_vx,cmd_vy,cmd_w_dps,pwm1,pwm2,pwm3,line_deg,min_obst,emerg"));
+                     "cmd_vx,cmd_vy,cmd_w_dps,pwm1,pwm2,pwm3,line_deg,min_obst,emerg,"
+                     "otos_fresh,otos_x,otos_y,otos_hdg"));
     // Orden cronológico: si el ring dio la vuelta, lo más viejo está en g_head.
     const uint32_t start = (g_count == CENTRAL_BLACKBOX_CAP) ? g_head : 0;
     for (uint32_t k = 0; k < g_count; ++k) {
@@ -162,7 +173,11 @@ void blackbox_dump() {
         Serial.print(r.pwm[2]);                     Serial.print(',');
         Serial.print(r.line_cd / 100.0f, 1);        Serial.print(',');
         Serial.print(r.min_obst);                   Serial.print(',');
-        Serial.println((r.flags >> 7) & 1);         // emerg (freno de borde)
+        Serial.print((r.flags >> 7) & 1);           Serial.print(',');  // emerg (freno de borde)
+        Serial.print(r.otos_fresh);                 Serial.print(',');
+        Serial.print(r.otos_x);                     Serial.print(',');
+        Serial.print(r.otos_y);                     Serial.print(',');
+        Serial.println(r.otos_hdg_cd / 100.0f, 1);
     }
     Serial.println(F("=== BLACKBOX END ==="));
 }

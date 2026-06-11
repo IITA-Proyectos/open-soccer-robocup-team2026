@@ -106,6 +106,12 @@ void apply_role_from_dipswitch() {
 #if defined(CENTRAL_FORCE_ROLE_GOALKEEPER)
     strategy_set_role(RobotRole::GOALKEEPER);
     Serial.println("[CENTRAL] Role: GOALKEEPER (FORZADO por flag de banco — hardware del build)");
+#elif defined(CENTRAL_FORCE_ROLE_ATTACKER)
+    // Espejo del override GK (práctica 2026-06-12): la FSM del DELANTERO sobre el
+    // hardware que diga el build. Caso real: delantero en ROBOT1 (cuyo default es
+    // arquero) sin tocar pines/pisos/inversiones propios de R1.
+    strategy_set_role(RobotRole::ATTACKER);
+    Serial.println("[CENTRAL] Role: ATTACKER (FORZADO por flag de banco — hardware del build)");
 #elif defined(ROBOT1)
     strategy_set_role(RobotRole::GOALKEEPER);
     Serial.println("[CENTRAL] Role: GOALKEEPER (ROBOT1)");
@@ -342,6 +348,15 @@ void loop() {
         Serial.print(world_model_match_running() ? "RUN" : "STOP");
         Serial.print(" hdg=");
         Serial.print(world_model_get_my_heading_deg(), 1);
+        // otos= yaw de la odometría de piso (DOWN, Capa 1) o N si no fluye.
+        // Clave en R1 sin BNO: es EL rumbo del delantero de práctica. Chequeo de
+        // signo en banco: girar el robot a mano ANTIHORARIO → otos debe SUBIR.
+        Serial.print(" otos=");
+        if (world_model_otos_is_fresh()) {
+            Serial.print(world_model_get_otos_heading_deg(), 1);
+        } else {
+            Serial.print("N");
+        }
         // loop_us(max/avg): salud del loop-time (R2). max = PEOR vuelta vista (no se
         // olvida); avg = EMA suave. Si max sube mucho sobre los ~10 ms del tick de
         // strategy, el loop se está degradando (sensor lento / ring desbordado) antes

@@ -30,6 +30,7 @@
 #include "drive_straight.h"
 #include "ball_predict.h"
 #include "ball_trajectory.h"
+#include "atk_nogyro.h"     // helpers puros del delantero sin gyro (práctica R1)
 
 #include <Arduino.h>
 #include <cmath>
@@ -76,6 +77,12 @@ uint32_t g_kickoff_started_ms = 0;
 bool     g_match_was_running = false;   // detecta flanco "STOP → RUN" para KICKOFF
 // Timer del empuje (PUSH/PUSH_BACK) — se setea al entrar a cada fase.
 uint32_t g_atk_push_started_ms = 0;
+#ifdef ATK_OTOS_NOGYRO
+// Empuje sin gyro: dirección congelada (vector unitario a la pelota al entrar a
+// PUSH) + yaw del OTOS capturado en ese instante (setpoint del rumbo sostenido).
+NoGyroPushDir g_atk_push_dir  = {false, 0.0f, 1.0f};
+float         g_atk_push_hdg0 = 0.0f;
+#endif
 
 // Timer de GOTO_LINE (arquero) — guardado al entrar; para el timeout de seguridad.
 uint32_t g_goto_line_started_ms = 0;
@@ -107,7 +114,14 @@ LateralPID g_lateral_pid_gk;
 // === Tuning constants ===
 
 // Delantero — Nivel 1
+#ifdef ATK_SEARCH_SPIN_ONLY
+// Práctica R1 sin gyro (2026-06-12, spec Gustavo: "busque la pelota GIRANDO"):
+// buscar rotando EN EL LUGAR, sin avanzar — sin lazo de rumbo el avance+giro
+// derivaría hacia las paredes sin control.
+constexpr float ATK_SEARCH_VY_MM_S       = 0.0f;
+#else
 constexpr float ATK_SEARCH_VY_MM_S       = 200.0f;
+#endif
 constexpr float ATK_SEARCH_OMEGA_DEG_S   = 60.0f;
 // v2 (2026-06-11, spec Gustavo): acercarse LENTO (movimiento 2025) — la potencia
 // va en el EMPUJE comprometido (PUSH), no en el acercamiento. 600→400.
@@ -135,6 +149,24 @@ constexpr float    ATK_PUSH_BACK_SPEED_MM_S = 300.0f;
 constexpr uint32_t ATK_PUSH_BACK_MS         = 250;
 constexpr float ATK_KICKOFF_SPEED_MM_S         = 500.0f;
 constexpr uint32_t ATK_KICKOFF_DURATION_MS     = 250;      // boost inicial al frente al arrancar match
+
+#ifdef ATK_OTOS_NOGYRO
+// ── DELANTERO SIN GYRO (práctica R1 2026-06-12; env central_robot1_delantero_practica*) ──
+// R1 corre sin BNO (desconectados tras el recableado) pero con 2 OTOS en DOWN.
+// Tres reemplazos (helpers puros en atk_nogyro.h, host-testeados):
+//   • eje de ataque: fallback extra por yaw del OTOS (0 = boot = arco rival);
+//   • gatillo de empuje: GEOMÉTRICO (pelota sobre el eje), no "frente apuntando
+//     al arco" (sin lazo fino de rumbo eso jamás se cumple y PUSH nunca dispara);
+//   • empuje: dirección CONGELADA al vector a la pelota + rumbo sostenido por
+//     el yaw del OTOS (P con clamp y bail-out).
+// 🔧 TUNEAR EN BANCO (práctica):
+constexpr float ATK_NOGYRO_PUSH_DIST_MM    = 150.0f; // gatillo más lejos que los 80 con gyro:
+                                                     // acá la dirección la pone el VECTOR a la
+                                                     // pelota (no hace falta tenerla en el paragolpes)
+constexpr float ATK_NOGYRO_PUSH_TOL_DEG    = 15.0f;  // pelota dentro de ±esto del eje de ataque
+constexpr float ATK_NOGYRO_OMEGA_MAX_DEGPS = 40.0f;  // mismo tope anti-bang-bang del arquero
+constexpr float ATK_NOGYRO_BAILOUT_DEG     = 45.0f;  // error mayor → no corregir (¿signo invertido?)
+#endif
 
 // Drive-straight (WP-2A, Capa 2): refinamiento OPCIONAL del avance recto usando
 // la odometría OTOS directa de DOWN (baja latencia, sin round-trip por el TOP).
@@ -630,6 +662,14 @@ static AttackAxis atk_attack_axis(float heading) {
     if (world_model_heading_valid()) {
         return {true, atk_norm180(-heading)};   // relativo: apuntar al 0 absoluto
     }
+#ifdef ATK_OTOS_NOGYRO
+    // Práctica R1 sin gyro: el yaw del OTOS de DOWN reemplaza al BNO como
+    // fallback del eje (0 del OTOS = rumbo del boot = arco rival, misma
+    // convención). Sin el flag este branch no existe → R2/competencia intactos.
+    if (world_model_otos_is_fresh()) {
+        return {true, atk_norm180(-world_model_get_otos_heading_deg())};
+    }
+#endif
     return {false, 0.0f};
 }
 
@@ -827,12 +867,30 @@ MotorCommand attacker_tick() {
                 // tiempo fijo). Antes este chequeo era solo documental y el robot
                 // llegaba a la pelota al MÍNIMO de velocidad (~200 mm/s): empuje
                 // débil. Ahora el gol se busca de verdad.
+#ifdef ATK_OTOS_NOGYRO
+                // SIN GYRO el robot no rota para apuntar → |ax.rel_deg| chico
+                // jamás se cumple y el PUSH clásico no dispararía nunca. Gatillo
+                // GEOMÉTRICO en su lugar: pelota CERCA y SOBRE el eje de ataque.
+                // La dirección del empuje se CONGELA al vector a la pelota (≈
+                // dirección al arco por la condición de alineación) y el rumbo
+                // se sostiene con el yaw del OTOS durante el empuje.
+                if (dist < ATK_NOGYRO_PUSH_DIST_MM &&
+                    ball_is_in_attack_line(bx, by, ax.rel_deg,
+                                           ATK_NOGYRO_PUSH_TOL_DEG)) {
+                    g_atk_push_dir  = nogyro_push_dir(bx, by);
+                    g_atk_push_hdg0 = world_model_get_otos_heading_deg();
+                    g_atk_push_started_ms = now_ms;
+                    transition_atk(AtkState::PUSH);
+                    return cmd;
+                }
+#else
                 if (dist < ATK_KICK_DIST_MM &&
                     std::fabs(ax.rel_deg) <= ATK_KICK_ANGLE_DEG) {
                     g_atk_push_started_ms = now_ms;
                     transition_atk(AtkState::PUSH);
                     return cmd;
                 }
+#endif
             }
 
             // Heading target: orientar el frente hacia la pelota.
@@ -884,6 +942,24 @@ MotorCommand attacker_tick() {
 
         case AtkState::PUSH: {
             g_state_name = "ATK_PUSH";
+#ifdef ATK_OTOS_NOGYRO
+            // EMPUJE SIN GYRO (práctica R1): dirección CONGELADA al vector a la
+            // pelota del momento de comprometerse (contra el paragolpes las
+            // cámaras la pierden — igual que el empuje a ciegas del 2025) +
+            // rumbo sostenido con el yaw del OTOS (P puro con clamp y bail-out:
+            // ante señal dudosa mejor no corregir que perseguir un signo
+            // invertido). El omni empuja en diagonal SIN rotar — no hace falta
+            // que el frente apunte al arco.
+            cmd.vx_mm_s = static_cast<int16_t>(g_atk_push_dir.ux * ATK_PUSH_SPEED_MM_S);
+            cmd.vy_mm_s = static_cast<int16_t>(g_atk_push_dir.uy * ATK_PUSH_SPEED_MM_S);
+            cmd.omega_centideg_s = omega_degps_to_centideg(
+                nogyro_yaw_hold_omega_degps(world_model_otos_is_fresh(),
+                                            g_atk_push_hdg0,
+                                            world_model_get_otos_heading_deg(),
+                                            DS_KP_HEADING,
+                                            ATK_NOGYRO_OMEGA_MAX_DEGPS,
+                                            ATK_NOGYRO_BAILOUT_DEG));
+#else
             // EMPUJE comprometido (v2 2026-06-11 = "PATEANDO_adelante" del 2025):
             // full adelante por tiempo FIJO, SIN re-mirar la pelota (contra el
             // paragolpes las cámaras la pierden; el 2025 también pateaba a ciegas).
@@ -898,6 +974,7 @@ MotorCommand attacker_tick() {
                 cmd.omega_centideg_s = omega_degps_to_centideg(omega);
             }
             cmd.vy_mm_s = static_cast<int16_t>(ATK_PUSH_SPEED_MM_S);
+#endif
             if (now_ms - g_atk_push_started_ms >= ATK_PUSH_MS) {
                 g_atk_push_started_ms = now_ms;     // re-armar timer para PUSH_BACK
                 transition_atk(AtkState::PUSH_BACK);
@@ -910,7 +987,14 @@ MotorCommand attacker_tick() {
             // Retroceso corto post-empuje ("PATEANDO_atras" del 2025): despegarse
             // de la pelota y de la línea del área antes de volver a buscar (evita
             // quedar pegado al borde con el freno de emergencia encima).
+#ifdef ATK_OTOS_NOGYRO
+            // Sin gyro el empuje pudo ser diagonal → retroceder POR EL MISMO EJE
+            // (deshacer el camino), no ciegamente hacia -Y.
+            cmd.vx_mm_s = static_cast<int16_t>(-g_atk_push_dir.ux * ATK_PUSH_BACK_SPEED_MM_S);
+            cmd.vy_mm_s = static_cast<int16_t>(-g_atk_push_dir.uy * ATK_PUSH_BACK_SPEED_MM_S);
+#else
             cmd.vy_mm_s = static_cast<int16_t>(-ATK_PUSH_BACK_SPEED_MM_S);
+#endif
             if (now_ms - g_atk_push_started_ms >= ATK_PUSH_BACK_MS) {
                 transition_atk(AtkState::SEARCH);
             }
@@ -1354,7 +1438,23 @@ void strategy_init() {
 }
 
 MotorCommand strategy_tick() {
-    return (g_role == RobotRole::ATTACKER) ? attacker_tick() : goalkeeper_tick();
+    MotorCommand cmd = (g_role == RobotRole::ATTACKER) ? attacker_tick()
+                                                       : goalkeeper_tick();
+#ifdef ATK_OBSTACLE_STOP_MM
+    // FRENO ANTI-CHOQUE (práctica, 2ª instancia — env *_obst): si hay obstáculo
+    // más cerca que el umbral, cortar el componente de AVANCE del comando.
+    // min_obstacle = min(4 ToF, HC-SR04 frontal) del snapshot del TOP; 65535 =
+    // sin lectura → no frena. SOLO delantero: el arquero patrulla con la pared
+    // del arco atrás y el min (sin dirección) lo dejaría mudo contra esa pared.
+    if (g_role == RobotRole::ATTACKER) {
+        cmd.vy_mm_s = nogyro_obstacle_gate_vy(
+            cmd.vy_mm_s,
+            world_model_snapshot_is_fresh(),
+            world_model_get_min_obstacle_mm(),
+            static_cast<uint16_t>(ATK_OBSTACLE_STOP_MM));
+    }
+#endif
+    return cmd;
 }
 
 void        strategy_set_role(RobotRole role)         { g_role = role; }

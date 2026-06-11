@@ -55,6 +55,12 @@ def cargar(path: str):
                 "vx": int(r["cmd_vx"]), "vy": int(r["cmd_vy"]), "w": int(r["cmd_w_dps"]),
                 "pwm": (int(r["pwm1"]), int(r["pwm2"]), int(r["pwm3"])),
                 "emerg": r.get("emerg", "0") == "1",
+                # v1.2 (práctica 2026-06-12): odometría OTOS. Ausente en CSVs
+                # viejos → defaults inertes (otos_fresh=False anula los detectores).
+                "otos_fresh": r.get("otos_fresh", "0") == "1",
+                "otos_x": int(r.get("otos_x", 0) or 0),
+                "otos_y": int(r.get("otos_y", 0) or 0),
+                "otos_hdg": float(r.get("otos_hdg", 0.0) or 0.0),
             })
         except (KeyError, ValueError):
             continue  # fila corrupta (corte de USB a mitad de línea)
@@ -108,7 +114,52 @@ def detectores(rows):
     stale = sum(1 for r in rows if not r["snap"])
     if stale > 10:
         hallazgos.append(f"SNAPSHOT STALE: {stale} muestras sin datos frescos del TOP ({stale * 100 // len(rows)}% de la corrida).")
+    # 7. EMPUJE TORCIDO (v1.2, práctica delantero R1 sin gyro): dentro de cada
+    #    tramo continuo de ATK_PUSH, si el yaw del OTOS derivó más de 10°, el
+    #    empuje salió curvo (rumbo no sostenido / signo del yaw-hold a revisar).
+    push_spans = []
+    span = None
+    for r in rows:
+        if r["state"] == "ATK_PUSH" and r["otos_fresh"]:
+            if span is None:
+                span = []
+            span.append(r)
+        else:
+            if span:
+                push_spans.append(span)
+            span = None
+    if span:
+        push_spans.append(span)
+    torcidos = 0
+    peor = 0.0
+    for s in push_spans:
+        if len(s) < 2:
+            continue
+        drift = abs(_wrap180(s[-1]["otos_hdg"] - s[0]["otos_hdg"]))
+        peor = max(peor, drift)
+        if drift > 10.0:
+            torcidos += 1
+    if torcidos:
+        hallazgos.append(f"EMPUJE TORCIDO: {torcidos}/{len(push_spans)} empujes con deriva de yaw OTOS "
+                         f">10 grados (peor: {peor:.1f}) — revisar signo/ganancia del yaw-hold o pisos asimétricos.")
+    # 8. OTOS mudo en el delantero: si el rol depende del OTOS (R1 sin gyro) y la
+    #    pose no fluye, el eje de ataque cae y el robot no orbita ni empuja.
+    if any(r["state"].startswith("ATK_") for r in rows):
+        atk_rows = [r for r in rows if r["state"].startswith("ATK_") and r["state"] != "ATK_WAIT_START"]
+        if atk_rows:
+            otos_ok = sum(1 for r in atk_rows if r["otos_fresh"])
+            if 0 < otos_ok < len(atk_rows) // 2:
+                hallazgos.append(f"OTOS INTERMITENTE: pose fresca solo {otos_ok * 100 // len(atk_rows)}% del "
+                                 f"tiempo de ataque — revisar link DOWN→CENTRAL y los OTOS.")
     return hallazgos, cambios
+
+
+def _wrap180(a: float) -> float:
+    while a > 180.0:
+        a -= 360.0
+    while a < -180.0:
+        a += 360.0
+    return a
 
 
 # ---------------- reporte ----------------
@@ -180,9 +231,12 @@ def plot(path, rows):
     axs[2].plot(ts, [r["pwm"][1] for r in rows], label="pwm2", lw=0.6, alpha=0.7)
     axs[2].plot(ts, [r["pwm"][2] for r in rows], label="pwm3", lw=0.6, alpha=0.7)
     axs[2].legend(fontsize=7, ncol=5); axs[2].set_title("Comando (mm/s) vs PWM aplicado")
-    # Panel 4: heading + omega
+    # Panel 4: heading + omega (+ yaw OTOS si la corrida lo trae, v1.2)
     axs[3].plot(ts, [r["hdg"] for r in rows], label="hdg (deg)", lw=0.8)
     axs[3].plot(ts, [r["w"] / 10.0 for r in rows], label="cmd_w (dps/10)", lw=0.6, alpha=0.7)
+    if any(r["otos_fresh"] for r in rows):
+        axs[3].plot(ts, [r["otos_hdg"] if r["otos_fresh"] else None for r in rows],
+                    label="otos_hdg (deg)", lw=0.8, alpha=0.9)
     axs[3].legend(fontsize=7); axs[3].set_title("Heading y omega")
     axs[3].set_xlabel("t (s)")
     out = path.rsplit(".", 1)[0] + "_analisis.png"

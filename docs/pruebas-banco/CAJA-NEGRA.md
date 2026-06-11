@@ -31,7 +31,9 @@ Una fila por muestra con TODO lo que la CENTRAL ve y hace:
 | `cmd_vx,cmd_vy,cmd_w_dps` | lo que la FSM ORDENÓ (mm/s y °/s) |
 | `pwm1,pwm2,pwm3` | lo que REALMENTE llegó a cada motor (signed, post-pisos/impulso) |
 | `line_deg` | ángulo de la línea (DOWN) |
-| `min_obst` | obstáculo más cercano (ToF del TOP, mm) |
+| `min_obst` | obstáculo más cercano (min de 4 ToF + HC-SR04 frontal, mm; 65535 = sin lectura) |
+| `emerg` | 1 = esta muestra cayó durante el FRENO DE BORDE (v1.1) |
+| `otos_fresh,otos_x,otos_y,otos_hdg` | odometría de piso de DOWN (v1.2, práctica 2026-06-12): pose fresca 0/1, posición en mm desde el arranque y yaw en grados. **En R1 sin BNO, `otos_hdg` ES el rumbo del delantero** — el detector "EMPUJE TORCIDO" del analizador compara el yaw al inicio y fin de cada `ATK_PUSH`. En R2 (sin OTOS) vienen en 0 con `otos_fresh=0`. |
 
 Con eso se reconstruye la cadena completa **sensado → decisión → actuación** de
 cada instante: si el robot "se fue para cualquier lado", el CSV dice si fue la
@@ -48,8 +50,11 @@ snapshot (fase 2).
 
 1. **Flashear el env `_bb`** del rol a estudiar (USB a la CENTRAL):
    ```
-   pio run -e central_robot2_demo_bb -t upload          (delantero)
-   pio run -e central_robot1_arquero_demo_bb -t upload  (arquero)
+   pio run -e central_robot2_demo_bb -t upload          (delantero R2, demo)
+   pio run -e central_robot1_arquero_demo_bb -t upload  (arquero R1, demo)
+   pio run -e central_robot2_arquero_bb -t upload             (arquero R2, práctica 2026-06-12)
+   pio run -e central_robot2_arquero_patrol_bb -t upload      (ídem, solo patrulla)
+   pio run -e central_robot1_delantero_practica_bb -t upload  (delantero R1 sin gyro, práctica)
    ```
 2. **Corrida**: robot a la cancha/piso, GO con la app o `g` por el monitor.
    El cable USB puede ir desconectado durante la corrida: la caja graba sola.

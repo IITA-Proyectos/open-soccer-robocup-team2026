@@ -1,7 +1,7 @@
 ---
 title: "Estado actual del robot — vivo, 1 página"
 date: 2026-05-29
-last-updated-by: "Claude (sesión 2026-06-10 — banco arquero robot2: patrulla v3.3 pegada a la línea + hallazgo TOP a ~4 Hz)"
+last-updated-by: "Claude (sesión 2026-06-11 post-demo — práctica alumnos 2026-06-12: delantero R1 sin gyro por OTOS + arquero integral R2 con caja negra v1.2)"
 status: vivo
 tipo: indice-operacional
 ---
@@ -12,6 +12,23 @@ tipo: indice-operacional
 > obligatoria** (después de `git pull`). Si lo que estás por hacer contradice
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
+
+> **🎓 PRÁCTICA CON ALUMNOS 2026-06-12 (preparada 2026-06-11 post-demo — vale sobre lo de abajo):**
+> La demo del 2026-06-11 SE HIZO. Siguiente hito: práctica de 2 h en cancha, un robot por alumno.
+> **Virginia + R2 = ARQUERO INTEGRAL** (FSM v3.3 existente + debut de INTERCEPT/CLEAR con pelota):
+> envs nuevos `central_robot2_arquero_patrol_bb` / `central_robot2_arquero_bb` (solo agregan caja
+> negra). Guion: [`docs/pruebas-banco/PRACTICA-2026-06-12-VIRGINIA-ARQUERO-R2.md`](pruebas-banco/PRACTICA-2026-06-12-VIRGINIA-ARQUERO-R2.md).
+> **Elías + R1 = DELANTERO SIN GYRO por OTOS** (BNOs de R1 desconectados; sus 2 OTOS reemplazan
+> al gyro): env `central_robot1_delantero_practica_bb` (+`_obst_bb` 2ª instancia anti-choque
+> HC-SR04/ToF a 250 mm). Flags nuevos TODOS off-by-default (`ATK_OTOS_NOGYRO`,
+> `ATK_SEARCH_SPIN_ONLY`, `ATK_OBSTACLE_STOP_MM`, `CENTRAL_FORCE_ROLE_ATTACKER`) → resto de envs
+> byte-idénticos. Helpers puros en `src/shared/atk_nogyro.h` (host-tested). Guion:
+> [`docs/pruebas-banco/PRACTICA-2026-06-12-ELIAS-DELANTERO-R1.md`](pruebas-banco/PRACTICA-2026-06-12-ELIAS-DELANTERO-R1.md).
+> **Caja negra v1.2**: columnas `otos_*` + panel CENTRAL con `otos=` + detector "EMPUJE TORCIDO"
+> en `tools/blackbox/analizar_corrida.py`. ⚠️ Riesgo #1 conocido: el SIGNO del yaw OTOS nunca se
+> validó en banco → paso 2 del guion de Elías lo chequea A MANO antes de mover nada (bail-out 45°
+> de red). Gate 58/798/0 + 8 envs pio SUCCESS (2026-06-11). Journal:
+> `journal/2026-06-11-preparacion-practica-alumnos-delantero-otos-arquero-integral.md`.
 
 > **🥅 BANCO 2026-06-09/10 (arquero en ROBOT2 — vale sobre menciones más abajo):**
 > (1) ✅ **Patrulla del arquero v3.2+v3.3 "PEGADA A LA LÍNEA"** (main `c11d770`): mantiene el

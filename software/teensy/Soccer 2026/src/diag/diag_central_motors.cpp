@@ -1,7 +1,7 @@
 // diag_central_motors.cpp — Test individual de los 3 motores del Zircon Rev v15
 //
 // ESTADO ROBOT1: mapeo motor<->driver<->sentido VALIDADO en banco (M1=U5 normal,
-// M2=U17 invertido HW, M3=U7 normal). Este sketch sigue util para RE-verificar
+// M2=U17 — DERECHO desde el recableado 2026-06-11 —, M3=U7). Este sketch sigue util para RE-verificar
 // tras rearmar o para mapear ROBOT2.
 //
 // Para qué sirve:
@@ -72,7 +72,7 @@ struct MotorPins {
 // Posición física (settled 2026-06-08): M1=delantera-IZQ · M2=delantera-DER · M3=trasera. Ver config_central.h.
 constexpr MotorPins MOTORS[3] = {
     { "MOTOR 1 - driver U5  (INA=2, INB=5, PWM=3)   [rueda DELANTERA IZQUIERDA]",  2, 5,  3 },
-    { "MOTOR 2 - driver U17 (INA=8, INB=7, PWM=6)   [rueda DELANTERA DERECHA, INVERTIDA HW] [7/8 RESUELTO]", 8, 7, 6 },
+    { "MOTOR 2 - driver U17 (INA=8, INB=7, PWM=6)   [rueda DELANTERA DERECHA] [7/8 RESUELTO]", 8, 7, 6 },
     { "MOTOR 3 - driver U7  (INA=11, INB=12, PWM=4) [rueda TRASERA]", 11, 12, 4 },
 };
 
@@ -95,10 +95,12 @@ constexpr uint32_t MIN_DWELL_MS   = 300;    // ignora apretones los primeros 300
 // Cuando los 3 empujen para donde corresponde, esos mismos signos son los que
 // van al firmware de producción (config_central.h / motors_zircon.cpp).
 // ============================================================
-// RESULTADO YA CONOCIDO ROBOT1: el sentido correcto es {+1,-1,+1} (M2/U17
-// INVERTIDO por HW), validado banco 2026-06-01 + re-confirmado 2026-06-06.
-// Fuente canonica = MOTOR_INVERT en config_central.h. Este {+1,+1,+1} es solo
-// el arranque neutro para RE-validar o para mapear ROBOT2.
+// RESULTADO ROBOT1 (ACTUALIZADO banco 2026-06-11, post-REPARACIÓN): el M2 quedó
+// RECABLEADO DERECHO → el sentido correcto HOY es {+1,+1,+1} EN AMBOS ROBOTS
+// (validado en piso, commit 8d5fc90). HISTÓRICO: hasta 2026-06-10 R1 necesitaba
+// {+1,-1,+1} (U17 cruzado de fábrica, banco 2026-06-01/06-06) — si alguna vez se
+// recablea como estaba, vuelve el -1. Fuente canónica = MOTOR_INVERT en
+// config_central.h. Este {+1,+1,+1} neutro hoy coincide con producción.
 constexpr int MOTOR_DIR[3] = { +1, +1, +1 };
 
 // Multiplicador GLOBAL: invierte los 3 motores a la vez (se combina con
@@ -262,7 +264,8 @@ void enter_state(State s) {
             Serial.println(">>> Arrancando MOTOR 2");
             Serial.print  ("    "); Serial.println(MOTORS[1].label);
             Serial.println("    Conflicto 7/8 RESUELTO: 7/8 = motor 2/U17;");
-            Serial.println("    link DOWN->CENTRAL = Serial1. ROBOT1: M2/U17 invertido HW.");
+            Serial.println("    link DOWN->CENTRAL = Serial1. Desde el recableado 2026-06-11");
+            Serial.println("    NINGUN motor va invertido ({+1,+1,+1} en ambos robots).");
             Serial.println("    Anota: motor 2 = rueda ____");
             break;
         }

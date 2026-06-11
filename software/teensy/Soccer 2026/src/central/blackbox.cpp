@@ -5,6 +5,7 @@
 
 #include <Arduino.h>
 
+#include "config_central.h"   // MOTOR_INVERT / MOTOR_MIN_PWM para la metadata del dump
 #include "motors_zircon.h"
 #include "strategy.h"
 #include "world_model.h"
@@ -47,7 +48,17 @@ inline int16_t f_to_i16(float v)   { return static_cast<int16_t>(v); }
 
 }  // namespace
 
-void blackbox_tick(const MotorCommand& cmd) {
+namespace { void bb_capture(const MotorCommand& cmd, bool emergency); }
+
+void blackbox_tick(const MotorCommand& cmd) { bb_capture(cmd, false); }
+
+void blackbox_tick_emergency() {
+    MotorCommand zero{};
+    bb_capture(zero, true);
+}
+
+namespace {
+void bb_capture(const MotorCommand& cmd, bool emergency) {
     const uint32_t now = millis();
 
     // Auto-volcado en el flanco RUN→STOP: la corrida terminó (juez/'s'/timeout)
@@ -73,6 +84,7 @@ void blackbox_tick(const MotorCommand& cmd) {
     if (world_model_line_detected())        r.flags |= 1u << 4;
     if (world_model_imminent_exit())        r.flags |= 1u << 5;
     if (world_model_snapshot_is_fresh())    r.flags |= 1u << 6;
+    if (emergency)                          r.flags |= 1u << 7;  // freno de borde de main
     r.hdg_cd   = f_to_cd(world_model_get_my_heading_deg());
     r.ball_x   = f_to_i16(world_model_get_ball_x_mm());
     r.ball_y   = f_to_i16(world_model_get_ball_y_mm());
@@ -91,15 +103,38 @@ void blackbox_tick(const MotorCommand& cmd) {
     g_head = (g_head + 1) % CENTRAL_BLACKBOX_CAP;
     if (g_count < CENTRAL_BLACKBOX_CAP) ++g_count;
 }
+}  // namespace (bb_capture)
 
 void blackbox_dump() {
     Serial.println();
-    Serial.print(F("=== BLACKBOX BEGIN v1 n="));
+    Serial.print(F("=== BLACKBOX BEGIN v1.1 n="));
     Serial.print(g_count);
     Serial.println(F(" ==="));
+    // METADATA de corrida (v1.1, auditoría 2026-06-11): el hardware cambia cada
+    // noche de banco — sin saber QUÉ build/robot/config generó el CSV, el análisis
+    // posterior es in-interpretable. Línea '#' = la saltean los parsers de CSV.
+    Serial.print(F("# build="));
+    Serial.print(F(__DATE__ " " __TIME__));
+#if defined(ROBOT1)
+    Serial.print(F(" robot=R1"));
+#elif defined(ROBOT2)
+    Serial.print(F(" robot=R2"));
+#endif
+    Serial.print(F(" rol="));
+    Serial.print(strategy_get_role() == RobotRole::ATTACKER ? F("ATK") : F("GK"));
+    Serial.print(F(" invert="));
+    Serial.print(MOTOR_INVERT[0]); Serial.print('/');
+    Serial.print(MOTOR_INVERT[1]); Serial.print('/');
+    Serial.print(MOTOR_INVERT[2]);
+    Serial.print(F(" pisos="));
+    Serial.print(MOTOR_MIN_PWM[0]); Serial.print('/');
+    Serial.print(MOTOR_MIN_PWM[1]); Serial.print('/');
+    Serial.print(MOTOR_MIN_PWM[2]);
+    Serial.print(F(" cap_muestras="));
+    Serial.println(CENTRAL_BLACKBOX_CAP);
     Serial.println(F("t_ms,state,match,snap,ball_vis,goal_vis,hdg_valid,line,imminent,"
                      "hdg_deg,ball_x,ball_y,ball_vx,ball_vy,goal_deg,"
-                     "cmd_vx,cmd_vy,cmd_w_dps,pwm1,pwm2,pwm3,line_deg,min_obst"));
+                     "cmd_vx,cmd_vy,cmd_w_dps,pwm1,pwm2,pwm3,line_deg,min_obst,emerg"));
     // Orden cronológico: si el ring dio la vuelta, lo más viejo está en g_head.
     const uint32_t start = (g_count == CENTRAL_BLACKBOX_CAP) ? g_head : 0;
     for (uint32_t k = 0; k < g_count; ++k) {
@@ -126,7 +161,8 @@ void blackbox_dump() {
         Serial.print(r.pwm[1]);                     Serial.print(',');
         Serial.print(r.pwm[2]);                     Serial.print(',');
         Serial.print(r.line_cd / 100.0f, 1);        Serial.print(',');
-        Serial.println(r.min_obst);
+        Serial.print(r.min_obst);                   Serial.print(',');
+        Serial.println((r.flags >> 7) & 1);         // emerg (freno de borde)
     }
     Serial.println(F("=== BLACKBOX END ==="));
 }

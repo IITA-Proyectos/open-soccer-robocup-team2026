@@ -52,7 +52,7 @@ namespace {
 // ===================== AJUSTES ===============================================
 // DISPOSICIÓN FÍSICA DE MOTORES (settled 2026-06-08, Gustavo) — 3 omni a 120°:
 //   M1 = delantera IZQUIERDA (driver U5,  2/5/3)
-//   M2 = delantera DERECHA   (driver U17, 8/7/6, INVERTIDO por HW)
+//   M2 = delantera DERECHA   (driver U17, 8/7/6; DERECHO desde el recableado 2026-06-11)
 //   M3 = TRASERA / centro    (driver U7,  11/12/4)
 //   Los 3 giran HORARIO mirados desde el centro (comando +). Canónico: config_central.h.
 // ⚠️ Este sketch usa CONTROL DIRECTO de motores (DIR_M* abajo, calibrado en MARZO), NO la
@@ -172,7 +172,15 @@ bool enterPorSerialEdge() {
     return adv;
 }
 
-// ---- Motores (logica de Elias; M2 invertido) --------------------------------
+// ---- Motores (logica de Elias) -----------------------------------------------
+// ⚠️ HISTORIA DEL M2 (auditoría 2026-06-11): este diag tenía el M2 INVERTIDO
+// hardcodeado (INA/INB cruzados en motor2) — compensaba el U17 cruzado de fábrica
+// del R1 VIEJO. En la reparación 2026-06-10/11 el M2 de R1 quedó RECABLEADO
+// DERECHO ({+1,+1,+1} en ambos robots, validado en piso) → el cruce hardcodeado
+// movía el M2 AL REVÉS en los dos robots. motor2() ahora va igual que motor1().
+// ⚠️ RE-VALIDAR EN BANCO antes de confiar en este diag: los signos del sketch
+// (DIR_M2/ROT_M2/corr_fb/ESCAPE_DIR_SIGN) se calibraron como CONJUNTO con el
+// cableado viejo (banco 2026-06-06) — pueden requerir re-tuneo.
 void motores_init() {
     pinMode(INA1, OUTPUT); pinMode(INB1, OUTPUT); pinMode(PWM1, OUTPUT);
     pinMode(INA2, OUTPUT); pinMode(INB2, OUTPUT); pinMode(PWM2, OUTPUT);
@@ -182,9 +190,9 @@ void motor1(int vel, int dir) {
     analogWrite(PWM1, constrain(abs(vel), 0, 255));
     digitalWrite(INA1, dir > 0 ? 1 : 0); digitalWrite(INB1, dir < 0 ? 1 : 0);
 }
-void motor2(int vel, int dir) {   // INVERTIDO
+void motor2(int vel, int dir) {   // DERECHO desde el recableado 2026-06-11 (ver nota arriba)
     analogWrite(PWM2, constrain(abs(vel), 0, 255));
-    digitalWrite(INA2, dir < 0 ? 1 : 0); digitalWrite(INB2, dir > 0 ? 1 : 0);
+    digitalWrite(INA2, dir > 0 ? 1 : 0); digitalWrite(INB2, dir < 0 ? 1 : 0);
 }
 void motor3(int vel, int dir) {
     analogWrite(PWM3, constrain(abs(vel), 0, 255));
@@ -246,7 +254,7 @@ void mover(int sentido, int corr_fb, float corr_rot) {
     float m2 = (float)(DIR_M2 * VEL_M2 * sentido);
     float m3 = (float)(DIR_M3 * VEL_M3 * sentido);
 
-    // 2) Centrado adelante/atras: se suma a M1 y M2 (M2 invertido por hardware).
+    // 2) Centrado adelante/atras: se suma a M1 y M2.
     m1 += corr_fb;
     m2 -= corr_fb;
 

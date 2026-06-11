@@ -34,11 +34,14 @@ robot2, y robot1 **hereda por código** varios cambios que en su hardware están
 
 ## Pasos concretos (en orden, ~1 banco)
 
-1. `diag_central_motors` en robot1: sentido de las 3 ruedas (recordar:
-   **R1 tiene M2/U17 INVERTIDO por HW** → `MOTOR_INVERT={+1,-1,+1}`, NO pisar).
+1. `diag_central_motors` en robot1: sentido de las 3 ruedas. ⚠️ SUPERADO
+   2026-06-11: en la reparación el M2 quedó RECABLEADO DERECHO →
+   `MOTOR_INVERT={+1,+1,+1}` (validado en piso). NO volver a `{+1,-1,+1}`
+   salvo recableado físico.
 2. `diag_central_strafe`: validar pisos {70,70,107} + impulso en ESE chasis
    (fricción distinta a R2 → puede necesitar otro valor de trasera).
-3. Flashear `top_robot1` y verificar en el panel `[TOP]`: Δ`loop=` ≥ +10.000 por
+3. Flashear `top_robot2_pri` (TOP de R1 recableada a arq. R2; envs
+   `top_robot1*` = cableado viejo) y verificar en el panel `[TOP]`: Δ`loop=` ≥ +10.000 por
    línea de 500 ms, `hdg` trackea giro a mano, `min_obst` con números, resync=0.
 4. **Decisión de env**: agregar `-DCENTRAL_FLOOR_SCALE` a `[env:central_robot1]`
    (o crear `central_robot1_arquero`) SOLO después de que (2) valide los pisos.
@@ -54,3 +57,16 @@ robot2, y robot1 **hereda por código** varios cambios que en su hardware están
 
 - 2026-06-10: creada por Claude (revisión integral: hallazgos P1 "env central_robot1
   sin FLOOR_SCALE" + "reparación de robot1 sin trackear").
+
+## Estado 2026-06-11 (banco nocturno)
+
+- Pasos 1-2 del checklist ✅ HECHOS: motores y strafe validados en piso —
+  M2 recableado (quedó DERECHO) detectado y corregido
+  (`MOTOR_INVERT={+1,+1,+1}`), pisos `{70,70,107}` confirmados.
+- Pendientes NUEVOS:
+  - [ ] ToF derecho (LP pin 11) no enumera — revisar cable LP.
+  - [ ] BNOs desconectados — re-testear cada módulo en bus propio
+        (posible repuesto).
+  - [ ] Alimentación de la Teensy TOP nueva: soldar VIN desde el rail +
+        cortar el puente VUSB-VIN antes de convivir batería+USB.
+  - [ ] Test del giro con `top_robot2_pri` al reconectar BNO.

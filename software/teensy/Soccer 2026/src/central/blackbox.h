@@ -32,6 +32,11 @@ namespace iitasoccer {
 // en el flanco RUN→STOP. cmd = lo que strategy_tick decidió este tick.
 void blackbox_tick(const MotorCommand& cmd);
 
+// Variante para el FRENO DE BORDE de main (EMERGENCY_LINE): graba el tick con
+// cmd=0 y el flag de emergencia (columna 'emerg' del CSV). Sin esto la caja
+// quedaba ciega justo durante el freno (auditoría 2026-06-11).
+void blackbox_tick_emergency();
+
 // Volcar el contenido como CSV por USB (bloqueante ~0,5-1 s; usar con el robot parado).
 void blackbox_dump();
 

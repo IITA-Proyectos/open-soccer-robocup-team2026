@@ -133,12 +133,12 @@ Los **6 sensores I²C cuelgan del mismo bus `Wire` (pines 18/19)**: 2 BNO055 (0x
 | Motor | ROBOT1 (arquero) | ROBOT2 (delantero) | Notas |
 |---|---|---|---|
 | M1 | U5 (INA2/INB5/PWM3) | U17 | — |
-| M2 | U17 (INA8/INB7/PWM6) | U7 | **INVERTIDO por HW** (INA/INB cruzados) |
+| M2 | U17 (INA8/INB7/PWM6) | U7 | **INVERTIDO por HW** (INA/INB cruzados; hasta la reparación de jun-2026 — hoy recableado derecho) |
 | M3 | U7 (INA11/INB12/PWM4) | U5 | — |
 
 **Decisión (data-driven):** `MOTOR_INVERT = {+1, -1, +1}` aplicado en un único punto (`motors_zircon.cpp`).
 **Por qué:** el driver U17 tiene INA/INB cruzados por hardware → el motor 2 gira invertido; sin compensar, la cinemática omni da trayectorias invertidas.
-**Dato:** validado en banco (María/Elías, `diag_central_line_sweep_robot1`) activando cada H-bridge por separado y observando el sentido de giro. **Caveat honesto:** ROBOT2 hereda el mismo array **sin validar** (drivers rotados); el banco lo dirime.
+**Dato:** validado en banco (María/Elías, `diag_central_line_sweep_robot1`) activando cada H-bridge por separado y observando el sentido de giro. **Caveat honesto:** ROBOT2 hereda el mismo array **sin validar** (drivers rotados); el banco lo dirime. *(Actualización jun-2026: ROBOT2 quedó validado en banco — pines NO rotados, `{+1,+1,+1}` —, y en la reparación de jun-2026 el M2 de ROBOT1 quedó recableado derecho → hoy ambos robots usan `MOTOR_INVERT={+1,+1,+1}`. La decisión de diseño sigue vigente: la inversión vive en UN solo punto del firmware.)*
 
 ## 1.6 Integración del árbitro RCJ — el error de integración que evitamos
 
@@ -235,7 +235,7 @@ Los **6 sensores I²C cuelgan del mismo bus `Wire` (pines 18/19)**: 2 BNO055 (0x
 ### Iteración B — Motor 2 invertido por hardware
 - **Problema:** el motor 2 (driver U17) gira al revés → la cinemática daría trayectorias invertidas (círculos).
 - **Dato:** INA/INB cruzados por HW en el Zircon (validado en banco).
-- **Modificación:** `MOTOR_INVERT = {+1,-1,+1}` en un único punto. **Restricción:** ROBOT2 hereda el array sin validar (drivers rotados) — pendiente de banco.
+- **Modificación:** `MOTOR_INVERT = {+1,-1,+1}` en un único punto. **Restricción:** ROBOT2 hereda el array sin validar (drivers rotados) — pendiente de banco. *(Hasta la reparación de jun-2026; hoy ambos robots `{+1,+1,+1}`: ROBOT2 se validó sin inversión y el M2 de ROBOT1 quedó recableado derecho.)*
 
 ### Iteración C — Cinemática KIWI: por qué daba círculos y cómo se corrigió
 - **Problema:** la cinemática vieja `WHEEL_ANGLES={60,-60,180}` daba **círculos** en vez de rectas.

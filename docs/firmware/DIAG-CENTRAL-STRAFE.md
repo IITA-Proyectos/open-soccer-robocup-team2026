@@ -143,9 +143,10 @@ de este diag).
 > motores vía `motors_apply_command()` → `inverse_kinematics()` con
 > `WHEEL_ANGLES_DEG = {330, 210, 90}` (**CALIBRADO 2026-06-08** con la disposición física
 > real — antes era `{60,-60,180}`, que estaba en el eje equivocado y daba CÍRCULOS).
-> El **motor M2 (U17) tiene la polaridad INA/INB invertida por hardware** y eso ya está
-> honrado: `config_central.h` define `MOTOR_INVERT[3] = {+1,-1,+1}` y `motors_zircon.cpp`
-> lo aplica. Con la cinemática calibrada el lateral ya **no** sale en diagonal por la
+> La inversión por motor se honra vía `MOTOR_INVERT` (`config_central.h`) que
+> `motors_zircon.cpp` aplica; **desde el recableado 2026-06-11 es `{+1,+1,+1}` en ambos
+> robots** (M2/U17 de R1 = +1; histórico: -1 con el cableado de fábrica PRE-reparación).
+> Con la cinemática calibrada el lateral ya **no** sale en diagonal por la
 > cinemática. **Pendiente de banco: SOLO el tuneo fino del lateral (que no rote) +
 > confirmar el SENTIDO de la traslación** — si traslada al revés, sacar el +180 de los
 > ángulos (el giro queda arreglado igual). Si todavía aparece deriva grande tras el tuneo,

@@ -36,7 +36,8 @@
 //   - PLACA TOP corriendo y enviando WorldSnapshot por Serial7 (RX7 pin28) a 230400.
 //     (la cadena DOWN→TOP→CENTRAL tiene que estar al menos a nivel TOP→CENTRAL).
 //   - Pre-requisito CUMPLIDO: TASK-036 cerrada — motores ROBOT1 validados
-//     (MOTOR_INVERT={+1,-1,+1}, M2/U17 invertido), conflicto 7/8 resuelto.
+//     (MOTOR_INVERT del config: {+1,+1,+1} en AMBOS robots desde el recableado
+//     del M2 de R1, reparación 2026-06-11), conflicto 7/8 resuelto.
 //     (El banner de runtime, línea ~213, ya lo refleja.)
 //   - Batería cargada (los H-bridges NO se alimentan por USB).
 //   - Robot SUJETO al banco o ruedas al aire, O cancha despejada con espacio

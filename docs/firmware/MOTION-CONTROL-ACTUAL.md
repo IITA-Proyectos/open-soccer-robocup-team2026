@@ -34,7 +34,8 @@ apply_pwm_floor(pwm, MOTOR_MIN_PWM[i], NOISE_THRESH=5) ← PISO por rueda (deadz
 [corte trasera — gateado -DCENTRAL_REAR_BRAKE_LEAD]    ← motors_set_rear_cut(): trasera (idx2) a 0 en los
    │   últimos 66 ms del tramo lateral                  últimos ms (hoy lo arma SOLO diag_central_strafe)
    ▼
-apply_pwm_to_motor(pwm · MOTOR_INVERT[i])              ← MOTOR_INVERT = {+1, -1, +1} (M2/U17 invertido HW)
+apply_pwm_to_motor(pwm · MOTOR_INVERT[i])              ← MOTOR_INVERT = {+1, +1, +1} (M2 = +1 desde el recableado
+   │                                                      2026-06-11; histórico: -1 PRE-reparación)
    │   pwm>0 → INA=1/INB=0 · pwm<0 → INA=0/INB=1 (reversa de marcha) · pwm=0 → coast
    ▼
 PWM a los 3 H-bridges del Zircon
@@ -55,10 +56,10 @@ Decisiones clave de la arquitectura actual:
 |---|---|---|
 | **Cinemática inversa KIWI** | Reparte vx/vy/omega a 3 ruedas | `WHEEL_ANGLES_DEG={330,210,90}`, `R=100mm` (el viejo `{60,-60,180}` daba círculos) |
 | **Saturación proporcional** | Escala las 3 ruedas para no deformar dirección | clamp a `MAX_SPEED_MM_S=1000`, PWM a `±255` |
-| **Piso de PWM por rueda (deadzone)** | Eleva PWM no-nulo hasta el piso conservando signo; apaga si `|pwm|≤5` | `MOTOR_MIN_PWM={70,70,107}` (✅ banco R2 2026-06-09; R1 mismos valores, A VERIFICAR EN BANCO R1); `NOISE_THRESH=5` |
+| **Piso de PWM por rueda (deadzone)** | Eleva PWM no-nulo hasta el piso conservando signo; apaga si `|pwm|≤5` | `MOTOR_MIN_PWM={70,70,107}` (✅ banco R2 2026-06-09; ✅ R1 mismos valores validados en piso 2026-06-11); `NOISE_THRESH=5` |
 | **Impulso inicial (kickstart)** | Pulso fijo por rueda en la transición parado→comando; rompe la inercia y baja al PWM base al cerrar la ventana | `{130,130,140}` PWM × **40 ms** (factor ×9.9 + cap por rueda = impulso fijo); gateado `-DCENTRAL_MOTOR_KICKSTART`; ✅ banco R2 2026-06-09 |
 | **Freno anticipado de la trasera** | `motors_set_rear_cut()` en el mixer: corta la TRASERA (idx2) a 0 en los últimos ms del tramo lateral mientras las delanteras terminan | lead **66 ms** (tunable `-DDIAG_STRAFE_REAR_LEAD_MS`); gateado `-DCENTRAL_REAR_BRAKE_LEAD`; hoy lo arma SOLO `diag_central_strafe.cpp`; ✅ banco R2 2026-06-09 |
-| **Inversión por motor** | Corrige M2/U17 cableado al revés por HW | `MOTOR_INVERT={+1,-1,+1}` |
+| **Inversión por motor** | Corrige cableado al revés por HW (cuando lo hay) | `MOTOR_INVERT={+1,+1,+1}` en ambos robots — M2 = +1 desde el recableado 2026-06-11 (histórico: -1 con el cableado de fábrica PRE-reparación) |
 | **Stop (coast)** | Para normal: INA=INB=0, PWM=0 | `motors_stop()` |
 | **Brake activo (short)** | Emergencia: INA=INB=HIGH, PWM=0 (corto del H-bridge) | `motors_brake()` — "solo emergencias, corriente alta" |
 | **HeadingPID (rumbo)** | Mantiene el frente vía omega (en strategy/diags) | KP_HEADING ≈ 3.0 deg/s por grado; omega saturado a int16 |

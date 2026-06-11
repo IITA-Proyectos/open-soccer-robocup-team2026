@@ -203,7 +203,7 @@ Donde:
 
 **Convención IITA — disposición física REAL (calibrada 2026-06-08, Gustavo):**
 - `θ_1 = 330°` → rueda **delantera IZQUIERDA** (M1/U5).
-- `θ_2 = 210°` → rueda **delantera DERECHA** (M2/U17, invertida por HW).
+- `θ_2 = 210°` → rueda **delantera DERECHA** (M2/U17; iba invertida por HW hasta el recableado 2026-06-11 — hoy `MOTOR_INVERT={+1,+1,+1}` en ambos robots).
 - `θ_3 = 90°`  → rueda **TRASERA / centro** (M3/U7).
 - `R = 100 mm` (radio del robot, **tentativo — medir en el armado**).
   (Los 3 motores giran horario desde el centro → se suma 180° a {150,30,270} → {330,210,90}.

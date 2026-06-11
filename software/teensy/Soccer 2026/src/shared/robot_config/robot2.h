@@ -58,9 +58,10 @@ constexpr int PIN_PWM3 = 4;
 
 // Sentido por motor (+1 normal, -1 invertido por HW). ✅ BANCO 2026-06-09: los 3
 // motores giraron HORARIO (desde el centro) con el drive directo del diag → SIN
-// inversión. DIFERENCIA REAL con R1: el U17 de la Zircon de R1 está invertido por
-// HW ({+1,-1,+1}); el de ESTA placa NO → neutro.
-constexpr int MOTOR_INVERT[3] = { +1, +1, +1 };     // ✅ banco 2026-06-09 [R1={+1,-1,+1}]
+// inversión. (La vieja "diferencia real con R1" — U17 invertido {+1,-1,+1} —
+// quedó OBSOLETA el 2026-06-11: el M2 de R1 fue RECABLEADO DERECHO en la
+// reparación → ambos robots neutros.)
+constexpr int MOTOR_INVERT[3] = { +1, +1, +1 };     // ✅ banco 2026-06-09 [R1 también {+1,+1,+1} desde 2026-06-11]
 
 // Cinematica omni-3. HOY comun a ambos (config_central.h, fuera del #if ROBOT).
 // Si las ruedas de R2 montan a otros angulos, esto se vuelve per-robot AQUI.

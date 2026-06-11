@@ -96,11 +96,12 @@ inline void watchdog_feed() {
 //
 // OVERRIDE DE ROL (2026-06-09, robot1 en reparación): -DCENTRAL_FORCE_ROLE_GOALKEEPER
 // fuerza la FSM del ARQUERO sin cambiar el HARDWARE del build. Caso real: probar el
-// arquero en el CUERPO de robot2 → env central_robot2_arquero = -DROBOT2 (pines,
-// MOTOR_INVERT {+1,+1,+1} y pisos PROPIOS de robot2) + este flag (rol GK). ⚠️ NUNCA
-// flashear central_robot1 en robot2: su MOTOR_INVERT {+1,-1,+1} invierte el M2, que
-// en la Zircon de robot2 NO está invertido por HW → M2 al revés. Default OFF →
-// binarios de competencia idénticos.
+// arquero en el CUERPO de robot2 → env central_robot2_arquero = -DROBOT2 (pines y
+// pisos PROPIOS de robot2) + este flag (rol GK). ⚠️ Cada robot SIEMPRE con su env
+// central_robotN (configs por-robot). Nota histórica: hasta la reparación del
+// 2026-06-10/11 cruzar envs además invertía el M2 de R1 ({+1,-1,+1}); desde el
+// RECABLEADO del M2, MOTOR_INVERT={+1,+1,+1} en ambos (validado piso 8d5fc90).
+// Default OFF → binarios de competencia idénticos.
 void apply_role_from_dipswitch() {
 #if defined(CENTRAL_FORCE_ROLE_GOALKEEPER)
     strategy_set_role(RobotRole::GOALKEEPER);
@@ -261,6 +262,12 @@ void loop() {
     if (world_model_imminent_exit() && world_model_line_is_fresh()) {
         motors_brake();                       // freno activo (corto en H-bridge), no solo PWM=0
         digitalWrite(PIN_LED_STATUS, HIGH);   // LED fijo = alerta visual
+#ifdef CENTRAL_BLACKBOX
+        // Auditoría 2026-06-11: sin esto la caja negra quedaba CIEGA exactamente
+        // durante el freno de borde (el return saltea el tick) — el momento que
+        // más se quiere analizar. Graba con flag de emergencia (bit7/columna emerg).
+        blackbox_tick_emergency();
+#endif
         // No salimos del loop: seguimos leyendo los UARTs para enterarnos cuándo
         // ABAJO baja la alerta y recuperar el control en el próximo tick.
         return;

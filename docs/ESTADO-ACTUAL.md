@@ -39,17 +39,23 @@ tipo: indice-operacional
 > (4) 🔧 **ESTADO HW DE ROBOT1 (banco escritorio 2026-06-10 noche, Gustavo — NO re-diagnosticar):**
 > · **Cámaras ×2: ANDAN** — script v2 ya flasheado, `pkts_F/B` subiendo, `resync=0`, pelota
 >   trackeada por ambas. NO tocar.
-> · 🔧 **GYRO DE R1 — recableado EN CURSO (2026-06-11, pendiente de validación):** el "BNO
+> · 🔧 **GYRO DE R1 — recableado HECHO (2026-06-11):** el "BNO
 >   muerto por golpe" era FALSO diagnóstico — un BNO sano trasplantado congelaba IDÉNTICO →
 >   el freeze era del BUS `Wire` compartido bajo carga (la conclusión 2026-06-08 del repo).
->   El equipo está RECABLEANDO la TOP de robot1 a la arquitectura de robot2 (BNO primario
->   en bus propio Wire2 24/25 + secundario en Wire). **Al terminar: flashear `top_robot2`**
->   (misma arquitectura; los envs `top_robot1*` quedan para el cableado viejo) **y validar
->   con el test del giro** (imu_L/R=Y + hdg trackea sin deriva — el mismo que robot2 pasa).
->   El BNO "muerto" original → re-test en bus propio (posible repuesto gratis). Las CENTRAL
->   siguen SIN cruzarse (M2 de R1 invertido).
+>   El equipo RECABLEÓ la TOP de robot1 a la arquitectura de robot2 (BNO primario
+>   en bus propio Wire2 24/25 + secundario en Wire). **TERMINADO 2026-06-11: recableado
+>   validado (scan I²C 0x28 en Wire2 ✓). Flashear `top_robot2_pri`** (los envs
+>   `top_robot1*` quedan para el cableado viejo). **⚠️ BNOs de R1 hoy DESCONECTADOS**
+>   (uno congelaba y el soft-resync arrastraba al sano) → **R1 corre SIN gyro**
+>   (test del giro pendiente de reconectar BNO).
+>   El BNO "muerto" original → re-test en bus propio (posible repuesto gratis). Cada CENTRAL
+>   con su env per-robot; desde el recableado 2026-06-11 el M2 de R1 quedó DERECHO →
+>   `MOTOR_INVERT={+1,+1,+1}` en ambos (`8d5fc90`, validado piso).
 > · **BNO-R (0x29): MUERTO desde antes** (unidad quemada) — `imu_R=N` es lo esperado, no es noticia.
-> · **TOP de R1 heredó los fixes**: loop ~220k/s, ToF 4/4 (`min_obst` ok).
+> · **TOP de R1 heredó los fixes**: loop ~220k/s, ToF 4/4 (`min_obst` ok) en el banco 2026-06-10.
+> · **DEMO de R1 = `diag_central_arbitro_strafe_robot1`** (validado end-to-end con la app
+>   2026-06-11); ToF derecho (LP pin 11) no enumera — pendiente cable; VIN de la Teensy TOP
+>   nueva sin soldar (TOP solo vive por USB) + cortar puente VUSB-VIN.
 
 > **🔧 ÚLTIMO (2026-06-02 — vale sobre cualquier mención más abajo):** mapa UART final.
 > **TOP (Teensy 4.0):** S1←DOWN · **S2 (7/8)↔COMM** · S3←cam frontal · **S4 (16/17)→CENTRAL** · S5←cam trasera.
@@ -268,8 +274,9 @@ nativo, pero ya no es el único camino. Ver
   suposición "rotados" venía del delantero 2025) y `MOTOR_INVERT={+1,+1,+1}` (el U17 de esa
   placa NO está invertido por HW).
 - **ROBOT1: arranca de los MISMOS valores** ({70,70,107} + {130,130,140} + 66 ms) por decisión
-  de Gustavo — ⚠️ **A VERIFICAR EN BANCO R1** (su `{70,70,42}` viejo era del banco 2026-06-08:
-  la trasera se bajó porque rotaba en el strafe; si R1 rota con 107, bajar idx2 gradualmente).
+  de Gustavo — **✅ VALIDADOS en piso 2026-06-11** (su `{70,70,42}` viejo era del banco 2026-06-08:
+  la trasera se bajó porque rotaba en el strafe). Además en la reparación el M2 de R1 quedó
+  RECABLEADO DERECHO → `MOTOR_INVERT={+1,+1,+1}` en ambos robots (`8d5fc90`).
 - **Tema-a-analizar (NO implementado):** llevar el freno anticipado al lateral de la FSM del
   arquero (patrol/intercept) — el corte necesita saber cuándo TERMINA el movimiento, y en el
   control continuo de la FSM no existe ese evento (es glue futuro; `strategy.cpp` no se toca).
@@ -587,6 +594,7 @@ nativo, pero ya no es el único camino. Ver
 
 > ✅ SUPERADO (2026-06-08): el sentido de los 3 motores ROBOT1 ya está validado (MOTOR_INVERT={+1,-1,+1}, M2/U17 invertido, banco 2026-06-01 re-confirmado 2026-06-06) y el conflicto 7/8 está resuelto (2026-05-31). La GEOMETRÍA quedó CALIBRADA 2026-06-08: WHEEL_ANGLES_DEG={330,210,90} (M1=del-IZQ · M2=del-DER · M3=trasera) + piso de PWM POR RUEDA MOTOR_MIN_PWM={70,70,42}. Fila canónica: FUENTES-DE-VERDAD.md:38. Tabla de disposición: docs/firmware/DIAG-CENTRAL-MOTORS.md. Lo único de banco que queda es el TUNEO FINO del lateral (que no rote) + confirmar el SENTIDO de la traslación, y ROBOT2.
 > ⚠️ Actualización 2026-06-09: el `{70,70,42}` de arriba quedó SUPERADO como valor final → `MOTOR_MIN_PWM={70,70,107}` + impulso inicial `{130,130,140}`×40 ms + freno anticipado trasera 66 ms (banco R2; R1 mismos valores A VERIFICAR). ROBOT2 ya quedó validado (pines NO rotados, MOTOR_INVERT={+1,+1,+1}). Ver «Avance 2026-06-09».
+> ⚠️ Actualización 2026-06-11: en la reparación de R1 el M2/U17 quedó **RECABLEADO DERECHO** → `MOTOR_INVERT={+1,+1,+1}` en AMBOS robots (`8d5fc90`, validado en piso); pisos {70,70,107} + kickstart de R1 también validados en piso. El `{+1,-1,+1}` de arriba era la compensación del cableado PRE-reparación (si se recablea como estaba, volver al `-1`).
 
 ### 🏁 Avance 2026-05-29 — BANCO: motores CENTRAL + enlace físico DOWN↔CENTRAL
 - **Motores del CENTRAL andan** (`diag_central_motors` en banco): identificados

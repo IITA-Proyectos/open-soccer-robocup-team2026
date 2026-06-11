@@ -79,7 +79,7 @@ Archivo: `src/central/config_central.h`. **Ya es PER-ROBOT (HW)** vía `#if defi
 | M1 pines (INA/INB/PWM) | `config_central.h:25-27` | 2 / 5 / 3 (driver U5) | **PER-ROBOT (HW)** | `#if ROBOT1` | ✅ **banco 2026-06-09: R2 NO está rotado — pines IGUALES a R1** (M1=U5 2/5/3 = delantera-IZQ). La vieja suposición "pines ROTADOS" venía del delantero 2025 y resultó FALSA. |
 | M2 pines | `config_central.h:29-31` | 8 / 7 / 6 (driver U17) | **PER-ROBOT (HW)** | `#if ROBOT1` | ✅ banco 2026-06-09: R2 igual a R1 (M2=U17 8/7/6 = delantera-DER; en la placa de R2 ese U17 NO está invertido por HW). |
 | M3 pines | `config_central.h:33-35` | 11 / 12 / 4 (driver U7) | **PER-ROBOT (HW)** | `#if ROBOT1` | ✅ banco 2026-06-09: R2 igual a R1 (M3=U7 11/12/4 = trasera). |
-| `MOTOR_INVERT[3]` | `config_central.h` (bloques R1/R2 del `#if`) | R1 `{+1, -1, +1}` · R2 `{+1, +1, +1}` (**AMBOS VALIDADOS en banco**) | **PER-ROBOT (HW)**; R1 y R2 validados | `#if ROBOT1/ROBOT2` | **ROBOT1 `{+1,-1,+1}` = VALIDADO en banco** (María/Elías 2026-06-01 con `diag_central_line_sweep_robot1`; re-confirmado 2026-06-06 commit 8956d10 tras rearmar el robot: "se mueve derecho" + "esquiva la línea"). El M2=U17 de la Zircon de R1 está INVERTIDO por HW (INA/INB cruzados) → `{+1,-1,+1}` es el correcto y NO está en duda. ✅ **ROBOT2 `{+1,+1,+1}` = VALIDADO en banco (Gustavo 2026-06-09, `diag_central_motors` en el robot2 armado)**: los 3 motores giraron HORARIO sin inversión — el U17 de ESA placa NO está invertido por HW. Las advertencias viejas sobre "índices rotados" quedaron superadas (los pines NO están rotados). |
+| `MOTOR_INVERT[3]` | `config_central.h` (bloques R1/R2 del `#if`) | `{+1, +1, +1}` en **AMBOS robots** (R2 banco 2026-06-09 · R1 piso 2026-06-11) | **PER-ROBOT (HW)**; R1 y R2 validados | `#if ROBOT1/ROBOT2` | **`{+1,+1,+1}` en AMBOS robots desde el recableado del M2 de R1 (2026-06-11; el `-1` histórico era del cableado viejo).** Historia: con el cableado de fábrica el M2=U17 de la Zircon de R1 estaba INVERTIDO por HW (INA/INB cruzados) → `{+1,-1,+1}` validado en banco (María/Elías 2026-06-01 con `diag_central_line_sweep_robot1`; re-confirmado 2026-06-06 commit 8956d10). En la reparación 2026-06-10/11 el M2 quedó **RECABLEADO DERECHO** → `{+1,+1,+1}` validado en piso (commit 8d5fc90); si se recablea como estaba, volver al `-1`. ✅ **ROBOT2 `{+1,+1,+1}` = VALIDADO en banco (Gustavo 2026-06-09, `diag_central_motors` en el robot2 armado)**: los 3 motores giraron HORARIO sin inversión — el U17 de ESA placa NO está invertido por HW. Las advertencias viejas sobre "índices rotados" quedaron superadas (los pines NO están rotados). |
 | `WHEEL_ANGLES_DEG[3]` | `config_central.h:113` | `{330, 210, 90}` | **HARDCODED-COMÚN** | ninguno (fuera del `#if`) | CALIBRADO 2026-06-08 con la disposición física real (M1=del-IZQ 330°, M2=del-DER 210°, M3=trasera 90°). La vieja `{60,-60,180}` estaba en el eje equivocado (usaba +Y, la fórmula usa +X) y daba círculos; ya corregida (+180 porque los motores giran horario). No está dentro del `#if ROBOT` → hoy es igual para los dos. Si las ruedas de R2 montan distinto, esto debería volverse per-robot. **Pendiente de banco: SOLO tuneo fino del lateral (que no rote) + confirmar el sentido de la traslación.** |
 | `WHEEL_RADIUS_MM` | `config_central.h:83` | 100.0 | **HARDCODED-COMÚN** | ninguno | tentativo; per-robot sólo si los chasis difieren. |
 | `MAX_SPEED_MM_S` | `config_central.h:93` | 1000.0 | **HARDCODED-COMÚN** | ninguno | estimado, igual para ambos. |
@@ -89,13 +89,19 @@ Archivo: `src/central/config_central.h`. **Ya es PER-ROBOT (HW)** vía `#if defi
 
 **Fuente del mapeo:** `hardware/electronics/mapa-pines-teensy-ambos-robots.md` + journal
 `2026-03-20-diferencias-pines-motores-arquero-delantero.md` (citados en `config_central.h:13-15`).
-El driver INVERTIDO por HW en R1 es U17 (validado banco María/Elías).
+El driver que estaba INVERTIDO por HW en R1 era U17 (validado banco María/Elías) —
+quedó RECABLEADO DERECHO en la reparación 2026-06-10/11.
 
 ---
 
 ## 3. IMU / BNO (placa TOP — Teensy 4.0)
 
 Archivos: `src/top/sensors_imu.cpp/.h`, `src/top/pinout_common.h`. **HARDCODED-COMÚN** (ningún `#if ROBOT`).
+
+> ⚠️ **R1 recableado 2026-06-11 a arq. R2**: primario `Wire2` (24/25) + secundario `Wire`
+> (hoy ambos BNO de R1 DESCONECTADOS → R1 corre sin gyro). La columna "valor actual (ROBOT1)"
+> de abajo describe el **cableado viejo** de R1 (ambos BNO en `Wire`, 0x28/0x29) — para la TOP
+> de R1 recableada vale lo de la columna ROBOT2 (env `top_robot2_pri`).
 
 | Referencia | archivo:línea | valor actual (ROBOT1) | per-robot? | cómo se selecciona | nota ROBOT2 |
 |---|---|---|---|---|---|

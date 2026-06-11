@@ -363,8 +363,10 @@ es **IDÉNTICO** (el `LineStatusV2` sale de `dm_update`, no de ese pipeline).
   ```
   Operativa: botón pin 9 avanza motor por motor (0→128→0). 4º apretón = fin.
   Flag opcional `-DDIAG_MOTORS_REVERSE`. Doc: `docs/firmware/DIAG-CENTRAL-MOTORS.md`.
-- **Recordatorio ROBOT1 (no re-pisar):** M1=U5, M2=U17 (**invertido por HW** →
-  `MOTOR_INVERT={+1,-1,+1}`), M3=U7 (validado banco). No volver al viejo `{+1,+1,+1}`.
+- **Recordatorio ROBOT1 (ACTUALIZADO 2026-06-11):** M1=U5, M2=U17, M3=U7. En la
+  reparación el M2 quedó **RECABLEADO DERECHO** → `MOTOR_INVERT={+1,+1,+1}`
+  (validado en piso). El `{+1,-1,+1}` era la compensación del cableado viejo —
+  NO volver a él salvo recableado físico.
 
 ### 3.3 — Freno vs COAST en el Zircon (`motors_brake`)
 
@@ -465,7 +467,7 @@ fluya el dato (OTOS/cross_track) y se tuneen los gains en banco. Tres tunes:
 **CENTRAL (Teensy 4.1):**
 - **S7 (pin 28) ← TOP** (cable del TOP pin17/TX4) · **S1 (pin 0) ← DOWN** ·
   pines **7/8 LIBRES para el motor 2** (conflicto 7/8 RESUELTO). Sin BNO local.
-- Motores: M1=U5 (2/5/3), M2=U17 (8/7/6, **invertido HW**), M3=U7 (11/12/4).
+- Motores: M1=U5 (2/5/3), M2=U17 (8/7/6; **+1 desde el recableado 2026-06-11** — histórico: invertido HW PRE-reparación), M3=U7 (11/12/4).
 
 **DOWN (Teensy 4.0):**
 - S1 → CENTRAL (pin1/TX1 → CEN pin0) · S5 → TOP. Difunde línea+OTOS a ambas placas

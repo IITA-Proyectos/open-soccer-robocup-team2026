@@ -92,10 +92,10 @@
 |---|---|---|
 | Decidir qué hace (perseguir, patrullar, interceptar) | `software/teensy/Soccer 2026/src/central/strategy.cpp` | FSM dual: ATTACKER (KICKOFF/SEARCH/POSITION/APPROACH/LINE_AVOID) y GOALKEEPER (PATROL/INTERCEPT/CLEAR/LINE_AVOID) |
 | Mover el robot en una dirección (vx, vy, ω) | `software/teensy/Soccer 2026/src/shared/kinematics.{h,cpp}` | cinemática inversa omni-3: `v_i = -vx·sin(θ_i) + vy·cos(θ_i) + ω·R`. **+X=derecha, +Y=frente, ω CCW+** |
-| Aplicar PWM a los motores | `software/teensy/Soccer 2026/src/central/motors_zircon.{h,cpp}` | PWM 8-bit 0-255. `MOTOR_INVERT={+1,-1,+1}` (M2/U17 va invertido por HW) |
+| Aplicar PWM a los motores | `software/teensy/Soccer 2026/src/central/motors_zircon.{h,cpp}` | PWM 8-bit 0-255. `MOTOR_INVERT` (inversión por motor; hasta la reparación de jun-2026 R1 usaba `{+1,-1,+1}` por el M2/U17 invertido por HW — hoy ambos robots `{+1,+1,+1}`) |
 | Ajustar un lazo de control | `software/teensy/Soccer 2026/src/shared/pids.{h,cpp}` | heading + lateral + distancia. **OJO: clamp del HeadingPID ≤327** (ω·100 es int16, 360 desborda) |
 | Anticipar la pelota (arquero) | `software/teensy/Soccer 2026/src/shared/ball_predict.{h,cpp}` | `lookahead_s=0.2`, `max_lead_mm=400` (tuneables) |
-| Constantes del robot (velocidad, geometría) | `software/teensy/Soccer 2026/src/central/config_central.h` | `MAX_SPEED_MM_S=1000`, `WHEEL_ANGLES_DEG={330,210,90}` (M1=del-IZQ · M2=del-DER · M3=trasera, CALIBRADO 2026-06-08), `MOTOR_MIN_PWM[3]={70,70,107}` (piso de PWM por rueda — banco robot2 2026-06-09; robot1 parte de los mismos valores, A VERIFICAR a su vuelta). Pendiente de banco: verificación en robot1 + tuneo fino del lateral. |
+| Constantes del robot (velocidad, geometría) | `software/teensy/Soccer 2026/src/central/config_central.h` | `MAX_SPEED_MM_S=1000`, `WHEEL_ANGLES_DEG={330,210,90}` (M1=del-IZQ · M2=del-DER · M3=trasera, CALIBRADO 2026-06-08), `MOTOR_MIN_PWM[3]={70,70,107}` (piso de PWM por rueda — banco robot2 2026-06-09; robot1 mismos valores, validados en piso jun-2026). Pendiente de banco: tuneo fino del lateral. |
 
 ### 3.3 — Cómo cargamos firmware rápido (tener esto preparado ANTES)
 - **Build/flash embebido**: `pio run -e central_robot1 -t upload` (o `top_robot1` / `down`). El entorno compila **100% offline** (libs vendoreadas en `lib/`), así que **no dependemos de internet del venue**.
@@ -146,9 +146,13 @@
 > de eso, los 4 ToF enumeran a 0x2A-0x2D y se desbloqueó la **localización 2D por trilateración**."
 
 **P: ¿Por qué un motor va invertido en el código?**
-> "El driver del motor 2 (U17) tiene las entradas cruzadas por hardware en el shield Zircon. En vez de
+> "El driver del motor 2 (U17) tenía las entradas cruzadas por hardware en el shield Zircon. En vez de
 > recablear, lo corregimos en **un solo lugar del firmware**: `MOTOR_INVERT={+1,-1,+1}`. Lo **validamos en
 > banco** girando cada motor por separado con `diag_central_motors`."
+>
+> *(Nota jun-2026: en la reparación del robot 1 el M2 quedó recableado derecho → hoy ambos robots usan
+> `{+1,+1,+1}`. La historia sigue valiendo como ejemplo de diseño: la inversión vive en UN solo punto
+> del firmware, por eso adaptarse al recableado fue editar un array.)*
 
 ### Mechanical (features, materiales, manufactura)
 

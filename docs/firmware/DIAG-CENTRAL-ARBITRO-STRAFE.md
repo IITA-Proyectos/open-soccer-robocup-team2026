@@ -99,7 +99,8 @@ LED: parpadeo lento = esperando START · fijo = moviéndose · parpadeo rápido 
    (nominal — calibrar con regla y `-DDIAG_ARB_SPEED_MM_S`/`-DDIAG_ARB_DISTANCE_MM`).
 2. **Cinemática CALIBRADA 2026-06-08**: usa `inverse_kinematics(WHEEL_ANGLES_DEG={330,210,90})`.
    La vieja `{60,-60,180}` estaba en el eje equivocado y daba **círculos**; ya corregida.
-   El M2 (U17) va **invertido por HW** y eso ya está honrado (`MOTOR_INVERT={+1,-1,+1}`).
+   La inversión por motor se honra vía `MOTOR_INVERT` (`config_central.h`); desde el
+   recableado 2026-06-11 es `{+1,+1,+1}` en ambos robots.
    Pendiente de banco: SOLO el tuneo fino del lateral (que no rote) + confirmar el
    SENTIDO de la traslación. → **TASK-101**.
 

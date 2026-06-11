@@ -24,7 +24,8 @@ const MotorPins MOTOR_PINS[3] = {
 
 // Configuración de las 3 ruedas omni del robot.
 // El indice i alinea: Motor_i <-> MOTOR_PINS[i]/MOTOR_INVERT[i]/MOTOR_MIN_PWM[i] (driver) <-> WHEEL_ANGLES_DEG[i] (geometria) <-> posicion fisica.
-// ROBOT1 (confirmado Gustavo 2026-06-08): i=0 M1/U5 330deg delantera-IZQUIERDA · i=1 M2/U17 210deg delantera-DERECHA (INVERTIDO HW) · i=2 M3/U7 90deg trasera.
+// ROBOT1 (confirmado Gustavo 2026-06-08): i=0 M1/U5 330deg delantera-IZQUIERDA · i=1 M2/U17 210deg delantera-DERECHA · i=2 M3/U7 90deg trasera.
+// (El "INVERTIDO HW" del M2 de R1 quedó OBSOLETO el 2026-06-11: recableado DERECHO en la reparación → MOTOR_INVERT={+1,+1,+1} en ambos robots.)
 const WheelConfig WHEELS[3] = {
     { WHEEL_ANGLES_DEG[0] * PI_F / 180.0f, WHEEL_RADIUS_MM },
     { WHEEL_ANGLES_DEG[1] * PI_F / 180.0f, WHEEL_RADIUS_MM },

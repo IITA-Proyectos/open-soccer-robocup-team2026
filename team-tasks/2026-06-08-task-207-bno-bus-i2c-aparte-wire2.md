@@ -81,3 +81,8 @@ El arquero degrada con gracia: navega por **línea (DOWN) + cámara (pelota/arco
 - Histórico: el BNO de ROBOT1 estuvo en un bus aparte y lo movieron a `Wire` el 2026-05-31 para
   liberar el bus para DOWN — ese movimiento es el origen de la contención. ROBOT2 quedó con el
   bus aparte (`Wire2` 24/25).
+- 2026-06-11: **la TOP de R1 fue RECABLEADA a la arquitectura de R2** en la reparación (primario
+  `Wire2` 24/25 + secundario `Wire`; scan I²C 0x28 en Wire2 ✓) → donde esta task dice "flashear
+  `top_robot1`" hoy corresponde **`top_robot2_pri`** (envs `top_robot1*` = cableado viejo).
+  ⚠️ Los BNOs de R1 quedaron DESCONECTADOS (R1 corre sin gyro) → el criterio de cierre queda
+  pendiente de reconectar BNO.

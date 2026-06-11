@@ -25,7 +25,7 @@ requested-by: "Gustavo Viollaz (@gviollaz)"
 | Motor (firmware) | Driver | Pines INA/INB/PWM | Sentido (MOTOR_INVERT) | Ángulo rueda | Posición física |
 |---|---|---|---|---|---|
 | Motor 1 | U5  | 2 / 5 / 3   | **+1** (normal)             | 330deg | Delantera **izquierda** ¹ |
-| Motor 2 | U17 | 8 / 7 / 6   | **-1** (INVERTIDO por HW)   | 210deg | Delantera **derecha** ¹ |
+| Motor 2 | U17 | 8 / 7 / 6   | **+1** desde el recableado 2026-06-11 (histórico: -1 con el cableado de fábrica PRE-reparación) | 210deg | Delantera **derecha** ¹ |
 | Motor 3 | U7  | 11 / 12 / 4 | **+1** (normal)             | 90deg | **Trasera** (centro) ² |
 
 ¹ El lado izquierda/derecha del par delantero quedó DEFINIDO con la disposición física real (CALIBRADO 2026-06-08, Gustavo, banco): M1 = delantera IZQUIERDA, M2 = delantera DERECHA. Ligado a `WHEEL_ANGLES_DEG = {330, 210, 90}`.
@@ -81,15 +81,17 @@ constexpr int MOTOR_DIR[3] = { +1, +1, +1 };
   Serial Monitor lo imprime al arrancar (`M1 M2 M3 → CW/CCW`) para confirmar
   **antes** de soltar el robot.
 
-> ⚠️ **Importante (producción) — actualizado 2026-06-03:** el motor 2 (driver
-> U17) tiene **INA/INB invertidos por hardware** (validado en banco por
-> María/Elías con `diag_central_line_sweep`, donde `motor2()` cruza INA/INB y
-> `ROT_M2=-1`). Producción ya lo honra: `config_central.h` define
-> `MOTOR_INVERT[3] = {+1,-1,+1}` (ROBOT1) y `motors_zircon.cpp` multiplica el PWM
+> ⚠️ **Importante (producción) — actualizado 2026-06-11:** **M2 = +1 desde el
+> recableado 2026-06-11 (histórico: -1 con el cableado de fábrica
+> PRE-reparación).** Con el cableado de fábrica el motor 2 (driver U17) tenía
+> INA/INB invertidos por hardware (validado en banco 2026-06-01 por María/Elías
+> con `diag_central_line_sweep`) y producción lo compensaba con
+> `MOTOR_INVERT[3] = {+1,-1,+1}` (ROBOT1). En la reparación 2026-06-10/11 el M2
+> quedó RECABLEADO DERECHO → hoy AMBOS robots usan `MOTOR_INVERT={+1,+1,+1}`
+> (validado en piso, commit 8d5fc90). `motors_zircon.cpp` multiplica el PWM
 > firmado por ese signo antes de manejar INA/INB. **Fuente única del sentido por
 > motor = `MOTOR_INVERT` en `config_central.h`** (no repetir el dato en otros
-> docs; referenciarlo). ⚠️ ROBOT2 (delantero) NO testeado — ver el comentario de
-> `MOTOR_INVERT` en la rama ROBOT2 de `config_central.h`.
+> docs; referenciarlo).
 
 ## Procedimiento operativo
 
@@ -171,7 +173,7 @@ robustez" abajo — antes saltaba solo y eso ya está arreglado).
 | Motor (firmware) | Pines | Driver | Rueda física | ¿Gira? | Sentido (MOTOR_INVERT) |
 |---|---|---|---|---|---|
 | Motor 1 | INA=2, INB=5, PWM=3 | U5 | Delantera **izquierda** (330deg, CALIBRADO 2026-06-08) | ☑ Sí | **+1** (normal) |
-| Motor 2 | INA=8, INB=7, PWM=6 | U17 | Delantera **derecha** (210deg, CALIBRADO 2026-06-08) | ☑ Sí | **-1** (INVERTIDO por HW) |
+| Motor 2 | INA=8, INB=7, PWM=6 | U17 | Delantera **derecha** (210deg, CALIBRADO 2026-06-08) | ☑ Sí | **+1** desde el recableado 2026-06-11 (histórico: -1 PRE-reparación) |
 | Motor 3 | INA=11, INB=12, PWM=4 | U7 | **TRASERA** (centro, 90deg, confirmado banco) | ☑ Sí | **+1** (normal) |
 
 > **Nota:** izq/der del par delantero ya DEFINIDO (CALIBRADO 2026-06-08, Gustavo, banco). Datos de sentido validados en banco María/Elías 2026-06-01 (`diag_central_line_sweep_robot1`), re-confirmados 2026-06-06 (commit 8956d10). Pendiente de banco: SOLO el tuneo fino del lateral + confirmar el sentido de la traslación.
@@ -217,12 +219,14 @@ Primer test de banco exitoso con el sketch ya robustecido. Robot físico **#1**
 
 - ✅ **Los 3 motores giran y esperan el botón en cada paso.**
 
-> ⚠️ **CORREGIDO 2026-06-03.** La conclusión original de esta sección decía
-> `MOTOR_DIR = {+1,+1,+1}` (sin inversiones). Quedó **superado**: el banco
+> ⚠️ **CORREGIDO 2026-06-03 — y RE-CORREGIDO 2026-06-11.** La conclusión original
+> de esta sección decía `MOTOR_DIR = {+1,+1,+1}` (sin inversiones). El banco
 > posterior (María/Elías, `diag_central_line_sweep_robot1`, 2026-06-01) mostró
-> que el **motor 2 (driver U17) va INVERTIDO por hardware** (INA/INB cruzados;
-> `ROT_M2=-1`). El sentido validado para ROBOT1 es **`{+1, -1, +1}`**, ya cargado
-> en producción (`config_central.h` → `MOTOR_INVERT` + `motors_zircon.cpp`).
+> que el **motor 2 (driver U17) iba INVERTIDO por hardware** (INA/INB cruzados;
+> `ROT_M2=-1`) → `{+1, -1, +1}` para ROBOT1. **Desde la reparación 2026-06-10/11
+> eso quedó superado: M2 = +1 desde el recableado 2026-06-11 (histórico: -1 con
+> el cableado de fábrica PRE-reparación)** → hoy `MOTOR_INVERT={+1,+1,+1}` en
+> ambos robots (`config_central.h` + `motors_zircon.cpp`, commit 8d5fc90).
 > La nota del viernes 2026-05-29 había dejado la tabla de sentidos **en blanco**;
 > el dato real lo aportó el banco del arquero que SÍ anduvo.
 
@@ -255,7 +259,7 @@ El sketch tenía dos bugs de banco, ya corregidos (host-verificados, compila):
 |---|---|---|
 | 1 | ~~**Veredicto pines 7/8 (TASK-036)**~~ → ✅ **RESUELTO 2026-05-31 por reasignación de UART** (no por aislar el motor): el link DOWN→CENTRAL se movió a **Serial1 (0/1)** y TOP→CENTRAL a **Serial7 (28/29)**, dejando los pines **7/8 exclusivos del motor 2 (U17)**. Ya no hay que decidir Serial2 vs Serial7 — el link es **Serial1**. | Cerrado. |
 | 2 | ~~**Correspondencia geométrica exacta de la rueda física**~~ → ✅ **DEFINIDA** (CALIBRADO 2026-06-08): M1 = delantera IZQUIERDA, M2 = delantera DERECHA, M3 = trasera; `WHEEL_ANGLES_DEG = {330, 210, 90}`. Queda SOLO el tuneo fino del lateral (que no rote) + confirmar el sentido de la traslación. | Banco: `diag_central_strafe_robot1` para tunear el lateral y confirmar el sentido. |
-| 3 | **Orientación / sentido por motor (`MOTOR_INVERT`)** | ROBOT1 validado: **M2 (U17) invertido → `{+1,-1,+1}`**, ya en `config_central.h` + `motors_zircon.cpp` (banco María/Elías 2026-06-01). **Falta ROBOT2/delantero**: correr este diag en el delantero y cargar su `MOTOR_INVERT` (ahí U17 es el motor 1). |
+| 3 | **Orientación / sentido por motor (`MOTOR_INVERT`)** | ROBOT1: **M2 = +1 desde el recableado 2026-06-11** (histórico: -1 con el cableado de fábrica PRE-reparación, banco María/Elías 2026-06-01) → hoy `{+1,+1,+1}` en AMBOS robots, ya en `config_central.h` + `motors_zircon.cpp` (commit 8d5fc90). ROBOT2 validado 2026-06-09 (`{+1,+1,+1}`). |
 | 4 | Convención global de giro (`+omega` = horario/antihorario) | `diag_central_drive` + IMU/heading (ver caja ⚠️ arriba) |
 | 5 | ~~Confirmar `PIN_KICKER_SOL` (TASK-011)~~ — **CANCELADO**: el robot no tiene kicker físico (empuja por inercia); TASK-011 cancelada. | — |
 | 6 | Cinemática real — `WHEEL_ANGLES_DEG = {330, 210, 90}` **CALIBRADO 2026-06-08** en `config_central.h`; falta confirmar `WHEEL_RADIUS_MM` y el SENTIDO de la traslación en banco | `diag_central_strafe_robot1` (tuneo fino del lateral + confirmar sentido) |

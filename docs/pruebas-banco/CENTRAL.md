@@ -64,7 +64,10 @@
 ### CARD CENTRAL-2: Sentido de giro / MOTOR_INVERT R2
 > ✅ **HECHA — banco 2026-06-09 (Gustavo):** los 3 motores de R2 giraron HORARIO con el drive
 > directo del diag → **`MOTOR_INVERT={+1,+1,+1}`** (el U17 de ESA placa NO está invertido por
-> HW, a diferencia de la Zircon de R1). Ya cargado en `config_central.h` (rama ROBOT2).
+> HW). Ya cargado en `config_central.h` (rama ROBOT2). **Actualización 2026-06-11:** el U17 de
+> la Zircon de R1, que SÍ estaba invertido, quedó RECABLEADO DERECHO en la reparación → hoy
+> `MOTOR_INVERT={+1,+1,+1}` en AMBOS robots (validado en piso, commit 8d5fc90); las menciones
+> a `{+1,-1,+1}` de abajo son del cableado viejo.
 - **Objetivo:** validar el array `MOTOR_INVERT[3]` para ROBOT2 (hoy copiado de R1 `{+1,-1,+1}` **sin validar**, con la trampa de índices documentada en `config_central.h:50` y `robot2.h`).
 - **Placa:** CENTRAL (Teensy 4.1).
 - **Programa / env:** `cd "software/teensy/Soccer 2026" && pio run -e diag_central_motors -t upload` (misma corrida que CENTRAL-1, mirando el SENTIDO).
@@ -91,7 +94,8 @@
 > con el **motion lateral estándar** (3 técnicas): piso por rueda `MOTOR_MIN_PWM={70,70,107}`
 > (trasera barrida 42→107) + impulso inicial `{130,130,140}` PWM ×40 ms (`-DCENTRAL_MOTOR_KICKSTART`)
 > + freno anticipado de la trasera 66 ms (`-DCENTRAL_REAR_BRAKE_LEAD`). Para **ROBOT1**, que arranca
-> de esos MISMOS valores, ver la **CARD CENTRAL-3b** (verificación pendiente).
+> de esos MISMOS valores, ver la **CARD CENTRAL-3b** (✅ pisos {70,70,107} + kickstart validados
+> en piso 2026-06-11).
 - **Objetivo:** con `WHEEL_ANGLES_DEG={330,210,90}` (**CALIBRADO 2026-06-08**, `config_central.h:113`), confirmar que el strafe es **traslación pura** y hacer el **tuneo fino del lateral** (que no rote) + **confirmar el SENTIDO** de la traslación (si va al revés, sacar el +180 → `{150,30,270}`). El strafe abre lazo con `omega=0`: si las ruedas/ángulos están bien, va de costado sin rotar. (La vieja `{60,-60,180}` estaba en el eje equivocado y daba círculos; ya corregida — esto es ajuste fino, no diagnóstico de círculos.)
 - **Placa:** CENTRAL (Teensy 4.1).
 - **Programa / env (arquero):** `cd "software/teensy/Soccer 2026" && pio run -e diag_central_strafe_robot1 -t upload`
@@ -105,13 +109,17 @@
 - **Qué esperar si PASA:** el robot se desliza lateral **mirando al frente** (sin girar) ~30 cm a cada lado. Serial imprime el estado `STRAFE`/`PAUSE` y la dirección.
 - **Resultados posibles:**
   - **A)** Traslación lateral limpia, deriva mínima → `WHEEL_ANGLES` OK.
-  - **B)** El robot **rota residual** mientras debería ir recto → resta tuneo fino del lateral. Para ROBOT1 los ángulos ya están CALIBRADOS (`{330,210,90}`) y `MOTOR_INVERT={+1,-1,+1}` validado, así que un residual chico es ajuste fino (no los "círculos" de la vieja `{60,-60,180}`). Para ROBOT2 (esta sección) `MOTOR_INVERT` sigue sin validar → **resolver CENTRAL-1/2 ANTES** de concluir sobre los ángulos de R2.
+  - **B)** El robot **rota residual** mientras debería ir recto → resta tuneo fino del lateral. Para ROBOT1 los ángulos ya están CALIBRADOS (`{330,210,90}`) y `MOTOR_INVERT={+1,+1,+1}` validado (desde el recableado del M2 2026-06-11; el `{+1,-1,+1}` era del cableado viejo), así que un residual chico es ajuste fino (no los "círculos" de la vieja `{60,-60,180}`). Para ROBOT2 `MOTOR_INVERT={+1,+1,+1}` ya quedó validado (banco 2026-06-09, CARD CENTRAL-2).
   - **C)** Va en diagonal constante → un solo motor invertido o un ángulo de rueda errado.
 - **Feedback a devolver a la IA:** describir literal lo observado, p.ej.
   `strafe_robot1: el robot gira en círculo en sentido horario en vez de ir de costado` o `va recto de costado, deriva ~5cm en 30cm`. Si hay físico medido de los ángulos de montaje de las ruedas, pegarlos (grados desde +X).
 - **Tiempo estimado:** 5 min.
 
 ### CARD CENTRAL-3b: Motion lateral estándar en ROBOT1 — verificar los valores validados de R2
+> ✅ **HECHA — piso 2026-06-11 (banco nocturno post-reparación):** R1 strafea con pisos
+> `{70,70,107}` + kickstart `{130,130,140}` validados en piso. Además el M2 quedó RECABLEADO
+> DERECHO en la reparación → `MOTOR_INVERT={+1,+1,+1}` (commit 8d5fc90). La card queda como
+> referencia para re-validar si se toca el chasis o el cableado.
 - **Objetivo:** verificar en el **arquero (ROBOT1)** los valores del motion lateral estándar que R2 validó en banco 2026-06-09: piso `MOTOR_MIN_PWM={70,70,107}` + impulso inicial `{130,130,140}` PWM ×40 ms + freno anticipado de la trasera 66 ms. R1 ARRANCA de esos valores por decisión de Gustavo (2026-06-09), pero su historia previa avisa: el `{70,70,42}` viejo de R1 era del banco 2026-06-08, donde la trasera se BAJÓ porque con piso alto el robot **rotaba** en el strafe.
 - **Placa:** CENTRAL (Teensy 4.1) del ROBOT1.
 - **Programa / env:** la base es `diag_central_strafe_robot1`, pero ⚠️ **ese env HOY no activa las 3 técnicas** (los flags `-DCENTRAL_MOTOR_KICKSTART` / `-DCENTRAL_REAR_BRAKE_LEAD` solo están en `diag_central_strafe_robot2_kick`). Falta un env espejo `diag_central_strafe_robot1_kick` (= `diag_central_strafe_robot1` + esos 2 flags; **OJO**: su `build_src_filter` explícito necesita además `+<shared/motor_kickstart.cpp>`, copiar el patrón del env `_robot2_kick` en `platformio.ini`). Compila el equipo (sesión `pio`).

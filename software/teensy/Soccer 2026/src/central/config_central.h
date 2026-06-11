@@ -79,7 +79,8 @@ namespace iitasoccer {
     // drive directo del diag (sin inversión). DOS correcciones vs lo que asumía el repo:
     //   1. Los pines NO están rotados (la suposición "U17 = motor 1" venía del delantero
     //      2025 y es FALSA en el robot2 2026 → tabla de pines = la de ROBOT1).
-    //   2. El U17 de ESTA placa NO está invertido por HW (en la Zircon de R1 sí) →
+    //   2. El U17 de ESTA placa NO está invertido por HW (en la Zircon de R1 lo
+    //      ESTABA hasta el recableado de la reparación 2026-06-11; hoy tampoco) →
     //      MOTOR_INVERT neutro {+1,+1,+1}.
     constexpr int PIN_INA1 = 2;     // M1 = U5  → delantera IZQUIERDA
     constexpr int PIN_INB1 = 5;

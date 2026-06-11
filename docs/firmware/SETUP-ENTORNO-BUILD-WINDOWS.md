@@ -95,8 +95,13 @@ paquetes): **WinLibs**.
 En tu terminal, en la carpeta del proyecto Teensy:
 
 ```bat
-cd "C:\Users\violl\futbol2026\open-soccer-robocup-team2026\software\teensy\Soccer 2026"
+cd "C:\Users\violl\iitasoccer\soccer-main\software\teensy\Soccer 2026"
 ```
+
+> ⛔ **OJO (fix 2026-06-11):** este paso decía `C:\Users\violl\futbol2026\...` — ese
+> directorio es un clon VIEJO/divergente ("señuelo", ver HANDOFF-NUEVA-SESION.md).
+> Compilar o flashear desde ahí = firmware desactualizado SIN ningún error visible.
+> El repo real es **`C:\Users\violl\iitasoccer\soccer-main`**.
 
 **3a. Cachear plataforma Teensy + verificar que compila DOWN:**
 ```bat

@@ -55,7 +55,7 @@ En `.claude/skills/` — 8 skills organizadas:
 
 **Disciplina operativa (no negociable):**
 - **`hardware-test-protocol`** — cómo se diseña y ejecuta un test en hardware real. Referenciada por las vibe-* y rcj-soccer-coach.
-- **`engineering-journal`** — disciplina del journal + research pipeline (backlog → in-progress → completed). El repo está parado hace 7 semanas; esta skill lo reactiva.
+- **`engineering-journal`** — disciplina del journal + research pipeline (backlog → in-progress → completed). (La nota original "el repo está parado hace 7 semanas" era de 2026-05; el journal está activo a diario desde entonces.)
 
 **Técnica específica:**
 - **`openmv-vision-tuning`** — calibración de cámaras OpenMV (color LAB, exposición, FOV, multi-camera) para distintas iluminaciones. Crítica para Incheon.
@@ -86,7 +86,7 @@ Antes de hacer CUALQUIER cosa en este repo:
 5. **Research pipeline activo** — temas pendientes a `research/backlog/`, en análisis a `research/in-progress/`, conclusiones a `research/completed/`.
 6. **Tareas del equipo a `team-tasks/`** — cualquier acción que requiere humano (medir hardware, soldar, fabricar, decidir) se documenta como archivo en `team-tasks/YYYY-MM-DD-task-NNN-*.md` con asignado, prioridad y criterio de cierre. Ver [`team-tasks/README.md`](team-tasks/README.md). **No crear TASK nueva sin verificar que no exista una similar** (`grep -i tema team-tasks/`).
 7. **DRC + ERC obligatorios antes de mandar a fabricar PCB** — la placa DOWN llegó con 10 nets sin rutear porque este paso se saltó. No repetir. Ver `team-tasks/TASK-002`.
-8. **Moratoria temporal de fábrica de papel (agregado 2026-05-19)** — hasta que el robot se encienda al menos UNA vez con COMM flasheado + DOWN reportando línea por UART real, NO se generan specs nuevas ni planes nuevos ni decisions nuevas. Una sesión Claude por semana, alcance único: desbloquear hardware. Esto sale al confirmar el primer hardware-up en el journal.
+8. **~~Moratoria temporal de fábrica de papel (agregado 2026-05-19)~~ — CERRADA 2026-06-11.** Su condición de salida se cumplió hace semanas: DOWN reportando línea por UART real (banco 2026-05-24), COMM flasheada (TASK-006, 2026-06-01) y el robot ya jugó una demo completa (2026-06-11). Queda vigente el ESPÍRITU: docs nuevos solo acompañando trabajo real (código/banco), nunca en lugar de él.
 
 ## Otras sesiones / no contaminar
 

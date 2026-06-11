@@ -13,6 +13,15 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> **📋 AUDITORÍA INTEGRAL 2026-06-11 (48 agentes, 122 hallazgos, 35 confirmados adversarialmente):**
+> el backlog consolidado y priorizado vive en **[`docs/BACKLOG-INCHEON.md`](BACKLOG-INCHEON.md)**
+> (P0: deliverables jueces + visión en sede + cap térmico de motores; P1: B1 freno-clavado,
+> statics GK, delay 2s en competencia, heading sin detector de muerte, etc.). El mapa de envs
+> vigentes/obsoletos ahora es **[`docs/pruebas-banco/QUE-FLASHEO-HOY.md`](pruebas-banco/QUE-FLASHEO-HOY.md)**.
+> Fixes docs-only de esa noche ya aplicados (detector heading del analizador, default_envs,
+> tutorial build, banner TOP.md, moratoria CLAUDE.md cerrada). Journal:
+> `journal/2026-06-11-auditoria-integral-repo-y-backlog.md`.
+
 > **🎓 PRÁCTICA CON ALUMNOS 2026-06-12 (preparada 2026-06-11 post-demo — vale sobre lo de abajo):**
 > La demo del 2026-06-11 SE HIZO. Siguiente hito: práctica de 2 h en cancha, un robot por alumno.
 > **Virginia + R2 = ARQUERO INTEGRAL** (FSM v3.3 existente + debut de INTERCEPT/CLEAR con pelota):
@@ -305,10 +314,10 @@ nativo, pero ya no es el único camino. Ver
 - **Tema-a-analizar (NO implementado):** llevar el freno anticipado al lateral de la FSM del
   arquero (patrol/intercept) — el corte necesita saber cuándo TERMINA el movimiento, y en el
   control continuo de la FSM no existe ese evento (es glue futuro; `strategy.cpp` no se toca).
-- **Pendiente equipo (sesión `pio` + banco):** activar los flags en los envs de producción
-  (cambia el binario — es lo pedido; OJO: todo env con `build_src_filter` explícito que active
-  `-DCENTRAL_MOTOR_KICKSTART` necesita `+<shared/motor_kickstart.cpp>`, como ya hace
-  `diag_central_strafe_robot2_kick`) + crear/usar un strafe-kick de R1 para la verificación.
+- **✅ HECHO (053fd0a, 2026-06-10 — corregido en auditoría 2026-06-11):** los envs de
+  producción `central_robot1`/`central_robot2` YA llevan `-DCENTRAL_MOTOR_KICKSTART` y
+  `-DCENTRAL_REAR_BRAKE_LEAD` (igual que los diags de strafe de ambos robots). Lo ÚNICO que
+  sigue pendiente del freno anticipado es el glue de FSM del bullet anterior (tema-a-analizar).
 - Canónico: fila «CENTRAL — motores» de `FUENTES-DE-VERDAD.md` + `config_central.h` +
   `motors_zircon.cpp` + `MOTION-CONTROL-PLAN-2026.md`. Journal:
   `2026-06-09-banco-robot2-bringup-sensores-y-bno-wire2.md` (sección motores).

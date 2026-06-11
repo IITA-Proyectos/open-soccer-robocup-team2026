@@ -537,11 +537,11 @@ App de PC: `tools/monitor-base/` (`python -m monitor_base`).
 |------|-----|----------|---------|
 | DOWN-1, DOWN-2 | `down_wdt` | SÍ (platformio.ini:982) | src/down/main_down.cpp:64-154 |
 | DOWN-3 | `down_lean` + `diag_central_rx_all`/`diag_top_comm_down` | SÍ (988 / 956) | config_down.h:68-70, line_ring.cpp:142-144 |
-| DOWN-4 | `diag_down_cpu` | **NO — falta crear** | API en line_ring.h:53-54 |
+| DOWN-4 | `diag_down_cpu` | **SÍ — ✅ creado 2026-06-06** (ver banner del tope) | API en line_ring.h:53-54 |
 | DOWN-5 | `diag_down` | SÍ (174) | src/diag/main_diag_down.cpp |
 | DOWN-6 | `diag_down_calibracion` | SÍ (702) | src/diag/diag_down_calibracion.cpp |
 | DOWN-7 | `diag_down` | SÍ (174) | src/diag/main_diag_down.cpp:82-158 |
-| DOWN-8 | `down_robot2` | **NO — falta crear** (DOWN_NUM_OTOS_CONNECTED=0) | firmware ya soporta NUM_OTOS=0: otos.cpp:81,86,162 |
+| DOWN-8 | `down_robot2` | **SÍ — ✅ creado 2026-06-06** (ver banner del tope) | firmware ya soporta NUM_OTOS=0: otos.cpp:81,86,162 |
 | DOWN-9 | `diag_down_cpu` (directo) / `diag_down` (indirecto) | parcial | line_ring.cpp:142-144 |
 | DOWN-10 | `down_debug_telemetry` + app `tools/monitor-base` | SÍ (platformio.ini:1045) — glue NO host-compilado, verificar con `pio run -e down_debug_telemetry` | src/down/down_telemetry_serial.cpp, src/shared/telemetry_down.{h,cpp}, docs/firmware/TELEMETRIA-DOWN.md |
 

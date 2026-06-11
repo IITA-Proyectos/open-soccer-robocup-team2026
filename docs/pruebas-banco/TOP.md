@@ -1,5 +1,14 @@
 # TEST-CARDS de banco — Placa TOP (Teensy 4.0)
 
+> ⚠️ **ACTUALIZACIÓN 2026-06-11 (recableado de R1 — PISA a las cards de IMU de abajo):**
+> desde el recableado, **AMBAS TOP usan la arquitectura primario-en-Wire2** (BNO de control
+> en Wire2 pines 24/25; el bus Wire 18/19 queda para ToFs + secundario si lo hay) → **el env
+> vigente para las DOS TOP es `top_robot2_pri`**. Los envs `top_robot1*` = cableado VIEJO,
+> **NO flashear** (buscan el BNO en el bus equivocado). R1 además corre hoy **SIN gyro**
+> (BNOs desconectados): toda card que pida `hdg` trackeando NO aplica a R1 hasta reconectar.
+> Las cards TOP-2 (env `top_robot1_bnofreeze`), TOP-4 (`diag_bno_left`, lee 0x28 en Wire) y
+> TOP-5 (`top_robot1`) quedan para HW viejo / re-test de BNOs en banco — no para los robots.
+
 > Cerebro sensorial del robot. Lee 1 BNO055 (0x28) + 4 ToF VL53L7CX + HC-SR04 + 2 camaras
 > OpenMV + arbitro GPIO, fusiona pose y manda `WorldSnapshot` a CENTRAL.
 >

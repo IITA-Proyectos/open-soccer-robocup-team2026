@@ -10,7 +10,7 @@ El equipo construye y programa **2 robots autónomos** (un arquero y un delanter
 
 - **Arquitectura**: distribuida en **3 placas por robot** conectadas por UART — CENTRAL (Teensy 4.1, PCB custom "Zircon") + TOP/ARRIBA (Teensy 4.0) + DOWN/ABAJO (Teensy 4.0). Detalle: [`docs/ARQUITECTURA-3-PLACAS-2026.md`](docs/ARQUITECTURA-3-PLACAS-2026.md).
 - **Microcontroladores**: 3× Teensy por robot (1× 4.1 + 2× 4.0) + ESP32-C6 en la placa COMM (señales de árbitro RCJ)
-- **Visión**: 2× cámaras OpenMV (H7 / H7 Plus) con MicroPython — frontal + trasera
+- **Visión**: 2× cámaras **OpenMV N6** (PAG7936) con MicroPython — frontal + trasera. ⚠️ NO son H7: en fw 4.8.1 los scripts deben usar el módulo `sensor` + `pyb.UART` (`machine.UART` y `pyb.LED` crashean). Script vivo: `hardware/electronics/camaras-openmv/main.py`; calibración: `docs/firmware/CALIBRACION-VISION-N6.md`.
 - **Comunicación**: UART entre placas (CENTRAL↔TOP↔DOWN) y OpenMV↔Teensy; ESP32-C6 para árbitros
 - **Sensores**: línea (anillo de 32 sensores ópticos), 2× OTOS (odometría), IMU/giróscopo (BNO055), ToF VL53L7CX, ultrasonido HC-SR04
 - **Actuadores**: motores TT con drivers H-bridge (base omni-3), dribbler (opcional). **Sin kicker físico**: el delantero empuja la pelota por inercia.

@@ -100,9 +100,13 @@ def detectores(rows):
     if raros > 5:
         hallazgos.append(f"PWM SIN COMANDO: {raros} muestras con cmd~0 pero PWM>60 (¿kickstart pegado? ¿estado raro?).")
     # 4. Heading congelado con robot comandado a girar
+    # FIX 2026-06-11 (auditoría): el umbral era 3000, pero la columna cmd_w_dps ya
+    # está en grados/segundo (el firmware vuelca w_cds/100, acotado a ±327 por el
+    # clamp del HeadingPID) → 3000 era INALCANZABLE y el detector del BNO congelado
+    # (el modo de falla #1 del equipo) jamás disparaba. Umbral correcto: 30 dps.
     frozen = 0
     for a, b in zip(rows, rows[1:]):
-        if a["hdg_valid"] and abs(a["w"]) > 3000 and abs(a["hdg"] - b["hdg"]) < 0.01:
+        if a["hdg_valid"] and abs(a["w"]) > 30 and abs(a["hdg"] - b["hdg"]) < 0.01:
             frozen += 1
     if frozen > 25:  # >0.5 s acumulado girando sin que el heading se mueva
         hallazgos.append(f"HEADING SOSPECHOSO: {frozen} muestras girando (|w|>30 dps) con hdg congelado — ¿BNO frizado?")

@@ -39,7 +39,12 @@ namespace iitasoccer {
     // (driver U17, pines 8/7/6) tiene INA/INB cruzados por HW → va invertido.
     // Fuente: docs/firmware/DIAG-CENTRAL-MOTORS.md + journal 2026-05-29 / 2026-06-01.
     // + RE-CONFIRMADO banco 2026-06-06 (commit 8956d10) tras rearmar el robot: se mueve derecho + esquiva la línea.
-    constexpr int MOTOR_INVERT[3] = { +1, -1, +1 };
+    // 🔧 BANCO R1 2026-06-11 (post-REPARACIÓN): el M2 quedó RECABLEADO DERECHO — con la
+    // compensación histórica -1 giraba al revés en el piso (y las delanteras se cancelaban
+    // entre sí: "apenas se mueven y la trasera les gana"). El -1 era para el cableado
+    // PRE-reparación (U17 INA/INB cruzados de fábrica, ver historia abajo). Si alguna vez
+    // se recablea como estaba, volver a {+1,-1,+1}.
+    constexpr int MOTOR_INVERT[3] = { +1, +1, +1 };
     // Piso de PWM POR RUEDA (deadzone bajo carga). Física (banco R1 06-08 + R2 06-09, Gustavo):
     // el PWM mínimo para que la rueda ARRANQUE depende de la fricción que ve ESA rueda — las
     // DELANTERAS (idx0/idx1) trabajan OBLICUAS a 60° (sus rodillos ruedan de costado) → MUCHA
@@ -58,7 +63,10 @@ namespace iitasoccer {
     //    (107→95→85→…); la historia del 42 está en git.
     // 🔧 TUNEAR: delanteras (idx0/idx1) → SUBÍ si no empujan el robot en el piso (70→90…).
     // ⚠️ NO pasar ~150 (motores brushed 5V a 7.4V se queman > ~70%). Orden {M1, M2, M3}.
-    constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 107 };  // ⚠️ A VERIFICAR EN BANCO R1 (parte de R2)
+    constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 107 };  // ✅ BANCO R1 2026-06-11: vuelto a los valores
+    // de R2 tras descubrir que el "delanteras débiles" era el M2 RECABLEADO (invert -1→+1, ver
+    // MOTOR_INVERT arriba): con M2 al revés las delanteras se cancelaban entre sí. Con 90 las
+    // delanteras sobraban (frente girando: ratio 90/107 ≈ 0.84 vs ideal 0.5). {70,70,107} = mix R2.
     // Eficiencia relativa PWM→velocidad por rueda (×100) — para el piso por ESCALADO
     // UNIFORME (-DCENTRAL_FLOOR_SCALE, motor_floor_scale.h). Derivada del banco R2:
     // la trasera alineada rinde ~1.31× más velocidad por PWM que las oblicuas

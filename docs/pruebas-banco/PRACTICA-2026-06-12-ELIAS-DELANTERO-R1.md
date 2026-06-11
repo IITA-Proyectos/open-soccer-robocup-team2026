@@ -227,3 +227,12 @@ La secuencia que Gustavo pidió — *"busca girando, se acerca, gira a su
 alrededor hasta alinearla con el arco, y avanza con fuerza derecho usando los
 sensores del piso"* — es `SEARCH → POSITION → APPROACH → PUSH`. Hoy validás
 cada flecha, y el paso 6 mide con cinta métrica la palabra "derecho".
+
+---
+
+## ⭐ ¿Terminaste antes de las 2 horas?
+
+Hay una prueba OPCIONAL de 25-30 min (de banco, sin cancha): la **"cámara
+pegajosa"** — un fix nuevo para que dos objetos naranjas no inventen una pelota
+fantasma. El primero de los dos que termine su secuencia la puede probar:
+[`PRACTICA-2026-06-12-OPCIONAL-CAMARA-PEGAJOSA.md`](PRACTICA-2026-06-12-OPCIONAL-CAMARA-PEGAJOSA.md)

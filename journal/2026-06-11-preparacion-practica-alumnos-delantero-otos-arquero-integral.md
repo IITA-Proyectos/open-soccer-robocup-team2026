@@ -112,6 +112,44 @@ status: firmware listo (gate verde + 8 envs pio SUCCESS) — TODO el hardware pe
 | 4 | INTERCEPT/CLEAR de R2 debutan con pelota real (falsos naranjas) | Fallback `_patrol_bb` sin culpa + caja negra del desastre |
 | 5 | Umbral 250 mm del anti-choque vs distancia de frenado real | Env `_obst` separado (2ª instancia), umbral por flag |
 
+## Addendum (misma sesión): hallazgo de visión + "cámara pegajosa" opcional
+
+Pregunta de Gustavo: ¿el TOP manda a la CENTRAL posición, velocidad, dirección
+y confiabilidad de la pelota, o solo posición? **Respuesta auditada contra el
+código:** el snapshot v3 manda TODO (ball x/y + vx/vy + confidence 0-100)…
+pero la confianza es FICTICIA (80 una cámara / 95 "consenso" / 0, constantes en
+cameras_fusion.cpp) y la CENTRAL no la lee en ningún lado.
+
+**Hallazgo P1 en el camino:** `fuse_ball_dual` PROMEDIA las posiciones cuando
+ambas cámaras reportan pelota — caso geométricamente IMPOSIBLE para una pelota
+física (FOVs opuestos, sin solape) ⇒ siempre hay un falso naranja, y el
+promedio inventa una pelota fantasma en el punto medio (pelota real adelante +
+buzo naranja atrás = "pelota" detrás del robot). Encima premiaba el caso con
+confianza 95. La velocidad (ball_velocity deriva de la posición fusionada)
+hereda picos basura en cada conflicto/parpadeo.
+
+**Fix dejado LISTO (pedido de Gustavo, NO flasheado):** fusión "cámara
+pegajosa" — `src/shared/ball_sticky.h` (puro, 12 tests host en
+test_ball_sticky) + wiring gateado `-DTOP_CAM_STICKY` en cameras_runtime.cpp +
+env **`top_robot2_pri_sticky`** (sirve para la TOP de ambos robots; revertir =
+reflashear `top_robot2_pri`). Regla: una sola ve → esa manda y queda TITULAR;
+ambas ven → la titular manda (memoria de lado), sin titular la MÁS CERCANA;
+conflicto REBAJA la confianza a 60 (en vez de premiar a 95); titularidad expira
+a los 700 ms sin pelota; traspaso legítimo (la pelota rodea al robot) es
+instantáneo. El panel del TOP ahora muestra la confianza: `ball=(x,y)c60`.
+Protocolo de prueba para mañana (OPCIONAL, lo corre el alumno que termine
+primero, ~25-30 min de banco con el ANTES y el DESPUÉS):
+`docs/pruebas-banco/PRACTICA-2026-06-12-OPCIONAL-CAMARA-PEGAJOSA.md`.
+
+**Límite documentado:** no arregla el falso naranja DEL MISMO LADO más grande
+que la pelota (decisión intra-cámara: blob más grande, `pixels_threshold=7` en
+main.py). Eso requiere confianza por blob en el packet cámara→TOP v3
+(wire-breaking, P2) + tune del umbral junto a TASK-022.
+
+**Tema-a-analizar nuevo (P2, sin cambios):** `fuse_goal_dual` tiene el MISMO
+promedio para los arcos (un arco amarillo visto por ambas cámaras = uno es
+falso); menos urgente porque los arcos exigen blobs de 600 px (falsos raros).
+
 ## Temas-a-analizar que siguen abiertos (sin cambios hoy)
 
 Los de la auditoría 2026-06-11: freno de emergencia vs anti-flapping del GK ·

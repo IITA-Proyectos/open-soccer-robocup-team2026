@@ -3,6 +3,9 @@
 #include "cameras_fusion.h"
 #include "ball_velocity.h"
 #include "config_top.h"
+#ifdef TOP_CAM_STICKY
+#include "ball_sticky.h"   // fusión "cámara pegajosa" (opcional práctica 2026-06-12)
+#endif
 
 #include <Arduino.h>
 
@@ -50,6 +53,14 @@ GoalFused  g_goal_blue{};
 BallVelocityState        g_ball_vel{};
 const BallVelocityParams g_ball_vel_params = ball_velocity_default_params();
 
+#ifdef TOP_CAM_STICKY
+// Fusión "cámara pegajosa" (ball_sticky.h, puro host-testeado): reemplaza el
+// PROMEDIO del caso ambas-ven (geométricamente imposible para una pelota →
+// siempre hay un falso positivo) por titularidad con memoria. Solo con el flag.
+BallStickyState        g_ball_sticky{};
+const BallStickyParams g_ball_sticky_params = ball_sticky_default_params();
+#endif
+
 // === Helpers ===
 
 inline bool camera_alive(uint32_t last_ms, uint32_t now_ms) {
@@ -70,7 +81,12 @@ void recompute_fused(uint32_t now_ms) {
         pf.ball_x, pf.ball_y, pf.ball_visible, /*cam_id=*/0, CAMERA_UNIT_TO_MM);
     const CamObs ball_b = cam_obs_to_robot_frame(
         pb.ball_x, pb.ball_y, pb.ball_visible, /*cam_id=*/1, CAMERA_UNIT_TO_MM);
+#ifdef TOP_CAM_STICKY
+    g_ball = ball_sticky_fuse(g_ball_sticky, g_ball_sticky_params,
+                              ball_f, ball_b, front_alive, back_alive, now_ms);
+#else
     g_ball = fuse_ball_dual(ball_f, ball_b, front_alive, back_alive);
+#endif
 
     // Arco amarillo
     const CamObs yellow_f = cam_obs_to_robot_frame(
@@ -114,6 +130,9 @@ void cameras_init() {
     g_goal_yellow = GoalFused{};
     g_goal_blue = GoalFused{};
     ball_velocity_reset(g_ball_vel);
+#ifdef TOP_CAM_STICKY
+    ball_sticky_reset(g_ball_sticky);
+#endif
 }
 
 void cameras_tick() {

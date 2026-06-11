@@ -339,7 +339,11 @@ void loop() {
             Serial.print(cameras_get_ball_x_mm());
             Serial.print(",");
             Serial.print(cameras_get_ball_y_mm());
-            Serial.print(")");
+            // cNN = confianza de la fusión. Clásica: 80 una cámara / 95 ambas.
+            // Pegajosa (TOP_CAM_STICKY): 80 una / 60 CONFLICTO (ambas reportan
+            // pelota = hay un naranja espurio en escena; la titular manda).
+            Serial.print(")c");
+            Serial.print(cameras_get_ball_confidence());
         } else {
             Serial.print("--");
         }

@@ -189,3 +189,12 @@ El ciclo que Gustavo pidió — *"cubre el arco, sale a despejar cuando la ve
 cerca, y vuelve"* — es exactamente `PATROL → INTERCEPT → CLEAR → PATROL`.
 Tu trabajo de hoy es verificar cada flecha de ese ciclo con tus propios ojos
 y dejar la evidencia grabada.
+
+---
+
+## ⭐ ¿Terminaste antes de las 2 horas?
+
+Hay una prueba OPCIONAL de 25-30 min (de banco, sin cancha): la **"cámara
+pegajosa"** — un fix nuevo para que dos objetos naranjas no inventen una pelota
+fantasma. El primero de los dos que termine su secuencia la puede probar:
+[`PRACTICA-2026-06-12-OPCIONAL-CAMARA-PEGAJOSA.md`](PRACTICA-2026-06-12-OPCIONAL-CAMARA-PEGAJOSA.md)

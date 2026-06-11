@@ -29,6 +29,12 @@ tipo: indice-operacional
 > validó en banco → paso 2 del guion de Elías lo chequea A MANO antes de mover nada (bail-out 45°
 > de red). Gate 58/798/0 + 8 envs pio SUCCESS (2026-06-11). Journal:
 > `journal/2026-06-11-preparacion-practica-alumnos-delantero-otos-arquero-integral.md`.
+> **+ OPCIONAL "cámara pegajosa"** (hallazgo P1: `fuse_ball_dual` PROMEDIABA las 2 cámaras en el
+> caso ambas-ven — imposible para una pelota física → pelota fantasma en el punto medio): fix
+> listo y gateado en env **`top_robot2_pri_sticky`** (`-DTOP_CAM_STICKY`, `ball_sticky.h` puro +
+> test_ball_sticky; titular con memoria, conflicto = conf 60, panel `ball=(x,y)cNN`), **NO
+> flasheado** — lo prueba el alumno que termine primero:
+> `docs/pruebas-banco/PRACTICA-2026-06-12-OPCIONAL-CAMARA-PEGAJOSA.md`. Revertir = `top_robot2_pri`.
 
 > **🥅 BANCO 2026-06-09/10 (arquero en ROBOT2 — vale sobre menciones más abajo):**
 > (1) ✅ **Patrulla del arquero v3.2+v3.3 "PEGADA A LA LÍNEA"** (main `c11d770`): mantiene el

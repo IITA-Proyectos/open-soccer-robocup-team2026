@@ -26,8 +26,10 @@ GIRÓ. Con eso el programa nuevo hace tres cosas:
 
 ## 2. Lo que necesitás antes de empezar
 
-- **Robot 1** (el recableado). ⚠️ Su placa TOP todavía vive SOLO por USB (el
-  VIN no está soldado): conectale un **powerbank o USB** a la TOP siempre.
+- **Robot 1** (el recableado). Su placa TOP se alimenta de la **batería del
+  robot**, igual que en robot 2. *(Chequeo rápido: al dar batería, el panel del
+  TOP tiene que aparecer. Si la TOP solo enciende con USB → algo falla en la
+  alimentación: anotar y avisar a Gustavo antes de seguir.)*
 - **Batería cargada > 7,8 V** — medila ANTES y anotala.
 - Laptop con repo actualizado: `git pull` antes de nada.
 - Cancha con línea blanca y un arco "rival" definido.
@@ -71,7 +73,8 @@ frena solo si está por pisar la línea de la cancha (protección siempre activa
 > tabla de problemas. Saber POR QUÉ no anda vale más que "ande".
 
 ### PASO 0 — Preparación (15 min)
-1. Batería: `____ V` (>7,8). TOP con su USB/powerbank puesto.
+1. Batería: `____ V` (>7,8). Con batería puesta, las 3 placas encienden
+   (si la TOP no enciende → avisar, es un fallo de alimentación).
 2. `git pull` + flashear la CENTRAL (comando de arriba).
 3. Monitor: tiene que decir `Role: ATTACKER (FORZADO por flag de banco...)`.
 

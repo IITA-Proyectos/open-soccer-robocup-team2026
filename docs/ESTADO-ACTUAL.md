@@ -77,8 +77,10 @@ tipo: indice-operacional
 > · **BNO-R (0x29): MUERTO desde antes** (unidad quemada) — `imu_R=N` es lo esperado, no es noticia.
 > · **TOP de R1 heredó los fixes**: loop ~220k/s, ToF 4/4 (`min_obst` ok) en el banco 2026-06-10.
 > · **DEMO de R1 = `diag_central_arbitro_strafe_robot1`** (validado end-to-end con la app
->   2026-06-11); ToF derecho (LP pin 11) no enumera — pendiente cable; VIN de la Teensy TOP
->   nueva sin soldar (TOP solo vive por USB) + cortar puente VUSB-VIN.
+>   2026-06-11); ToF derecho (LP pin 11) no enumera — pendiente cable. **CORRECCIÓN 2026-06-11
+>   noche (Gustavo): la TOP de R1 SÍ se alimenta de la batería del robot, igual que R2** — la
+>   nota de la madrugada "VIN sin soldar → TOP solo vive por USB" quedó superada (si la TOP
+>   solo encendiera por USB, eso es un FALLO a reportar, no el estado normal).
 
 > **🔧 ÚLTIMO (2026-06-02 — vale sobre cualquier mención más abajo):** mapa UART final.
 > **TOP (Teensy 4.0):** S1←DOWN · **S2 (7/8)↔COMM** · S3←cam frontal · **S4 (16/17)→CENTRAL** · S5←cam trasera.

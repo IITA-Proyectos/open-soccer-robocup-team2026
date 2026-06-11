@@ -275,6 +275,17 @@ bool sensors_imu_init() {
         Serial.println("[IMU] PRIMARIO (Wire2 0x28) sin ACK -> SALTEO (bus sano)."
                        " Revisar soldadura/alim del BNO de abajo del Teensy.");
     }
+#ifdef TOP_BNO_PRIMARY_ONLY
+    // PRIMARIO-SOLO (banco 2026-06-11, R1 recableado): el SECUNDARIO de Wire se
+    // CONGELÓ en producción y el soft-resync de la fusión eligió al congelado
+    // como referencia "estable" y ARRASTRÓ al primario sano (hdg 0.0 → -142.4
+    // clavado, log de banco). Hasta arreglar ese árbitro (tema-a-analizar:
+    // detectar freeze ANTES de arbitrar deriva), los envs *_pri corren SOLO el
+    // primario de Wire2 (bus propio, nunca se congeló) — sin redundancia, sin
+    // sensor muerto que pueda ganar nada.
+    g_ready[1] = false;
+    Serial.println("[IMU] SECUNDARIO DESHABILITADO (TOP_BNO_PRIMARY_ONLY - primario-solo)");
+#else
     if (i2c_present_on(Wire, g_addr[1])) {
         Serial.println("[IMU] Init BNO SECUNDARIO (Wire 18/19 @ 0x28, comparte con ToF)...");
         g_ready[1] = init_one_bno(g_bno_secondary);
@@ -283,6 +294,7 @@ bool sensors_imu_init() {
         g_ready[1] = false;
         Serial.println("[IMU] SECUNDARIO (Wire 0x28) sin ACK -> SALTEO (bus sano).");
     }
+#endif
 #else
     Serial.println("[IMU] Init BNO055 LEFT (Wire @ 0x28)...");
     g_ready[0] = init_one_bno(g_bno_left);

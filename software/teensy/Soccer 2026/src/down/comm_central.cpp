@@ -21,9 +21,10 @@ namespace {
 FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
 
-#ifdef DOWN_DEBUG_TELEMETRY
+#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)
 // Cache del último LineStatusV2 difundido a CENTRAL (exacto: el que viaja por el
-// cable, con sample_age_ms ya seteado). Lo lee la telemetría USB del modo DEBUG.
+// cable, con sample_age_ms ya seteado). Lo lee la telemetría USB del modo
+// DEBUG/monitor de competencia.
 LineStatusV2 g_last_lsv2{};
 bool         g_last_lsv2_valid = false;
 #endif
@@ -49,7 +50,16 @@ DownModelCfg g_dmcfg = {
     /* lifted_debounce_ms    */ 100,
     /* lifted_min_sensors    */ (NUM_LINE_SENSORS * 7) / 8,
     /* lifted_delta_below    */ 80,
-    /* line_end_min_track_ms */ 200
+    /* line_end_min_track_ms */ 200,
+    // max_weak_sensors (banco 2026-06-12, María/R2): S01/S08 físicamente flojos
+    // (rango total ~70 counts vs ~280 del resto) invalidaban TODA la calib →
+    // robot ciego de línea. Hasta 4 débiles se excluyen del centroide y se
+    // juega con los demás (EV_CALIB_SUSPECT queda prendido como aviso); con 5+
+    // la calib de verdad no sirve → data_valid=0 como siempre. Override por -D.
+#ifndef DOWN_MAX_WEAK_SENSORS
+#define DOWN_MAX_WEAK_SENSORS 4
+#endif
+    /* max_weak_sensors      */ DOWN_MAX_WEAK_SENSORS
 };
 bool g_dm_init = false;
 
@@ -156,7 +166,7 @@ void comm_central_send_line_urgent() {
     // Difundir la línea a AMBAS placas (CENTRAL + TOP) con SEQ por enlace.
     down_tx_broadcast_line(s);
 
-#ifdef DOWN_DEBUG_TELEMETRY
+#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)
     // Snapshot del LineStatusV2 EXACTO que se difundió, para la telemetría USB.
     g_last_lsv2       = s;
     g_last_lsv2_valid = true;
@@ -220,7 +230,14 @@ uint32_t comm_central_get_frames_sent()    { return down_tx_get_sent(0); }
 uint32_t comm_central_get_frames_dropped() { return down_tx_get_dropped(0); }
 uint32_t comm_central_get_crc_errors()      { return g_decoder.crc_errors(); }
 
-#ifdef DOWN_DEBUG_TELEMETRY
+void comm_central_invalidate_calib() {
+    // Fix TASK-306 (2026-06-12): los CAL_* por USB tocaban la calib del
+    // line_ring pero el DownModel seguía con la vieja hasta el reboot. Con esto
+    // el próximo send re-deriva (mismo mecanismo que el paso carpet por UART).
+    g_dm_init = false;
+}
+
+#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)
 bool comm_central_get_last_line_status(LineStatusV2& out) {
     if (!g_last_lsv2_valid) return false;
     out = g_last_lsv2;

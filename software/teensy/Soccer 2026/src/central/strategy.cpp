@@ -31,6 +31,7 @@
 #include "ball_predict.h"
 #include "ball_trajectory.h"
 #include "atk_nogyro.h"     // helpers puros del delantero sin gyro (práctica R1)
+#include "pfm_heading.h"    // control PI+PFM de rumbo p/ zona muerta (banco María)
 
 #include <Arduino.h>
 #include <cmath>
@@ -1010,6 +1011,138 @@ MotorCommand attacker_tick() {
 MotorCommand goalkeeper_tick() {
     MotorCommand cmd{};
     const uint32_t now_ms = millis();
+
+#ifdef GK_SIMPLE_STRAFE
+    // === ARQUERO SIMPLE — STRAFE LATERAL MANTENIENDO EL FRENTE (pedido María,
+    //     práctica 2026-06-12) ===
+    // Conducta mínima y directa, distinta de la patrulla v3.3:
+    //   • Strafe lateral PURO a GK_PATROL_SPEED_MM_S (200 mm/s) desde donde se lo
+    //     coloca (SIN retroceso a la línea, SIN pulsos, SIN REACQ, SIN pelota).
+    //   • omega=0 (strafe puro, SIN corregir el frente durante el movimiento). Se
+    //     PROBÓ omega continuo con el BNO (banco María 2026-06-12) y DESCONTROLÓ el
+    //     robot (giro 0→-150° en 3 s) — la degeneración del mix giro+strafe ya
+    //     documentada en la v3.3 (con estos pisos {70,70,107} las delanteras van
+    //     chicas en el strafe y cualquier ω las desborda). El frente se sostiene
+    //     porque el strafe es simétrico; si deriva, agregar enderezado en pausas.
+    //   • REBOTE por línea (misma lógica v3.2, validada): si la placa DOWN ve línea
+    //     a un costado (NO la de atrás), invertir el sentido. Convención de signo
+    //     del line_angle (CONTRATO-DATOS-DOWN): + = línea a la DERECHA → ir IZQUIERDA
+    //     (direction -1); - = línea a la IZQUIERDA → ir DERECHA (+1). Atrás (~±180)
+    //     = la línea del propio arco → se ignora.
+    {
+        // v6 (banco María 2026-06-12, diseño según skills control-pid-zona-muerta
+        // + dinamica-omni-3-ruedas): MOVIMIENTO CONTINUO con control PI+PFM.
+        // Historia de la planta (medida hoy): a 200 mm/s el robot está en régimen
+        // CUANTIZADO — el giro es casi todo-o-nada por los pisos. PID continuo
+        // clásico falló por los dos modos: capado a 40°/s PERDÍA contra la deriva
+        // parásita (~80°/s); capado a 120°/s OSCILABA ±140° (overshoot
+        // cuantizado). Solución industrial: PFM — la corrección deseada se
+        // entrega como PULSOS de magnitud fija (que el robot SÍ sabe hacer)
+        // durante una fracción de cada ventana de 160 ms → el promedio temporal
+        // es la corrección fina que el motor no puede hacer continua. El
+        // integrador del PI aprende solo la deriva parásita (auto-calibración).
+        //   • Línea detectada → ESCAPE ~12 cm al lado contrario SIN leer
+        //     sensores (validado hoy) → retoma el movimiento continuo.
+        //   • RED DE SEGURIDAD: error >45° (lazo perdido: patinada, choque) →
+        //     parar, escuadrarse en el lugar, asentar, retomar.
+        // 🔧 Ajuste (titración, ver skill): tiembla → subir deadband (5→8°);
+        //    deriva lenta sin corregir → subir ki (0.4→0.8) o kp (2→3).
+        constexpr float    GKS_RESQUARE_DEG    = 45.0f;  // dispara la red de seguridad
+        constexpr float    GKS_RESQUARE_EXIT   = 12.0f;  // escuadre: corte en vivo
+        constexpr uint32_t GKS_RESQUARE_MAX_MS = 900;    // tope del escuadre parado
+        constexpr uint32_t GKS_SETTLE_MS       = 300;    // quieto post-escuadre
+        constexpr uint32_t GKS_ESCAPE_MS       = 600;    // huida post-línea (~12 cm)
+
+        static int             dir_simple  = +1;   // arranca hacia la derecha
+        static uint32_t        bounce_gate = 0;
+        static uint8_t         phase       = 0;    // 0=MOVE 2=RESQUARE 3=SETTLE 4=ESCAPE
+        static uint32_t        phase_t0    = 0;
+        static PfmHeadingState pfm{};               // estado del PI+PFM (integ + ventana)
+
+        if (!world_model_match_running()) {
+            g_state_name = "GK_SIMPLE_WAIT";
+            dir_simple = +1; bounce_gate = 0;   // reset (sin statics colgados)
+            phase = 0; phase_t0 = now_ms;
+            pfm_heading_reset(pfm);
+            return cmd;                          // ceros → quieto
+        }
+        if (phase_t0 == 0) phase_t0 = now_ms;
+
+        // Error de rumbo hacia el ARCO RIVAL (= 0° del boot: por protocolo el
+        // robot se enciende mirándolo). Frente permanente, pedido María.
+        const bool hv = world_model_heading_valid();
+        const float heading_now = world_model_get_my_heading_deg();
+        float hdg_err = 0.0f;
+        if (hv) {
+            hdg_err = GK_GYRO_HOLD_TARGET_DEG - heading_now;
+            while (hdg_err > 180.0f)  hdg_err -= 360.0f;
+            while (hdg_err < -180.0f) hdg_err += 360.0f;
+        }
+        const float aerr = (hdg_err < 0.0f) ? -hdg_err : hdg_err;
+
+        // PI+PFM: corrección fina por pulsos repartidos (ver pfm_heading.h).
+        // Tick de strategy = 10 ms (100 Hz). Devuelve centideg/s del comando.
+        auto pfm_omega = [&]() -> int16_t {
+            const float w = pfm_heading_tick(pfm, pfm_heading_default_cfg(),
+                                             hdg_err, hv, now_ms, 0.01f);
+            return omega_degps_to_centideg(w);
+        };
+
+        switch (phase) {
+            case 0: {   // MOVE — strafe CONTINUO + PID de rumbo al arco
+                g_state_name = "GK_SIMPLE_MOVE";
+                // Red de seguridad: el PID está perdiendo → escuadrarse parado.
+                if (hv && aerr > GKS_RESQUARE_DEG) {
+                    phase = 2; phase_t0 = now_ms;
+                    break;
+                }
+                // Rebote por línea lateral (cooldown anti-rebote-múltiple).
+                if (line_data_fresh() && world_model_line_detected() &&
+                    (now_ms - bounce_gate) >= GK_PATROL_BOUNCE_COOLDOWN_MS) {
+                    const float la = world_model_get_line_angle_deg();
+                    const bool  la_behind = (la > 135.0f || la < -135.0f);
+                    if (!la_behind) {
+                        dir_simple  = (la >= 0.0f) ? -1 : +1;  // alejarse de la línea
+                        bounce_gate = now_ms;
+                        phase = 4; phase_t0 = now_ms;   // PRIMERO escapar de la línea
+                        break;
+                    }
+                }
+                cmd.vx_mm_s = clamp_velocity_mm_s(dir_simple * GK_PATROL_SPEED_MM_S);
+                cmd.vy_mm_s = 0;
+                cmd.omega_centideg_s = pfm_omega();   // frente al arco, continuo
+                break;
+            }
+            case 4: {   // ESCAPE — despegarse de la línea ANTES de decidir (fix María)
+                g_state_name = "GK_SIMPLE_ESCAPE";
+                // Strafe al lado contrario SIN mirar la línea (sobre la línea las
+                // lecturas confunden). El PID de rumbo SIGUE activo: el escape
+                // también sale derecho. ~12 cm y retoma el MOVE continuo.
+                cmd.vx_mm_s = clamp_velocity_mm_s(dir_simple * GK_PATROL_SPEED_MM_S);
+                cmd.vy_mm_s = 0;
+                cmd.omega_centideg_s = pfm_omega();
+                if ((now_ms - phase_t0) >= GKS_ESCAPE_MS) { phase = 0; phase_t0 = now_ms; }
+                break;
+            }
+            case 2: {   // RESQUARE — parado, girar hacia el arco a autoridad plena
+                g_state_name = "GK_SIMPLE_RESQUARE";
+                // Sin strafe que pelear, el giro parado es el movimiento más
+                // confiable del robot. Corte en vivo a 12° (la inercia termina).
+                cmd.omega_centideg_s = pfm_omega();
+                if (aerr <= GKS_RESQUARE_EXIT || (now_ms - phase_t0) >= GKS_RESQUARE_MAX_MS) {
+                    phase = 3; phase_t0 = now_ms;
+                }
+                break;
+            }
+            case 3: {   // SETTLE — quieto un instante y retomar el continuo
+                g_state_name = "GK_SIMPLE_SETTLE";
+                if ((now_ms - phase_t0) >= GKS_SETTLE_MS) { phase = 0; phase_t0 = now_ms; }
+                break;
+            }
+        }
+        return cmd;
+    }
+#endif  // GK_SIMPLE_STRAFE
 
     if (!world_model_match_running()) {
         transition_gk(GkState::WAIT_START);

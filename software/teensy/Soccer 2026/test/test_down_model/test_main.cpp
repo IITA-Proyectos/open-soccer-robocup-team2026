@@ -323,12 +323,88 @@ void test_penetration_deep_genuine_not_penalized(void){
     TEST_ASSERT_TRUE(s.penetration_mm > 30);
 }
 
+// ============================================================================
+// EXCLUSIÓN DE SENSORES DÉBILES (banco 2026-06-12, María/R2): hasta
+// cfg.max_weak_sensors sensores con margen < calib_min_margin se EXCLUYEN del
+// centroide uno a uno (data_valid sigue 1, EV_CALIB_SUSPECT avisa); con más,
+// la calib no sirve (data_valid=0, semántica histórica). Default = 0 (legado).
+// ============================================================================
+
+void test_one_weak_sensor_keeps_valid_with_flag(void){
+    DownModel m{}; DownModelCfg cfg; mkcfg(cfg);
+    cfg.max_weak_sensors = 4;             // tolerancia de producción
+    for(int i=0;i<8;++i) lc_set_static(m.calib[i],200,800);
+    lc_set_static(m.calib[3],500,550);    // S3 débil (margen 50 < 120)
+    uint16_t raw[8]={205,198,202,501,199,203,200,204};   // todos sobre carpet
+    LineStatusV2 s = dm_update(m,cfg,raw,8,1000);
+    TEST_ASSERT_EQUAL_UINT8(1, s.data_valid);            // sigue VÁLIDO
+    TEST_ASSERT_TRUE(s.event_flags & EV_CALIB_SUSPECT);  // aviso de degradación
+}
+
+void test_weak_sensors_excluded_from_line(void){
+    // Dos débiles CONTIGUOS "ven blanco" (raw sobre su umbral degenerado): sin
+    // exclusión formarían una línea fantasma (2 contiguos pasan el filtro
+    // espacial); con exclusión, su blanco es ruido → line_present=0.
+    DownModel m{}; DownModelCfg cfg; mkcfg(cfg);
+    cfg.max_weak_sensors = 4;
+    for(int i=0;i<8;++i) lc_set_static(m.calib[i],200,800);
+    lc_set_static(m.calib[3],500,550);
+    lc_set_static(m.calib[4],500,550);
+    uint16_t raw[8]={205,198,202,560,560,203,200,204};
+    LineStatusV2 s = dm_update(m,cfg,raw,8,1000);
+    TEST_ASSERT_EQUAL_UINT8(1, s.data_valid);            // 2 débiles <= 4
+    TEST_ASSERT_EQUAL_UINT8(0, s.line_present);          // sus blancos no votan
+    TEST_ASSERT_TRUE(s.event_flags & EV_CALIB_SUSPECT);
+}
+
+void test_too_many_weak_invalidates(void){
+    DownModel m{}; DownModelCfg cfg; mkcfg(cfg);
+    cfg.max_weak_sensors = 4;
+    for(int i=0;i<5;++i) lc_set_static(m.calib[i],500,550);   // 5 débiles > 4
+    for(int i=5;i<8;++i) lc_set_static(m.calib[i],200,800);
+    uint16_t raw[8]={505,508,502,501,499,203,200,204};
+    LineStatusV2 s = dm_update(m,cfg,raw,8,1000);
+    TEST_ASSERT_EQUAL_UINT8(0, s.data_valid);
+    TEST_ASSERT_TRUE(s.event_flags & EV_CALIB_SUSPECT);
+}
+
+void test_legacy_zero_tolerance_keeps_old_semantics(void){
+    // Sin setear max_weak_sensors (default member init = 0): UN débil invalida
+    // todo el frame, exactamente la conducta histórica.
+    DownModel m{}; DownModelCfg cfg; mkcfg(cfg);
+    for(int i=0;i<8;++i) lc_set_static(m.calib[i],200,800);
+    lc_set_static(m.calib[3],500,550);
+    uint16_t raw[8]={205,198,202,501,199,203,200,204};
+    LineStatusV2 s = dm_update(m,cfg,raw,8,1000);
+    TEST_ASSERT_EQUAL_UINT8(0, s.data_valid);
+    TEST_ASSERT_TRUE(s.event_flags & EV_CALIB_SUSPECT);
+}
+
+void test_real_line_detected_despite_weak_sensor(void){
+    // La línea REAL (sensores sanos) se sigue detectando con un débil presente.
+    DownModel m{}; DownModelCfg cfg; mkcfg(cfg);
+    cfg.max_weak_sensors = 4;
+    for(int i=0;i<8;++i) lc_set_static(m.calib[i],200,800);
+    lc_set_static(m.calib[6],500,550);   // débil lejos de la línea
+    uint16_t raw[8]={850,830,210,200,205,202,501,206};  // línea en S0-S1
+    LineStatusV2 s = dm_update(m,cfg,raw,8,1000);
+    TEST_ASSERT_EQUAL_UINT8(1, s.data_valid);
+    TEST_ASSERT_EQUAL_UINT8(1, s.line_present);
+    TEST_ASSERT_TRUE(s.event_flags & EV_CALIB_SUSPECT);  // el débil sigue avisando
+}
+
 int main(int, char**){
     UNITY_BEGIN();
     RUN_TEST(test_no_line_carpet_valid);
     RUN_TEST(test_line_front_sets_fields);
     RUN_TEST(test_lifted_sets_invalid_and_flag);
     RUN_TEST(test_calib_suspect_sets_invalid_and_flag);
+    // Exclusión de sensores débiles (banco 2026-06-12)
+    RUN_TEST(test_one_weak_sensor_keeps_valid_with_flag);
+    RUN_TEST(test_weak_sensors_excluded_from_line);
+    RUN_TEST(test_too_many_weak_invalidates);
+    RUN_TEST(test_legacy_zero_tolerance_keeps_old_semantics);
+    RUN_TEST(test_real_line_detected_despite_weak_sensor);
     RUN_TEST(test_n_over_max_is_clamped);
     RUN_TEST(test_all_white_saturation_rejected);
     RUN_TEST(test_strong_line_not_saturation);

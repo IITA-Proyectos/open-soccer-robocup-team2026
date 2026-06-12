@@ -16,13 +16,22 @@ from typing import Optional
 
 from . import geometry
 from .boot_status import BootStatusTracker
-from .calibration import CalibrationAssistant
+from .calibration import CalibrationAssistant, DEFAULT_MIN_MARGIN
 from .protocol import Frame
 from .sensor_health import Health, SensorHealthTracker
 from .sources import FrameSource
 
 RING_PX = 460
 SENSOR_R = 11
+
+# Umbral "naranja" de la grilla semáforo: por debajo de DEFAULT_MIN_MARGIN el
+# sensor es débil; por debajo de esto directamente NO separa verde/blanco.
+WEAK_MARGIN_ORANGE = 25
+
+# Colores del semáforo de calibración (fondo, texto).
+_SEM_GREEN = ("#1f7a33", "#eaffea")
+_SEM_ORANGE = ("#b36b00", "#fff3d6")
+_SEM_RED = ("#a02020", "#ffe0e0")
 
 
 def _heat_color(raw: int) -> str:
@@ -46,8 +55,10 @@ class MonitorApp:
         self.frame_count = 0
         self.last_seq = -1
         self.dropped = 0
+        self._is_sim = getattr(source, "is_sim", False)
 
-        root.title("IITA Soccer — Monitor de la base (DOWN) v1")
+        root.title("IITA Soccer — Monitor de la base (DOWN) v1 — "
+                   + source.describe())
         self._build_layout()
         self._compute_ring_transform()
         self._draw_static_ring()
@@ -57,6 +68,12 @@ class MonitorApp:
 
     # ── Layout ────────────────────────────────────────────────────────────
     def _build_layout(self) -> None:
+        if self._is_sim:
+            tk.Label(self.root,
+                     text="⚠ SIMULADOR — datos FALSOS, no es el robot",
+                     bg="#b32d00", fg="#ffe27a",
+                     font=("Segoe UI", 12, "bold"), pady=5).pack(fill="x")
+
         main = ttk.Frame(self.root, padding=8)
         main.pack(fill="both", expand=True)
 
@@ -88,29 +105,73 @@ class MonitorApp:
         ttk.Label(right, text="SALUD DE SENSORES / CALIBRACIÓN").pack(anchor="w")
         self.health_txt.pack()
 
-        # Abajo: botones de calibración.
-        bottom = ttk.Frame(main, padding=(0, 8))
-        bottom.grid(row=1, column=0, columnspan=2, sticky="we")
-        cmds = [
-            ("Calibrar CARPET", "CAL CARPET"),
-            ("Calibrar BLANCO", "CAL WHITE"),
-            ("Auto-calib ON", "CAL AUTO ON"),
-            ("Auto-calib OFF", "CAL AUTO OFF"),
-            ("Guardar EEPROM", "CAL SAVE"),
-            ("Cargar EEPROM", "CAL LOAD"),
-            ("Reset OTOS", "OTOS RESET"),
-        ]
-        for i, (label, cmd) in enumerate(cmds):
-            ttk.Button(bottom, text=label,
-                       command=lambda c=cmd: self._send(c)).grid(
-                row=0, column=i, padx=3)
+        # Columna extra a la derecha: calibración guiada + semáforo de márgenes.
+        calib_col = ttk.Frame(main)
+        calib_col.grid(row=0, column=2, sticky="n", padx=(12, 0))
+        self._build_calib_panel(calib_col)
 
         # Barra de estado.
         self.status = ttk.Label(self.root, text="iniciando…", anchor="w",
                                 relief="sunken", padding=4)
         self.status.pack(fill="x", side="bottom")
 
+    def _build_calib_panel(self, parent: ttk.Frame) -> None:
+        """Panel "CALIBRAR (en orden)": 3 pasos guiados, veredicto grande y
+        grilla semáforo con el margen verde/blanco de cada sensor."""
+        ttk.Label(parent, text="CALIBRAR (en orden)",
+                  font=("Segoe UI", 11, "bold")).pack(anchor="w")
+        steps = [
+            ("1· Capturar VERDE (robot sobre el verde)", "CAL CARPET"),
+            ("2· Capturar BLANCO (sensores sobre la línea/hoja)", "CAL WHITE"),
+            ("3· GUARDAR en el robot", "CAL SAVE"),
+        ]
+        for label, cmd in steps:
+            ttk.Button(parent, text=label,
+                       command=lambda c=cmd: self._send(c)).pack(
+                fill="x", pady=2)
+
+        # Veredicto grande + compuerta data_valid.
+        self.verdict_lbl = tk.Label(parent, text="esperando datos…",
+                                    font=("Segoe UI", 11, "bold"),
+                                    bg="#222", fg="#ccc", wraplength=300,
+                                    justify="left", padx=6, pady=6)
+        self.verdict_lbl.pack(fill="x", pady=(10, 2))
+        self.valid_lbl = ttk.Label(parent, text="data_valid=?")
+        self.valid_lbl.pack(anchor="w")
+
+        # Grilla semáforo 8×4: margen |blanco−verde| por sensor.
+        ttk.Label(parent,
+                  text=f"Margen por sensor (verde ≥{DEFAULT_MIN_MARGIN} · "
+                       f"naranja ≥{WEAK_MARGIN_ORANGE} · rojo <{WEAK_MARGIN_ORANGE})",
+                  foreground="#888").pack(anchor="w", pady=(8, 2))
+        grid = ttk.Frame(parent)
+        grid.pack()
+        self._margin_cells = []
+        for i in range(self.n):
+            cell = tk.Label(grid, text=f"S{i:02d}\n—", width=5,
+                            font=("Consolas", 8), bg="#202020", fg="#888",
+                            relief="ridge", bd=1)
+            cell.grid(row=i // 8, column=i % 8, padx=1, pady=1)
+            self._margin_cells.append(cell)
+
+        # Botones avanzados (secundarios, para quien sabe lo que hace).
+        ttk.Label(parent, text="Avanzado:", foreground="#888").pack(
+            anchor="w", pady=(10, 2))
+        adv = ttk.Frame(parent)
+        adv.pack(anchor="w")
+        for i, (label, cmd) in enumerate([
+                ("Auto ON", "CAL AUTO ON"),
+                ("Auto OFF", "CAL AUTO OFF"),
+                ("CAL LOAD", "CAL LOAD"),
+                ("Reset OTOS", "OTOS RESET")]):
+            ttk.Button(adv, text=label, width=10,
+                       command=lambda c=cmd: self._send(c)).grid(
+                row=0, column=i, padx=2)
+
     def _send(self, cmd: str) -> None:
+        if self._is_sim:
+            self._set_status("SIMULADOR: comando no enviado al robot")
+            return
         self.source.send(cmd)
         if cmd == "CAL AUTO ON":
             self.calib.start()
@@ -228,6 +289,7 @@ class MonitorApp:
         self._render_line_panel(f)
         self._render_otos_panel(f)
         self._render_health_panel(f, statuses)
+        self._render_calib_panel(f)
         rate = ""
         self._set_status(
             f"src OK · seq={f.seq} · frames={self.frame_count} · "
@@ -269,10 +331,42 @@ class MonitorApp:
         )
         self._set_text(self.otos_txt, text)
 
+    def _render_calib_panel(self, f: Frame) -> None:
+        """Semáforo de márgenes + veredicto de la calibración VIGENTE."""
+        margins = f.ring.margins
+        weak = []
+        for i, cell in enumerate(self._margin_cells):
+            m = margins[i] if i < len(margins) else 0
+            if m >= DEFAULT_MIN_MARGIN:
+                bg, fg = _SEM_GREEN
+            elif m >= WEAK_MARGIN_ORANGE:
+                bg, fg = _SEM_ORANGE
+            else:
+                bg, fg = _SEM_RED
+            if m < DEFAULT_MIN_MARGIN:
+                weak.append(i)
+            cell.config(text=f"S{i:02d}\n{m}", bg=bg, fg=fg)
+
+        if not weak:
+            bg, fg = _SEM_GREEN
+            text = (f"CALIB OK — {self.n}/{self.n} sensores "
+                    f"separan verde/blanco")
+        elif len(weak) <= 4:
+            bg, fg = _SEM_ORANGE
+            ids = ", ".join(f"S{i:02d}" for i in weak)
+            text = f"DÉBILES: {ids} — el robot juega con los demás"
+        else:
+            bg, fg = _SEM_RED
+            text = ("CALIB INSUFICIENTE — recalibrar "
+                    "(¿batería baja? ¿hoja no cubre todo?)")
+        self.verdict_lbl.config(text=text, bg=bg, fg=fg)
+        self.valid_lbl.config(
+            text=f"data_valid={'SÍ' if f.line.valid else 'NO'}")
+
     def _render_health_panel(self, f: Frame, statuses) -> None:
         probs = [s for s in statuses if s.is_problem]
         margins = f.ring.margins
-        weak = [(i, m) for i, m in enumerate(margins) if m < 40]
+        weak = [(i, m) for i, m in enumerate(margins) if m < DEFAULT_MIN_MARGIN]
         waiting = [s for s in statuses if s.is_waiting]
         lines = []
         if probs:
@@ -289,7 +383,7 @@ class MonitorApp:
                          f" · sospechosos: {len(sus)}")
         if weak:
             ids = ", ".join(f"S{i}={m}" for i, m in weak[:6])
-            lines.append(f"margen bajo (<40): {ids}")
+            lines.append(f"margen bajo (<{DEFAULT_MIN_MARGIN}): {ids}")
         self._set_text(self.health_txt, "\n".join(lines) + "\n")
 
     # ── Helpers ───────────────────────────────────────────────────────────

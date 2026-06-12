@@ -36,8 +36,10 @@ class MonitorTopApp:
         self.last_seq = -1
         self.dropped = 0
         self.boot = BootStatusTracker()   # qué calib cargó la placa al boot
+        self._is_sim = getattr(source, "is_sim", False)
 
-        root.title("IITA Soccer — Monitor del campo (TOP) v1")
+        root.title("IITA Soccer — Monitor del campo (TOP) v1 — "
+                   + source.describe())
         self._cx = self._cy = RADAR_PX / 2
         self._scale = (RADAR_PX / 2 - 16) / MAX_RANGE_MM
         self._build_layout()
@@ -48,6 +50,12 @@ class MonitorTopApp:
 
     # ── Layout ────────────────────────────────────────────────────────────
     def _build_layout(self) -> None:
+        if self._is_sim:
+            tk.Label(self.root,
+                     text="⚠ SIMULADOR — datos FALSOS, no es el robot",
+                     bg="#b32d00", fg="#ffe27a",
+                     font=("Segoe UI", 12, "bold"), pady=5).pack(fill="x")
+
         main = ttk.Frame(self.root, padding=8)
         main.pack(fill="both", expand=True)
 
@@ -93,6 +101,9 @@ class MonitorTopApp:
         self.status.pack(fill="x", side="bottom")
 
     def _send(self, cmd: str) -> None:
+        if self._is_sim:
+            self._set_status("SIMULADOR: comando no enviado al robot")
+            return
         self.source.send(cmd)
         self._set_status(f"→ comando enviado: {cmd}")
 

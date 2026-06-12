@@ -37,7 +37,9 @@ def test_autodetect_no_ports(monkeypatch):
 
 
 class _FakeSerial:
-    """Serial de mentira: devuelve unas líneas y después 'idle' (b'')."""
+    """Serial de mentira: devuelve unas líneas y después 'idle' (b'').
+    OJO: a propósito NO tiene write() — verifica que el keepalive sea
+    best-effort (try/except) y no mate el hilo de lectura."""
     def __init__(self, lines):
         import time
         self._time = time
@@ -51,6 +53,16 @@ class _FakeSerial:
 
     def close(self):
         pass
+
+
+class _FakeSerialW(_FakeSerial):
+    """Como _FakeSerial pero registra lo que el host le escribe."""
+    def __init__(self, lines):
+        super().__init__(lines)
+        self.written = []
+
+    def write(self, data):
+        self.written.append(bytes(data))
 
 
 def test_serialsource_surfaces_boot_text_and_parses_frames(golden_line, monkeypatch):
@@ -74,6 +86,34 @@ def test_serialsource_surfaces_boot_text_and_parses_frames(golden_line, monkeypa
     # el print de boot se publica como TEXTO (no se traga), y la telemetría se parsea
     assert any("line_ring" in t for t in texts)
     assert any(getattr(f, "seq", None) == 7 for f in frames)
+
+
+def test_serialsource_keepalive_stream_on_and_ping(golden_line, monkeypatch):
+    """Al conectar manda STREAM ON una vez, y PING periódico (keepalive del
+    modo competencia: el firmware apaga el stream si el host calla 3 s)."""
+    import time
+    src = sources.SerialSource("COMx")
+    src.PING_INTERVAL_S = 0.05   # acelerar el test
+    fake = _FakeSerialW([golden_line])
+    monkeypatch.setattr(src, "_open", lambda: fake)
+    src.start()
+    deadline = time.time() + 2.0
+    while time.time() < deadline and fake.written.count(b"PING\n") < 2:
+        time.sleep(0.02)
+    src.stop()
+    assert fake.written[0] == b"STREAM ON\n"
+    assert fake.written.count(b"STREAM ON\n") == 1
+    assert fake.written.count(b"PING\n") >= 2
+
+
+def test_source_describe():
+    assert sources.SimSource().describe() == "SIMULADOR (sin robot)"
+    assert sources.SimSource().is_sim is True
+    assert sources.SimTopSource().is_sim is True
+    assert sources.SerialSource("COM7").describe() == "robot en COM7"
+    assert sources.SerialSource("COM7").is_sim is False
+    rep = sources.ReplaySource("C:/algo/grabacion.jsonl")
+    assert rep.describe() == "replay grabacion.jsonl"
 
 
 def test_parse_lines_skips_noise_and_reports_errors(golden_line):

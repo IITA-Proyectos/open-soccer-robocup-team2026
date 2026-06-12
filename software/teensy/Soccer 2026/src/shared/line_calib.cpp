@@ -20,4 +20,17 @@ bool lc_is_suspect(const SensorCalib* cs, int n, uint16_t min_margin){
     }
     return false;
 }
+int lc_count_weak(const SensorCalib* cs, int n, uint16_t min_margin,
+                  uint32_t* weak_mask_out){
+    if(weak_mask_out) *weak_mask_out = 0;
+    int count = 0;
+    for(int i=0;i<n;++i){
+        int m = (int)cs[i].white - (int)cs[i].carpet; if(m<0)m=-m;
+        if(m < (int)min_margin){
+            ++count;
+            if(weak_mask_out && i < 32) *weak_mask_out |= (1u << i);
+        }
+    }
+    return count;
+}
 }  // namespace iitasoccer

@@ -227,6 +227,46 @@ void test_no_eeprom_derives_line_ring_values_on_first_use(void){
     }
 }
 
+// ── lc_count_weak (banco 2026-06-12): cuenta + máscara de sensores débiles ──
+
+void test_count_weak_none(void){
+    SensorCalib cs[4];
+    for(int i=0;i<4;++i) lc_set_static(cs[i],200,800);
+    uint32_t mask = 0xDEAD;
+    TEST_ASSERT_EQUAL_INT(0, lc_count_weak(cs,4,100,&mask));
+    TEST_ASSERT_EQUAL_UINT32(0u, mask);
+}
+
+void test_count_weak_mask_marks_right_sensors(void){
+    SensorCalib cs[4];
+    lc_set_static(cs[0],200,800);   // sano
+    lc_set_static(cs[1],500,560);   // débil (60 < 100)
+    lc_set_static(cs[2],200,800);   // sano
+    lc_set_static(cs[3],500,520);   // débil (20 < 100)
+    uint32_t mask = 0;
+    TEST_ASSERT_EQUAL_INT(2, lc_count_weak(cs,4,100,&mask));
+    TEST_ASSERT_EQUAL_UINT32((1u<<1)|(1u<<3), mask);
+}
+
+void test_count_weak_all_weak_and_null_mask(void){
+    SensorCalib cs[3];
+    for(int i=0;i<3;++i) lc_set_static(cs[i],500,520);
+    // mask_out=null no debe crashear (caller que solo quiere el conteo).
+    TEST_ASSERT_EQUAL_INT(3, lc_count_weak(cs,3,100,nullptr));
+}
+
+void test_count_weak_consistent_with_is_suspect(void){
+    // lc_is_suspect == (lc_count_weak > 0): misma definición de "débil".
+    SensorCalib cs[2];
+    lc_set_static(cs[0],400,900);
+    lc_set_static(cs[1],500,560);
+    TEST_ASSERT_TRUE(lc_is_suspect(cs,2,100));
+    TEST_ASSERT_EQUAL_INT(1, lc_count_weak(cs,2,100,nullptr));
+    lc_set_static(cs[1],200,900);
+    TEST_ASSERT_FALSE(lc_is_suspect(cs,2,100));
+    TEST_ASSERT_EQUAL_INT(0, lc_count_weak(cs,2,100,nullptr));
+}
+
 int main(int, char**){
     UNITY_BEGIN();
     RUN_TEST(test_static_threshold_is_midpoint);
@@ -234,6 +274,11 @@ int main(int, char**){
     RUN_TEST(test_adapt_does_not_drift_when_on_line);
     RUN_TEST(test_suspect_when_margin_too_small);
     RUN_TEST(test_adapt_alpha_gt1_clamps_to_1);
+    // lc_count_weak (exclusión de débiles, banco 2026-06-12)
+    RUN_TEST(test_count_weak_none);
+    RUN_TEST(test_count_weak_mask_marks_right_sensors);
+    RUN_TEST(test_count_weak_all_weak_and_null_mask);
+    RUN_TEST(test_count_weak_consistent_with_is_suspect);
     // Caracterización lazy-init / precedencia EEPROM (audit down-calib-lazyinit).
     RUN_TEST(test_fsm_boot_state_is_pending);
     RUN_TEST(test_fsm_eeprom_load_wins_and_blocks_derivation);

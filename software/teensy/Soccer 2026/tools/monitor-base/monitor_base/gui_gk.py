@@ -50,8 +50,10 @@ class MonitorGkApp:
         self.dropped = 0
         self.boot = BootStatusTracker()   # qué calib cargó la placa al boot
         self.trail = deque(maxlen=500)   # (x_mm, y_mm) pose fusionada
+        self._is_sim = getattr(source, "is_sim", False)
 
-        root.title("IITA Soccer — Monitor del ARQUERO (línea + OTOS) v1")
+        root.title("IITA Soccer — Monitor del ARQUERO (línea + OTOS) v1 — "
+                   + source.describe())
         self._build_layout()
         self.source.start()
         self.root.after(self.poll_ms, self._tick)
@@ -59,6 +61,12 @@ class MonitorGkApp:
 
     # ── Layout ────────────────────────────────────────────────────────────
     def _build_layout(self) -> None:
+        if self._is_sim:
+            tk.Label(self.root,
+                     text="⚠ SIMULADOR — datos FALSOS, no es el robot",
+                     bg="#b32d00", fg="#ffe27a",
+                     font=("Segoe UI", 12, "bold"), pady=5).pack(fill="x")
+
         main = ttk.Frame(self.root, padding=8)
         main.pack(fill="both", expand=True)
 
@@ -112,6 +120,9 @@ class MonitorGkApp:
         if cmd == "__clear__":
             self.trail.clear()
             self._set_status("estela limpiada")
+            return
+        if self._is_sim:
+            self._set_status("SIMULADOR: comando no enviado al robot")
             return
         self.source.send(cmd)
         if cmd == "OTOS RESET":

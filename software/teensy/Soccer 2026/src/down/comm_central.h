@@ -31,16 +31,22 @@ void comm_central_send_line_urgent();
 // válida, la usa y bloquea el lazy-init (EEPROM gana). Retorna true si cargó.
 bool comm_central_load_persisted_calib();
 
+// Invalida la calib del DownModel → el próximo send re-deriva desde el
+// line_ring (lazy). OBLIGATORIO tras cualquier CAL_* que toque la calib del
+// line_ring por USB: sin esto, el LineStatusV2 hacia CENTRAL seguía con la
+// calib VIEJA hasta el reboot (bug TASK-306, fix 2026-06-12).
+void comm_central_invalidate_calib();
+
 // Estadísticas:
 uint32_t comm_central_get_frames_received();
 uint32_t comm_central_get_frames_sent();
 uint32_t comm_central_get_frames_dropped();  // descartados por TX buffer lleno (P1.6)
 uint32_t comm_central_get_crc_errors();
 
-#ifdef DOWN_DEBUG_TELEMETRY
+#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)
 struct LineStatusV2;  // fwd-decl (tipo completo en types.h, incluido en el .cpp)
 // Copia el ÚLTIMO LineStatusV2 difundido a CENTRAL (para la telemetría USB del
-// modo DEBUG). Retorna false si todavía no se envió ninguno.
+// modo DEBUG/monitor). Retorna false si todavía no se envió ninguno.
 bool comm_central_get_last_line_status(struct LineStatusV2& out);
 #endif
 

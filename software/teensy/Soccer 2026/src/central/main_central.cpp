@@ -243,7 +243,13 @@ void loop() {
         }
         // Ruido de motor en el pin 9 solo puede dar GO espurio (no-op si ya corre);
         // el STOP es exclusivo del teclado -> no hay parada fantasma en pleno test.
+#ifndef CENTRAL_MANUAL_START_NO_BUTTON
+        // CENTRAL_MANUAL_START_NO_BUTTON (práctica 2026-06-12, banco R2): el pulsador
+        // ONBOARD del Zircon (pin 9) quedó CLAVADO en LOW → GO permanente: el arquero
+        // patrullaba solo al prender y el STOP del teclado se re-disparaba al tick
+        // siguiente. Con el flag, el GO/STOP queda SOLO en el teclado ('g'/'s').
         if (digitalRead(PIN_MANUAL_START_BUTTON) == LOW) cmd_go = true;
+#endif
         if (cmd_stop) {
             g_manual_running = false;
             world_model_set_force_match_running(false);

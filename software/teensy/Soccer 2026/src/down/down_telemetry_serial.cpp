@@ -1,8 +1,15 @@
 // down_telemetry_serial.cpp — Glue Arduino de la telemetría USB de DOWN.
 //
-// TODO el cuerpo está dentro de #ifdef DOWN_DEBUG_TELEMETRY: con el flag OFF
-// (envs de competencia down / down_lean / down_wdt) este archivo compila a una
-// traducción VACÍA → no aporta ni un byte al binario de competencia.
+// DOS MODOS de compilación (excluyentes en la práctica, mismo código):
+//   • -DDOWN_DEBUG_TELEMETRY (envs *_debug_telemetry, banco): stream ON desde
+//     el boot a 20 Hz — el comportamiento histórico.
+//   • -DDOWN_USB_MONITOR (envs de COMPETENCIA down/down_robot2, pedido María
+//     2026-06-12): el monitor viaja EN el binario de partido pero DORMIDO.
+//     Silencio total por USB hasta que la app manda un comando (STREAM ON /
+//     PING); ahí streamea, y si el host se calla DOWN_MONITOR_HOST_TIMEOUT_MS
+//     (la app manda PING cada 1 s como latido) el stream se apaga SOLO →
+//     desenchufar el cable = modo partido, sin reflashear nada.
+// Sin ninguno de los dos flags: traducción VACÍA (binario sin un byte de esto).
 //
 // El módulo PURO (serialización JSON + parseo de comandos) vive en
 // src/shared/telemetry_down.{h,cpp} (host-testeado). Acá solo está el pegamento
@@ -12,7 +19,7 @@
 
 #include "down_telemetry_serial.h"
 
-#ifdef DOWN_DEBUG_TELEMETRY
+#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)
 
 #include <Arduino.h>
 #include "telemetry_down.h"
@@ -29,10 +36,19 @@ namespace iitasoccer {
 namespace {
 
 // ── Estado interno del stream ────────────────────────────────────────────────
-bool          g_stream_on    = true;   // stream ON por default
+// En modo USB_MONITOR (competencia) el stream arranca APAGADO y solo habla si
+// el host habló primero; en modo DEBUG_TELEMETRY (banco) arranca prendido.
+#ifdef DOWN_USB_MONITOR
+constexpr bool     kStreamDefaultOn          = false;
+constexpr uint32_t DOWN_MONITOR_HOST_TIMEOUT_MS = 3000;  // host mudo → stream OFF
+#else
+constexpr bool     kStreamDefaultOn          = true;
+#endif
+bool          g_stream_on    = kStreamDefaultOn;
 uint32_t      g_interval_ms  = 50;     // 20 Hz por default (1000/20)
 uint32_t      g_seq          = 0;
 elapsedMillis g_since_emit;            // gobierna la cadencia de TX
+uint32_t      g_last_host_rx_ms = 0;   // último comando válido del host (latido)
 
 // ── Auto-calibración (captura min/max por sensor mientras se mueve el robot) ──
 bool     g_autocal_on = false;
@@ -112,6 +128,12 @@ void emit_frame() {
 
 // Ejecuta un comando ya parseado.
 void dispatch(const TdCommand& c) {
+    // Cualquier comando RECONOCIDO cuenta como latido del host (la app manda
+    // PING cada 1 s): renueva la ventana del modo monitor.
+    if (c.cmd != TdCmd::NONE && c.cmd != TdCmd::UNKNOWN) {
+        g_last_host_rx_ms = millis();
+        if (g_last_host_rx_ms == 0) g_last_host_rx_ms = 1;  // 0 = "nunca" (sentinel)
+    }
     switch (c.cmd) {
         case TdCmd::PING:
             // Ack de enlace: un frame inmediato (lleva el estado completo).
@@ -137,10 +159,16 @@ void dispatch(const TdCommand& c) {
 
         case TdCmd::CAL_CARPET:
             line_ring_calibrate_carpet();
+            // Fix TASK-306: re-derivar el DownModel — sin esto el LineStatusV2
+            // hacia CENTRAL seguía con la calib VIEJA hasta el reboot.
+            comm_central_invalidate_calib();
+            Serial.println("[DOWN] verde capturado (calib aplicada en vivo)");
             break;
 
         case TdCmd::CAL_WHITE:
             line_ring_calibrate_white();
+            comm_central_invalidate_calib();   // fix TASK-306 (ídem carpet)
+            Serial.println("[DOWN] blanco capturado (calib aplicada en vivo)");
             break;
 
         case TdCmd::CAL_AUTO_ON:
@@ -151,11 +179,25 @@ void dispatch(const TdCommand& c) {
             }
             break;
 
-        case TdCmd::CAL_AUTO_OFF:
+        case TdCmd::CAL_AUTO_OFF: {
             g_autocal_on = false;
+            // SANITY (TASK-306): si la auto-calib no capturó nada (OFF inmediato
+            // sin pasear el robot: min=0xFFFF/max=0 → calib INVERTIDA que
+            // ec_save persistiría), rechazar en vez de aplicar basura.
+            bool degenerada = false;
+            for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
+                if (g_autocal_min[i] >= g_autocal_max[i]) { degenerada = true; break; }
+            }
+            if (degenerada) {
+                Serial.println("[DOWN] ERROR: auto-calib sin datos (pasea el robot por verde Y blanco antes del OFF) — NO aplicada");
+                break;
+            }
             // carpet = min capturado, white = max capturado.
             line_ring_set_calibration(g_autocal_min, g_autocal_max, NUM_LINE_SENSORS);
+            comm_central_invalidate_calib();   // fix TASK-306
+            Serial.println("[DOWN] auto-calib aplicada (min/max capturados)");
             break;
+        }
 
         case TdCmd::CAL_SAVE: {
             // Derivar SensorCalib de los promedios actuales del line_ring y persistir.
@@ -166,7 +208,12 @@ void dispatch(const TdCommand& c) {
                               line_ring_get_carpet_avg(idx),
                               line_ring_get_white_avg(idx));
             }
-            ec_save_calibration(cal, NUM_LINE_SENSORS);
+            // ACK/NAK explícito (TASK-306): antes fallaba en silencio.
+            if (ec_save_calibration(cal, NUM_LINE_SENSORS)) {
+                Serial.println("[DOWN] calib persistida en EEPROM");
+            } else {
+                Serial.println("[DOWN] ERROR: fallo guardar calib en EEPROM");
+            }
             break;
         }
 
@@ -180,6 +227,10 @@ void dispatch(const TdCommand& c) {
                     white[i]  = cal[i].white;
                 }
                 line_ring_set_calibration(carpet, white, NUM_LINE_SENSORS);
+                comm_central_invalidate_calib();   // fix TASK-306
+                Serial.println("[DOWN] calib cargada de EEPROM (aplicada en vivo)");
+            } else {
+                Serial.println("[DOWN] ERROR: EEPROM sin calib valida");
             }
             break;
         }
@@ -217,18 +268,37 @@ void pump_rx() {
 }  // namespace
 
 void down_telemetry_init() {
-    g_stream_on   = true;
+    g_stream_on   = kStreamDefaultOn;
     g_interval_ms = 50;   // 20 Hz
     g_seq         = 0;
     g_autocal_on  = false;
     g_rx_len      = 0;
     g_since_emit  = 0;
+    g_last_host_rx_ms = 0;
+#ifdef DOWN_USB_MONITOR
+    // Una sola línea de boot (Teensy la descarta si no hay host conectado);
+    // después, SILENCIO hasta que la app hable.
+    Serial.println("[DOWN-MONITOR] dormido — esperando a la app (STREAM ON / PING)");
+#else
     Serial.println("[DOWN-TELEM] v1 ready");
+#endif
 }
 
 void down_telemetry_tick() {
     // RX: comandos del host (no bloquea).
     pump_rx();
+
+#ifdef DOWN_USB_MONITOR
+    // APAGADO AUTOMÁTICO (modo competencia): si el host se calló (la app manda
+    // PING cada 1 s; desenchufar el cable o cerrar la app corta ese latido),
+    // volver al silencio. El robot queda en modo partido sin tocar nada.
+    if (g_stream_on && g_last_host_rx_ms != 0 &&
+        (millis() - g_last_host_rx_ms) > DOWN_MONITOR_HOST_TIMEOUT_MS) {
+        g_stream_on   = false;
+        g_autocal_on  = false;   // una auto-calib a medias no debe quedar armada
+        g_last_host_rx_ms = 0;
+    }
+#endif
 
     // Auto-calibración: capturar min/max por sensor mientras se mueve el robot.
     if (g_autocal_on) {
@@ -248,4 +318,4 @@ void down_telemetry_tick() {
 
 }  // namespace iitasoccer
 
-#endif  // DOWN_DEBUG_TELEMETRY
+#endif  // DOWN_DEBUG_TELEMETRY || DOWN_USB_MONITOR

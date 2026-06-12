@@ -17,6 +17,15 @@ struct DownModelCfg {
     int      lifted_min_sensors;
     uint16_t lifted_delta_below;
     uint32_t line_end_min_track_ms;
+    // Tolerancia de sensores DÉBILES (banco 2026-06-12): hasta este número de
+    // sensores con margen < calib_min_margin se EXCLUYEN individualmente del
+    // centroide (patrón EV_SENSOR_NOISY) y el frame sigue data_valid=1 con
+    // EV_CALIB_SUSPECT prendido ("geometría degradada", contrato §3.2). Con MÁS
+    // débiles que esto → data_valid=0 (la calib no sirve). El default `= 0`
+    // (inicializador de miembro, C++14) preserva la semántica HISTÓRICA
+    // (cualquier débil invalida todo) en TODO inicializador viejo — incluso
+    // `DownModelCfg cfg;` sin llaves (los fixtures de tests hacen eso).
+    int      max_weak_sensors = 0;
 };
 struct DownModel {
     SensorCalib    calib[DM_MAX_SENSORS];

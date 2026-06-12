@@ -11,6 +11,7 @@ para tests: parse_lines() y read_replay_file().
 """
 from __future__ import annotations
 
+import os
 import queue
 import threading
 import time
@@ -100,6 +101,10 @@ def autodetect_port() -> Optional[str]:
 class FrameSource:
     """Base: hilo productor → cola de Frames. poll() la drena."""
 
+    # ¿La fuente es un SIMULADOR? Las GUIs lo usan para avisar bien grande que
+    # los datos NO vienen del robot y para no "enviar" comandos a nadie.
+    is_sim = False
+
     def __init__(self, maxsize: int = 1000):
         self.queue: "queue.Queue[Frame]" = queue.Queue(maxsize=maxsize)
         self.errors: "queue.Queue[str]" = queue.Queue(maxsize=200)
@@ -125,6 +130,11 @@ class FrameSource:
 
     def send(self, cmd: str) -> None:
         """Manda un comando al firmware. Las fuentes sin robot lo ignoran."""
+
+    def describe(self) -> str:
+        """Descripción humana de la fuente, para el título de la ventana
+        ("¿estoy mirando el robot o el simulador?")."""
+        return "fuente desconocida"
 
     def poll(self, max_items: int = 500) -> List[Frame]:
         out: List[Frame] = []
@@ -185,10 +195,15 @@ class FrameSource:
 
 
 class SimSource(FrameSource):
+    is_sim = True
+
     def __init__(self, rate_hz: float = 20.0, **sim_kwargs):
         super().__init__()
         self.rate_hz = rate_hz
         self._sim = Simulator(rate_hz=rate_hz, **sim_kwargs)
+
+    def describe(self) -> str:
+        return "SIMULADOR (sin robot)"
 
     def _run(self) -> None:
         period = 1.0 / self.rate_hz
@@ -204,10 +219,15 @@ class SimSource(FrameSource):
 class SimTopSource(FrameSource):
     """Simulador de la placa TOP (sin robot) — empuja TopFrame."""
 
+    is_sim = True
+
     def __init__(self, rate_hz: float = 20.0, **sim_kwargs):
         super().__init__()
         self.rate_hz = rate_hz
         self._sim = SimulatorTop(rate_hz=rate_hz, **sim_kwargs)
+
+    def describe(self) -> str:
+        return "SIMULADOR (sin robot)"
 
     def _run(self) -> None:
         period = 1.0 / self.rate_hz
@@ -228,6 +248,9 @@ class ReplaySource(FrameSource):
         self.rate_hz = rate_hz
         self.loop = loop
         self.parser = parser
+
+    def describe(self) -> str:
+        return f"replay {os.path.basename(self.path)}"
 
     def _run(self) -> None:
         period = 1.0 / self.rate_hz
@@ -258,7 +281,14 @@ class SerialSource(FrameSource):
     la GUI muestre qué está haciendo el firmware mientras bootea.
 
     `port` puede ser un COM concreto (ej. "COM5") o "auto" (autodetecta el Teensy
-    en cada (re)conexión)."""
+    en cada (re)conexión).
+
+    KEEPALIVE: el firmware nuevo apaga su stream si no recibe nada del host por
+    3 s (modo competencia). Al conectar mandamos "STREAM ON" una vez y después
+    "PING" cada PING_INTERVAL_S; al cerrar la app o sacar el cable, el robot
+    vuelve solo a modo partido."""
+
+    PING_INTERVAL_S = 1.0
 
     def __init__(self, port: str, baud: int = 115200, parser: Parser = parse_line,
                  reconnect_s: float = 1.5):
@@ -268,6 +298,7 @@ class SerialSource(FrameSource):
         self.parser = parser
         self.reconnect_s = reconnect_s
         self._serial = None
+        self._last_port: Optional[str] = None   # puerto resuelto (para describe)
 
     def _resolve_port(self) -> str:
         if str(self.port_spec).lower() == "auto":
@@ -291,8 +322,12 @@ class SerialSource(FrameSource):
             ) from e
         port = self._resolve_port()
         ser = serial.Serial(port, self.baud, timeout=0.2)
+        self._last_port = port
         self._push_text(f"conectado a {port} — esperando datos de la placa…")
         return ser
+
+    def describe(self) -> str:
+        return f"robot en {self._last_port or self.port_spec}"
 
     def send(self, cmd: str) -> None:
         ser = self._serial
@@ -323,7 +358,25 @@ class SerialSource(FrameSource):
                 self._sleep_reconnect()
                 continue
             try:
+                # Activar el stream apenas conecta (en modo competencia el
+                # firmware arranca callado). Si falla, el except de abajo /
+                # el loop de reconexión lo manejan.
+                try:
+                    self._serial.write(b"STREAM ON\n")
+                except Exception:  # noqa: BLE001 — keepalive best-effort
+                    pass
+                last_ping = time.monotonic()
                 while not self._stop.is_set():
+                    # KEEPALIVE: PING periódico (el readline tiene timeout
+                    # 0.2 s, así que este chequeo corre seguido aunque la
+                    # placa esté callada).
+                    now = time.monotonic()
+                    if now - last_ping >= self.PING_INTERVAL_S:
+                        last_ping = now
+                        try:
+                            self._serial.write(b"PING\n")
+                        except Exception:  # noqa: BLE001 — best-effort
+                            pass
                     raw = self._serial.readline()
                     if not raw:
                         continue

@@ -174,6 +174,20 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
         if (!sh_is_healthy(m.sensor_health, i)) validated[i] = false;
     }
 
+    // EXCLUSIÓN DE SENSORES DÉBILES (banco 2026-06-12, María/R2): un sensor cuyo
+    // margen de calib no separa verde/blanco no aporta información — su "blanco"
+    // es ruido. Se excluye del centroide UNO A UNO (mismo patrón que unhealthy)
+    // en vez de invalidar el frame entero. La invalidación total (suspect) queda
+    // para cuando hay MÁS débiles que cfg.max_weak_sensors (ver abajo). Con
+    // max_weak_sensors=0 este bloque es neutro para data_valid (cualquier débil
+    // invalida igual que siempre) pero la exclusión del centroide aplica igual
+    // (un sensor que no separa nunca debió votar el ángulo).
+    uint32_t weak_mask = 0;
+    const int n_weak = lc_count_weak(m.calib, n, cfg.calib_min_margin, &weak_mask);
+    for (int i = 0; i < n && i < 32; ++i) {
+        if (weak_mask & (1u << i)) validated[i] = false;
+    }
+
     // TEMA P1.5 — rechazo de saturación "todo blanco" (audit 2026-05-29).
     // Si >= 7/8 del anillo lee blanco NO es una línea real (una franja
     // enciende a lo sumo ~15/32 sensores). Es falla: calib rota, superficie
@@ -242,7 +256,10 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
         for(int i=0;i<n;++i)
             lc_adapt_carpet(m.calib[i], filt[i], white[i], cfg.adapt_alpha);
     }
-    bool suspect = lc_is_suspect(m.calib, n, cfg.calib_min_margin);
+    // suspect = la calib NO sirve para jugar: más sensores débiles que la
+    // tolerancia. (Antes: lc_is_suspect = CUALQUIER débil invalidaba todo; esa
+    // semántica se conserva con max_weak_sensors=0, el default por zero-init.)
+    bool suspect = (n_weak > cfg.max_weak_sensors);
     bool lifted  = sm_update(m.surface, filt, carpet, n, now_ms,
                              cfg.lifted_debounce_ms,
                              cfg.lifted_min_sensors, cfg.lifted_delta_below);
@@ -294,7 +311,11 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     if(g.corner)   ev|=EV_CORNER;
     if(line_end)   ev|=EV_LINE_END;
     if(lifted)     ev|=EV_LIFTED;
-    if(suspect || saturated) ev|=EV_CALIB_SUSPECT;  // saturación todo-blanco reusa este flag (sin bit libre en el contrato de 16 bytes)
+    // EV_CALIB_SUSPECT se prende ante CUALQUIER sensor débil (n_weak>0): si
+    // data_valid sigue en 1 significa "geometría degradada, sensores excluidos"
+    // (contrato §3.2 ya contempla flag+valid=1); si data_valid=0, la calib no
+    // sirve. La saturación todo-blanco reusa este flag (sin bit libre).
+    if(suspect || saturated || n_weak > 0) ev|=EV_CALIB_SUSPECT;
     if(any_mux_dead) ev|=EV_MUX_DEAD;   // TEMA 1 P0 — 2026-05-29 (cacheado arriba)
     if(sh_any_unhealthy(m.sensor_health, n)) ev|=EV_SENSOR_NOISY;  // TEMA 4 P1 — 2026-05-29
     if(n<SENSOR_COUNT) ev|=EV_DEGRADED_GEOMETRY;  // anillo parcial: mux muerto o rig reducido

@@ -130,7 +130,9 @@ void setup() {
     digitalWrite(PIN_LED_STATUS, LOW);
 
 #ifdef CENTRAL_ENABLE_MANUAL_START
+#ifndef CENTRAL_DISABLE_PIN9_BUTTON
     pinMode(PIN_MANUAL_START_BUTTON, INPUT_PULLUP);  // F3 fail-safe (solo banco)
+#endif
 #endif
 
     Serial.begin(115200);
@@ -243,7 +245,15 @@ void loop() {
         }
         // Ruido de motor en el pin 9 solo puede dar GO espurio (no-op si ya corre);
         // el STOP es exclusivo del teclado -> no hay parada fantasma en pleno test.
+        // CENTRAL_DISABLE_PIN9_BUTTON: apaga la lectura del pin 9 SIN tocar el juez
+        // por teclado (g/s siguen). El pin 9 es un boton "ASUMIDO" (sin confirmar que
+        // este cableado): flotando/con ruido puede leerse LOW y arrancar el robot
+        // SOLO tras un rato encendido. Banco 2026-06-12: ROBOT1 arrancaba solo en el
+        // PASO 2 (OTOS) -> deshabilitado; ROBOT2 tuvo el mismo sintoma y se resolvio
+        // igual. Pedido de Elias Cordero (@3liasCo).
+#ifndef CENTRAL_DISABLE_PIN9_BUTTON
         if (digitalRead(PIN_MANUAL_START_BUTTON) == LOW) cmd_go = true;
+#endif
         if (cmd_stop) {
             g_manual_running = false;
             world_model_set_force_match_running(false);

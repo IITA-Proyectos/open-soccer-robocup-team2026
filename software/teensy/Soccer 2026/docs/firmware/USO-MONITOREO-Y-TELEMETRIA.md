@@ -154,6 +154,13 @@ telemetría flasheado**; no encienden ni apagan el modo, sólo lo operan:
 | `OTOS RESET` | Pone la odometría en (0,0,0) | base |
 | `IMU ZERO` / `IMU SAVE` | Re-cero del heading / guarda calib del BNO | top |
 
+> **Despertar el stream en competencia (`down`/`down_robot2`, monitor dormido):** NO hace
+> falta tipear `STREAM ON`. En un monitor serie crudo, **un ENTER** (cualquier línea, incluso
+> vacía; CR o LF) arranca el envío por **3 s**; repetí Enter para que siga. La app lo hace sola
+> (manda `STREAM ON` al conectar + `PING` cada 1 s como latido). Si el host se calla 3 s, el
+> stream se apaga solo → vuelve a modo partido sin reflashear. En el env de **banco**
+> (`down_debug_telemetry`) el stream ya arranca prendido desde el boot (no necesita Enter).
+
 **Sintonía fina (schema v3, app monitor-base — banco 2026-06-13):**
 
 | Comando | Qué hace | Dónde |

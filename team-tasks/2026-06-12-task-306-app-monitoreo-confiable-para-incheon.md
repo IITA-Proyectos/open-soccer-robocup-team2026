@@ -110,3 +110,7 @@ real en hardware, regla no negociable):
       `persensor_sens[]` siguen aplicados. (Procedimiento detallado en el journal 2026-06-13.)
 - [ ] (opcional) Ídem en `down_robot2` (R2) — solo cambia que OTOS reporta N/A.
 - [ ] **Saturación sobre placa real:** mín → todos blanco, máx → ninguno (en `--sim` no se ve).
+- [ ] **Wake por ENTER en competencia (cambio 2026-06-13, CAMBIA el binario `down`):** flashear
+      `down`, abrir monitor serie crudo, apretar **Enter** → debe salir JSON 3 s y parar solo;
+      repetir Enter lo mantiene; sin tocar nada queda dormido. `STREAM ON` ya no es necesario.
+      Confirmar también que la app sigue andando igual. Test plan completo en el journal 2026-06-13.

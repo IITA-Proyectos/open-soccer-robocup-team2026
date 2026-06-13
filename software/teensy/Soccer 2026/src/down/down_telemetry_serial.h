@@ -1,8 +1,10 @@
 // down_telemetry_serial.h — Glue Arduino de la telemetría USB de DOWN.
 //
-// Dos gates (ver el .cpp): -DDOWN_DEBUG_TELEMETRY (banco, stream desde el boot)
-// y -DDOWN_USB_MONITOR (COMPETENCIA, dormido hasta que la app habla + apagado
-// automático al sacar el cable — pedido María 2026-06-12, TASK-306). Lee el
+// Dos gates (detalle + precedencia DEBUG>USB_MONITOR en el .cpp):
+// -DDOWN_DEBUG_TELEMETRY (banco, stream desde el boot) y -DDOWN_USB_MONITOR
+// (COMPETENCIA, DORMIDO: se despierta con la app —STREAM ON + PING— o con un ENTER
+// en el monitor serie crudo, que arranca el envío 3 s SIN tipear STREAM ON;
+// auto-apagado a 3 s de silencio del host — TASK-306). Lee el
 // estado vivo de DOWN (line_ring + LineStatusV2 que va a CENTRAL + OTOS), lo
 // serializa con el módulo PURO src/shared/telemetry_down.{h,cpp} a JSON Lines y
 // lo escribe por el USB CDC (Serial); además parsea comandos de texto del host.

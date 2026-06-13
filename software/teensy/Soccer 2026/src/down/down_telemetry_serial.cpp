@@ -7,11 +7,13 @@
 //     boot, SIN auto-apagado → el monitor serie CRUDO ve valores sin que la app lo
 //     despierte. Banner "[DOWN-TELEM] v1 ready — stream ON desde boot (env debug)".
 //   • -DDOWN_USB_MONITOR SIN DEBUG (COMPETENCIA down/down_robot2): el monitor viaja
-//     EN el binario de partido pero DORMIDO. Silencio total por USB hasta que la app
-//     manda STREAM ON / PING; si el host se calla DOWN_MONITOR_HOST_TIMEOUT_MS (la
-//     app pingea cada 1 s como latido) el stream se apaga SOLO → desenchufar = modo
-//     partido, sin reflashear nada. Banner "[DOWN-MONITOR] dormido".
-//     (Macro interno DOWN_MONITOR_SLEEPY = ESTE caso, USB_MONITOR y NO banco.)
+//     EN el binario de partido pero DORMIDO. Silencio total por USB hasta que el host
+//     habla. Se DESPIERTA de dos formas: (a) la app manda STREAM ON + PING (latido cada
+//     1 s); (b) en un monitor serie CRUDO, un ENTER (cualquier línea, incluso vacía;
+//     CR o LF) arranca el envío por DOWN_MONITOR_HOST_TIMEOUT_MS (3 s) SIN tipear
+//     STREAM ON — repetir Enter lo mantiene. Si el host se calla 3 s, el stream se
+//     apaga SOLO → desenchufar = modo partido, sin reflashear nada. Banner
+//     "[DOWN-MONITOR] dormido". (Macro interno DOWN_MONITOR_SLEEPY = ESTE caso.)
 // El banner de boot SÍ distingue banco de competencia. La LÓGICA de calibración/
 // persistencia/detección es la MISMA en los tres envs (gateada por el OR de arriba o
 // ungated). Sin ninguno de los dos flags: traducción VACÍA (binario sin un byte).
@@ -146,11 +148,17 @@ void emit_frame() {
 
 // Ejecuta un comando ya parseado.
 void dispatch(const TdCommand& c) {
-    // Cualquier comando RECONOCIDO cuenta como latido del host (la app manda
-    // PING cada 1 s): renueva la ventana del modo monitor.
-    if (c.cmd != TdCmd::NONE && c.cmd != TdCmd::UNKNOWN) {
-        g_last_host_rx_ms = millis();
-        if (g_last_host_rx_ms == 0) g_last_host_rx_ms = 1;  // 0 = "nunca" (sentinel)
+    // LATIDO: cualquier línea del host (incluso un Enter vacío = NONE, o algo no
+    // reconocido) marca "host presente" y renueva la ventana de 3 s del modo monitor.
+    g_last_host_rx_ms = millis();
+    if (g_last_host_rx_ms == 0) g_last_host_rx_ms = 1;  // 0 = "nunca" (sentinel)
+    // WAKE: cualquier línea PRENDE el stream, EXCEPTO un PING suelto (latido puro de
+    // la app: no debe re-prender si el host pausó con STREAM OFF) y el propio STREAM
+    // OFF. Así, en competencia (dormido), un Enter en el monitor serie arranca el
+    // envío por DOWN_MONITOR_HOST_TIMEOUT_MS (3 s) SIN tipear STREAM ON; repetir Enter
+    // lo mantiene. La app sigue igual: STREAM ON al conectar + PING como latido.
+    if (c.cmd != TdCmd::PING && c.cmd != TdCmd::STREAM_OFF) {
+        g_stream_on = true;
     }
     switch (c.cmd) {
         case TdCmd::PING:
@@ -163,7 +171,7 @@ void dispatch(const TdCommand& c) {
             break;
 
         case TdCmd::STREAM_OFF:
-            g_stream_on = false;
+            g_stream_on = false;   // pausa explícita (el wake de arriba la excluye)
             break;
 
         case TdCmd::SET_RATE: {
@@ -271,10 +279,15 @@ void dispatch(const TdCommand& c) {
 void pump_rx() {
     while (Serial.available() > 0) {
         const char ch = static_cast<char>(Serial.read());
-        if (ch == '\n') {
+        // CR o LF terminan la línea → un "Enter" del monitor serie despacha sea cual
+        // sea su fin-de-línea (CR, LF o CRLF). La línea vacía (Enter pelado) también
+        // despacha → en competencia despierta el stream (ver dispatch). Con CRLF el CR
+        // despacha el comando y el LF queda como línea vacía (otro wake inocuo; no
+        // re-ejecuta nada porque g_rx_len ya se reseteó).
+        if (ch == '\n' || ch == '\r') {
             dispatch(td_parse_command(g_rx_line, g_rx_len));
             g_rx_len = 0;
-        } else if (ch != '\r') {
+        } else {
             if (g_rx_len < static_cast<int>(sizeof(g_rx_line))) {
                 g_rx_line[g_rx_len++] = ch;
             } else {

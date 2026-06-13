@@ -114,6 +114,12 @@ Espejo de `EV_*` en `src/shared/types.h`:
 Case-insensitive, tokens separados por espacios o comas. El parser puro
 `td_parse_command()` los mapea a un enum; el glue Arduino los ejecuta.
 
+> **Despertar el stream (modo competencia dormido):** cualquier línea recibida del host
+> —incluso un **Enter vacío** (CR o LF)— prende el stream por `DOWN_MONITOR_HOST_TIMEOUT_MS`
+> (3 s) y renueva ese plazo; **NO hace falta `STREAM ON`**. Excepciones: `PING` es latido puro
+> (no re-prende si el host pausó con `STREAM OFF`) y `STREAM OFF` apaga. En el env de banco
+> (`down_debug_telemetry`) el stream ya arranca prendido desde el boot.
+
 | Comando | Acción en el firmware |
 |---------|-----------------------|
 | `PING` | El firmware puede responder con un frame de ack (diagnóstico de enlace). |

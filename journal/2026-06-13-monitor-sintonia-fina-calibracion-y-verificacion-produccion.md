@@ -169,3 +169,42 @@ Verificado: `pio run -e down` y `-e down_debug_telemetry` → SUCCESS. `down` by
 construcción (no re-validar hardware). El efecto en banco (que el monitor crudo chorree valores)
 lo confirma el equipo al abrir el monitor. Comentario header + guía de USO actualizados en el
 mismo commit.
+
+---
+
+## Addendum 2 — wake por ENTER en competencia (2026-06-13, pedido de Gustavo)
+
+Para poder monitorear la base con un monitor serie crudo SIN la app y SIN tipear `STREAM ON`,
+y manteniendo el robot **match-safe** (boot dormido):
+
+**Cambio (en `down_telemetry_serial.cpp`, path compartido → aplica a `down`/`down_robot2`):**
+- `dispatch()`: **cualquier línea** del host (incluso un Enter vacío) renueva el latido y
+  **PRENDE el stream**, EXCEPTO `PING` (latido puro: no re-prende si se pausó) y `STREAM OFF`.
+- `pump_rx()`: **CR o LF** terminan la línea (antes solo LF) → un Enter despacha sea cual sea
+  el fin-de-línea del monitor; la línea vacía también despacha (despierta).
+
+**Conducta resultante (queda así):**
+- Boot: dormido en competencia (sin datos) / prendido en banco — sin cambios.
+- Competencia + monitor serie: **un ENTER → stream por 3 s**; repetir Enter lo mantiene. No
+  hace falta `STREAM ON`.
+- App: igual que antes (STREAM ON + PING cada 1 s la mantienen prendida; al desenchufar, 3 s
+  → modo partido).
+- `STREAM OFF` sigue pausando; `RATE <hz>` baja la tasa si 20 Hz es mucho para leer a ojo.
+
+⚠️ **CAMBIA EL BINARIO DE COMPETENCIA** (`down`/`down_robot2`) — ya NO es byte-idéntico. Es
+match-safe (en partido no hay USB conectado → nunca llega una línea → nunca despierta), pero
+**lo valida el equipo en banco** (no lo cierro yo). No hay test host (es glue Arduino).
+
+### Test plan — wake por Enter (equipo, banco)
+
+**Subsistema:** comm/telemetría USB DOWN. **Robot:** R1 (`down`) y opcional R2 (`down_robot2`).
+**Setup:** placa DOWN flasheada con `pio run -e down -t upload`; batería cargada (>7,6 V) para
+ver valores reales; monitor serie con fin-de-línea LF, CR o CRLF (cualquiera).
+**Pasos / criterio de aceptación:**
+1. Abrir el monitor, apretar reset → ver `[DOWN-MONITOR] dormido`. **Sin tocar nada: NO llega JSON** (dormido OK).
+2. Apretar **Enter** (línea vacía) → empieza a salir JSON. A los ~3 s sin tocar nada, **para solo**. ✔
+3. Apretar Enter de nuevo → vuelve a salir 3 s. Mantener Enter cada <3 s → stream continuo. ✔
+4. Tipear `STREAM OFF`+Enter → para; tipear `STREAM ON`+Enter → arranca. ✔
+5. Abrir la app (`python -m monitor_base --port COMx`) → stream continuo + grabación, igual que antes. ✔
+6. **Regresión partido:** sin USB conectado, el robot juega igual (la base manda LineStatusV2 a CENTRAL como siempre; el wake no dispara sin host).
+**Doc esperada:** confirmar en el journal que los 6 pasos dan lo esperado; recién ahí queda cerrado.

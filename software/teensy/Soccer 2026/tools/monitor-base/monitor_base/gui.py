@@ -380,14 +380,29 @@ class MonitorApp:
 
     def _render(self, f: Frame) -> None:
         statuses = self.health.status()
+        self.canvas.delete("sensorx")   # X de deshabilitados del frame anterior
         for i in range(self.n):
             raw = f.ring.raw[i] if i < len(f.ring.raw) else 0
             # "Ve blanco" = raw >= umbral EFECTIVO (con sensibilidad), no el white_bits
             # del line_ring (que usa el punto medio y NO refleja las perillas). Así el
             # slider de sensibilidad realmente barre el anillo blanco↔no-blanco.
             th = f.ring.threshold[i] if i < len(f.ring.threshold) else 0
-            white = raw >= th
+            en = f.ring.enabled[i] if i < len(f.ring.enabled) else True
             st = statuses[i]
+            if not en:
+                # DESHABILITADO: gris apagado + X. NUNCA amarillo, aunque raw sea alto,
+                # para no confundir al mover el robot (no participa de la detección).
+                self.canvas.itemconfig(self._dots[i], fill="#333333",
+                                       outline="#777777", width=2)
+                px, py = self._to_px(*geometry.SENSOR_POS[i])
+                self.canvas.create_line(px - SENSOR_R, py - SENSOR_R,
+                                        px + SENSOR_R, py + SENSOR_R,
+                                        fill="#ff5050", width=2, tags="sensorx")
+                self.canvas.create_line(px + SENSOR_R, py - SENSOR_R,
+                                        px - SENSOR_R, py + SENSOR_R,
+                                        fill="#ff5050", width=2, tags="sensorx")
+                continue
+            white = raw >= th
             fill = "#ffe27a" if white else _heat_color(raw)
             if st.is_problem:
                 outline, width = "#ff4040", 3

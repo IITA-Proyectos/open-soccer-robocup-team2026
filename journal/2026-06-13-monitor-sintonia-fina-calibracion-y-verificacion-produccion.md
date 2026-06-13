@@ -99,3 +99,49 @@ Trasladado a **TASK-306** (ampliación 2026-06-13) como criterios de cierre:
 - La EEPROM subió v1→v2: una calib guardada vieja (v1) se rechaza limpio → recalibrar una vez.
 - Sigue abierto el **conector USB flojo de la DOWN** (TASK-306, banco 2026-06-12) — si la app
   se desconecta sola en banco, es eso, no la app.
+
+---
+
+## Verificación adversarial competencia↔debug (workflow 5+1 agentes, 2026-06-13)
+
+Gustavo validó en banco (R1 real, `down_debug_telemetry`) que la persistencia (setup +
+sensores deshabilitados) y el deshabilitar funcionan, y preguntó si puede confiar en que el
+binario de **competencia** (`down`/`down_robot2`) se comporta igual. Se verificó
+adversarialmente leyendo el código (5 verificadores con lentes distintas + síntesis):
+
+**Veredicto: `minor_channel_differences_safe`, confianza alta, 0 divergencias de lógica.**
+
+- Toda la sintonía fina está gateada por `#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)`
+  (un **OR**), y `[env:down]` define `DOWN_USB_MONITOR` → se compila en partido. El boot
+  (`comm_central_load_persisted_calib`) y `dm_update` son **ungated** → corren en los 3 envs.
+- **Hallazgo importante (corrige un supuesto mío):** `down_debug_telemetry` HEREDA
+  `DOWN_USB_MONITOR` (hace `extends = env:down` + agrega solo `-DDOWN_DEBUG_TELEMETRY`). Las 14
+  apariciones de `DOWN_DEBUG_TELEMETRY` en `src/` están TODAS dentro de un OR con
+  `DOWN_USB_MONITOR`; ninguna rama de comportamiento depende solo de él. ⇒ el binario de banco
+  **ya arranca dormido y con auto-off de 3 s, igual que competencia**: el banco ya ejercitó el
+  wake/calibración de partido. `DOWN_DEBUG_TELEMETRY` es hoy casi no-op.
+- **Diferencias reales = solo de CANAL, no de lógica:** monitor arranca dormido (app lo
+  despierta con STREAM ON + PING@1s vs timeout 3s); el auto-off solo limpia `g_stream_on`, NO
+  toca `g_dm` ni la EEPROM (un `CAL SAVE` hecho no se pierde).
+- **Doc/comentario stale corregidos** (este commit): el header de `down_telemetry_serial.cpp`
+  decía "debug = stream ON desde el boot" (falso) y la guía de uso esperaba el banner
+  "[DOWN-TELEM] v1 ready" (muerto: ambos imprimen "[DOWN-MONITOR] dormido").
+
+### Procedimiento de humo sobre el binario de competencia (pendiente equipo, TASK-306)
+
+1. `pio run -e down -t upload` (NO down_debug_telemetry). El banner NO distingue los binarios
+   (ambos "[DOWN-MONITOR] dormido") → confiar en el env del `pio run`, no en el serial.
+2. `python -m monitor_base --port COMx` → la app manda STREAM ON + PING sola; confirmar que
+   llegan frames (sin app no se ve nada = esperado, está dormido).
+3. Anotar `threshold[]` / `enabled_bits` / `persensor_sens[]` iniciales.
+4. `SENS GLOBAL 30` + `SENS SET 5 -40` → confirmar que cambian global y `persensor_sens[5]` +
+   se mueve `threshold[5]`.
+5. `SENSOR DISABLE 10` → confirmar bit 10 OFF Y que `cross_track`/`sensors_on_line` cambian al
+   pasar la línea por ese sensor (efecto real de la exclusión, `down_model.cpp:180`).
+6. `CAL SAVE` → **leer el ACK** `[DOWN] calib + sintonia persistida en EEPROM` (no confiar en
+   el envío del comando).
+7. Power-cycle (desenchufar ~5 s; de paso, a los 3 s el robot vuelve a modo partido solo).
+8. Reabrir la app → confirmar que `threshold[]`/`enabled_bits` (sensor 10 OFF)/`persensor_sens`
+   (sensor 5 = −40, global = 30) reportan lo guardado. Cierra la persistencia en competencia.
+9. (Opcional R2) Ídem `pio run -e down_robot2 -t upload` (OTOS N/A; warnings de redefine de
+   `DOWN_NUM_OTOS_CONNECTED` son esperados/inofensivos).

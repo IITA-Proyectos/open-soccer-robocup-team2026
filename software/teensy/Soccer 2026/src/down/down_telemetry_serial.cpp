@@ -1,14 +1,21 @@
 // down_telemetry_serial.cpp — Glue Arduino de la telemetría USB de DOWN.
 //
-// DOS MODOS de compilación (excluyentes en la práctica, mismo código):
-//   • -DDOWN_DEBUG_TELEMETRY (envs *_debug_telemetry, banco): stream ON desde
-//     el boot a 20 Hz — el comportamiento histórico.
-//   • -DDOWN_USB_MONITOR (envs de COMPETENCIA down/down_robot2, pedido María
-//     2026-06-12): el monitor viaja EN el binario de partido pero DORMIDO.
-//     Silencio total por USB hasta que la app manda un comando (STREAM ON /
-//     PING); ahí streamea, y si el host se calla DOWN_MONITOR_HOST_TIMEOUT_MS
-//     (la app manda PING cada 1 s como latido) el stream se apaga SOLO →
-//     desenchufar el cable = modo partido, sin reflashear nada.
+// DOS FLAGS encienden este módulo (gate `#if defined(DOWN_DEBUG_TELEMETRY) ||
+// defined(DOWN_USB_MONITOR)`); el COMPORTAMIENTO de wake lo gobierna SOLO
+// DOWN_USB_MONITOR:
+//   • -DDOWN_USB_MONITOR (lo define [env:down] → lo HEREDAN down_robot2 y
+//     down_debug_telemetry): el monitor viaja EN el binario pero DORMIDO. Silencio
+//     total por USB hasta que la app manda un comando (STREAM ON / PING); ahí
+//     streamea, y si el host se calla DOWN_MONITOR_HOST_TIMEOUT_MS (la app pingea
+//     cada 1 s como latido) el stream se apaga SOLO → desenchufar = modo partido,
+//     sin reflashear nada.
+//   • -DDOWN_DEBUG_TELEMETRY (envs *_debug_telemetry): hoy es casi NO-OP — solo
+//     entra al gate de arriba. Como esos envs heredan DOWN_USB_MONITOR, el binario
+//     de banco arranca DORMIDO IGUAL que competencia (la rama `#else` de abajo,
+//     "stream ON desde el boot", quedó MUERTA: ningún env la produce). ⇒ banco y
+//     competencia ejercitan el MISMO wake/calibración (verificado adversarialmente
+//     2026-06-13). El banner de boot tampoco los distingue (ambos imprimen
+//     "[DOWN-MONITOR] dormido"): para saber qué flasheaste, mirá el env del `pio run`.
 // Sin ninguno de los dos flags: traducción VACÍA (binario sin un byte de esto).
 //
 // El módulo PURO (serialización JSON + parseo de comandos) vive en

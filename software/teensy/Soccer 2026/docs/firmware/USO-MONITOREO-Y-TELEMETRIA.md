@@ -84,7 +84,10 @@ Cada placa tiene **un mismo firmware** que se puede compilar de dos maneras:
 cd "C:\Users\violl\iitasoccer\soccer-main\software\teensy\Soccer 2026"
 # 2) Compilar + flashear el modo telemetría:
 pio run -e down_debug_telemetry -t upload
-# 3) (opcional) confirmar que stremea: abrir el monitor y ver "[DOWN-TELEM] v1 ready" + JSON.
+# 3) (opcional) confirmar el boot: abrir el monitor. El binario arranca DORMIDO e imprime
+#    "[DOWN-MONITOR] dormido — esperando a la app (STREAM ON / PING)". NO streamea JSON hasta
+#    que la app lo despierta (paso 4). El banner NO distingue down de down_debug_telemetry
+#    (ambos heredan DOWN_USB_MONITOR); para saber cuál flasheaste, mirá el env del `pio run`.
 pio device monitor -b 115200      # <-- CERRALO antes del paso 4 (un solo programa por COM)
 # 4) Correr la app:
 cd tools\monitor-base

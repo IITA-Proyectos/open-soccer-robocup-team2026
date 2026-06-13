@@ -80,18 +80,30 @@ byte-idéntica). Ya están en `main` y compiladas en producción (ver más abajo
   `g_dm.enabled/sensitivity/global_sens` **sin gate** → aplica en `down`/`down_robot2`,
   no solo en el env de telemetría. Los comandos SENS/SENSOR + frame v3 van detrás de
   `DOWN_DEBUG_TELEMETRY || DOWN_USB_MONITOR`, y `[env:down]` define `DOWN_USB_MONITOR`.
-- ✅ **R1 placa REAL (Gustavo, banco 2026-06-13):** la app conectada a la DOWN física
-  de robot1; los **sliders de sensibilidad aplican AL MOVER** (tuning en vivo por USB OK).
+- ✅ **Equivalencia competencia↔debug verificada por código** (workflow adversarial 5+1
+  agentes, 2026-06-13): veredicto `minor_channel_differences_safe`, confianza alta, **0
+  divergencias de lógica**. La calibración/persistencia/deshabilitar corre IGUAL en
+  `down`/`down_robot2` que en `down_debug_telemetry` (gate OR `DOWN_DEBUG_TELEMETRY ||
+  DOWN_USB_MONITOR` + boot/dm_update **ungated**). Hallazgo clave: `down_debug_telemetry`
+  HEREDA `DOWN_USB_MONITOR` → el binario de banco **ya arranca dormido = ya ejercitó el wake
+  de competencia**; `DOWN_DEBUG_TELEMETRY` es casi no-op hoy. Doc/comentario stale corregidos
+  en el mismo commit.
 
-### Pendiente de banco (NO cerrado por Claude — regla: hardware lo cierra el equipo)
+### Estado de banco (actualizado 2026-06-13)
 
-- [ ] **Persistencia tras power-cycle:** `CAL SAVE` con sensibilidad/sensores
-      deshabilitados → apagar/encender la placa → confirmar que la sintonía SIGUE
-      aplicada (no solo la carpet/white). Verificable mirando `threshold[]`/`enabled_bits`
-      en la app tras el reboot.
-- [ ] **Deshabilitar saca de la línea:** deshabilitar un sensor que ve blanco y
-      confirmar que **cambia** `LineStatusV2` (centroide/`cross_track`/`sensors_on_line`)
-      hacia CENTRAL — i.e. que el OFF surte efecto real en la detección, no solo en el dibujo.
-- [ ] **Saturación sobre placa real:** en sensibilidad mínima detecta TODOS blanco, en
-      máxima NINGUNO (en `--sim` no se ve; el sim no aplica sensibilidad).
-- [ ] (opcional) Repetir el set en **R2** (`down_robot2`).
+Validado por **Gustavo sobre la placa REAL de robot1**, binario `down_debug_telemetry`
+(el equipo cierra hardware, no Claude — esto es su testimonio registrado):
+- [x] **Sliders de sensibilidad aplican AL MOVER** (tuning en vivo por USB).
+- [x] **Persistencia tras power-cycle:** la sintonía (sensibilidad + sensores deshabilitados)
+      SOBREVIVE al apagado/encendido.
+- [x] **Deshabilitar surte efecto** en la detección.
+
+Falta SOLO el cierre físico sobre el binario de **competencia** (la lógica ya se probó
+equivalente por código, así que no hay que re-validar la lógica — solo confirmar el efecto
+real en hardware, regla no negociable):
+- [ ] **Prueba de humo en `down` real (R1):** flashear `pio run -e down -t upload`,
+      calibrar/deshabilitar/`SENS`/`CAL SAVE` (leer el ACK `[DOWN] calib + sintonia
+      persistida en EEPROM`), power-cycle, confirmar que `threshold[]`/`enabled_bits`/
+      `persensor_sens[]` siguen aplicados. (Procedimiento detallado en el journal 2026-06-13.)
+- [ ] (opcional) Ídem en `down_robot2` (R2) — solo cambia que OTOS reporta N/A.
+- [ ] **Saturación sobre placa real:** mín → todos blanco, máx → ninguno (en `--sim` no se ve).

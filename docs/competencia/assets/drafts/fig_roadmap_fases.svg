@@ -62,42 +62,43 @@
 
   <!-- FASE A : opcional (azul punteado) -->
   <g>
-    <rect x="488" y="340" width="392" height="300" rx="16" fill="#EAF1F8" stroke="#1D4E89" stroke-width="4" stroke-dasharray="10 8"/>
-    <path d="M488,356 a16,16 0 0 1 16,-16 h360 a16,16 0 0 1 16,16 v60 h-392 Z" fill="#1D4E89"/>
-    <text x="514" y="402" font-size="46" font-weight="800" fill="#FFFFFF">FASE A : opc.</text>
-    <text x="514" y="472" font-size="40" fill="#2B2B2B">Puente ESP32 WiFi</text>
-    <text x="514" y="522" font-size="40" fill="#2B2B2B">= telemetria sin cable</text>
-    <text x="514" y="578" font-size="36" fill="#555555">~2-3 dias SW</text>
-    <text x="514" y="620" font-size="36" fill="#555555">USD 5-10/robot*</text>
+    <rect x="486" y="340" width="394" height="300" rx="16" fill="#EAF1F8" stroke="#1D4E89" stroke-width="4" stroke-dasharray="10 8"/>
+    <path d="M486,356 a16,16 0 0 1 16,-16 h362 a16,16 0 0 1 16,16 v60 h-394 Z" fill="#1D4E89"/>
+    <text x="510" y="402" font-size="46" font-weight="800" fill="#FFFFFF">FASE A : opc.</text>
+    <text x="510" y="472" font-size="40" fill="#2B2B2B">Puente WiFi</text>
+    <text x="510" y="522" font-size="40" fill="#2B2B2B">ESP32, sin cable</text>
+    <text x="510" y="578" font-size="36" fill="#555555">~2-3 dias SW</text>
+    <text x="510" y="620" font-size="36" fill="#555555">USD 5-10/robot*</text>
   </g>
 
   <!-- FASE B : CAN troncal (azul punteado) -->
   <g>
-    <rect x="892" y="340" width="370" height="300" rx="16" fill="#EAF1F8" stroke="#1D4E89" stroke-width="4" stroke-dasharray="10 8"/>
-    <path d="M892,356 a16,16 0 0 1 16,-16 h338 a16,16 0 0 1 16,16 v60 h-370 Z" fill="#1D4E89"/>
+    <rect x="892" y="340" width="384" height="300" rx="16" fill="#EAF1F8" stroke="#1D4E89" stroke-width="4" stroke-dasharray="10 8"/>
+    <path d="M892,356 a16,16 0 0 1 16,-16 h352 a16,16 0 0 1 16,16 v60 h-384 Z" fill="#1D4E89"/>
     <text x="916" y="402" font-size="46" font-weight="800" fill="#FFFFFF">FASE B</text>
-    <text x="916" y="472" font-size="40" fill="#2B2B2B">Bus CAN-FD troncal</text>
-    <text x="916" y="522" font-size="40" fill="#2B2B2B">reemplaza los UART</text>
-    <text x="916" y="578" font-size="36" fill="#555555">FlexCAN ya en Teensy</text>
-    <text x="916" y="620" font-size="36" fill="#555555">+ chip ~USD 0.50*</text>
+    <text x="916" y="472" font-size="40" fill="#2B2B2B">Bus CAN-FD,</text>
+    <text x="916" y="522" font-size="40" fill="#2B2B2B">un solo troncal</text>
+    <text x="916" y="566" font-size="34" fill="#555555">reemplaza los UART</text>
+    <text x="916" y="606" font-size="34" fill="#555555">FlexCAN en Teensy</text>
+    <text x="916" y="632" font-size="32" fill="#555555">+ chip ~USD 0.50*</text>
   </g>
 
   <!-- FASE C : gateway + telemetria F1 (azul punteado) -->
   <g>
     <rect x="1284" y="340" width="576" height="300" rx="16" fill="#EAF1F8" stroke="#1D4E89" stroke-width="4" stroke-dasharray="10 8"/>
     <path d="M1284,356 a16,16 0 0 1 16,-16 h544 a16,16 0 0 1 16,16 v60 h-576 Z" fill="#1D4E89"/>
-    <text x="1308" y="402" font-size="46" font-weight="800" fill="#FFFFFF">FASE C</text>
-    <text x="1308" y="470" font-size="40" fill="#2B2B2B">4ta placa ESP32 GATEWAY</text>
-    <text x="1308" y="518" font-size="34" fill="#555555">3 enlaces: firmware propio,</text>
-    <text x="1308" y="560" font-size="34" fill="#555555">telemetria WiFi y ESP-NOW</text>
-    <text x="1308" y="602" font-size="34" fill="#555555">al robot companero</text>
-    <text x="1308" y="630" font-size="36" font-weight="700" fill="#1D4E89">+ telemetria estilo F1</text>
+    <text x="1304" y="402" font-size="46" font-weight="800" fill="#FFFFFF">FASE C</text>
+    <text x="1304" y="468" font-size="40" fill="#2B2B2B">4ta placa ESP32 GATEWAY</text>
+    <text x="1304" y="516" font-size="34" fill="#555555">3 enlaces: firmware propio,</text>
+    <text x="1304" y="558" font-size="34" fill="#555555">telemetria WiFi y ESP-NOW</text>
+    <text x="1304" y="600" font-size="34" fill="#555555">al robot companero</text>
+    <text x="1304" y="630" font-size="36" font-weight="700" fill="#1D4E89">+ telemetria estilo F1</text>
   </g>
 
   <!-- Flechas reusa entre fases (verde solido la 1a; futuro punteadas) -->
   <line x1="471" y1="490" x2="487" y2="490" stroke="#1E8A4C" stroke-width="7" marker-end="url(#mBlue)"/>
   <line x1="881" y1="490" x2="890" y2="490" stroke="#8A8A8A" stroke-width="5" marker-end="url(#mDash)"/>
-  <line x1="1264" y1="490" x2="1281" y2="490" stroke="#8A8A8A" stroke-width="5" stroke-dasharray="6 5" marker-end="url(#mDash)"/>
+  <line x1="1277" y1="490" x2="1283" y2="490" stroke="#8A8A8A" stroke-width="5" marker-end="url(#mDash)"/>
 
   <line x1="40" y1="700" x2="1940" y2="700" stroke="#E2E2E2" stroke-width="3"/>
 

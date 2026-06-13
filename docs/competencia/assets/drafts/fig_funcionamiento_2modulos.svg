@@ -20,6 +20,8 @@
        gris=neutro/modulo rojo=SOLO emergencia. El color ES informacion.
        Cifras verificadas vs docs/competencia/TDP.md y ESTADO-ACTUAL.md
        (soccer-main HEAD 86763b9, 2026-06-13). Unidades visuales: 7.
+       Cifra de tests = cifra viva del equipo (658/47/0) -> re-medir y
+       fechar al imprimir; ver Fig.8 / TDP. WorldSnapshot 31 B = static_assert.
        ============================================================ -->
   <defs>
     <marker id="aGray" markerWidth="7" markerHeight="6" refX="5.2" refY="3" orient="auto" markerUnits="strokeWidth">
@@ -33,7 +35,7 @@
     </marker>
   </defs>
 
-  <rect x="0" y="0" width="1720" height="1400" fill="#FFFFFF"/>
+  <rect x="0" y="0" width="1720" height="1460" fill="#FFFFFF"/>
 
   <!-- ===== Titulo interno (lectura a 3 m) ===== -->
   <text x="40" y="84" font-size="76" font-weight="800" fill="#222222">DOS MODULOS, UN CONTRATO</text>

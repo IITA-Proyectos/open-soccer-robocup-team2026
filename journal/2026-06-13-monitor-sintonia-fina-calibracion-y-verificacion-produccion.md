@@ -208,3 +208,31 @@ ver valores reales; monitor serie con fin-de-línea LF, CR o CRLF (cualquiera).
 5. Abrir la app (`python -m monitor_base --port COMx`) → stream continuo + grabación, igual que antes. ✔
 6. **Regresión partido:** sin USB conectado, el robot juega igual (la base manda LineStatusV2 a CENTRAL como siempre; el wake no dispara sin host).
 **Doc esperada:** confirmar en el journal que los 6 pasos dan lo esperado; recién ahí queda cerrado.
+
+---
+
+## Addendum 3 — eliminado el env `down_debug_telemetry` + macro `DOWN_DEBUG_TELEMETRY` (2026-06-13)
+
+Con el wake por Enter (Addendum 2), el env de banco `down_debug_telemetry` (que streameaba desde
+el boot) quedó **redundante**: la telemetría USB ya vive en el binario de COMPETENCIA `down`
+(monitor dormido, `-DDOWN_USB_MONITOR`) y se activa sola al conectar la app o apretar Enter. A
+pedido de Gustavo se **eliminó**:
+
+- **`platformio.ini`:** quitado `[env:down_debug_telemetry]` (queda un tombstone que apunta a `down`).
+- **Macro `DOWN_DEBUG_TELEMETRY`:** quitado de TODO el firmware (`down_telemetry_serial.{cpp,h}`,
+  `comm_central.{cpp,h}`, `main_down.cpp`, `otos.{cpp,h}`, `telemetry_down.h`). Los gates
+  `#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)` quedaron `#ifdef DOWN_USB_MONITOR`;
+  se sacó `DOWN_MONITOR_SLEEPY` y la rama stream-desde-boot (ya no existe).
+- **El TOP NO se tocó** (`top_*_debug_telemetry` / `TOP_DEBUG_TELEMETRY` siguen vigentes).
+
+**Byte-identidad verificada (no de palabra, de hex):** guardé el `.hex` de `down`/`down_robot2`
+del build previo (7beaed5), apliqué la eliminación, recompilé y **`diff` dio IDÉNTICO** en ambos
+(el build es reproducible — lo confirmé compilando dos veces el mismo source). ⇒ la eliminación
+del macro es **byte-neutra**: no cambia un solo byte del binario de competencia (para `down`,
+`DOWN_DEBUG_TELEMETRY` nunca estuvo definido, así que ningún `#if` cambió de rama). No requiere
+re-validación de hardware por este cambio.
+
+**Limpieza de referencias en docs/app/tasks:** workflow intensivo (6 agentes de remediación por
+grupos de archivos disjuntos + 3 verificadores adversariales multi-estrategia + crítico de
+completitud) para asegurar que no quede ninguna referencia VIVA al env eliminado (los registros
+históricos —journals, research, decisions— se respetan). Resultado registrado en el commit.

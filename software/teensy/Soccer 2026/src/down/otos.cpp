@@ -205,7 +205,7 @@ bool     otos_is_left_ready()   { return g_left_health.alive; }
 bool     otos_is_right_ready()  { return g_right_health.alive; }
 uint32_t otos_get_tick_count()  { return g_tick_count; }
 
-#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)
+#ifdef DOWN_USB_MONITOR
 // Lecturas por-OTOS (sin fusionar) — exponen los globals que otos_tick() ya
 // mantiene para el análisis diferencial. Solo en telemetría/monitor USB.
 float otos_get_left_x_mm()         { return g_left_x; }

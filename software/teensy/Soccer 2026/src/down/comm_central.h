@@ -43,7 +43,7 @@ uint32_t comm_central_get_frames_sent();
 uint32_t comm_central_get_frames_dropped();  // descartados por TX buffer lleno (P1.6)
 uint32_t comm_central_get_crc_errors();
 
-#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)
+#ifdef DOWN_USB_MONITOR
 struct LineStatusV2;  // fwd-decl (tipo completo en types.h, incluido en el .cpp)
 // Copia el ÚLTIMO LineStatusV2 difundido a CENTRAL (para la telemetría USB del
 // modo DEBUG/monitor). Retorna false si todavía no se envió ninguno.

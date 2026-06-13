@@ -29,7 +29,7 @@ Es el **próximo desarrollo PRIORITARIO** del equipo (pedido 2026-06-06). Hoy el
 
 ## 4. Criterio de cierre
 - [ ] `pio run -e down` (competencia) compila y el binario es byte-idéntico al actual (flag OFF). *(pendiente: verificar con pio en banco — el gate host no compila Teensy)*
-- [ ] `pio run -e down_debug_telemetry -t upload` emite el stream por USB a tasa estable. *(env y glue implementados; pendiente compilar/flashear)*
+- [ ] `pio run -e down -t upload` emite el stream por USB a tasa estable (telemetría en el binario de competencia, flag `-DDOWN_USB_MONITOR`; se activa al conectar la app `tools/monitor-base` o con un ENTER en monitor serie crudo). *(glue implementado; pendiente compilar/flashear)* [NOTA 2026-06-13: `down_debug_telemetry` eliminado → usar `down`; ver `platformio.ini`]
 - [x] El stream incluye raw[32], white[32], calib y la LineStatusV2 real (la misma que va a CENTRAL). *(cubierto por el módulo puro + golden)*
 - [ ] Comandos de calib (carpet/blanco/auto/guardar-EEPROM) funcionan vía USB. *(parser puro listo y testeado; falta validar la ejecución del glue en banco)*
 - [x] Módulo puro de (de)serialización del frame con test host en verde (gate). *(`test_telemetry_down`, 16 tests; gate 50 envs / 705 tests / 0 fallos)*

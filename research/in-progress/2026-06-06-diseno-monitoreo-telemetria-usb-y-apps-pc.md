@@ -107,15 +107,20 @@ versionado). Lo construido, con sus rutas reales (todo bajo `software/teensy/Soc
 - ✅ **Host-verificado (escritorio, sin hardware):** módulo puro + golden (gate host verde,
   50/705/0) y la app Python (pytest + simulador/replay). Cero impacto en el binario de
   competencia (flag OFF → byte-idéntico).
-- ⏳ **pio-pendiente (lo verifica el equipo, acá no compila Teensy):** el **glue Arduino** y el
-  env `[env:down_debug_telemetry]` requieren `pio run -e down_debug_telemetry` (compilar/flashear)
-  para cerrar. También confirmar que `pio run -e down` sigue byte-idéntico.
+- ⏳ **pio-pendiente (lo verifica el equipo, acá no compila Teensy):** el **glue Arduino** requiere
+  `pio run -e down` (compilar/flashear) para cerrar. También confirmar que `pio run -e down` sigue
+  byte-idéntico.
+  > [NOTA 2026-06-13: `down_debug_telemetry` eliminado → usar `down`. La telemetría de la base ahora
+  > vive en el binario de competencia (`down` / `down_robot2`, flag `-DDOWN_USB_MONITOR`, "monitor
+  > dormido"): arranca sin emitir y se activa sola al conectar la app `monitor-base` por USB o
+  > apretando ENTER en un monitor serie crudo. Ya no hay env de banco aparte. Ver `platformio.ini`.]
 
 ### 7.4 Próximos pasos
-1. **Banco (cierre de FASE 1):** flashear `pio run -e down_debug_telemetry -t upload`, correr la
-   app (`python -m monitor_base --port COMx`), mover el robot sobre las líneas y **calibrar**
-   (carpet/blanco/auto → guardar a EEPROM); diagnosticar sensores muertos/pegados. Cerrar los
-   criterios de TASK-304/305.
+1. **Banco (cierre de FASE 1):** flashear `pio run -e down -t upload`, correr la
+   app (`python -m monitor_base --port COMx`) —al conectar, la app activa la telemetría sola—,
+   mover el robot sobre las líneas y **calibrar** (carpet/blanco/auto → guardar a EEPROM);
+   diagnosticar sensores muertos/pegados. Cerrar los criterios de TASK-304/305.
+   > [NOTA 2026-06-13: `down_debug_telemetry` eliminado → usar `down`; ver `platformio.ini`.]
 2. **FASE 2 (P1) — SUPERIOR:** arrancar **TASK-205/206** (TOP) reutilizando este patrón
    (módulo puro + glue gateado + app PC + protocolo versionado).
 3. **FASE 3 (futuro, roadmap E4):** migrar el transporte USB → CAN troncal + ESP32 gateway

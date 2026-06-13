@@ -11,6 +11,18 @@ estado: pending
 
 # TASK-307 — Tres fuentes se contradicen sobre la calibración de línea
 
+> **[RESUELTO 2026-06-13 — el dilema "reflashear vs en vivo" desapareció.]** Se **eliminó
+> el env `down_debug_telemetry`** (y el macro `-DDOWN_DEBUG_TELEMETRY`) de la placa DOWN. Ya no
+> existe un env de banco aparte: la telemetría USB de la base **vive en el binario de competencia**
+> (`down`/`down_robot2`, flag `-DDOWN_USB_MONITOR`, "monitor dormido"). **Hay UN solo camino:**
+> flashear `down`, y la telemetría se activa SOLA al conectar la app `tools/monitor-base` (manda
+> STREAM ON + PING) o con un ENTER en un monitor serie crudo (stream 3 s). Ya no se "reflashea un
+> env de telemetría". Esto cierra de raíz la contradicción de abajo (la opción "reflashear
+> `down_debug_telemetry`" ya no es una alternativa porque ese env no existe). Falta solo que las 3
+> fuentes vivas queden alineadas a este único flujo (ver Criterio de cierre) y la prueba de humo en
+> banco sobre `down` (regla no negociable de hardware). Ver `platformio.ini` (env `down`, líneas del
+> bloque `[env:down]`) y journal 2026-06-13.
+
 > **Origen:** el 2026-06-13 Claude recomendó calibrar flasheando
 > `diag_down_calibracion` + reflashear, siguiendo `QUE-FLASHEO-HOY.md`. Gustavo
 > recordó que la calibración estaba integrada al firmware de partido (sin
@@ -35,12 +47,14 @@ canónico se actualiza en el MISMO commit que el cambio").
 1. **¿El camino en vivo sobre competencia REALMENTE anda?** El código lo compila,
    pero falta confirmar en banco el handshake: ¿la app `monitor-base` despierta el
    monitor dormido del binario `down`/`down_robot2` (manda PING/STREAM_ON) y
-   `CAL SAVE` persiste bien? Probarlo end-to-end. *(TASK-306 se llamaba "app
-   CONFIABLE": chequear si la conclusión fue usar `down_debug_telemetry` por
-   confiabilidad, o si el camino en vivo ya quedó validado.)*
-2. **Definir el flujo canónico** (en vivo sobre `down` vs reflashear
-   `down_debug_telemetry`) y **alinear las 3 fuentes en UN commit**: guía de uso,
+   `CAL SAVE` persiste bien? Probarlo end-to-end. *(TASK-306: la conclusión fue
+   consolidar la telemetría en `down` — el env `down_debug_telemetry` quedó redundante
+   y se eliminó; ya no hay opción "usar el env de banco por confiabilidad".)*
+2. **El flujo canónico ya quedó definido** (en vivo sobre `down`; el env
+   `down_debug_telemetry` se eliminó, así que la opción "reflashear" desapareció).
+   Falta solo **alinear las 3 fuentes en UN commit** a ese único flujo: guía de uso,
    `QUE-FLASHEO-HOY.md` línea 29, y el comentario de `platformio.ini`.
+   [NOTA 2026-06-13: `down_debug_telemetry` eliminado → flujo único = flashear `down`. Ver `platformio.ini`.]
 3. **De paso:** TASK-306 bug #1 (calib no se aplica hasta reboot) parece **ya
    resuelto** en el código (`comm_central_invalidate_calib()` se llama en los casos
    CAL_* de `down_telemetry_serial.cpp`). Verificar y actualizar el estado de

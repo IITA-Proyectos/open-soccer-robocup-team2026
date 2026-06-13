@@ -21,7 +21,7 @@ namespace {
 FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
 
-#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)
+#ifdef DOWN_USB_MONITOR
 // Cache del último LineStatusV2 difundido a CENTRAL (exacto: el que viaja por el
 // cable, con sample_age_ms ya seteado). Lo lee la telemetría USB del modo
 // DEBUG/monitor de competencia.
@@ -175,7 +175,7 @@ void comm_central_send_line_urgent() {
     // Difundir la línea a AMBAS placas (CENTRAL + TOP) con SEQ por enlace.
     down_tx_broadcast_line(s);
 
-#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)
+#ifdef DOWN_USB_MONITOR
     // Snapshot del LineStatusV2 EXACTO que se difundió, para la telemetría USB.
     g_last_lsv2       = s;
     g_last_lsv2_valid = true;
@@ -246,7 +246,7 @@ void comm_central_invalidate_calib() {
     g_dm_init = false;
 }
 
-#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)
+#ifdef DOWN_USB_MONITOR
 bool comm_central_get_last_line_status(LineStatusV2& out) {
     if (!g_last_lsv2_valid) return false;
     out = g_last_lsv2;

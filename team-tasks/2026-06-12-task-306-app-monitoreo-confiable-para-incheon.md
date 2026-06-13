@@ -39,9 +39,11 @@ relacionada: TASK-305 (app PC monitoreo/calibración base), TASK-304 (telemetrí
 
 ## Criterio de cierre (verificable en banco)
 
-- [ ] Calibrar la línea **desde la app** (flashear `down_debug_telemetry`, abrir la
-      app, capturar verde/blanco, guardar) y que el robot **detecte la línea sin
-      reiniciar** la placa (verificar `data_valid`/`line_present`/`ev` en vivo).
+- [ ] Calibrar la línea **desde la app** (flashear `down`, abrir la
+      app — despierta el monitor dormido —, capturar verde/blanco, guardar) y que el robot
+      **detecte la línea sin reiniciar** la placa (verificar `data_valid`/`line_present`/`ev`
+      en vivo). [NOTA 2026-06-13: `down_debug_telemetry` eliminado → usar `down`; la telemetría
+      vive en el binario de competencia (`-DDOWN_USB_MONITOR`). Ver `platformio.ini`.]
 - [ ] La app avisa claramente en pantalla cuándo está en **simulador** vs robot real.
 - [ ] CAL SAVE confirma éxito/fallo; CAL AUTO OFF rechaza una calib inválida.
 - [ ] Probado en banco con la placa DOWN real (no solo simulador).

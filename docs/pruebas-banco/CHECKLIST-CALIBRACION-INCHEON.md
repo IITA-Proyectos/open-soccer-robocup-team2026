@@ -67,13 +67,15 @@
   y el BLANCO reales de la cancha de Incheon (distintos del lab). Es lo que decide el freno
   de borde, así que es crítico.
 - **Cómo:**
-  1. Flashear telemetría y abrir la app de la BASE:
+  1. Flashear competencia (el monitor USB viaja DORMIDO en `down`) y abrir la app de la BASE:
      ```powershell
      cd "C:\Users\violl\iitasoccer\soccer-main\software\teensy\Soccer 2026"
-     pio run -e down_debug_telemetry -t upload
+     pio run -e down -t upload
      cd tools\monitor-base
      python -m monitor_base --port COMx        # COMx = puerto de la DOWN (--port auto si no lo sabés)
      ```
+     > La app despierta sola la telemetría al conectarse (manda STREAM ON + PING). Ya no hay
+     > un env de banco aparte para la DOWN: se calibra sobre el mismo binario de competencia.
   2. Robot sobre el VERDE de la cancha → botón **"Auto-calib ON"**.
   3. Pasá el robot **lento** por las líneas blancas unos segundos (captura min/max por sensor).
   4. Botón **"Auto-calib OFF"** (fija carpet=min, white=max).

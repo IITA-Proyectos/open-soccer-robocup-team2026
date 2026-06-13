@@ -10,7 +10,7 @@
 //
 // El glue con el hardware (leer line_ring/otos, escribir Serial) vive en
 // src/down/down_telemetry_serial.cpp (Arduino-only, GATEADO con
-// -DDOWN_DEBUG_TELEMETRY) para mantener este módulo 100% host-testeable.
+// -DDOWN_USB_MONITOR) para mantener este módulo 100% host-testeable.
 //
 // Por qué JSON Lines (texto) y no binario (v1):
 //   - Trivial de parsear en Python (json.loads por línea) y de loguear a archivo.

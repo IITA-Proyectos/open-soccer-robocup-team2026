@@ -384,67 +384,78 @@ loop main_down.cpp:161-163). Contadores SIEMPRE activos: `g_tick_count` y
 
 ## Subsistema 6 — Telemetría USB + app monitor-base
 
-Env: `[env:down_debug_telemetry]` (platformio.ini:1045) = `[env:down]` +
-`-DDOWN_DEBUG_TELEMETRY`. Glue Arduino GATEADO: `src/down/down_telemetry_serial.{h,cpp}`
-(todo el cuerpo dentro de `#ifdef DOWN_DEBUG_TELEMETRY`); hook en
-`src/down/main_down.cpp:150-152` (`down_telemetry_init`) y `:198-200` (`down_telemetry_tick`);
-getter `comm_central_get_last_line_status()` (`comm_central.h:44`). Módulo PURO
-host-testeado: `src/shared/telemetry_down.{h,cpp}`. Contrato: `docs/firmware/TELEMETRIA-DOWN.md`.
-App de PC: `tools/monitor-base/` (`python -m monitor_base`).
+La telemetría USB de la DOWN viaja en el **binario de COMPETENCIA** `[env:down]`
+(platformio.ini:106, flag `-DDOWN_USB_MONITOR` — "monitor dormido"). **YA NO hay un
+env de banco aparte** (`down_debug_telemetry` fue ELIMINADO el 2026-06-13, junto al
+macro `DOWN_DEBUG_TELEMETRY`). El binario de partido arranca DORMIDO (no manda nada)
+y la telemetría se **ACTIVA SOLA**: (a) conectando la app `tools/monitor-base` a
+`down` por USB (manda STREAM ON + PING; permite grabar y calibrar en vivo); o
+(b) en un monitor serie crudo, apretando ENTER (cualquier línea) → stream por 3 s.
+Al sacar el cable / dejar de pingear vuelve solo a modo partido a los ~3 s.
+
+Glue Arduino GATEADO: `src/down/down_telemetry_serial.{h,cpp}` (cuerpo bajo
+`#ifdef DOWN_USB_MONITOR`); hook en `src/down/main_down.cpp` (`down_telemetry_init` /
+`down_telemetry_tick`); getter `comm_central_get_last_line_status()` (`comm_central.h:44`).
+Módulo PURO host-testeado: `src/shared/telemetry_down.{h,cpp}`. Contrato:
+`docs/firmware/TELEMETRIA-DOWN.md`. App de PC: `tools/monitor-base/` (`python -m monitor_base`).
 
 > El firmware emite JSON Lines (un objeto por línea, `\n`) por el USB CDC (`Serial`,
-> 115200), independiente de los UART inter-placa. Con el flag OFF (`down`/`down_lean`/
-> `down_wdt`) el binario de competencia es **byte-idéntico** (todo `#ifdef`'d).
-> ⚠️ El glue Arduino NO se compila en el gate host (g++) — esta card lo verifica POR
-> PRIMERA VEZ con `pio`.
+> 115200), independiente de los UART inter-placa. Dormido (sin app / sin ENTER) no
+> emite, así que en partido no interfiere. El flujo de flasheo ahora es UNO: el mismo
+> `[env:down]` que se usa en cancha.
 
 ### CARD DOWN-10: Telemetría USB + app monitor-base (validar glue + calibrar)
 
-- **Objetivo:** verificar que el modo debug de telemetría COMPILA y FLASHEA (nunca se
-  probó en host), que NO rompe el binario de competencia, y que la app de PC
-  `monitor-base` levanta el stream, muestra los 32 sensores / línea a CENTRAL /
+- **Objetivo:** verificar que el monitor USB del binario de competencia COMPILA y
+  FLASHEA, que arranca DORMIDO (no interfiere en partido), y que la app de PC
+  `monitor-base` despierta el stream, muestra los 32 sensores / línea a CENTRAL /
   odometría OTOS, y calibra y persiste la calib en EEPROM.
 - **Placa:** DOWN (Teensy 4.0), ROBOT1, conectada por USB a la PC.
-- **Programa / env:** `cd "software/teensy/Soccer 2026" && pio run -e down_debug_telemetry -t upload`
-- **¿Existe el programa?:** SÍ. `[env:down_debug_telemetry]` (platformio.ini:1045),
-  glue `src/down/down_telemetry_serial.cpp`, app `tools/monitor-base/`. Nada que crear.
-  PERO el glue Arduino NUNCA se compiló en el host → el paso 1 es el gate real.
+- **Programa / env:** `cd "software/teensy/Soccer 2026" && pio run -e down -t upload`
+  (el monitor viaja en el binario de competencia `[env:down]`; ya no hay env de banco aparte).
+- **¿Existe el programa?:** SÍ. El monitor vive en `[env:down]` (platformio.ini:106,
+  flag `-DDOWN_USB_MONITOR`), glue `src/down/down_telemetry_serial.cpp`, app
+  `tools/monitor-base/`. Nada que crear. (El env `down_debug_telemetry` fue eliminado
+  el 2026-06-13; ahora el monitor "dormido" vive en el binario de partido.)
 - **Setup físico:** placa DOWN ROBOT1, los 4 muxes + 2 OTOS conectados, sobre el
   carpet verde, con una LÍNEA BLANCA real accesible para pasar el anillo encima. USB
   de la Teensy a la PC. Tené anotado el COM de la Teensy (Windows: Administrador de
   dispositivos → Puertos COM; o el que reporta `pio device list`).
 
-- **Paso 1 — Compila el glue (PRIMERO, no se verificó en host):**
-  `pio run -e down_debug_telemetry`
-  - **Que esperar si PASA:** `SUCCESS`, sin errores de compilación ni de linker.
+- **Paso 1 — Compila el binario de competencia con el monitor:**
+  `pio run -e down`
+  - **Que esperar si PASA:** `SUCCESS`, sin errores de compilación ni de linker (el glue
+    del monitor `-DDOWN_USB_MONITOR` ya está en este binario).
   - **Si FALLA:** anotá el **error EXACTO** (archivo:línea + mensaje del compilador,
-    p.ej. símbolo no declarado / firma que no matchea). Este es el **PRIMER BLOQUEANTE**
-    a resolver — sin esto no hay telemetría; no sigas con los pasos de abajo.
+    p.ej. símbolo no declarado / firma que no matchea). Es el **PRIMER BLOQUEANTE** a
+    resolver — sin esto no hay telemetría; no sigas con los pasos de abajo.
   - **Feedback a devolver a la IA:** "compila OK" O pegá las ~10 líneas del error de pio
     (desde la primera línea con `error:`).
 
-- **Paso 2 — No-regresión de competencia (binario byte-idéntico):**
-  `pio run -e down` debe seguir compilando igual que siempre.
-  - **Que esperar si PASA:** `SUCCESS`. En la tabla de tamaños de pio, **RAM/Flash del
-    `[env:down]` IGUALES** a antes (el flag OFF no agrega ni un byte). Idealmente: guardá
-    `.pio/build/down/firmware.hex` antes y después y compará tamaño/contenido (debe ser idéntico).
-  - **Que esperar si FALLA:** si `down` cambia de tamaño respecto al baseline → algo del
-    código nuevo se coló FUERA del `#ifdef DOWN_DEBUG_TELEMETRY`. Reportar; NO promover.
-  - **Feedback a devolver a la IA:** pegá las dos líneas `RAM: ...% / Flash: ...%` del
-    `[env:down]` (idealmente las de antes y después) y confirmá si son iguales.
+- **Paso 2 — Dormido en partido (no interfiere):** el binario `[env:down]` arranca
+  DORMIDO — sin app conectada y sin ENTER no debe emitir telemetría ni perturbar el juego.
+  - **Que esperar si PASA:** tras el boot, en el monitor serie SIN tocar nada, sale el
+    boot normal de DOWN y **NO** fluyen líneas JSON (el monitor está dormido). La línea
+    a CENTRAL / odometría siguen su curso normal.
+  - **Que esperar si FALLA:** si arranca escupiendo JSON solo (sin app ni ENTER), el modo
+    dormido no quedó; reportar.
+  - **Feedback a devolver a la IA:** confirmá "boot normal, NO sale JSON hasta apretar
+    ENTER / conectar la app" o pegá lo que sí salga.
 
-- **Paso 3 — Flashear y confirmar banner:**
-  `pio run -e down_debug_telemetry -t upload`, después `pio device monitor -b 115200`.
-  - **Que esperar si PASA:** tras el boot normal de DOWN aparece, UNA vez,
+- **Paso 3 — Despertar el stream y confirmar banner:**
+  `pio run -e down -t upload`, después `pio device monitor -b 115200`. Con el monitor
+  abierto, apretá **ENTER** (cualquier línea) para despertar el stream 3 s.
+  - **Que esperar si PASA:** tras el boot normal de DOWN, al apretar ENTER aparece, UNA vez,
     `[DOWN-TELEM] v1 ready` (`down_telemetry_serial.cpp:219`), y enseguida EMPIEZAN a
     fluir líneas JSON `{"v":1,"seq":N,"t_ms":...,"ring":{...},"line":{...},"otos":{...},"diag":{...}}`
-    con `seq` creciendo (stream ON por default, 20 Hz). **Cerrá el monitor de pio antes
-    del paso 4** (el COM no se puede abrir desde dos lados).
-  - **Resultados posibles:** A) banner + JSON con `seq` subiendo → PASS. B) banner pero
-    NO salen líneas JSON → el stream arrancó OFF o el tick no corre; reportar. C) JSON
+    con `seq` creciendo (~3 s; el ENTER lo extiende). **Cerrá el monitor de pio antes
+    del paso 4** (el COM no se puede abrir desde dos lados; la app manda STREAM ON + PING
+    para mantenerlo despierto continuo).
+  - **Resultados posibles:** A) banner + JSON con `seq` subiendo al apretar ENTER → PASS.
+    B) ENTER pero NO salen líneas JSON → el wake no corre; reportar. C) JSON
     ilegible/cortado → revisar baud (115200) y que el monitor no esté reescalando.
-  - **Feedback a devolver a la IA:** confirmá que viste `[DOWN-TELEM] v1 ready` y pegá
-    UNA línea JSON completa.
+  - **Feedback a devolver a la IA:** confirmá que viste `[DOWN-TELEM] v1 ready` tras el ENTER
+    y pegá UNA línea JSON completa.
 
 - **Paso 4 — Correr la app monitor-base:**
   `pip install pyserial` (solo si hace falta; el resto usa stdlib), después
@@ -524,10 +535,8 @@ App de PC: `tools/monitor-base/` (`python -m monitor_base`).
 
 - **Tiempo estimado:** 12–15 min (sin contar power-cycle).
 - **NOTA / BLOQUEANTE:** si el **Paso 1 NO compila**, ese es el primer bloqueante a
-  resolver — el glue Arduino nunca pasó por un compilador para Teensy; pegá el error
-  exacto y NO sigas con los pasos 3+ hasta que `pio run -e down_debug_telemetry` dé
-  `SUCCESS`. El Paso 2 (no-regresión de `[env:down]`) es independiente y se puede correr
-  igual.
+  resolver — pegá el error exacto y NO sigas con los pasos 3+ hasta que `pio run -e down`
+  dé `SUCCESS`. El Paso 2 (dormido en partido) es independiente y se puede observar igual.
 
 ---
 
@@ -543,7 +552,7 @@ App de PC: `tools/monitor-base/` (`python -m monitor_base`).
 | DOWN-7 | `diag_down` | SÍ (174) | src/diag/main_diag_down.cpp:82-158 |
 | DOWN-8 | `down_robot2` | **SÍ — ✅ creado 2026-06-06** (ver banner del tope) | firmware ya soporta NUM_OTOS=0: otos.cpp:81,86,162 |
 | DOWN-9 | `diag_down_cpu` (directo) / `diag_down` (indirecto) | parcial | line_ring.cpp:142-144 |
-| DOWN-10 | `down_debug_telemetry` + app `tools/monitor-base` | SÍ (platformio.ini:1045) — glue NO host-compilado, verificar con `pio run -e down_debug_telemetry` | src/down/down_telemetry_serial.cpp, src/shared/telemetry_down.{h,cpp}, docs/firmware/TELEMETRIA-DOWN.md |
+| DOWN-10 | `down` (monitor `-DDOWN_USB_MONITOR`) + app `tools/monitor-base` | SÍ (platformio.ini:106) — el monitor viaja DORMIDO en el binario de competencia; verificar con `pio run -e down` | src/down/down_telemetry_serial.cpp, src/shared/telemetry_down.{h,cpp}, docs/firmware/TELEMETRIA-DOWN.md |
 
 **Faltantes a crear (NO en esta tarea — son cards de "needs-firmware"):**
 1. `[env:diag_down_cpu]` + `src/diag/diag_down_cpu.cpp` — imprime

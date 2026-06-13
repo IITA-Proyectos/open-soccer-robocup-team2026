@@ -34,8 +34,14 @@ telemetría USB del firmware DOWN. Es la FASE 1 (P0) del sistema de monitoreo
 
 ## Correr
 
+> El firmware de competencia (`down` / `down_robot2`, flag `-DDOWN_USB_MONITOR`)
+> arranca con el **monitor USB dormido** (no manda nada). Esta app lo **activa sola**
+> al conectarse (envía `STREAM ON`); ya **no hay un env de banco aparte** (el viejo
+> `down_debug_telemetry` se eliminó). Para flashear: `pio run -e down -t upload`.
+
 ```bash
-# Robot real (Teensy DOWN flasheada con env down_debug_telemetry):
+# Robot real (Teensy DOWN flasheada con el env de competencia down — la app
+# activa la telemetría sola al conectar; antes había un env de banco aparte):
 python -m monitor_base --port COM5          # Windows
 python -m monitor_base --port /dev/ttyACM0  # Linux/Mac
 python -m monitor_base --port auto           # autodetecta el Teensy
@@ -62,7 +68,7 @@ de su arco y barre lateralmente):
 
 ```bash
 python -m monitor_base --arquero --sim       # sin robot
-python -m monitor_base --arquero --port COM5  # robot real (env down_debug_telemetry)
+python -m monitor_base --arquero --port COM5  # robot real (env de competencia down; la app activa la telemetría sola)
 ```
 
 Muestra: un **medidor de cross-track** (mm a la línea, objetivo 0), el **arco trasero** del

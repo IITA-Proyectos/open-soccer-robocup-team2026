@@ -2,7 +2,7 @@
 
 **Estado:** v3 (2026-06-13). Módulo puro `src/shared/telemetry_down.{h,cpp}` (host-testeado,
 gate `test_telemetry_down`). Glue Arduino `src/down/down_telemetry_serial.cpp` (GATEADO
-`-DDOWN_DEBUG_TELEMETRY` o `-DDOWN_USB_MONITOR`, envs `down_debug_telemetry` / `down` / `down_robot2`).
+`-DDOWN_USB_MONITOR`, envs `down` / `down_robot2`).
 App de PC: `tools/monitor-base/`.
 
 **Historial de schema:** v1 = anillo 32 + LineStatusV2 + OTOS fusionado. **v2** = agrega las
@@ -20,9 +20,11 @@ Este es el contrato versionado entre el **firmware de DOWN** (emite) y la **app 
 > Este doc es el **contrato técnico**; el de USO es el **procedimiento operativo**.
 
 > ⚠️ El modo telemetría es un **MODO DEBUG gateado** del firmware de competencia, NO un
-> sketch aparte. Con el flag OFF (todos los envs de competencia: `down`, `down_lean`,
-> `down_wdt`) el binario es **byte-idéntico** — todo el código nuevo vive dentro de
-> `#ifdef DOWN_DEBUG_TELEMETRY`. Sólo `[env:down_debug_telemetry]` lo compila ON.
+> sketch aparte. NO hay un env de banco aparte para la DOWN: la telemetría la compila el
+> flag `-DDOWN_USB_MONITOR`, presente en los envs de competencia `down` (robot1) y
+> `down_robot2` (robot2). El binario de partido arranca **DORMIDO** (no emite nada) y la
+> telemetría se activa sola al conectar la app o apretar Enter (ver §4). Sin el flag, todo
+> el código nuevo vive dentro de `#ifdef DOWN_USB_MONITOR` y el binario es byte-idéntico.
 
 ## 1. Transporte
 
@@ -114,11 +116,12 @@ Espejo de `EV_*` en `src/shared/types.h`:
 Case-insensitive, tokens separados por espacios o comas. El parser puro
 `td_parse_command()` los mapea a un enum; el glue Arduino los ejecuta.
 
-> **Despertar el stream (modo competencia dormido):** cualquier línea recibida del host
+> **Despertar el stream (binario `down`/`down_robot2` arranca DORMIDO):** el binario de
+> partido no emite nada hasta que el host lo despierta. Cualquier línea recibida del host
 > —incluso un **Enter vacío** (CR o LF)— prende el stream por `DOWN_MONITOR_HOST_TIMEOUT_MS`
-> (3 s) y renueva ese plazo; **NO hace falta `STREAM ON`**. Excepciones: `PING` es latido puro
-> (no re-prende si el host pausó con `STREAM OFF`) y `STREAM OFF` apaga. En el env de banco
-> (`down_debug_telemetry`) el stream ya arranca prendido desde el boot.
+> (3 s) y renueva ese plazo; **NO hace falta `STREAM ON`**. La app `tools/monitor-base` lo
+> hace sola al conectar (manda `STREAM ON` + `PING`). Excepciones: `PING` es latido puro
+> (no re-prende si el host pausó con `STREAM OFF`) y `STREAM OFF` apaga.
 
 | Comando | Acción en el firmware |
 |---------|-----------------------|
@@ -151,7 +154,7 @@ string** → contrato cross-lenguaje. **Si cambiás el schema:**
 ## 6. Build / banco
 
 ```
-pio run -e down_debug_telemetry -t upload      # Teensy 4.0 DOWN
+pio run -e down -t upload                       # Teensy 4.0 DOWN (robot1; robot2 = down_robot2)
 python -m monitor_base --port COMx             # app de PC (ver tools/monitor-base/README)
 ```
 
@@ -162,5 +165,5 @@ python -m monitor_base --replay grabacion.jsonl
 ```
 
 > El glue Arduino NO se compila en el gate host (g++). Verificar con
-> `pio run -e down_debug_telemetry`. El módulo puro y la app de PC sí se testean en
+> `pio run -e down`. El módulo puro y la app de PC sí se testean en
 > escritorio (`bash scripts/run-host-tests.sh test_telemetry_down` y `pytest tools/monitor-base`).

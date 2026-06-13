@@ -26,7 +26,7 @@
 #include "otos.h"
 #include "comm_top.h"
 #include "comm_central.h"
-#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)
+#ifdef DOWN_USB_MONITOR
 #include "down_telemetry_serial.h"
 #endif
 
@@ -147,7 +147,7 @@ void setup() {
     Serial.println("[DOWN] watchdog (WDOG1, 1 s) armado");
 #endif
 
-#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)
+#ifdef DOWN_USB_MONITOR
     down_telemetry_init();
 #endif
 }
@@ -195,7 +195,7 @@ void loop() {
         comm_top_send_status();
     }
 
-#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)
+#ifdef DOWN_USB_MONITOR
     // En modo USB_MONITOR (competencia) esto es: drenar RX (barato, ~0 si no hay
     // host) + stream SOLO si la app está activa (latido PING; ver el .cpp).
     down_telemetry_tick();

@@ -47,8 +47,11 @@ Es la mitad "host" del desarrollo prioritario (la otra mitad es TASK-304, el fir
 - **Contrato compartido con TASK-304:** consume el mismo schema v1 (`docs/firmware/TELEMETRIA-DOWN.md`)
   y el mismo **golden** (`tools/monitor-base/tests/golden_frame_v1.jsonl`) que el test C++ →
   ambos lados validan el mismo string. *(La app la está terminando otro hilo.)*
-- **Pendiente de banco:** validar con el robot real (flashear `down_debug_telemetry`, conectar
+- **Pendiente de banco:** validar con el robot real (flashear `down`, conectar
   por USB, calibrar y guardar a EEPROM) + README/cross-platform.
+  [NOTA 2026-06-13: `down_debug_telemetry` eliminado → la telemetría USB ahora vive en el
+  binario de competencia `down`/`down_robot2` (`-DDOWN_USB_MONITOR`, monitor dormido); se
+  activa sola al conectar la app o con un ENTER en monitor serie crudo. Ver `platformio.ini`.]
 - Issues relacionadas: #14 / #15 / #16.
 
 ## 6. Cambios de estado

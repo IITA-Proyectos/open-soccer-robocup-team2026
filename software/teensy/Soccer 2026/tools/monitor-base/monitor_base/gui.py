@@ -393,7 +393,7 @@ class MonitorApp:
             if bt:
                 self._set_status(f"esperando datos… la placa dice: «{bt}»")
             elif self.last is None:
-                self._set_status("esperando datos… ¿flasheaste down_debug_telemetry y "
+                self._set_status("esperando datos… ¿flasheaste down (o down_robot2) y "
                                  "conectaste la batería? (la placa tarda ~2 s en bootear)")
         self.root.after(self.poll_ms, self._tick)
 

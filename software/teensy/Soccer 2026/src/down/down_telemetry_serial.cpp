@@ -1,22 +1,19 @@
 // down_telemetry_serial.cpp — Glue Arduino de la telemetría USB de DOWN.
 //
-// DOS FLAGS encienden este módulo (gate `#if defined(DOWN_DEBUG_TELEMETRY) ||
-// defined(DOWN_USB_MONITOR)`). El COMPORTAMIENTO de wake lo decide la PRECEDENCIA
-// DEBUG_TELEMETRY > USB_MONITOR (un env de banco hereda AMBOS por extends=env:down):
-//   • -DDOWN_DEBUG_TELEMETRY (envs *_debug_telemetry, banco): stream ON desde el
-//     boot, SIN auto-apagado → el monitor serie CRUDO ve valores sin que la app lo
-//     despierte. Banner "[DOWN-TELEM] v1 ready — stream ON desde boot (env debug)".
-//   • -DDOWN_USB_MONITOR SIN DEBUG (COMPETENCIA down/down_robot2): el monitor viaja
-//     EN el binario de partido pero DORMIDO. Silencio total por USB hasta que el host
-//     habla. Se DESPIERTA de dos formas: (a) la app manda STREAM ON + PING (latido cada
-//     1 s); (b) en un monitor serie CRUDO, un ENTER (cualquier línea, incluso vacía;
-//     CR o LF) arranca el envío por DOWN_MONITOR_HOST_TIMEOUT_MS (3 s) SIN tipear
-//     STREAM ON — repetir Enter lo mantiene. Si el host se calla 3 s, el stream se
-//     apaga SOLO → desenchufar = modo partido, sin reflashear nada. Banner
-//     "[DOWN-MONITOR] dormido". (Macro interno DOWN_MONITOR_SLEEPY = ESTE caso.)
-// El banner de boot SÍ distingue banco de competencia. La LÓGICA de calibración/
-// persistencia/detección es la MISMA en los tres envs (gateada por el OR de arriba o
-// ungated). Sin ninguno de los dos flags: traducción VACÍA (binario sin un byte).
+// UN flag enciende este módulo: -DDOWN_USB_MONITOR (lo definen los envs de COMPETENCIA
+// [env:down] y [env:down_robot2]). El monitor de telemetría USB viaja EN el binario de
+// partido pero arranca DORMIDO: silencio total por USB hasta que el host habla. Se
+// DESPIERTA de dos formas: (a) la app tools/monitor-base manda STREAM ON + PING (latido
+// cada 1 s) → telemetría continua + grabación; (b) en un monitor serie CRUDO, un ENTER
+// (cualquier línea, incluso vacía; CR o LF) arranca el envío por
+// DOWN_MONITOR_HOST_TIMEOUT_MS (3 s) SIN tipear STREAM ON — repetir Enter lo mantiene.
+// Si el host se calla 3 s, el stream se apaga SOLO → desenchufar = modo partido, sin
+// reflashear nada. Banner de boot "[DOWN-MONITOR] dormido". En partido NO hay USB
+// conectado → nunca llega una línea → el stream nunca despierta (match-safe).
+//
+// (Antes había un env de banco aparte `down_debug_telemetry` que streameaba desde el
+// boot; se eliminó el 2026-06-13 por redundante — ver platformio.ini + journal.)
+// Sin el flag: traducción VACÍA (binario sin un byte de esto).
 //
 // El módulo PURO (serialización JSON + parseo de comandos) vive en
 // src/shared/telemetry_down.{h,cpp} (host-testeado). Acá solo está el pegamento
@@ -26,7 +23,7 @@
 
 #include "down_telemetry_serial.h"
 
-#if defined(DOWN_DEBUG_TELEMETRY) || defined(DOWN_USB_MONITOR)
+#ifdef DOWN_USB_MONITOR
 
 #include <Arduino.h>
 #include "telemetry_down.h"
@@ -43,19 +40,10 @@ namespace iitasoccer {
 namespace {
 
 // ── Estado interno del stream ────────────────────────────────────────────────
-// DOWN_MONITOR_SLEEPY = modo "dormido" de COMPETENCIA: SOLO cuando hay USB_MONITOR
-// y NO es el env de banco. Precedencia DEBUG_TELEMETRY > USB_MONITOR: el binario de
-// banco (que hereda ambos flags) NO es sleepy → stream ON desde el boot, sin auto-off.
-#if defined(DOWN_USB_MONITOR) && !defined(DOWN_DEBUG_TELEMETRY)
-#define DOWN_MONITOR_SLEEPY 1
-#endif
-
-#ifdef DOWN_MONITOR_SLEEPY
-constexpr bool     kStreamDefaultOn          = false;   // competencia: dormido
+// El monitor USB de competencia arranca DORMIDO: stream OFF hasta que el host habla
+// (la app o un Enter en el monitor serie), y se auto-apaga tras 3 s de silencio.
+constexpr bool     kStreamDefaultOn             = false;
 constexpr uint32_t DOWN_MONITOR_HOST_TIMEOUT_MS = 3000;  // host mudo → stream OFF
-#else
-constexpr bool     kStreamDefaultOn          = true;    // banco: ON desde el boot
-#endif
 bool          g_stream_on    = kStreamDefaultOn;
 uint32_t      g_interval_ms  = 50;     // 20 Hz por default (1000/20)
 uint32_t      g_seq          = 0;
@@ -308,33 +296,24 @@ void down_telemetry_init() {
     g_rx_len      = 0;
     g_since_emit  = 0;
     g_last_host_rx_ms = 0;
-#ifdef DOWN_MONITOR_SLEEPY
-    // Competencia: una sola línea de boot (Teensy la descarta si no hay host
-    // conectado); después, SILENCIO hasta que la app hable.
+    // Una sola línea de boot (Teensy la descarta si no hay host conectado); después,
+    // SILENCIO hasta que el host hable (la app o un Enter en el monitor serie).
     Serial.println("[DOWN-MONITOR] dormido — esperando a la app (STREAM ON / PING)");
-#else
-    // Banco: stream ON desde el boot; el banner distingue este binario del de
-    // competencia (que imprime "[DOWN-MONITOR] dormido").
-    Serial.println("[DOWN-TELEM] v1 ready — stream ON desde boot (env debug)");
-#endif
 }
 
 void down_telemetry_tick() {
     // RX: comandos del host (no bloquea).
     pump_rx();
 
-#ifdef DOWN_MONITOR_SLEEPY
-    // APAGADO AUTOMÁTICO (solo competencia): si el host se calló (la app manda
-    // PING cada 1 s; desenchufar el cable o cerrar la app corta ese latido),
-    // volver al silencio. El robot queda en modo partido sin tocar nada. En banco
-    // (DEBUG_TELEMETRY) NO se compila: el stream queda prendido desde el boot.
+    // APAGADO AUTOMÁTICO: si el host se calló (la app manda PING cada 1 s; un Enter en
+    // el monitor serie cuenta como latido) por más de DOWN_MONITOR_HOST_TIMEOUT_MS,
+    // volver al silencio. El robot queda en modo partido sin tocar nada.
     if (g_stream_on && g_last_host_rx_ms != 0 &&
         (millis() - g_last_host_rx_ms) > DOWN_MONITOR_HOST_TIMEOUT_MS) {
         g_stream_on   = false;
         g_autocal_on  = false;   // una auto-calib a medias no debe quedar armada
         g_last_host_rx_ms = 0;
     }
-#endif
 
     // Auto-calibración: capturar min/max por sensor mientras se mueve el robot.
     if (g_autocal_on) {
@@ -354,4 +333,4 @@ void down_telemetry_tick() {
 
 }  // namespace iitasoccer
 
-#endif  // DOWN_DEBUG_TELEMETRY || DOWN_USB_MONITOR
+#endif  // DOWN_USB_MONITOR

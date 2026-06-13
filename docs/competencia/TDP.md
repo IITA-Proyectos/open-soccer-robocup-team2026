@@ -43,6 +43,8 @@ TOP fusiona todo en un **WorldSnapshot de 31 bytes** que envía a CENTRAL por UA
 - **La interfaz entre módulos es un contrato de datos byte-a-byte** (el WorldSnapshot de 31 B). Esto es lo que vuelve modular al diseño: cada módulo se **diseña, mejora y testea por separado**, y un módulo puede reemplazarse sin rehacer el otro. Esa independencia **acelera tiempos** —trabajo en paralelo y reemplazo aislado de un módulo— y conecta directamente con la meta de comprimir el ciclo concepto→robot que detallamos en §4.5.
 - **Puerta abierta en el módulo inferior:** el diseño deja **lugar para un KICKER y un DRIBBLER**. Hoy no se montaron porque exigían cambiar los motores por unos más **cortos** que liberaran espacio interno, y no había tiempo → se priorizó lo realizable en poco plazo (el delantero **empuja por inercia**). Al estar la decisión/movilidad encapsulada en el módulo inferior, sumarlos más adelante **no obliga a rediseñar el módulo superior**.
 
+![Fig. 2 — "Dos módulos, un contrato": el robot no son 3 placas sueltas sino un módulo SABER (TOP→percepción) y un módulo DECIDIR-MOVER (CENTRAL+DOWN) unidos por el WorldSnapshot de 31 B. Diagrama original del equipo (CC BY 4.0).](assets/drafts/fig_funcionamiento_2modulos.png)
+
 ---
 
 # §1. ELECTRICAL — Diseño eléctrico replicable, con razonamiento basado en datos
@@ -287,6 +289,8 @@ Los **6 sensores I²C cuelgan del mismo bus `Wire` (pines 18/19)**: 2 BNO055 (0x
         gate verde (0 fallos)  →  recién entonces se mergea
 ```
 
+![Fig. — El robot por **capas de abstracción**: misión→decisión→modelo del mundo→percepción→control→planta; cada capa oculta la complejidad de la de abajo, y potencia/comunicaciones/timing/fail-safe cruzan TODAS las capas como concerns transversales. `assets/drafts/fig_capas_abstraccion.png` (diagrama del equipo, CC BY 4.0).](assets/drafts/fig_capas_abstraccion.png)
+
 ## 3.2 Módulos puros principales (testeados host)
 
 | Módulo (`src/shared/`) | Qué hace | Tests |
@@ -310,6 +314,8 @@ TOP → CENTRAL @100 Hz, TYPE 0x60, `static_assert(sizeof == 31)`. Evolución de
 **Por qué:** un cambio piecemeal deja la cadena de datos muerta (un parser viejo descarta el frame nuevo).
 **Dato (bug real):** `comm_down.cpp` decodificaba `LineStatus` viejo (5 B) y descartaba el 100 % de los `LineStatusV2` reales (16 B) → CENTRAL **ciego a la línea**, invisible en telemetría. Fix verificado con harness g++ 8/8 PASS + `test_central_line_ingest`.
 
+![Fig. 2 — Flujo de datos entre las 3 placas: el WorldSnapshot de 31 B viaja TOP→CENTRAL @100 Hz y DOWN difunde línea + OTOS a ambas (broadcast simétrico). `assets/fig2_dataflow.png`.](assets/fig2_dataflow.png)
+
 ## 3.4 FSM táctica dual (el cerebro)
 
 `src/central/strategy.cpp`, llamada por `main_central.cpp`:
@@ -321,6 +327,8 @@ GOALKEEPER: WAIT_START → PATROL → INTERCEPT → CLEAR
                                           └─► LINE_AVOID
    EMERGENCY_LINE  ── bypassa la FSM (se maneja en main_central antes del tick) ──►
 ```
+
+![Fig. 4 — FSM táctica dual (ATTACKER / GOALKEEPER) con el bypass EMERGENCY_LINE de freno de borde. `assets/fig4_fsm.png`.](assets/fig4_fsm.png)
 
 Empuje sin kicker: el delantero empuja cuando `|ángulo al arco| < ATK_KICK_ANGLE_DEG (12°)` y `dist < ATK_KICK_DIST_MM (80)`.
 
@@ -407,6 +415,8 @@ Somos el equipo de **IITA (Salta, Argentina)**, **campeones nacionales** de Robo
 
 **De dónde venimos: la evolución honesta 2025 → 2026.** En la **competencia nacional** el robot era **mucho más básico**: arriba **sólo una cámara** (sin ToF, sin ultrasonido); abajo **sólo 3 sensores de luz**. Aun así fue suficiente para competir y **ganar la primera edición de RoboCupJunior Soccer de Argentina** (campeones). El **rediseño 2026** lo mejora muchísimo: arriba **2 cámaras + IMU + 4 ToF + ultrasonido + árbitro**; abajo **anillo de 32 sensores de línea + 2 OTOS de odometría**. Lo importante es **cómo** se hizo esa evolución: **el diseño modular permitió mejorar sin tirar todo**. Se **reusó el cerebro CENTRAL (Zircon) campeón** y se le sumaron, como módulos independientes, la **percepción (TOP)** y el **piso (DOWN)** — exactamente el contrato de 2 módulos descripto en el resumen del robot. La interfaz de datos limpia entre módulos es lo que hizo viable saltar de "1 cámara + 3 sensores" a la plataforma de fusión sensorial actual **sin rehacer la base ganadora**.
 
+![Fig. — Proceso constructivo (feb–jun 2026): las 7 etapas VIBE no fueron lineales; programar y testear (host-native, sin la placa) avanzaron en paralelo al montaje porque el cuello de botella real fue la importación de componentes. `assets/drafts/fig_proceso_constructivo_timeline.png`.](assets/drafts/fig_proceso_constructivo_timeline.png)
+
 `[FOTO: robot del Nacional 2025 — versión básica: 1 cámara, 3 sensores de luz, sin ToF/ultrasonido]`
 
 `[FOTO: antes/después — robot Nacional 2025 (básico) junto al robot Incheon 2026 (2 cámaras + IMU + 4 ToF + ultrasonido arriba; anillo de 32 sensores + 2 OTOS abajo), mostrando que el módulo CENTRAL es el mismo]`
@@ -437,9 +447,11 @@ La filosofía del equipo es **"invertir en aprendizaje, no en podio"**: un robot
 - ✅ **Resuelto en banco:** árbitro mueve la CENTRAL end-to-end; anillo de 32 sensores (0 muertos); 2 OTOS responden (6.5 % error); 4 ToF enumeran; motores mapeados con `MOTOR_INVERT` validado.
 - ⚠️ **Bloqueantes abiertos:** recalibración de visión (TASK-022, #1); calibración de cinemática KIWI; freno de emergencia (brake vs coast); failover del BNO; validación de trilateración en HW.
 
+![Fig. — Madurez por subsistema: **validado en banco** / **code-complete sin validar** / **roadmap**, más los 2 bloqueantes P0 (visión sin recalibrar + cap térmico de motores). La honestidad de ingeniería en una figura. `assets/drafts/fig_madurez_escalera.png`.](assets/drafts/fig_madurez_escalera.png)
+
 ## 4.5 Innovación de proceso 2026 — metodología asistida por IA ("VIBE")
 
-Este año adoptamos un flujo de trabajo asistido por IA al que internamente llamamos **VIBE**, en el que un agente de IA (Claude) acelera el diseño y la documentación mientras el equipo decide, valida en banco y se hace responsable del resultado. Lo aplicamos en cuatro frentes: **VIBE PCB Design** —el diseño de las PCB en EasyEDA, donde el agente propone y edita el esquemático/ruteo a través de un servidor MCP y un humano valida cada cambio—; **VIBE 3D Design** —diseño mecánico en Autodesk Fusion 360 comandado por el agente vía MCP, una línea que recién estamos empezando a explorar—; **VIBE Coding** —programación del firmware C++ asistida por el agente, con verificación host-native (658 tests / 51 suites / 0 fallos) como red de seguridad—; y **Claude para documentación y gestión**, con el TDP, los contratos de datos byte-a-byte, el diario de ingeniería y los entregables curados con IA y verificación humana. Nuestro encuadre es honesto y deliberado: **la IA acelera, pero el equipo de competidores de 18 años toma las decisiones, prueba en hardware real y es el único responsable de lo que se sube al robot**. Lo documentamos como un enfoque emergente y compartimos la metodología (no solo el código) como aporte a la comunidad de RoboCupJunior.
+Este año adoptamos un flujo de trabajo asistido por IA al que internamente llamamos **VIBE**, en el que un agente de IA (Claude) acelera el diseño y la documentación mientras el equipo decide, valida en banco y se hace responsable del resultado. Lo aplicamos en cuatro frentes: **VIBE PCB Design** —el diseño de las PCB en EasyEDA, donde el agente propone y edita el esquemático/ruteo a través de un servidor MCP y un humano valida cada cambio—; **VIBE 3D Design** —diseño mecánico en Autodesk Fusion 360 comandado por el agente vía MCP, una línea que recién estamos empezando a explorar—; **VIBE Coding** —programación del firmware C++ asistida por el agente, con verificación host-native (658 tests / 47 suites / 0 fallos) como red de seguridad—; y **Claude para documentación y gestión**, con el TDP, los contratos de datos byte-a-byte, el diario de ingeniería y los entregables curados con IA y verificación humana. Nuestro encuadre es honesto y deliberado: **la IA acelera, pero el equipo de competidores de 18 años toma las decisiones, prueba en hardware real y es el único responsable de lo que se sube al robot**. Lo documentamos como un enfoque emergente y compartimos la metodología (no solo el código) como aporte a la comunidad de RoboCupJunior.
 
 El **objetivo central** de toda esta metodología —los cuatro frentes VIBE más el testing, la documentación y el debug asistidos— es uno solo: **acelerar tiempos, comprimiendo el ciclo completo desde el concepto hasta el robot andando**. No usamos IA para tener "más" pasos, sino para que cada paso del flujo —(1) diseño conceptual, (2) diseño y fabricación de PCB, (3) modelo 3D del chasis e impresión, (4) montaje, (5) programación, (6) documentación y (7) testeo— tarde una fracción de lo habitual. Esa compresión es la que hizo viable el rediseño 2026 sobre la base ganadora del Nacional 2025 (sumar TOP y DOWN alrededor de la CENTRAL que ya funcionaba) y sostener un ritmo de iteración de ~30 sesiones de banco con un equipo de dos competidores. Nuestra **meta declarada a futuro** es que, con los materiales ya en mano (motores, sensores, cámaras), ese ciclo de siete etapas pueda recorrerse **completo en 30 días**; creemos que es posible con este método. **Caveat honesto:** este año el ciclo fue más lento, pero por **dificultades de provisión e importación de componentes en la Argentina** —la aduana obliga a fraccionar los pedidos y las piezas llegan de a poco a lo largo de semanas— y no por la metodología; con los materiales disponibles, el flujo asistido por IA es lo que habilita esa compresión a 30 días.
 
@@ -450,6 +462,8 @@ La próxima mejora declarada de nuestro roadmap es la **comunicación en tiempo 
 **Roadmap del año próximo — bus CANbus troncal + gateway ESP32 con telemetría (no implementado hoy).** Como evolución natural de la comunicación entre placas y de la interfaz del diseño modular, planeamos para el año próximo reemplazar/complementar los enlaces **UART punto-a-punto** actuales por un **bus CANbus troncal** que una las 3 placas Teensy con un único par de cables. CAN es un bus **multi-maestro, diferencial y tolerante a ruido** —ideal en un robot lleno de motores— que **escala a N nodos** sin recablear: hoy el contrato entre módulos es el WorldSnapshot transportado por UART; sobre CAN ese mismo contrato se vuelve un **bus compartido, robusto y extensible**. En paralelo sumaríamos una **4ª placa ESP32 como gateway**, que puentea (parte de) el bus CAN al exterior de forma inalámbrica para dos fines: (a) **comunicación con el robot compañero** —el mismo objetivo de fusión inter-robot del enlace ESP-NOW, ahora alimentado directo desde el bus troncal— y (b) **telemetría**. Esa telemetría habilita un **sistema de monitoreo estilo Fórmula 1**: ver los sensores **en vivo** durante el entrenamiento/banco, registrarlos y analizarlos después para mejorar los programas, cerrando un **ciclo de mejora data-driven** que acorta los tiempos de iteración. El **primer paso de este camino ya está hecho y es parte del robot actual**: el software de testeo/calibración/monitoreo con **telemetría por USB** (§3.10) implementa hoy ese monitoreo de sensores en vivo —por cable, sobre el firmware de competencia gateado y byte-idéntico—; migrarlo a CAN + ESP32 es lo que lo vuelve **inalámbrico y en-juego**. El resto (el bus CAN, el gateway, el enlace inalámbrico) es **trabajo futuro** (año próximo), no parte del robot actual.
 
 ---
+
+![Fig. — Roadmap por fases que conserva lo construido: Fase 0 (UART + telemetría USB, HECHO) → A (ESP32 WiFi) → B (CANbus troncal) → C (gateway + ESP-NOW + telemetría estilo F1); con la topología antes/después y la evolución de visión LAB→YOLO. Todo rotulado HECHO vs ROADMAP. `assets/drafts/fig_roadmap_fases.png`.](assets/drafts/fig_roadmap_fases.png)
 
 # §5. OPEN SOURCE — Reclamo de los 2 puntos bonus
 

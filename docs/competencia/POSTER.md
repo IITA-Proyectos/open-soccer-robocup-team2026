@@ -3,7 +3,7 @@ title: "POSTER técnico — RoboCupJunior Soccer Open 2026 (versión de trabajo 
 date: 2026-06-04
 status: borrador-juzgado
 idioma: español-rioplatense (TRADUCIR a inglés antes de entregar)
-formato-objetivo: A1 apaisado (máx 70.7 cm alto × 100 cm ancho)
+formato-objetivo: A1 apaisado = ISO A1 84.1 cm ancho × 59.4 cm alto (NO superar — ver nota de tamaño abajo)
 rubrica: RoboCupJunior Soccer 2026 — Poster Design & Presentation (5 pts, 6 criterios × 0/1/3/5)
 ---
 
@@ -14,7 +14,7 @@ rubrica: RoboCupJunior Soccer 2026 — Poster Design & Presentation (5 pts, 6 cr
 >
 > *Working draft in Spanish. The FINAL poster must be submitted in ENGLISH (RCJ rubric requirement). Translate before printing.*
 >
-> ⚠️ **VERIFICAR TAMAÑO antes de maquetar/imprimir (riesgo de requisito duro).** Este layout asume **70.7 × 100 cm**, que es **ISO B1**, NO A1. La rúbrica RCJ Soccer 2026 indica que el póster **no debe superar A1 (≈60 × 84 cm / ISO 59.4 × 84.1 cm)** — ver `.claude/skills/rcj-deliverables-judge/references/rubrica-oficial-2026.md`. **70.7×100 EXCEDE A1.** Acción del equipo: confirmar el límite exacto en las reglas 2026 y, si es A1, **re-escalar la grilla a ≤ 84.1 × 59.4 cm** antes de maquetar. (Verificación pendiente — no se corrige a ciegas.)
+> ⚠️ **TAMAÑO — corregir al maquetar (riesgo de requisito duro).** La grilla ASCII de abajo está dibujada a **70.7 × 100 cm (ISO B1)**, pero la rúbrica RCJ Soccer 2026 exige que el póster **NO supere A1** (`.claude/skills/rcj-deliverables-judge/references/rubrica-oficial-2026.md`). **Maquetar en A1 apaisado = 84.1 cm ancho × 59.4 cm alto:** re-flowear las 12 columnas a esa medida en la herramienta de diseño (Figma/Inkscape) — las proporciones de la grilla se conservan, solo cambia la escala física. Confirmar el límite exacto en las reglas 2026 antes de imprimir.
 
 ---
 

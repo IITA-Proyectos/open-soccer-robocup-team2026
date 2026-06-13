@@ -178,7 +178,23 @@ Para las categorías y los comités, con el mayor respeto y como aporte a la com
 
 ---
 
-## 7. Referencias (verificadas — fetcheadas y citadas)
+## 7. Nuestra convicción — conclusión del equipo
+
+> **Esto es OPINIÓN, deliberadamente sin citas.** Las secciones 2 a 5 se apoyan en evidencia verificada; esta no. Es lo que **creemos** como equipo, y lo firmamos como tal.
+
+**Lo que nos llevamos no es conocimiento que caduca — es una forma de trabajar.** Las herramientas de hoy van a ser viejas en dos años: los modelos, los comandos, los frameworks exactos, todo eso es **perecedero**. Lo que perdura es la **metodología**: especificar un problema con precisión, verificar en vez de confiar, diseñar tests, gobernar un proceso, iterar rápido. Aprendimos a usar IA, sí — pero sobre todo aprendimos **a aprender rápido una tecnología nueva**, y eso no caduca.
+
+**Por eso lo hacemos público.** Socializar el método vale más que esconder un truco. Nuestro repo es abierto (MIT): el firmware, los contratos de datos, los tests, los errores que nos costaron horas, este mismo documento. No publicamos para lucirnos: publicamos porque **una metodología sólo le sirve a la comunidad si se comparte**, y porque el próximo equipo —el suyo, el de 2027— debería poder pararse sobre lo que hicimos sin volver a tropezar donde tropezamos nosotros.
+
+**Una advertencia honesta: esto se mueve más rápido que la academia.** La IA creció de forma **exponencial** en 2026. Los trabajos de investigación que citamos —incluso los de 2025— describen herramientas que **ya quedaron atrás**: lo que construimos este año **no lo podríamos haber hecho con las herramientas disponibles en 2025**. No es una queja, es un dato: la evidencia académica es un **piso, no un techo**, porque mide el pasado de una tecnología que avanza más rápido de lo que se la puede estudiar. Por eso creemos que **evaluar el trabajo de 2026 con los criterios de 2024 o 2025 sería injusto** — y la salida no es pedir indulgencia, sino **construir los criterios nuevos entre todos**.
+
+**Nuestra convicción (la firmamos como opinión):** la IA hoy es lo que la robótica fue hace **20 o 30 años**. Una frontera. Y frente a una frontera hay dos posturas: mirarla pasar, o entrar primero. Creemos que el **IEEE** y la comunidad **RoboCup** deberían ser **protagonistas —no espectadores—** de esta transformación: no sólo permitir la IA, sino **liderar** su implementación educativa y ayudar a **definir los marcos conceptuales y éticos** de su uso. Quien fue pionero una vez puede serlo de nuevo.
+
+**Una invitación, sobre todo a RoboCupJunior.** Sabemos que cuesta —nos cuesta a todos—. Esto obliga a **repensar roles**: a los estudiantes, a los coaches, a las instituciones y a los jueces. Es incómodo. Pero hay algo hermoso en esa incomodidad: una tecnología tan nueva **nos resetea a todos a la misma línea de partida** — nadie es todavía el experto. Así que los invitamos, con el **espíritu de pioneros** que fundó esta competencia, a **vencer la barrera del cambio**, a salir juntos de la zona de confort, a entrar a esa zona desconocida de **desafíos nuevos**, y a hacer lo que RoboCup siempre supo hacer mejor: **aprender juntos, en comunidad.**
+
+---
+
+## 8. Referencias (verificadas — fetcheadas y citadas)
 
 **Reglas y postura oficial (fuentes primarias):**
 - RoboCupJunior Soccer Rules 2026 (draft, "as of 2026-01-21): https://robocup-junior.github.io/soccer-rules/2026-soccer-draft-rules/rules.html · PDF: …/rules.pdf
@@ -223,7 +239,7 @@ Para las categorías y los comités, con el mayor respeto y como aporte a la com
 
 ---
 
-## 8. Honestidad metodológica (cómo se hizo este documento)
+## 9. Honestidad metodológica (cómo se hizo este documento)
 
 Este documento es, él mismo, un ejemplo de lo que defiende: **uso de IA disciplinado, verificado y declarado.**
 

@@ -13,15 +13,23 @@
 
 | Rol | Nombre | Detalle |
 |---|---|---|
-| Competidora — Soccer Open | María Virginia Viollaz (@mariaviollaz), 18 | Visión artificial, estrategia, trayectorias, banco. Campeona nacional 2022 (Rescue Line) + mundial RoboCup 2023, Eindhoven |
-| Competidor — Soccer Open | Elías Cordero, 18 (Ing. Electromecánica, UNSa) | Motores, electrónica de potencia, mecánica, banco |
-| Coach (viaja) | Enzo Juárez Velázquez (@enzzo195) | Diseño de PCB (EasyEDA), bodges de hardware, revisión técnica, acompañamiento en competencia |
-| Mentora (viaja) | Cecilia Budeguer | Mentoría del equipo |
-| Mentor (no viaja) | Gustavo Viollaz (@gviollaz) | Coordinación, banco de pruebas, integración de las 3 placas |
+| Competidora — Soccer Open (viaja) | María Virginia Viollaz (@mariaviollaz), 18 | Visión artificial, estrategia, trayectorias, parser de cámara, banco. **Aprendió a diseñar con IA** (VIBE). Campeona nacional 2022 (Rescue Line) + mundial RoboCup 2023, Eindhoven |
+| Competidor — Soccer Open (viaja) | Elías Cordero, 18 (Ing. Electromecánica, UNSa) | Motores, cinemática, mediciones, mecánica, banco. **Aprendió a diseñar con IA** (VIBE) |
+| Coach principal (viaja) | Enzo Juárez Velázquez (@enzzo195) | Guía del diseño de PCB con IA (VIBE PCB design, EasyEDA vía MCP), validación eléctrica, bodges de hardware, revisión técnica. En Incheon **además dirige al equipo IITA de RCJ Rescue Line** |
+| Coach secundaria (viaja) | Cecilia Budeguer | Acompañamiento del equipo en Incheon (respaldo, sobre todo mientras Enzo asiste al equipo de Rescue Line) |
+| Director del proyecto (NO viaja) | Gustavo Viollaz (@gviollaz) | Coordinación, integración de las 3 placas, sesiones de banco. Obligaciones laborales le impiden viajar a Corea |
 
 > **Cómo leer este TDP (para el juez):** las 4 secciones mapean 1:1 a los 4 criterios de la rúbrica del TDP — **§1 Electrical**, **§2 Mechanical**, **§3 Software**, **§4 Presentation / Narrativa**. Cada decisión de diseño se presenta con el formato **Decisión → Por qué → Dato**. El cierre (§5) reclama explícitamente los **2 puntos bonus** (open-source CAD/PCB y open-source software). Lo que todavía **no** está validado en hardware se marca como tal honestamente, distinguiendo *"verificado en banco"* de *"verificado sólo en host"*.
 
 ---
+
+## Lo que más nos enorgullece (la feature protagonista)
+
+**Aprendimos a diseñar nuestro propio hardware usando IA — y lo validamos nosotros.** Salimos campeones nacionales con dos robots que, siendo honestos, tenían una estructura y una tecnología pobres. Para el mundial decidimos rehacerlos, pero teníamos un problema: somos estudiantes y **no sabíamos diseñar placas electrónicas** ni dominábamos las tecnologías que queríamos usar. La historia de este robot es **cómo, usando la IA como herramienta de aprendizaje y diseño, aprendimos a diseñar nuestras propias placas** — las DOS placas nuevas (TOP = percepción / DOWN = piso y línea) se diseñaron **casi todas con "VIBE PCB design": un agente de IA (Claude Code) conectado por MCP a EasyEDA** generaba y comandaba el diseño del PCB, y el equipo aprendía, decidía y validaba cada cambio. También **probamos Flux comandado por IA, pero NO funcionó** — lo contamos porque el ensayo-y-error honesto es parte del aprendizaje. No fue "ya sabíamos": fue un **genuino proceso de aprender CÓMO se diseñan PCBs con IA**. En lo mecánico empezamos a rediseñar en 3D el soporte de motores (Fusion asistido por IA, "VIBE 3D", recién arrancando). Y **mantuvimos el cerebro campeón 2025** (CENTRAL = la PCB Zircon que ganó el Nacional) y construimos alrededor.
+
+**Encuadre de autoría (firme):** la IA fue la **herramienta**; el **equipo** aprendió, decidió y validó. Somos los responsables de cada cosa que subió al robot. El diseño fue asistido por IA y guiado por el coach principal (Enzo), con los competidores (María, Elías) aprendiendo, decidiendo y validando.
+
+**La garantía de que el aprendizaje fue serio (no copiar-pegar de la IA):** probábamos cada cosa en la computadora antes de confiar en ella. La lógica vive en **módulos C++ puros testeados host-native** — **cientos de pruebas automáticas (834 hoy), 0 fallos, en segundos** (medido 2026-06-13 17:43 ART con `scripts/run-host-tests.sh`). Eso, más abajo, es la **evidencia** de todo lo que diseñamos con IA y de cómo lo validamos. La arquitectura de 3 placas, el "sin kicker" y todo el detalle técnico que sigue **son el cuerpo de evidencia** de esta historia, no un tema aparte.
 
 ## Resumen del robot (contexto en 30 segundos)
 
@@ -34,7 +42,7 @@ Dos robots omnidireccionales (base KIWI de 3 ruedas omni a 120°): **ROBOT1 = ar
 | **DOWN** | Teensy 4.0 | Sensor de piso | Anillo de 32 sensores de línea (4 mux CD4051) + 2 OTOS de odometría óptica |
 | **COMM** | ESP32-C6 | Árbitro RCJ + partner | Fork del módulo oficial RCJ; entrega START/STOP por nivel GPIO |
 
-TOP fusiona todo en un **WorldSnapshot de 31 bytes** que envía a CENTRAL por UART a 100 Hz; DOWN difunde línea + odometría a CENTRAL y TOP (broadcast simétrico). La lógica de decisión vive en **módulos C++ puros** verificados con una suite **host-native (658 tests / 47 suites / 0 failures (measured 2026-06-05 19:50 ART via scripts/run-host-tests.sh))** que corre en una PC sin la placa.
+TOP fusiona todo en un **WorldSnapshot de 31 bytes** que envía a CENTRAL por UART a 100 Hz; DOWN difunde línea + odometría a CENTRAL y TOP (broadcast simétrico). La lógica de decisión vive en **módulos C++ puros** verificados con una suite **host-native (834 tests / 60 suites / 0 failures (measured 2026-06-13 17:43 ART via scripts/run-host-tests.sh))** que corre en una PC sin la placa.
 
 **Lectura en 2 módulos (la idea de diseño que organiza todo).** Aunque físicamente son 3 placas + COMM, conceptualmente el robot se diseñó como **DOS módulos** con responsabilidades claras y una interfaz de datos limpia entre ellos:
 
@@ -50,6 +58,8 @@ TOP fusiona todo en un **WorldSnapshot de 31 bytes** que envía a CENTRAL por UA
 # §1. ELECTRICAL — Diseño eléctrico replicable, con razonamiento basado en datos
 
 > **Objetivo de rúbrica (Excellent):** dar detalle suficiente para que un lector técnico **replique el proceso de diseño**, evaluar el uso de recursos y dar **razonamiento basado en datos** para cada decisión. Esta sección está organizada como *Decisión → Por qué → Dato*, con tablas de pinout reproducibles y los procedimientos de bring-up que evitan los errores que nosotros ya cometimos.
+
+> **Estas dos placas (TOP y DOWN) son el resultado concreto del flujo VIBE PCB design con IA** descripto en "Lo que más nos enorgullece" y detallado en §4.5: el esquemático y el ruteo se generaron casi todos con un agente de IA (Claude Code) conectado por MCP a EasyEDA, y el equipo validó cada decisión eléctrica. Todo el detalle que sigue —pinouts, buses, cadena de potencia, iteraciones de bring-up— es la **evidencia de qué diseñamos con IA y cómo lo verificamos nosotros**. (CENTRAL es la PCB Zircon campeona 2025, reusada.)
 
 ## 1.1 Topología eléctrica general
 
@@ -273,7 +283,7 @@ Los **6 sensores I²C cuelgan del mismo bus `Wire` (pines 18/19)**: 2 BNO055 (0x
 
 **Decisión central de ingeniería:** la **lógica de decisión vive en módulos PUROS** (`src/shared/`, sin Arduino/Wire/Serial/`analogWrite`); el **glue Arduino es delgado** y compile-only.
 **Por qué:** los módulos puros se compilan y testean con **g++ en la PC, sin la placa**, lo que da un ciclo de verificación de segundos y esquiva el bloqueo de Avast al registry de PlatformIO.
-**Dato:** **658 tests / 47 suites / 0 failures (measured 2026-06-05 19:50 ART via scripts/run-host-tests.sh)**. Crecimiento trazable sesión a sesión: 180 → 246 → 262 → 324 → 354 → 403 → 470 → 545 → 658. Ver **Fig. 8 — crecimiento de la cobertura de tests host-native** (`docs/competencia/assets/fig8_test_growth.png`, generada por `gen_figuras.py`). **Cifra viva:** corremos la suite cada sesión, así que el número sigue creciendo — para Incheon será mayor. Por eso la publicamos con la **fecha y hora exactas de medición** (re-medir el día de grabar/imprimir; el gráfico se regenera con `gen_figuras.py`).
+**Dato:** **834 tests / 60 suites / 0 failures (measured 2026-06-13 17:43 ART via scripts/run-host-tests.sh)**. Crecimiento trazable sesión a sesión: 180 → 246 → 262 → 324 → 354 → 403 → 470 → 545 → 658 → 834. Ver **Fig. 8 — crecimiento de la cobertura de tests host-native** (`docs/competencia/assets/fig8_test_growth.png`, generada por `gen_figuras.py`). **Cifra viva:** corremos la suite cada sesión, así que el número sigue creciendo — para Incheon será mayor. Por eso la publicamos con la **fecha y hora exactas de medición** (re-medir el día de grabar/imprimir; el gráfico se regenera con `gen_figuras.py`).
 
 ### [FLOWCHART] Pipeline de verificación host-native
 ```
@@ -389,7 +399,7 @@ DOWN difunde 3 frames a CENTRAL (Serial1) **y** TOP (Serial5): `LineStatusV2` 0x
 
 Tres índices vivos combaten la deriva de docs: `FUENTES-DE-VERDAD.md` (un doc canónico por tema, regla: quien crea/supera un doc actualiza la tabla en el mismo commit), `MAPA-DE-DATOS.md` (cada mensaje: tipo/tamaño/transporte/pin/freq/quién-llena/quién-consume) y `ESTADO-ACTUAL.md` (1ª lectura obligatoria). **Jerarquía de verdad explícita:** si un doc contradice al código (`types.h`/`proto.h`) o al cableado, gana esa fuente.
 
-> **[GAP — software · features code-complete sin validar en HW]** Declaración honesta: las siguientes features están **code-complete + host-tested (entran en los 658 tests) pero AÚN NO validadas en hardware** — son código terminado, no comportamiento probado en el robot: trilateración (TASK-035), arquero que anticipa (tunear `lookahead_s`/`max_lead_mm`), strafe por cross_track (eje/signo), drive-straight OTOS, failover del BNO muerto (IMU-1 HIGH). **Bloqueante real #1:** la **visión sin recalibrar LAB+homografía** para Incheon (TASK-022) — el robot no ve la pelota hasta calibrar en banco. Las cargas de CPU y latencias son **objetivos de diseño, no medidos con osciloscopio**. **[FOTO: suite de 658 tests host en verde; diag de banco decodificando WorldSnapshot.]**
+> **[GAP — software · features code-complete sin validar en HW]** Declaración honesta: las siguientes features están **code-complete + host-tested (entran en los 834 tests) pero AÚN NO validadas en hardware** — son código terminado, no comportamiento probado en el robot: trilateración (TASK-035), arquero que anticipa (tunear `lookahead_s`/`max_lead_mm`), strafe por cross_track (eje/signo), drive-straight OTOS, failover del BNO muerto (IMU-1 HIGH). **Bloqueante real #1:** la **visión sin recalibrar LAB+homografía** para Incheon (TASK-022) — el robot no ve la pelota hasta calibrar en banco. Las cargas de CPU y latencias son **objetivos de diseño, no medidos con osciloscopio**. **[FOTO: suite de 834 tests host en verde; diag de banco decodificando WorldSnapshot.]**
 
 ## 3.10 Software de testeo, calibración y monitoreo (app de PC + telemetría USB)
 
@@ -411,7 +421,9 @@ La app (`tools/monitor-base/`, Python, sin dependencias fuera de la stdlib) ofre
 
 ## 4.1 El recorrido del equipo
 
-Somos el equipo de **IITA (Salta, Argentina)**, **campeones nacionales** de RoboCupJunior Soccer en la Roboliga Argentina (UAI, diciembre 2025), clasificados a **Incheon 2026**. El robot 2026 **no parte de cero**: la placa **CENTRAL (Zircon Rev v15 + Teensy 4.1) es exactamente la que ganó el Nacional 2025**. La decisión estratégica fue **montar capacidad nueva alrededor de lo que ya funciona**, no reemplazarlo: TOP (percepción) y DOWN (piso) se suman como pre-procesadores. Si una placa nueva falla en Incheon, CENTRAL puede degradar a modo monolítico.
+> **Las "3 ideas" que cualquier equipo junior puede copiar** (las mismas que cierran nuestro video): **(1)** usar la IA para aprender y diseñar más rápido, **pero entendiendo cada decisión** — si no la podés explicar, no la subís al robot; **(2)** armar una **red de seguridad** y probar la lógica en la computadora antes de confiar en ella en la cancha (§3.1, host-testing); **(3)** **reusar lo que ya funciona** y construir alrededor (mantuvimos el cerebro campeón). El recorrido que sigue es cómo aplicamos estas tres.
+
+Somos el equipo de **IITA (Salta, Argentina)**, **campeones nacionales** de RoboCupJunior Soccer en la Roboliga Argentina (UAI, diciembre 2025), clasificados a **Incheon 2026**. El robot 2026 **no parte de cero**: la placa **CENTRAL (Zircon Rev v15 + Teensy 4.1) es exactamente la que ganó el Nacional 2025**. La decisión estratégica fue **montar capacidad nueva alrededor de lo que ya funciona**, no reemplazarlo (idea 3): TOP (percepción) y DOWN (piso) se suman como pre-procesadores. Si una placa nueva falla en Incheon, CENTRAL puede degradar a modo monolítico.
 
 **De dónde venimos: la evolución honesta 2025 → 2026.** En la **competencia nacional** el robot era **mucho más básico**: arriba **sólo una cámara** (sin ToF, sin ultrasonido); abajo **sólo 3 sensores de luz**. Aun así fue suficiente para competir y **ganar la primera edición de RoboCupJunior Soccer de Argentina** (campeones). El **rediseño 2026** lo mejora muchísimo: arriba **2 cámaras + IMU + 4 ToF + ultrasonido + árbitro**; abajo **anillo de 32 sensores de línea + 2 OTOS de odometría**. Lo importante es **cómo** se hizo esa evolución: **el diseño modular permitió mejorar sin tirar todo**. Se **reusó el cerebro CENTRAL (Zircon) campeón** y se le sumaron, como módulos independientes, la **percepción (TOP)** y el **piso (DOWN)** — exactamente el contrato de 2 módulos descripto en el resumen del robot. La interfaz de datos limpia entre módulos es lo que hizo viable saltar de "1 cámara + 3 sensores" a la plataforma de fusión sensorial actual **sin rehacer la base ganadora**.
 
@@ -423,11 +435,11 @@ Somos el equipo de **IITA (Salta, Argentina)**, **campeones nacionales** de Robo
 
 La filosofía del equipo es **"invertir en aprendizaje, no en podio"**: un robot honesto, partidos jugados, y captura sistemática de cada lección en el `journal/` de ingeniería. Este TDP refleja esa honestidad: marcamos claramente qué está *validado en banco* vs *sólo verificado en host*, y publicamos hasta los falsos negativos que nos costaron tiempo (el power-cycle de los ToF, el árbitro por GPIO, el contrato de línea silenciosamente roto).
 
-**El equipo.** Compiten dos integrantes de 18 años: **María Virginia Viollaz** (visión y estrategia) y **Elías Cordero** (electrónica y mecánica). Viajan a Incheon acompañados por **Enzo Juárez Velázquez (coach)** y **Cecilia Budeguer (mentora)**; **Gustavo Viollaz (mentor)** acompaña el proyecto sin viajar. María Virginia trae experiencia internacional de RoboCupJunior: fue **campeona nacional 2022 en Rescue Line** y representó a la Argentina en el **mundial RoboCup 2023 en Eindhoven (Rescue Line)**; este año dio el salto a la categoría Soccer. **2025 fue el primer año de la categoría Soccer en la Roboliga Argentina**, así que somos un equipo en pleno aprendizaje de la liga: este año el robot **anota empujando la pelota por inercia** (menos componentes, menos puntos de falla), y dejamos el **kicker y el dribbler como objetivo declarado para el próximo año**. Mostramos lo que tenemos con honestidad y venimos a aprender de los mejores.
+**El equipo.** Compiten dos integrantes de 18 años: **María Virginia Viollaz** (visión y estrategia) y **Elías Cordero** (electrónica y mecánica), que además **aprendieron a diseñar con IA** (VIBE). Viajan a Incheon acompañados por el **coach principal Enzo Juárez Velázquez** —que guió el diseño de PCB con IA y que en Incheon **también dirige al equipo IITA de RCJ Rescue Line**— y por la **coach secundaria Cecilia Budeguer**, que da respaldo de acompañamiento (sobre todo cuando Enzo asiste al otro equipo). El **director del proyecto, Gustavo Viollaz** (coordinación, integración de las 3 placas, banco), **no viaja a Corea** por obligaciones laborales. María Virginia trae experiencia internacional de RoboCupJunior: fue **campeona nacional 2022 en Rescue Line** y representó a la Argentina en el **mundial RoboCup 2023 en Eindhoven (Rescue Line)**; este año dio el salto a la categoría Soccer. **2025 fue el primer año de la categoría Soccer en la Roboliga Argentina**, así que somos un equipo en pleno aprendizaje de la liga: este año el robot **anota empujando la pelota por inercia** (menos componentes, menos puntos de falla), y dejamos el **kicker y el dribbler como objetivo declarado para el próximo año**. Mostramos lo que tenemos con honestidad y venimos a aprender de los mejores.
 
 ## 4.2 Qué aprendimos (las lecciones más transferibles)
 
-1. **Verificar firmware embebido sin la placa es posible** y cambia la velocidad de iteración (lógica pura + g++ host = 658 tests en segundos).
+1. **Verificar firmware embebido sin la placa es posible** y cambia la velocidad de iteración (lógica pura + g++ host = 834 tests en segundos).
 2. **Los detalles de bring-up matan**: las direcciones I²C de los VL53L7CX persisten con 3V3 (power-cycle, no reset); los OTOS se alimentan de la batería, no del USB; el BNO + ToF no coexisten a 400 kHz.
 3. **El árbitro RCJ llega por nivel GPIO, no por UART**, y en PLAY sube un solo pin (OR, no AND) — un error de integración que puede costar la homologación.
 4. **Diseñar con fallback byte-idéntico** deja activar features sin riesgo de regresión.
@@ -449,9 +461,15 @@ La filosofía del equipo es **"invertir en aprendizaje, no en podio"**: un robot
 
 ![Fig. — Madurez por subsistema: **validado en banco** / **code-complete sin validar** / **roadmap**, más los 2 bloqueantes P0 (visión sin recalibrar + cap térmico de motores). La honestidad de ingeniería en una figura. `assets/drafts/fig_madurez_escalera.png`.](assets/drafts/fig_madurez_escalera.png)
 
-## 4.5 Innovación de proceso 2026 — metodología asistida por IA ("VIBE")
+## 4.5 Nuestra feature de orgullo — aprender a diseñar hardware con IA ("VIBE")
 
-Este año adoptamos un flujo de trabajo asistido por IA al que internamente llamamos **VIBE**, en el que un agente de IA (Claude) acelera el diseño y la documentación mientras el equipo decide, valida en banco y se hace responsable del resultado. Lo aplicamos en cuatro frentes: **VIBE PCB Design** —el diseño de las PCB en EasyEDA, donde el agente propone y edita el esquemático/ruteo a través de un servidor MCP y un humano valida cada cambio—; **VIBE 3D Design** —diseño mecánico en Autodesk Fusion 360 comandado por el agente vía MCP, una línea que recién estamos empezando a explorar—; **VIBE Coding** —programación del firmware C++ asistida por el agente, con verificación host-native (658 tests / 47 suites / 0 fallos) como red de seguridad—; y **Claude para documentación y gestión**, con el TDP, los contratos de datos byte-a-byte, el diario de ingeniería y los entregables curados con IA y verificación humana. Nuestro encuadre es honesto y deliberado: **la IA acelera, pero el equipo de competidores de 18 años toma las decisiones, prueba en hardware real y es el único responsable de lo que se sube al robot**. Lo documentamos como un enfoque emergente y compartimos la metodología (no solo el código) como aporte a la comunidad de RoboCupJunior.
+> **Esta es la feature protagonista del equipo** (la misma que lidera el video y el póster): **aprendimos a diseñar nuestro propio hardware usando IA como herramienta — y lo validamos nosotros.** Todo §1 (eléctrico) y §2 (mecánico) son la **evidencia** de lo que sigue.
+
+Este año adoptamos un flujo de trabajo asistido por IA al que internamente llamamos **VIBE**, en el que un agente de IA (Claude) acelera el diseño y la documentación mientras el equipo aprende, decide, valida en banco y se hace responsable del resultado. La parte de la que más orgullosos estamos es el **VIBE PCB design**: las **dos placas nuevas** (TOP = percepción / DOWN = piso y línea) se diseñaron **casi todas con un agente de IA (Claude Code) conectado por MCP a EasyEDA** — el agente generaba y comandaba el esquemático y el ruteo del PCB dentro de EasyEDA, y un humano del equipo validaba cada cambio. No partíamos sabiendo electrónica de PCBs: fue un **genuino proceso de aprendizaje de CÓMO se diseña un PCB con IA**, no "ya lo sabíamos". **Ensayo y error honesto:** también **probamos Flux comandado por IA, pero no nos funcionó** — lo contamos porque ese ida y vuelta es parte real del aprendizaje y, ante los jueces, suma credibilidad en vez de restarla. El camino que sí funcionó fue Claude + MCP + EasyEDA.
+
+Lo aplicamos en cuatro frentes: **VIBE PCB design** (lo de arriba — el frente protagonista); **VIBE 3D design** —rediseño del soporte de motores en Autodesk Fusion 360 comandado por el agente vía MCP, una línea que recién estamos empezando a explorar—; **VIBE coding** —programación del firmware C++ asistida por el agente, con verificación host-native (834 tests / 60 suites / 0 fallos, medido 2026-06-13 17:43 ART) como red de seguridad—; y **Claude para documentación y gestión**, con el TDP, los contratos de datos byte-a-byte, el diario de ingeniería y los entregables curados con IA y verificación humana.
+
+**Encuadre de autoría (no negociable, y deliberado):** **la IA fue la herramienta; el EQUIPO aprendió, decidió y validó.** Somos los responsables de cada cosa que subió al robot. El diseño fue **asistido por IA y guiado por el coach principal (Enzo Juárez Velázquez)**, con los **competidores de 18 años (María Virginia Viollaz y Elías Cordero) aprendiendo, decidiendo y validando en hardware real**. Nunca afirmamos que "la IA lo hizo sola" ni que "los estudiantes solos diseñaron las placas": fue un trabajo de equipo con la IA como acelerador. Lo documentamos como un enfoque emergente y **compartimos la metodología (no solo el código)** como aporte a la comunidad de RoboCupJunior — para que otro equipo junior pueda aprender a diseñar con IA igual que nosotros (las "3 ideas" del video, ver §4.1/§5).
 
 El **objetivo central** de toda esta metodología —los cuatro frentes VIBE más el testing, la documentación y el debug asistidos— es uno solo: **acelerar tiempos, comprimiendo el ciclo completo desde el concepto hasta el robot andando**. No usamos IA para tener "más" pasos, sino para que cada paso del flujo —(1) diseño conceptual, (2) diseño y fabricación de PCB, (3) modelo 3D del chasis e impresión, (4) montaje, (5) programación, (6) documentación y (7) testeo— tarde una fracción de lo habitual. Esa compresión es la que hizo viable el rediseño 2026 sobre la base ganadora del Nacional 2025 (sumar TOP y DOWN alrededor de la CENTRAL que ya funcionaba) y sostener un ritmo de iteración de ~30 sesiones de banco con un equipo de dos competidores. Nuestra **meta declarada a futuro** es que, con los materiales ya en mano (motores, sensores, cámaras), ese ciclo de siete etapas pueda recorrerse **completo en 30 días**; creemos que es posible con este método. **Caveat honesto:** este año el ciclo fue más lento, pero por **dificultades de provisión e importación de componentes en la Argentina** —la aduana obliga a fraccionar los pedidos y las piezas llegan de a poco a lo largo de semanas— y no por la metodología; con los materiales disponibles, el flujo asistido por IA es lo que habilita esa compresión a 30 días.
 
@@ -472,6 +490,8 @@ La próxima mejora declarada de nuestro roadmap es la **comunicación en tiempo 
 **Licencia:** **MIT** (`LICENSE`, Copyright 2026 IITA / Fundación Innovar). **Repositorio público:** https://github.com/IITA-Proyectos/open-soccer-robocup-team2026
 *(Nota de consistencia: el nombre legal de IITA = Instituto de Innovación y Tecnología Aplicada, unificado en todos los docs 2026-06-05.)*
 
+**Compartimos el MÉTODO, no solo el código.** Lo más reusable que publicamos no son los archivos sueltos: es **cómo se aprende a diseñar hardware con IA** — el flujo VIBE PCB design (Claude Code + MCP + EasyEDA), qué funcionó y qué no (Flux no nos sirvió), los procedimientos de bring-up que nos costaron horas, y la receta de host-testing como red de seguridad. Un equipo junior que llegue a este repo puede **replicar la metodología completa**, no solo recompilar nuestras placas. Ese es nuestro aporte de oro a la comunidad RoboCupJunior: la **replicabilidad del aprendizaje** (las "3 ideas" de §4.1).
+
 ## 5.1 Bonus +1 — CAD / PCB / esquemáticos abiertos
 
 | Entregable | Qué se publica | Replicable por terceros |
@@ -486,7 +506,7 @@ La próxima mejora declarada de nuestro roadmap es la **comunicación en tiempo 
 
 ## 5.2 Bonus +1 — Software abierto
 
-- **Firmware 3 placas** (`software/teensy/Soccer 2026/`): C++17, módulos puros + glue, 83 envs PlatformIO, **658 tests / 47 suites / 0 failures (measured 2026-06-05 19:50 ART via scripts/run-host-tests.sh)**.
+- **Firmware 3 placas** (`software/teensy/Soccer 2026/`): C++17, módulos puros + glue, 83 envs PlatformIO, **834 tests / 60 suites / 0 failures (measured 2026-06-13 17:43 ART via scripts/run-host-tests.sh)**.
 - **Build 100 % offline reproducible:** libs vendoreadas en `lib/` (Unity, OatmealOTOS + SparkFun_Toolkit podadas) → `pio run -e down` compila sin red.
 - **Receta de testing host-native publicada** (`scripts/run-host-tests.sh`) para que otro equipo verifique firmware embebido sin la placa.
 - **Packs autocontenidos por subsistema** (`hardware/electronics/*-pack/`): docs + snapshot del firmware + tests + ground-truth, con índice "pregunta → doc".
@@ -522,12 +542,12 @@ La próxima mejora declarada de nuestro roadmap es la **comunicación en tiempo 
 - [GAP] **Recalibración de visión** (TASK-022) — bloqueante #1.
 - [GAP] Validación HW de trilateración (TASK-035), tune de arquero anticipa, strafe cross_track, drive-straight OTOS, failover BNO (IMU-1).
 - [GAP] **Métricas en vivo** (CPU/latencias) con osciloscopio/profiler — hoy son objetivos de diseño.
-- [RESUELTO] Conteo de tests al cierre: **658 tests / 47 suites / 0 failures (measured 2026-06-05 19:50 ART via scripts/run-host-tests.sh)** — usado de forma consistente en todo el TDP.
+- [RESUELTO] Conteo de tests al cierre: **834 tests / 60 suites / 0 failures (measured 2026-06-13 17:43 ART via scripts/run-host-tests.sh)** — usado de forma consistente en todo el TDP.
 
 **Imágenes (originales/CC, etiquetadas y citadas)**
 - [FOTO] Robot 2026 armado (vista superior con 3 ruedas a 120°; vista lateral con la pila de 3 placas).
 - [FOTO] Cada PCB poblada (TOP, DOWN, CENTRAL/Zircon, COMM) + bodge de los 4 LP de ToF.
-- [FOTO] Suite de 658 tests host en verde + diag de banco decodificando WorldSnapshot. (Figuras de datos ya disponibles: `docs/competencia/assets/fig8_test_growth.png` y `fig9_otos_error.png`, generadas por `gen_figuras.py`.)
+- [FOTO] Suite de 834 tests host en verde + diag de banco decodificando WorldSnapshot. (Figuras de datos ya disponibles: `docs/competencia/assets/fig8_test_growth.png` y `fig9_otos_error.png`, generadas por `gen_figuras.py`.)
 - [DIAGRAMA] Plano de la pila de 3 placas con cotas de standoffs; diagrama de bloques del flujo de datos.
 - [FOTO] Equipo en el Nacional 2025.
 

@@ -147,9 +147,26 @@ telemetría flasheado**; no encienden ni apagan el modo, sólo lo operan:
 | `RATE <hz>` | Cambia la frecuencia (1–200) | ambas |
 | `CAL CARPET` / `CAL WHITE` | Calibra verde / blanco | base |
 | `CAL AUTO ON` / `CAL AUTO OFF` | Captura min/max pasando el robot por la línea | base |
-| `CAL SAVE` / `CAL LOAD` | Guarda / carga calibración de EEPROM | base |
+| `CAL SAVE` / `CAL LOAD` | Guarda / carga calibración de EEPROM (incluye la sintonía fina v3) | base |
 | `OTOS RESET` | Pone la odometría en (0,0,0) | base |
 | `IMU ZERO` / `IMU SAVE` | Re-cero del heading / guarda calib del BNO | top |
+
+**Sintonía fina (schema v3, app monitor-base — banco 2026-06-13):**
+
+| Comando | Qué hace | Dónde |
+|---|---|---|
+| `SENS GLOBAL <pct>` | Sensibilidad global al blanco, `−100…+100` (**+ = MENOS sensible**, sube el umbral; 0 = punto medio histórico). **Los extremos SATURAN** (−100 → todo blanco, +100 → nada). En la app: slider que se aplica **al mover** | base |
+| `SENS SET <i> <pct>` | Sensibilidad del sensor `i` por separado (slider del inspector) | base |
+| `SENSOR <i> ON` / `SENSOR <i> OFF` | Habilita / **deshabilita** el sensor `i` → un sensor OFF se **excluye del cálculo de línea** (como uno unhealthy). En la app: botón del inspector o **doble-click** en el anillo/barra | base |
+
+> Defaults no-op: todos los sensores habilitados, sensibilidad 0 → umbral en el punto medio =
+> comportamiento de competencia histórico. `CAL SAVE` persiste estas perillas en EEPROM y el
+> firmware las **aplica al boot en TODOS los envs** (competencia incluida).
+>
+> ⚠️ Igual que el resto de los comandos, la sintonía fina también viaja en el binario de
+> **competencia** (`down`/`down_robot2`) vía el monitor USB dormido (`DOWN_USB_MONITOR`); el
+> flujo canónico (reflashear `down_debug_telemetry` vs calibrar en vivo sobre `down`) se está
+> reconciliando en **TASK-307**.
 
 ---
 
@@ -166,7 +183,7 @@ telemetría flasheado**; no encienden ni apagan el modo, sólo lo operan:
 | `schema de telemetría no soportado: v=X (la app entiende v=Y)` | El firmware y la app son de **versiones distintas** del repo | Reflashear la placa desde el **mismo checkout** que la app, o `git pull`. *(Validado: firmware v1 + app v2 → la app lo rechaza limpio, sin mostrar basura.)* |
 | Aparecen líneas raras / `[DOWN] ...` mezcladas | Son prints de boot del firmware | **La app las ignora sola** (filtra lo que no es telemetría). *(Validado.)* |
 | `could not open port COMx` | El puerto está ocupado o no existe | Un solo programa por COM: cerrar monitor/IDE; verificar el COM. *(Validado: puerto inexistente → la app lo reporta en la barra de estado, no crashea.)* |
-| `pio run -e down_debug_telemetry` **no compila** | El glue Arduino **no se verificó con `pio`** (acá no compila Teensy) | Pegar el error exacto y avisar — es el único pendiente conocido. **El env de competencia `pio run -e down` NO se ve afectado.** |
+| `pio run -e down_debug_telemetry` da **error de compilación** | No esperado: **verificado compilando OK el 2026-06-13** (`down`, `down_robot2` y `down_debug_telemetry` → los tres SUCCESS). Si falla, suele ser checkout desincronizado o Avast tocando el registry (TASK-025) | Pegar el error exacto y avisar. **El env de competencia `pio run -e down` NO se ve afectado.** |
 | **El robot se mueve** mientras flasheo/monitoreo | El env de telemetría corre el firmware **REAL** → reacciona al árbitro y sensores | Ruedas al aire / robot sujeto, o no alimentar los motores, durante el banco |
 | Quiero volver a competencia y "no sé si quedó bien" | — | `pio run -e down -t upload` deja el binario **byte-idéntico**; nada que restaurar |
 
@@ -184,9 +201,10 @@ telemetría flasheado**; no encienden ni apagan el modo, sólo lo operan:
 
 ## 7. Límites honestos / a tener en cuenta
 
-- El **glue Arduino** (lo que prende el stream en el Teensy) **todavía no se compiló con `pio`**
-  acá; el primer paso de banco es confirmar que `pio run -e *_debug_telemetry` compila (ver
-  card [`docs/pruebas-banco/DOWN.md`](../pruebas-banco/DOWN.md) DOWN-10).
+- El **glue Arduino** (lo que prende el stream en el Teensy) **compila con `pio`** (verificado
+  2026-06-13: `down` / `down_robot2` / `down_debug_telemetry` → SUCCESS). Lo que falta NO es
+  compilación sino **validación de banco** de la sintonía fina v3: que la persistencia tras
+  power-cycle y el deshabilitar-un-sensor surtan efecto sobre la placa real (ver TASK-306).
 - El env de telemetría **no es byte-idéntico** (overhead del stream) → **partidos oficiales con
   el env de competencia**.
 - La app conecta a **una placa a la vez** (un COM). Para ver ABAJO y ARRIBA juntas, abrí **dos

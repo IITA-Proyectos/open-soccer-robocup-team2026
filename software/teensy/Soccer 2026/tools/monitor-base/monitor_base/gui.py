@@ -64,6 +64,10 @@ class MonitorApp:
         self._is_sim = getattr(source, "is_sim", False)
         self._selected: Optional[int] = None   # sensor seleccionado (inspector)
         self._global_synced = False            # ¿ya sincronicé el slider global con la placa?
+        # Último valor de sensibilidad ENVIADO (dedup: mandar solo al cambiar el
+        # entero mientras se arrastra, no en cada sub-pixel ni re-enviar al seleccionar).
+        self._last_global_sent = 0
+        self._last_persensor_sent = 0
 
         root.title("IITA Soccer — Monitor de la base (DOWN) v3 — "
                    + source.describe())
@@ -152,13 +156,11 @@ class MonitorApp:
         gframe = ttk.Frame(parent)
         gframe.pack(fill="x")
         self.global_sens_var = tk.IntVar(value=0)
+        self.global_sens_lbl = ttk.Label(gframe, text="+0%", width=6)
         self.global_sens_scale = ttk.Scale(
             gframe, from_=-100, to=100, orient="horizontal",
-            variable=self.global_sens_var,
-            command=lambda v: self.global_sens_lbl.config(text=f"{int(float(v)):+d}%"))
+            variable=self.global_sens_var, command=self._on_global_sens_change)
         self.global_sens_scale.pack(side="left", fill="x", expand=True)
-        self.global_sens_scale.bind("<ButtonRelease-1>", self._on_global_sens_release)
-        self.global_sens_lbl = ttk.Label(gframe, text="+0%", width=6)
         self.global_sens_lbl.pack(side="left")
 
         # ── Barras de cercanía al umbral por sensor ──
@@ -206,14 +208,12 @@ class MonitorApp:
         sframe.pack(fill="x", pady=2)
         ttk.Label(sframe, text="sens propia:").pack(side="left")
         self.sensor_sens_var = tk.IntVar(value=0)
+        self.sensor_sens_lbl = ttk.Label(sframe, text="+0%", width=6)
         self.sensor_sens_scale = ttk.Scale(
             sframe, from_=-100, to=100, orient="horizontal",
-            variable=self.sensor_sens_var,
-            command=lambda v: self.sensor_sens_lbl.config(text=f"{int(float(v)):+d}%"),
+            variable=self.sensor_sens_var, command=self._on_persensor_sens_change,
             state="disabled")
         self.sensor_sens_scale.pack(side="left", fill="x", expand=True)
-        self.sensor_sens_scale.bind("<ButtonRelease-1>", self._on_persensor_sens_release)
-        self.sensor_sens_lbl = ttk.Label(sframe, text="+0%", width=6)
         self.sensor_sens_lbl.pack(side="left")
 
     def _send(self, cmd: str) -> None:
@@ -228,13 +228,31 @@ class MonitorApp:
         self._set_status(f"→ comando enviado: {cmd}")
 
     # ── Sintonía fina: handlers ──────────────────────────────────────────────
-    def _on_global_sens_release(self, _evt=None) -> None:
-        self._send(f"SENS GLOBAL {self.global_sens_var.get()}")
+    # Se envía AL MOVER el slider (no al soltar): se manda cuando el valor ENTERO
+    # cambia (dedup), así se ve en vivo sin inundar el serial con cada sub-pixel.
+    @staticmethod
+    def _scale_int(value) -> int:
+        # El command de ttk.Scale pasa el valor como string (ej. "-18.0").
+        try:
+            return int(round(float(value)))
+        except (TypeError, ValueError):
+            return 0
 
-    def _on_persensor_sens_release(self, _evt=None) -> None:
+    def _on_global_sens_change(self, value=None) -> None:
+        v = self._scale_int(value)
+        self.global_sens_lbl.config(text=f"{v:+d}%")
+        if v != self._last_global_sent:
+            self._last_global_sent = v
+            self._send(f"SENS GLOBAL {v}")
+
+    def _on_persensor_sens_change(self, value=None) -> None:
+        v = self._scale_int(value)
+        self.sensor_sens_lbl.config(text=f"{v:+d}%")
         if self._selected is None:
             return
-        self._send(f"SENS SET {self._selected} {self.sensor_sens_var.get()}")
+        if v != self._last_persensor_sent:
+            self._last_persensor_sent = v
+            self._send(f"SENS SET {self._selected} {v}")
 
     def _ring_sensor_at(self, px, py):
         """Índice del sensor más cercano al click en el anillo, o None."""
@@ -284,7 +302,8 @@ class MonitorApp:
         self.sensor_sens_scale.config(state="normal")
         if self.last is not None and i < len(self.last.ring.persensor_sens):
             ps = int(self.last.ring.persensor_sens[i])
-            self.sensor_sens_var.set(ps)
+            self._last_persensor_sent = ps   # seleccionar NO debe re-enviar el valor actual
+            self.sensor_sens_var.set(ps)     # dispara command → v==last → no envía
             self.sensor_sens_lbl.config(text=f"{ps:+d}%")
         if self.last is not None:
             self._render_inspector(self.last)
@@ -568,6 +587,7 @@ class MonitorApp:
         if not self._global_synced:
             self._global_synced = True
             gs = int(getattr(f.ring, "global_sens", 0))
+            self._last_global_sent = gs   # sincronizar con la placa NO debe re-enviar
             self.global_sens_var.set(gs)
             self.global_sens_lbl.config(text=f"{gs:+d}%")
 

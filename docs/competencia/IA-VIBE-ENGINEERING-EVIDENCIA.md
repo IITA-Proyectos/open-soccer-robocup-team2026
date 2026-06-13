@@ -112,9 +112,20 @@ Un RCT de **METR (inicios 2025, n=16)** halló que dar IA a devs **open-source m
 *Fuente:* arXiv 2507.09089.
 > **Caveats (a citar con precisión):** el +19 % es estimación puntual con **IC 95 % de −26 % a +9 %**, n=16; alcance **estrecho** (expertos en repos maduros, herramientas de inicios de 2025); un follow-up (feb-2026, n=57) **no reprodujo** el slowdown. La lección honesta: la IA ayuda **más donde hay menos expertise previo** (junior, proyectos en crecimiento) y los speedups auto-reportados no son confiables → **hay que medir.** Nuestro robot pasó de básico a profesional: es justo el territorio donde el junior/proyecto-en-crecimiento más gana, no el del experto-en-repo-maduro que se frena. Y por eso medimos todo con **658 tests automáticos**, no a ojo.
 
-### 3.5 Contexto institucional sobre IA en educación
+### 3.5 IA en educación: de la política a la evidencia
 
-Marcos y reportes de organismos internacionales encuadran el aprender-a-usar-IA como una competencia del siglo XXI (no como un atajo): el **AI Competency Framework** de UNESCO (para estudiantes y para docentes), el reporte **"Empowering learners for the age of AI"** de la OECD, y el **Future of Jobs Report 2025** del Foro Económico Mundial (upskilling urgente). *(Fuentes primarias listadas en Referencias; los citamos como contexto de política educativa, no como medición cuantitativa.)*
+> Todo lo de abajo se **abrió y confirmó cita por cita** (algunas re-verificadas a mano). Se distingue paper peer-reviewed de preprint, y se marca cada caveat.
+
+**Política (organismos internacionales).** El **AI Competency Framework** de UNESCO afirma: *"Integrating AI learning objectives into official school curricula is crucial for students globally to engage with AI safely and meaningfully"* (12 competencias en 4 dimensiones). Lo acompañan la OECD (*"Empowering learners for the age of AI"*) y el WEF (Future of Jobs 2025, upskilling urgente). Encuadran el **aprender-a-usar-IA como competencia del siglo XXI**, no como atajo.
+
+**Evidencia empírica (cada paper fetcheado y citado):**
+- **Adopción masiva, ya.** Encuesta de **15.631 estudiantes** (grados 6-12, Estonia): **74-90 %** usa herramientas de IA para aprender y coinciden en que *"Using AI makes learning easier"*; los autores señalan que esa percepción *"may be leveraged to engage students in deeper learning"* (Frontiers in Education, 2025). *Caveat: es prevalencia/percepción autorreportada, no causalidad.*
+- **Motivación/disfrute.** Con material personalizado por IA generativa, **~66,4 %** de los alumnos (n=110, grados 4-6) reportó disfrute alto al aprender (Frontiers in Education, 2024).
+- **Aprender IA mejora el aprendizaje.** Una intervención de **alfabetización en IA** con grupo control produjo una ganancia de aprendizaje grande (media 2,53→20,4 vs. 2,07 del control; Cohen's d 1,83-4,74), **independiente de la actitud previa** hacia la IA (PMC, 2025).
+- **Auto-eficacia.** La comprensión técnica y la aplicación práctica de IA suben la **auto-eficacia** del estudiante (n=286 universitarios; Becirovic et al., 2025). *Caveat honesto: ese mismo estudio NO halló efecto sobre el rendimiento académico — lo citamos solo para la auto-eficacia, que es un motor motivacional reconocido.*
+- **Currícula.** *"what computer science educators should teach in the AI era, how to best integrate these technologies into curricula"* ya es una pregunta de la literatura (arXiv 2507.02183, *Computer Science Education in the Age of Generative AI*, 2025, preprint).
+
+**La forma de trabajar que adoptamos tiene nombre y literatura.** Un trabajo de 2025 lo dice así: *"Generative AI is reshaping how software is designed, written, and maintained… new development styles — from chat-oriented programming and **'vibe coding'** to agentic programming"* (arXiv 2510.10819, preprint). *Vibe engineering* no es una etiqueta que inventamos.
 
 ---
 
@@ -135,15 +146,24 @@ Nuestra gobernanza (detallada en `USO-DE-IA.md`): **la IA propone, el equipo dis
 
 ---
 
-## 5. Nuestra tesis (lo decimos como opinión, no como hallazgo verificado)
+## 5. La analogía histórica y el impacto motivacional — ahora con evidencia
 
-> **Honestidad metodológica:** las dos ideas de esta sección **no** se sostuvieron con fuentes primarias que sobrevivieran nuestra verificación adversarial. Las presentamos como **tesis y opinión del equipo**, claramente separadas de las secciones 2 y 3.
+> **Actualización (2026-06-13):** en la primera versión esta sección era solo nuestra opinión. Después buscamos papers reales y **abrimos cada uno para confirmar la cita** (no nos alcanzaba con que un buscador dijera que existían). Resultado: los **dos pilares** de nuestra tesis SÍ tienen respaldo verificado; lo que sigue siendo *nuestra lectura* es la **analogía** que los conecta y la **proyección** sobre RoboCup.
 
-**La IA hoy es como la robótica educativa hace 20 años.** RoboCup nació en 1997 como un desafío "públicamente atractivo pero formidable" para empujar la investigación; meter jóvenes en STEM a través de una competencia nueva fue parte de su impacto. Creemos —es nuestra lectura— que la IA generativa está hoy en ese mismo momento: una tecnología nueva, productiva y útil que las nuevas generaciones quieren aprender. Una competencia que fue **pionera** en lo nuevo corre el riesgo, si no se sube a esto, de dejar de motivar a las generaciones que buscan justamente lo nuevo, lo productivo, lo útil.
+**Pilar 1 — La robótica educativa y las competencias aumentan la motivación y el interés STEM (evidencia verificada).** No es solo nuestra impresión:
+- Una **revisión sistemática de 147 estudios (2000-2018)** clasifica la evidencia en cinco temas, uno explícitamente *"creativity and motivation"*, y concluye que la robótica educativa *"enhance[s] K–12 students' interest, engagement, and academic achievement in various fields of STEM education"* (Anwar et al., 2019, J-PEER, peer-reviewed).
+- Un **meta-análisis multinivel** (30 tamaños de efecto, 21 estudios, 2010-2022) halla *"moderate-sized effects on students' STEM learning"* y sobre las *"learning attitudes"* (Ouyang & Xu, 2024, Int. J. STEM Education).
+- Otro **meta-análisis** cuantifica un efecto **medio y positivo** de la robótica educativa sobre las competencias STEM en primaria (SMD = 0,535; IC95 % 0,33-0,74; p<0,001) (Trapero-González et al., 2024, Frontiers in Education).
+- Un estudio del **Cono Sur** (grupo UruBots, Uruguay) reporta que los estudiantes en robótica *"increase their interest in research and academic commitment"* (Flores et al., 2024, arXiv, preprint).
+- Y **específicamente para RoboCupJunior**, sus referentes académicos documentaron el valor educativo con encuestas y entrevistas a estudiantes y mentores desde 2000: *"The focus in the Junior league is on education"* (Sklar & Eguchi, *"RoboCupJunior — Four Years Later"*, RoboCup 2004 proceedings).
 
-**El impacto motivacional importa.** Para nosotros, aprender a dirigir y verificar una IA fue de las experiencias más motivadoras del proyecto: nos obligó a un nivel más alto (especificar problemas con precisión, diseñar tests, gobernar el proceso) y nos dejó **construir algo profesional en semanas**, no en años. Esa sensación de "una idea puede ser un robot que anda, rápido" es combustible. Creemos que las competencias deberían capitalizarla, no temerle.
+Que RoboCup haya sido pionera en **motivar jóvenes hacia STEM** no es folklore — está medido.
 
-*(No tenemos —y lo decimos— una cita primaria verificada que cuantifique esta analogía o este efecto motivacional específico en RoboCup. Es nuestra experiencia y nuestra lectura.)*
+**Pilar 2 — Aprender a usar IA también motiva, engancha y mejora el aprendizaje (evidencia verificada).** Detallado en §3.5: disfrute alto con IA generativa personalizada (66,4 %, n=110), una intervención de alfabetización en IA con ganancia de aprendizaje grande e independiente de la actitud previa (Cohen's d 1,83-4,74), y la suba de **auto-eficacia** del estudiante — un motor motivacional reconocido.
+
+**El puente entre los dos pilares es NUESTRA lectura (no una cita).** Que la IA sea hoy, para esta generación, lo que la robótica educativa fue hace 20 años —una tecnología nueva, productiva y motivadora que conviene **capitalizar** en vez de temer— es la **síntesis que proponemos** uniendo los dos pilares evidenciados. La analogía exacta no la afirma ningún paper: la afirmamos **nosotros**, apoyados en la evidencia de arriba. Y el corolario —que una competencia pionera en lo nuevo arriesga dejar de motivar si no se sube a lo que las nuevas generaciones buscan— es nuestra proyección, no un hallazgo.
+
+**Nuestra experiencia, dicha como experiencia (no como medición):** aprender a dirigir y verificar una IA fue de lo más motivador del proyecto — nos obligó a un nivel más alto (especificar, testear, gobernar) y nos dejó **construir algo profesional en semanas**. Eso es testimonio nuestro.
 
 ---
 
@@ -177,6 +197,22 @@ Para las categorías y los comités, con el mayor respeto y como aporte a la com
 - OECD — "Empowering learners for the age of AI": https://www.oecd.org/en/publications/empowering-learners-for-the-age-of-ai_29eee1cb-en.html
 - World Economic Forum — Future of Jobs Report 2025: https://www.weforum.org/press/2025/01/future-of-jobs-report-2025-78-million-new-job-opportunities-by-2030-but-urgent-upskilling-needed-to-prepare-workforces/
 
+**Robótica educativa y competencias → motivación / interés STEM (papers abiertos y citados uno por uno):**
+- Anwar, Bascou, Menekse & Kardgar (2019) — "A Systematic Review of Studies on Educational Robotics", J-PEER 9(2): https://docs.lib.purdue.edu/jpeer/vol9/iss2/2 *(peer-reviewed; 147 estudios 2000-2018; tema "creativity and motivation")*
+- Ouyang & Xu (2024) — "The Effects of Educational Robotics in STEM Education: A Multilevel Meta-Analysis", Int. J. STEM Education 11:7 (DOI 10.1186/s40594-024-00469-4): https://eric.ed.gov/?id=EJ1410342 *(peer-reviewed, OA; efecto moderado)*
+- Trapero-González et al. (2024) — "Didactic impact of educational robotics on the development of STEM competence in primary education", Frontiers in Education: https://www.frontiersin.org/journals/education/articles/10.3389/feduc.2024.1480908/full *(peer-reviewed, CC BY; SMD=0,535)*
+- Flores et al. (2024) — "De la Extensión a la Investigación: Cómo la Robótica Estimula el Interés Académico…" (grupo UruBots, Uruguay), arXiv 2411.05011: https://arxiv.org/abs/2411.05011 *(preprint)*
+- Sklar & Eguchi (2004) — "RoboCupJunior — Four Years Later", RoboCup 2004 proceedings: https://www.sci.brooklyn.cuny.edu/~sklar/papers/sklar-eguchi-rc04.pdf *(peer-reviewed; valor educativo de RCJ, encuestas a estudiantes y mentores)*
+
+**IA en educación — evidencia empírica (papers abiertos y citados uno por uno):**
+- "Generative AI and education: dynamic personalization… with ChatGPT" (2024), Frontiers in Education (DOI 10.3389/feduc.2024.1288723): https://www.frontiersin.org/journals/education/articles/10.3389/feduc.2024.1288723/full *(peer-reviewed; 66,4 % disfrute alto, n=110)*
+- "Enhancing AI literacy in undergraduate pre-medical education…" (2025), PMC: https://pmc.ncbi.nlm.nih.gov/articles/PMC12225195/ *(peer-reviewed, OA; intervención vs control, Cohen's d 1,83-4,74; independiente de la actitud previa)*
+- "Student engagement with AI tools in learning: large-scale Estonian survey" (2025), Frontiers in Education: https://www.frontiersin.org/journals/education/articles/10.3389/feduc.2025.1688092/full *(peer-reviewed; n=15.631; adopción 74-90 %; ⚠️ prevalencia/percepción, no causal)*
+- Becirovic, Polz & Tinkel (2025) — "Exploring students' AI literacy and its effects on… self-efficacy and academic performance", Smart Learning Environments 12:29 (DOI 10.1186/s40561-025-00384-3) *(peer-reviewed; AI literacy → auto-eficacia; ⚠️ NO halló efecto sobre el rendimiento académico — citado solo para auto-eficacia)*
+- "AI Literacy and LLM Engagement in Higher Education: A Cross-National Quantitative Study" (2025), arXiv 2507.03020: https://arxiv.org/abs/2507.03020 *(preprint; r=.59 beneficios percibidos, r=.41 optimismo)*
+- "Computer Science Education in the Age of Generative AI" (2025), arXiv 2507.02183: https://arxiv.org/abs/2507.02183 *(preprint; qué/cómo enseñar en la era de IA)*
+- "Generative AI and the Transformation of Software Development Practices" (2025), arXiv 2510.10819: https://arxiv.org/abs/2510.10819 *(preprint; menciona "vibe coding" y "agentic programming")*
+
 **Debate comunitario y definición (foros / secundarias — calidad marcada):**
 - ChiefDelphi (FRC robotics) — "How is your team using AI/LLMs for robot code in 2026?": https://www.chiefdelphi.com/t/how-is-your-team-using-ai-llms-for-robot-code-in-2026/513448 *(foro)*
 - ChiefDelphi — "Lowering the barrier to code: AI's role in FRC robotics": https://www.chiefdelphi.com/t/lowering-the-barrier-to-code-ais-role-in-frc-robotics/503634 *(foro)*
@@ -193,7 +229,8 @@ Este documento es, él mismo, un ejemplo de lo que defiende: **uso de IA discipl
 
 - **Método:** investigación con fan-out de búsquedas web en paralelo → fetch de fuentes → **verificación adversarial** (3 votos independientes por afirmación; se descartaba si 2 de 3 la refutaban). **Cada afirmación que CITAMOS en las secciones 2 y 3 pasó esa verificación contra fuentes primarias; lo que no la pasó, lo dejamos afuera o lo marcamos como tesis propia (§5).** El proceso descartó afirmaciones que no se sostuvieron — incluso algunas que nos convenían.
 - **Regla de citas:** solo se citan fuentes que se pudieron **abrir y verificar**. Donde la conexión es una inferencia (IA ↔ "external code"), se dice. Donde la evidencia tiene límites (n chico, IC amplio, significancia solo al agrupar), se dice.
-- **Lo que NO se pudo verificar** (comentarios de foros RCJ por país; la cuantificación de la analogía histórica y del efecto motivacional) se marca explícitamente como **tesis y opinión del equipo** (§5), separado de lo verificado (§2–§3).
+- **Segunda ronda dirigida (2026-06-13) para reforzar el §5:** buscamos papers específicos de educación/IA y **abrimos cada uno** para confirmar la cita textual antes de usarlo. De 16 candidatos, **14 sobrevivieron** (cita verbatim leída del documento fetcheado) y **2 se descartaron** honestamente (uno tras paywall que devolvió 403, otro un PDF que excedió el límite de descarga). Tres de los más fuertes los **re-abrimos a mano** para confirmar. Con eso, los **componentes** de la tesis del §5 (robótica→motivación STEM; IA→motivación/aprendizaje) quedaron **evidenciados**; lo que sigue siendo *nuestra lectura* (y lo decimos) es la **analogía** que los une.
+- **Lo único que sigue sin evidencia verificada** son los comentarios de foros RCJ por país — no encontramos hilos citables que sobrevivieran la verificación; no los usamos.
 - **Transparencia de IA:** la investigación y la redacción fueron asistidas por IA (Claude), bajo revisión y decisión humana del equipo — exactamente la gobernanza human-in-the-loop que el documento defiende y que `USO-DE-IA.md` detalla.
 
 Que un documento *sobre* el uso responsable de IA haya sido hecho *con* uso responsable de IA, declarándolo y verificándolo, es la mejor prueba de la tesis: **la IA bien usada no reemplaza el rigor — lo exige.**

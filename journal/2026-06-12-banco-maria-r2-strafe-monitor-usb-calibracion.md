@@ -82,16 +82,16 @@ status: sesión EN CURSO al momento del corte (cambio de chat por contexto) — 
   - Marcador `state=GK_SIMPLE_WAIT` **AÚN NO VERIFICADO**: con batería OFF la
     TOP no manda snapshot y la estrategia no corre (`state=INIT` en cualquier
     binario → no discrimina). El veredicto necesita batería ON.
-- ⚠️ **BLOQUEO: el USB murió otra vez al prender la batería / acomodar el
-  robot, ya con el cable NUEVO, y no volvió en ~20 min de vigía.** Ya no es
-  (solo) el cable: sospechosos = conector USB de la CENTRAL (tensión mecánica)
-  o conflicto eléctrico batería+USB (cf. "misterio batería-mata-todo" de R1 y
-  el "calienta en reposo" de R2 anotado a la mañana).
-- **Experimento discriminador pendiente** (1 min, María): batería OFF + USB →
-  ¿aparece el puerto? → prender batería SIN tocar nada → ¿se cae el puerto en
-  ese instante? Se cae = eléctrico (frenar y hablar con Enzo). No se cae =
-  mecánico (conector/tensión del cable; alivio de tensión con cinta + revisar
-  soldadura del conector con multímetro).
+- ⚠️ **BLOQUEO: el puerto COM se cayó varias veces durante el banco.**
+- 🔧 **CORRECCIÓN (Gustavo, fin de jornada — vale sobre el diagnóstico "USB" de
+  arriba):** lo que se leyó como "cortes de USB" es en realidad **el robot
+  apagándose porque los sensores de la base (DOWN) se CALIENTAN** y obligan a
+  cortar la alimentación en algunos momentos. Al apagarse el robot, el puerto COM
+  desaparece → parecía "USB muerto". **NO es (principalmente) el conector USB.**
+  **Fix de hardware = reemplazar el DC-DC por una fuente de MAYOR CAPACIDAD**
+  (a reparar). Matiz: María igual cambió el cable y recién ahí apareció COM17, así
+  que pudo haber algo de cable en al menos un corte — pero la causa primaria es el
+  calentamiento. **NO mandar a Enzo a perseguir el conector USB como causa #1.**
 - Estado al cierre de este bloque: v6 a bordo (sin verificar marcador), corrida
   de banco NO realizada, tune pendiente. Próximo paso al volver el USB:
   marcador → gyro a mano (`hdg` trackea) → `g` corrida corta → titración según

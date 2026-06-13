@@ -71,6 +71,56 @@ status: sesión EN CURSO al momento del corte (cambio de chat por contexto) — 
 - El robot calienta con batería conectada en reposo (revisar con Enzo).
 - Conector USB de la DOWN también flojo (2 cortes).
 
+## Continuación tarde (sesión nueva de Claude) — flasheo v6 + bloqueo USB
+
+- **v6 FLASHEADA a la CENTRAL** (`central_robot2_arquero_strafe_bb`). Crónica:
+  - 1er intento: pio **SUCCESS mintiendo de nuevo** — el uploader decía "No
+    Teensy boards were found" (cero puertos COM en Windows). La regla del día
+    atajó el falso positivo en el acto.
+  - María cambió el cable USB → `COM17` apareció → 2º intento OK y **reboot
+    REAL confirmado** (contador de loop arrancando de ~0 en el panel).
+  - Marcador `state=GK_SIMPLE_WAIT` **AÚN NO VERIFICADO**: con batería OFF la
+    TOP no manda snapshot y la estrategia no corre (`state=INIT` en cualquier
+    binario → no discrimina). El veredicto necesita batería ON.
+- ⚠️ **BLOQUEO: el USB murió otra vez al prender la batería / acomodar el
+  robot, ya con el cable NUEVO, y no volvió en ~20 min de vigía.** Ya no es
+  (solo) el cable: sospechosos = conector USB de la CENTRAL (tensión mecánica)
+  o conflicto eléctrico batería+USB (cf. "misterio batería-mata-todo" de R1 y
+  el "calienta en reposo" de R2 anotado a la mañana).
+- **Experimento discriminador pendiente** (1 min, María): batería OFF + USB →
+  ¿aparece el puerto? → prender batería SIN tocar nada → ¿se cae el puerto en
+  ese instante? Se cae = eléctrico (frenar y hablar con Enzo). No se cae =
+  mecánico (conector/tensión del cable; alivio de tensión con cinta + revisar
+  soldadura del conector con multímetro).
+- Estado al cierre de este bloque: v6 a bordo (sin verificar marcador), corrida
+  de banco NO realizada, tune pendiente. Próximo paso al volver el USB:
+  marcador → gyro a mano (`hdg` trackea) → `g` corrida corta → titración según
+  skill `control-pid-zona-muerta`.
+
+## Skill nueva: `rcj-deliverables-judge` (mientras el USB estaba caído)
+
+- **Pedido María:** skill de coach/jurado experto para EVALUAR TDP, póster de
+  ingeniería y video según rúbricas RCJ Soccer 2026 + criterios generales
+  RoboCup/RCJ. Complementa a `rcj-judging-package` (productor) — esta es el
+  lado EVALUADOR.
+- **Método: TDD de skills** (superpowers/writing-skills). Línea base SIN skill
+  (subagente jurado sobre `en/TDP.md`): acertó la escala pero **heredó el
+  framing del propio TDP**, contaminó criterios (pidió replicabilidad en
+  Mechanical cuando es puerta de Electrical), inventó metodología ("promedio
+  honesto: 3"), cero citas verbatim, aritmética difusa. CON skill: puertas
+  aplicadas (Mechanical 1/5 defendido con descriptor citado), VERIFICADO vs
+  DECLARADO, 8 hallazgos adversariales nuevos y reales sobre el TDP (párrafos
+  duplicados §1.1/§1.2, §6 contradice §1.8, branches citadas inexistentes,
+  rutas rotas, LICENSE inconsistente, 57-vs-59-vs-83 envs).
+- **Grounding:** rúbrica oficial capturada VERBATIM 2026-06-12 de
+  robocup-junior.github.io/soccer-rules (scoring + reglas 2026 + política de
+  mentores/students-do-the-work) → `references/rubrica-oficial-2026.md`.
+- **Bonus del test GREEN:** la evaluación del subagente quedó como pre-review
+  real del TDP — los 8 hallazgos adversariales son accionables para los P0 de
+  entregables (alimentan MEJORAS-PENDIENTES).
+- CLAUDE.md actualizado: lista de skills 8→11 (sumadas también las 2 de control
+  del día que habían quedado sin registrar).
+
 ## Proceso
 
 - **Regla nueva aprendida (memoria + aplicada todo el día): el SUCCESS de pio

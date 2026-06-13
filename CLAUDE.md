@@ -43,7 +43,7 @@ Para el formato exacto, ver la skill [`rcj-soccer-coach`](.claude/skills/rcj-soc
 
 ## Skills disponibles
 
-En `.claude/skills/` — 8 skills organizadas:
+En `.claude/skills/` — 11 skills organizadas:
 
 **Frame del coach:**
 - **`rcj-soccer-coach`** — formato exacto del feedback que entregás (P0/P1/P2, tema-a-analizar, plan de prueba obligatorio).
@@ -59,9 +59,12 @@ En `.claude/skills/` — 8 skills organizadas:
 
 **Técnica específica:**
 - **`openmv-vision-tuning`** — calibración de cámaras OpenMV (color LAB, exposición, FOV, multi-camera) para distintas iluminaciones. Crítica para Incheon.
+- **`control-pid-zona-muerta`** — lazos PID con actuador cuantizado (PFM/duty-cycling, deadband, PI-feedforward, titración de banco). Obligatoria para CUALQUIER cambio de control de movimiento.
+- **`dinamica-omni-3-ruedas`** — la planta MEDIDA del robot (pisos PWM, regímenes, deriva parásita, mínimos físicos). Par obligatorio de la anterior.
 
 **Entregables de competencia:**
-- **`rcj-judging-package`** — BOM, poster A1, video técnico, portfolio digital, entrevista.
+- **`rcj-judging-package`** — BOM, poster A1, video técnico, portfolio digital, entrevista (lado PRODUCTOR: armar los entregables).
+- **`rcj-deliverables-judge`** — jurado de mundial para TDP/póster/video (lado EVALUADOR: puntuar contra la rúbrica oficial 2026 verbatim, con regla de puertas y chequeos adversariales). Referencia: `references/rubrica-oficial-2026.md`.
 
 ## Distinción importante: `skills/` vs `.claude/skills/`
 

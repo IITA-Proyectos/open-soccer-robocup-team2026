@@ -1,8 +1,9 @@
 name: Auto Translate Deliverables (ES -> EN)
 
-# OPCIÓN A (2026-06-05): repuntado de docs/official/ a docs/competencia/.
-# Dispara cuando cambia un .md fuente (ES) en docs/competencia, EXCEPTO el target en/
-# (para no entrar en loop) y assets/. Solo en main.
+# 2026-06-05: repuntado de docs/official/ a docs/competencia/ (fuente de verdad).
+# 2026-06-13: se BARREN AMBOS — el anterior (docs/official) y el nuevo (docs/competencia),
+# cada uno a su propio en/. Dispara cuando cambia un .md fuente (ES) en cualquiera de los
+# dos, EXCEPTO los target en/ (para no entrar en loop) y assets/. Solo en main.
 on:
   push:
     branches: [main]
@@ -10,6 +11,8 @@ on:
       - 'docs/competencia/**'
       - '!docs/competencia/en/**'
       - '!docs/competencia/assets/**'
+      - 'docs/official/**'
+      - '!docs/official/en/**'
 
 permissions:
   contents: write
@@ -47,10 +50,11 @@ jobs:
       - name: Create Pull Request with translations
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "docs(en): auto-translation from docs/competencia"
+          commit-message: "docs(en): auto-translation (docs/official + docs/competencia)"
           title: "docs(en): auto-translation update"
           body: |
-            Automated translation from `docs/competencia` (ES) to `docs/competencia/en` (EN).
+            Automated translation (ES -> EN) of both `docs/official` (legacy) and
+            `docs/competencia` (current), each into its own `en/` subdir.
             - Source of truth: `docs/competencia/` (Spanish)
             - `docs/competencia/en/` is AUTO-GENERATED (do not edit manually)
             - Only judge-facing deliverables are translated (see `DELIVERABLES` in `scripts/translate_docs.py`)

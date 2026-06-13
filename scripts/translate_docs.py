@@ -1,9 +1,13 @@
 """Auto-translate judged deliverables from ES to EN.
 
 Adapted from rcj-2026-rescue-line-iita-salta-robocup.
-Source of truth: docs/competencia/ (Spanish)  ->  Target: docs/competencia/en/ (auto-generated)
+Fuente de verdad: docs/competencia/ (ES). Se barren DOS directorios (el anterior y el nuevo):
+  - docs/official/     (anterior/legacy)  -> docs/official/en/
+  - docs/competencia/  (nuevo/vigente)    -> docs/competencia/en/
+Cada uno se traduce a su propio subdir en/ (auto-generado; NO editar a mano).
 
 OPCIÓN A (2026-06-05): el pipeline se repuntó de docs/official/ a docs/competencia/.
+2026-06-13: se BARREN AMBOS (anterior + nuevo) — ver SOURCE_DIRS abajo.
 Solo se traducen los DELIVERABLES juzgables (allowlist abajo). Los docs INTERNOS de
 trabajo (MEJORAS-PENDIENTES, RUBRICA-COBERTURA, CUESTIONARIO-DATOS-EQUIPO,
 BOM-COSTOS-TEMPLATE, README) NO se traducen. Para sumar un deliverable nuevo,
@@ -19,8 +23,15 @@ import pathlib
 import re
 from openai import OpenAI
 
-SOURCE_DIR = pathlib.Path("docs/competencia")
-TARGET_DIR = pathlib.Path("docs/competencia/en")
+# Barremos el ANTERIOR (docs/official, legacy) y el NUEVO (docs/competencia, fuente de
+# verdad vigente). Cada source_dir escribe a su propio <source_dir>/en.
+# 2026-06-13: se sumó docs/official al barrido a pedido del equipo ("incluir el anterior y
+# el nuevo"); hoy docs/official solo tiene un doc de prueba (ningún deliverable de la
+# allowlist) → en la práctica no produce nada, pero queda cubierto por si vuelve a usarse.
+SOURCE_DIRS = [
+    pathlib.Path("docs/official"),     # anterior (legacy)
+    pathlib.Path("docs/competencia"),  # nuevo (deliverables vigentes — fuente de verdad)
+]
 
 # Allowlist: SOLO estos .md (top-level de docs/competencia) se traducen a en/.
 # Agregá acá un deliverable nuevo cuando corresponda.
@@ -74,29 +85,36 @@ def main():
 
     client = OpenAI(api_key=api_key)
 
-    if not SOURCE_DIR.exists():
-        raise SystemExit(f"ERROR: {SOURCE_DIR} does not exist.")
+    if not any(d.exists() for d in SOURCE_DIRS):
+        raise SystemExit(f"ERROR: ninguno de los SOURCE_DIRS existe: {SOURCE_DIRS}")
 
-    TARGET_DIR.mkdir(parents=True, exist_ok=True)
-
+    # Barre el ANTERIOR y el NUEVO; cada uno escribe a su propio <dir>/en.
     # Solo top-level *.md (NO recursivo: no entra a en/ ni assets/), filtrado por allowlist.
     translated_any = False
-    for src in sorted(SOURCE_DIR.glob("*.md")):
-        if src.name not in DELIVERABLES:
-            print(f"Skip (no es deliverable): {src.name}")
+    for source_dir in SOURCE_DIRS:
+        if not source_dir.exists():
+            print(f"Skip (no existe): {source_dir}")
             continue
 
-        src_text = src.read_text(encoding="utf-8")
-        if not src_text.strip():
-            continue
+        target_dir = source_dir / "en"
+        target_dir.mkdir(parents=True, exist_ok=True)
 
-        print(f"Translating {src.name}...")
-        translated = translate_markdown(client, src_text)
+        for src in sorted(source_dir.glob("*.md")):
+            if src.name not in DELIVERABLES:
+                print(f"Skip (no es deliverable): {source_dir}/{src.name}")
+                continue
 
-        dst = TARGET_DIR / src.name
-        dst.write_text(AUTO_HEADER + strip_existing_auto_header(translated), encoding="utf-8")
-        print(f"  -> {dst}")
-        translated_any = True
+            src_text = src.read_text(encoding="utf-8")
+            if not src_text.strip():
+                continue
+
+            print(f"Translating {source_dir}/{src.name}...")
+            translated = translate_markdown(client, src_text)
+
+            dst = target_dir / src.name
+            dst.write_text(AUTO_HEADER + strip_existing_auto_header(translated), encoding="utf-8")
+            print(f"  -> {dst}")
+            translated_any = True
 
     if not translated_any:
         print("No deliverables to translate.")

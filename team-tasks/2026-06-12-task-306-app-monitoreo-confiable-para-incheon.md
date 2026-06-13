@@ -85,9 +85,12 @@ byte-idéntica). Ya están en `main` y compiladas en producción (ver más abajo
   divergencias de lógica**. La calibración/persistencia/deshabilitar corre IGUAL en
   `down`/`down_robot2` que en `down_debug_telemetry` (gate OR `DOWN_DEBUG_TELEMETRY ||
   DOWN_USB_MONITOR` + boot/dm_update **ungated**). Hallazgo clave: `down_debug_telemetry`
-  HEREDA `DOWN_USB_MONITOR` → el binario de banco **ya arranca dormido = ya ejercitó el wake
-  de competencia**; `DOWN_DEBUG_TELEMETRY` es casi no-op hoy. Doc/comentario stale corregidos
-  en el mismo commit.
+  HEREDA `DOWN_USB_MONITOR` → el binario de banco arrancaba dormido igual que competencia.
+  (**NOTA posterior 2026-06-13:** a pedido de Gustavo se restauró el stream-desde-boot en
+  `down_debug_telemetry` — ahora arranca con el stream PRENDIDO, así el monitor serie crudo ve
+  valores sin la app. Competencia `down`/`down_robot2` siguen dormidos byte-idéntico. ⇒ el
+  debug ya NO arranca dormido; el wake de competencia se ejercita directo en la prueba de humo
+  sobre `down`.) Doc/comentario stale corregidos en el mismo commit.
 
 ### Estado de banco (actualizado 2026-06-13)
 

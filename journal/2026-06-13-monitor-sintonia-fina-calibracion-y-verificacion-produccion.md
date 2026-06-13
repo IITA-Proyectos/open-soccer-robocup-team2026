@@ -145,3 +145,27 @@ adversarialmente leyendo el código (5 verificadores con lentes distintas + sín
    (sensor 5 = −40, global = 30) reportan lo guardado. Cierra la persistencia en competencia.
 9. (Opcional R2) Ídem `pio run -e down_robot2 -t upload` (OTOS N/A; warnings de redefine de
    `DOWN_NUM_OTOS_CONNECTED` son esperados/inofensivos).
+
+---
+
+## Addendum — restaurado stream-desde-boot en `down_debug_telemetry` (2026-06-13)
+
+Al abrir el monitor serie crudo sobre la base, Gustavo no veía valores. Diagnóstico: el binario
+de banco había quedado **dormido** porque `down_debug_telemetry` hereda `DOWN_USB_MONITOR`
+(TASK-306 lo agregó a `[env:down]` el 06-12) → el monitor crudo no lo despierta (solo la app, o
+`STREAM ON\n` a mano). Eso fue un **retroceso del flujo de banco** (antes el debug streameaba
+desde el boot).
+
+**Fix (a pedido de Gustavo):** precedencia `DOWN_DEBUG_TELEMETRY` > `DOWN_USB_MONITOR` vía un
+macro interno `DOWN_MONITOR_SLEEPY` (= `USB_MONITOR && !DEBUG_TELEMETRY`). Ahora:
+- `down_debug_telemetry` (banco): stream **ON desde el boot**, sin auto-apagado; banner
+  `[DOWN-TELEM] v1 ready — stream ON desde boot (env debug)`. El monitor crudo ve valores sin app.
+- `down` / `down_robot2` (competencia): **dormido byte-idéntico** (toman las mismas ramas que
+  antes; `DOWN_MONITOR_SLEEPY` se define igual que el viejo `#ifdef DOWN_USB_MONITOR`); banner
+  `[DOWN-MONITOR] dormido`.
+- **El banner ahora SÍ distingue** banco de competencia (antes ambos decían "dormido").
+
+Verificado: `pio run -e down` y `-e down_debug_telemetry` → SUCCESS. `down` byte-idéntico por
+construcción (no re-validar hardware). El efecto en banco (que el monitor crudo chorree valores)
+lo confirma el equipo al abrir el monitor. Comentario header + guía de USO actualizados en el
+mismo commit.

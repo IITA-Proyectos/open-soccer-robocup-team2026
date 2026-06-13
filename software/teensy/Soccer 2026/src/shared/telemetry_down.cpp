@@ -47,6 +47,17 @@ int td_append_u16_array(char* buf, int cap, int off,
     return td_append(buf, cap, off, "]");
 }
 
+// Igual que el anterior pero para int8 con signo (persensor_sens).
+int td_append_i8_array(char* buf, int cap, int off, const int8_t* a, int n) {
+    off = td_append(buf, cap, off, "[");
+    if (off < 0) return -1;
+    for (int i = 0; i < n; ++i) {
+        off = td_append(buf, cap, off, (i == 0) ? "%d" : ",%d", (int)a[i]);
+        if (off < 0) return -1;
+    }
+    return td_append(buf, cap, off, "]");
+}
+
 }  // namespace
 
 void td_frame_init(TelemetryDownFrame& f, uint8_t num_sensors) {
@@ -89,6 +100,18 @@ int td_serialize_jsonl(char* buf, int cap, const TelemetryDownFrame& f) {
     off = td_append(buf, cap, off, ",\"white_cal\":");
     if (off < 0) return -1;
     off = td_append_u16_array(buf, cap, off, f.white_cal, n);
+    if (off < 0) return -1;
+
+    // Sintonía fina (schema v3): umbral efectivo + habilitado + sensibilidad.
+    off = td_append(buf, cap, off, ",\"threshold\":");
+    if (off < 0) return -1;
+    off = td_append_u16_array(buf, cap, off, f.threshold, n);
+    if (off < 0) return -1;
+    off = td_append(buf, cap, off,
+        ",\"enabled_bits\":%lu,\"global_sens\":%d,\"persensor_sens\":",
+        (unsigned long)f.enabled_bits, (int)f.global_sens);
+    if (off < 0) return -1;
+    off = td_append_i8_array(buf, cap, off, f.persensor_sens, n);
     if (off < 0) return -1;
 
     // Cierre ring + objeto line.
@@ -165,7 +188,7 @@ inline bool td_eq(const char* a, const char* b) { return strcmp(a, b) == 0; }
 }  // namespace
 
 TdCommand td_parse_command(const char* s, int len) {
-    TdCommand out{TdCmd::NONE, 0};
+    TdCommand out{TdCmd::NONE, 0, 0};
     if (!s || len <= 0) return out;
 
     char tok[TD_TOK_MAX][TD_TOK_LEN];
@@ -196,6 +219,31 @@ TdCommand td_parse_command(const char* s, int len) {
         else if (td_eq(tok[1], "AUTO") && nt >= 3) {
             if (td_eq(tok[2], "ON"))       out.cmd = TdCmd::CAL_AUTO_ON;
             else if (td_eq(tok[2], "OFF")) out.cmd = TdCmd::CAL_AUTO_OFF;
+        }
+    } else if (td_eq(tok[0], "SENS") && nt >= 3) {
+        char* end = nullptr;
+        if (td_eq(tok[1], "GLOBAL")) {
+            const long pct = strtol(tok[2], &end, 10);
+            if (end && *end == '\0') {
+                out.cmd = TdCmd::SENS_GLOBAL;
+                out.arg = (int32_t)pct;   // el firmware clampea a [-100,100]
+            }
+        } else if (td_eq(tok[1], "SET") && nt >= 4) {
+            char* e2 = nullptr;
+            const long idx = strtol(tok[2], &end, 10);
+            const long pct = strtol(tok[3], &e2, 10);
+            if (end && *end == '\0' && e2 && *e2 == '\0' && idx >= 0) {
+                out.cmd  = TdCmd::SENS_SET;
+                out.arg  = (int32_t)idx;
+                out.arg2 = (int32_t)pct;  // el firmware clampea a [-100,100]
+            }
+        }
+    } else if (td_eq(tok[0], "SENSOR") && nt >= 3) {
+        char* end = nullptr;
+        const long idx = strtol(tok[1], &end, 10);
+        if (end && *end == '\0' && idx >= 0) {
+            if (td_eq(tok[2], "ON"))       { out.cmd = TdCmd::SENSOR_ENABLE;  out.arg = (int32_t)idx; }
+            else if (td_eq(tok[2], "OFF")) { out.cmd = TdCmd::SENSOR_DISABLE; out.arg = (int32_t)idx; }
         }
     }
     return out;

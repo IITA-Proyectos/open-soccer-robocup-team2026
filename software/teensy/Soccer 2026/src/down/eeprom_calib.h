@@ -37,11 +37,16 @@ constexpr int EC_EEPROM_OFFSET = 0;
 
 // Carga calibración desde EEPROM. Retorna true si TODO validó OK (magic,
 // versión, n_sensors, CRC). En false, calib[] no se modifica.
-bool ec_load_calibration(SensorCalib* calib, int n_sensors);
+// `global_sens_out` (opcional, puede ser null) recibe la sensibilidad global
+// persistida (esquema v2). En false no se toca.
+bool ec_load_calibration(SensorCalib* calib, int n_sensors,
+                         int8_t* global_sens_out = nullptr);
 
-// Guarda calibración a EEPROM. Retorna true si la escritura fue exitosa.
-// IMPORTANTE: llamar SOLO esporádicamente (manual save), no en cada tick.
-bool ec_save_calibration(const SensorCalib* calib, int n_sensors);
+// Guarda calibración + sensibilidad global a EEPROM. Retorna true si la
+// escritura fue exitosa. IMPORTANTE: llamar SOLO esporádicamente (manual save),
+// no en cada tick. (enabled/sensitivity por sensor viajan dentro de calib[].)
+bool ec_save_calibration(const SensorCalib* calib, int n_sensors,
+                         int8_t global_sens = 0);
 
 // Borra el blob (escribe ceros). Útil para forzar recalibración manual.
 void ec_erase_calibration();

@@ -30,7 +30,11 @@ namespace iitasoccer {
 // La app de PC valida este número (campo "v") y rechaza esquemas desconocidos.
 //   v1 (2026-06-07): anillo 32 + LineStatusV2 + OTOS fusionado.
 //   v2 (2026-06-07): + lecturas por-OTOS izq/der (lx/ly/lh/rx/ry/rh) para el arquero.
-constexpr uint8_t TELEMETRY_DOWN_SCHEMA = 2;
+//   v3 (2026-06-13): + umbral efectivo/sensibilidad/habilitado por sensor
+//        (threshold[], enabled_bits, global_sens, persensor_sens[]) — perillas de
+//        calibración fina desde la app: habilitar/deshabilitar sensores y ajustar
+//        sensibilidad al blanco global y por-sensor.
+constexpr uint8_t TELEMETRY_DOWN_SCHEMA = 3;
 
 constexpr int TD_MAX_SENSORS = 32;
 
@@ -54,6 +58,11 @@ struct TelemetryDownFrame {
     uint32_t white_bits;      // bit i = sensor i ve blanco (line_ring_get_white)
     uint16_t carpet[TD_MAX_SENSORS];     // calib carpet por sensor (avg)
     uint16_t white_cal[TD_MAX_SENSORS];  // calib blanco por sensor (avg)
+    // ── Sintonía fina (schema v3) ──
+    uint16_t threshold[TD_MAX_SENSORS];  // umbral EFECTIVO por sensor (con sensibilidad)
+    uint32_t enabled_bits;    // bit i = sensor i HABILITADO (default todos en 1)
+    int8_t   global_sens;     // sensibilidad global al blanco, % [-100,+100]
+    int8_t   persensor_sens[TD_MAX_SENSORS];  // sensibilidad por sensor, % [-100,+100]
 
     // ── Línea procesada (LineStatusV2 — lo que viaja a CENTRAL) ──
     uint8_t  line_schema;     // LSV2_SCHEMA (informativo)
@@ -119,11 +128,17 @@ enum class TdCmd : uint8_t {
     CAL_SAVE,     // "CAL SAVE"        → guarda calib a EEPROM
     CAL_LOAD,     // "CAL LOAD"        → carga calib de EEPROM
     OTOS_RESET,   // "OTOS RESET"      → otos_reset()
+    // Sintonía fina (schema v3):
+    SENS_GLOBAL,    // "SENS GLOBAL <pct>"  → global_sens = pct  (arg = pct, [-100,100])
+    SENS_SET,       // "SENS SET <i> <pct>" → calib[i].sensitivity = pct (arg=i, arg2=pct)
+    SENSOR_ENABLE,  // "SENSOR <i> ON"      → calib[i].enabled = 1  (arg = i)
+    SENSOR_DISABLE, // "SENSOR <i> OFF"     → calib[i].enabled = 0  (arg = i)
 };
 
 struct TdCommand {
     TdCmd   cmd;
-    int32_t arg;   // usado por SET_RATE (hz); 0 para el resto
+    int32_t arg;    // SET_RATE (hz) · SENS_GLOBAL (pct) · SENS_SET/SENSOR_* (índice de sensor)
+    int32_t arg2;   // SENS_SET (pct); 0 para el resto
 };
 
 // Parsea una línea de comando (case-insensitive, tokens separados por espacios;

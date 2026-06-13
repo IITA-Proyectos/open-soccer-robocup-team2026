@@ -78,6 +78,11 @@ void emit_frame() {
         f.white_cal[i] = line_ring_get_white_avg(idx);
     }
 
+    // ── Sintonía fina (schema v3): umbral efectivo + habilitado + sensibilidad ──
+    // Sale del DownModel (la verdad de detección), no del line_ring.
+    comm_central_get_tuning(f.threshold, &f.enabled_bits, &f.global_sens,
+                            f.persensor_sens, NUM_LINE_SENSORS);
+
     // ── Línea procesada: el ÚLTIMO LineStatusV2 que se difundió a CENTRAL ──
     LineStatusV2 lsv2;
     if (comm_central_get_last_line_status(lsv2)) {
@@ -119,7 +124,7 @@ void emit_frame() {
     f.line_tick_count = line_ring_get_tick_count();
     f.line_tick_us    = line_ring_get_last_tick_us();
 
-    static char buf[1100];
+    static char buf[1600];  // v3 sumó threshold[]/persensor_sens[] (~+320 B)
     const int n = td_serialize_jsonl(buf, sizeof(buf), f);
     if (n > 0) {
         Serial.write(reinterpret_cast<const uint8_t*>(buf), n);
@@ -200,17 +205,11 @@ void dispatch(const TdCommand& c) {
         }
 
         case TdCmd::CAL_SAVE: {
-            // Derivar SensorCalib de los promedios actuales del line_ring y persistir.
-            SensorCalib cal[NUM_LINE_SENSORS];
-            for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
-                const uint8_t idx = static_cast<uint8_t>(i);
-                lc_set_static(cal[i],
-                              line_ring_get_carpet_avg(idx),
-                              line_ring_get_white_avg(idx));
-            }
-            // ACK/NAK explícito (TASK-306): antes fallaba en silencio.
-            if (ec_save_calibration(cal, NUM_LINE_SENSORS)) {
-                Serial.println("[DOWN] calib persistida en EEPROM");
+            // Persistir calib (carpet/white) + sintonía (enabled/sensitivity por
+            // sensor) + global_sens. comm_central deriva el carpet/white fresco del
+            // line_ring preservando las perillas. ACK/NAK explícito (TASK-306).
+            if (comm_central_save_calib_and_tuning()) {
+                Serial.println("[DOWN] calib + sintonia persistida en EEPROM");
             } else {
                 Serial.println("[DOWN] ERROR: fallo guardar calib en EEPROM");
             }
@@ -218,17 +217,9 @@ void dispatch(const TdCommand& c) {
         }
 
         case TdCmd::CAL_LOAD: {
-            SensorCalib cal[NUM_LINE_SENSORS];
-            if (ec_load_calibration(cal, NUM_LINE_SENSORS)) {
-                uint16_t carpet[NUM_LINE_SENSORS];
-                uint16_t white[NUM_LINE_SENSORS];
-                for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
-                    carpet[i] = cal[i].carpet;
-                    white[i]  = cal[i].white;
-                }
-                line_ring_set_calibration(carpet, white, NUM_LINE_SENSORS);
-                comm_central_invalidate_calib();   // fix TASK-306
-                Serial.println("[DOWN] calib cargada de EEPROM (aplicada en vivo)");
+            // Recarga en vivo: calib + sintonía → DownModel; carpet/white → line_ring.
+            if (comm_central_reload_from_eeprom_live()) {
+                Serial.println("[DOWN] calib + sintonia cargada de EEPROM (en vivo)");
             } else {
                 Serial.println("[DOWN] ERROR: EEPROM sin calib valida");
             }
@@ -237,6 +228,22 @@ void dispatch(const TdCommand& c) {
 
         case TdCmd::OTOS_RESET:
             otos_reset();
+            break;
+
+        // ── Sintonía fina (schema v3) ──
+        case TdCmd::SENS_GLOBAL:
+            comm_central_set_global_sens(c.arg);
+            Serial.print("[DOWN] sensibilidad global = ");
+            Serial.println(c.arg);
+            break;
+        case TdCmd::SENS_SET:
+            comm_central_set_sensor_sens(c.arg, c.arg2);
+            break;
+        case TdCmd::SENSOR_ENABLE:
+            comm_central_set_sensor_enabled(c.arg, true);
+            break;
+        case TdCmd::SENSOR_DISABLE:
+            comm_central_set_sensor_enabled(c.arg, false);
             break;
 
         case TdCmd::NONE:

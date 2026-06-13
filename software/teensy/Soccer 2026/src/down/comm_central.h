@@ -48,6 +48,22 @@ struct LineStatusV2;  // fwd-decl (tipo completo en types.h, incluido en el .cpp
 // Copia el ÚLTIMO LineStatusV2 difundido a CENTRAL (para la telemetría USB del
 // modo DEBUG/monitor). Retorna false si todavía no se envió ninguno.
 bool comm_central_get_last_line_status(struct LineStatusV2& out);
+
+// ── Sintonía fina desde la app (schema v3) ──────────────────────────────────
+// Perillas: sensibilidad global al blanco, sensibilidad por sensor, y
+// habilitar/deshabilitar sensores. Mutan el DownModel; dm_update las usa cada
+// tick. pct se clampea a [-100,+100]; idx fuera de rango se ignora.
+void comm_central_set_global_sens(int pct);
+void comm_central_set_sensor_sens(int idx, int pct);
+void comm_central_set_sensor_enabled(int idx, bool en);
+// Llena los campos de sintonía fina para emitir por telemetría (umbral efectivo,
+// bits de habilitado, sensibilidad global y por-sensor). Punteros opcionales (null OK).
+void comm_central_get_tuning(uint16_t* threshold_eff, uint32_t* enabled_bits,
+                             int8_t* global_sens, int8_t* persensor_sens, int n);
+// Guarda calib + sintonía + global_sens a EEPROM (deriva carpet/white fresco si
+// hace falta). Recarga de EEPROM en vivo (calib+sintonía → g_dm; carpet/white → line_ring).
+bool comm_central_save_calib_and_tuning();
+bool comm_central_reload_from_eeprom_live();
 #endif
 
 }  // namespace iitasoccer

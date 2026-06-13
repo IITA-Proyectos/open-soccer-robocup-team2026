@@ -12,7 +12,7 @@ from monitor_base.protocol import (
 
 def test_golden_parses_all_fields(golden_line):
     f = parse_line(golden_line)
-    assert f.v == SCHEMA_VERSION == 2
+    assert f.v == SCHEMA_VERSION == 3
     assert f.seq == 7
     assert f.t_ms == 123456
 
@@ -24,8 +24,15 @@ def test_golden_parses_all_fields(golden_line):
     # white bitmask 196611 = 0b...0011_0000_0000_0000_0011 → bits 0,1,16,17
     assert [i for i, w in enumerate(f.ring.white) if w] == [0, 1, 16, 17]
     assert f.ring.carpet[0] == 150 and f.ring.white_cal[0] == 800
-    assert f.ring.thresholds[0] == (150 + 800) // 2 == 475
+    assert f.ring.thresholds[0] == 475          # umbral efectivo (v3)
     assert f.ring.margins[0] == 650
+
+    # Sintonía fina (schema v3)
+    assert f.ring.threshold[0] == 475 and f.ring.threshold[-1] == 506
+    assert all(f.ring.enabled) and len(f.ring.enabled) == 32   # enabled_bits=0xFFFFFFFF
+    assert f.ring.global_sens == -5
+    assert f.ring.persensor_sens[0] == 0 and len(f.ring.persensor_sens) == 32
+    assert f.ring.distance_to_threshold[0] == 100 - 475        # raw - umbral
 
     # Línea
     assert f.line.valid is True

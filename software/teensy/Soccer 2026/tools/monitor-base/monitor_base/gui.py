@@ -24,6 +24,12 @@ from .sources import FrameSource
 RING_PX = 460
 SENSOR_R = 11
 
+# Grilla de barras "cercanía al umbral" (8 columnas × 4 filas = 32 sensores).
+_BARS_COLS = 8
+_BARS_ROWS = 4
+_BARS_CW = 58   # ancho de celda px
+_BARS_CH = 34   # alto de celda px
+
 # Umbral "naranja" de la grilla semáforo: por debajo de DEFAULT_MIN_MARGIN el
 # sensor es débil; por debajo de esto directamente NO separa verde/blanco.
 WEAK_MARGIN_ORANGE = 25
@@ -56,8 +62,10 @@ class MonitorApp:
         self.last_seq = -1
         self.dropped = 0
         self._is_sim = getattr(source, "is_sim", False)
+        self._selected: Optional[int] = None   # sensor seleccionado (inspector)
+        self._global_synced = False            # ¿ya sincronicé el slider global con la placa?
 
-        root.title("IITA Soccer — Monitor de la base (DOWN) v1 — "
+        root.title("IITA Soccer — Monitor de la base (DOWN) v3 — "
                    + source.describe())
         self._build_layout()
         self._compute_ring_transform()
@@ -83,7 +91,8 @@ class MonitorApp:
         self.canvas = tk.Canvas(left, width=RING_PX, height=RING_PX,
                                 bg="#101418", highlightthickness=0)
         self.canvas.pack()
-        ttk.Label(left, text="Anillo de 32 sensores — +Y = frente del robot",
+        self.canvas.bind("<Button-1>", self._on_canvas_click)   # click → inspector
+        ttk.Label(left, text="Anillo de 32 sensores — +Y = frente · CLICK un sensor para inspeccionar",
                   foreground="#888").pack(pady=(4, 0))
 
         # Derecha: paneles de texto.
@@ -116,45 +125,55 @@ class MonitorApp:
         self.status.pack(fill="x", side="bottom")
 
     def _build_calib_panel(self, parent: ttk.Frame) -> None:
-        """Panel "CALIBRAR (en orden)": 3 pasos guiados, veredicto grande y
-        grilla semáforo con el margen verde/blanco de cada sensor."""
+        """Panel "CALIBRAR": 3 pasos guiados + veredicto + sensibilidad global +
+        barras de cercanía al umbral por sensor + inspector del sensor clickeado."""
         ttk.Label(parent, text="CALIBRAR (en orden)",
                   font=("Segoe UI", 11, "bold")).pack(anchor="w")
-        steps = [
-            ("1· Capturar VERDE (robot sobre el verde)", "CAL CARPET"),
-            ("2· Capturar BLANCO (sensores sobre la línea/hoja)", "CAL WHITE"),
-            ("3· GUARDAR en el robot", "CAL SAVE"),
-        ]
-        for label, cmd in steps:
+        for label, cmd in [
+                ("1· Capturar VERDE (robot sobre el verde)", "CAL CARPET"),
+                ("2· Capturar BLANCO (sensores sobre la línea/hoja)", "CAL WHITE"),
+                ("3· GUARDAR en el robot (calib + sensibilidad)", "CAL SAVE")]:
             ttk.Button(parent, text=label,
-                       command=lambda c=cmd: self._send(c)).pack(
-                fill="x", pady=2)
+                       command=lambda c=cmd: self._send(c)).pack(fill="x", pady=2)
 
-        # Veredicto grande + compuerta data_valid.
         self.verdict_lbl = tk.Label(parent, text="esperando datos…",
                                     font=("Segoe UI", 11, "bold"),
-                                    bg="#222", fg="#ccc", wraplength=300,
+                                    bg="#222", fg="#ccc", wraplength=470,
                                     justify="left", padx=6, pady=6)
         self.verdict_lbl.pack(fill="x", pady=(10, 2))
         self.valid_lbl = ttk.Label(parent, text="data_valid=?")
         self.valid_lbl.pack(anchor="w")
 
-        # Grilla semáforo 8×4: margen |blanco−verde| por sensor.
-        ttk.Label(parent,
-                  text=f"Margen por sensor (verde ≥{DEFAULT_MIN_MARGIN} · "
-                       f"naranja ≥{WEAK_MARGIN_ORANGE} · rojo <{WEAK_MARGIN_ORANGE})",
-                  foreground="#888").pack(anchor="w", pady=(8, 2))
-        grid = ttk.Frame(parent)
-        grid.pack()
-        self._margin_cells = []
-        for i in range(self.n):
-            cell = tk.Label(grid, text=f"S{i:02d}\n—", width=5,
-                            font=("Consolas", 8), bg="#202020", fg="#888",
-                            relief="ridge", bd=1)
-            cell.grid(row=i // 8, column=i % 8, padx=1, pady=1)
-            self._margin_cells.append(cell)
+        # ── Sensibilidad GLOBAL al blanco ──
+        ttk.Label(parent, text="Sensibilidad global al blanco "
+                  "(+ = MENOS sensible / más estricto · 0 = normal)",
+                  foreground="#888").pack(anchor="w", pady=(10, 0))
+        gframe = ttk.Frame(parent)
+        gframe.pack(fill="x")
+        self.global_sens_var = tk.IntVar(value=0)
+        self.global_sens_scale = ttk.Scale(
+            gframe, from_=-100, to=100, orient="horizontal",
+            variable=self.global_sens_var,
+            command=lambda v: self.global_sens_lbl.config(text=f"{int(float(v)):+d}%"))
+        self.global_sens_scale.pack(side="left", fill="x", expand=True)
+        self.global_sens_scale.bind("<ButtonRelease-1>", self._on_global_sens_release)
+        self.global_sens_lbl = ttk.Label(gframe, text="+0%", width=6)
+        self.global_sens_lbl.pack(side="left")
 
-        # Botones avanzados (secundarios, para quien sabe lo que hace).
+        # ── Barras de cercanía al umbral por sensor ──
+        ttk.Label(parent, text="Cercanía al umbral por sensor "
+                  "(barra a la DERECHA = ve blanco · CLICK = inspeccionar)",
+                  foreground="#888").pack(anchor="w", pady=(8, 2))
+        self._bars_canvas = tk.Canvas(
+            parent, width=_BARS_COLS * _BARS_CW, height=_BARS_ROWS * _BARS_CH,
+            bg="#101418", highlightthickness=0)
+        self._bars_canvas.pack()
+        self._bars_canvas.bind("<Button-1>", self._on_bars_click)
+
+        # ── Inspector del sensor seleccionado ──
+        self._build_inspector_panel(parent)
+
+        # Botones avanzados (secundarios).
         ttk.Label(parent, text="Avanzado:", foreground="#888").pack(
             anchor="w", pady=(10, 2))
         adv = ttk.Frame(parent)
@@ -168,9 +187,36 @@ class MonitorApp:
                        command=lambda c=cmd: self._send(c)).grid(
                 row=0, column=i, padx=2)
 
+    def _build_inspector_panel(self, parent: ttk.Frame) -> None:
+        box = ttk.LabelFrame(parent, text="Inspector de sensor")
+        box.pack(fill="x", pady=(10, 2))
+        self.inspector_lbl = tk.Label(
+            box, text="(click un sensor en el anillo o en las barras)",
+            font=("Consolas", 9), bg="#0c0f12", fg="#d8e0e8",
+            justify="left", anchor="w", padx=6, pady=4)
+        self.inspector_lbl.pack(fill="x")
+        row = ttk.Frame(box)
+        row.pack(fill="x", pady=2)
+        self.toggle_btn = ttk.Button(row, text="Habilitar/Deshabilitar",
+                                     command=self._toggle_selected, state="disabled")
+        self.toggle_btn.pack(side="left")
+        sframe = ttk.Frame(box)
+        sframe.pack(fill="x", pady=2)
+        ttk.Label(sframe, text="sens propia:").pack(side="left")
+        self.sensor_sens_var = tk.IntVar(value=0)
+        self.sensor_sens_scale = ttk.Scale(
+            sframe, from_=-100, to=100, orient="horizontal",
+            variable=self.sensor_sens_var,
+            command=lambda v: self.sensor_sens_lbl.config(text=f"{int(float(v)):+d}%"),
+            state="disabled")
+        self.sensor_sens_scale.pack(side="left", fill="x", expand=True)
+        self.sensor_sens_scale.bind("<ButtonRelease-1>", self._on_persensor_sens_release)
+        self.sensor_sens_lbl = ttk.Label(sframe, text="+0%", width=6)
+        self.sensor_sens_lbl.pack(side="left")
+
     def _send(self, cmd: str) -> None:
         if self._is_sim:
-            self._set_status("SIMULADOR: comando no enviado al robot")
+            self._set_status(f"SIMULADOR: comando NO enviado ({cmd})")
             return
         self.source.send(cmd)
         if cmd == "CAL AUTO ON":
@@ -178,6 +224,70 @@ class MonitorApp:
         elif cmd == "CAL AUTO OFF":
             self.calib.stop()
         self._set_status(f"→ comando enviado: {cmd}")
+
+    # ── Sintonía fina: handlers ──────────────────────────────────────────────
+    def _on_global_sens_release(self, _evt=None) -> None:
+        self._send(f"SENS GLOBAL {self.global_sens_var.get()}")
+
+    def _on_persensor_sens_release(self, _evt=None) -> None:
+        if self._selected is None:
+            return
+        self._send(f"SENS SET {self._selected} {self.sensor_sens_var.get()}")
+
+    def _on_canvas_click(self, evt) -> None:
+        best, bestd = None, (SENSOR_R + 4) ** 2
+        for i in range(self.n):
+            x, y = geometry.SENSOR_POS[i]
+            sx, sy = self._to_px(x, y)
+            d = (evt.x - sx) ** 2 + (evt.y - sy) ** 2
+            if d <= bestd:
+                best, bestd = i, d
+        if best is not None:
+            self._select_sensor(best)
+
+    def _on_bars_click(self, evt) -> None:
+        i = int(evt.y // _BARS_CH) * _BARS_COLS + int(evt.x // _BARS_CW)
+        if 0 <= i < self.n:
+            self._select_sensor(i)
+
+    def _select_sensor(self, i: int) -> None:
+        self._selected = i
+        self.toggle_btn.config(state="normal")
+        self.sensor_sens_scale.config(state="normal")
+        if self.last is not None and i < len(self.last.ring.persensor_sens):
+            ps = int(self.last.ring.persensor_sens[i])
+            self.sensor_sens_var.set(ps)
+            self.sensor_sens_lbl.config(text=f"{ps:+d}%")
+        if self.last is not None:
+            self._render_inspector(self.last)
+            self._render_calib_panel(self.last)   # refresca el resaltado
+
+    def _toggle_selected(self) -> None:
+        if self._selected is None or self.last is None:
+            return
+        i = self._selected
+        cur = self.last.ring.enabled[i] if i < len(self.last.ring.enabled) else True
+        self._send(f"SENSOR {i} {'OFF' if cur else 'ON'}")
+
+    def _render_inspector(self, f: Frame) -> None:
+        i = self._selected
+        if i is None or i >= f.ring.n:
+            return
+        raw = f.ring.raw[i]
+        th = f.ring.threshold[i]
+        en = f.ring.enabled[i]
+        sees = f.ring.white[i]
+        ps = f.ring.persensor_sens[i]
+        txt = (f"SENSOR {i:02d}    "
+               f"{'HABILITADO' if en else '*** DESHABILITADO ***'}\n"
+               f"raw={raw}   carpet={f.ring.carpet[i]}   blanco={f.ring.white_cal[i]}\n"
+               f"umbral efectivo={th}   margen={f.ring.margins[i]}\n"
+               f"distancia al umbral={raw - th:+d}  "
+               f"({'VE BLANCO' if sees else 've piso'})\n"
+               f"sensibilidad propia={ps:+d}%")
+        self.inspector_lbl.config(text=txt, fg="#9fe0a0" if en else "#e08a8a")
+        self.toggle_btn.config(text=("Deshabilitar" if en else "Habilitar")
+                               + f" S{i:02d}")
 
     # ── Geometría del anillo en pantalla ──────────────────────────────────
     def _compute_ring_transform(self) -> None:
@@ -332,36 +442,78 @@ class MonitorApp:
         self._set_text(self.otos_txt, text)
 
     def _render_calib_panel(self, f: Frame) -> None:
-        """Semáforo de márgenes + veredicto de la calibración VIGENTE."""
+        """Barras de cercanía al umbral por sensor + veredicto de calibración.
+
+        Cada celda: borde por margen (verde/naranja/rojo), barra horizontal desde
+        el centro (=umbral) hacia la derecha si raw≥umbral (ve blanco, amarillo) o
+        hacia la izquierda si ve piso (azul); largo ∝ distancia al umbral. Tachado
+        rojo si el sensor está deshabilitado. Resalta el sensor seleccionado."""
         margins = f.ring.margins
+        thresholds = f.ring.threshold
+        c = self._bars_canvas
+        c.delete("all")
         weak = []
-        for i, cell in enumerate(self._margin_cells):
+        for i in range(self.n):
             m = margins[i] if i < len(margins) else 0
             if m >= DEFAULT_MIN_MARGIN:
-                bg, fg = _SEM_GREEN
+                edge = "#1f7a33"
             elif m >= WEAK_MARGIN_ORANGE:
-                bg, fg = _SEM_ORANGE
+                edge = "#b36b00"
             else:
-                bg, fg = _SEM_RED
+                edge = "#a02020"
             if m < DEFAULT_MIN_MARGIN:
                 weak.append(i)
-            cell.config(text=f"S{i:02d}\n{m}", bg=bg, fg=fg)
+
+            col = i % _BARS_COLS
+            row = i // _BARS_COLS
+            x0, y0 = col * _BARS_CW, row * _BARS_CH
+            cx = x0 + _BARS_CW / 2
+            cy = y0 + _BARS_CH - 11
+            sel = (i == self._selected)
+            c.create_rectangle(x0 + 1, y0 + 1, x0 + _BARS_CW - 1, y0 + _BARS_CH - 1,
+                               fill=("#27333d" if sel else "#161b20"),
+                               outline=edge, width=(3 if sel else 2))
+            # Línea de umbral (centro) + barra de distancia.
+            c.create_line(cx, y0 + 13, cx, y0 + _BARS_CH - 4, fill="#667", dash=(2, 2))
+            raw = f.ring.raw[i] if i < len(f.ring.raw) else 0
+            th = thresholds[i] if i < len(thresholds) else 0
+            half = max(1, m // 2)
+            frac = max(-1.0, min(1.0, (raw - th) / half))
+            barw = frac * (_BARS_CW / 2 - 5)
+            sees = f.ring.white[i] if i < len(f.ring.white) else False
+            if abs(barw) >= 1:
+                c.create_rectangle(cx, cy - 3, cx + barw, cy + 3,
+                                   fill=("#ffe27a" if sees else "#5a8ac0"),
+                                   outline="")
+            en = f.ring.enabled[i] if i < len(f.ring.enabled) else True
+            if not en:  # tachado = deshabilitado
+                c.create_line(x0 + 2, y0 + 2, x0 + _BARS_CW - 2, y0 + _BARS_CH - 2,
+                              fill="#e05050", width=2)
+            c.create_text(x0 + 3, y0 + 8, text=f"S{i:02d}", anchor="w",
+                          fill=("#ddd" if en else "#e05050"), font=("Consolas", 7))
 
         if not weak:
             bg, fg = _SEM_GREEN
-            text = (f"CALIB OK — {self.n}/{self.n} sensores "
-                    f"separan verde/blanco")
+            text = f"CALIB OK — {self.n}/{self.n} sensores separan verde/blanco"
         elif len(weak) <= 4:
             bg, fg = _SEM_ORANGE
-            ids = ", ".join(f"S{i:02d}" for i in weak)
-            text = f"DÉBILES: {ids} — el robot juega con los demás"
+            text = "DÉBILES: " + ", ".join(f"S{i:02d}" for i in weak) + " — juega con los demás"
         else:
             bg, fg = _SEM_RED
-            text = ("CALIB INSUFICIENTE — recalibrar "
-                    "(¿batería baja? ¿hoja no cubre todo?)")
+            text = "CALIB INSUFICIENTE — recalibrar (¿batería baja? ¿hoja no cubre todo?)"
         self.verdict_lbl.config(text=text, bg=bg, fg=fg)
-        self.valid_lbl.config(
-            text=f"data_valid={'SÍ' if f.line.valid else 'NO'}")
+        self.valid_lbl.config(text=f"data_valid={'SÍ' if f.line.valid else 'NO'}")
+
+        # Sincronizar el slider global con la placa UNA vez (no pisar al usuario).
+        if not self._global_synced:
+            self._global_synced = True
+            gs = int(getattr(f.ring, "global_sens", 0))
+            self.global_sens_var.set(gs)
+            self.global_sens_lbl.config(text=f"{gs:+d}%")
+
+        # Refrescar inspector del sensor seleccionado con el frame nuevo.
+        if self._selected is not None:
+            self._render_inspector(f)
 
     def _render_health_panel(self, f: Frame, statuses) -> None:
         probs = [s for s in statuses if s.is_problem]

@@ -14,7 +14,10 @@ from typing import List, Optional
 # Versión de schema que esta app entiende (campo "v"). Espejo de
 # TELEMETRY_DOWN_SCHEMA en telemetry_down.h.
 #   v2: agrega lecturas por-OTOS izq/der (lx/ly/lh/rx/ry/rh) para el arquero.
-SCHEMA_VERSION = 2
+#   v3: agrega umbral efectivo + sintonía por sensor (threshold[], enabled_bits,
+#       global_sens, persensor_sens[]). Se acepta también v2 (campos derivados).
+SCHEMA_VERSION = 3
+SUPPORTED_SCHEMAS = (2, 3)
 
 # Sentinels N/A — espejo de TD_NA_I16 / TD_NA_U16 (y de LineStatusV2).
 NA_I16 = -32768
@@ -44,17 +47,32 @@ def decode_flags(flags: int) -> List[str]:
 
 @dataclass
 class Ring:
-    """Anillo de N sensores de luz: crudo + calibración."""
+    """Anillo de N sensores de luz: crudo + calibración + sintonía fina (v3)."""
     n: int
     raw: List[int]
     white: List[bool]        # bit-expandido del bitmask "white"
     carpet: List[int]
     white_cal: List[int]
+    # Sintonía fina (schema v3). En frames v2 (o construidos a mano) se derivan
+    # en __post_init__: threshold = punto medio, todos habilitados, sensibilidad 0.
+    threshold: List[int] = field(default_factory=list)   # umbral EFECTIVO por sensor
+    enabled: List[bool] = field(default_factory=list)    # habilitado por sensor
+    global_sens: int = 0                                 # sensibilidad global %
+    persensor_sens: List[int] = field(default_factory=list)  # sensibilidad por sensor %
+
+    def __post_init__(self) -> None:
+        if not self.threshold:
+            self.threshold = [(c + w) // 2 for c, w in zip(self.carpet, self.white_cal)]
+        if not self.enabled:
+            self.enabled = [True] * self.n
+        if not self.persensor_sens:
+            self.persensor_sens = [0] * self.n
 
     @property
     def thresholds(self) -> List[int]:
-        """Umbral por sensor = (carpet + white) / 2 (igual que line_ring)."""
-        return [(c + w) // 2 for c, w in zip(self.carpet, self.white_cal)]
+        """Umbral EFECTIVO por sensor (con sensibilidad aplicada en el firmware,
+        v3; en v2 = punto medio). Nombre histórico conservado."""
+        return self.threshold
 
     @property
     def margins(self) -> List[int]:
@@ -64,6 +82,12 @@ class Ring:
         (batería floja, sensor sucio/pegado o mal calibrado).
         """
         return [abs(w - c) for c, w in zip(self.carpet, self.white_cal)]
+
+    @property
+    def distance_to_threshold(self) -> List[int]:
+        """raw − umbral por sensor: >0 = lo ve como blanco (sobre el umbral),
+        <0 = lo ve como piso. |valor| = cuán lejos del umbral (para la barrita)."""
+        return [r - t for r, t in zip(self.raw, self.threshold)]
 
 
 @dataclass
@@ -152,22 +176,37 @@ def parse_obj(obj: dict, raw: str = "") -> Frame:
     """
     try:
         v = int(obj["v"])
-        if v != SCHEMA_VERSION:
+        if v not in SUPPORTED_SCHEMAS:
             raise ProtocolError(
                 f"schema de telemetría no soportado: v={v} "
-                f"(esta app entiende v={SCHEMA_VERSION})"
+                f"(esta app entiende v={SUPPORTED_SCHEMAS})"
             )
         r = obj["ring"]
         n = int(r["n"])
         raw_counts = [int(x) for x in r["raw"]]
         carpet = [int(x) for x in r["carpet"]]
         white_cal = [int(x) for x in r["white_cal"]]
+        # Sintonía fina: presente en v3, derivada (defaults) en v2.
+        if v >= 3:
+            threshold = [int(x) for x in r["threshold"]]
+            enabled = _expand_white(int(r["enabled_bits"]), n)
+            global_sens = int(r["global_sens"])
+            persensor_sens = [int(x) for x in r["persensor_sens"]]
+        else:
+            threshold = []
+            enabled = []
+            global_sens = 0
+            persensor_sens = []
         ring = Ring(
             n=n,
             raw=raw_counts,
             white=_expand_white(int(r["white"]), n),
             carpet=carpet,
             white_cal=white_cal,
+            threshold=threshold,
+            enabled=enabled,
+            global_sens=global_sens,
+            persensor_sens=persensor_sens,
         )
 
         ln = obj["line"]

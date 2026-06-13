@@ -131,8 +131,11 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     float ang[DM_MAX_SENSORS]; uint16_t carpet[DM_MAX_SENSORS];
     for(int i=0;i<n;++i){
         filt[i]=lf_temporal_update(m.filt[i], raw[i]);
-        white[i]=lf_hysteresis_on_white(filt[i], m.calib[i].threshold,
-                                         m.was_white[i]);
+        // Umbral EFECTIVO con sensibilidad global + por-sensor (banco 2026-06-13).
+        // Con global_sens=0 y calib[i].sensitivity=0 → punto medio = histórico.
+        const uint16_t th_eff = lc_threshold_with_sens(
+            m.calib[i].carpet, m.calib[i].white, m.global_sens, m.calib[i].sensitivity);
+        white[i]=lf_hysteresis_on_white(filt[i], th_eff, m.was_white[i]);
         m.was_white[i]=white[i];
         ang[i]=lg_sensor_angle_deg(i,n);   // aproximación uniforme; sobreescrita con geometría real si n==32 (TEMA #16)
         carpet[i]=m.calib[i].carpet;  // snapshot PRE-adapt: sm_update ve el baseline ANTES del drift de este tick (no reordenar)
@@ -172,6 +175,9 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     // Esto previene que un sensor ruidoso/stuck contamine el ángulo.
     for (int i = 0; i < n; ++i) {
         if (!sh_is_healthy(m.sensor_health, i)) validated[i] = false;
+        // Sensor DESHABILITADO a mano (banco 2026-06-13): se excluye del centroide
+        // igual que un unhealthy. Default enabled=1 → no-op (competencia intacta).
+        if (!m.calib[i].enabled)                validated[i] = false;
     }
 
     // EXCLUSIÓN DE SENSORES DÉBILES (banco 2026-06-12, María/R2): un sensor cuyo

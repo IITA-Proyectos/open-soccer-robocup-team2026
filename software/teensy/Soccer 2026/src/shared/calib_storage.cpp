@@ -41,7 +41,7 @@ inline uint16_t read_u16_le(const uint8_t* p) {
 }  // namespace
 
 int cs_serialize(uint8_t* buf, int buf_size,
-                 const SensorCalib* calib, int n_sensors) {
+                 const SensorCalib* calib, int n_sensors, int8_t global_sens) {
     if (buf == nullptr || calib == nullptr) return -1;
     if (n_sensors <= 0 || n_sensors > CS_MAX_SENSORS) return -1;
     if (buf_size < CS_PAYLOAD_SIZE) return -1;
@@ -54,10 +54,14 @@ int cs_serialize(uint8_t* buf, int buf_size,
     buf[5] = (uint8_t)n_sensors;
     // CRC va en bytes 6-7; lo escribimos al final.
 
-    // Payload: array de [carpet][white] por sensor a partir del offset 8.
+    // Payload (offset 8..end): global_sens + array de 6 bytes por sensor.
+    buf[8] = (uint8_t)global_sens;
     for (int i = 0; i < n_sensors; ++i) {
-        write_u16_le(buf + 8 + i * 4 + 0, calib[i].carpet);
-        write_u16_le(buf + 8 + i * 4 + 2, calib[i].white);
+        uint8_t* p = buf + 9 + i * 6;
+        write_u16_le(p + 0, calib[i].carpet);
+        write_u16_le(p + 2, calib[i].white);
+        p[4] = (uint8_t)(calib[i].enabled ? 1 : 0);
+        p[5] = (uint8_t)calib[i].sensitivity;
     }
 
     // CRC sobre el payload (no incluye el header de los primeros 8 bytes).
@@ -68,15 +72,15 @@ int cs_serialize(uint8_t* buf, int buf_size,
 }
 
 bool cs_deserialize(const uint8_t* buf, int buf_size,
-                    SensorCalib* calib, int n_sensors) {
+                    SensorCalib* calib, int n_sensors, int8_t* global_sens_out) {
     if (buf == nullptr || calib == nullptr) return false;
     if (n_sensors <= 0 || n_sensors > CS_MAX_SENSORS) return false;
     if (buf_size < CS_PAYLOAD_SIZE) return false;
 
     // Validar magic.
     if (read_u32_le(buf + 0) != CS_MAGIC) return false;
-    // Validar versión exacta. Si en el futuro hay migración, agregar lógica
-    // que decida si la versión vieja es upgradeable, pero por ahora rechaza.
+    // Validar versión exacta. v1 (sin global_sens/enabled/sensitivity) se
+    // rechaza → el llamador cae a defaults y se recalibra.
     if (buf[4] != CS_VERSION) return false;
     // n_sensors debe coincidir EXACTO con lo esperado por el llamador.
     if (buf[5] != (uint8_t)n_sensors) return false;
@@ -86,15 +90,18 @@ bool cs_deserialize(const uint8_t* buf, int buf_size,
     const uint16_t computed_crc = cs_crc16_ccitt(buf + 8, CS_PAYLOAD_SIZE - 8);
     if (stored_crc != computed_crc) return false;
 
-    // Todo OK → poblar calib[].
+    // Todo OK → poblar calib[] + global_sens.
+    if (global_sens_out) *global_sens_out = (int8_t)buf[8];
     for (int i = 0; i < n_sensors; ++i) {
-        const uint16_t carpet = read_u16_le(buf + 8 + i * 4 + 0);
-        const uint16_t white  = read_u16_le(buf + 8 + i * 4 + 2);
-        calib[i].carpet    = carpet;
-        calib[i].white     = white;
-        // Threshold = punto medio (consistente con lc_set_static).
-        // Si white == carpet (sensor inválido), threshold queda igual al
-        // valor; el detector de suspect lo va a marcar con margin chico.
+        const uint8_t* p = buf + 9 + i * 6;
+        const uint16_t carpet = read_u16_le(p + 0);
+        const uint16_t white  = read_u16_le(p + 2);
+        calib[i].carpet      = carpet;
+        calib[i].white       = white;
+        calib[i].enabled     = (uint8_t)(p[4] ? 1 : 0);
+        calib[i].sensitivity = (int8_t)p[5];
+        // Threshold = punto medio (consistente con lc_set_static). La sensibilidad
+        // NO se hornea acá: el umbral efectivo lo computa dm_update en cada tick.
         calib[i].threshold = (uint16_t)((uint32_t)(carpet + white) / 2);
     }
     return true;

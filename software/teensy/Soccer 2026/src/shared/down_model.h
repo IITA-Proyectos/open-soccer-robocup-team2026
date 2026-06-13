@@ -29,6 +29,11 @@ struct DownModelCfg {
 };
 struct DownModel {
     SensorCalib    calib[DM_MAX_SENSORS];
+    // Sensibilidad GLOBAL al blanco, en % del semi-margen [-100,+100]. Default 0
+    // = umbral en el punto medio (histórico). +% = menos sensible (umbral sube).
+    // La sensibilidad por-sensor vive en calib[i].sensitivity; el habilitado en
+    // calib[i].enabled. Ver lc_threshold_with_sens() y dm_update().
+    int8_t         global_sens = 0;
     FilterBuffer   filt[DM_MAX_SENSORS];
     bool           was_white[DM_MAX_SENSORS];
     SurfaceMonitor surface;

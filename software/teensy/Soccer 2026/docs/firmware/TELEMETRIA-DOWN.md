@@ -1,12 +1,15 @@
-# Telemetría USB de la placa DOWN — contrato v2
+# Telemetría USB de la placa DOWN — contrato v3
 
-**Estado:** v2 (2026-06-07). Módulo puro `src/shared/telemetry_down.{h,cpp}` (host-testeado,
+**Estado:** v3 (2026-06-13). Módulo puro `src/shared/telemetry_down.{h,cpp}` (host-testeado,
 gate `test_telemetry_down`). Glue Arduino `src/down/down_telemetry_serial.cpp` (GATEADO
-`-DDOWN_DEBUG_TELEMETRY`, env `down_debug_telemetry`). App de PC: `tools/monitor-base/`.
+`-DDOWN_DEBUG_TELEMETRY` o `-DDOWN_USB_MONITOR`, envs `down_debug_telemetry` / `down` / `down_robot2`).
+App de PC: `tools/monitor-base/`.
 
 **Historial de schema:** v1 = anillo 32 + LineStatusV2 + OTOS fusionado. **v2** = agrega las
-lecturas por-OTOS izq/der sin fusionar (`lx/ly/lh/rx/ry/rh`) para la **vista de arquero**
-(`python -m monitor_base --arquero`), que prueba el seguidor de línea + el diferencial OTOS.
+lecturas por-OTOS izq/der sin fusionar (`lx/ly/lh/rx/ry/rh`) para la **vista de arquero**.
+**v3 (2026-06-13)** = agrega **sintonía fina por sensor** (`ring.threshold[]` umbral efectivo,
+`ring.enabled_bits`, `ring.global_sens`, `ring.persensor_sens[]`) + comandos `SENS GLOBAL`,
+`SENS SET`, `SENSOR ON|OFF`. La app acepta v2 y v3 (en v2 deriva los campos nuevos).
 
 Este es el contrato versionado entre el **firmware de DOWN** (emite) y la **app de PC**
 (consume). Misma disciplina que los contratos de wire: si cambia el layout, subir
@@ -50,14 +53,18 @@ Un objeto JSON con esta forma (claves en orden de emisión; los `…` son los 32
 
 | Ruta | Tipo | Unidad / rango | Significado |
 |------|------|----------------|-------------|
-| `v` | uint8 | =2 | `TELEMETRY_DOWN_SCHEMA`. La app rechaza otros valores. |
+| `v` | uint8 | =3 | `TELEMETRY_DOWN_SCHEMA`. La app acepta v2 y v3. |
 | `seq` | uint32 | — | Contador monotónico de frame (detectar pérdidas). |
 | `t_ms` | uint32 | ms | `millis()` al emitir. |
 | `ring.n` | uint8 | 1..32 | `NUM_LINE_SENSORS` (32 en la placa de competencia). |
 | `ring.raw[i]` | uint16 | cuentas ADC | Lectura cruda del sensor i (`line_ring_get_raw`). Carpet verde ~100–300, blanco ~600–900. |
 | `ring.white` | uint32 | bitmask | Bit i = el sensor i ve blanco (`line_ring_get_white`). |
 | `ring.carpet[i]` | uint16 | cuentas ADC | Calib de carpet del sensor i (`line_ring_get_carpet_avg`). |
-| `ring.white_cal[i]` | uint16 | cuentas ADC | Calib de blanco del sensor i (`line_ring_get_white_avg`). Umbral = (carpet+white_cal)/2. |
+| `ring.white_cal[i]` | uint16 | cuentas ADC | Calib de blanco del sensor i (`line_ring_get_white_avg`). |
+| `ring.threshold[i]` | uint16 | cuentas ADC | **(v3)** Umbral EFECTIVO del sensor i (punto medio ± sensibilidad global+propia). Es el que usa `dm_update`. |
+| `ring.enabled_bits` | uint32 | bitmask | **(v3)** Bit i = sensor i HABILITADO. Un sensor en 0 se excluye del centroide/penetración. Default todos en 1. |
+| `ring.global_sens` | int8 | % [-100,100] | **(v3)** Sensibilidad global al blanco. + = menos sensible (umbral sube); 0 = punto medio histórico. |
+| `ring.persensor_sens[i]` | int8 | % [-100,100] | **(v3)** Sensibilidad propia del sensor i (se suma a la global, mismo signo). |
 | `line.schema` | uint8 | =2 | `LSV2_SCHEMA` (informativo). |
 | `line.valid` | 0/1 | — | **Compuerta maestra**. Si 0, NADA del bloque `line` es confiable. |
 | `line.present` | 0/1 | — | Hay línea presente (con histéresis). |
@@ -115,9 +122,12 @@ Case-insensitive, tokens separados por espacios o comas. El parser puro
 | `CAL CARPET` | `line_ring_calibrate_carpet()` (robot sobre carpet verde, quieto). |
 | `CAL WHITE` | `line_ring_calibrate_white()` (sensores sobre la línea blanca). |
 | `CAL AUTO ON` / `CAL AUTO OFF` | Captura min/max por sensor mientras se pasa el robot; al cerrar, carpet=min, white=max. |
-| `CAL SAVE` | Guarda la calibración vigente a EEPROM. |
-| `CAL LOAD` | Carga la calibración de EEPROM. |
+| `CAL SAVE` | Guarda a EEPROM la calib vigente **+ la sintonía** (sensibilidad global/por-sensor + habilitados). |
+| `CAL LOAD` | Carga calib **+ sintonía** de EEPROM (en vivo). |
 | `OTOS RESET` | `otos_reset()` (pone la pose acumulada en 0,0,0). |
+| `SENS GLOBAL <pct>` | **(v3)** Sensibilidad global al blanco, `pct ∈ [-100,100]` (clampeado). + = menos sensible. |
+| `SENS SET <i> <pct>` | **(v3)** Sensibilidad propia del sensor `i`. |
+| `SENSOR <i> ON` / `SENSOR <i> OFF` | **(v3)** Habilita/deshabilita el sensor `i` (deshabilitado = excluido del centroide). |
 
 ## 5. Versionado y golden
 

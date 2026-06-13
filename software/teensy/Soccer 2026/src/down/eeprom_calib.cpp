@@ -31,21 +31,24 @@ bool write_buf_to_eeprom(const uint8_t* buf, int offset, int len) {
 
 }  // namespace
 
-bool ec_load_calibration(SensorCalib* calib, int n_sensors) {
+bool ec_load_calibration(SensorCalib* calib, int n_sensors,
+                         int8_t* global_sens_out) {
     if (calib == nullptr || n_sensors <= 0 || n_sensors > CS_MAX_SENSORS) {
         return false;
     }
     uint8_t buf[CS_PAYLOAD_SIZE];
     read_buf_from_eeprom(buf, EC_EEPROM_OFFSET, CS_PAYLOAD_SIZE);
-    return cs_deserialize(buf, CS_PAYLOAD_SIZE, calib, n_sensors);
+    return cs_deserialize(buf, CS_PAYLOAD_SIZE, calib, n_sensors, global_sens_out);
 }
 
-bool ec_save_calibration(const SensorCalib* calib, int n_sensors) {
+bool ec_save_calibration(const SensorCalib* calib, int n_sensors,
+                         int8_t global_sens) {
     if (calib == nullptr || n_sensors <= 0 || n_sensors > CS_MAX_SENSORS) {
         return false;
     }
     uint8_t buf[CS_PAYLOAD_SIZE];
-    const int written = cs_serialize(buf, CS_PAYLOAD_SIZE, calib, n_sensors);
+    const int written = cs_serialize(buf, CS_PAYLOAD_SIZE, calib, n_sensors,
+                                     global_sens);
     if (written < 0) return false;
     return write_buf_to_eeprom(buf, EC_EEPROM_OFFSET, CS_PAYLOAD_SIZE);
 }

@@ -42,23 +42,33 @@ static void make_golden_frame(TelemetryDownFrame& f) {
     f.otos_left_x_mm = 120.10f; f.otos_left_y_mm = -65.20f; f.otos_left_heading_deg = 11.50f;
     f.otos_right_x_mm = 126.80f; f.otos_right_y_mm = -70.40f; f.otos_right_heading_deg = 13.18f;
     f.lifted = 0; f.line_tick_count = 100000; f.line_tick_us = 250;
+    // Sintonía fina (schema v3).
+    f.enabled_bits = 0xFFFFFFFFu;       // todos habilitados
+    f.global_sens  = -5;
+    for (int i = 0; i < 32; ++i) {
+        f.threshold[i]      = (uint16_t)(475 + i);  // = midpoint(carpet 150+i, white 800+i)
+        f.persensor_sens[i] = 0;
+    }
 }
 
 static const char* GOLDEN =
-    "{\"v\":2,\"seq\":7,\"t_ms\":123456,\"ring\":{\"n\":32,\"raw\":"
-    "[100,110,120,130,140,150,160,170,180,190,200,210,220,230,240,250,260,270,"
-    "280,290,300,310,320,330,340,350,360,370,380,390,400,410],\"white\":196611,"
-    "\"carpet\":[150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,"
-    "166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181],"
-    "\"white_cal\":[800,801,802,803,804,805,806,807,808,809,810,811,812,813,814,"
-    "815,816,817,818,819,820,821,822,823,824,825,826,827,828,829,830,831]},"
-    "\"line\":{\"schema\":2,\"valid\":1,\"present\":1,\"angle_cd\":-1250,"
-    "\"escape_cd\":16750,\"pen_mm\":42,\"xtrack_mm\":-8,\"non\":5,\"flags\":1,"
-    "\"q\":88,\"age_ms\":3},\"otos\":{\"n\":2,\"lok\":1,\"rok\":0,\"x\":123.45,"
-    "\"y\":-67.80,\"hdg\":12.34,\"vx\":5.00,\"vy\":-3.20,\"w\":0.123,"
-    "\"slip\":1.50,\"lx\":120.10,\"ly\":-65.20,\"lh\":11.50,\"rx\":126.80,"
-    "\"ry\":-70.40,\"rh\":13.18},\"diag\":{\"lifted\":0,\"ltick\":100000,"
-    "\"ltick_us\":250}}\n";
+    "{\"v\":3,\"seq\":7,\"t_ms\":123456,\"ring\":{\"n\":32,\"raw\":[100,110,120"
+    ",130,140,150,160,170,180,190,200,210,220,230,240,250,260,270,280,290,300,3"
+    "10,320,330,340,350,360,370,380,390,400,410],\"white\":196611,\"carpet\":[1"
+    "50,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168"
+    ",169,170,171,172,173,174,175,176,177,178,179,180,181],\"white_cal\":[800,8"
+    "01,802,803,804,805,806,807,808,809,810,811,812,813,814,815,816,817,818,819"
+    ",820,821,822,823,824,825,826,827,828,829,830,831],\"threshold\":[475,476,4"
+    "77,478,479,480,481,482,483,484,485,486,487,488,489,490,491,492,493,494,495"
+    ",496,497,498,499,500,501,502,503,504,505,506],\"enabled_bits\":4294967295,"
+    "\"global_sens\":-5,\"persensor_sens\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
+    ",0,0,0,0,0,0,0,0,0,0,0,0,0,0]},\"line\":{\"schema\":2,\"valid\":1,\"presen"
+    "t\":1,\"angle_cd\":-1250,\"escape_cd\":16750,\"pen_mm\":42,\"xtrack_mm\":-"
+    "8,\"non\":5,\"flags\":1,\"q\":88,\"age_ms\":3},\"otos\":{\"n\":2,\"lok\":1"
+    ",\"rok\":0,\"x\":123.45,\"y\":-67.80,\"hdg\":12.34,\"vx\":5.00,\"vy\":-3.2"
+    "0,\"w\":0.123,\"slip\":1.50,\"lx\":120.10,\"ly\":-65.20,\"lh\":11.50,\"rx\""
+    ":126.80,\"ry\":-70.40,\"rh\":13.18},\"diag\":{\"lifted\":0,\"ltick\":10000"
+    "0,\"ltick_us\":250}}\n";
 
 // ============================================================================
 // SERIALIZACIÓN — golden exacto
@@ -86,7 +96,7 @@ void test_td_serialize_na_sentinels(void) {
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"escape_cd\":-32768"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"xtrack_mm\":-32768"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"pen_mm\":65535"));
-    TEST_ASSERT_NOT_NULL(strstr(buf, "\"v\":2"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"v\":3"));
 }
 
 void test_td_serialize_respects_num_sensors(void) {
@@ -211,6 +221,38 @@ void test_td_parse_extra_whitespace_and_commas(void) {
     TEST_ASSERT_EQUAL(TdCmd::CAL_CARPET, parse("CAL,CARPET").cmd);
 }
 
+// Comandos de sintonía fina (schema v3).
+void test_td_parse_sens_global(void) {
+    TdCommand c = parse("SENS GLOBAL -30");
+    TEST_ASSERT_EQUAL(TdCmd::SENS_GLOBAL, c.cmd);
+    TEST_ASSERT_EQUAL_INT32(-30, c.arg);
+    c = parse("sens global 100");
+    TEST_ASSERT_EQUAL(TdCmd::SENS_GLOBAL, c.cmd);
+    TEST_ASSERT_EQUAL_INT32(100, c.arg);
+    TEST_ASSERT_EQUAL(TdCmd::UNKNOWN, parse("SENS GLOBAL").cmd);     // falta pct
+    TEST_ASSERT_EQUAL(TdCmd::UNKNOWN, parse("SENS GLOBAL xx").cmd);  // no numérico
+}
+
+void test_td_parse_sens_set(void) {
+    TdCommand c = parse("SENS SET 5 -40");
+    TEST_ASSERT_EQUAL(TdCmd::SENS_SET, c.cmd);
+    TEST_ASSERT_EQUAL_INT32(5, c.arg);
+    TEST_ASSERT_EQUAL_INT32(-40, c.arg2);
+    TEST_ASSERT_EQUAL(TdCmd::UNKNOWN, parse("SENS SET 5").cmd);   // falta pct
+    TEST_ASSERT_EQUAL(TdCmd::UNKNOWN, parse("SENS SET a b").cmd); // no numérico
+}
+
+void test_td_parse_sensor_enable_disable(void) {
+    TdCommand c = parse("SENSOR 12 ON");
+    TEST_ASSERT_EQUAL(TdCmd::SENSOR_ENABLE, c.cmd);
+    TEST_ASSERT_EQUAL_INT32(12, c.arg);
+    c = parse("sensor 3 off");
+    TEST_ASSERT_EQUAL(TdCmd::SENSOR_DISABLE, c.cmd);
+    TEST_ASSERT_EQUAL_INT32(3, c.arg);
+    TEST_ASSERT_EQUAL(TdCmd::UNKNOWN, parse("SENSOR 3").cmd);     // falta ON/OFF
+    TEST_ASSERT_EQUAL(TdCmd::UNKNOWN, parse("SENSOR x ON").cmd);  // índice no numérico
+}
+
 // ============================================================================
 // MAIN
 // ============================================================================
@@ -235,5 +277,8 @@ int main(int, char**) {
     RUN_TEST(test_td_parse_otos_reset);
     RUN_TEST(test_td_parse_unknown);
     RUN_TEST(test_td_parse_extra_whitespace_and_commas);
+    RUN_TEST(test_td_parse_sens_global);
+    RUN_TEST(test_td_parse_sens_set);
+    RUN_TEST(test_td_parse_sensor_enable_disable);
     return UNITY_END();
 }

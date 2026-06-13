@@ -25,6 +25,11 @@ telemetría USB del firmware DOWN. Es la FASE 1 (P0) del sistema de monitoreo
 - **Odometría OTOS**: x/y/heading, velocidades, slip, OTOS izq/der sanos, levantado.
 - **Calibración asistida**: botones carpet/blanco/auto/guardar/cargar + detección
   de sensores con margen bajo (no separan piso de blanco).
+- **Sintonía fina (v3)**: slider de **sensibilidad global** al blanco (ver en vivo
+  cómo reaccionan los sensores); grilla de **barras de cercanía al umbral** por sensor
+  (barra a la derecha = ve blanco, izquierda = ve piso); **click en un sensor** (anillo o
+  barra) abre el **inspector**: valores crudos/calib/umbral, botón habilitar/deshabilitar,
+  y slider de sensibilidad individual. Todo se persiste con `CAL SAVE`.
 
 ## Correr
 
@@ -84,8 +89,22 @@ python -m monitor_base --top --selftest        # smoke headless
 ## Comandos al firmware (botones de la GUI)
 
 `CAL CARPET`, `CAL WHITE`, `CAL AUTO ON/OFF`, `CAL SAVE`, `CAL LOAD`, `OTOS RESET`,
-`STREAM ON/OFF`, `RATE <hz>`. Ver el contrato completo en
+`STREAM ON/OFF`, `RATE <hz>`.
+
+**Sintonía fina (schema v3):**
+- `SENS GLOBAL <pct>` — sensibilidad global al blanco, `pct ∈ [-100,+100]` (**+ = menos
+  sensible**, sube el umbral; 0 = punto medio histórico). Slider "Sensibilidad global".
+- `SENS SET <i> <pct>` — sensibilidad del sensor `i` (slider del inspector).
+- `SENSOR <i> ON|OFF` — habilitar/deshabilitar el sensor `i` (botón del inspector). Un
+  sensor OFF se excluye del centroide/penetración (como un sensor unhealthy).
+
+`CAL SAVE` ahora persiste **también** la sensibilidad (global + por sensor) y el mapa de
+habilitados. Ver el contrato completo en
 [`docs/firmware/TELEMETRIA-DOWN.md`](../../docs/firmware/TELEMETRIA-DOWN.md).
+
+> **Defaults = no-op:** todos los sensores habilitados, sensibilidad 0 → umbral en el
+> punto medio = comportamiento de competencia histórico. Las perillas solo cambian la
+> detección si las movés.
 
 ## Arquitectura
 

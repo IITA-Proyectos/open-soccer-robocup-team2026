@@ -68,9 +68,17 @@ bool g_dm_init = false;
 // de recalibración. (DRY: una sola fuente de la derivación.)
 void derive_calib_from_line_ring() {
     for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
+        // PRESERVAR la sintonía fina (enabled/sensitivity) a través del re-derive:
+        // lc_set_static las resetea, pero son perillas del usuario independientes
+        // de la calib de superficie (banco 2026-06-13). global_sens vive en g_dm
+        // (no en calib[]) → sobrevive solo.
+        const uint8_t en = g_dm.calib[i].enabled;
+        const int8_t  sn = g_dm.calib[i].sensitivity;
         lc_set_static(g_dm.calib[i],
                       line_ring_get_carpet_avg(static_cast<uint8_t>(i)),
                       line_ring_get_white_avg(static_cast<uint8_t>(i)));
+        g_dm.calib[i].enabled     = en;
+        g_dm.calib[i].sensitivity = sn;
     }
     g_dm_init = true;
 }
@@ -102,7 +110,8 @@ void handle_frame(const Frame& f) {
                     // (nadie emite 0x21 en juego). No mover este write al hot-loop.
                     line_ring_calibrate_white();
                     derive_calib_from_line_ring();
-                    if (ec_save_calibration(g_dm.calib, NUM_LINE_SENSORS)) {
+                    if (ec_save_calibration(g_dm.calib, NUM_LINE_SENSORS,
+                                            g_dm.global_sens)) {
                         Serial.println("[DOWN] calib persistida en EEPROM");
                     } else {
                         Serial.println("[DOWN] WARN: fallo guardar calib en EEPROM");
@@ -218,7 +227,7 @@ bool comm_central_load_persisted_calib() {
     // referencia de BLANCO real (medida en una calibración manual previa), que
     // el boot no tiene (solo capturó carpet). El carpet ligeramente stale se
     // auto-corrige por lc_adapt_carpet en los primeros segundos de operación.
-    if (ec_load_calibration(g_dm.calib, NUM_LINE_SENSORS)) {
+    if (ec_load_calibration(g_dm.calib, NUM_LINE_SENSORS, &g_dm.global_sens)) {
         g_dm_init = true;   // bloquea la calib: no re-derivar desde line_ring
         return true;
     }
@@ -241,6 +250,70 @@ void comm_central_invalidate_calib() {
 bool comm_central_get_last_line_status(LineStatusV2& out) {
     if (!g_last_lsv2_valid) return false;
     out = g_last_lsv2;
+    return true;
+}
+
+// ── Sintonía fina (perillas de la app monitor-base, schema v3) ──────────────
+// Las perillas viven en el DownModel (g_dm): enabled/sensitivity por sensor en
+// calib[i], global_sens aparte. dm_update las consume cada tick; no requieren
+// re-derive (el re-derive las preserva). Se persisten con CAL SAVE.
+
+void comm_central_set_global_sens(int pct) {
+    if (pct < -100) pct = -100;
+    if (pct >  100) pct =  100;
+    g_dm.global_sens = (int8_t)pct;
+}
+
+void comm_central_set_sensor_sens(int idx, int pct) {
+    if (idx < 0 || idx >= NUM_LINE_SENSORS) return;
+    if (pct < -100) pct = -100;
+    if (pct >  100) pct =  100;
+    if (!g_dm_init) derive_calib_from_line_ring();
+    g_dm.calib[idx].sensitivity = (int8_t)pct;
+}
+
+void comm_central_set_sensor_enabled(int idx, bool en) {
+    if (idx < 0 || idx >= NUM_LINE_SENSORS) return;
+    if (!g_dm_init) derive_calib_from_line_ring();
+    g_dm.calib[idx].enabled = en ? 1 : 0;
+}
+
+void comm_central_get_tuning(uint16_t* threshold_eff, uint32_t* enabled_bits,
+                             int8_t* global_sens, int8_t* persensor_sens, int n) {
+    if (!g_dm_init) derive_calib_from_line_ring();
+    if (n > NUM_LINE_SENSORS) n = NUM_LINE_SENSORS;
+    uint32_t en = 0;
+    for (int i = 0; i < n; ++i) {
+        if (threshold_eff) {
+            threshold_eff[i] = lc_threshold_with_sens(
+                g_dm.calib[i].carpet, g_dm.calib[i].white,
+                g_dm.global_sens, g_dm.calib[i].sensitivity);
+        }
+        if (persensor_sens) persensor_sens[i] = g_dm.calib[i].sensitivity;
+        if (g_dm.calib[i].enabled && i < 32) en |= (1u << i);
+    }
+    if (enabled_bits) *enabled_bits = en;
+    if (global_sens)  *global_sens  = g_dm.global_sens;
+}
+
+bool comm_central_save_calib_and_tuning() {
+    // Deriva primero (captura carpet/white fresco de una calib por USB,
+    // preservando enabled/sensitivity) y persiste todo + global_sens.
+    if (!g_dm_init) derive_calib_from_line_ring();
+    return ec_save_calibration(g_dm.calib, NUM_LINE_SENSORS, g_dm.global_sens);
+}
+
+bool comm_central_reload_from_eeprom_live() {
+    if (!ec_load_calibration(g_dm.calib, NUM_LINE_SENSORS, &g_dm.global_sens)) {
+        return false;
+    }
+    g_dm_init = true;  // EEPROM gana: no re-derivar
+    uint16_t carpet[NUM_LINE_SENSORS], white[NUM_LINE_SENSORS];
+    for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
+        carpet[i] = g_dm.calib[i].carpet;
+        white[i]  = g_dm.calib[i].white;
+    }
+    line_ring_set_calibration(carpet, white, NUM_LINE_SENSORS);
     return true;
 }
 #endif

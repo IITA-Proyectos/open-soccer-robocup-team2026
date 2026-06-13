@@ -23,6 +23,8 @@ La IA toca **siete frentes**: diseño de PCB (*VIBE PCB Design*), diseño 3D (*V
 
 Este documento existe porque creemos que la transparencia es parte de la buena ingeniería. No escondemos que usamos IA: **explicamos por qué su uso es legítimo, educativo y verificable**, y exactamente dónde empieza y termina su rol.
 
+> 📎 **Companion:** la pregunta de fondo "¿es trampa?" la respondemos con evidencia verificable (reglas RCJ, misión RoboCup, estudios 2025-2026) en [`IA-VIBE-ENGINEERING-EVIDENCIA.md`](IA-VIBE-ENGINEERING-EVIDENCIA.md). Este documento (USO-DE-IA) explica el **CÓMO**; el companion argumenta el **POR QUÉ es legítimo** y por qué las competencias deberían promoverlo.
+
 ---
 
 ## 1. Filosofía y postura ética (la fundamentación)

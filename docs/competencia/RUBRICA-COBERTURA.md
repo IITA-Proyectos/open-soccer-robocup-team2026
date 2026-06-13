@@ -129,6 +129,8 @@ Sin archivo dedicado — es conducta en vivo. Plan en `MEJORAS-PENDIENTES.md` §
 > **Acción:** correr el runner el día previo a entregar/grabar y **propagar UNA sola cifra** a los 5 deliverables + README + MEMORY. Tres cifras distintas en circulación = munición para un juez adversarial y riesgo de que dos integrantes digan números distintos (mata Teamwork & Communication).
 >
 > ✅ **RESUELTO 2026-06-05:** cifra única **658/47/0** ya propagada a los 12 deliverables ES+EN + Fig.8. Queda solo re-correr el runner el día previo a entregar por si la cifra cambió.
+>
+> 🔧 **CORRECCIÓN 2026-06-13:** el `TDP.md` había DERIVADO a **717/51** (medición 2026-06-07) mientras el resto seguía en 658/47 — tres cifras en circulación. **Re-unificado el TDP (ES) y `USO-DE-IA.md` a 658/47** para que TODO el ES + Fig.8 coincidan de nuevo. ⚠️ **Pendientes de cierre:** (1) `docs/competencia/en/TDP.md` todavía muestra 717/51 — se corrige al **regenerar `en/` por el pipeline de traducción** (NO editar `en/` a mano); (2) el gate de **hoy 2026-06-13 da 827/60/0** (la suite siguió creciendo) → el día previo a entregar correr `python docs/competencia/assets/actualizar-cifra.py --apply` para bumpear TODO (ES+EN+Fig.8) a la cifra real del día. El tool aborta si hay 2 cifras distintas en circulación, por eso primero hubo que re-unificar.
 
 ---
 

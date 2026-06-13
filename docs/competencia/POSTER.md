@@ -13,6 +13,8 @@ rubrica: RoboCupJunior Soccer 2026 — Poster Design & Presentation (5 pts, 6 cr
 > TRADUCIR TODO al inglés antes de imprimir/enviar.**
 >
 > *Working draft in Spanish. The FINAL poster must be submitted in ENGLISH (RCJ rubric requirement). Translate before printing.*
+>
+> ⚠️ **VERIFICAR TAMAÑO antes de maquetar/imprimir (riesgo de requisito duro).** Este layout asume **70.7 × 100 cm**, que es **ISO B1**, NO A1. La rúbrica RCJ Soccer 2026 indica que el póster **no debe superar A1 (≈60 × 84 cm / ISO 59.4 × 84.1 cm)** — ver `.claude/skills/rcj-deliverables-judge/references/rubrica-oficial-2026.md`. **70.7×100 EXCEDE A1.** Acción del equipo: confirmar el límite exacto en las reglas 2026 y, si es A1, **re-escalar la grilla a ≤ 84.1 × 59.4 cm** antes de maquetar. (Verificación pendiente — no se corrige a ciegas.)
 
 ---
 
@@ -177,7 +179,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 
 > ## SENSADO, LENGUAJE Y SOFTWARE
 > **Lenguajes:** **C++17** (firmware, `namespace iitasoccer`, structs *packed* con `static_assert` de tamaño) + **MicroPython** (visión OpenMV N6, detección por color en espacio LAB).
-> **Build:** PlatformIO (57 entornos) + un runner `g++` offline para los tests.
+> **Build:** PlatformIO (83 entornos: producción + diagnóstico/banco) + un runner `g++` offline para los tests.
 >
 > **Sensores y para qué:**
 > | Sensor | Cantidad | Función |

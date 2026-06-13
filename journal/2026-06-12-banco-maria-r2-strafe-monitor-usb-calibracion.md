@@ -175,6 +175,39 @@ status: sesión EN CURSO al momento del corte (cambio de chat por contexto) — 
   arquitectura (modelo) → diagrama (`rcj-diagramas-poster`) → prosa
   (`rcj-doc-voz-estudiante`) → juez (`rcj-deliverables-judge`).
 
+## Skills nuevas (2): `ia-educacion-no-trampa` + `ensenar-con-analogias-y-motivar`
+
+- **Pedido María/Gustavo:** ingeniero senior dedicado a la EDUCACIÓN — enfoque
+  pedagógico, enseñar lo complejo con analogías simples, motivar jóvenes,
+  fanático de la fast/experimental engineering (vibe coding/3D/PCB, impresión
+  3D, CNC, simuladores), y **defender a muerte la IA como base educativa** (no
+  trampa = EDUCACIÓN para el futuro), plasmado en skills para que la
+  documentación MUESTRE y DEFIENDA el uso de IA en vez de esconderlo.
+- **Decisión: 2 skills (triggers distintos), TDD cada una:**
+  - **`ia-educacion-no-trampa`** (postura/argumentos) — RED: defensa competente
+    pero apologética, rodea la acusación de "trampa", sin argumento
+    fáctico/laboral, sin pasar a la ofensiva. GREEN: confronta la frase del
+    profesor de frente, reframe CÓMO-no-QUÉ, "prohibir es la falla pedagógica",
+    ancla en evidencia real (I²C, +650 tests, journal), guardarraíl de
+    honestidad (declara límites), cierra con tesis de futuro. Referencia:
+    arsenal de argumentos (histórico/calculadora, fáctico/laboral, esfuerzo,
+    transparencia, rebatir objeciones). Generaliza `USO-DE-IA.md` a CUALQUIER
+    doc.
+  - **`ensenar-con-analogias-y-motivar`** (método pedagógico) — RED: cálido pero
+    con 3 analogías decorativas diluidas, "vos podés" afirmado, todo contar sin
+    invitar a pensar, fast-engineering como folleto. GREEN: UNA analogía
+    (jugadora de fútbol) sostenida + mapeo uno-a-uno + flag de dónde se rompe
+    (números no palabras) + predicción ganable (tapar los ojos) + primera
+    victoria diseñada (cambiar un número y verlo en el simulador esta semana).
+    Referencia: cómo hacer contagiosa la ingeniería rápida.
+- **Anclaje:** ambas consistentes con `USO-DE-IA.md` (postura institucional ya
+  fijada) y `AI-INSTRUCTIONS.md` (atribución). NO contradicen; generalizan.
+- CLAUDE.md: skills 14→16, nueva categoría "Pedagogía y postura educativa".
+- **Familia de skills del día cerrada (8 nuevas):** arquitectura (modelo) →
+  diagrama → prosa → juez (entregables) + postura-IA + pedagogía (educación) +
+  las 2 de control (movimiento). Todas TDD (RED documentado + GREEN verificado),
+  todas aditivas (cero cambio de firmware), gate host verde.
+
 ## Proceso
 
 - **Regla nueva aprendida (memoria + aplicada todo el día): el SUCCESS de pio

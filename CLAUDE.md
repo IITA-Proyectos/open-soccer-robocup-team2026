@@ -43,7 +43,7 @@ Para el formato exacto, ver la skill [`rcj-soccer-coach`](.claude/skills/rcj-soc
 
 ## Skills disponibles
 
-En `.claude/skills/` — 14 skills organizadas:
+En `.claude/skills/` — 16 skills organizadas:
 
 **Frame del coach:**
 - **`rcj-soccer-coach`** — formato exacto del feedback que entregás (P0/P1/P2, tema-a-analizar, plan de prueba obligatorio).
@@ -68,6 +68,10 @@ En `.claude/skills/` — 14 skills organizadas:
 - **`rcj-deliverables-judge`** — jurado de mundial para TDP/póster/video (lado EVALUADOR: puntuar contra la rúbrica oficial 2026 verbatim, con regla de puertas y chequeos adversariales). Referencia: `references/rubrica-oficial-2026.md`.
 - **`rcj-doc-voz-estudiante`** — redacción campeona de entregables: cerebro de ingeniero senior, voz de estudiante de 18 (esencia-primero, capas modulares, jerga explicada, anécdotas reales, pasada anti-IA/anti-profesor). Para TDP, abstracts, documentar programas, guiones.
 - **`rcj-diagramas-poster`** — figuras explicativas que puntúan: un diagrama = una pregunta, ≤7 unidades, matemática de impresión antes de dibujar (≥24 pt a 1,5 m), render obligatorio con Edge headless y mirar antes de entregar.
+
+**Pedagogía y postura educativa:**
+- **`ia-educacion-no-trampa`** — postura para redactar/defender el uso de IA: mostrar y defender (no esconder ni disculparse), con argumentos pedagógicos Y fácticos, anclados en evidencia + límites declarados. La IA con entendimiento + verificación es educación, no trampa. Referencia: `references/arsenal-argumentos.md`.
+- **`ensenar-con-analogias-y-motivar`** — lente de ingeniero-educador senior: enseñar lo complejo con UNA analogía sostenida (mapeo uno-a-uno + dónde se rompe), aprendizaje activo, y motivar con una primera victoria diseñada + ingeniería rápida contagiosa. Referencia: `references/fast-engineering-contagioso.md`.
 
 ## Distinción importante: `skills/` vs `.claude/skills/`
 

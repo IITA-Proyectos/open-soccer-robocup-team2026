@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1200" viewBox="0 0 1680 1200" font-family="Inter, Montserrat, Arial, sans-serif">
+  <!-- ============================================================
+       Fig. madurez - Semaforo/escalera de MADUREZ por subsistema
+       Pregunta UNICA: "Que esta probado de verdad, que falta
+       validar, y que es plan a futuro?"
+       Zona: Data / Discussion del poster A1 (+ TDP Future Work).
+       Impresion asumida: ~410 mm de ancho.
+       mm/px = 410/1680 = 0.244 -> cuerpo min 36 px (8.8 mm ~ 25 pt),
+       titulos >=66 px. Unidades visuales: 3 columnas + 1 recuadro P0 = 4.
+       Paleta POSTER.md: verde=validado, amarillo=sin validar, gris=roadmap,
+       rojo=SOLO bloqueante/seguridad. El color ES informacion.
+       ============================================================ -->
+  <defs>
+    <!-- patron punteado para "no validado / roadmap" se hace con stroke-dasharray -->
+  </defs>
+
+  <rect x="0" y="0" width="1680" height="1200" fill="#FFFFFF"/>
+
+  <!-- Titulo interno (lectura a 3 m) -->
+  <text x="40" y="84" font-size="62" font-weight="800" fill="#222222">QUE MEJORAR — MADUREZ POR SUBSISTEMA</text>
+  <text x="40" y="138" font-size="38" fill="#555555">Cada subsistema en su peldano: probado en banco · listo sin probar · plan a futuro.</text>
+
+  <!-- ===== Leyenda de niveles (3 tipos de borde => obligatoria) ===== -->
+  <g>
+    <rect x="1118" y="160" width="522" height="92" rx="12" fill="#F7F7F7" stroke="#BBBBBB" stroke-width="2"/>
+    <rect x="1138" y="180" width="40" height="28" rx="6" fill="#2E7D32"/>
+    <text x="1186" y="203" font-size="30" fill="#2B2B2B">validado</text>
+    <rect x="1330" y="180" width="40" height="28" rx="6" fill="#E0A100"/>
+    <text x="1378" y="203" font-size="30" fill="#2B2B2B">sin probar</text>
+    <rect x="1138" y="218" width="40" height="28" rx="6" fill="#FFFFFF" stroke="#8A8A8A" stroke-width="3" stroke-dasharray="8 6"/>
+    <text x="1186" y="241" font-size="30" fill="#2B2B2B">roadmap (no implementado)</text>
+  </g>
+
+  <!-- ============================================================
+       COLUMNA 1 — VALIDADO EN BANCO (verde) — peldano mas alto
+       ============================================================ -->
+  <g>
+    <rect x="40" y="200" width="510" height="700" rx="18" fill="#E9F4EA" stroke="#2E7D32" stroke-width="6"/>
+    <!-- cabecera -->
+    <path d="M40,218 a18,18 0 0 1 18,-18 h474 a18,18 0 0 1 18,18 v74 h-510 Z" fill="#2E7D32"/>
+    <text x="70" y="262" font-size="46" font-weight="800" fill="#FFFFFF">VALIDADO EN BANCO</text>
+    <text x="70" y="306" font-size="34" font-weight="700" fill="#1B5E20">Probado en el robot real ✓</text>
+    <!-- items -->
+    <g font-size="36" fill="#1F1F1F">
+      <text x="70" y="364">• Arbitro mueve la CENTRAL</text>
+      <text x="94" y="406" font-size="32" fill="#555555">de punta a punta</text>
+      <text x="70" y="456">• Anillo 32 sensores de linea</text>
+      <text x="94" y="498" font-size="32" fill="#555555">0 sensores muertos</text>
+      <text x="70" y="548">• 2 odometros OTOS responden</text>
+      <text x="94" y="590" font-size="32" fill="#555555">6,5 % error sobre carton</text>
+      <text x="70" y="640">• 4 laseres ToF enumeran</text>
+      <text x="70" y="690">• Motores: piso PWM por rueda</text>
+      <text x="94" y="732" font-size="32" fill="#555555">+ kickstart (arranque)</text>
+      <text x="70" y="782">• Patrulla del arquero v3.2/v3.3</text>
+      <text x="70" y="832">• Loop del TOP: 190 000 /s</text>
+    </g>
+  </g>
+
+  <!-- ============================================================
+       COLUMNA 2 — CODE-COMPLETE SIN VALIDAR (amarillo) — peldano medio
+       ============================================================ -->
+  <g>
+    <rect x="585" y="280" width="510" height="620" rx="18" fill="#FCF6E3" stroke="#E0A100" stroke-width="6"/>
+    <path d="M585,298 a18,18 0 0 1 18,-18 h474 a18,18 0 0 1 18,18 v74 h-510 Z" fill="#E0A100"/>
+    <text x="615" y="342" font-size="44" font-weight="800" fill="#FFFFFF">CODE-COMPLETE</text>
+    <text x="615" y="386" font-size="32" font-weight="700" fill="#7A5A00">Pasa tests en PC · sin probar aun</text>
+    <g font-size="36" fill="#1F1F1F">
+      <text x="615" y="444">• Trilateracion (pose absoluta)</text>
+      <text x="639" y="486" font-size="32" fill="#666666">TASK-035</text>
+      <text x="615" y="536">• Arquero anticipa la pelota</text>
+      <text x="639" y="578" font-size="32" fill="#666666">tune del lookahead</text>
+      <text x="615" y="628">• Strafe por cross-track</text>
+      <text x="615" y="678">• Avanzar derecho con OTOS</text>
+      <text x="615" y="728">• Failover del giroscopio (BNO)</text>
+      <text x="615" y="778">• v6 del strafe del arquero</text>
+      <text x="639" y="820" font-size="32" fill="#666666">flasheada, sin correr</text>
+    </g>
+  </g>
+
+  <!-- ============================================================
+       COLUMNA 3 — ROADMAP / NO IMPLEMENTADO (gris, punteado) — peldano base
+       ============================================================ -->
+  <g>
+    <rect x="1130" y="360" width="510" height="540" rx="18" fill="#F2F2F2" stroke="#8A8A8A" stroke-width="6" stroke-dasharray="14 10"/>
+    <path d="M1130,378 a18,18 0 0 1 18,-18 h474 a18,18 0 0 1 18,18 v74 h-510 Z" fill="#6E6E6E"/>
+    <text x="1160" y="422" font-size="46" font-weight="800" fill="#FFFFFF">ROADMAP</text>
+    <text x="1160" y="466" font-size="32" font-weight="700" fill="#4A4A4A">Plan a futuro · no implementado</text>
+    <g font-size="36" fill="#3A3A3A">
+      <text x="1160" y="524">• CANbus troncal (3 Teensy)</text>
+      <text x="1160" y="574">• 4ª placa ESP32 gateway</text>
+      <text x="1184" y="616" font-size="32" fill="#666666">+ telemetria F1 inalambrica</text>
+      <text x="1160" y="666">• ESP-NOW: robot socio</text>
+      <text x="1160" y="716">• Vision YOLO en placa (NPU)</text>
+      <text x="1160" y="766">• Base 4 ruedas + encoders</text>
+      <text x="1184" y="808" font-size="32" fill="#666666">+ kicker / dribbler</text>
+      <text x="1160" y="858">• Filtro EKF (fusion)</text>
+    </g>
+  </g>
+
+  <!-- ===== Escalera: peldanos descendentes verde->amarillo->gris ===== -->
+  <g opacity="0.9">
+    <line x1="550" y1="240" x2="585" y2="320" stroke="#9AA0A6" stroke-width="4" stroke-dasharray="6 6"/>
+    <line x1="1095" y1="320" x2="1130" y2="400" stroke="#9AA0A6" stroke-width="4" stroke-dasharray="6 6"/>
+  </g>
+
+  <!-- ============================================================
+       RECUADRO P0 — 2 BLOQUEANTES REALES (rojo = seguridad/bloqueante)
+       ============================================================ -->
+  <g>
+    <rect x="40" y="930" width="1600" height="158" rx="16" fill="#FCEDED" stroke="#C8102E" stroke-width="6"/>
+    <rect x="40" y="930" width="320" height="158" rx="16" fill="#C8102E"/>
+    <text x="200" y="1004" font-size="56" font-weight="800" fill="#FFFFFF" text-anchor="middle">P0</text>
+    <text x="200" y="1054" font-size="34" font-weight="700" fill="#FFFFFF" text-anchor="middle">BLOQUEANTES</text>
+
+    <text x="395" y="980" font-size="38" font-weight="800" fill="#C8102E">1 · VISION sin recalibrar (color LAB) en la sede de Incheon</text>
+    <text x="395" y="1024" font-size="34" fill="#333333">Sin calibrar bajo la luz real, el robot no ve la pelota — bloqueante #1.</text>
+    <text x="395" y="1066" font-size="34" font-weight="700" fill="#C8102E">2 · Cap termico de motores: 5V@7,4V se queman sobre ~70% de duty.</text>
+  </g>
+
+  <!-- ===== Caption obligatoria: takeaway + cifra viva fechada + credito ===== -->
+  <text x="40" y="1126" font-size="34" font-weight="700" fill="#333333">Fig. — Verde = probado en el robot · amarillo = pasa tests pero NO se probo</text>
+  <text x="40" y="1166" font-size="34" font-weight="700" fill="#333333">· gris = plan a futuro.  Estado 2026-06-13.</text>
+  <text x="1010" y="1166" font-size="32" fill="#666666">Diagrama original del equipo — CC BY 4.0</text>
+</svg>

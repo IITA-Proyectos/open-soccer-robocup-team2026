@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1200" viewBox="0 0 2000 1200" font-family="Inter, Montserrat, Arial, sans-serif">
+  <!-- ============================================================
+       Fig. - Timeline del proceso constructivo (feb-jun 2026)
+       Pregunta unica: "Que etapas recorrimos y como se solaparon?"
+       Impresion: ~520 mm de ancho -> mm/px = 520/2000 = 0.26.
+       Cuerpo >=24pt (8,5mm) => >=33 px (uso 36). Titulos >=48pt
+       (17mm) => >=65 px (uso 72). Unidades visuales (carriles):
+       6 etapas + 1 barra cuello-de-botella = 7.
+       Paleta POSTER.md: azul=TOP naranja=CENTRAL verde=DOWN
+       gris=neutro rojo=SOLO emergencia/cuello-de-botella critico.
+       Honestidad: VIBE-3D emergente = punteado + asterisco.
+       ============================================================ -->
+  <defs>
+    <marker id="ar" markerWidth="6" markerHeight="6" refX="4.6" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#4A4A4A"/>
+    </marker>
+    <pattern id="hatch" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="14" height="14" fill="#FBE3E3"/>
+      <line x1="0" y1="0" x2="0" y2="14" stroke="#C8102E" stroke-width="4" opacity="0.45"/>
+    </pattern>
+  </defs>
+
+  <rect x="0" y="0" width="2000" height="1200" fill="#FFFFFF"/>
+
+  <!-- ===== Titulo interno (lectura a 3 m) ===== -->
+  <text x="40" y="80" font-size="72" font-weight="800" fill="#333333">COMO CONSTRUIMOS EL ROBOT</text>
+  <text x="40" y="132" font-size="40" fill="#666666">7 etapas VIBE en 4 meses — programar y testear avanzaron SIN la placa, en paralelo al montaje</text>
+
+  <!-- ===== Eje de tiempo (meses) ===== -->
+  <!-- Zona de carriles: x 470 .. 1880 mapea FEB .. JUL -->
+  <!-- anclas X: FEB=470 MAR=672 ABR=874 MAY=1076 JUN=1430 (jun mas ancho: pico de actividad) JUL=1880 -->
+  <line x1="470" y1="200" x2="1880" y2="200" stroke="#BBBBBB" stroke-width="3"/>
+  <g font-size="40" font-weight="700" fill="#444444" text-anchor="middle">
+    <text x="540" y="186">FEB</text>
+    <text x="740" y="186">MAR</text>
+    <text x="940" y="186">ABR</text>
+    <text x="1130" y="186">MAY</text>
+    <text x="1500" y="186">JUN</text>
+    <text x="1840" y="186">JUL</text>
+  </g>
+  <g stroke="#DDDDDD" stroke-width="2">
+    <line x1="640" y1="200" x2="640" y2="1010"/>
+    <line x1="840" y1="200" x2="840" y2="1010"/>
+    <line x1="1040" y1="200" x2="1040" y2="1010"/>
+    <line x1="1390" y1="200" x2="1390" y2="1010"/>
+    <line x1="1790" y1="200" x2="1790" y2="1010"/>
+  </g>
+  <!-- Linea Incheon -->
+  <line x1="1820" y1="200" x2="1820" y2="1010" stroke="#999999" stroke-width="3" stroke-dasharray="10 8"/>
+  <text x="1812" y="248" font-size="36" font-weight="700" fill="#777777" text-anchor="end">Incheon 30-jun</text>
+
+  <!-- ===== Etiquetas de carril (columna izquierda) ===== -->
+  <!-- y de cada carril: 295 / 395 / 495 / 595 / 695 / 795 (centro de barra) -->
+  <g font-size="40" font-weight="700">
+    <text x="450" y="308" text-anchor="end" fill="#333333">1 · Concepto</text>
+    <text x="450" y="408" text-anchor="end" fill="#15497B">2 · PCB</text>
+    <text x="450" y="495" text-anchor="end" fill="#C8651B">3 · 3D *</text>
+    <text x="450" y="608" text-anchor="end" fill="#2E7D32">4 · Montaje</text>
+    <text x="450" y="708" text-anchor="end" fill="#333333">5 · Programar</text>
+    <text x="450" y="808" text-anchor="end" fill="#333333">6 · Documentar</text>
+  </g>
+  <!-- sub-etiqueta VIBE bajo el numero de etapa -->
+  <g font-size="28" fill="#888888">
+    <text x="450" y="442" text-anchor="end">VIBE-PCB (maduro)</text>
+    <text x="450" y="528" text-anchor="end" fill="#C8102E">VIBE-3D (emergente)</text>
+    <text x="450" y="742" text-anchor="end">VIBE-Coding (maduro)</text>
+    <text x="450" y="842" text-anchor="end">+ Testeo continuo</text>
+  </g>
+
+  <!-- ===== CARRIL 1: CONCEPTO (gris) ===== -->
+  <rect x="500" y="272" width="600" height="56" rx="10" fill="#ECECEC" stroke="#777777" stroke-width="3"/>
+  <text x="512" y="309" font-size="34" fill="#333333">arquitectura · estrategia · subsistemas</text>
+  <!-- hito kickoff -->
+  <circle cx="540" cy="300" r="13" fill="#555555"/>
+  <text x="540" y="262" font-size="32" font-weight="700" fill="#333333" text-anchor="middle">kickoff 21-feb</text>
+  <!-- hito decisiones Q1-Q7 -->
+  <circle cx="1076" cy="300" r="13" fill="#555555"/>
+  <text x="1076" y="262" font-size="32" font-weight="700" fill="#333333" text-anchor="middle">decisiones Q1–Q7 · 10-may</text>
+
+  <!-- ===== CARRIL 2: PCB (azul) ===== -->
+  <rect x="852" y="372" width="170" height="56" rx="10" fill="#E8F1FA" stroke="#15497B" stroke-width="3"/>
+  <text x="864" y="409" font-size="32" fill="#15497B">TOP · DOWN</text>
+  <!-- hito bring-up DOWN anillo 32 sensores (en zona MAY libre, a la derecha del axis) -->
+  <circle cx="1110" cy="392" r="13" fill="#15497B"/>
+  <text x="1137" y="384" font-size="32" font-weight="700" fill="#15497B">DOWN: anillo 32 sensores · 24-may</text>
+  <!-- hito bodge XSHUT TOP (rework manual de Enzo) -->
+  <circle cx="1110" cy="424" r="13" fill="#15497B" stroke="#FFFFFF" stroke-width="3"/>
+  <text x="1137" y="436" font-size="32" font-weight="700" fill="#15497B">TOP: 4 laseres (bodge XSHUT de Enzo) · 25-may</text>
+
+  <!-- ===== CARRIL 3: 3D (naranja, EMERGENTE -> punteado) ===== -->
+  <rect x="1245" y="468" width="210" height="52" rx="10" fill="#FBEEDF" stroke="#C8102E" stroke-width="3" stroke-dasharray="12 8"/>
+  <text x="1257" y="503" font-size="32" fill="#C8651B">soportes · jigs</text>
+  <text x="1478" y="503" font-size="30" fill="#C8102E" font-style="italic">sin pieza final 2026 *</text>
+
+  <!-- ===== CARRIL 4: MONTAJE (verde) ===== -->
+  <rect x="1095" y="572" width="300" height="56" rx="10" fill="#E9F4EA" stroke="#2E7D32" stroke-width="3"/>
+  <!-- hito 3 placas montadas 29-may -->
+  <circle cx="1132" cy="600" r="13" fill="#2E7D32"/>
+  <text x="1160" y="612" font-size="34" font-weight="700" fill="#2E7D32">3 placas montadas · 29-may</text>
+
+  <!-- ===== CARRIL 5: PROGRAMAR (gris, ARRANCA TEMPRANO = solapamiento clave) ===== -->
+  <rect x="640" y="672" width="1140" height="56" rx="10" fill="#EFEFEF" stroke="#555555" stroke-width="3"/>
+  <text x="652" y="709" font-size="32" fill="#333333">logica pura host-native (g++) — corre desde marzo</text>
+  <!-- separador visual antes del cluster de estrellas de banco -->
+  <line x1="1400" y1="678" x2="1400" y2="722" stroke="#BBBBBB" stroke-width="2"/>
+
+  <!-- ===== CARRIL 6: DOCUMENTAR (gris, continuo) ===== -->
+  <rect x="540" y="772" width="1240" height="56" rx="10" fill="#F4F4F4" stroke="#888888" stroke-width="3"/>
+  <text x="552" y="809" font-size="34" fill="#555555">journal · contratos de datos · TDP · poster (continuo)</text>
+
+  <!-- ===== CARRIL 7 (barra externa): CUELLO DE BOTELLA REAL = importacion (rojo) ===== -->
+  <rect x="540" y="878" width="1280" height="104" rx="10" fill="url(#hatch)" stroke="#C8102E" stroke-width="4"/>
+  <text x="560" y="918" font-size="34" font-weight="700" fill="#C8102E">CUELLO DE BOTELLA REAL: importacion de componentes (Argentina · aduana)</text>
+  <text x="560" y="956" font-size="30" fill="#C8102E" font-style="italic">llegan de a poco (semanas) → por eso programar y testear se hicieron en la PC, sin la placa</text>
+
+  <!-- ===== Hitos de TESTEO de banco (estrellas sobre el carril Programar) =====
+       3 estrellas SOBRE la barra Programar con SOLO la fecha encima (tag corto);
+       el detalle de cada hito va en la caption inferior. Asi no se solapan. -->
+  <!-- 1) end-to-end: el arbitro mueve la CENTRAL 29-may -->
+  <polygon points="1455,684 1463,702 1482,702 1467,714 1474,732 1455,720 1436,732 1443,714 1428,702 1447,702" fill="#C8651B"/>
+  <text x="1455" y="662" font-size="28" font-weight="700" fill="#C8651B" text-anchor="middle">29-may</text>
+  <!-- 2) calibracion cinematica/vision 7-9-jun -->
+  <polygon points="1605,684 1613,702 1632,702 1617,714 1624,732 1605,720 1586,732 1593,714 1578,702 1597,702" fill="#C8651B"/>
+  <text x="1605" y="662" font-size="28" font-weight="700" fill="#C8651B" text-anchor="middle">7–9-jun</text>
+  <!-- 3) banco final 12-jun (hito rojo = la meta de esta etapa) -->
+  <polygon points="1730,680 1740,704 1766,704 1745,719 1753,743 1730,728 1707,743 1715,719 1694,704 1720,704" fill="#C8102E"/>
+  <text x="1730" y="662" font-size="28" font-weight="700" fill="#C8102E" text-anchor="middle">12-jun</text>
+
+  <!-- flecha causal: el cuello de botella (barra roja) EMPUJO el host-testing
+       (carril Programar). Sube por el costado izquierdo, en zona libre. -->
+  <path d="M510,878 C510,820 510,770 510,730" fill="none" stroke="#C8102E" stroke-width="4" stroke-dasharray="9 7" marker-end="url(#ar)"/>
+
+  <!-- ===== Mini-leyenda (glifos usados) ===== -->
+  <g>
+    <rect x="40" y="990" width="900" height="64" rx="10" fill="#F7F7F7" stroke="#CCCCCC" stroke-width="2"/>
+    <circle cx="72" cy="1022" r="11" fill="#555555"/>
+    <text x="92" y="1034" font-size="32" fill="#444444">hito real (fechado)</text>
+    <polygon points="430,1010 437,1028 456,1028 441,1040 448,1058 430,1046 412,1058 419,1040 404,1028 423,1028" fill="#C8651B"/>
+    <text x="466" y="1034" font-size="32" fill="#444444">validacion de banco</text>
+    <line x1="730" y1="1022" x2="790" y2="1022" stroke="#C8102E" stroke-width="5" stroke-dasharray="10 7"/>
+    <text x="800" y="1034" font-size="32" fill="#444444">emergente / pendiente</text>
+  </g>
+
+  <!-- ===== Caption obligatoria: takeaway + cifra viva fechada + credito ===== -->
+  <text x="40" y="1090" font-size="40" font-weight="700" fill="#333333">Fig. — Las 7 etapas NO fueron lineales: el cerebro del robot (programar+testear en PC) avanzo en paralelo al montaje.</text>
+  <text x="40" y="1134" font-size="34" fill="#444444">Banco (estrellas): 29-may el arbitro mueve la CENTRAL end-to-end · 7–9-jun calibracion cinematica/vision · 12-jun banco final.</text>
+  <text x="40" y="1172" font-size="32" fill="#666666">Logica verificada en PC: 658 tests / 47 suites / 0 fallos (cifra viva, ver Fig.8).  * VIBE-3D = linea emergente, sin pieza final este ano.  Original diagram by the team — CC BY 4.0</text>
+</svg>

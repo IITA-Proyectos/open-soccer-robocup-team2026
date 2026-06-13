@@ -148,6 +148,33 @@ status: sesión EN CURSO al momento del corte (cambio de chat por contexto) — 
   con violaciones de tamaño y cifras viejas) se borró — superado.
 - CLAUDE.md: registro de skills 11→13.
 
+## Skill nueva: `arquitectura-robotica-topdown` (lente de arquitecto senior)
+
+- **Pedido María:** comportarse como arquitecto senior de sistemas — top-down,
+  capas de abstracción, integración multi-dominio (mecánica/eléctrica/potencia/
+  control/visión/localización/SLAM/comms/fail-safe), con foco en SÍNTESIS y
+  simplificación. Es el escalón UPSTREAM de las skills de doc/diagrama: produce
+  el MODELO que ellas expresan.
+- **TDD de skills — y el RED fue revelador:** la línea base (con opus-4-8[1m],
+  modelo fuerte) ya producía un análisis bueno, pero cometió los 5 errores que
+  separan a un generalista de un arquitecto: (1) mezcló capas de abstracción con
+  concerns transversales (puso potencia/comms como "capas"); (2) listó riesgos
+  pero NO caminó las costuras entre dominios; (3) no nombró la restricción
+  dominante; (4) síntesis al final, no al principio; (5) lente de control
+  superficial. La skill targetea exactamente esos 5.
+- **GREEN:** con la skill, separó capas (vertical, con test de ocultamiento) de
+  concerns (horizontal, con el por-qué-no-son-capas), **caminó 6 costuras reales
+  ancladas a incidentes del repo** (brownout disfrazado de SW, BNO que MIENTE vs
+  muere, contrato de línea roto en silencio, TOP 6 Hz, pelota fantasma, régimen
+  cuantizado de rueda), nombró el cuello (percepción calibrada = TASK-022),
+  esencia-primero, lentes por dominio aplicadas.
+- **Subproducto:** la vista de arquitectura del GREEN es publicable como doc
+  canónico si el equipo lo quiere (hoy NO se versionó; sería `docs/` + update de
+  FUENTES-DE-VERDAD/ESTADO-ACTUAL en el mismo commit, por protocolo).
+- CLAUDE.md: skills 13→14. **Cierra la familia de 4 skills de competencia:**
+  arquitectura (modelo) → diagrama (`rcj-diagramas-poster`) → prosa
+  (`rcj-doc-voz-estudiante`) → juez (`rcj-deliverables-judge`).
+
 ## Proceso
 
 - **Regla nueva aprendida (memoria + aplicada todo el día): el SUCCESS de pio

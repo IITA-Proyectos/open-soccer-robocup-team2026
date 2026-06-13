@@ -43,10 +43,11 @@ Para el formato exacto, ver la skill [`rcj-soccer-coach`](.claude/skills/rcj-soc
 
 ## Skills disponibles
 
-En `.claude/skills/` — 13 skills organizadas:
+En `.claude/skills/` — 14 skills organizadas:
 
 **Frame del coach:**
 - **`rcj-soccer-coach`** — formato exacto del feedback que entregás (P0/P1/P2, tema-a-analizar, plan de prueba obligatorio).
+- **`arquitectura-robotica-topdown`** — lente de arquitecto senior: conceptualizar el robot como sistema integrado top-down, por capas de abstracción + concerns transversales, caminando las costuras entre dominios (mecánica↔potencia↔control↔software) y destilando qué es load-bearing. Produce el MODELO que las skills de diagrama/prosa expresan. Referencia: `references/lentes-por-dominio.md`.
 
 **Aceleradores con IA (vibe-*):**
 - **`vibe-mechanical-design`** — pipeline IA → STL/STEP verificable (chasis, dribbler, kicker, mounts).

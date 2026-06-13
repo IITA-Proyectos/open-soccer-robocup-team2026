@@ -43,7 +43,7 @@ Para el formato exacto, ver la skill [`rcj-soccer-coach`](.claude/skills/rcj-soc
 
 ## Skills disponibles
 
-En `.claude/skills/` — 11 skills organizadas:
+En `.claude/skills/` — 13 skills organizadas:
 
 **Frame del coach:**
 - **`rcj-soccer-coach`** — formato exacto del feedback que entregás (P0/P1/P2, tema-a-analizar, plan de prueba obligatorio).
@@ -65,6 +65,8 @@ En `.claude/skills/` — 11 skills organizadas:
 **Entregables de competencia:**
 - **`rcj-judging-package`** — BOM, poster A1, video técnico, portfolio digital, entrevista (lado PRODUCTOR: armar los entregables).
 - **`rcj-deliverables-judge`** — jurado de mundial para TDP/póster/video (lado EVALUADOR: puntuar contra la rúbrica oficial 2026 verbatim, con regla de puertas y chequeos adversariales). Referencia: `references/rubrica-oficial-2026.md`.
+- **`rcj-doc-voz-estudiante`** — redacción campeona de entregables: cerebro de ingeniero senior, voz de estudiante de 18 (esencia-primero, capas modulares, jerga explicada, anécdotas reales, pasada anti-IA/anti-profesor). Para TDP, abstracts, documentar programas, guiones.
+- **`rcj-diagramas-poster`** — figuras explicativas que puntúan: un diagrama = una pregunta, ≤7 unidades, matemática de impresión antes de dibujar (≥24 pt a 1,5 m), render obligatorio con Edge headless y mirar antes de entregar.
 
 ## Distinción importante: `skills/` vs `.claude/skills/`
 

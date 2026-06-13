@@ -121,6 +121,33 @@ status: sesión EN CURSO al momento del corte (cambio de chat por contexto) — 
 - CLAUDE.md actualizado: lista de skills 8→11 (sumadas también las 2 de control
   del día que habían quedado sin registrar).
 
+## Skills nuevas (2): `rcj-doc-voz-estudiante` + `rcj-diagramas-poster`
+
+- **Pedido María:** lado PRODUCTOR de máximo puntaje — documentar programas,
+  sintetizar la esencia de sistemas complejos, diagramas modulares simples y
+  póster, con cerebro de ingeniero senior y VOZ de estudiante de 18.
+- **Método: TDD de skills, una por vez** (RED→GREEN cada una):
+  - **Voz/redacción** — baseline: contenido bueno pero voz de profesor/IA,
+    jerga desnuda (FSM, PID, histéresis sin explicar), cero anécdota, sin
+    esencia-primero. Con skill: "tres computadoras que se pasan notas… 31
+    bytes, 100 veces por segundo", toda la jerga explicada, anécdota REAL del
+    repo (pines 28/29 inexistentes en el borde del 4.0), datos fechados,
+    cierre honesto (TASK-022).
+  - **Diagramas/póster** — baseline: figura sofisticada PERO texto de 13 px
+    (≈10 pt impreso, viola el ≥24 pt de POSTER.md), 12+ unidades duplicando
+    zonas, SVG entregado a ciegas, cifra de tests stale, archivo dropeado en
+    `assets/` sin avisar. Con skill: matemática de impresión ANTES de dibujar
+    (393 mm de la grilla real → cuerpo 40 px), exactamente 7 unidades, **el
+    render obligatorio (Edge headless, probado en esta máquina) cazó una
+    colisión título/leyenda real** que se corrigió antes de entregar, cifra
+    viva fechada (827/60/0 del gate de hoy), drafts declarados en
+    `assets/drafts/`.
+- **Subproducto útil:** `docs/competencia/assets/drafts/fig2_sistema_3_placas.svg`
+  (+ render PNG) — candidata a Fig.2 del póster (alimenta P0-4). En ES; falta
+  traducir textos al EN al maquetar. El draft RED (`fig2_system_architecture.svg`,
+  con violaciones de tamaño y cifras viejas) se borró — superado.
+- CLAUDE.md: registro de skills 11→13.
+
 ## Proceso
 
 - **Regla nueva aprendida (memoria + aplicada todo el día): el SUCCESS de pio

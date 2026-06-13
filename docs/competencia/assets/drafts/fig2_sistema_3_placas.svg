@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1300" viewBox="0 0 1600 1300" font-family="Inter, Montserrat, Arial, sans-serif">
+  <!-- ============================================================
+       Fig.2 - Figura central del poster A1 (Zona C)
+       Pregunta que responde: "Quien hace que en el robot,
+       y que dato viaja entre las placas?"
+       Impresion: 393 mm de ancho (columna central col 4-8)
+       mm/px = 393/1600 = 0.246 -> minimo cuerpo 36 px (uso 40),
+       titulos >=70 px (uso 72). Unidades visuales: 7.
+       Paleta POSTER.md: azul=TOP naranja=CENTRAL verde=DOWN
+       gris=neutro rojo=SOLO emergencia.
+       ============================================================ -->
+  <defs>
+    <marker id="mGray" markerWidth="7" markerHeight="6" refX="5.2" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#4A4A4A"/>
+    </marker>
+    <marker id="mRed" markerWidth="5" markerHeight="4" refX="3.4" refY="2" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L4,2 L0,4 Z" fill="#C62828"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="1300" fill="#FFFFFF"/>
+
+  <!-- Titulo interno (lectura a 3 m) -->
+  <text x="40" y="90" font-size="72" font-weight="800" fill="#333333">UN ROBOT, TRES ESPECIALISTAS</text>
+
+  <!-- Leyenda (2 tipos de flecha => obligatoria) -->
+  <g>
+    <rect x="1250" y="850" width="330" height="190" rx="12" fill="#F5F5F5" stroke="#BBBBBB" stroke-width="2"/>
+    <line x1="1276" y1="886" x2="1340" y2="886" stroke="#4A4A4A" stroke-width="6" marker-end="url(#mGray)"/>
+    <text x="1276" y="936" font-size="40" fill="#2B2B2B">dato (B @ Hz)</text>
+    <line x1="1276" y1="972" x2="1334" y2="972" stroke="#C62828" stroke-width="14" marker-end="url(#mRed)"/>
+    <text x="1276" y="1022" font-size="40" font-weight="700" fill="#C62828">emergencia</text>
+  </g>
+
+  <!-- ===== UNIDAD 1: caja TOP (azul) ===== -->
+  <g>
+    <rect x="380" y="180" width="840" height="230" rx="16" fill="#E8F1FA" stroke="#15497B" stroke-width="4"/>
+    <path d="M380,196 a16,16 0 0 1 16,-16 h808 a16,16 0 0 1 16,16 v54 h-840 Z" fill="#15497B"/>
+    <text x="430" y="230" font-size="56" font-weight="700" fill="#FFFFFF">TOP — VE EL MUNDO</text>
+    <text x="430" y="294" font-size="40" fill="#2B2B2B">2 cámaras → pelota y arcos</text>
+    <text x="430" y="346" font-size="40" fill="#2B2B2B">IMU (brújula) · 4 láseres de distancia</text>
+    <text x="430" y="398" font-size="40" fill="#2B2B2B">ultrasonido · señal del árbitro</text>
+  </g>
+
+  <!-- ===== UNIDAD 4: flecha WorldSnapshot TOP->CENTRAL ===== -->
+  <line x1="600" y1="416" x2="600" y2="508" stroke="#4A4A4A" stroke-width="6" marker-end="url(#mGray)"/>
+  <text x="630" y="458" font-size="40" font-weight="700" fill="#2B2B2B">WorldSnapshot — 31 B @ 100 Hz</text>
+  <text x="630" y="504" font-size="40" fill="#555555">pelota · arcos · rumbo · árbitro</text>
+
+  <!-- ===== UNIDAD 2: caja CENTRAL (naranja) ===== -->
+  <g>
+    <rect x="380" y="520" width="840" height="200" rx="16" fill="#FBEEDF" stroke="#C8651B" stroke-width="4"/>
+    <path d="M380,536 a16,16 0 0 1 16,-16 h808 a16,16 0 0 1 16,16 v54 h-840 Z" fill="#C8651B"/>
+    <text x="430" y="570" font-size="56" font-weight="700" fill="#FFFFFF">CENTRAL — DECIDE</text>
+    <text x="430" y="634" font-size="40" fill="#2B2B2B">estrategia de juego (máquina de estados)</text>
+    <text x="430" y="688" font-size="40" fill="#2B2B2B">cinemática omni + PID → 3 motores</text>
+  </g>
+
+  <!-- ===== UNIDAD 7: glifo motores (3 ruedas omni) ===== -->
+  <g>
+    <text x="195" y="535" font-size="40" fill="#2B2B2B" text-anchor="middle">3 ruedas omni a 120°</text>
+    <circle cx="200" cy="635" r="70" fill="#F5F5F5" stroke="#4A4A4A" stroke-width="6"/>
+    <g fill="#4A4A4A">
+      <rect x="165" y="549" width="70" height="16" rx="6"/>
+      <rect x="165" y="549" width="70" height="16" rx="6" transform="rotate(120,200,635)"/>
+      <rect x="165" y="549" width="70" height="16" rx="6" transform="rotate(240,200,635)"/>
+    </g>
+    <line x1="380" y1="635" x2="310" y2="635" stroke="#4A4A4A" stroke-width="6" marker-end="url(#mGray)"/>
+  </g>
+
+  <!-- ===== UNIDAD 6: flecha EMERGENCIA DOWN->CENTRAL (rojo) ===== -->
+  <line x1="440" y1="836" x2="440" y2="734" stroke="#C62828" stroke-width="14" marker-end="url(#mRed)"/>
+  <text x="410" y="770" font-size="40" font-weight="700" fill="#C62828" text-anchor="end">EMERGENCIA ¡línea!</text>
+  <text x="410" y="820" font-size="40" fill="#C62828" text-anchor="end">frena &lt;15 ms*</text>
+
+  <!-- ===== UNIDAD 5: flecha bifurcada DOWN->CENTRAL y TOP ===== -->
+  <line x1="600" y1="836" x2="600" y2="730" stroke="#4A4A4A" stroke-width="6" marker-end="url(#mGray)"/>
+  <circle cx="600" cy="782" r="9" fill="#4A4A4A"/>
+  <path d="M600,782 L1330,782 L1330,295 L1234,295" fill="none" stroke="#4A4A4A" stroke-width="6" marker-end="url(#mGray)"/>
+  <text x="640" y="766" font-size="40" font-weight="700" fill="#2B2B2B">Línea: 16 B @ 200 Hz</text>
+  <text x="640" y="826" font-size="40" fill="#555555">+ odometría → a las DOS placas</text>
+
+  <!-- ===== UNIDAD 3: caja DOWN (verde) ===== -->
+  <g>
+    <rect x="380" y="840" width="840" height="200" rx="16" fill="#E9F4EA" stroke="#2E7D32" stroke-width="4"/>
+    <path d="M380,856 a16,16 0 0 1 16,-16 h808 a16,16 0 0 1 16,16 v54 h-840 Z" fill="#2E7D32"/>
+    <text x="430" y="890" font-size="56" font-weight="700" fill="#FFFFFF">DOWN — TOCA EL SUELO</text>
+    <text x="430" y="954" font-size="40" fill="#2B2B2B">anillo de 32 sensores de línea (borde)</text>
+    <text x="430" y="1008" font-size="40" fill="#2B2B2B">2 odómetros ópticos (cuánto me moví)</text>
+  </g>
+
+  <!-- Caption obligatoria: takeaway + cifra viva fechada + credito -->
+  <text x="40" y="1110" font-size="40" font-weight="700" fill="#333333">Fig.2 — TOP ve, CENTRAL decide, DOWN toca el suelo (3 placas Teensy).</text>
+  <text x="40" y="1162" font-size="40" fill="#333333">Lógica verificada en PC: 827 tests / 60 suites / 0 fallos (2026-06-12).</text>
+  <text x="40" y="1214" font-size="40" fill="#666666">* frenar en &lt;15 ms = objetivo de diseño, pendiente de medir en banco.</text>
+  <text x="40" y="1266" font-size="40" fill="#666666">Original diagram by the team — CC BY 4.0</text>
+</svg>

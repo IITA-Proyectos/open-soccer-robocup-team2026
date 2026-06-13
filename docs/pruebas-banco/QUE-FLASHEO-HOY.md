@@ -26,7 +26,7 @@ tipo: indice-operacional
 | R2 | CENTRAL (arquero) | `central_robot2_arquero` | banco: `_bb` / solo-patrulla: `_patrol_bb` |
 | R2 | TOP | **`top_robot2_pri`** | `top_robot2_pri_sticky` = cámara pegajosa (promover tras validar) |
 | R2 | DOWN | `down_robot2` (sin OTOS) | |
-| ambos | DOWN (calibrar línea) | `diag_down_calibracion` (`c`→`b`→`v`→`s`, 32/32 margin ≥40) | al terminar, RE-flashear el down del robot |
+| ambos | DOWN (calibrar línea) | `diag_down_calibracion` (`c`→`b`→`v`→`s`, 32/32 margin ≥40) | al terminar, RE-flashear el down. ⚠️ **POSIBLE CAMINO MÁS CORTO sin reflashear:** el `down`/`down_robot2` de competencia lleva `-DDOWN_USB_MONITOR` → calibrar EN VIVO con la app `monitor-base`. El código lo soporta pero **3 docs se contradicen** (esta fila vs `platformio.ini` vs la guía `USO-MONITOREO-Y-TELEMETRIA.md`) → **TASK-307** lo resuelve/confirma en banco antes de fijar el flujo |
 | ambos | Cámaras ×2 | `hardware/electronics/camaras-openmv/main.py` | NO los `cam-*-n6.py` de los packs (deprecados) |
 
 ## Lista negra (NO flashear sin leer el journal correspondiente)

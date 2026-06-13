@@ -46,8 +46,8 @@
 | **Total / robot — reusando CENTRAL** (Zircon 250 + Teensy 4.1 31.50 del 2025) | **≈ 887** | sustentabilidad: se reúsa el cerebro campeón 2025 |
 | **Total 2 robots** — 1 reusa el CENTRAL + 1 todo nuevo | **≈ 2.055** | el arquero reúsa el cerebro 2025 |
 | **Total 2 robots** — ambos todo nuevo | **≈ 2.336** | cota superior |
-| **Tipo de cambio ARS↔USD** | [TC del día] | el equipo pone el del momento |
+| **Tipo de cambio ARS↔USD** | **1480 ARS = 1 USD** (2026-06-13) | ⚠️ **ARS = USD × 1480 es el MÍNIMO**; el costo *landed* local real es **MAYOR** por impuestos y restricciones de importación (aranceles, IVA, percepciones, courier). Equivalentes de referencia mínima: ≈ **ARS 1.728.640/robot** (USD 1.168), ≈ **ARS 1.312.760** reusando CENTRAL (USD 887), ≈ **ARS 3.041.400** los 2 robots (USD 2.055) |
 | **Tiempo de desarrollo** | [HORAS? — confirmar] | ≈ 4 meses (feb–jun 2026); elemento obligatorio del poster |
 
-> **Pendiente del equipo (chico):** (a) precio real de la placa **Zircon** suelta; (b) qué **motor** usan y si es nuevo/reusado (se cargó la cota alta Pololu HP $23.95; el TT genérico es ~$3); (c) **C-rating / marca / peso** de la batería (capacidad **6800 mAh** y **7.4 V** ya cargados); (d) **tipo de cambio** del día y **horas** de desarrollo. El resto ya está con precio internacional de referencia (**un solo valor = el más alto por ítem**). **Total/robot ≈ USD 1.168.**
+> **Pendiente del equipo (chico):** (a) precio real de la placa **Zircon** suelta; (b) qué **motor** usan y si es nuevo/reusado (se cargó la cota alta Pololu HP $23.95; el TT genérico es ~$3); (c) **C-rating / marca / peso** de la batería (capacidad **6800 mAh** y **7.4 V** ya cargados); (d) **horas** de desarrollo. (El **tipo de cambio** ya está confirmado: **1480 ARS = 1 USD**, 2026-06-13 — el equivalente en pesos es el **piso**; el *landed* real es mayor por importación.) El resto ya está con precio internacional de referencia (**un solo valor = el más alto por ítem**). **Total/robot ≈ USD 1.168.**
 > **Cierre:** estos totales ya se pueden volcar a **BOM.md §3.1** / **POSTER Zona E** / **TDP** (cubren A4/A5/A11 de MEJORAS-PENDIENTES).

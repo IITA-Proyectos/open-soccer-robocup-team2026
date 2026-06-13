@@ -250,7 +250,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 >
 > **Precios reales disponibles en el repo (unitarios LCSC, citados verbatim en BOM.md):** fototransistor ALS-PT19 ≈ 0.116 · CD4051BM 0.96 · LED 0402 0.016 · diodo B5819W 0.024 USD.
 
-> **Nota de gap (registrar):** costos = **precio internacional de referencia** (USD, verificado 2026-06-05; fuente única `BOM.md` §3). **Pendiente del equipo (chico):** precio del **Zircon** suelto (Robomov publica el kit a USD 529), qué **motor** usan (TT ~USD 3 vs Pololu HP USD 23.95), el **tipo de cambio ARS/USD** del día y las **horas** de desarrollo. El costo *landed* local es **mayor** por las restricciones de importación argentinas.
+> **Nota de gap (registrar):** costos = **precio internacional de referencia** (USD, verificado 2026-06-05; fuente única `BOM.md` §3). **Tipo de cambio (2026-06-13): 1480 ARS = 1 USD.** Como referencia MÍNIMA en pesos (USD × 1480): ≈ **ARS 1.728.640/robot nuevo** · ≈ **ARS 1.312.760/robot reusando CENTRAL**. ⚠️ Esto es un **piso**, no el costo real: el costo *landed* local es **MAYOR** por impuestos y restricciones de importación argentinas (la aduana obliga a fraccionar pedidos). **Pendiente del equipo (chico):** precio del **Zircon** suelto (Robomov publica el kit a USD 529), qué **motor** usan (TT ~USD 3 vs Pololu HP USD 23.95) y las **horas** de desarrollo.
 
 ---
 
@@ -352,7 +352,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 
 - [ ] **TRADUCIR TODO al inglés** (requisito duro de rúbrica) y correr corrector ortográfico.
 - [x] ✅ Identidad COMPLETA 2026-06-13: equipo IITA Low Battery Messi · región Roboliga Argentina 2025 (UAI) · roster confirmado — **Director Gustavo Viollaz (no viaja)** · **Coach principal Enzo Juárez Velázquez (viaja)** · **Coach secundaria Cecilia Budeguer (viaja)** · competidores **María Virginia Viollaz** y **Elías Cordero (viajan)**.
-- [ ] Costos de **referencia internacional ya cargados** (valor más alto/ítem: ≈USD 1.168 nuevo / 887 reusando CENTRAL; 2 robots ≈2.055–2.336). Batería **6800 mAh** cargada. Falta del equipo: **precio Zircon suelto, motor real, C-rating/marca batería, tipo de cambio ARS/USD y horas**.
+- [ ] Costos de **referencia internacional ya cargados** (valor más alto/ítem: ≈USD 1.168 nuevo / 887 reusando CENTRAL; 2 robots ≈2.055–2.336). **Tipo de cambio cargado: 1480 ARS = 1 USD (2026-06-13)** → piso en pesos ≈ARS 1.728.640/robot nuevo (USD×1480 = MÍNIMO; landed real mayor por importación). Batería **6800 mAh** cargada. Falta del equipo: **precio Zircon suelto, motor real, C-rating/marca batería y horas**.
 - [ ] Tomar y colocar **todas las `[FOTO:]`** (Fig.1–11) etiquetadas y citadas.
 - [x] ✅ Generadas 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Falta solo maquetarlas en el A1.
 - [ ] Confirmar el **número de tests vivo** al cierre (verificado **834 tests / 60 suites / 0 fallos** el 2026-06-13 17:43 ART con `scripts/run-host-tests.sh`; re-correr antes de imprimir).

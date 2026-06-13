@@ -144,5 +144,5 @@
   <!-- ===== Caption obligatoria: takeaway + cifra viva fechada + credito ===== -->
   <text x="40" y="1090" font-size="40" font-weight="700" fill="#333333">Fig. — Las 7 etapas NO fueron lineales: el cerebro del robot (programar+testear en PC) avanzo en paralelo al montaje.</text>
   <text x="40" y="1134" font-size="34" fill="#444444">Banco (estrellas): 29-may el arbitro mueve la CENTRAL end-to-end · 7–9-jun calibracion cinematica/vision · 12-jun banco final.</text>
-  <text x="40" y="1172" font-size="32" fill="#666666">Logica verificada en PC: 658 tests / 47 suites / 0 fallos (cifra viva, ver Fig.8).  * VIBE-3D = linea emergente, sin pieza final este ano.  Original diagram by the team — CC BY 4.0</text>
+  <text x="40" y="1172" font-size="32" fill="#666666">Logica verificada en PC: 834 tests / 60 suites / 0 fallos (cifra viva, ver Fig.8).  * VIBE-3D = linea emergente, sin pieza final este ano.  Original diagram by the team — CC BY 4.0</text>
 </svg>

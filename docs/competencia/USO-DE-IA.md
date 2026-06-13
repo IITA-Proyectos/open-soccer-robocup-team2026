@@ -102,7 +102,7 @@ Esta sección es la que sostiene todo lo demás. Sin esto, "usamos IA" sería un
 
 | Control | Qué es | Por qué nos protege |
 |---|---|---|
-| **Gate de tests host-native** | Una suite de **658 tests / 47 suites / 0 fallos** (cifra viva, medida 2026-06-05 19:50 ART con `scripts/run-host-tests.sh`) que compila la lógica pura en la PC con `g++`. Tiene que estar en **verde** antes de cualquier merge. | Es un **árbitro objetivo**: si la IA (o un humano) rompe algo, el gate lo caza. La correctitud no depende de confiar en la IA. |
+| **Gate de tests host-native** | Una suite de **834 tests / 60 suites / 0 fallos** (cifra viva, medida 2026-06-13 17:43 ART con `scripts/run-host-tests.sh`) que compila la lógica pura en la PC con `g++`. Tiene que estar en **verde** antes de cualquier merge. | Es un **árbitro objetivo**: si la IA (o un humano) rompe algo, el gate lo caza. La correctitud no depende de confiar en la IA. |
 | **Fallback byte-idéntico + feature flags** | Cada capacidad nueva entra como **módulo puro gateado** (`#ifdef`), apagado por defecto, con fallback **byte-idéntico** al binario anterior. | El binario de competencia **no cambia** hasta que validamos. Una idea de la IA no puede "colarse" al robot sin aprobación. |
 | **Validación de banco** | El comportamiento físico (motores, sensores, visión, frenado de borde) se prueba con el robot. | La IA no valida hardware; **nosotros sí**. La realidad es el juez final. |
 | **Ownership por archivo** | En trabajo paralelo, un solo agente (o persona) edita cada archivo. | Evita conflictos y mantiene la responsabilidad clara. |
@@ -148,14 +148,14 @@ Esta sección es la que sostiene todo lo demás. Sin esto, "usamos IA" sería un
 
 **Por qué se justifica.** La IA escribe código rápido pero puede equivocarse; nuestra arquitectura convierte ese riesgo en algo **detectable y acotado**: si la lógica está mal, **un test host la caza en segundos**; si algo no se validó, **está apagado por un flag**. La IA nos da velocidad; la arquitectura nos da seguridad.
 
-**Evidencia en el repo.** Firmware C++17 de 3 placas, **658 tests host-native / 47 suites / 0 fallos** (cifra viva), módulos puros como `ball_predict`, `kinematics`, `localization`, `pids`, `imu_fusion`, `drive_straight`; auditorías de confiabilidad implementadas como *batches* gateados y byte-idénticos; commits con `Co-Authored-By`.
+**Evidencia en el repo.** Firmware C++17 de 3 placas, **834 tests host-native / 60 suites / 0 fallos** (cifra viva), módulos puros como `ball_predict`, `kinematics`, `localization`, `pids`, `imu_fusion`, `drive_straight`; auditorías de confiabilidad implementadas como *batches* gateados y byte-idénticos; commits con `Co-Authored-By`.
 
 ### 4.4 Testing asistido por IA
 
 **Qué hacemos.** La IA nos ayuda a **construir y hacer crecer la red de tests** que después es nuestro árbitro objetivo. No es "la IA dice que anda": es "la IA escribió tests que **prueban** que anda, y los tests corren solos".
 
 **Cómo, en detalle.**
-- **Suite host-native creciente y trazable** (180 → … → 658 casos), corrida con un único script offline.
+- **Suite host-native creciente y trazable** (180 → … → 658 → 834 casos), corrida con un único script offline.
 - **Golden tests de contrato byte-a-byte**: para los datos que cruzan placas por bytes crudos (el `WorldSnapshot` de 31 B, `LineStatusV2` de 16 B, el paquete cámara→TOP), tests que **fijan el offset de cada campo**, de modo que un reordenamiento accidental **rompe el test** aunque el tamaño no cambie.
 - **Verificación adversarial**: cuando un agente afirma haber arreglado/encontrado algo, otro agente (o un *mutation test*) **intenta refutarlo** — por ejemplo, alteramos a propósito un offset y confirmamos que el test golden **falla**, probando que el test no pasa "en vacío".
 - **Cobertura como red contra regresiones**: cada bug que encontramos se convierte en un test que "nunca vuelve a pasar desapercibido".
@@ -247,7 +247,7 @@ La IA no nos ahorró aprender: nos **obligó a aprender** un nivel más alto (ve
 
 ### Preguntas frecuentes que anticipamos
 - *"¿La IA hizo el robot por ustedes?"* → No. La IA aceleró tareas que entendemos; nosotros decidimos, validamos en banco y respondemos por todo. La prueba: podemos explicar y modificar cualquier parte, y todo está atado a tests/banco.
-- *"¿Cómo sabemos que el código funciona si lo escribió una IA?"* → Porque **no confiamos en la IA, confiamos en los tests**: 658 tests host-native en verde, golden de contratos, y validación de banco. El gate caza errores vengan de quien vengan.
+- *"¿Cómo sabemos que el código funciona si lo escribió una IA?"* → Porque **no confiamos en la IA, confiamos en los tests**: 834 tests host-native en verde, golden de contratos, y validación de banco. El gate caza errores vengan de quien vengan.
 - *"¿No es hacer trampa?"* → Usar herramientas modernas declarándolas y entendiéndolas es ingeniería honesta. La trampa sería esconderlo o no poder explicarlo. Este documento es lo contrario.
 
 ---

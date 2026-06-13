@@ -21,16 +21,16 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 |---|---|---|---|---|
 | A1 | **P0** | **Nombre oficial del equipo** registrado en RoboCup Incheon 2026 — ✅ RESUELTO 2026-06-05: **IITA Low Battery Messi** | Identidad del TDP form, Title/ID del Poster, lower-third del video, tarjeta de entrevista | TDP §6 línea 7, POSTER Zona A, VIDEO Bloque 1, ENTREVISTA §1-2 |
 | A2 | **P0** | **Región / regional de clasificación** exacta ✅ RESUELTO 2026-06-05: **Roboliga Argentina 2025 — final nacional (UAI)**, Salta/Argentina | Title/Identification (elemento obligatorio del poster) | POSTER Zona A, TDP §6, VIDEO lower-third, ENTREVISTA |
-| A3 | **P0** | ✅ RESUELTO 2026-06-05: **Roster** — compiten María Virginia Viollaz (18, visión/estrategia) y Elías Cordero (18, electro/mecánica); viajan coach Enzo Juárez Velázquez + mentora Cecilia Budeguer; mentor Gustavo Viollaz no viaja | Presentation, Teamwork & Communication, créditos | ENTREVISTA §1-3, POSTER Zona B2, TDP roster |
+| A3 | **P0** | ✅ RESUELTO 2026-06-13: **Roster** — **Director del proyecto:** Gustavo Viollaz (coordinación, integración de las 3 placas, sesiones de banco; **NO viaja a Corea** por obligaciones laborales). **Coach principal (viaja):** Enzo Juárez Velázquez (guió el diseño de PCB con IA / VIBE PCB design; en Incheon además dirige al equipo IITA de RCJ Rescue Line). **Coach secundaria (viaja):** Cecilia Budeguer (respaldo de acompañamiento). **Competidores (viajan):** María Virginia Viollaz (18, visión/estrategia) y Elías Cordero (18, electrónica/mecánica) — ambos aprendieron a diseñar con IA | Presentation, Teamwork & Communication, créditos | ENTREVISTA §1-3, POSTER Zona B2, TDP roster |
 | A4 | **P0** | **Costos reales** de los componentes que dominan el presupuesto: 2× OpenMV N6, 2× SparkFun OTOS, 3× Teensy (4.0×2+4.1), Zircon (precio Robomov), 4× VL53L7CX, batería LiPo, 3× motores, 3× ruedas, BNO055, MP1584, ESP32-C6, HC-SR04 | "Tiempo y costo de desarrollo" es elemento OBLIGATORIO del poster; desbloquea TDP Electrical "uso de recursos" (Proficient→Excellent) | BOM §1, §3.1; POSTER Zona E; TDP §1.8 |
-| A5 | **P0** | **Costo total por robot + total 2 robots + conversión ARS** | Idem A4 — hoy no existe ninguna cifra total (solo ≈USD 8.20 de pasivos verificados) | BOM §3.1, POSTER Zona E · ⚙️ AVANCE 2026-06-05: existe la planilla `docs/competencia/BOM-COSTOS-TEMPLATE.md` con la estructura de carga (filas + totales/robot + total 2 robots + ARS); el dato real sigue abierto (equipo/facturas). ✅ AVANCE 2026-06-07: BOM §1 con **Costo total por fila + subtotales** (un solo valor = el más alto por ítem) + totales en §3.1: **≈USD 1.168/robot todo nuevo · ≈887 reusando el CENTRAL · ≈2.055–2.336 los 2 robots**. Batería **6800 mAh** cargada con características. Pendiente del equipo: precio Zircon suelto, motor real, C-rating/marca batería, TC del día, horas. |
+| A5 | **P0** | **Costo total por robot + total 2 robots + conversión ARS** | Idem A4 — hoy no existe ninguna cifra total (solo ≈USD 8.20 de pasivos verificados) | BOM §3.1, POSTER Zona E · ⚙️ AVANCE 2026-06-05: existe la planilla `docs/competencia/BOM-COSTOS-TEMPLATE.md` con la estructura de carga (filas + totales/robot + total 2 robots + ARS); el dato real sigue abierto (equipo/facturas). ✅ AVANCE 2026-06-07: BOM §1 con **Costo total por fila + subtotales** (un solo valor = el más alto por ítem) + totales en §3.1: **≈USD 1.168/robot todo nuevo · ≈887 reusando el CENTRAL · ≈2.055–2.336 los 2 robots**. Batería **6800 mAh** cargada con características. ✅ TC RESUELTO 2026-06-13: **1480 ARS = 1 USD** — el equivalente en pesos (USD × 1480) es el **MÍNIMO** de referencia; el costo *landed* real en Argentina es **MAYOR** por impuestos y restricciones de importación. Pendiente del equipo: precio Zircon suelto, motor real, C-rating/marca batería, horas. |
 | A6 | **P0** | **Specs del motor 2026**: modelo / voltaje / RPM / torque / reducción / encoder | Replicabilidad mecánica (estándar de oro RCJ); TDP Mechanical Proficient→Excellent | TDP §2, BOM §1.4 |
 | A7 | **P0** | **Specs de la rueda omni**: Ø / material / n.º rodillos / impresa o comprada | Idem A6 | TDP §2, BOM §1.5 |
 | A8 | **P0** | **Diámetro / peso / tamaño del robot** vs límite reglamentario RCJ | Replicabilidad mecánica + verificar legalidad | TDP §2 |
 | A9 | **P1** | **Spec de batería**: mAh / C-rating / marca / peso / packs por robot / autonomía medida | Power budget de Electrical; sustentabilidad | BOM §1.5, TDP §1 |
 | A10 | **P1** | **Set-points medidos de los 6 buck MP1584** (multímetro) | "Datos no medidos" hoy son objetivos; cierra power budget de Electrical | TDP §1, BOM |
 | A11 | **P1** | **Nuevo vs Reusado de la TRACCIÓN** (motores + ruedas) — único subsistema mayor sin clasificar | Sustentabilidad (criterio premiado por RCJ) | BOM §1.4-1.5 |
-| A12 | **P1** | **Cifra única de tests** verificada: correr `scripts/run-host-tests.sh` el día previo (hoy 658/47/0) y propagar a TODOS los deliverables | Credibilidad transversal; consistencia = puntos en Teamwork | TODOS (ver RUBRICA-COBERTURA §7) | ✅ RESUELTO 2026-06-05: cifra única **658/47/0** ya propagada a los 12 deliverables ES+EN (`docs/competencia/` + `docs/competencia/en/`) y a Fig.8. Queda solo re-correr el runner el día previo a entregar por si cambió. |
+| A12 | **P1** | **Cifra única de tests** verificada: correr `scripts/run-host-tests.sh` el día previo (hoy 834/60/0) y propagar a TODOS los deliverables | Credibilidad transversal; consistencia = puntos en Teamwork | TODOS (ver RUBRICA-COBERTURA §7) | ✅ RE-MEDIDO 2026-06-13 17:43 ART: cifra única **834 tests · 60 suites · 0 fallos** (la suite siguió creciendo: 658 → 834). Propagar a los 12 deliverables ES+EN (`docs/competencia/` + `docs/competencia/en/`) y a Fig.8. Queda solo re-correr el runner el día previo a entregar por si cambió. |
 | A13 | **P1** | **Métricas CPU% y latencias medidas** con scope/timestamps serial (o reetiquetar como "objetivo de diseño") | Honestidad de datos; un juez técnico castiga datos inventados | TDP §1, POSTER Zona H |
 | A14 | ✅ RESUELTO 2026-06-05 | VL53L7CX = **USD 19.95/u** (Pololu #3418); el ~USD26 era del VL53L1X. Corregido en BOM §2/§3 | Rigor de "razonamiento basado en datos" (TDP Electrical) | BOM §1.2/§2, TDP §1 |
 | A15 | ✅ DOCUMENTADO 2026-06-05 | comunicación robot-a-robot (ESP-NOW vía ESP32-C6) como **roadmap declarado** en POSTER + TDP §4.6; hardware listo, falta integrar+validar en banco | Pregunta de entrevista (Software/Strategy) | ENTREVISTA §6, TDP |
@@ -59,10 +59,10 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 | B6 | **P1** | **Fig.11** Bodge de los 4 ToF / power-cycle | Foto | Macro del bodge |
 | B7 | **P1** | **Fig.2** Diagrama de flujo de datos (TOP/CENTRAL/DOWN con flechas etiquetadas: WorldSnapshot 31B, broadcast línea+OTOS) | Diagrama | Excalidraw/draw.io/TikZ |
 | B8 | **P1** | **Fig.4** Flowchart de la FSM táctica | Diagrama | Idem |
-| B9 | **P0** | **Fig.8** Crecimiento de tests (barras: 180→246→262→324→354→403→545→658) | Gráfico | matplotlib desde los snapshots del repo |
+| B9 | **P0** | **Fig.8** Crecimiento de tests (barras: 180→246→262→324→354→403→545→658→834) | Gráfico | matplotlib desde los snapshots del repo |
 | B10 | **P0** | **Fig.9** Error de odometría OTOS por superficie (barras: A4-lámina 9.5% / sin lámina 0% / cartón 6.5%) | Gráfico | matplotlib desde datos de banco |
 | B11 | **P1** | **Fig.3** Esquemático recortado (TOP o Zircon) | Recorte PDF | Usar los PDFs ya existentes |
-| B12 | **P1** | Captura de los tests en verde (658/47/0) | Captura | Para TDP, poster y video |
+| B12 | **P1** | Captura de los tests en verde (834/60/0) | Captura | Para TDP, poster y video |
 | B13 | **P0** | **2 QR reales**: repo público + video TDP <3min | Generar QR | Cuando A1/repo/video estén listos (POSTER Zonas B3 e I) |
 
 ---
@@ -73,7 +73,7 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 - **P0** — Traducir TODO a inglés y correr corrector ortográfico EN antes de imprimir (mantener banner ES solo en el .md de trabajo). ✅ RESUELTO 2026-06-05 (traducción): el deliverable EN ya existe en `docs/competencia/en/` y está verificado sin español filtrado. Queda solo correr el corrector ortográfico EN antes de imprimir.
 - **P0** — Producir el **artefacto A1 real** (Figma/Inkscape/LaTeX-tikzposter) siguiendo la grilla ya definida → PDF 300dpi → revisar legibilidad a 1.5 m. Hoy es un .md de texto; Layout no pasa de Satisfactory sin el PDF.
 - **P0** — Reemplazar la tabla BOM débil de Zona E por la versión condensada de `BOM.md` (part numbers + LCSC + nuevo/reusado) y **cerrar costos** (A4/A5).
-- **P1** — Matizar el **403/33 → 658/47** en el Abstract y aclarar que es cobertura de lógica host-native; ciertas features (visión LAB+homografía, trilateración, strafe) están code-complete pero pendientes de banco. Protege contra preguntas filosas y mantiene credibilidad.
+- **P1** — Matizar el **403/33 → 834/60** en el Abstract y aclarar que es cobertura de lógica host-native; ciertas features (visión LAB+homografía, trilateración, strafe) están code-complete pero pendientes de banco. Protege contra preguntas filosas y mantiene credibilidad.
 - **P1** — Reetiquetar CPU%/latencias como "objetivo de diseño" o medirlas (A13).
 - **P2** — Completar Title/ID (A1/A2) y la tabla de roles "quién hizo qué".
 
@@ -90,19 +90,19 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 - **P0** — **Grabar el video** (<3:00) con subtítulos quemados en INGLÉS. Hoy el entregable real vale 0 (es guion).
 - **P0** — Corregir el comando sobreimpreso del Paso 3 (Bloque 4): mostrar `cd "software/teensy/Soccer 2026"` y el include real `lib/Unity/src` (no `lib/Unity`). Hoy un par que copie lo que ve falla → baja replicabilidad de Excellent a Proficient. ✅ RESUELTO 2026-06-05: el guion del Paso 3 ya muestra `cd "software/teensy/Soccer 2026"` + el include `lib/Unity/src`. (El comando quedará en pantalla al GRABAR — la grabación sigue pendiente, ver ítem P0 de arriba.)
 - **P1** — Reemplazar `[REPO URL]` por la URL real (verificada PUBLIC: `github.com/IITA-Proyectos/open-soccer-robocup-team2026`) en Bloque 5 y tarjeta final.
-- **P1** — Alinear la cifra a 658/47/0 (re-correr el runner el día de grabar) y mostrar el LICENSE MIT + org pública durante el Bloque 5. ✅ RESUELTO 2026-06-05 (cifra): el guion ya usa 658/47/0 alineado a los demás deliverables. Queda re-correr el runner el día de grabar y mostrar LICENSE+org en el Bloque 5 (al GRABAR).
-- **P2** — Congelar y hacer zoom ≥2s en la línea `Tests: 658 | Failures: 0  (Envs: 47 | OK: 47)` — es el frame que gana el punto.
+- **P1** — Alinear la cifra a 834/60/0 (re-correr el runner el día de grabar) y mostrar el LICENSE MIT + org pública durante el Bloque 5. ✅ RE-MEDIDO 2026-06-13 (cifra): el guion usa **834/60/0** alineado a los demás deliverables. Queda re-correr el runner el día de grabar y mostrar LICENSE+org en el Bloque 5 (al GRABAR).
+- **P2** — Congelar y hacer zoom ≥2s en la línea `Tests: 834 | Failures: 0  (Envs: 60 | OK: 60)` — es el frame que gana el punto.
 
 ### ENTREVISTA (`ENTREVISTA-PREP.md`)
 - **P0** — Crear `ENTREVISTA-PREP.en.md` (o sección 🇬🇧 inline) con §1 (Show&Tell), las 4 respuestas 💡 de §4 y los cierres; agendar 3 ensayos en voz alta. ✅ RESUELTO 2026-06-05 (traducción): el deliverable EN de entrevista ya existe en `docs/competencia/en/` verificado sin español filtrado; queda solo el corrector EN. ⚠️ Los 3 ensayos en voz alta siguen pendientes (depende del equipo).
 - **P0** — Corregir **rutas §3.2**: anteponer `software/teensy/Soccer 2026/` a cada `src/...` (ahí vive `platformio.ini` y `src/`). Load-bearing para la velocidad del Teamwork-Task en vivo. ✅ RESUELTO 2026-06-05: las rutas de §3.2 ya llevan el prefijo `software/teensy/Soccer 2026/`.
-- **P0** — Reemplazar TODAS las apariciones de "403 tests / 33 entornos" por la cifra verificada del día (658/47/0); agregar al checklist §7 "correr el runner el día previo". ✅ RESUELTO 2026-06-05 (cifra): ya propagada a 658/47/0 en el deliverable ES+EN. Queda solo agregar/confirmar en el checklist §7 "correr el runner el día previo".
+- **P0** — Reemplazar TODAS las apariciones de "403 tests / 33 entornos" por la cifra verificada del día (834/60/0); agregar al checklist §7 "correr el runner el día previo". ✅ RE-MEDIDO 2026-06-13 (cifra): ya propagada a 834/60/0 en el deliverable ES+EN. Queda solo agregar/confirmar en el checklist §7 "correr el runner el día previo".
 - **P1** — Añadir frase honesta en §3.3: el runner compila los módulos PUROS (shared+down) host; los tests de central/top usan Arduino y se compilan on-target → convierte una sobre-venta en respuesta de ingeniería madura.
 - **P1** — Bindear placeholders (A3); verificar `pio run -e central_robot1 -t upload` desde el cwd correcto (anotarlo en §7).
 - **P2** — Mini-guion de Teamwork-Task que NO dependa de visión recalibrada (resolver con ToF/odometría o pedir 5 min de recalibración) — muestra resolución de problemas en vez de quedar trabados.
 
 ### BOM (`BOM.md`)
-- **P0** — Cerrar §3.1 con los ~10 precios faltantes (A4) + total/robot + total 2 robots + ARS.
+- **P0** — Cerrar §3.1 con los ~10 precios faltantes (A4) + total/robot + total 2 robots + ARS (**TC 2026-06-13 = 1480 ARS/USD**; el equivalente en pesos = USD × 1480 es el MÍNIMO de referencia — el *landed* real es MAYOR por impuestos/restricciones de importación).
 - **P1** — Corregir la ruta de la BOM COMM en §5/Fuentes: `gerber_file/Placas/Comm/BOM_Board1_PCB1_2026-04-20.xlsx` (la citada `comm-board/...` está rota). ✅ RESUELTO 2026-06-05: la ruta de la BOM COMM ya apunta a `gerber_file/Placas/Comm/BOM_Board1_PCB1_2026-04-20.xlsx` y el `comm-board/...md` referenciado existe.
 - **P1** — Aclarar el mismatch VL53L1X vs VL53L7CX (A14).
 - **P2** — Suavizar los rótulos "nivel apuntado: Excellent" de cada encabezado (hoy aspiracionales con tantos `[COSTO?]`) → cambiar por "alimenta: <criterio>".
@@ -110,7 +110,7 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 
 ### TRANSVERSAL
 - **P0** — **Unificar el nombre de la organización**: `LICENSE` dice "Instituto de **Innovación** y Tecnología Aplicada"; `README`/`POSTER`/`BOM` dicen "Instituto de **Informática** y Tecnología Aplicada". Elegir uno (verificar el registro legal de la Fundación) y propagarlo. El criterio Layout penaliza errores de consistencia que un juez cruza. ✅ RESUELTO 2026-06-05: unificado a **"Instituto de Innovación y Tecnología Aplicada"** en todos los docs.
-- **P0** — Fijar **un solo conteo de tests** (A12) y propagarlo a README/ESTADO-ACTUAL/MEMORY + los 5 deliverables. ✅ RESUELTO 2026-06-05: cifra única **658/47/0** propagada a los 12 deliverables ES+EN + Fig.8 (ver A12). Queda re-correr el runner el día previo por si cambió.
+- **P0** — Fijar **un solo conteo de tests** (A12) y propagarlo a README/ESTADO-ACTUAL/MEMORY + los 5 deliverables. ✅ RE-MEDIDO 2026-06-13 17:43 ART: cifra única **834/60/0** (658 → 834) a propagar a los 12 deliverables ES+EN + Fig.8 (ver A12). Queda re-correr el runner el día previo por si cambió.
 
 ---
 
@@ -149,6 +149,6 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 3. **Cerrar el BOM** (A4/A5 + ruta COMM) → eleva Method/Design y Electrical.
 4. **Traducir Poster + TDP + material de entrevista a inglés** y correr corrector. — ✅ traducción HECHA 2026-06-05 (6 deliverables EN en `docs/competencia/en/`, verificados sin español filtrado); queda correr el corrector EN antes de imprimir.
 5. **Maquetar el A1 real** (PDF 300dpi) y **grabar el video** con subtítulos EN. — sigue pendiente (banco/equipo).
-6. **Unificar nombre IITA y el conteo de tests** en todo el repo. — ✅ RESUELTO 2026-06-05: nombre unificado a "Instituto de Innovación y Tecnología Aplicada"; conteo único 658/47/0 propagado a los 12 deliverables ES+EN + Fig.8.
+6. **Unificar nombre IITA y el conteo de tests** en todo el repo. — ✅ nombre unificado a "Instituto de Innovación y Tecnología Aplicada"; conteo único re-medido 2026-06-13 17:43 ART = **834/60/0** (658 → 834) a propagar a los 12 deliverables ES+EN + Fig.8.
 7. **Ensayar la entrevista** y preparar el one-pager + sportsmanship. — one-pager ✅ creado (`ONE-PAGER.md` ES+EN); ensayo y sportsmanship siguen pendientes (equipo).
 8. Re-correr `scripts/run-host-tests.sh` el día previo y propagar la cifra final.

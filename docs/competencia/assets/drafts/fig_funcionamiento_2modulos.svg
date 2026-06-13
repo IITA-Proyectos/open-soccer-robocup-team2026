@@ -20,7 +20,7 @@
        gris=neutro/modulo rojo=SOLO emergencia. El color ES informacion.
        Cifras verificadas vs docs/competencia/TDP.md y ESTADO-ACTUAL.md
        (soccer-main HEAD 86763b9, 2026-06-13). Unidades visuales: 7.
-       Cifra de tests = cifra viva del equipo (658/47/0) -> re-medir y
+       Cifra de tests = cifra viva del equipo (834/60/0) -> re-medir y
        fechar al imprimir; ver Fig.8 / TDP. WorldSnapshot 31 B = static_assert.
        ============================================================ -->
   <defs>
@@ -146,7 +146,7 @@
   <text x="40" y="1190" font-size="42" font-weight="800" fill="#222222">Por eso cada modulo se cambia por separado</text>
   <text x="40" y="1238" font-size="42" font-weight="800" fill="#222222">(reusamos el cerebro campeon 2025).</text>
   <text x="40" y="1288" font-size="38" fill="#333333">Logica verificada en PC sin la placa:</text>
-  <text x="40" y="1330" font-size="38" fill="#333333">658 tests / 47 suites / 0 fallos (cifra viva, ver Fig.8).</text>
+  <text x="40" y="1330" font-size="38" fill="#333333">834 tests / 60 suites / 0 fallos (cifra viva, ver Fig.8).</text>
   <text x="40" y="1378" font-size="36" fill="#666666">* frenar en &lt;15 ms = objetivo de diseno, pendiente de medir en banco.</text>
   <text x="40" y="1420" font-size="36" fill="#666666">Diagrama original del equipo &#8212; CC BY 4.0</text>
 </svg>

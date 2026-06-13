@@ -173,7 +173,7 @@ Los **6 sensores I²C cuelgan del mismo bus `Wire` (pines 18/19)**: 2 BNO055 (0x
 
 ## 1.8 BOM de componentes mayores — uso de recursos / costo (precio internacional de referencia)
 
-> **Uso de recursos / costo:** precios = **referencia internacional (USD), verificados 2026-06-05** (fuente única: `BOM.md` §3). Las cantidades por robot están confirmadas. Del equipo quedan pendientes sólo: precio del Zircon suelto, modelo de motor, tipo de cambio ARS/USD y horas (ver gap abajo).
+> **Uso de recursos / costo:** precios = **referencia internacional (USD), verificados 2026-06-05** (fuente única: `BOM.md` §3). Las cantidades por robot están confirmadas. **Tipo de cambio: 1480 ARS = 1 USD (2026-06-13)** — el equivalente en pesos (USD × 1480) es un **piso/mínimo**; el costo *landed* real es mayor por importación (detalle abajo). Del equipo quedan pendientes sólo: precio del Zircon suelto, modelo de motor y horas (ver gap abajo).
 
 | Componente | Cant. (robot) | Precio unit. (LCSC USD) |
 |---|---|---|
@@ -190,7 +190,11 @@ Los **6 sensores I²C cuelgan del mismo bus `Wire` (pines 18/19)**: 2 BNO055 (0x
 | ESP32-C6 / Zircon / LiPo 2S 6800 mAh | 1 c/u | 4.53 / 250 reusado / 42.99 — ref. int. |
 | **TOTAL / robot** | — | **≈ USD 1.168 nuevo · ≈ USD 887 reusando CENTRAL** (ref. int., valor más alto por ítem) |
 
-> **Costo total (referencia internacional, un solo valor = el más alto por ítem):** ≈ **USD 1.168/robot** (todo nuevo) · ≈ **USD 887/robot** reusando el CENTRAL Zircon + Teensy 4.1 del 2025 · ≈ **USD 2.055–2.336** los 2 robots. Batería: **LiPo 2S 7.4 V 6800 mAh (≈50 Wh)**. Desglose por línea en `BOM.md §1`/§3.1 + URLs en `BOM-COSTOS-TEMPLATE.md`. **Pendiente del equipo (chico):** precio del **Zircon** suelto (Robomov publica el kit a USD 529), modelo de **motor** (se usó la cota alta Pololu HP USD 23.95; el TT genérico es ~USD 3), **C-rating/marca/peso** de la batería, **tipo de cambio ARS/USD** del día y **horas** de desarrollo. El costo *landed* local es **mayor** por las restricciones de importación argentinas.
+> **Costo total (referencia internacional, un solo valor = el más alto por ítem):** ≈ **USD 1.168/robot** (todo nuevo) · ≈ **USD 887/robot** reusando el CENTRAL Zircon + Teensy 4.1 del 2025 · ≈ **USD 2.055–2.336** los 2 robots. Batería: **LiPo 2S 7.4 V 6800 mAh (≈50 Wh)**. Desglose por línea en `BOM.md §1`/§3.1 + URLs en `BOM-COSTOS-TEMPLATE.md`.
+>
+> **Equivalente en pesos argentinos (referencia MÍNIMA).** Tipo de cambio del **2026-06-13: 1480 ARS = 1 USD**. Aplicando ARS = USD × 1480 sobre el costo de referencia: ≈ **ARS 1.728.640/robot** (todo nuevo) · ≈ **ARS 1.312.760/robot** reusando el CENTRAL. ⚠️ **Este equivalente es un PISO, no el costo real:** el cambio convierte el precio internacional, pero el costo *landed* efectivo en la Argentina es **MAYOR** por impuestos a la importación y las restricciones aduaneras (los pedidos se fraccionan, suman aranceles y logística). No damos un total *landed* exacto: damos el tipo de cambio (1480) + el equivalente en pesos como cota inferior, con esta aclaración.
+>
+> **Pendiente del equipo (chico):** precio del **Zircon** suelto (Robomov publica el kit a USD 529), modelo de **motor** (se usó la cota alta Pololu HP USD 23.95; el TT genérico es ~USD 3), **C-rating/marca/peso** de la batería y **horas** de desarrollo.
 
 ---
 
@@ -527,7 +531,7 @@ La próxima mejora declarada de nuestro roadmap es la **comunicación en tiempo 
 - ✅ RESUELTO 2026-06-05: **Nombre legal** = **IITA — Instituto de Innovación y Tecnología Aplicada** (Fundación Innovar), unificado en todos los docs.
 
 **Eléctrico / costos**
-- [GAP] **BOM con costos en moneda** (ARS/USD): faltan precios de Teensy, OpenMV N6, OTOS, BNO055, MP1584, batería, Zircon; sin costo total del robot.
+- ✅ RESUELTO: **BOM con costos** (USD de referencia internacional, fuente única `BOM.md` §3) + **costo total por robot** (≈USD 1.168 nuevo / 887 reusando CENTRAL) + **tipo de cambio 1480 ARS = 1 USD (2026-06-13)** → equivalente en pesos como referencia MÍNIMA (USD×1480; landed real mayor por importación). Resta sólo (chico): precio Zircon suelto, modelo de motor, C-rating/marca/peso batería, horas.
 - [GAP] **Set-points reales de los 6 buck MP1584** (medir con multímetro).
 - [GAP] **Batería:** capacidad (mAh), C-rating, peso, autonomía calculada.
 

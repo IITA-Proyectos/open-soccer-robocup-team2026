@@ -30,7 +30,7 @@ Dos planos sostienen esto:
 
 ## 1. Por qué escribimos esto
 
-Somos un equipo que el año pasado ganó la **primera edición** del nacional de RoboCupJunior Soccer en Argentina con un robot **básico** (una cámara, tres sensores de luz). Soccer era una categoría **recién estrenada** en el país, y nosotros veníamos de otras categorías de RoboCupJunior (Rescue Line) — así que entramos a Soccer como una liga nueva para nosotros y ganamos su primera edición con ese robot básico. Este año adoptamos un flujo de trabajo asistido por IA —lo llamamos **VIBE** (ver `USO-DE-IA.md`)— y lo usamos para **transformar ese robot básico en uno profesional**: tres placas, fusión de sensores, 658 tests automáticos. **No empezamos de cero: evolucionamos lo que ya ganaba.** Y no hacíamos *vibe coding* antes de ganar el nacional — lo incorporamos *después*, como un experimento deliberado de **vibe engineering** para hacer **fast robotics** y, de paso, subirnos rápido a una categoría (Soccer) en la que no teníamos experiencia.
+Somos un equipo que el año pasado ganó la **primera edición** del nacional de RoboCupJunior Soccer en Argentina con un robot **básico** (una cámara, tres sensores de luz). Soccer era una categoría **recién estrenada** en el país, y nosotros veníamos de otras categorías de RoboCupJunior (Rescue Line) — así que entramos a Soccer como una liga nueva para nosotros y ganamos su primera edición con ese robot básico. Este año adoptamos un flujo de trabajo asistido por IA —lo llamamos **VIBE** (ver `USO-DE-IA.md`)— y lo usamos para **transformar ese robot básico en uno profesional**: tres placas, fusión de sensores, 834 tests automáticos. **No empezamos de cero: evolucionamos lo que ya ganaba.** Y no hacíamos *vibe coding* antes de ganar el nacional — lo incorporamos *después*, como un experimento deliberado de **vibe engineering** para hacer **fast robotics** y, de paso, subirnos rápido a una categoría (Soccer) en la que no teníamos experiencia.
 
 Eso nos dejó una pregunta incómoda y honesta: **¿un juez podría pensar que esto es trampa?** En vez de esconderlo, lo investigamos. Este documento es el resultado.
 
@@ -110,7 +110,7 @@ Un RCT de **Anthropic (feb-2026, n=52** ingenieros mayormente junior aprendiendo
 
 Un RCT de **METR (inicios 2025, n=16)** halló que dar IA a devs **open-source muy expertos** trabajando en **sus propios repos maduros** (22k+ estrellas) **aumentó** el tiempo de tarea un **19 %** (los frenó), con una brecha llamativa entre percepción y medición (predijeron 24 % más rápido, midieron 19 % más lento).
 *Fuente:* arXiv 2507.09089.
-> **Caveats (a citar con precisión):** el +19 % es estimación puntual con **IC 95 % de −26 % a +9 %**, n=16; alcance **estrecho** (expertos en repos maduros, herramientas de inicios de 2025); un follow-up (feb-2026, n=57) **no reprodujo** el slowdown. La lección honesta: la IA ayuda **más donde hay menos expertise previo** (junior, proyectos en crecimiento) y los speedups auto-reportados no son confiables → **hay que medir.** Nuestro robot pasó de básico a profesional: es justo el territorio donde el junior/proyecto-en-crecimiento más gana, no el del experto-en-repo-maduro que se frena. Y por eso medimos todo con **658 tests automáticos**, no a ojo.
+> **Caveats (a citar con precisión):** el +19 % es estimación puntual con **IC 95 % de −26 % a +9 %**, n=16; alcance **estrecho** (expertos en repos maduros, herramientas de inicios de 2025); un follow-up (feb-2026, n=57) **no reprodujo** el slowdown. La lección honesta: la IA ayuda **más donde hay menos expertise previo** (junior, proyectos en crecimiento) y los speedups auto-reportados no son confiables → **hay que medir.** Nuestro robot pasó de básico a profesional: es justo el territorio donde el junior/proyecto-en-crecimiento más gana, no el del experto-en-repo-maduro que se frena. Y por eso medimos todo con **834 tests automáticos**, no a ojo.
 
 ### 3.5 IA en educación: de la política a la evidencia
 
@@ -138,7 +138,7 @@ La frontera es real y la respetamos. Resumida:
 | Pegar la salida sin entenderla | Acelerar tareas que entendemos |
 | No poder explicar lo entregado | Poder explicar, modificar y defender cada parte (el test RCJ del "CÓMO") |
 | No poder reproducirlo | Repo público MIT, flujo reproducible |
-| Creerle a la IA | Verificar contra **658 tests** + validación de banco |
+| Creerle a la IA | Verificar contra **834 tests** + validación de banco |
 | Esconder que se usó | Declararlo (`USO-DE-IA.md` + este documento) |
 | Herramienta que **compite por** el robot en la cancha | IA que nos ayuda a **construir y programar** el robot fuera de la cancha |
 

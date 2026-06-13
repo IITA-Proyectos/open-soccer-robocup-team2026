@@ -18,11 +18,12 @@
 
 - **Equipo:** IITA Low Battery Messi · Salta, Argentina.
 - **Clasificación:** campeones de la **final nacional de la Roboliga Argentina 2025** (organizada por la UAI), clasificatoria a la RoboCup.
-- **Compiten (viajan):** **María Virginia Viollaz** (18 — visión/estrategia; campeona nacional 2022 en Rescue Line + mundial 2023 en Eindhoven) y **Elías Cordero** (18 — electrónica/mecánica).
-- **Acompañan (viajan):** **Enzo Juárez Velázquez** (coach) y **Cecilia Budeguer** (mentora).
-- **Mentor (no viaja):** **Gustavo Viollaz**.
+- **Compiten (viajan):** **María Virginia Viollaz** (18 — visión/estrategia; campeona nacional 2022 en Rescue Line + mundial 2023 en Eindhoven) y **Elías Cordero** (18 — electrónica/mecánica). Ambos aprendieron a diseñar con IA.
+- **Coach principal (viaja):** **Enzo Juárez Velázquez** — guió el diseño de PCB con IA (VIBE PCB design); en Incheon además dirige al equipo IITA de RCJ Rescue Line.
+- **Coach secundaria (viaja):** **Cecilia Budeguer** — respaldo de acompañamiento del equipo en Incheon.
+- **Director del proyecto (no viaja):** **Gustavo Viollaz** — coordinación, integración de las 3 placas, sesiones de banco. No viaja a Corea por obligaciones laborales.
 
-> ✅ **Confirmado por Gustavo (2026-06-05):** son **campeones inaugurales de la categoría Soccer** (primera edición en Argentina) y el coach es **Enzo Juárez Velázquez** (@enzzo195). Identidad 100% cerrada — nada que confirmar acá.
+> ✅ **Confirmado por Gustavo (2026-06-05):** son **campeones inaugurales de la categoría Soccer** (primera edición en Argentina) y el coach principal es **Enzo Juárez Velázquez** (@enzzo195). Identidad 100% cerrada — nada que confirmar acá.
 
 ---
 
@@ -53,7 +54,7 @@ Precio **por unidad** (poné ARS o USD, el que tengan; aclaren cuál):
 
 **2.1 — Costo total aproximado por robot:** → __________ (ARS o USD: ______)
 **2.2 — Costo total de los 2 robots:** → __________
-**2.3 — Tipo de cambio que usamos** (si mezclan ARS y USD): → 1 USD = ______ ARS
+**2.3 — Tipo de cambio que usamos** (si mezclan ARS y USD): → **1 USD = 1480 ARS** (dato del 2026-06-13). ⚠️ Para convertir un costo en USD a pesos, **ARS = USD × 1480 es el MÍNIMO**: el costo *landed* real en Argentina es **mayor** por impuestos y restricciones de importación. Usar 1480 como referencia mínima, no como total exacto.
 **2.4 — Tiempo de desarrollo:** ¿cuántas **horas/semanas** aprox. le dedicaron al robot 2026?
 → ______________ (ej.: "≈4 meses, ~3 personas, fines de semana")
 
@@ -88,7 +89,7 @@ Precio **por unidad** (poné ARS o USD, el que tengan; aclaren cuál):
 - [ ] **Robot de costado** mostrando las **3 placas apiladas** (los "pisos")
 - [ ] **Foto de cerca del anillo de sensores de línea** (la placa de abajo)
 - [ ] **El equipo** (idealmente con el trofeo del Nacional 2025 si lo tienen)
-- [ ] **La notebook con los tests en verde** (pantalla que diga `658 tests / 0 failures`) — *opcional, la sacamos nosotros*
+- [ ] **La notebook con los tests en verde** (pantalla que diga `834 tests / 0 failures`) — *opcional, la sacamos nosotros*
 - [ ] **(Opcional)** el robot jugando / en la cancha, para el video
 
 → ¿Quién las saca y para qué fecha? ______________________

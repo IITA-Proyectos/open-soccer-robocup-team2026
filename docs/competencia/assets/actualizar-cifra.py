@@ -7,7 +7,7 @@ POR QUE EXISTE (la cifra es VIVA por diseno)
 Los deliverables (`docs/competencia/**/*.md`) publican el conteo de tests como un
 NUMERO VIVO con timestamp, p.ej.:
 
-    "652 tests / 47 suites / 0 fallos|failures (medido|measured 2026-06-05 18:39 ART
+    "834 tests / 60 suites / 0 fallos|failures (medido|measured 2026-06-13 17:43 ART
      via|con|via scripts/run-host-tests.sh)"
 
 La suite host-native crece sesion a sesion; por eso la cifra lleva fecha y hora y NO

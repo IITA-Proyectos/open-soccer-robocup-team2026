@@ -151,9 +151,9 @@ La rúbrica premia **decisiones de diseño basadas en datos y trade-offs**, no s
 | **COSTO TOTAL por robot — reusando el CENTRAL** (Zircon $250 + Teensy 4.1 $31.50 del 2025) | **≈ USD 887** |
 | **COSTO TOTAL 2 robots** — 1 reusa el CENTRAL campeón + 1 todo nuevo | **≈ USD 2.055** |
 | **COSTO TOTAL 2 robots** — ambos todo nuevo | **≈ USD 2.336** |
-| Conversión a moneda local (ARS) | [TC del día] · ⚠️ costo *landed* local **mayor** por las restricciones de importación (ver nota arriba) |
+| Conversión a moneda local (ARS) | **TC 1480 ARS = 1 USD** (2026-06-13) → equivalentes de referencia **MÍNIMA**: ≈ **ARS 1.728.640/robot** (USD 1.168 × 1480), ≈ **ARS 1.312.760** reusando CENTRAL (USD 887), ≈ **ARS 3.041.400** los 2 robots (USD 2.055) · ⚠️ el costo *landed* local real es **MAYOR** por impuestos y restricciones de importación argentinas (ver nota arriba) — el equivalente en pesos es **piso, no total** |
 
-> 💵 Los precios son **referencia internacional (USD)**, **un solo valor por ítem = el más alto** de las referencias (cota superior), verificados por web (openmv.io, SparkFun, Pololu, Adafruit, DigiKey, banggood/Gens Ace para la batería, etc.); **desglose completo con URLs en `BOM-COSTOS-TEMPLATE.md`**. **Pendiente del equipo (chico):** precio real de la placa **Zircon** suelta (Robomov solo publica el kit completo USD 529), confirmar el **motor** real (se usó la cota alta Pololu HP $23.95; el TT genérico es ~$3), la **marca/C-rating/peso** de la batería, el **tipo de cambio** del día y las **horas** de desarrollo. Si se confirma el motor TT (~$3) y bajan los estimados, el total/robot baja de ~$1.168 hacia ~$1.100.
+> 💵 Los precios son **referencia internacional (USD)**, **un solo valor por ítem = el más alto** de las referencias (cota superior), verificados por web (openmv.io, SparkFun, Pololu, Adafruit, DigiKey, banggood/Gens Ace para la batería, etc.); **desglose completo con URLs en `BOM-COSTOS-TEMPLATE.md`**. **Pendiente del equipo (chico):** precio real de la placa **Zircon** suelta (Robomov solo publica el kit completo USD 529), confirmar el **motor** real (se usó la cota alta Pololu HP $23.95; el TT genérico es ~$3), la **marca/C-rating/peso** de la batería y las **horas** de desarrollo. (El **tipo de cambio** ya está confirmado: **1480 ARS = 1 USD**, 2026-06-13 — equivalente en pesos = piso, el *landed* real es mayor por importación.) Si se confirma el motor TT (~$3) y bajan los estimados, el total/robot baja de ~$1.168 hacia ~$1.100.
 
 ### 3.2 Tiempo de desarrollo (trazable en journals)
 
@@ -167,7 +167,7 @@ La rúbrica premia **decisiones de diseño basadas en datos y trade-offs**, no s
 | Árbitro homologado (mueve el robot end-to-end) | 2026-06-02/03 | `journal/2026-06-03-banco-*` |
 | **Esfuerzo total de ingeniería** | **≈ 4 meses** (feb–jun 2026), desarrollo asistido por múltiples agentes en ramas | journals |
 
-> 💡 **Métrica de proceso vendible:** **suite de tests host-native que crece de forma trazable sesión a sesión** — 180 → 246 → 262 → 324 → 354 → 470 → **658 tests / 47 suites / 0 failures (measured 2026-06-05 19:50 ART via `scripts/run-host-tests.sh`)**. Ver el gráfico de crecimiento en `docs/competencia/assets/fig8_test_growth.png` (generado por `gen_figuras.py`).
+> 💡 **Métrica de proceso vendible:** **suite de tests host-native que crece de forma trazable sesión a sesión** — 180 → 246 → 262 → 324 → 354 → 470 → 658 → **834 tests / 60 suites / 0 failures (measured 2026-06-13 17:43 ART via `scripts/run-host-tests.sh`)**. Ver el gráfico de crecimiento en `docs/competencia/assets/fig8_test_growth.png` (generado por `gen_figuras.py`).
 
 ---
 
@@ -203,12 +203,12 @@ La rúbrica otorga **+1 bonus por open-source de CAD/PCB/esquemáticos** y **+1 
 | 1 | **IITA Low Battery Messi** oficial registrado en RoboCup Incheon | Identificación |
 | 2 | ✅ RESUELTO: Roboliga Argentina 2025 (final nacional, UAI) · Salta, Argentina | Identificación |
 | 3 | ⚙️ **[COSTOS] valores de referencia CARGADOS** (2026-06-07, un solo valor = el más alto por ítem, §1.1–§1.7 con Costo total por fila). Pendiente: precios **reales/facturas** del equipo (vs referencia internacional) + confirmar Zircon suelto y motor real | Costo |
-| 4 | ⚙️ **[COSTO TOTAL] CALCULADO**: ≈ **USD 1.168/robot** (todo nuevo) · ≈ **887** (reusando CENTRAL) · ≈ **2.055–2.336** los 2 robots (§3.1). Pendiente solo la **conversión a ARS** (TC del día) | Costo |
+| 4 | ✅ **[COSTO TOTAL] CALCULADO**: ≈ **USD 1.168/robot** (todo nuevo) · ≈ **887** (reusando CENTRAL) · ≈ **2.055–2.336** los 2 robots (§3.1). **Conversión a ARS RESUELTA: TC 1480 ARS = 1 USD (2026-06-13)** → equivalente de referencia **MÍNIMA** ≈ ARS 1.728.640/robot; el *landed* real es mayor por impuestos/importación | Costo |
 | 5 | **[SPEC motor]** modelo/voltaje/RPM/torque/reducción/encoder del motor TT 2026 | Mecánica |
 | 6 | **[SPEC rueda]** Ø/material/n.º rodillos/origen (impresa o comprada) de la rueda omni 2026 | Mecánica |
 | 7 | ⚙️ **[SPEC batería] PARCIAL**: ✅ **LiPo 2S · 7.4 V · 6800 mAh** (≈50 Wh, 1 pack/robot) cargada en §1.5. Pendiente: **C-rating, marca, peso** | Eléctrica |
 | 8 | **[Nuevo/Reusado motores/ruedas]** confirmar si tracción es nueva 2026 o reusada 2025 | Sustentabilidad |
-| 9 | ✅ Cifra final de tests **resuelta**: **658 tests / 47 suites / 0 failures (measured 2026-06-05 19:50 ART via `scripts/run-host-tests.sh`)** — figura en `docs/competencia/assets/fig8_test_growth.png` | Proceso |
+| 9 | ✅ Cifra final de tests **resuelta**: **834 tests / 60 suites / 0 failures (measured 2026-06-13 17:43 ART via `scripts/run-host-tests.sh`)** — figura en `docs/competencia/assets/fig8_test_growth.png` | Proceso |
 | 10 | **[FOTO]** de cada PCB poblada (TOP/DOWN/Zircon/COMM) y del robot armado para etiquetar en el poster | Imágenes |
 | 11 | **[GAP]** set-points reales de los MP1584 (trimpot, sin medir) y costo de PCBs prorrateado del lote JLCPCB | Eléctrica |
 | 12 | **[PLANTILLA]** verificar si existe plantilla oficial de BOM RCJ y transcribir | Formato |

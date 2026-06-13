@@ -28,8 +28,9 @@ telemetría USB del firmware DOWN. Es la FASE 1 (P0) del sistema de monitoreo
 - **Sintonía fina (v3)**: slider de **sensibilidad global** al blanco (ver en vivo
   cómo reaccionan los sensores); grilla de **barras de cercanía al umbral** por sensor
   (barra a la derecha = ve blanco, izquierda = ve piso); **click en un sensor** (anillo o
-  barra) abre el **inspector**: valores crudos/calib/umbral, botón habilitar/deshabilitar,
-  y slider de sensibilidad individual. Todo se persiste con `CAL SAVE`.
+  barra) abre el **inspector** (valores crudos/calib/umbral + botón habilitar/deshabilitar
+  + slider de sensibilidad individual), y **doble-click** en el anillo o la barra
+  habilita/deshabilita ese sensor directo. Todo se persiste con `CAL SAVE`.
 
 ## Correr
 

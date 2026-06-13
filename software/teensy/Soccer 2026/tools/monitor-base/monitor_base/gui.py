@@ -91,8 +91,9 @@ class MonitorApp:
         self.canvas = tk.Canvas(left, width=RING_PX, height=RING_PX,
                                 bg="#101418", highlightthickness=0)
         self.canvas.pack()
-        self.canvas.bind("<Button-1>", self._on_canvas_click)   # click → inspector
-        ttk.Label(left, text="Anillo de 32 sensores — +Y = frente · CLICK un sensor para inspeccionar",
+        self.canvas.bind("<Button-1>", self._on_canvas_click)               # click → inspector
+        self.canvas.bind("<Double-Button-1>", self._on_canvas_double_click) # doble → on/off
+        ttk.Label(left, text="Anillo de 32 sensores — +Y = frente · CLICK = inspeccionar · DOBLE CLICK = habilitar/deshabilitar",
                   foreground="#888").pack(pady=(4, 0))
 
         # Derecha: paneles de texto.
@@ -161,14 +162,15 @@ class MonitorApp:
         self.global_sens_lbl.pack(side="left")
 
         # ── Barras de cercanía al umbral por sensor ──
-        ttk.Label(parent, text="Cercanía al umbral por sensor "
-                  "(barra a la DERECHA = ve blanco · CLICK = inspeccionar)",
+        ttk.Label(parent, text="Cercanía al umbral por sensor (barra a la DERECHA = ve "
+                  "blanco · CLICK = inspeccionar · DOBLE = habilitar/deshabilitar)",
                   foreground="#888").pack(anchor="w", pady=(8, 2))
         self._bars_canvas = tk.Canvas(
             parent, width=_BARS_COLS * _BARS_CW, height=_BARS_ROWS * _BARS_CH,
             bg="#101418", highlightthickness=0)
         self._bars_canvas.pack()
         self._bars_canvas.bind("<Button-1>", self._on_bars_click)
+        self._bars_canvas.bind("<Double-Button-1>", self._on_bars_double_click)
 
         # ── Inspector del sensor seleccionado ──
         self._build_inspector_panel(parent)
@@ -234,24 +236,47 @@ class MonitorApp:
             return
         self._send(f"SENS SET {self._selected} {self.sensor_sens_var.get()}")
 
-    def _on_canvas_click(self, evt) -> None:
+    def _ring_sensor_at(self, px, py):
+        """Índice del sensor más cercano al click en el anillo, o None."""
         best, bestd = None, (SENSOR_R + 4) ** 2
         for i in range(self.n):
-            x, y = geometry.SENSOR_POS[i]
-            sx, sy = self._to_px(x, y)
-            d = (evt.x - sx) ** 2 + (evt.y - sy) ** 2
+            sx, sy = self._to_px(*geometry.SENSOR_POS[i])
+            d = (px - sx) ** 2 + (py - sy) ** 2
             if d <= bestd:
                 best, bestd = i, d
-        if best is not None:
-            self._select_sensor(best)
+        return best
 
-    def _on_bars_click(self, evt) -> None:
-        col = int(evt.x // _BARS_CW)
-        row = int(evt.y // _BARS_CH)
+    def _bars_sensor_at(self, px, py):
+        """Índice del sensor de la celda de barras clickeada, o None."""
+        col = int(px // _BARS_CW)
+        row = int(py // _BARS_CH)
         if 0 <= col < _BARS_COLS and 0 <= row < _BARS_ROWS:
             i = row * _BARS_COLS + col
             if i < self.n:
-                self._select_sensor(i)
+                return i
+        return None
+
+    def _on_canvas_click(self, evt) -> None:
+        i = self._ring_sensor_at(evt.x, evt.y)
+        if i is not None:
+            self._select_sensor(i)
+
+    def _on_bars_click(self, evt) -> None:
+        i = self._bars_sensor_at(evt.x, evt.y)
+        if i is not None:
+            self._select_sensor(i)
+
+    def _on_canvas_double_click(self, evt) -> None:
+        i = self._ring_sensor_at(evt.x, evt.y)
+        if i is not None:
+            self._select_sensor(i)
+            self._toggle_selected()   # doble-click = habilitar/deshabilitar directo
+
+    def _on_bars_double_click(self, evt) -> None:
+        i = self._bars_sensor_at(evt.x, evt.y)
+        if i is not None:
+            self._select_sensor(i)
+            self._toggle_selected()
 
     def _select_sensor(self, i: int) -> None:
         self._selected = i

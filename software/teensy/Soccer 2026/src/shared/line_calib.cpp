@@ -11,14 +11,25 @@ uint16_t lc_threshold_with_sens(uint16_t carpet, uint16_t white,
     int total = global_sens + per_sensor_sens;
     if(total >  100) total =  100;
     if(total < -100) total = -100;
+    // NO-OP EXACTO con sens=0: reproducir la aritmética entera histórica mid()
+    // (TRUNCACIÓN), NO lroundf (redondeo) — difieren en 1 para carpet+white impar.
+    // Sin esto, ~la mitad de los sensores arrancaban con umbral +1 vs competencia
+    // (bug cazado por revisión adversarial 2026-06-13; antes invisible porque los
+    // tests usaban sumas pares). El redondeo float queda solo para sens!=0.
+    if(total == 0) return mid(carpet, white);
     const float midp = ((float)carpet + (float)white) * 0.5f;
-    const float half = ((float)white - (float)carpet) * 0.5f;   // signed
-    float th = midp + ((float)total / 100.0f) * half;            // +% → hacia white
-    // Clampear al rango físico del sensor (robusto ante calib invertida white<carpet).
-    float lo = (carpet < white) ? (float)carpet : (float)white;
-    float hi = (carpet < white) ? (float)white  : (float)carpet;
-    if(th < lo) th = lo;
-    if(th > hi) th = hi;
+    float th;
+    if(total < 0){
+        // MÁS sensible: interpola punto medio → 0. A -100 el umbral es 0, así que
+        // TODOS los sensores leen blanco (raw >= 0 siempre). Satura.
+        th = midp * (float)(100 + total) / 100.0f;
+    } else {
+        // MENOS sensible: interpola punto medio → (2*white - carpet), que supera
+        // 'white' por un margen completo. A +100 NINGÚN sensor llega al umbral
+        // (las lecturas de blanco ~white < 2*white-carpet). Satura.
+        const float hi = 2.0f * (float)white - (float)carpet;
+        th = midp + ((float)total / 100.0f) * (hi - midp);
+    }
     if(th < 0.0f)     th = 0.0f;
     if(th > 65535.0f) th = 65535.0f;
     return (uint16_t)lroundf(th);

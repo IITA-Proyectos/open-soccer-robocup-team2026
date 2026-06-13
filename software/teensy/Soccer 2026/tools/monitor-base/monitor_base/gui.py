@@ -246,9 +246,12 @@ class MonitorApp:
             self._select_sensor(best)
 
     def _on_bars_click(self, evt) -> None:
-        i = int(evt.y // _BARS_CH) * _BARS_COLS + int(evt.x // _BARS_CW)
-        if 0 <= i < self.n:
-            self._select_sensor(i)
+        col = int(evt.x // _BARS_CW)
+        row = int(evt.y // _BARS_CH)
+        if 0 <= col < _BARS_COLS and 0 <= row < _BARS_ROWS:
+            i = row * _BARS_COLS + col
+            if i < self.n:
+                self._select_sensor(i)
 
     def _select_sensor(self, i: int) -> None:
         self._selected = i
@@ -271,12 +274,18 @@ class MonitorApp:
 
     def _render_inspector(self, f: Frame) -> None:
         i = self._selected
-        if i is None or i >= f.ring.n:
+        r = f.ring
+        # Defensivo igual que _render/_render_calib_panel: un frame con n > largo
+        # real de algún array (firmware fuera de contrato / frame armado a mano) no
+        # debe tirar IndexError dentro del callback de Tk.
+        if i is None or i >= r.n or i >= min(
+                len(r.raw), len(r.carpet), len(r.white_cal), len(r.threshold),
+                len(r.margins), len(r.white), len(r.enabled), len(r.persensor_sens)):
             return
         raw = f.ring.raw[i]
         th = f.ring.threshold[i]
         en = f.ring.enabled[i]
-        sees = f.ring.white[i]
+        sees = raw >= th   # ve blanco = raw >= umbral efectivo (refleja sensibilidad)
         ps = f.ring.persensor_sens[i]
         txt = (f"SENSOR {i:02d}    "
                f"{'HABILITADO' if en else '*** DESHABILITADO ***'}\n"
@@ -372,8 +381,12 @@ class MonitorApp:
     def _render(self, f: Frame) -> None:
         statuses = self.health.status()
         for i in range(self.n):
-            white = f.ring.white[i] if i < len(f.ring.white) else False
             raw = f.ring.raw[i] if i < len(f.ring.raw) else 0
+            # "Ve blanco" = raw >= umbral EFECTIVO (con sensibilidad), no el white_bits
+            # del line_ring (que usa el punto medio y NO refleja las perillas). Así el
+            # slider de sensibilidad realmente barre el anillo blanco↔no-blanco.
+            th = f.ring.threshold[i] if i < len(f.ring.threshold) else 0
+            white = raw >= th
             st = statuses[i]
             fill = "#ffe27a" if white else _heat_color(raw)
             if st.is_problem:
@@ -480,17 +493,24 @@ class MonitorApp:
             half = max(1, m // 2)
             frac = max(-1.0, min(1.0, (raw - th) / half))
             barw = frac * (_BARS_CW / 2 - 5)
-            sees = f.ring.white[i] if i < len(f.ring.white) else False
+            sees = raw >= th   # ve blanco = raw >= umbral EFECTIVO (refleja la sensibilidad)
             if abs(barw) >= 1:
                 c.create_rectangle(cx, cy - 3, cx + barw, cy + 3,
                                    fill=("#ffe27a" if sees else "#5a8ac0"),
                                    outline="")
             en = f.ring.enabled[i] if i < len(f.ring.enabled) else True
-            if not en:  # tachado = deshabilitado
-                c.create_line(x0 + 2, y0 + 2, x0 + _BARS_CW - 2, y0 + _BARS_CH - 2,
-                              fill="#e05050", width=2)
-            c.create_text(x0 + 3, y0 + 8, text=f"S{i:02d}", anchor="w",
-                          fill=("#ddd" if en else "#e05050"), font=("Consolas", 7))
+            if not en:  # X roja grande = deshabilitado (obvio de un vistazo)
+                c.create_line(x0 + 4, y0 + 4, x0 + _BARS_CW - 4, y0 + _BARS_CH - 4,
+                              fill="#ff5050", width=3)
+                c.create_line(x0 + _BARS_CW - 4, y0 + 4, x0 + 4, y0 + _BARS_CH - 4,
+                              fill="#ff5050", width=3)
+            # Número de sensor: sombra negra + texto claro encima → legible sobre
+            # cualquier color de barra/celda (mejor contraste).
+            c.create_text(x0 + 5, y0 + 9, text=f"S{i:02d}", anchor="w",
+                          fill="#000000", font=("Consolas", 8, "bold"))
+            c.create_text(x0 + 4, y0 + 8, text=f"S{i:02d}", anchor="w",
+                          fill=("#ffffff" if en else "#ff6a6a"),
+                          font=("Consolas", 8, "bold"))
 
         if not weak:
             bg, fg = _SEM_GREEN

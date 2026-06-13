@@ -297,10 +297,22 @@ void comm_central_get_tuning(uint16_t* threshold_eff, uint32_t* enabled_bits,
 }
 
 bool comm_central_save_calib_and_tuning() {
-    // Deriva primero (captura carpet/white fresco de una calib por USB,
-    // preservando enabled/sensitivity) y persiste todo + global_sens.
-    if (!g_dm_init) derive_calib_from_line_ring();
-    return ec_save_calibration(g_dm.calib, NUM_LINE_SENSORS, g_dm.global_sens);
+    // Persiste el carpet/white del LINE_RING (calib BASE calibrada, determinista)
+    // + la sintonía del modelo (enabled/sensitivity por sensor + global_sens).
+    // OJO: NO persistimos g_dm.calib[].carpet directo porque lc_adapt_carpet lo
+    // hace driftear en vivo (alpha=0.02); queremos guardar lo CALIBRADO, no la
+    // deriva. Coincide con lo que persistía el CAL_SAVE histórico. (Fix revisión
+    // adversarial 2026-06-13.)
+    if (!g_dm_init) derive_calib_from_line_ring();   // asegura enabled/sensitivity poblados
+    SensorCalib cal[NUM_LINE_SENSORS];
+    for (int i = 0; i < NUM_LINE_SENSORS; ++i) {
+        lc_set_static(cal[i],
+                      line_ring_get_carpet_avg(static_cast<uint8_t>(i)),
+                      line_ring_get_white_avg(static_cast<uint8_t>(i)));
+        cal[i].enabled     = g_dm.calib[i].enabled;
+        cal[i].sensitivity = g_dm.calib[i].sensitivity;
+    }
+    return ec_save_calibration(cal, NUM_LINE_SENSORS, g_dm.global_sens);
 }
 
 bool comm_central_reload_from_eeprom_live() {

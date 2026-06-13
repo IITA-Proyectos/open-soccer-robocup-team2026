@@ -93,7 +93,9 @@ python -m monitor_base --top --selftest        # smoke headless
 
 **Sintonía fina (schema v3):**
 - `SENS GLOBAL <pct>` — sensibilidad global al blanco, `pct ∈ [-100,+100]` (**+ = menos
-  sensible**, sube el umbral; 0 = punto medio histórico). Slider "Sensibilidad global".
+  sensible**, sube el umbral; 0 = punto medio histórico). **Los extremos SATURAN: -100 →
+  todos los sensores leen blanco; +100 → ninguno.** Slider "Sensibilidad global". (La app
+  pinta "ve blanco" = `raw ≥ umbral efectivo`, así el slider barre el anillo de verdad.)
 - `SENS SET <i> <pct>` — sensibilidad del sensor `i` (slider del inspector).
 - `SENSOR <i> ON|OFF` — habilitar/deshabilitar el sensor `i` (botón del inspector). Un
   sensor OFF se excluye del centroide/penetración (como un sensor unhealthy).

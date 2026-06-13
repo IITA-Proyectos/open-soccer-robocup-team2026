@@ -2,7 +2,7 @@
 //
 // Tema 2 P1 del research doc. Persiste la calibración del anillo de 32
 // sensores de línea entre power cycles, usando la EEPROM emulada del
-// Teensy 4.0 (1080 bytes disponibles, usamos 136).
+// Teensy 4.0 (1080 bytes disponibles; usamos CS_PAYLOAD_SIZE = 201 en v2, antes 136 en v1).
 //
 // Patrón de uso esperado en main_down.cpp:
 //

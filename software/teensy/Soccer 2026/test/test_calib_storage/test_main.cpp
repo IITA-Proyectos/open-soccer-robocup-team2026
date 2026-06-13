@@ -133,6 +133,29 @@ void test_cs_roundtrip_partial_n(void) {
     }
 }
 
+// v2 (2026-06-13): enabled/sensitivity por sensor + global_sens deben sobrevivir
+// el roundtrip (los tests viejos solo ejercitaban carpet/white — red de regresión).
+void test_cs_roundtrip_tuning_v2(void) {
+    SensorCalib original[32];
+    for (int i = 0; i < 32; ++i) {
+        lc_set_static(original[i], (uint16_t)(150 + i), (uint16_t)(800 + i));
+        original[i].enabled     = (uint8_t)(((i % 3) != 0) ? 1 : 0);  // patrón mixto
+        original[i].sensitivity = (int8_t)(i - 16);                   // -16..+15 (con signo)
+    }
+    const int8_t gsens = -42;
+    uint8_t buf[CS_PAYLOAD_SIZE];
+    TEST_ASSERT_EQUAL_INT(CS_PAYLOAD_SIZE,
+                          cs_serialize(buf, CS_PAYLOAD_SIZE, original, 32, gsens));
+    SensorCalib loaded[32] = {};
+    int8_t g_out = 0;
+    TEST_ASSERT_TRUE(cs_deserialize(buf, CS_PAYLOAD_SIZE, loaded, 32, &g_out));
+    TEST_ASSERT_EQUAL_INT8(gsens, g_out);
+    for (int i = 0; i < 32; ++i) {
+        TEST_ASSERT_EQUAL_UINT8(original[i].enabled, loaded[i].enabled);
+        TEST_ASSERT_EQUAL_INT8(original[i].sensitivity, loaded[i].sensitivity);
+    }
+}
+
 // ============================================================================
 // VALIDACION (la deserialización rechaza buffers malos)
 // ============================================================================
@@ -235,6 +258,8 @@ int main(int, char**) {
     // Roundtrip
     RUN_TEST(test_cs_roundtrip_preserves_values);
     RUN_TEST(test_cs_roundtrip_partial_n);
+    RUN_TEST(test_cs_roundtrip_tuning_v2);
+    RUN_TEST(test_cs_roundtrip_tuning_v2);
     // Validación
     RUN_TEST(test_cs_deserialize_rejects_bad_magic);
     RUN_TEST(test_cs_deserialize_rejects_bad_version);

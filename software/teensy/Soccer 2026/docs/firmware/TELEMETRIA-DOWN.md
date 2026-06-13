@@ -125,7 +125,7 @@ Case-insensitive, tokens separados por espacios o comas. El parser puro
 | `CAL SAVE` | Guarda a EEPROM la calib vigente **+ la sintonía** (sensibilidad global/por-sensor + habilitados). |
 | `CAL LOAD` | Carga calib **+ sintonía** de EEPROM (en vivo). |
 | `OTOS RESET` | `otos_reset()` (pone la pose acumulada en 0,0,0). |
-| `SENS GLOBAL <pct>` | **(v3)** Sensibilidad global al blanco, `pct ∈ [-100,100]` (clampeado). + = menos sensible. |
+| `SENS GLOBAL <pct>` | **(v3)** Sensibilidad global al blanco, `pct ∈ [-100,100]` (clampeado). + = menos sensible. Mapeo SATURANTE: -100 → umbral 0 (todos leen blanco), +100 → por encima de white (ninguno). |
 | `SENS SET <i> <pct>` | **(v3)** Sensibilidad propia del sensor `i`. |
 | `SENSOR <i> ON` / `SENSOR <i> OFF` | **(v3)** Habilita/deshabilita el sensor `i` (deshabilitado = excluido del centroide). |
 

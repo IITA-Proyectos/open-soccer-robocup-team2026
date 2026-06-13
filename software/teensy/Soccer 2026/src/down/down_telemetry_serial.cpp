@@ -124,7 +124,10 @@ void emit_frame() {
     f.line_tick_count = line_ring_get_tick_count();
     f.line_tick_us    = line_ring_get_last_tick_us();
 
-    static char buf[1600];  // v3 sumó threshold[]/persensor_sens[] (~+320 B)
+    // v3 peor caso (32 sensores: raw+carpet+white_cal+threshold de 32 c/u +
+    // persensor_sens[32] + OTOS con floats de magnitud grande) ronda ~1.6 KB; 2048
+    // da margen para no truncar y perder el frame en silencio (revisión 2026-06-13).
+    static char buf[2048];
     const int n = td_serialize_jsonl(buf, sizeof(buf), f);
     if (n > 0) {
         Serial.write(reinterpret_cast<const uint8_t*>(buf), n);

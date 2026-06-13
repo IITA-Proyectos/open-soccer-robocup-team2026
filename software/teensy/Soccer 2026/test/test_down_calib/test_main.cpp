@@ -267,9 +267,35 @@ void test_count_weak_consistent_with_is_suspect(void){
     TEST_ASSERT_EQUAL_INT(0, lc_count_weak(cs,2,100,nullptr));
 }
 
+// lc_threshold_with_sens con sens=0 DEBE ser el punto medio ENTERO (floor),
+// byte-idéntico al histórico mid() — para sumas PARES e IMPARES. Regresión del bug
+// de revisión adversarial 2026-06-13 (usaba lroundf → +1 en sumas impares, ~50% de
+// los sensores; los tests viejos solo usaban sumas pares y no lo cazaban).
+void test_lc_threshold_sens0_equals_midpoint_floor(void){
+    const uint16_t pairs[][2] = {{200,800},{300,901},{150,800},{151,800},
+                                 {0,1},{500,501},{82,421},{339,340}};
+    for(const auto& p : pairs){
+        const uint16_t expected = (uint16_t)(((uint32_t)p[0]+p[1])/2);  // floor = mid()
+        TEST_ASSERT_EQUAL_UINT16(expected, lc_threshold_with_sens(p[0],p[1],0,0));
+    }
+}
+
+// +% = MENOS sensible (umbral sube); -% = más sensible (baja). Los extremos SATURAN.
+void test_lc_threshold_sens_direction_and_extremes(void){
+    TEST_ASSERT_EQUAL_UINT16(500, lc_threshold_with_sens(200,800,0,0));     // punto medio
+    TEST_ASSERT_TRUE(lc_threshold_with_sens(200,800, 50,0) > 500);          // +50 sube
+    TEST_ASSERT_TRUE(lc_threshold_with_sens(200,800,-50,0) < 500);          // -50 baja
+    // -100 → umbral 0 (todos leen blanco); +100 → 2*white-carpet=1400 (ninguno).
+    TEST_ASSERT_EQUAL_UINT16(0,    lc_threshold_with_sens(200,800,-100,0));
+    TEST_ASSERT_EQUAL_UINT16(1400, lc_threshold_with_sens(200,800, 100,0));
+    TEST_ASSERT_EQUAL_UINT16(0,    lc_threshold_with_sens(200,800,-80,-80));  // -160→clamp-100→0
+}
+
 int main(int, char**){
     UNITY_BEGIN();
     RUN_TEST(test_static_threshold_is_midpoint);
+    RUN_TEST(test_lc_threshold_sens0_equals_midpoint_floor);
+    RUN_TEST(test_lc_threshold_sens_direction_and_extremes);
     RUN_TEST(test_adapt_carpet_moves_toward_reading_when_off_line);
     RUN_TEST(test_adapt_does_not_drift_when_on_line);
     RUN_TEST(test_suspect_when_margin_too_small);

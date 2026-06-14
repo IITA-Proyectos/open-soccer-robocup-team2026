@@ -59,11 +59,16 @@ sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
 sensor.set_framesize(sensor.VGA)   # H calibrada en VGA — NO cambiar sin recalibrar.
 
+# 1. Activamos los automáticos para que midan la luz ambiente real de la pista
 sensor.set_auto_whitebal(True)
 sensor.set_auto_gain(True)
-#sensor.set_auto_exposure(True)
 
+# 2. Esperamos los 2 segundos para que la imagen se estabilice
 sensor.skip_frames(time=2000)
+
+# 3. ¡CRUCIAL!: Apagamos los automáticos para CONGELAR las ganancias y el balance
+sensor.set_auto_whitebal(False)
+sensor.set_auto_gain(False)
 
 #sensor.set_auto_exposure(False, exposure_us=37000)  # (opcional: exposición fija)
 

@@ -1054,7 +1054,8 @@ MotorCommand goalkeeper_tick() {
         constexpr float    GKS_RESQUARE_EXIT   = 12.0f;  // escuadre: corte en vivo
         constexpr uint32_t GKS_RESQUARE_MAX_MS = 900;    // tope del escuadre parado
         constexpr uint32_t GKS_SETTLE_MS       = 300;    // quieto post-escuadre
-        constexpr uint32_t GKS_ESCAPE_MS       = 600;    // huida post-línea
+        constexpr uint32_t GKS_ESCAPE_MS       = 900;    // huida post-línea (banco 2026-06-14:
+                                                         // 600→900, "tiene que durar más para salir")
         // ESCAPE más RÁPIDO que el strafe normal (GK_PATROL_SPEED=200) para despegarse de
         // la línea DECIDIDO y salir antes de volver a leer la línea (pedido María
         // 2026-06-14: "se quedaba trabado en la línea blanca"). 420 = "fiel pleno" → la
@@ -1071,6 +1072,9 @@ MotorCommand goalkeeper_tick() {
         constexpr float GK_BALL_NEAR_MM     = 250.0f;  // dist < esto = "cerca" → despeje
         constexpr float GK_BALL_PUSH_SPEED  = 500.0f;  // impulso de despeje hacia +Y (adelante)
         constexpr float GK_BALL_TRACK_DB_MM = 40.0f;   // deadband lateral (anti-jitter al seguir)
+        constexpr int   GK_BALL_TRACK_SIGN  = -1;      // signo del seguimiento. Banco 2026-06-14:
+                                                       // iba al REVÉS (no seguía la pelota) → -1.
+                                                       // Si AÚN va al revés, poné +1 (eje X cámara↔strafe).
 #endif
 
         static int             dir_simple  = +1;   // arranca hacia la derecha
@@ -1153,7 +1157,11 @@ MotorCommand goalkeeper_tick() {
                     const float la = world_model_get_line_angle_deg();
                     const bool  la_behind = (la > 135.0f || la < -135.0f);
                     if (!la_behind) {
-                        dir_simple  = (la >= 0.0f) ? -1 : +1;  // alejarse de la línea
+                        // OPUESTO al sentido de ENTRADA (pedido María 2026-06-14): invertir
+                        // el strafe en curso. Robusto al rumbo — NO depende de leer bien el
+                        // ángulo de la línea (que se lee mal cuando el robot está rotado, y
+                        // por eso antes a veces escapaba HACIA la línea metiéndose más).
+                        dir_simple  = -dir_simple;
                         bounce_gate = now_ms;
                         phase = 4; phase_t0 = now_ms;   // PRIMERO escapar de la línea
                         break;
@@ -1165,8 +1173,8 @@ MotorCommand goalkeeper_tick() {
                 if (world_model_ball_visible()) {
                     const float bx = world_model_get_ball_x_mm();   // +x = derecha (marco robot)
                     const float by = world_model_get_ball_y_mm();   // +y = adelante
-                    const int   xdir = (bx >  GK_BALL_TRACK_DB_MM) ? +1
-                                     : (bx < -GK_BALL_TRACK_DB_MM) ? -1 : 0;
+                    const int   xdir = (bx >  GK_BALL_TRACK_DB_MM) ?  GK_BALL_TRACK_SIGN
+                                     : (bx < -GK_BALL_TRACK_DB_MM) ? -GK_BALL_TRACK_SIGN : 0;
                     if (bx * bx + by * by < GK_BALL_NEAR_MM * GK_BALL_NEAR_MM) {
                         // CERCA → DESPEJE: empuja hacia ADELANTE (+Y, lejos de su arco) y se
                         // centra en la pelota. Rápido. (Confirmado María: hacia adelante.)

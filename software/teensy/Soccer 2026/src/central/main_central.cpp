@@ -14,8 +14,9 @@
 //   • Si ABAJO timeout 500 ms → strategy ignora línea (modo ciego de borde).
 //
 // Build:
-//   pio run -e central_robot1   (arquero)
-//   pio run -e central_robot2   (delantero)
+//   pio run -e central_robot1 -t upload  (arquero)
+//   pio run -e central_robot2 -t upload  (delantero)
+
 
 #include <Arduino.h>
 
@@ -33,23 +34,25 @@
 
 using namespace iitasoccer;
 
-// Getter del contador de rechazos por schema de línea (espejo CC-01). Definido en
-// comm_down.cpp dentro de namespace iitasoccer; se declara acá (NO en comm_down.h,
-// fuera del alcance de este track) en el MISMO namespace para que linkee. Igual
-// patrón que comm_top_get_snapshot_size_rejects() en la telemetría DIAG.
 namespace iitasoccer { uint32_t comm_down_line_schema_rejects(); }
 
 namespace {
 
+// es un tipo especial de Arduino que cuenta milisegundos automáticamente desde que 
+// se creó o se puso en cero. Se usan para controlar cuándo ejecutar la estrategia 
+//(cada 10 ms) y cuándo imprimir el debug (cada 500 ms).
 elapsedMillis g_since_strategy_tick;
 elapsedMillis g_since_debug;
 
+
+// Un contador que suma 1 cada vez que el loop() se ejecuta. 
+// Sirve para saber qué tan rápido está corriendo el programa. 
 uint32_t g_loop_count = 0;
 
-// Supervisor de loop-time (audit 2026-06-05, R2). Mide cuánto tarda cada vuelta del
-// loop para detectar DEGRADACIÓN (loop lento) antes de que se convierta en cuelgue.
-// Barato y sin efectos → corre SIEMPRE (no necesita flag). Zero-init = no primed.
+
+// Mide cuánto tiempo tarda cada vuelta del loop.
 LoopMonitor g_loop_monitor{};
+
 
 // ============================================================================
 // WATCHDOG de hardware en CENTRAL (R2, 2026-06-05) — ARDUINO-ONLY, no host-testeable.
@@ -91,17 +94,8 @@ inline void watchdog_feed() {
 }
 #endif  // CENTRAL_ENABLE_WDT
 
-// NOTA: el rol NO se lee de un dipswitch (nombre historico). Se fija en build por
-// el flag -DROBOT1 (arquero) / -DROBOT2 (delantero); ver build_flags del env.
-//
-// OVERRIDE DE ROL (2026-06-09, robot1 en reparación): -DCENTRAL_FORCE_ROLE_GOALKEEPER
-// fuerza la FSM del ARQUERO sin cambiar el HARDWARE del build. Caso real: probar el
-// arquero en el CUERPO de robot2 → env central_robot2_arquero = -DROBOT2 (pines y
-// pisos PROPIOS de robot2) + este flag (rol GK). ⚠️ Cada robot SIEMPRE con su env
-// central_robotN (configs por-robot). Nota histórica: hasta la reparación del
-// 2026-06-10/11 cruzar envs además invertía el M2 de R1 ({+1,-1,+1}); desde el
-// RECABLEADO del M2, MOTOR_INVERT={+1,+1,+1} en ambos (validado piso 8d5fc90).
-// Default OFF → binarios de competencia idénticos.
+// Se fija que robot y que rol tiene en tiempo de compilacion, dependiendo del comando en la terminal 
+// Se fija en build por el flag -DROBOT1 (arquero) / -DROBOT2 (delantero); ver build_flags del env.
 void apply_role_from_dipswitch() {
 #if defined(CENTRAL_FORCE_ROLE_GOALKEEPER)
     strategy_set_role(RobotRole::GOALKEEPER);
@@ -125,14 +119,13 @@ void apply_role_from_dipswitch() {
 
 }  // namespace
 
+// Configura el LED de estado como salida y lo apaga al inicio.
 void setup() {
     pinMode(PIN_LED_STATUS, OUTPUT);
     digitalWrite(PIN_LED_STATUS, LOW);
 
-#ifdef CENTRAL_ENABLE_PHYSICAL_BUTTON
-    // Botón físico de arranque (pin 9): DESHABILITADO POR DEFAULT (fail-safe, 2026-06-14).
-    // Solo se configura el pin si se opta explícitamente con -DCENTRAL_ENABLE_PHYSICAL_BUTTON.
-    pinMode(PIN_MANUAL_START_BUTTON, INPUT_PULLUP);
+#ifdef CENTRAL_ENABLE_MANUAL_START
+    pinMode(PIN_MANUAL_START_BUTTON, INPUT_PULLUP);  // F3 fail-safe (solo banco)
 #endif
 
     Serial.begin(115200);
@@ -142,26 +135,15 @@ void setup() {
     Serial.println("  Zircon Rev v15 + Teensy 4.1, master");
     Serial.println("=========================================");
 
+    // Determina el rol 
     apply_role_from_dipswitch();
 
+    // inicializa los motores
     motors_init();
     Serial.println("[CENTRAL] motors init OK");
 
-    // BNO055 local: la CENTRAL ya NO lleva BNO (2026-05-31). Los 2 BNO están en el
-    // TOP; el heading llega por WORLD_SNAPSHOT de ARRIBA. El módulo imu_zircon queda
-    // como compat — solo se inicializa con -DCENTRAL_HAS_LOCAL_BNO. Sin el flag no se
-    // toca el bus I2C ni se pierden ~3 s buscando un sensor ausente.
-#ifdef CENTRAL_HAS_LOCAL_BNO
-    const bool imu_ok = imu_init();
-    Serial.print("[CENTRAL] BNO055 local: ");
-    Serial.println(imu_ok ? "OK (respaldo del heading de ARRIBA)"
-                          : "FAIL (sigue con el heading de ARRIBA por snapshot)");
-#else
-    Serial.println("[CENTRAL] BNO055 local: N/A (no instalado; heading viene de ARRIBA)");
-#endif
-
-    world_model_init();
-    strategy_init();
+    world_model_init(); // El modelo del mundo (estructura de datos donde se guarda todo lo que el robot "sabe")
+    strategy_init();    // La estrategia (la FSM)
 
     comm_top_init();    // recibe WORLD_SNAPSHOT (Serial7, pin 28)
     comm_down_init();   // recibe LINE_URGENT (Serial1, pin 0)
@@ -176,9 +158,14 @@ void setup() {
     Serial.println("[CENTRAL] WDT de hardware ARMADO (CENTRAL_ENABLE_WDT, 1 s)");
 #endif
 
-    digitalWrite(PIN_LED_STATUS, HIGH);
+    // Al terminar, el LED parpadea = "listo" 
+    digitalWrite(PIN_LED_STATUS, HIGH); 
+    delay(200);
+    digitalWrite(PIN_LED_STATUS, LOW);
+    delay(200);
+
     Serial.println("[CENTRAL] master listo. Esperando snapshots.");
-}
+} 
 
 void loop() {
 #ifdef CENTRAL_ENABLE_WDT
@@ -189,6 +176,7 @@ void loop() {
     watchdog_feed();
 #endif
 
+    // Cuenta las iteraciones del loop 
     g_loop_count++;
 
 #ifdef CENTRAL_WDT_HANG_TEST
@@ -206,11 +194,7 @@ void loop() {
         }
     }
 #endif
-
-    // === Supervisor de loop-time (R2) — barato, SIEMPRE activo ===
-    // micros() al inicio de la vuelta; loop_monitor_update mide el dt contra la vuelta
-    // anterior (wrap-safe) y guarda el peor caso + un promedio suave. Solo diagnóstico:
-    // no toma ninguna acción; se imprime en el debug de abajo (loop_us max/avg).
+    // Mide cuánto tardó esta vuelta del loop usando micros() hora actual en microsegundos 
     loop_monitor_update(g_loop_monitor, micros());
 
     // === RX: drenar ambos UARTs (no bloquea) ===
@@ -245,15 +229,11 @@ void loop() {
         }
         // Ruido de motor en el pin 9 solo puede dar GO espurio (no-op si ya corre);
         // el STOP es exclusivo del teclado -> no hay parada fantasma en pleno test.
-#ifdef CENTRAL_ENABLE_PHYSICAL_BUTTON
-        // BOTÓN FÍSICO DESHABILITADO POR DEFAULT (fail-safe, 2026-06-14, pedido Gustavo).
-        // En AMBOS robots el pulsador ONBOARD del Zircon (pin 9) dio problemas: quedaba
-        // CLAVADO en LOW → GO permanente (incidente práctica 2026-06-12) y se sospecha
-        // lógica/polaridad invertida. Por seguridad NO se lee a menos que se compile con
-        // -DCENTRAL_ENABLE_PHYSICAL_BUTTON. El arranque va por el ÁRBITRO (competencia,
-        // pines 5/6 del TOP → world_model) o por el TECLADO serie ('g'/'s'/ENTER, arriba),
-        // que NO dependen de este flag. (El gate viejo CENTRAL_MANUAL_START_NO_BUTTON quedó
-        // MUERTO: ahora el default ya es seguro; los envs *_nobtn son redundantes.)
+#ifndef CENTRAL_MANUAL_START_NO_BUTTON
+        // CENTRAL_MANUAL_START_NO_BUTTON (práctica 2026-06-12, banco R2): el pulsador
+        // ONBOARD del Zircon (pin 9) quedó CLAVADO en LOW → GO permanente: el arquero
+        // patrullaba solo al prender y el STOP del teclado se re-disparaba al tick
+        // siguiente. Con el flag, el GO/STOP queda SOLO en el teclado ('g'/'s').
         if (digitalRead(PIN_MANUAL_START_BUTTON) == LOW) cmd_go = true;
 #endif
         if (cmd_stop) {
@@ -268,18 +248,15 @@ void loop() {
     }
 #endif
 
-    // === FRENO DE BORDE (EMERGENCY_LINE) — tiene PRIORIDAD sobre la FSM ===
-    // En simple: si la placa de ABAJO ve que el robot está por salirse de la
-    // cancha (línea inminente) y ese dato es fresco, frenamos YA, sin esperar al
-    // ciclo normal de decisión.
-    // Por qué va acá: se chequea en CADA vuelta del loop para que el freno llegue
-    // en <15 ms desde que ABAJO detecta el borde (no al tick de 100 Hz de strategy).
-    // ⚠️ BANCO (audit 2026-06-04): motors_brake() hace freno ACTIVO (corto HIGH/HIGH
-    // en el H-bridge), no solo PWM=0 — pero FALTA CONFIRMAR en el Zircon que de
-    // verdad frena y no queda en COAST (rueda libre). Medirlo antes de confiar el borde.
+    // Si la placa DOWN detecta que el robot está por salirse de la cancha 
+    // Y ese dato es reciente (menos de 500 ms), se llama a motors_brake() (freno activo, no solo parar)
+    // y se sale del loop inmediatamente con return sin pasar por la estrategia. 
+    // Esto garantiza que el freno llegue en menos de 15 ms, mucho más rápido que si esperara al ciclo 
+    // de estrategia.
     if (world_model_imminent_exit() && world_model_line_is_fresh()) {
         motors_brake();                       // freno activo (corto en H-bridge), no solo PWM=0
-        digitalWrite(PIN_LED_STATUS, HIGH);   // LED fijo = alerta visual
+        digitalWrite(PIN_LED_STATUS, HIGH);   // LED fijo = alerta visual 
+
 #ifdef CENTRAL_BLACKBOX
         // Auditoría 2026-06-11: sin esto la caja negra quedaba CIEGA exactamente
         // durante el freno de borde (el return saltea el tick) — el momento que
@@ -292,23 +269,32 @@ void loop() {
     }
 
     // === Strategy + motores ===
-    if (g_since_strategy_tick >= 10) {  // 100 Hz
+    if (g_since_strategy_tick >= 10) {  // Cada 10 ms (100 veces por segundo) 
         g_since_strategy_tick = 0;
 
-        if (!world_model_snapshot_is_fresh()) {
-            // ARRIBA caído > 500 ms → SAFE_NO_TOP. Parar motores, parpadear LED.
+        if (!world_model_snapshot_is_fresh()) 
+        {
+            // Si el dato de la placa TOP tiene más de 500 ms sin actualizarse 
+            //(el TOP se cayó o desconectó), para los motores y hace parpadear el LED como alerta.
             motors_stop();
             digitalWrite(PIN_LED_STATUS, (millis() / 200) % 2);
-#ifdef CENTRAL_BLACKBOX
-            blackbox_tick(MotorCommand{});   // timeline completa aun sin snapshot
-#endif
-        } else {
+
+            #ifdef CENTRAL_BLACKBOX
+                        blackbox_tick(MotorCommand{});   // timeline completa aun sin snapshot
+            #endif
+        } 
+
+        else 
+        {   
+            // Si el dato es fresco, llama a strategy_tick() 
+            // que devuelve un MotorCommand (las velocidades para cada motor), y lo aplica.
             MotorCommand cmd = strategy_tick();
             motors_apply_command(cmd);
-            digitalWrite(PIN_LED_STATUS, HIGH);  // OK
-#ifdef CENTRAL_BLACKBOX
-            blackbox_tick(cmd);              // graba lo decidido + lo aplicado
-#endif
+            digitalWrite(PIN_LED_STATUS, HIGH);  // OK 
+
+            #ifdef CENTRAL_BLACKBOX
+                        blackbox_tick(cmd);              // graba lo decidido + lo aplicado
+            #endif
         }
     }
 

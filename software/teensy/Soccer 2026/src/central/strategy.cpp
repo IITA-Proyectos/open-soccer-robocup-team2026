@@ -82,6 +82,8 @@ uint32_t g_atk_push_started_ms = 0;
 // por un tiempo FIJO en una dirección congelada al entrar (no re-mira la línea).
 uint32_t g_atk_line_avoid_started_ms  = 0;
 float    g_atk_line_avoid_retreat_deg = 0.0f;
+uint32_t g_atk_ball_seen_since_ms     = 0;   // confirmación temporal de pelota (anti falso naranja)
+uint32_t g_atk_line_clear_ms          = 0;   // margen "despegue real" del LINE_AVOID (patrón arquero)
 #ifdef ATK_OTOS_NOGYRO
 // Empuje sin gyro: dirección congelada (vector unitario a la pelota al entrar a
 // PUSH) + yaw del OTOS capturado en ese instante (setpoint del rumbo sostenido).
@@ -130,12 +132,16 @@ constexpr float ATK_SEARCH_VY_MM_S       = 200.0f;
 // 2026-06-14 (banco Elías, práctica delantero R1): 60→30. A 60 deg/s giraba tan
 // rápido en SEARCH que pasaba de largo la pelota sin engancharla. TUNEAR en banco:
 // si a 30 no vence el piso de PWM y NO gira, subir a ~40 (ver dinamica-omni-3-ruedas).
-constexpr float ATK_SEARCH_OMEGA_DEG_S   = 30.0f;
-// 2026-06-14 (pedido Elías): en SPIN_ONLY el giro de búsqueda ya NO va por omega
-// (giraba rápido aun a 30 deg/s porque el piso de PWM es 70). Va por PWM CRUDO via
-// cmd.spin_pwm: impulso inicial (kickstart 130 / 40 ms) + giro lento a este PWM,
-// SALTÁNDOSE el piso. Si gira para el lado equivocado, poné el valor NEGATIVO.
-constexpr int16_t ATK_SEARCH_SPIN_PWM    = 50;
+// 2026-06-14 (pedido Elías): VUELTA al giro de búsqueda por OMEGA (deg/s) a 7 deg/s.
+// ⚠️ HARDWARE: el piso de PWM por rueda es 70; a 7 deg/s las velocidades de rueda
+// caen muy por debajo del piso → el piso puede LEVANTAR el PWM y hacer que gire más
+// rápido que 7 (o a tirones). VALIDAR EN BANCO; si no gira lento de verdad, ir por
+// giro pulsado o lazo cerrado con el yaw del OTOS.
+constexpr float ATK_SEARCH_OMEGA_DEG_S   = 7.0f;
+constexpr int16_t ATK_SEARCH_SPIN_PWM    = 30;  // FALLBACK PWM crudo (si el omega 7 deg/s sale a tirones)
+// Confirmación temporal de pelota: hay que verla CONTINUO esto antes de perseguirla,
+// para filtrar falsos naranjas de 1-2 frames (pedido Elías 2026-06-14).
+constexpr uint32_t ATK_BALL_CONFIRM_MS   = 200;
 // v2 (2026-06-11, spec Gustavo): acercarse LENTO (movimiento 2025) — la potencia
 // va en el EMPUJE comprometido (PUSH), no en el acercamiento. 600→400.
 constexpr float ATK_APPROACH_MAX_SPEED   = 400.0f;
@@ -144,11 +150,15 @@ constexpr float ATK_APPROACH_CLOSE_MM    = 50.0f;
 constexpr float ATK_APPROACH_FAR_MM      = 500.0f;
 // 2026-06-14 (pedido Elías): salida de línea "bien rápida" → 400→600 mm/s.
 constexpr float ATK_LINE_RETREAT_SPEED   = 600.0f;
-// Salida de línea TEMPORIZADA: apenas ve blanco, retrocede esta cantidad de ms
-// FIJOS sin re-mirar la línea. ⚠️ 600 mm/s × 4 s ≈ 2.4 m = casi toda la cancha →
-// el robot puede cruzar y salirse del lado opuesto. ARRANCAR CORTO en banco
-// (1000-1500 ms) y subir titrando. Pedido original: 4 s.
-constexpr uint32_t ATK_LINE_AVOID_DURATION_MS = 4000;
+// Salida de línea con "DESPEGUE REAL CON MARGEN" (replicado del arquero, banco
+// 2026-06-09): ya NO es por tiempo ciego (antes 4 s fijos → quedaba trabado / cruzaba
+// la cancha). Escapa un MÍNIMO (atraviesa la banda saturada "todo blanco" del medio,
+// donde line_detected da false), después sigue hasta que la línea DEJE de verse y se
+// mantenga limpia un MARGEN, con un TOPE de seguridad. Si re-ve la línea, reinicia el
+// margen (igual que GK_ADVANCE: evita el loop escape↔toque).
+constexpr uint32_t ATK_LINE_AVOID_MIN_MS     = 800;   // escapar al menos esto (atraviesa saturación)
+constexpr uint32_t ATK_LINE_CLEAR_MARGIN_MS  = 300;   // línea sin verse esto = despegue real
+constexpr uint32_t ATK_LINE_AVOID_MAX_MS     = 3000;  // tope de seguridad
 
 // Delantero — Nivel 2
 constexpr float ATK_BEHIND_BALL_GAP_MM         = 120.0f;   // separación robot–pelota cuando POSITION
@@ -649,6 +659,9 @@ void transition_atk(AtkState new_state) {
     g_atk_state = new_state;
     // Reset PID en cada transición — evita arrastrar windup viejo.
     heading_pid_reset(g_heading_pid);
+    // Al (re)entrar a SEARCH, re-confirmar la pelota desde cero (no arrastrar un
+    // timer viejo → evita una "confirmación instantánea" tras LINE_AVOID/APPROACH).
+    if (new_state == AtkState::SEARCH) g_atk_ball_seen_since_ms = 0;
 }
 
 void transition_gk(GkState new_state) {
@@ -716,6 +729,7 @@ MotorCommand attacker_tick() {
         //  así que dispara en el BORDE, que es lo que queremos.)
         g_atk_line_avoid_retreat_deg = world_model_get_line_angle_deg() + 180.0f;
         g_atk_line_avoid_started_ms  = now_ms;
+        g_atk_line_clear_ms          = 0;   // re-armar el margen de despegue
         transition_atk(AtkState::LINE_AVOID);
     } else if (kickoff_edge) {
         // Flanco STOP→RUN: arrancar el set play KICKOFF.
@@ -779,7 +793,22 @@ MotorCommand attacker_tick() {
             const float rad = g_atk_line_avoid_retreat_deg * (M_PI / 180.0f);
             cmd.vx_mm_s = static_cast<int16_t>(std::sin(rad) * ATK_LINE_RETREAT_SPEED);
             cmd.vy_mm_s = static_cast<int16_t>(std::cos(rad) * ATK_LINE_RETREAT_SPEED);
-            if (now_ms - g_atk_line_avoid_started_ms >= ATK_LINE_AVOID_DURATION_MS) {
+            // DESPEGUE REAL CON MARGEN (replicado del arquero GK_ADVANCE, banco
+            // 2026-06-09): no salir por tiempo ciego. Escapar un mínimo (atraviesa la
+            // banda saturada "todo blanco" del medio, donde line_detected da false), y
+            // después seguir hasta que la línea deje de verse y se mantenga limpia un
+            // margen; si la re-ve, reinicia el margen. Tope de seguridad por las dudas.
+            const uint32_t in_avoid = now_ms - g_atk_line_avoid_started_ms;
+            if (!world_model_line_detected()) {
+                if (g_atk_line_clear_ms == 0) g_atk_line_clear_ms = now_ms;
+            } else {
+                g_atk_line_clear_ms = 0;   // la sigue viendo → reiniciar el margen
+            }
+            const bool min_done  = in_avoid >= ATK_LINE_AVOID_MIN_MS;
+            const bool cleared   = g_atk_line_clear_ms != 0 &&
+                                   (now_ms - g_atk_line_clear_ms) >= ATK_LINE_CLEAR_MARGIN_MS;
+            const bool timed_out = in_avoid >= ATK_LINE_AVOID_MAX_MS;
+            if ((min_done && cleared) || timed_out) {
                 transition_atk(AtkState::SEARCH);
             }
             return cmd;
@@ -789,13 +818,22 @@ MotorCommand attacker_tick() {
             g_state_name = "ATK_SEARCH";
             // Recorrer cancha con avance lento + rotación.
             cmd.vy_mm_s = static_cast<int16_t>(ATK_SEARCH_VY_MM_S);
-#ifdef ATK_SEARCH_SPIN_ONLY
-            // Giro EN EL LUGAR por PWM crudo (impulso + lento a PWM 50, < piso 70).
+            // FALLBACK (pedido Elías 2026-06-14): si el omega 7 deg/s salía A TIRONES por el
+            // piso de PWM, volver al giro por PWM CRUDO (impulso kickstart + lento, < piso 70).
             cmd.spin_pwm = ATK_SEARCH_SPIN_PWM;
-#else
-            cmd.omega_centideg_s = omega_degps_to_centideg(ATK_SEARCH_OMEGA_DEG_S);  // #9
-#endif
+
+            // Confirmación temporal de la pelota: verla CONTINUO >= ATK_BALL_CONFIRM_MS
+            // antes de salir a buscarla → filtra falsos naranjas de 1-2 frames.
             if (world_model_ball_visible()) {
+                if (g_atk_ball_seen_since_ms == 0) g_atk_ball_seen_since_ms = now_ms;
+            } else {
+                g_atk_ball_seen_since_ms = 0;   // se cortó → no acumula falsos
+            }
+            const bool ball_confirmed =
+                g_atk_ball_seen_since_ms != 0 &&
+                (now_ms - g_atk_ball_seen_since_ms) >= ATK_BALL_CONFIRM_MS;
+            if (ball_confirmed) {
+                g_atk_ball_seen_since_ms = 0;   // limpiar para la próxima búsqueda
                 // v2: el eje de ataque sale de la CÁMARA o del 0 del BNO (spec
                 // 2025) — con eje disponible, pelota desalineada → POSITION
                 // (orbit). Solo sin NINGÚN eje (ni arco ni heading) APPROACH directo.

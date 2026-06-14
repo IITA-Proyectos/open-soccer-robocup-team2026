@@ -74,7 +74,9 @@ class MonitorTopHealthApp:
                      bg="#b32d00", fg="#ffe27a",
                      font=("Segoe UI", 12, "bold"), pady=5).pack(fill="x")
 
-        self.header = tk.Label(self.root, text="iniciando…", anchor="w",
+        # width fijo (en chars): el texto crece con seq/frames; sin esto el reqwidth
+        # del header sube de a poco y la ventana sigue moviéndose.
+        self.header = tk.Label(self.root, text="iniciando…", anchor="w", width=92,
                                font=("Consolas", 11, "bold"),
                                bg="#11151a", fg="#cfe", padx=8, pady=6)
         self.header.pack(fill="x")
@@ -238,7 +240,10 @@ class MonitorTopHealthApp:
         frame = tk.Frame(self._tiles_frame, bd=1, relief="solid",
                          padx=6, pady=4, width=200, height=58)
         frame.grid(row=r, column=c, padx=3, pady=3, sticky="nsew")
-        frame.grid_propagate(False)
+        # ⚠️ pack_propagate(False), NO grid_propagate: los hijos van con pack, así
+        # que grid_propagate NO los clampea y el tile se agrandaba con el texto
+        # largo → la ventana se redimensionaba cada frame = PARPADEO (bug 2026-06-14).
+        frame.pack_propagate(False)
         title = tk.Label(frame, anchor="w", font=("Segoe UI", 9, "bold"),
                          fg="#fff", justify="left")
         title.pack(anchor="w")

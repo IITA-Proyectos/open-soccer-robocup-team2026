@@ -13,6 +13,19 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> **🩺 MONITOR TOP "SALUD" + ZONAS DE ToF (sesión autónoma 2026-06-14 — vale sobre lo de abajo):**
+> Nueva vista `python -m monitor_base --top-salud` = **tablero de salud por sensor**
+> (semáforo OK/REVISAR/FALLA/SIN DATO) + **grilla de zonas de cada ToF** + per-cámara
+> (pelota fantasma) + OTOS/escape + botones de config, **sobre `tools/monitor-base/`
+> existente** (no desde cero; reusa transporte/parser/sim/golden). **+ el firmware
+> ahora EXPONE las zonas crudas 4×4 de cada ToF** en la telemetría (campo `z` ADITIVO,
+> schema sigue **2**; antes promediaba las 16 zonas a 1 distancia y las tiraba).
+> Host-verificado: `test_telemetry_top` 20/20 (golden exacto), `pio run -e top_robot2_pri`
+> SUCCESS, `pytest` monitor-base 108. **2 commits en main; NO validado en placa →
+> TASK-209** (el equipo flashea + confirma; A2.2 enmascarado sigue sin aplicar = solo
+> lectura). Contrato: `docs/firmware/TELEMETRIA-TOP.md` (campo `z`). Journal:
+> `journal/2026-06-14-monitor-top-salud-y-zonas-telemetria.md`.
+
 > **📋 AUDITORÍA INTEGRAL 2026-06-11 (48 agentes, 122 hallazgos, 35 confirmados adversarialmente):**
 > el backlog consolidado y priorizado vive en **[`docs/BACKLOG-INCHEON.md`](BACKLOG-INCHEON.md)**
 > (P0: deliverables jueces + visión en sede + cap térmico de motores; P1: B1 freno-clavado,

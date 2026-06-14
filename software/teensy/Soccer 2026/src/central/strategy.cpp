@@ -131,6 +131,11 @@ constexpr float ATK_SEARCH_VY_MM_S       = 200.0f;
 // rápido en SEARCH que pasaba de largo la pelota sin engancharla. TUNEAR en banco:
 // si a 30 no vence el piso de PWM y NO gira, subir a ~40 (ver dinamica-omni-3-ruedas).
 constexpr float ATK_SEARCH_OMEGA_DEG_S   = 30.0f;
+// 2026-06-14 (pedido Elías): en SPIN_ONLY el giro de búsqueda ya NO va por omega
+// (giraba rápido aun a 30 deg/s porque el piso de PWM es 70). Va por PWM CRUDO via
+// cmd.spin_pwm: impulso inicial (kickstart 130 / 40 ms) + giro lento a este PWM,
+// SALTÁNDOSE el piso. Si gira para el lado equivocado, poné el valor NEGATIVO.
+constexpr int16_t ATK_SEARCH_SPIN_PWM    = 50;
 // v2 (2026-06-11, spec Gustavo): acercarse LENTO (movimiento 2025) — la potencia
 // va en el EMPUJE comprometido (PUSH), no en el acercamiento. 600→400.
 constexpr float ATK_APPROACH_MAX_SPEED   = 400.0f;
@@ -784,7 +789,12 @@ MotorCommand attacker_tick() {
             g_state_name = "ATK_SEARCH";
             // Recorrer cancha con avance lento + rotación.
             cmd.vy_mm_s = static_cast<int16_t>(ATK_SEARCH_VY_MM_S);
+#ifdef ATK_SEARCH_SPIN_ONLY
+            // Giro EN EL LUGAR por PWM crudo (impulso + lento a PWM 50, < piso 70).
+            cmd.spin_pwm = ATK_SEARCH_SPIN_PWM;
+#else
             cmd.omega_centideg_s = omega_degps_to_centideg(ATK_SEARCH_OMEGA_DEG_S);  // #9
+#endif
             if (world_model_ball_visible()) {
                 // v2: el eje de ataque sale de la CÁMARA o del 0 del BNO (spec
                 // 2025) — con eje disponible, pelota desalineada → POSITION

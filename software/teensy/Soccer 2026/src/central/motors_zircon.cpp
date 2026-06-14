@@ -100,6 +100,30 @@ void motors_init() {
 }
 
 void motors_apply_command(const MotorCommand& cmd) {
+    // GIRO LENTO DE BÚSQUEDA por PWM CRUDO (pedido Elías 2026-06-14). default 0 =
+    // no entra acá → cuerpo normal IDÉNTICO. Si spin_pwm!=0: las 3 ruedas giran a
+    // ese PWM (giro en el lugar) SALTÁNDOSE el piso MOTOR_MIN_PWM (para ir por
+    // debajo de 70), pero pasando por el kickstart → impulso inicial 130 por 40 ms
+    // y después el régimen lento (50). ⚠️ Si gira para el lado equivocado, negá
+    // ATK_SEARCH_SPIN_PWM en strategy.cpp.
+    if (cmd.spin_pwm != 0) {
+        int spin = cmd.spin_pwm;
+        if (spin >  MAX_PWM) spin =  MAX_PWM;     // clamp de seguridad
+        if (spin < -MAX_PWM) spin = -MAX_PWM;
+        for (int i = 0; i < 3; ++i) {
+            int pwm = spin;
+#ifdef CENTRAL_MOTOR_KICKSTART
+            const uint32_t kick_now = millis();
+            if (!g_kick_active[i]) { g_kick_active[i] = true; g_kick_start_ms[i] = kick_now; }
+            pwm = motor_kickstart_pwm(pwm, static_cast<int>(kick_now - g_kick_start_ms[i]),
+                                      KICKSTART_WINDOW_MS, KICKSTART_FACTOR_X10,
+                                      KICKSTART_PWM_CAP[i]);
+#endif
+            apply_pwm_to_motor(i, pwm);
+        }
+        return;
+    }
+
     // SLOW-MO DE BANCO (gateado): escala TODO el comando (vx/vy/omega) para poder OBSERVAR
     // la conducta del arquero sin que sea brusco. Cae sobre la velocidad antes de la
     // cinemática → baja parejo el PWM de las 3 ruedas. ⚠️ OJO: el piso por rueda MOTOR_MIN_PWM[i]

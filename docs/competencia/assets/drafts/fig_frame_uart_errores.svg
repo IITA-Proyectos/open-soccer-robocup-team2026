@@ -1,0 +1,204 @@
+<svg viewBox="0 0 1440 1420" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Inter', Arial, sans-serif">
+  <!-- ============================================================
+       Fig. (D9) — Anatomia del frame UART + correccion y resincronizacion de errores
+       Pregunta: Como viaja un dato de una placa a otra sin corromperse, y que pasa
+                 cuando llega basura, se pierde un frame, o un dato no tiene sentido?
+       Print math: viewBox 1440 px -> ~360 mm => 0.25 mm/px. Cuerpo 30-34 px (~21-24 pt);
+                 anotaciones 28 px; titulo 58 px ~41 pt; subtitulo 33 px gris.
+       Paleta: dato/UART neutro #333; CRC azul #1D4E89; SEQ naranja #E8731A; schema verde #1E8A4C;
+               ROJO #C8102E solo descarte/emergencia; gris #6B7280 externo.
+       Verificado contra: proto.h (AA|LEN|TYPE|SEQ|PAYLOAD|CRC16 BE|55, overhead 7, max 32,
+               PROTO_START 0xAA, PROTO_END 0x55, WORLD_SNAPSHOT 0x60), proto.cpp (FSM 8 estados,
+               resync en LEN>32 y END!=0x55, CRC high byte primero), crc16.h (poly 0x1021 init 0xFFFF
+               RefIn/RefOut false XorOut 0). MEDIDO: 262 tests host, vector CRC 0x29B1.
+               NO validado: 3 placas fisicas enlazadas (*).
+       ============================================================ -->
+  <defs>
+    <marker id="rt" markerWidth="13" markerHeight="13" refX="10" refY="6" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="#555" stroke-width="2.4"/></marker>
+    <marker id="lt" markerWidth="13" markerHeight="13" refX="3" refY="6" orient="auto"><path d="M11 1 L1 6 L11 11" fill="none" stroke="#555" stroke-width="2.4"/></marker>
+    <marker id="dn" markerWidth="14" markerHeight="14" refX="6" refY="11" orient="auto"><path d="M1 1 L6 11 L11 1" fill="none" stroke="#333" stroke-width="2.6"/></marker>
+    <marker id="rtr" markerWidth="13" markerHeight="13" refX="10" refY="6" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="#C8102E" stroke-width="2.6"/></marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f4f6f8"/></linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1440" height="1420" fill="url(#bg)"/>
+
+  <text x="48" y="72" font-size="56" font-weight="800" fill="#222">El sobre certificado: un dato viaja sin corromperse</text>
+  <text x="48" y="116" font-size="33" fill="#555">Marca de inicio + chequeo (CRC) + seguimiento (SEQ) + marca de fin; sobre roto = se tira</text>
+
+  <!-- ===================================================================== -->
+  <!-- PARTE A — ANATOMIA DEL FRAME (tira de cajitas a escala de bytes) -->
+  <!-- ===================================================================== -->
+  <text x="48" y="176" font-size="34" font-weight="800" fill="#222">A &#183; El sobre, byte por byte <tspan font-size="29" font-weight="400" fill="#666">(overhead = 7 B; payload hasta 32 B)</tspan></text>
+
+  <!-- tira de bytes: x base 48, alto 96, y top 196 -->
+  <g>
+    <!-- START -->
+    <rect x="48" y="196" width="118" height="96" rx="8" fill="#EFEFEF" stroke="#6B7280" stroke-width="3"/>
+    <text x="107" y="240" font-size="34" font-weight="800" fill="#333" text-anchor="middle">0xAA</text>
+    <text x="107" y="276" font-size="28" fill="#666" text-anchor="middle">START 1B</text>
+    <!-- LEN -->
+    <rect x="170" y="196" width="108" height="96" rx="8" fill="#EAF0F7" stroke="#1D4E89" stroke-width="3"/>
+    <text x="224" y="240" font-size="34" font-weight="800" fill="#1D4E89" text-anchor="middle">LEN</text>
+    <text x="224" y="276" font-size="28" fill="#1D4E89" text-anchor="middle">1B</text>
+    <!-- TYPE -->
+    <rect x="282" y="196" width="118" height="96" rx="8" fill="#E9F5EE" stroke="#1E8A4C" stroke-width="3"/>
+    <text x="341" y="240" font-size="34" font-weight="800" fill="#1E8A4C" text-anchor="middle">TYPE</text>
+    <text x="341" y="276" font-size="28" fill="#1E8A4C" text-anchor="middle">1B</text>
+    <!-- SEQ -->
+    <rect x="404" y="196" width="110" height="96" rx="8" fill="#FDF1E7" stroke="#E8731A" stroke-width="3"/>
+    <text x="459" y="240" font-size="34" font-weight="800" fill="#E8731A" text-anchor="middle">SEQ</text>
+    <text x="459" y="276" font-size="28" fill="#E8731A" text-anchor="middle">1B</text>
+    <!-- PAYLOAD (ancho, a escala) -->
+    <rect x="518" y="196" width="520" height="96" rx="8" fill="#FFFFFF" stroke="#333" stroke-width="3"/>
+    <text x="778" y="240" font-size="34" font-weight="800" fill="#222" text-anchor="middle">PAYLOAD</text>
+    <text x="778" y="276" font-size="28" fill="#666" text-anchor="middle">hasta 32B &#183; little-endian</text>
+    <!-- CRC16 -->
+    <rect x="1042" y="196" width="206" height="96" rx="8" fill="#EAF0F7" stroke="#1D4E89" stroke-width="3"/>
+    <text x="1145" y="240" font-size="34" font-weight="800" fill="#1D4E89" text-anchor="middle">CRC16</text>
+    <text x="1145" y="276" font-size="28" fill="#1D4E89" text-anchor="middle">2B &#183; big-endian</text>
+    <!-- END -->
+    <rect x="1252" y="196" width="140" height="96" rx="8" fill="#EFEFEF" stroke="#6B7280" stroke-width="3"/>
+    <text x="1322" y="240" font-size="34" font-weight="800" fill="#333" text-anchor="middle">0x55</text>
+    <text x="1322" y="276" font-size="28" fill="#666" text-anchor="middle">END 1B</text>
+  </g>
+
+  <!-- llave de cobertura CRC (LEN+TYPE+SEQ+PAYLOAD, NO START/END) -->
+  <path d="M170 304 L170 320 L1038 320 L1038 304" fill="none" stroke="#1D4E89" stroke-width="2.6"/>
+  <line x1="604" y1="320" x2="604" y2="334" stroke="#1D4E89" stroke-width="2.6"/>
+  <text x="604" y="360" font-size="29" fill="#1D4E89" text-anchor="middle" font-weight="700">el CRC cubre LEN+TYPE+SEQ+PAYLOAD &#8212; NO incluye START ni END</text>
+
+  <!-- nota asimetria + ejemplo -->
+  <text x="48" y="402" font-size="29" fill="#C8102E" font-weight="700">Asimetria CRITICA: el CRC viaja big-endian, el payload little-endian.</text>
+  <text x="48" y="438" font-size="29" fill="#333">Ejemplo en el cable: WorldSnapshot (0x60) = 31 B payload + 7 overhead = <tspan font-weight="700">38 B</tspan>.  START != END: menos falsos sincs.</text>
+
+  <!-- ===================================================================== -->
+  <!-- PARTE B — TRES CAPAS DE DETECCION -->
+  <!-- ===================================================================== -->
+  <text x="48" y="500" font-size="34" font-weight="800" fill="#222">B &#183; Tres chequeos, tres tipos de error</text>
+
+  <!-- capa 1: CRC -> corrupcion -->
+  <g>
+    <rect x="48" y="520" width="430" height="208" rx="12" fill="#EAF0F7" stroke="#1D4E89" stroke-width="3"/>
+    <text x="70" y="560" font-size="32" font-weight="800" fill="#1D4E89">1 &#183; CRC</text>
+    <text x="70" y="598" font-size="30" fill="#222">detecta CORRUPCION</text>
+    <text x="70" y="632" font-size="28" fill="#555">un bit dado vuelta por el</text>
+    <text x="70" y="664" font-size="28" fill="#555">ruido de los motores</text>
+    <text x="70" y="706" font-size="29" fill="#1D4E89" font-weight="700">&#8594; crc_errors++</text>
+  </g>
+  <!-- capa 2: SEQ -> perdida -->
+  <g>
+    <rect x="505" y="520" width="430" height="208" rx="12" fill="#FDF1E7" stroke="#E8731A" stroke-width="3"/>
+    <text x="527" y="560" font-size="32" font-weight="800" fill="#a8500d">2 &#183; SEQ (0-255)</text>
+    <text x="527" y="598" font-size="30" fill="#222">detecta PERDIDA</text>
+    <text x="527" y="632" font-size="28" fill="#555">cuenta el salto, seguro</text>
+    <text x="527" y="664" font-size="28" fill="#555">al dar la vuelta 255&#8594;0</text>
+    <text x="527" y="706" font-size="29" fill="#a8500d" font-weight="700">&#8594; frames_lost += seq-last-1</text>
+  </g>
+  <!-- capa 3: schema/sentinelas -> sin sentido -->
+  <g>
+    <rect x="962" y="520" width="430" height="208" rx="12" fill="#E9F5EE" stroke="#1E8A4C" stroke-width="3"/>
+    <text x="984" y="560" font-size="32" font-weight="800" fill="#1E8A4C">3 &#183; sentinelas</text>
+    <text x="984" y="598" font-size="30" fill="#222">detecta SIN SENTIDO</text>
+    <text x="984" y="632" font-size="28" fill="#555">data_valid + valores N/A</text>
+    <text x="984" y="664" font-size="28" fill="#555">(ej. -32768 = no hay dato)</text>
+    <text x="984" y="706" font-size="29" fill="#1E8A4C" font-weight="700">&#8594; se rechaza y se cuenta</text>
+  </g>
+
+  <!-- ===================================================================== -->
+  <!-- PARTE C — MAQUINA QUE RESINCRONIZA SOLA (FrameDecoder 8 estados) -->
+  <!-- ===================================================================== -->
+  <text x="48" y="788" font-size="34" font-weight="800" fill="#222">C &#183; FrameDecoder: lee byte a byte y se resincroniza solo <tspan font-size="29" font-weight="400" fill="#666">(8 estados)</tspan></text>
+
+  <!-- fila de estados, x base 48, ancho ~150 c/u, gap, y top 808, alto 84 -->
+  <g font-size="27" text-anchor="middle">
+    <rect x="48"   y="808" width="150" height="84" rx="9" fill="#EFEFEF" stroke="#6B7280" stroke-width="3"/>
+    <text x="123" y="845" font-weight="800" fill="#333">WAIT</text>
+    <text x="123" y="876" font-weight="800" fill="#333">START</text>
+
+    <rect x="218"  y="808" width="150" height="84" rx="9" fill="#EAF0F7" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="293" y="845" fill="#1D4E89">READ</text>
+    <text x="293" y="876" fill="#1D4E89">LEN</text>
+
+    <rect x="388"  y="808" width="150" height="84" rx="9" fill="#EAF0F7" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="463" y="845" fill="#1D4E89">READ</text>
+    <text x="463" y="876" fill="#1D4E89">TYPE</text>
+
+    <rect x="558"  y="808" width="150" height="84" rx="9" fill="#EAF0F7" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="633" y="845" fill="#1D4E89">READ</text>
+    <text x="633" y="876" fill="#1D4E89">SEQ</text>
+
+    <rect x="728"  y="808" width="150" height="84" rx="9" fill="#EAF0F7" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="803" y="845" fill="#1D4E89">READ</text>
+    <text x="803" y="876" fill="#1D4E89">PAYLOAD</text>
+
+    <rect x="898"  y="808" width="160" height="84" rx="9" fill="#EAF0F7" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="978" y="845" fill="#1D4E89">READ_CRC</text>
+    <text x="978" y="876" fill="#1D4E89">HIGH</text>
+
+    <rect x="1078" y="808" width="160" height="84" rx="9" fill="#EAF0F7" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="1158" y="845" fill="#1D4E89">READ_CRC</text>
+    <text x="1158" y="876" fill="#1D4E89">LOW</text>
+
+    <rect x="1258" y="808" width="134" height="84" rx="9" fill="#EFEFEF" stroke="#6B7280" stroke-width="3"/>
+    <text x="1325" y="845" font-weight="800" fill="#333">READ</text>
+    <text x="1325" y="876" font-weight="800" fill="#333">END</text>
+  </g>
+  <!-- flechas entre estados -->
+  <g stroke="#555" stroke-width="3">
+    <line x1="198" y1="850" x2="214" y2="850" marker-end="url(#rt)"/>
+    <line x1="368" y1="850" x2="384" y2="850" marker-end="url(#rt)"/>
+    <line x1="538" y1="850" x2="554" y2="850" marker-end="url(#rt)"/>
+    <line x1="708" y1="850" x2="724" y2="850" marker-end="url(#rt)"/>
+    <line x1="878" y1="850" x2="894" y2="850" marker-end="url(#rt)"/>
+    <line x1="1058" y1="850" x2="1074" y2="850" marker-end="url(#rt)"/>
+    <line x1="1238" y1="850" x2="1254" y2="850" marker-end="url(#rt)"/>
+  </g>
+
+  <!-- caja RESYNC abajo + flechas rojas de descarte que vuelven a WAIT_START -->
+  <g>
+    <rect x="218" y="958" width="1020" height="98" rx="12" fill="#FDECEE" stroke="#C8102E" stroke-width="3"/>
+    <text x="240" y="998" font-size="30" font-weight="800" fill="#C8102E">Sobre roto &#8594; se tira ESE byte y se vuelve a buscar 0xAA</text>
+    <text x="240" y="1034" font-size="29" fill="#333">si LEN &gt; 32  (en READ_LEN)  o  END != 0x55  (en READ_END)  &#8594; resync_events++</text>
+  </g>
+  <!-- flecha desde READ_LEN hacia resync -->
+  <line x1="293" y1="892" x2="293" y2="954" stroke="#C8102E" stroke-width="3" marker-end="url(#rtr)" stroke-dasharray="2 0"/>
+  <!-- flecha desde READ_END hacia resync (vuelve a WAIT_START) -->
+  <path d="M1325 892 L1325 924 L1238 924" fill="none" stroke="#C8102E" stroke-width="3" marker-end="url(#rtr)"/>
+  <!-- flecha de retorno resync -> WAIT_START -->
+  <path d="M218 1007 L123 1007 L123 896" fill="none" stroke="#C8102E" stroke-width="3" marker-end="url(#rtr)"/>
+  <text x="48" y="935" font-size="28" fill="#1E8A4C" font-weight="700">Un byte basura NO contamina el frame siguiente. &#183; Gate TIPO+TAMANO+SCHEMA: solo lo esperado pasa.</text>
+
+  <!-- ===================================================================== -->
+  <!-- PARTE D — EMISOR INTELIGENTE (backpressure) -->
+  <!-- ===================================================================== -->
+  <g>
+    <rect x="48" y="1086" width="660" height="184" rx="12" fill="#E9F5EE" stroke="#1E8A4C" stroke-width="3"/>
+    <text x="70" y="1126" font-size="32" font-weight="800" fill="#1E8A4C">D &#183; Emisor con backpressure (DOWN)</text>
+    <text x="70" y="1164" font-size="29" fill="#333">si no entra en el buffer (availableForWrite &lt; n):</text>
+    <text x="70" y="1198" font-size="29" fill="#333">NO bloquea &#8594; dropea y cuenta (el SEQ igual sube).</text>
+    <text x="70" y="1234" font-size="28" fill="#555">Protege el ring de control de 1 kHz: nunca se traba esperando UART.</text>
+  </g>
+  <!-- Telemetria de salida -->
+  <g>
+    <rect x="732" y="1086" width="660" height="184" rx="12" fill="#EAF0F7" stroke="#1D4E89" stroke-width="3"/>
+    <text x="754" y="1126" font-size="32" font-weight="800" fill="#1D4E89">Telemetria de salud del enlace</text>
+    <text x="754" y="1164" font-size="29" fill="#222">rx &#183; crc &#183; lost &#183; rsy &#183; badsch &#183; badsz</text>
+    <text x="754" y="1202" font-size="28" fill="#C8102E">Caveat honesto*: frames_lost se solapa con</text>
+    <text x="754" y="1234" font-size="28" fill="#C8102E">crc_errors y el decoder no se resetea por inactividad.</text>
+  </g>
+
+  <!-- ===================================================================== -->
+  <!-- Banda MEDIDO vs NO validado -->
+  <!-- ===================================================================== -->
+  <g>
+    <rect x="48" y="1290" width="1344" height="58" rx="10" fill="#F4F5F7" stroke="#9aa1ab" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="70" y="1328" font-size="29" fill="#444"><tspan font-weight="800" fill="#1E8A4C">MEDIDO:</tspan> poly/init, framing, backpressure, gates &#183; 262 tests host &#183; vector CRC 0x29B1.   <tspan font-weight="800" fill="#C8102E">NO validado (*):</tspan> 3 placas fisicas enlazadas.</text>
+  </g>
+
+  <!-- ===================================================================== -->
+  <!-- Caption -->
+  <!-- ===================================================================== -->
+  <text x="48" y="1392" font-size="27" fill="#666">Fig. &#8212; Comunicacion confiable = capas simples: marca de inicio + chequeo (CRC) + numero de seguimiento (SEQ) + resync que se cura solo.  &#183;  Diagrama original del equipo &#8212; CC BY 4.0</text>
+  <text x="48" y="1414" font-size="27" fill="#666">Fuente: proto.h, proto.cpp (FrameDecoder), crc16.h/.cpp (poly 0x1021 init 0xFFFF), line_view.h (gate schema), down_tx.cpp (backpressure), ANALISIS-COMM-DOWN-CENTRAL-2026-05-31.md</text>
+</svg>

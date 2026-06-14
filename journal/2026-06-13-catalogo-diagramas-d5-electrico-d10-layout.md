@@ -60,6 +60,24 @@ Paleta firma: azul=TOP, naranja=CENTRAL, verde=DOWN, rojo=emergencia.
   "CENTRAL recibe ubicación, no crudo" (sensor crudo → campo del WorldSnapshot, anclado en
   `types.h`). Quedan sin producir el resto del catálogo (D3, D6, D8, D9, D11, D12 a regenerar
   contra `strategy.cpp`, D13, D15, D16, D19–D21).
+
+## Actualizacion (2026-06-13, mismo dia) — 9 faltantes generados por workflow
+
+- Workflow multi-agente (18 agentes: 9 dibujantes + 9 revisores visuales) genero los 9
+  faltantes: **D6** `fig_presupuesto_potencia`, **D8** `fig_presupuesto_temporal`, **D9**
+  `fig_frame_uart_errores`, **D11** `fig_pila_placas_lateral`, **D12** `fig_fsm_dual`
+  (regenerada contra `strategy.cpp` — la Fig.4 vieja estaba stale), **D13**
+  `fig_localizacion_fusion`, **D14** `fig_pipeline_vision`, **D15** `fig_arbol_fallos`,
+  **D16** `fig_r1_vs_r2`. Todos SVG+PNG en `drafts/`.
+- **Estado honesto: ninguno paso QA limpio.** Contenido correcto (verificado contra codigo
+  vivo) pero defectos de maquetado (captions fuera del lienzo / sin CC BY, texto desbordado,
+  cuerpo <28 px, solapes, rojo sobreusado). Punch-list por figura en
+  `docs/competencia/assets/drafts/DIAGRAMAS-ESTADO-QA.md`. Son primera pasada: requieren una
+  pasada de pulido antes del A1. Se suben igual (zona de borrador) con su estado-QA documentado.
+- El autochequeo visual de los agentes dibujantes resulto **NO confiable** (todos reportaron OK
+  pero el revisor independiente encontro issues): el gate real es la mirada humana / del coach.
+- ⚠️ Otra sesion Claude genera figuras en paralelo en el mismo working tree (`fig_arbol_salud`,
+  `fig_zonas_tof_4x4`): posible solapamiento con D15 y D10/D14 — reconciliar.
 - Alertas para futuras figuras: Fig.4 FSM (D12) está desactualizada (regenerar contra
   `strategy.cpp`); watchdog de motores real = `SNAPSHOT_TIMEOUT_MS=500` (no 200 ms);
   arcos amarillo/azul (no cyan/magenta); WorldSnapshot = 31 B v3 (un doc viejo dice 27 B);

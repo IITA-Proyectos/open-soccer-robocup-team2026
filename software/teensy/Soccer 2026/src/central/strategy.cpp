@@ -78,6 +78,10 @@ uint32_t g_kickoff_started_ms = 0;
 bool     g_match_was_running = false;   // detecta flanco "STOP → RUN" para KICKOFF
 // Timer del empuje (PUSH/PUSH_BACK) — se setea al entrar a cada fase.
 uint32_t g_atk_push_started_ms = 0;
+// Salida rápida de línea (pedido Elías 2026-06-14): apenas ve blanco, retrocede
+// por un tiempo FIJO en una dirección congelada al entrar (no re-mira la línea).
+uint32_t g_atk_line_avoid_started_ms  = 0;
+float    g_atk_line_avoid_retreat_deg = 0.0f;
 #ifdef ATK_OTOS_NOGYRO
 // Empuje sin gyro: dirección congelada (vector unitario a la pelota al entrar a
 // PUSH) + yaw del OTOS capturado en ese instante (setpoint del rumbo sostenido).
@@ -123,14 +127,28 @@ constexpr float ATK_SEARCH_VY_MM_S       = 0.0f;
 #else
 constexpr float ATK_SEARCH_VY_MM_S       = 200.0f;
 #endif
-constexpr float ATK_SEARCH_OMEGA_DEG_S   = 60.0f;
+// 2026-06-14 (banco Elías, práctica delantero R1): 60→30. A 60 deg/s giraba tan
+// rápido en SEARCH que pasaba de largo la pelota sin engancharla. TUNEAR en banco:
+// si a 30 no vence el piso de PWM y NO gira, subir a ~40 (ver dinamica-omni-3-ruedas).
+constexpr float ATK_SEARCH_OMEGA_DEG_S   = 30.0f;
+// 2026-06-14 (pedido Elías): en SPIN_ONLY el giro de búsqueda ya NO va por omega
+// (giraba rápido aun a 30 deg/s porque el piso de PWM es 70). Va por PWM CRUDO via
+// cmd.spin_pwm: impulso inicial (kickstart 130 / 40 ms) + giro lento a este PWM,
+// SALTÁNDOSE el piso. Si gira para el lado equivocado, poné el valor NEGATIVO.
+constexpr int16_t ATK_SEARCH_SPIN_PWM    = 50;
 // v2 (2026-06-11, spec Gustavo): acercarse LENTO (movimiento 2025) — la potencia
 // va en el EMPUJE comprometido (PUSH), no en el acercamiento. 600→400.
 constexpr float ATK_APPROACH_MAX_SPEED   = 400.0f;
 constexpr float ATK_APPROACH_MIN_SPEED   = 200.0f;
 constexpr float ATK_APPROACH_CLOSE_MM    = 50.0f;
 constexpr float ATK_APPROACH_FAR_MM      = 500.0f;
-constexpr float ATK_LINE_RETREAT_SPEED   = 400.0f;
+// 2026-06-14 (pedido Elías): salida de línea "bien rápida" → 400→600 mm/s.
+constexpr float ATK_LINE_RETREAT_SPEED   = 600.0f;
+// Salida de línea TEMPORIZADA: apenas ve blanco, retrocede esta cantidad de ms
+// FIJOS sin re-mirar la línea. ⚠️ 600 mm/s × 4 s ≈ 2.4 m = casi toda la cancha →
+// el robot puede cruzar y salirse del lado opuesto. ARRANCAR CORTO en banco
+// (1000-1500 ms) y subir titrando. Pedido original: 4 s.
+constexpr uint32_t ATK_LINE_AVOID_DURATION_MS = 4000;
 
 // Delantero — Nivel 2
 constexpr float ATK_BEHIND_BALL_GAP_MM         = 120.0f;   // separación robot–pelota cuando POSITION
@@ -687,8 +705,17 @@ MotorCommand attacker_tick() {
     // Transiciones globales prioritarias.
     if (!match_running) {
         transition_atk(AtkState::WAIT_START);
-    } else if (world_model_imminent_exit() && line_data_fresh()) {
-        // imminent_exit en DOWN ya respeta lifted (no se setea si lifted=true).
+    } else if (world_model_line_detected() && line_data_fresh()
+               && g_atk_state != AtkState::LINE_AVOID) {
+        // 2026-06-14 (pedido Elías): APENAS ve blanco (línea presente — NO espera
+        // los 6 sensores del imminent_exit) → salida rápida FIJA. Congelar la
+        // dirección de retroceso (opuesta a la línea) al entrar; el timer corre en
+        // el estado. El guard `!= LINE_AVOID` evita reiniciar el timer mientras
+        // sigue viendo blanco (la salida dura su tiempo completo).
+        // (line_detected gatea por data_valid; en saturación todo-blanco da false,
+        //  así que dispara en el BORDE, que es lo que queremos.)
+        g_atk_line_avoid_retreat_deg = world_model_get_line_angle_deg() + 180.0f;
+        g_atk_line_avoid_started_ms  = now_ms;
         transition_atk(AtkState::LINE_AVOID);
     } else if (kickoff_edge) {
         // Flanco STOP→RUN: arrancar el set play KICKOFF.
@@ -745,13 +772,14 @@ MotorCommand attacker_tick() {
 
         case AtkState::LINE_AVOID: {
             g_state_name = "ATK_LINE_AVOID";
-            // Retroceder en dirección opuesta a la línea detectada.
-            const float line_angle = world_model_get_line_angle_deg();
-            const float retreat = line_angle + 180.0f;
-            const float rad = retreat * (M_PI / 180.0f);
+            // 2026-06-14 (pedido Elías): salida rápida FIJA por ATK_LINE_AVOID_DURATION_MS
+            // en la dirección congelada al ENTRAR (opuesta a la línea). NO re-mira la
+            // línea durante la salida → garantiza despegarse del borde. ⚠️ Ver el
+            // warning de distancia en ATK_LINE_AVOID_DURATION_MS (4 s puede cruzar la cancha).
+            const float rad = g_atk_line_avoid_retreat_deg * (M_PI / 180.0f);
             cmd.vx_mm_s = static_cast<int16_t>(std::sin(rad) * ATK_LINE_RETREAT_SPEED);
             cmd.vy_mm_s = static_cast<int16_t>(std::cos(rad) * ATK_LINE_RETREAT_SPEED);
-            if (!world_model_imminent_exit()) {
+            if (now_ms - g_atk_line_avoid_started_ms >= ATK_LINE_AVOID_DURATION_MS) {
                 transition_atk(AtkState::SEARCH);
             }
             return cmd;
@@ -761,7 +789,12 @@ MotorCommand attacker_tick() {
             g_state_name = "ATK_SEARCH";
             // Recorrer cancha con avance lento + rotación.
             cmd.vy_mm_s = static_cast<int16_t>(ATK_SEARCH_VY_MM_S);
+#ifdef ATK_SEARCH_SPIN_ONLY
+            // Giro EN EL LUGAR por PWM crudo (impulso + lento a PWM 50, < piso 70).
+            cmd.spin_pwm = ATK_SEARCH_SPIN_PWM;
+#else
             cmd.omega_centideg_s = omega_degps_to_centideg(ATK_SEARCH_OMEGA_DEG_S);  // #9
+#endif
             if (world_model_ball_visible()) {
                 // v2: el eje de ataque sale de la CÁMARA o del 0 del BNO (spec
                 // 2025) — con eje disponible, pelota desalineada → POSITION

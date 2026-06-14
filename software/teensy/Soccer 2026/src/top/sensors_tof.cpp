@@ -110,6 +110,27 @@ constexpr uint8_t TOF_RESOLUTION_ZONES = 16;  // 4x4
 constexpr uint8_t TOF_RANGING_FREQ_HZ  = 15;
 
 // ----------------------------------------------------------------------------
+// CLOCKS I2C — DOS regímenes distintos (TA-1 + TA-2, 2026-06-14). Ver TASK-210/211.
+//  • Carga del firmware (fase "ToF-solo": BNO iniciado pero nadie lo lee, el loop no
+//    arrancó): se hace a ALTA velocidad para acortar el boot. DEFAULT 1 MHz
+//    (TOF_INIT_CLOCK_FAST_HZ, TA-2), con FALLBACK a 400 kHz (TOF_INIT_CLOCK_HZ, TA-1)
+//    si algún sensor no carga. Ambos validados en banco (ver constantes abajo).
+//  • TOF_RUN_CLOCK_HZ: para el RUNTIME (loop). A >100 kHz el read multi-byte del
+//    BNO055 se corrompe CUANDO los ToF rangean en el mismo bus y el yaw se
+//    CONGELA (banco 2026-06-02/06-08). Por eso el bus VUELVE a 100 kHz al final
+//    de sensors_tof_init(), ANTES de que arranque el loop.
+// ⚠️ El restore a TOF_RUN_CLOCK_HZ al final del init es OBLIGATORIO: sin él se
+//    reintroduce el freeze del heading. Verificable en banco (girar el robot).
+constexpr uint32_t TOF_INIT_CLOCK_HZ = 400000;  // FALLBACK de carga si 1 MHz falla (validado TA-1)
+constexpr uint32_t TOF_RUN_CLOCK_HZ  = 100000;  // runtime (coexistencia BNO+ToF)
+// TA-2 (TASK-211): carga a 1 MHz (Fast Mode Plus) = DEFAULT de producción desde 2026-06-14.
+// VALIDADO en banco por Gustavo + Virginia (>15 power-cycles en top_robot2_pri: 4/4 ToF a
+// 1 MHz, 0 fallbacks, boot ~9,6 s vs ~14,4 s a 400 kHz vs ~40 s original). Si algún ToF no
+// cargara a 1 MHz (bus marginal), el init RECAE a TOF_INIT_CLOCK_HZ (400 kHz) reseteando el
+// sensor por LP → arranque siempre robusto. Para forzar 400 kHz: bajar esta constante a 400000.
+constexpr uint32_t TOF_INIT_CLOCK_FAST_HZ = 1000000;
+
+// ----------------------------------------------------------------------------
 // HC-SR04 ultrasonido frontal — ACTIVO en top_robot1/2 (flag -DTOP_ENABLE_HCSR04).
 // ----------------------------------------------------------------------------
 // Cableado CONFIRMADO en banco (Gustavo 2026-06-02): TRIG=pin 4, ECHO=pin 3 (pines
@@ -179,8 +200,8 @@ void fill_zones(const VL53L7CX_ResultsData& r, uint16_t* dst, uint8_t n_zones) {
 void sensors_tof_predim_lp() {
 #ifdef TOP_ENABLE_MULTI_TOF
     Wire.begin();
-    Wire.setClock(100000);  // 100 kHz: coexistencia BNO055 + VL53L7CX (a 400 kHz el yaw del
-                            // BNO se congela con los ToF activos). Ver sensors_imu.cpp.
+    Wire.setClock(TOF_RUN_CLOCK_HZ);  // 100 kHz: coexistencia BNO055 + VL53L7CX (a 400 kHz el
+                            // yaw del BNO se congela con los ToF activos). Ver sensors_imu.cpp.
     for (int i = 0; i < NUM_TOF; ++i) {
         pinMode(PIN_TOF_XSHUT[i], OUTPUT);
         digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);
@@ -205,7 +226,8 @@ void sensors_tof_scan_wire() {
 
 bool sensors_tof_init() {
     Wire.begin();
-    Wire.setClock(100000);   // idempotente; 100 kHz (coexistencia BNO+ToF, ver predim/imu).
+    Wire.setClock(TOF_RUN_CLOCK_HZ);   // idempotente; 100 kHz (coexistencia BNO+ToF). La carga
+                             // de los ToF bajará y subirá esto sola (TA-1, ver constantes arriba).
 #ifdef TOP_ENABLE_HCSR04
     // HC-SR04 frontal — solo si se reactivo explicitamente (ver nota arriba).
     // Pines 4/3 (libres); el conflicto de pin 7 ya no aplica.
@@ -228,10 +250,11 @@ bool sensors_tof_init() {
     // enumerar 4 sensores en la misma direccion default, se agrega la
     // logica de XSHUT + setAddress() aca.
 
-    // NOTA: NO tocamos `Wire.setClock()`. El main_top o cualquier otro
-    // consumidor del bus puede setear el clock una vez al boot (default
-    // 400 kHz = Adafruit default tambien). Si se setea aca y otro modulo
-    // del TOP necesita otro clock, se pisan.
+    // NOTA (actualizada TA-1 2026-06-14): este init SÍ maneja el clock, pero de
+    // forma acotada y auto-contenida: sube a TOF_INIT_CLOCK_HZ (400 kHz) SOLO para
+    // la carga del firmware y LO DEJA SIEMPRE en TOF_RUN_CLOCK_HZ (100 kHz) al salir
+    // (todos los paths de return). Así ningún otro módulo del TOP hereda un clock
+    // peligroso: cuando arranca el loop, el bus está garantizado en 100 kHz.
 
 #ifdef TOP_ENABLE_MULTI_TOF
     // === Enumeracion de los 4 ToF (bus unico Wire, LP por bodge) ===
@@ -253,13 +276,34 @@ bool sensors_tof_init() {
             digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);  // LP no controla este ToF
             continue;
         }
-        if (!g_tof_multi[i].begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, 100000)) continue;  // 100 kHz: coexistencia BNO+ToF
+        // Carga del firmware a 1 MHz (Fast Mode Plus) = DEFAULT de producción desde 2026-06-14
+        // (TA-2, TASK-211; validado por Gustavo + Virginia: >15 power-cycles, 4/4 a 1 MHz, 0 fallbacks).
+        // Si algún ToF no cargara a 1 MHz (bus marginal), RESETEA por LP (pudo quedar a medio cargar)
+        // y reintenta a 400 kHz (TA-1, validado) → red de seguridad: el arranque queda robusto pase
+        // lo que pase. El log avisa cada fallback (si aparece, ese ToF es marginal a 1 MHz).
+        if (!g_tof_multi[i].begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, TOF_INIT_CLOCK_FAST_HZ)) {
+            Serial.print(F("[sensors_tof] ToF ")); Serial.print(i);
+            Serial.println(F(": carga 1 MHz fallo -> reset LP + fallback 400 kHz"));
+            digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);
+            delay(LP_SETTLE_MS);
+            digitalWrite(PIN_TOF_XSHUT[i], LP_WAKE_LEVEL);
+            delay(LP_SETTLE_MS);
+            if (!tof_i2c_acks(VL53L7CX_DEFAULT_ADDRESS) ||
+                !g_tof_multi[i].begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, TOF_INIT_CLOCK_HZ)) {
+                digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);  // ni a 400 kHz -> saltear
+                continue;
+            }
+        }
         if (!g_tof_multi[i].setAddress(TOF_I2C_ADDR_ASSIGNED[i]))           continue;
         g_tof_multi[i].setResolution(TOF_RESOLUTION_ZONES);
         g_tof_multi[i].setRangingFrequency(TOF_RANGING_FREQ_HZ);
         if (!g_tof_multi[i].startRanging())                                 continue;
         g_ready[i] = true;              // queda despierto (retiene dir + rangea)
     }
+    // TA-1 (2026-06-14, TASK-210): RESTAURAR el clock de runtime ANTES de que arranque el
+    // loop. La carga de arriba corrió a TOF_INIT_CLOCK_HZ (400 kHz); el runtime DEBE volver
+    // a 100 kHz o el yaw del BNO se congela al chocar con los reads de ToF. OBLIGATORIO.
+    Wire.setClock(TOF_RUN_CLOCK_HZ);
     {
         int n_ok = 0;
         for (int i = 0; i < NUM_TOF; ++i) if (g_ready[i]) ++n_ok;
@@ -273,11 +317,11 @@ bool sensors_tof_init() {
     // Init del ToF frontal U2 (unico instalado fisicamente al 2026-05-24).
     // begin() devuelve bool. Internamente carga ~85 KB de firmware blob por
     // I2C, puede tardar hasta ~10 s.
-    // TOF-1 (2026-06-04): 100 kHz como el path MULTI. A 400 kHz el BNO055 y los
-    // ToF en el mismo bus se pisan y el yaw se CONGELA (lección de banco). Esta
-    // rama (single-ToF, sin TOP_ENABLE_MULTI_TOF) no se compila en competencia,
-    // pero igualamos el valor para que nadie herede el 400 kHz peligroso.
-    if (!g_tof_frontal.begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, 100000)) {
+    // TA-1 (2026-06-14, TASK-210): carga a 400 kHz (fase ToF-solo, segura) y restore
+    // a 100 kHz antes de salir — IGUAL que el path MULTI. A 400 kHz en RUNTIME el BNO055
+    // y los ToF se pisan y el yaw se CONGELA, por eso siempre se vuelve a TOF_RUN_CLOCK_HZ.
+    if (!g_tof_frontal.begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, TOF_INIT_CLOCK_HZ)) {  // 400 kHz SOLO p/carga (TA-1)
+        Wire.setClock(TOF_RUN_CLOCK_HZ);   // begin() dejó el bus a 400 kHz aunque falló → restaurar
         if (!g_tof_init_logged) {
             Serial.println(F("[sensors_tof] WARN: VL53L7CX U2 begin() fallo; "
                              "se sigue sin ToF frontal."));
@@ -287,6 +331,8 @@ bool sensors_tof_init() {
         // resto del firmware del TOP necesita seguir corriendo.
         return true;
     }
+    Wire.setClock(TOF_RUN_CLOCK_HZ);   // carga OK → volver a 100 kHz para el runtime (TA-1).
+                                       // La config de abajo (set*/startRanging) es chica: a 100 kHz no pesa.
     if (!g_tof_frontal.setResolution(TOF_RESOLUTION_ZONES) ||
         !g_tof_frontal.setRangingFrequency(TOF_RANGING_FREQ_HZ) ||
         !g_tof_frontal.startRanging()) {

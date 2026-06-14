@@ -68,6 +68,12 @@ struct MotorCommand {
     int16_t vy_mm_s;              // velocidad lineal Y deseada
     int16_t omega_centideg_s;     // velocidad angular deseada
     uint8_t dribbler_pwm;         // 0-255 (futuro)
+    // Giro en el lugar por PWM CRUDO (override interno del CENTRAL, NO viaja por
+    // wire — MotorCommand hoy es interno, no se serializa). default 0 = SIN efecto.
+    // Si !=0: las 3 ruedas giran a este PWM SALTÁNDOSE el piso MOTOR_MIN_PWM (para
+    // ir por DEBAJO de él) pero pasando por el kickstart → impulso inicial + giro
+    // lento. Lo usa SEARCH del delantero (pedido Elías 2026-06-14, PWM 50 < piso 70).
+    int16_t spin_pwm;
 } __attribute__((packed));
 
 // Observación de pelota desde cámara.

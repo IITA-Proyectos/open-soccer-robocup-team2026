@@ -1,0 +1,151 @@
+<svg viewBox="0 0 1440 1380" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Inter', Arial, sans-serif">
+  <!-- ============================================================
+       Fig. (D16) — Diferencias R1 (arquero) vs R2 (delantero)
+       Pregunta: Que difiere fisica y logicamente entre los dos robots, para no
+                 confundir un HW con el otro durante el bring-up (no flashear el env equivocado)?
+       Print math: viewBox 1440 px -> ~360 mm => 0.25 mm/px. Cuerpo 30-34 px; anotaciones >=28 px;
+                 titulo 58px. Color = informacion: R1 azul #1D4E89 / R2 naranja #E8731A /
+                 comun gris #6B7280 / ROJO #C8102E solo para el gap peligroso (contradiccion BNO).
+       Honestidad: lo MEDIDO va firme; lo ASUMIDO/no-confirmado lleva * y nota chica.
+       Fuentes: pinout_robot1.h, pinout_robot2.h, pinout_common.h (aun cableado viejo BNO R1),
+                config_central.h, strategy.cpp, ESTADO-ACTUAL.md.
+       ============================================================ -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f4f6f8"/></linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1440" height="1380" fill="url(#bg)"/>
+
+  <text x="48" y="70" font-size="58" font-weight="800" fill="#222">R1 (arquero) vs R2 (delantero)</text>
+  <text x="48" y="114" font-size="33" fill="#555">Mismo chasis, distinto HW y rol &#8212; no flashear el env equivocado en el pit</text>
+
+  <!-- ===== Cabeceras de columna ===== -->
+  <!-- col etiqueta-fila: x 48..430 ; col R1: 446..922 ; col R2: 938..1392 -->
+  <g>
+    <rect x="446" y="150" width="476" height="76" rx="12" fill="#EAF0F7" stroke="#1D4E89" stroke-width="3"/>
+    <rect x="446" y="150" width="16" height="76" rx="6" fill="#1D4E89"/>
+    <text x="486" y="190" font-size="38" font-weight="800" fill="#1D4E89">R1 &#183; ARQUERO</text>
+    <text x="486" y="218" font-size="28" fill="#1D4E89">-DROBOT1 &#183; envs *_robot1</text>
+  </g>
+  <g>
+    <rect x="938" y="150" width="454" height="76" rx="12" fill="#FDF1E7" stroke="#E8731A" stroke-width="3"/>
+    <rect x="938" y="150" width="16" height="76" rx="6" fill="#E8731A"/>
+    <text x="978" y="190" font-size="38" font-weight="800" fill="#E8731A">R2 &#183; DELANTERO</text>
+    <text x="978" y="218" font-size="28" fill="#a8500d">-DROBOT2 &#183; envs *_robot2</text>
+  </g>
+
+  <!-- ===== FILA 1: OTOS (odometria) ===== -->
+  <g>
+    <rect x="48" y="240" width="382" height="118" rx="10" fill="#EEF0F2" stroke="#6B7280" stroke-width="2"/>
+    <text x="70" y="288" font-size="32" font-weight="800" fill="#374151">OTOS</text>
+    <text x="70" y="324" font-size="28" fill="#6B7280">odometria (en su DOWN)</text>
+  </g>
+  <g>
+    <rect x="446" y="240" width="476" height="118" rx="10" fill="#F4F8FC" stroke="#1D4E89" stroke-width="2"/>
+    <text x="468" y="284" font-size="32" font-weight="700" fill="#222">2 OTOS en su DOWN</text>
+    <text x="468" y="322" font-size="28" fill="#1D4E89">ROBOT_HAS_OTOS = 1 &#183; medido</text>
+  </g>
+  <g>
+    <rect x="938" y="240" width="454" height="118" rx="10" fill="#FFFBF7" stroke="#E8731A" stroke-width="2"/>
+    <text x="960" y="284" font-size="32" font-weight="700" fill="#222">SIN OTOS (no llegaron)</text>
+    <text x="960" y="322" font-size="28" fill="#a8500d">ROBOT_HAS_OTOS = 0 &#183; medido</text>
+  </g>
+
+  <!-- ===== FILA 2: BNO / heading ===== -->
+  <g>
+    <rect x="48" y="372" width="382" height="170" rx="10" fill="#EEF0F2" stroke="#6B7280" stroke-width="2"/>
+    <text x="70" y="420" font-size="32" font-weight="800" fill="#374151">BNO / heading</text>
+    <text x="70" y="456" font-size="28" fill="#6B7280">de donde sale el rumbo</text>
+  </g>
+  <g>
+    <rect x="446" y="372" width="476" height="170" rx="10" fill="#F4F8FC" stroke="#1D4E89" stroke-width="2"/>
+    <text x="468" y="416" font-size="31" font-weight="700" fill="#222">Recableado 06-11 a arq. R2</text>
+    <text x="468" y="452" font-size="28" fill="#333">PERO 06-12 BNO DESCONECTADOS</text>
+    <text x="468" y="488" font-size="28" fill="#333">&#8594; corre SIN gyro, usa los 2 OTOS</text>
+    <text x="468" y="524" font-size="27" fill="#C8102E">BNO-R 0x29 MUERTO / quemado</text>
+  </g>
+  <g>
+    <rect x="938" y="372" width="454" height="170" rx="10" fill="#FFFBF7" stroke="#E8731A" stroke-width="2"/>
+    <text x="960" y="416" font-size="31" font-weight="700" fill="#222">BNO primario en Wire2</text>
+    <text x="960" y="452" font-size="28" fill="#333">pines 24 / 25 (LPI2C4)</text>
+    <text x="960" y="488" font-size="28" fill="#a8500d">heading por gyro &#183; medido</text>
+  </g>
+
+  <!-- ===== FILA 3: Motores ===== -->
+  <g>
+    <rect x="48" y="556" width="382" height="118" rx="10" fill="#EEF0F2" stroke="#6B7280" stroke-width="2"/>
+    <text x="70" y="604" font-size="32" font-weight="800" fill="#374151">Motores</text>
+    <text x="70" y="640" font-size="28" fill="#6B7280">pines + inversion</text>
+  </g>
+  <g>
+    <rect x="446" y="556" width="946" height="118" rx="10" fill="#EFF3EC" stroke="#1E8A4C" stroke-width="2.5"/>
+    <text x="468" y="598" font-size="31" font-weight="800" fill="#1E8A4C">IGUALES en ambos (codigo vivo) &#183; banco 06-09: R2 = R1</text>
+    <text x="468" y="638" font-size="29" fill="#222">M1=2/5/3 &#183; M2=8/7/6 &#183; M3=11/12/4 &#183; MOTOR_INVERT={+1,+1,+1}</text>
+  </g>
+
+  <!-- ===== FILA 4: Rol / FSM ===== -->
+  <g>
+    <rect x="48" y="688" width="382" height="170" rx="10" fill="#EEF0F2" stroke="#6B7280" stroke-width="2"/>
+    <text x="70" y="736" font-size="32" font-weight="800" fill="#374151">Rol / FSM</text>
+    <text x="70" y="772" font-size="28" fill="#6B7280">maquina de estados</text>
+    <text x="70" y="808" font-size="27" fill="#6B7280">por build flag (medido)</text>
+  </g>
+  <g>
+    <rect x="446" y="688" width="476" height="170" rx="10" fill="#F4F8FC" stroke="#1D4E89" stroke-width="2"/>
+    <text x="468" y="732" font-size="31" font-weight="700" fill="#222">GOALKEEPER</text>
+    <text x="468" y="770" font-size="28" fill="#333">GOTO_LINE &#183; PATROL</text>
+    <text x="468" y="806" font-size="28" fill="#333">INTERCEPT &#183; CLEAR</text>
+    <text x="468" y="842" font-size="27" fill="#1D4E89">+ LINE_AVOID (comun)</text>
+  </g>
+  <g>
+    <rect x="938" y="688" width="454" height="170" rx="10" fill="#FFFBF7" stroke="#E8731A" stroke-width="2"/>
+    <text x="960" y="732" font-size="31" font-weight="700" fill="#222">ATTACKER</text>
+    <text x="960" y="770" font-size="28" fill="#333">KICKOFF &#183; SEARCH &#183; POSITION</text>
+    <text x="960" y="806" font-size="28" fill="#333">APPROACH &#183; PUSH &#183; PUSH_BACK</text>
+    <text x="960" y="842" font-size="27" fill="#a8500d">+ LINE_AVOID (comun)</text>
+  </g>
+
+  <!-- ===== FILA 5: Variantes de practica ===== -->
+  <g>
+    <rect x="48" y="872" width="382" height="118" rx="10" fill="#EEF0F2" stroke="#6B7280" stroke-width="2"/>
+    <text x="70" y="916" font-size="31" font-weight="800" fill="#374151">Variantes</text>
+    <text x="70" y="952" font-size="28" fill="#6B7280">flags de practica</text>
+    <text x="70" y="980" font-size="27" fill="#6B7280">off-by-default</text>
+  </g>
+  <g>
+    <rect x="446" y="872" width="476" height="118" rx="10" fill="#F4F8FC" stroke="#1D4E89" stroke-width="2"/>
+    <text x="468" y="916" font-size="29" fill="#222">GK_SIMPLE_STRAFE</text>
+    <text x="468" y="956" font-size="27" fill="#1D4E89">strafe simple del arquero</text>
+  </g>
+  <g>
+    <rect x="938" y="872" width="454" height="118" rx="10" fill="#FFFBF7" stroke="#E8731A" stroke-width="2"/>
+    <text x="960" y="912" font-size="28" fill="#222">ATK_OTOS_NOGYRO &#183; ATK_SEARCH_</text>
+    <text x="960" y="946" font-size="28" fill="#222">SPIN_ONLY &#183; ATK_OBSTACLE_</text>
+    <text x="960" y="980" font-size="28" fill="#222">STOP_MM</text>
+  </g>
+
+  <!-- ===== GAP PELIGROSO: contradiccion BNO no resuelta (rojo) ===== -->
+  <g>
+    <rect x="48" y="1006" width="1344" height="138" rx="12" fill="#FDECEE" stroke="#C8102E" stroke-width="3"/>
+    <text x="70" y="1048" font-size="32" font-weight="800" fill="#C8102E">&#9888; GAP MAS PELIGROSO &#8212; contradiccion BNO de R1 NO resuelta</text>
+    <text x="70" y="1086" font-size="29" fill="#333">pinout_common.h (codigo VIVO) aun describe el cableado VIEJO de R1: 2 BNO en 1 bus Wire 18/19,</text>
+    <text x="70" y="1122" font-size="29" fill="#333">pero el recableado fue 06-11 &#8594; no se sabe que env refleja el HW real de R1. Verificar ANTES de flashear.</text>
+  </g>
+
+  <!-- ===== COMUN (no diferencia) + honestidad medido/asumido ===== -->
+  <g>
+    <rect x="48" y="1158" width="660" height="118" rx="12" fill="#EFF1F3" stroke="#6B7280" stroke-width="2"/>
+    <text x="70" y="1194" font-size="29" font-weight="800" fill="#374151">COMUN (no es diferencia)</text>
+    <text x="70" y="1228" font-size="27" fill="#444">Kicker: NINGUNO &#8212; empuje por inercia.</text>
+    <text x="70" y="1262" font-size="27" fill="#C8102E">Dipswitch rol (pin 10) colisiona con LP del ToF[1].</text>
+  </g>
+  <g>
+    <rect x="732" y="1158" width="660" height="118" rx="12" fill="#F4F5F7" stroke="#9aa1ab" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="754" y="1198" font-size="29" font-weight="800" fill="#4b5563">Medido vs asumido (*)</text>
+    <text x="754" y="1234" font-size="27" fill="#444">MEDIDO: OTOS por env &#183; motores R2=R1 &#183; roles por flag.</text>
+    <text x="754" y="1264" font-size="27" fill="#444">ASUMIDO*: ranging ToF de R2 sin confirmar &#183; R1 sin gyro estable.</text>
+  </g>
+
+  <text x="48" y="1316" font-size="27" fill="#666">Fig. &#8212; R1: OTOS, sin gyro, arquero  &#183;  R2: BNO, sin OTOS, delantero  &#183;  motores y kicker iguales.</text>
+  <text x="48" y="1348" font-size="27" fill="#666">Diagrama original del equipo &#8212; CC BY 4.0  &#183;  Fuente: pinout_robot1/2.h, pinout_common.h, config_central.h, strategy.cpp, ESTADO.</text>
+</svg>

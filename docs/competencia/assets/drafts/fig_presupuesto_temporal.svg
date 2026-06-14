@@ -1,0 +1,169 @@
+<svg viewBox="0 0 1440 1400" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Inter', Arial, sans-serif">
+  <!-- ============================================================
+       Fig. (D8) — Presupuesto temporal del ciclo + barrera de freno de emergencia <15 ms
+       Pregunta: En cuanto tiempo el robot pasa de detectar el borde a frenar, y como se
+                 reparte el ciclo (1kHz / 200Hz / 100Hz / 30Hz)?
+       Print math: viewBox 1440 px -> ~360 mm => 0.25 mm/px. Cuerpo 30-34 px; titulo 58px;
+                 anotaciones (tasas/baud) >= 28 px.
+       Paleta: TOP #1D4E89 / CENTRAL #E8731A / DOWN #1E8A4C / neutro #6B7280 / ROJO #C8102E (emergencia).
+       Fuentes (verificado): config_down.h:138 LINE_TICK_INTERVAL_US=1000 (1kHz);
+                 main_down.cpp:42 LINE_URGENT_INTERVAL_MS=5 (200Hz); config_down.h:128 230400 baud;
+                 CONTRATO-DATOS-TOP.md:252 38x10/230400=1.65ms; CONTRATO-DATOS-CENTRAL.md:289
+                 LINE_TIMEOUT_MS=500; ESTRATEGIA-ALTO-NIVEL.md:85-99 freno antes de strategy_tick().
+       HONESTIDAD: <15 ms = OBJETIVO de diseno NO medido (osciloscopio, TASK-014); CPU% no medido;
+                 1.65 ms = unico dato CALCULADO (no banco). Watchdog 500 ms = 33x el objetivo.
+       ============================================================ -->
+  <defs>
+    <marker id="rt" markerWidth="13" markerHeight="13" refX="10" refY="6" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="#555" stroke-width="2.4"/></marker>
+    <marker id="rtR" markerWidth="13" markerHeight="13" refX="10" refY="6" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="#C8102E" stroke-width="2.6"/></marker>
+    <marker id="dn" markerWidth="14" markerHeight="14" refX="6" refY="11" orient="auto"><path d="M1 1 L6 11 L11 1" fill="none" stroke="#C8102E" stroke-width="2.6"/></marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f4f6f8"/></linearGradient>
+    <linearGradient id="redzone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#C8102E" stop-opacity="0.04"/><stop offset="1" stop-color="#C8102E" stop-opacity="0.13"/></linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1440" height="1400" fill="url(#bg)"/>
+
+  <text x="48" y="70" font-size="58" font-weight="800" fill="#222">Del borde al freno en menos de 15 ms*</text>
+  <text x="48" y="114" font-size="33" fill="#555">Como se reparte el ciclo por subsistema &#8212; y por que el freno de borde se salta la FSM</text>
+
+  <!-- =====================================================================
+       BLOQUE 1: LA CADENA DE FRENO (la historia que vende) — sobre eje 0..15 ms
+       ===================================================================== -->
+  <text x="48" y="178" font-size="34" font-weight="800" fill="#C8102E">Cadena de freno de borde &#183; presupuesto &lt;15 ms*</text>
+
+  <!-- zona roja de "tiempo gastado" hasta el objetivo -->
+  <rect x="120" y="200" width="1120" height="178" rx="10" fill="url(#redzone)"/>
+
+  <!-- eje de tiempo 0..15 ms : x = 120 (0ms) .. 1240 (15ms) => 74.67 px/ms -->
+  <line x1="120" y1="378" x2="1300" y2="378" stroke="#444" stroke-width="3" marker-end="url(#rt)"/>
+  <text x="1312" y="388" font-size="29" fill="#444">tiempo</text>
+  <!-- ticks cada ~2.5 ms -->
+  <g font-size="27" fill="#666" text-anchor="middle">
+    <line x1="120" y1="372" x2="120" y2="396" stroke="#888" stroke-width="2"/><text x="120" y="424">0 ms</text>
+    <line x1="306" y1="372" x2="306" y2="390" stroke="#bbb" stroke-width="2"/>
+    <line x1="493" y1="372" x2="493" y2="390" stroke="#bbb" stroke-width="2"/><text x="493" y="424">5 ms</text>
+    <line x1="679" y1="372" x2="679" y2="390" stroke="#bbb" stroke-width="2"/>
+    <line x1="866" y1="372" x2="866" y2="390" stroke="#bbb" stroke-width="2"/><text x="866" y="424">10 ms</text>
+    <line x1="1053" y1="372" x2="1053" y2="390" stroke="#bbb" stroke-width="2"/>
+    <line x1="1240" y1="362" x2="1240" y2="396" stroke="#C8102E" stroke-width="3"/>
+  </g>
+  <!-- barrera de objetivo a 15 ms -->
+  <text x="1240" y="426" font-size="29" font-weight="800" fill="#C8102E" text-anchor="middle">15 ms*</text>
+
+  <!-- 5 eslabones de la cadena, apilados como bloques sobre el carril rojo -->
+  <!-- eslabon 1: sensor de linea @1kHz (DOWN) -->
+  <g>
+    <rect x="120" y="216" width="180" height="58" rx="9" fill="#E9F5EE" stroke="#1E8A4C" stroke-width="2.5"/>
+    <text x="210" y="241" font-size="27" font-weight="700" fill="#1E8A4C" text-anchor="middle">1. sensor linea</text>
+    <text x="210" y="266" font-size="26" fill="#333" text-anchor="middle">DOWN @1 kHz</text>
+  </g>
+  <line x1="300" y1="245" x2="328" y2="245" stroke="#555" stroke-width="3" marker-end="url(#rt)"/>
+  <!-- eslabon 2: dm_update arma LineStatusV2 @200Hz (DOWN) -->
+  <g>
+    <rect x="330" y="216" width="206" height="58" rx="9" fill="#E9F5EE" stroke="#1E8A4C" stroke-width="2.5"/>
+    <text x="433" y="241" font-size="27" font-weight="700" fill="#1E8A4C" text-anchor="middle">2. LineStatusV2</text>
+    <text x="433" y="266" font-size="26" fill="#333" text-anchor="middle">tx DOWN @200 Hz</text>
+  </g>
+  <line x1="536" y1="245" x2="564" y2="245" stroke="#555" stroke-width="3" marker-end="url(#rt)"/>
+  <!-- eslabon 3: Serial1 230400, TX frame ~1.65 ms -->
+  <g>
+    <rect x="566" y="216" width="218" height="58" rx="9" fill="#EFEFEF" stroke="#6B7280" stroke-width="2.5"/>
+    <text x="675" y="241" font-size="27" font-weight="700" fill="#4b5563" text-anchor="middle">3. Serial1 230400</text>
+    <text x="675" y="266" font-size="26" fill="#333" text-anchor="middle">TX frame 38 B ~1.65 ms&#8225;</text>
+  </g>
+  <line x1="784" y1="245" x2="812" y2="245" stroke="#555" stroke-width="3" marker-end="url(#rt)"/>
+  <!-- eslabon 4: CENTRAL FrameDecoder -->
+  <g>
+    <rect x="814" y="216" width="190" height="58" rx="9" fill="#FDF1E7" stroke="#E8731A" stroke-width="2.5"/>
+    <text x="909" y="241" font-size="27" font-weight="700" fill="#E8731A" text-anchor="middle">4. FrameDecoder</text>
+    <text x="909" y="266" font-size="26" fill="#333" text-anchor="middle">CENTRAL</text>
+  </g>
+  <line x1="1004" y1="245" x2="1032" y2="245" stroke="#C8102E" stroke-width="3.5" marker-end="url(#rtR)"/>
+  <!-- eslabon 5: motors_brake() ROJO -->
+  <g>
+    <rect x="1034" y="210" width="206" height="70" rx="9" fill="#FDECEE" stroke="#C8102E" stroke-width="3.5"/>
+    <text x="1137" y="240" font-size="28" font-weight="800" fill="#C8102E" text-anchor="middle">5. motors_brake()</text>
+    <text x="1137" y="267" font-size="26" fill="#C8102E" text-anchor="middle">freno ACTIVO</text>
+  </g>
+
+  <!-- nota de prioridad: dos lineas ancladas a la izquierda, en el hueco del carril -->
+  <text x="124" y="312" font-size="28" font-weight="700" fill="#C8102E">PRIORIDAD MAXIMA: imminent_exit &amp;&amp; line_fresh &#8594; motors_brake()</text>
+  <text x="124" y="344" font-size="28" fill="#C8102E">corre ANTES de la FSM (hace return, bypassa strategy_tick)</text>
+
+  <!-- =====================================================================
+       BLOQUE 2: REPARTO DEL CICLO POR SUBSISTEMA (las tasas)
+       ===================================================================== -->
+  <text x="48" y="492" font-size="34" font-weight="800" fill="#222">Reparto del ciclo por subsistema (cada cuanto corre)</text>
+
+  <!-- carriles. columnas: TAREA x=80 | TASA x=720 | PERIODO/CONSTANTE x=900 -->
+  <!-- Encabezados de columna -->
+  <text x="64" y="540" font-size="28" font-weight="800" fill="#444">PLACA &#183; TAREA</text>
+  <text x="720" y="540" font-size="28" font-weight="800" fill="#444">TASA</text>
+  <text x="900" y="540" font-size="28" font-weight="800" fill="#444">PERIODO &#183; constante</text>
+
+  <!-- DOWN muestreo linea 1kHz -->
+  <g>
+    <rect x="48" y="556" width="14" height="56" rx="5" fill="#1E8A4C"/>
+    <rect x="48" y="556" width="1192" height="56" rx="8" fill="#E9F5EE" stroke="#1E8A4C" stroke-width="1.6"/>
+    <text x="80" y="592" font-size="30" fill="#222">DOWN &#183; muestreo de linea</text>
+    <text x="720" y="592" font-size="30" font-weight="700" fill="#1E8A4C">1 kHz</text>
+    <text x="900" y="592" font-size="28" fill="#333">1 ms &#183; LINE_TICK_INTERVAL_US</text>
+  </g>
+  <!-- DOWN tx linea 200Hz -->
+  <g>
+    <rect x="48" y="620" width="14" height="56" rx="5" fill="#1E8A4C"/>
+    <rect x="48" y="620" width="1192" height="56" rx="8" fill="#EEF7F1" stroke="#1E8A4C" stroke-width="1.6"/>
+    <text x="80" y="656" font-size="30" fill="#222">DOWN &#183; tx linea (LineStatusV2)</text>
+    <text x="720" y="656" font-size="30" font-weight="700" fill="#1E8A4C">200 Hz</text>
+    <text x="900" y="656" font-size="28" fill="#333">5 ms &#183; LINE_URGENT_INTERVAL_MS</text>
+  </g>
+  <!-- DOWN tx Pose/Vel 100Hz + WorldSnapshot 100Hz (juntos) -->
+  <g>
+    <rect x="48" y="684" width="14" height="56" rx="5" fill="#1E8A4C"/>
+    <rect x="48" y="684" width="1192" height="56" rx="8" fill="#E9F5EE" stroke="#1E8A4C" stroke-width="1.6"/>
+    <text x="80" y="720" font-size="30" fill="#222">DOWN &#183; tx Pose/Vel &#183; WorldSnapshot 31 B</text>
+    <text x="720" y="720" font-size="30" font-weight="700" fill="#1E8A4C">100 Hz</text>
+    <text x="900" y="720" font-size="28" fill="#333">10 ms</text>
+  </g>
+  <!-- DOWN OTOS I2C bloqueante -->
+  <g>
+    <rect x="48" y="748" width="14" height="56" rx="5" fill="#6B7280"/>
+    <rect x="48" y="748" width="1192" height="56" rx="8" fill="#EFEFEF" stroke="#6B7280" stroke-width="1.6"/>
+    <text x="80" y="784" font-size="30" fill="#222">DOWN &#183; OTOS I2C (bloqueante, los 2)</text>
+    <text x="720" y="784" font-size="30" font-weight="700" fill="#6B7280">bloquea</text>
+    <text x="900" y="784" font-size="28" fill="#333">~3&#8211;4 ms el par</text>
+  </g>
+  <!-- TOP loop sin periodo fijo -->
+  <g>
+    <rect x="48" y="812" width="14" height="92" rx="5" fill="#1D4E89"/>
+    <rect x="48" y="812" width="1192" height="92" rx="8" fill="#EAF0F7" stroke="#1D4E89" stroke-width="1.6"/>
+    <text x="80" y="848" font-size="30" fill="#222">TOP &#183; loop libre (~200k pasadas/s)</text>
+    <text x="720" y="848" font-size="30" font-weight="700" fill="#1D4E89">gates</text>
+    <text x="900" y="848" font-size="28" fill="#333">sin periodo fijo</text>
+    <text x="80" y="884" font-size="28" fill="#2b6cb0">gates internos: snapshot 10 ms &#183; BNO @20 Hz &#183; ToF @30 ms &#183; localizacion @~33 ms</text>
+  </g>
+
+  <!-- =====================================================================
+       BLOQUE 3: CONTRASTE HONESTO — watchdog 500 ms vs objetivo 15 ms
+       ===================================================================== -->
+  <g>
+    <rect x="48" y="930" width="1344" height="150" rx="12" fill="#FDECEE" stroke="#C8102E" stroke-width="2.5"/>
+    <text x="70" y="972" font-size="32" font-weight="800" fill="#C8102E">* El asterisco grande &#8212; "vivo" no es lo mismo que "accionable para frenar"</text>
+    <text x="70" y="1010" font-size="30" fill="#333">El watchdog de frescura de linea es LINE_TIMEOUT_MS = 500 ms: eso es 33&#215; el objetivo de 15 ms.</text>
+    <text x="70" y="1046" font-size="30" fill="#333">Que el dato llegue "fresco" (&lt;500 ms) no garantiza que la cadena cierre en &lt;15 ms.</text>
+  </g>
+
+  <!-- Panel de honestidad: que esta medido vs que es objetivo -->
+  <g>
+    <rect x="48" y="1096" width="1344" height="196" rx="12" fill="#F4F5F7" stroke="#9aa1ab" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="70" y="1136" font-size="30" font-weight="800" fill="#4b5563">Honestidad &#8212; que esta medido y que es objetivo de diseno</text>
+    <text x="70" y="1174" font-size="28" fill="#444">* OBJETIVO de diseno NO medido con osciloscopio (TASK-014): el &lt;15 ms,</text>
+    <text x="92" y="1208" font-size="28" fill="#444">las cargas CPU ~20/25/22% y la latencia end-to-end real.</text>
+    <text x="70" y="1246" font-size="28" fill="#444">&#8225; UNICO dato calculado (no banco): TX de un frame de 38 B @230400 baud</text>
+    <text x="92" y="1280" font-size="28" fill="#444">&#8776; 1.65 ms  (38 &#215; 10 bits / 230400).</text>
+  </g>
+
+  <!-- Caption -->
+  <text x="48" y="1334" font-size="27" fill="#666">Fig. &#8212; El freno de borde se salta la FSM para apuntar a &lt;15 ms*; el watchdog (500 ms) marca el gap a cerrar.</text>
+  <text x="48" y="1368" font-size="27" fill="#666">Diagrama original del equipo &#8212; CC BY 4.0  &#183;  Fuente: config_down.h, main_down.cpp, CONTRATO-DATOS-*.md.</text>
+</svg>

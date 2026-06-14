@@ -1,0 +1,205 @@
+<svg viewBox="0 0 1440 1360" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Inter', Arial, sans-serif">
+  <!-- ============================================================
+       Fig. (D14) — Pipeline de percepcion de vision OpenMV
+       Pregunta: como pasa la imagen de las 2 camaras a coordenadas de pelota/arcos
+                 en el marco del robot, y que esta calibrado vs pendiente?
+       Print math: viewBox 1440 px -> ~360 mm => 0.25 mm/px. Cuerpo 30-34 px; titulo 58 px.
+                 anotaciones (baud / bytes / notas) 28 px. Nada < 27 px.
+       Paleta: TOP/percepcion #1D4E89 (acento #2b6cb0) / pelota naranja #E8731A /
+                 neutro gris #6B7280 / ROJO #C8102E solo cuello-de-botella/critico.
+       MEDIDO = trazo firme. ASUMIDO/PLACEHOLDER = (*) + nota chica gris.
+       Fuentes: src/top/cameras.h (contrato 11B v2), cameras_runtime.cpp,
+                 CONTRATO-DATOS-CAMARAS.md, FIRMWARE-PLACA-ARRIBA.md.
+       ============================================================ -->
+  <defs>
+    <marker id="rt" markerWidth="13" markerHeight="13" refX="10" refY="6" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="#555" stroke-width="2.4"/></marker>
+    <marker id="dn" markerWidth="14" markerHeight="14" refX="6" refY="11" orient="auto"><path d="M1 1 L6 11 L11 1" fill="none" stroke="#1D4E89" stroke-width="2.6"/></marker>
+    <marker id="rtb" markerWidth="13" markerHeight="13" refX="10" refY="6" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="#1D4E89" stroke-width="2.6"/></marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f4f6f8"/></linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1440" height="1360" fill="url(#bg)"/>
+
+  <text x="48" y="72" font-size="54" font-weight="800" fill="#222">De la imagen a pelota y arcos del robot</text>
+  <text x="48" y="114" font-size="33" fill="#555">Cada camara codifica 11 B y manda por UART; el TOP fusiona &#8212; lo pendiente es CALIBRAR</text>
+
+  <!-- ============================================================
+       BLOQUE A — PER CAMARA (pipeline interno, 4 pasos)
+       ============================================================ -->
+  <text x="68" y="178" font-size="28" font-weight="800" fill="#1D4E89">EN CADA CAMARA OpenMV  &#183;  ~30 Hz (nominal*)</text>
+
+  <!-- Caja contenedora del pipeline por camara -->
+  <rect x="48" y="194" width="1110" height="208" rx="14" fill="#EAF0F7" stroke="#1D4E89" stroke-width="2.5"/>
+
+  <!-- Paso 1: captura -->
+  <g>
+    <rect x="70" y="232" width="232" height="150" rx="10" fill="#ffffff" stroke="#1D4E89" stroke-width="2"/>
+    <text x="186" y="276" font-size="31" font-weight="700" fill="#1D4E89" text-anchor="middle">1 &#183; CAPTURA</text>
+    <text x="186" y="314" font-size="28" fill="#333" text-anchor="middle">frame RGB</text>
+    <text x="186" y="350" font-size="28" fill="#333" text-anchor="middle">de la lente</text>
+  </g>
+  <line x1="302" y1="307" x2="340" y2="307" stroke="#1D4E89" stroke-width="3" marker-end="url(#rtb)"/>
+
+  <!-- Paso 2: threshold LAB -->
+  <g>
+    <rect x="340" y="232" width="262" height="150" rx="10" fill="#ffffff" stroke="#1D4E89" stroke-width="2"/>
+    <text x="471" y="270" font-size="31" font-weight="700" fill="#1D4E89" text-anchor="middle">2 &#183; UMBRAL LAB</text>
+    <text x="471" y="306" font-size="27" fill="#E8731A" text-anchor="middle">pelota naranja</text>
+    <text x="471" y="338" font-size="27" fill="#a8500d" text-anchor="middle">arco AMARILLO</text>
+    <text x="471" y="370" font-size="27" fill="#1D4E89" text-anchor="middle">arco AZUL</text>
+  </g>
+  <line x1="602" y1="307" x2="640" y2="307" stroke="#1D4E89" stroke-width="3" marker-end="url(#rtb)"/>
+
+  <!-- Paso 3: blobs -->
+  <g>
+    <rect x="640" y="232" width="222" height="150" rx="10" fill="#ffffff" stroke="#1D4E89" stroke-width="2"/>
+    <text x="751" y="276" font-size="31" font-weight="700" fill="#1D4E89" text-anchor="middle">3 &#183; BLOBS</text>
+    <text x="751" y="314" font-size="28" fill="#333" text-anchor="middle">centro x,y</text>
+    <text x="751" y="350" font-size="28" fill="#333" text-anchor="middle">por color</text>
+  </g>
+  <line x1="862" y1="307" x2="900" y2="307" stroke="#1D4E89" stroke-width="3" marker-end="url(#rtb)"/>
+
+  <!-- Paso 4: empaquetado -->
+  <g>
+    <rect x="900" y="232" width="236" height="150" rx="10" fill="#ffffff" stroke="#1D4E89" stroke-width="2"/>
+    <text x="1018" y="270" font-size="31" font-weight="700" fill="#1D4E89" text-anchor="middle">4 &#183; PACKET</text>
+    <text x="1018" y="306" font-size="28" fill="#333" text-anchor="middle">11 B contrato v2</text>
+    <text x="1018" y="340" font-size="27" fill="#555" text-anchor="middle">coded = valor+100</text>
+    <text x="1018" y="372" font-size="27" fill="#555" text-anchor="middle">255 = no detectado</text>
+  </g>
+
+  <!-- Tira lateral: las 2 camaras / puertos -->
+  <g>
+    <rect x="1172" y="194" width="220" height="208" rx="12" fill="#EFF4FA" stroke="#2b6cb0" stroke-width="2.5"/>
+    <text x="1282" y="234" font-size="29" font-weight="800" fill="#2b6cb0" text-anchor="middle">2 CAMARAS</text>
+    <text x="1192" y="278" font-size="28" fill="#333">frontal &#8594; Serial3</text>
+    <text x="1192" y="312" font-size="28" fill="#333">trasera &#8594; Serial5</text>
+    <text x="1192" y="350" font-size="28" fill="#333">19200 8N1</text>
+    <text x="1192" y="384" font-size="27" fill="#6B7280">misma logica LAB</text>
+  </g>
+
+  <!-- ============================================================
+       PACKET 11 B — tira de bytes (lo MEDIDO, el contrato vivo)
+       ============================================================ -->
+  <text x="68" y="452" font-size="28" font-weight="800" fill="#1D4E89">PACKET DE 11 BYTES (CAM_PACKET_LEN)  &#183;  contrato v2 &#8212; MEDIDO</text>
+  <g font-size="27" text-anchor="middle">
+    <!-- 11 celdas de 122 px desde x=48 -->
+    <rect x="48"   y="468" width="122" height="84" rx="6" fill="#1D4E89"/>
+    <text x="109"  y="504" fill="#ffffff" font-weight="800">b0=201</text>
+    <text x="109"  y="534" fill="#cfe0f0">HEADER1</text>
+
+    <rect x="170"  y="468" width="122" height="84" rx="6" fill="#FBE9D9" stroke="#E8731A" stroke-width="1.5"/>
+    <text x="231"  y="504" fill="#a8500d" font-weight="800">b1</text>
+    <text x="231"  y="534" fill="#a8500d">ball_x</text>
+
+    <rect x="292"  y="468" width="122" height="84" rx="6" fill="#FBE9D9" stroke="#E8731A" stroke-width="1.5"/>
+    <text x="353"  y="504" fill="#a8500d" font-weight="800">b2</text>
+    <text x="353"  y="534" fill="#a8500d">ball_y</text>
+
+    <rect x="414"  y="468" width="122" height="84" rx="6" fill="#1D4E89"/>
+    <text x="475"  y="504" fill="#ffffff" font-weight="800">b3=202</text>
+    <text x="475"  y="534" fill="#cfe0f0">AMARILLO</text>
+
+    <rect x="536"  y="468" width="122" height="84" rx="6" fill="#EEF2F6" stroke="#6B7280" stroke-width="1.2"/>
+    <text x="597"  y="504" fill="#444" font-weight="800">b4 / b5</text>
+    <text x="597"  y="534" fill="#666">x , y</text>
+
+    <rect x="658"  y="468" width="122" height="84" rx="6" fill="#1D4E89"/>
+    <text x="719"  y="504" fill="#ffffff" font-weight="800">b6=203</text>
+    <text x="719"  y="534" fill="#cfe0f0">AZUL</text>
+
+    <rect x="780"  y="468" width="122" height="84" rx="6" fill="#EEF2F6" stroke="#6B7280" stroke-width="1.2"/>
+    <text x="841"  y="504" fill="#444" font-weight="800">b7 / b8</text>
+    <text x="841"  y="534" fill="#666">x , y</text>
+
+    <rect x="902"  y="468" width="122" height="84" rx="6" fill="#FDECEE" stroke="#C8102E" stroke-width="1.5"/>
+    <text x="963"  y="504" fill="#C8102E" font-weight="800">b9</text>
+    <text x="963"  y="534" fill="#C8102E">CRC8 XOR</text>
+
+    <rect x="1024" y="468" width="122" height="84" rx="6" fill="#1D4E89"/>
+    <text x="1085" y="504" fill="#ffffff" font-weight="800">b10=254</text>
+    <text x="1085" y="534" fill="#cfe0f0">END</text>
+  </g>
+  <text x="1166" y="500" font-size="27" fill="#6B7280">CRC8 = XOR de</text>
+  <text x="1166" y="532" font-size="27" fill="#6B7280">bytes 0..8</text>
+
+  <!-- Flecha grande: packet por UART hacia el TOP -->
+  <line x1="711" y1="568" x2="711" y2="636" stroke="#1D4E89" stroke-width="5" marker-end="url(#dn)"/>
+  <text x="730" y="610" font-size="28" fill="#2b6cb0">UART 19200 &#183; 2 streams (frontal + trasera)</text>
+
+  <!-- ============================================================
+       BLOQUE B — EN EL TOP: drenaje + fusion
+       ============================================================ -->
+  <text x="68" y="676" font-size="28" font-weight="800" fill="#1D4E89">EN LA PLACA TOP (Teensy)  &#183;  drenaje &#8594; fusion</text>
+
+  <rect x="48" y="692" width="1344" height="262" rx="14" fill="#F4F8FC" stroke="#1D4E89" stroke-width="2.5"/>
+
+  <!-- B1: drenaje -->
+  <g>
+    <rect x="70" y="724" width="412" height="206" rx="10" fill="#ffffff" stroke="#1D4E89" stroke-width="2"/>
+    <text x="92" y="766" font-size="31" font-weight="700" fill="#1D4E89">DRENAR + VALIDAR</text>
+    <text x="92" y="804" font-size="28" fill="#333">cota MAX_BYTES_PER_TICK</text>
+    <text x="92" y="836" font-size="27" fill="#666">(no monopolizar el loop)</text>
+    <text x="92" y="876" font-size="28" fill="#333">CRC8 + END &#8594; descarta</text>
+    <text x="92" y="912" font-size="28" fill="#C8102E">stale si &gt; 1000 ms sin packet</text>
+  </g>
+  <line x1="482" y1="827" x2="524" y2="827" stroke="#1D4E89" stroke-width="3" marker-end="url(#rtb)"/>
+
+  <!-- B2: fusion / rotacion -->
+  <g>
+    <rect x="524" y="724" width="430" height="206" rx="10" fill="#ffffff" stroke="#1D4E89" stroke-width="2"/>
+    <text x="546" y="766" font-size="31" font-weight="700" fill="#1D4E89">FUSION (las 2)</text>
+    <text x="546" y="806" font-size="28" fill="#333">trasera (camera_id=1) ve</text>
+    <text x="546" y="838" font-size="28" fill="#333">rotada 180&#176; &#8594; se NIEGAN</text>
+    <text x="546" y="870" font-size="28" fill="#333">ball_x , ball_y</text>
+    <text x="546" y="912" font-size="27" fill="#a06a00">escala 10.0 mm/u (sin calibrar*)</text>
+  </g>
+  <line x1="954" y1="827" x2="996" y2="827" stroke="#1D4E89" stroke-width="3" marker-end="url(#rtb)"/>
+
+  <!-- B3: salida marco robot -->
+  <g>
+    <rect x="996" y="724" width="374" height="206" rx="10" fill="#EAF0F7" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="1018" y="766" font-size="31" font-weight="800" fill="#1D4E89">MARCO ROBOT</text>
+    <text x="1018" y="806" font-size="28" fill="#333">pelota: x,y (mm*)</text>
+    <text x="1018" y="842" font-size="28" fill="#333">arcos: angulo + dist</text>
+    <text x="1018" y="884" font-size="27" fill="#666">+y = frente del robot</text>
+    <text x="1018" y="918" font-size="27" fill="#6B7280">cruza con D10 (fusion)</text>
+  </g>
+
+  <!-- ============================================================
+       BLOQUE C — COBERTURA + CUELLO DE BOTELLA (honestidad)
+       ============================================================ -->
+
+  <!-- C1: cobertura (gris/neutral, hecho geometrico) -->
+  <g>
+    <rect x="48" y="978" width="650" height="172" rx="12" fill="#EFEFEF" stroke="#6B7280" stroke-width="2.5"/>
+    <text x="70" y="1018" font-size="30" font-weight="800" fill="#4b5563">COBERTURA &#8212; NO es 360&#176;</text>
+    <text x="70" y="1056" font-size="28" fill="#333">frente + atras cubren ~140&#176; combinado</text>
+    <text x="70" y="1092" font-size="28" fill="#333">quedan zonas ciegas laterales</text>
+    <text x="70" y="1128" font-size="27" fill="#6B7280">FOV real de las N6 sin medir (docs eran era H7: 47/70&#176;?)</text>
+  </g>
+
+  <!-- C2: cuello de botella (rojo = critico, TASK-022) -->
+  <g>
+    <rect x="722" y="978" width="670" height="172" rx="12" fill="#FDECEE" stroke="#C8102E" stroke-width="2.5"/>
+    <text x="744" y="1018" font-size="30" font-weight="800" fill="#C8102E">CUELLO DE BOTELLA: calibrar color (TASK-022)</text>
+    <text x="744" y="1056" font-size="28" fill="#333">thresholds LAB sin recalibrar = restriccion dominante</text>
+    <text x="744" y="1092" font-size="28" fill="#333">bloquear exposicion: luz de Incheon &#8800; luz del lab Salta</text>
+    <text x="744" y="1128" font-size="28" fill="#C8102E">una FSM perfecta que no ve la pelota no mete goles</text>
+  </g>
+
+  <!-- ============================================================
+       PANEL D — MEDIDO vs ASUMIDO (honestidad visual)
+       ============================================================ -->
+  <g>
+    <rect x="48" y="1170" width="1344" height="120" rx="12" fill="#F4F5F7" stroke="#9aa1ab" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="70" y="1208" font-size="29" font-weight="800" fill="#1E8A4C">MEDIDO (firme):</text>
+    <text x="312" y="1208" font-size="28" fill="#333">contrato 11 B v2 &#183; CRC8 XOR &#183; bauds/Serial &#183; rotacion 180&#176; trasera &#183; arcos amarillo/azul</text>
+    <text x="70" y="1252" font-size="29" font-weight="800" fill="#a06a00">ASUMIDO (*):</text>
+    <text x="312" y="1252" font-size="28" fill="#333">escala 10.0 mm/u sin calibrar &#183; ~30 Hz no medido &#183; FOV N6 (?) &#183; pose en mm sin validar</text>
+    <text x="312" y="1282" font-size="27" fill="#6B7280">&#8226; pendiente: recalibracion de color y exposicion para la cancha de Incheon</text>
+  </g>
+
+  <!-- Caption -->
+  <text x="48" y="1330" font-size="27" fill="#666">Fig. &#8212; la imagen viaja como 11 B/camara y el TOP la lleva al marco del robot; el cuello de botella no es la FSM, es calibrar el color.  &#183;  Diagrama original del equipo &#8212; CC BY 4.0  &#183;  Fuente: cameras.h, cameras_runtime.cpp, CONTRATO-DATOS-CAMARAS.md  (* = sin calibrar / ? = era H7)</text>
+</svg>

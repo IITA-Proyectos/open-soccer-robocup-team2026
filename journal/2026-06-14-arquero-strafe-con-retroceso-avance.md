@@ -50,3 +50,17 @@ frente al arco. Los demás envs de arquero quedan **byte-idénticos** (el cambio
   3. Strafe a la DERECHA hasta tocar el lateral → escapa ~12 cm → invierte a la IZQUIERDA hasta el otro lateral.
   4. Mantiene el frente al arco todo el tiempo (PI+PFM); rebota en los LATERALES, ignora la de fondo.
   Caja negra (`_bb`) graba todo; con el CSV se afina (deadband/ki/kp del PFM, velocidades).
+
+## Resultado de banco 2026-06-14 (probado por Gustavo)
+
+- ✅ La secuencia FSM andó: `GOTO_BACK → ADVANCE → MOVE ↔ ESCAPE` (mi cambio funciona).
+- ⚠️ 1ª corrida: `hdg=0.0` SIEMPRE → strafe DIAGONAL, sin gyro. Causa: el **BNO de la TOP
+  estaba muerto** (heading 0/invalid); R2 no tiene OTOS → sin ese heading no hay control de rumbo.
+- ✅ Re-flasheada la TOP (`top_robot2_pri`, era flasheo viejo de la demo) → **el heading arrancó**
+  (`hdg` cambia al girar).
+- ⚠️ 2ª corrida: "anduvo un poco mejor pero a veces queda parado, hay que empujarlo". El heading
+  NO se mantiene (oscila ±37° → diagonal + rebota contra su propio arco + `RESQUARE` se traba).
+  Raíz: el PFM de rumbo no sostiene el frente (acople strafe↔giro conocido; nunca había corrido).
+- **PENDIENTE (revisión 2026-06-15 9:00 con Virginia + Elías):** sacar el CSV de la caja negra
+  (per-motor PWM + hdg + estado), chequear batería, y tunear el PFM / la lógica de rebote con
+  datos. Todo documentado en [`docs/pruebas-banco/PRACTICA-2026-06-15-ARQUERO-STRAFE-REVISION.md`](../docs/pruebas-banco/PRACTICA-2026-06-15-ARQUERO-STRAFE-REVISION.md).

@@ -228,9 +228,13 @@ constexpr int   UART_DOWN_TX    = 1;   // Serial1 TX1                [informativ
 // Juez desde la PC para cuando la app del juez no funciona (bench testing):
 // con el monitor serie de la CENTRAL abierto, ENTER o 'g' = GO y 's' = STOP
 // (la FSM vuelve a WAIT_START y un 'g' nuevo re-arranca la secuencia completa).
-// ⚠️ Pin 9 ASUMIDO de diag_central_motors — CONFIRMAR que hay un pulsador cableado
-// al pin 9 (INPUT_PULLUP) en el Zircon; si no, el teclado por USB alcanza. NUNCA
-// activar este flag en competencia (arrancar sin árbitro viola el protocolo RCJ).
+// ⚠️ BOTÓN FÍSICO (pin 9): DESHABILITADO POR DEFAULT (fail-safe, 2026-06-14). En ambos
+// robots el pulsador onboard del Zircon dio GO espurio (pin clavado / polaridad
+// sospechada). El arranque va por el ÁRBITRO (competencia) o el TECLADO serie 'g'/'s'
+// (banco) — ninguno usa este pin. El botón SOLO se lee si se compila con
+// -DCENTRAL_ENABLE_PHYSICAL_BUTTON (opt-in explícito; ver main_central.cpp). El flag
+// viejo CENTRAL_MANUAL_START_NO_BUTTON quedó muerto (el default ya es seguro).
+// NUNCA activar CENTRAL_ENABLE_MANUAL_START en competencia (arrancar sin árbitro viola RCJ).
 constexpr int PIN_MANUAL_START_BUTTON = 9;
 
 // ============================================================

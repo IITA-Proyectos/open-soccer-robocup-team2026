@@ -129,8 +129,10 @@ void setup() {
     pinMode(PIN_LED_STATUS, OUTPUT);
     digitalWrite(PIN_LED_STATUS, LOW);
 
-#ifdef CENTRAL_ENABLE_MANUAL_START
-    pinMode(PIN_MANUAL_START_BUTTON, INPUT_PULLUP);  // F3 fail-safe (solo banco)
+#ifdef CENTRAL_ENABLE_PHYSICAL_BUTTON
+    // Botón físico de arranque (pin 9): DESHABILITADO POR DEFAULT (fail-safe, 2026-06-14).
+    // Solo se configura el pin si se opta explícitamente con -DCENTRAL_ENABLE_PHYSICAL_BUTTON.
+    pinMode(PIN_MANUAL_START_BUTTON, INPUT_PULLUP);
 #endif
 
     Serial.begin(115200);
@@ -243,11 +245,15 @@ void loop() {
         }
         // Ruido de motor en el pin 9 solo puede dar GO espurio (no-op si ya corre);
         // el STOP es exclusivo del teclado -> no hay parada fantasma en pleno test.
-#ifndef CENTRAL_MANUAL_START_NO_BUTTON
-        // CENTRAL_MANUAL_START_NO_BUTTON (práctica 2026-06-12, banco R2): el pulsador
-        // ONBOARD del Zircon (pin 9) quedó CLAVADO en LOW → GO permanente: el arquero
-        // patrullaba solo al prender y el STOP del teclado se re-disparaba al tick
-        // siguiente. Con el flag, el GO/STOP queda SOLO en el teclado ('g'/'s').
+#ifdef CENTRAL_ENABLE_PHYSICAL_BUTTON
+        // BOTÓN FÍSICO DESHABILITADO POR DEFAULT (fail-safe, 2026-06-14, pedido Gustavo).
+        // En AMBOS robots el pulsador ONBOARD del Zircon (pin 9) dio problemas: quedaba
+        // CLAVADO en LOW → GO permanente (incidente práctica 2026-06-12) y se sospecha
+        // lógica/polaridad invertida. Por seguridad NO se lee a menos que se compile con
+        // -DCENTRAL_ENABLE_PHYSICAL_BUTTON. El arranque va por el ÁRBITRO (competencia,
+        // pines 5/6 del TOP → world_model) o por el TECLADO serie ('g'/'s'/ENTER, arriba),
+        // que NO dependen de este flag. (El gate viejo CENTRAL_MANUAL_START_NO_BUTTON quedó
+        // MUERTO: ahora el default ya es seguro; los envs *_nobtn son redundantes.)
         if (digitalRead(PIN_MANUAL_START_BUTTON) == LOW) cmd_go = true;
 #endif
         if (cmd_stop) {

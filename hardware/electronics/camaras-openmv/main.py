@@ -15,22 +15,10 @@
 #   • Recorte inferior (ROI) para no detectar partes del robot.
 #   • Homografía H (cm desde el centro del lente, atada a VGA).
 #
-# Qué cambió (SOLO la comunicación)
-# ---------------------------------
-#   Viejo : packet de 9 bytes [201,X,Y+100, 202,..., 203,...], X SIN codificar
-#           (puede ser negativo → rompe bytearray), "no detectado" = 0/0, sin CRC.
-#   Nuevo : packet de 11 bytes. X e Y codificados IGUAL (valor+100, rango [0,200]);
-#           "no detectado" = 255,255 (inalcanzable desde una detección real);
-#           al final CRC8 (XOR de los 9 bytes de datos) + END=254.
-#
-# Uso
-# ---
-#   • Va en AMBAS cámaras por ahora (el TOP distingue frontal/trasera por el
-#     puerto UART, y rota 180° la trasera del lado del TOP, no acá).
-#   • Copiar este archivo como main.py a la cámara (OpenMV IDE → guardar en la
-#     placa como main.py, o copiarlo a la unidad de la cámara).
-#
-# La versión vieja (insegura) queda en `main-comunicacion-vieja.py` para pruebas.
+# Qué cambió en ESTA versión
+# --------------------------
+#   + Máscara de las 2 esquinas triangulares de arriba (tapa fuera-de-cancha /
+#     estructura del robot pintándolas de negro antes de find_blobs).
 
 from pyb import UART
 import sensor, image, time
@@ -78,9 +66,23 @@ h = 18.7              # altura cámara (cm)
 r = 13.5/(2*math.pi)  # radio pelota (cm)
 
 # ----- Umbrales LAB (calibración) -----
-naranja_threshold = (30, 61, 39, 70, 20, 50)    # Pelota naranja  -> header 201
-amarillo_threshold = (45, 65, 7, 20, 10, 30)   # Arco amarillo   -> header 202
-azul_threshold = (10, 30, 0, 30, -35, -10)        # Arco azul       -> header 203
+naranja_threshold = (21, 67, 30, 79, -32, 127)    # Pelota naranja  -> header 201
+amarillo_threshold = (17, 70, -27, 14, 38, 111)   # Arco amarillo   -> header 202
+azul_threshold = (4, 38, -13, 57, -64, -4)        # Arco azul       -> header 203
+
+# ----- Máscara de esquinas superiores (triángulos) -----
+# find_blobs() SÓLO acepta un ROI RECTANGULAR, así que un recorte triangular no se
+# puede pedir por parámetro: se "tapan" las esquinas pintándolas de NEGRO sobre la
+# imagen ANTES de buscar blobs (el negro queda fuera de TODOS los thresholds LAB,
+# así que ahí no se forma ninguna detección). Las esquinas de arriba ven fuera de
+# cancha / estructura del robot y meten falsos positivos.
+# Tuneo: mirá los triángulos negros en el OpenMV IDE y ajustá ancho/alto. Poné un
+# ancho/alto en 0 para desactivar esa esquina (entonces NO se pinta nada = no-op).
+MASK_TL_W = 220   # triángulo sup-IZQUIERDO: ancho desde la esquina (px, eje X)
+MASK_TL_H = 50   # triángulo sup-IZQUIERDO: alto  desde el borde de arriba (px, eje Y)
+MASK_TR_W = 220   # triángulo sup-DERECHO:   ancho desde la esquina (px)
+MASK_TR_H = 50   # triángulo sup-DERECHO:   alto  desde el borde de arriba (px)
+MASK_COLOR = (0, 0, 0)   # negro: fuera de TODOS los thresholds LAB
 
 # ===== Contrato v2 (formato seguro que parsea el TOP) — packet de 11 bytes =====
 SENTINEL_CODED = 255    # X_coded==255 y Y_coded==255  ->  objeto NO detectado
@@ -127,6 +129,21 @@ def transformarcoordenadas(u, v):
     return X_coded, Y_coded
 
 
+def enmascarar_esquinas(img):
+    # Pinta de negro las dos esquinas triangulares de arriba (relleno por filas).
+    w = img.width()
+    # Triángulo sup-IZQ: vértices (0,0)-(MASK_TL_W,0)-(0,MASK_TL_H).
+    for y in range(0, MASK_TL_H):
+        span = int(MASK_TL_W * (1 - y / MASK_TL_H))   # ancho que decrece con la fila
+        if span > 0:
+            img.draw_line(0, y, span, y, color=MASK_COLOR)
+    # Triángulo sup-DER: vértices (w,0)-(w-MASK_TR_W,0)-(w,MASK_TR_H).
+    for y in range(0, MASK_TR_H):
+        span = int(MASK_TR_W * (1 - y / MASK_TR_H))
+        if span > 0:
+            img.draw_line(w - span, y, w, y, color=MASK_COLOR)
+
+
 def procesar_blob(blobs, dibujar_color):
     if not blobs:
         return SENTINEL_CODED, SENTINEL_CODED   # no detectado -> 255,255
@@ -147,6 +164,9 @@ def procesar_blob(blobs, dibujar_color):
 while(True):
     clock.tick()
     img = sensor.snapshot()
+
+    # Tapar las esquinas triangulares de arriba (falsos positivos fuera de cancha).
+    enmascarar_esquinas(img)
 
     # ROI: recorta el 3% de abajo (donde aparece el robot) — no busca ahí.
     roi = (0, 0, img.width(), int(img.height() * 0.97))

@@ -6,10 +6,23 @@ asignado: agente/equipo dueño de la app monitor-base (lado GUI)
 prioridad: P1
 pedido-por: Gustavo Viollaz
 relacionada: TASK-205 (app monitoreo TOP), TASK-206 (config persistente), TELEMETRIA-TOP.md
-estado: pending
+estado: cumplida-via-vista-top-salud (banco 2026-06-14)
 ---
 
 # TASK-208 — GUI del monitor TOP: telemetría v2 + controles de config
+
+> ## ✅ CUMPLIDA por una VISTA NUEVA (no por extender el radar) — banco 2026-06-14
+> El objetivo operativo (ver per-cámara front/back + alerta de pelota fantasma, OTOS de la
+> base, vector de escape, **zonas de ToF**, y botones de config CAM/BNO/US/TOF/CFG) **se
+> cumplió** con una **vista nueva e independiente**: `gui_top_health.py` →
+> `python -m monitor_base --top-salud`. **Validada en placa real** (ver TASK-209 + journal
+> `2026-06-14-banco-monitor-top-validado-y-top-central-ok.md`).
+>
+> ⚠️ **Honestidad de alcance:** NO se extendió el radar `gui_top.py` como pedía esta TASK
+> al pie de la letra — se hizo un tablero de SALUD aparte (no chocó con el carril de
+> `gui_top.py`). Además, para las zonas se **agregó el campo `z` al firmware** (aditivo,
+> no wire-breaking) porque no viajaban. Si todavía se quiere la versión **en el radar**,
+> es una TASK chica nueva. Por eso esta queda **cerrada como cumplida-por-vista-alternativa**.
 
 > **Para quién:** el agente/persona que trabaja la app `tools/monitor-base/` (lado GUI). El
 > **firmware y el parser ya están hechos y en `main`** (A1 = `4226382`, A2.1 = `a094c8a`); lo

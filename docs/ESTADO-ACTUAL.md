@@ -21,10 +21,15 @@ tipo: indice-operacional
 > ahora EXPONE las zonas crudas 4×4 de cada ToF** en la telemetría (campo `z` ADITIVO,
 > schema sigue **2**; antes promediaba las 16 zonas a 1 distancia y las tiraba).
 > Host-verificado: `test_telemetry_top` 20/20 (golden exacto), `pio run -e top_robot2_pri`
-> SUCCESS, `pytest` monitor-base 108. **2 commits en main; NO validado en placa →
-> TASK-209** (el equipo flashea + confirma; A2.2 enmascarado sigue sin aplicar = solo
-> lectura). Contrato: `docs/firmware/TELEMETRIA-TOP.md` (campo `z`). Journal:
-> `journal/2026-06-14-monitor-top-salud-y-zonas-telemetria.md`.
+> SUCCESS, `pytest` monitor-base 114. **✅ VALIDADO EN BANCO 2026-06-14 (Gustavo):** el
+> monitor anda en la placa TOP real **y el TOP→CENTRAL llega [OK]** (`diag_central_rx_all`:
+> SNAPSHOT 66 Hz, 0 CRC, 0 seqGap). **TASK-209 CERRADA**; TASK-208 cumplida vía `--top-salud`.
+> Se arregló un **parpadeo** de la GUI (la ventana se redimensionaba cada frame). **Hallazgo
+> aparte (NO bloquea): el OTOS de la DOWN no da odometría** (pose `conf=0`, vel no difunde;
+> casi seguro batería) → **TASK-308**. A2.2 enmascarado sigue sin aplicar (zonas = solo
+> lectura). Contrato: `docs/firmware/TELEMETRIA-TOP.md` (campo `z`). Journals:
+> `journal/2026-06-14-monitor-top-salud-y-zonas-telemetria.md` +
+> `journal/2026-06-14-banco-monitor-top-validado-y-top-central-ok.md`.
 
 > **📋 AUDITORÍA INTEGRAL 2026-06-11 (48 agentes, 122 hallazgos, 35 confirmados adversarialmente):**
 > el backlog consolidado y priorizado vive en **[`docs/BACKLOG-INCHEON.md`](BACKLOG-INCHEON.md)**

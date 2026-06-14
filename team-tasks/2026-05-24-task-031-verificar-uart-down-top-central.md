@@ -4,7 +4,7 @@ title: "Verificar comunicación UART real DOWN→TOP (Serial5) y DOWN→CENTRAL 
 date_created: 2026-05-24
 assigned: [gviollaz, virginia-viollaz, elias]
 priority: P1
-status: pending
+status: parcial-transporte-confirmado
 estimated_hours: 1
 blocks: [hardware-up completo del robot (regla 8 CLAUDE.md), integración 3 placas]
 blocked_by: [TASK-006 (COMM flash), placa CENTRAL y/o TOP funcionando del otro lado del cable]
@@ -12,6 +12,24 @@ tags: [hardware, down-board, comunicaciones, uart, integracion]
 ---
 
 # TASK-031 — Verificar UART real DOWN→TOP y DOWN→CENTRAL
+
+## ✅ Avance de banco 2026-06-14 (Gustavo, `diag_central_rx_all`)
+
+**Transporte UART CONFIRMADO** (con las 3 placas conectadas):
+- **DOWN→CENTRAL (Serial1):** `LINEA` (LINE_URGENT) llega a **200 Hz, 0 CRC**, age 3 ms.
+  → **Test 2 (que las tramas lleguen con CRC OK) cumplido** para la línea.
+- **TOP→CENTRAL (Serial7):** `WORLD_SNAPSHOT` a **66 Hz, 0 CRC, 0 seqGap** (no estaba en
+  el alcance original, pero quedó probado de paso).
+
+**Lo que falta para cerrar TASK-031:**
+- DOWN→TOP (Serial5) directo (este diag es del lado CENTRAL).
+- Latencia con osciloscopio (Test 2 objetivo < 15 ms).
+- Comandos RX administrativos (Test 3).
+- ⚠️ **El OTOS de la DOWN NO da odometría** (pose `conf=0`, vel no se difunde) — es un
+  problema de DATO, no de transporte → **TASK-308** (casi seguro batería/power del OTOS).
+- **NO** se levanta la moratoria (criterio #5) hasta resolver lo de arriba.
+
+Journal: `journal/2026-06-14-banco-monitor-top-validado-y-top-central-ok.md`.
 
 ## Resumen
 

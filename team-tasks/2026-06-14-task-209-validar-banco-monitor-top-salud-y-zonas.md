@@ -2,10 +2,26 @@
 
 - **Asignado:** Virginia / Elías (equipo humano — requiere placa TOP)
 - **Prioridad:** P1 (operativo para Incheon; no bloqueante)
+- **Estado:** ✅ **CERRADA** (banco 2026-06-14, Gustavo).
 - **Creada:** 2026-06-14 (sesión Claude autónoma — journal
   `journal/2026-06-14-monitor-top-salud-y-zonas-telemetria.md`)
 - **Depende de:** firmware `top_robot2_pri` re-flasheado con el campo `z` (commit de
   esta sesión). El monitor viaja DORMIDO en el binario de competencia.
+
+## ✅ Resultado de banco 2026-06-14 (Gustavo)
+
+- **Monitor `--top-salud` ANDA en la placa TOP real**: conecta, el firmware arranca a
+  mandar (handshake STREAM ON/PING), se ve dato real de sensores y zonas.
+- **Bug PARPADEO encontrado y arreglado** (la ventana se redimensionaba cada frame;
+  `pack_propagate` + ancho fijo del header; commit `b42e220` + test de regresión).
+- **Regresión snapshot→CENTRAL: OK** — `diag_central_rx_all` mostró el WorldSnapshot del
+  TOP a la CENTRAL **66 Hz, 0 CRC, 0 seqGap**, decodificado entero (el monitor de solo
+  lectura NO degrada el envío a CENTRAL).
+- Sub-checks finos NO reportados uno por uno (tapar un sensor → rojo; botones de config;
+  pelota fantasma; cable-pull → modo partido). **Quedan como verificación opcional**, no
+  bloquean. La grilla de zonas se vio con dato real (no "pendiente firmware").
+
+Journal del banco: `journal/2026-06-14-banco-monitor-top-validado-y-top-central-ok.md`.
 
 ## Contexto
 

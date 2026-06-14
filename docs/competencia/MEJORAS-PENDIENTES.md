@@ -59,7 +59,7 @@ fuente: consolidación de faltantes + mejoras + gaps de los 5 jueces adversarial
 | B6 | **P1** | **Fig.11** Bodge de los 4 ToF / power-cycle | Foto | Macro del bodge |
 | B7 | **P1** | **Fig.2** Diagrama de flujo de datos (TOP/CENTRAL/DOWN con flechas etiquetadas: WorldSnapshot 31B, broadcast línea+OTOS) | Diagrama | Excalidraw/draw.io/TikZ |
 | B8 | **P1** | **Fig.4** Flowchart de la FSM táctica | Diagrama | Idem |
-| B9 | **P0** | **Fig.8** Crecimiento de tests (barras: 180→246→262→324→354→403→545→658→834) | Gráfico | matplotlib desde los snapshots del repo |
+| B9 | **P0** | **Fig.8** Crecimiento de tests (barras: 246→262→324→354→403→470→545→658→834→858) — ✓ regenerada 2026-06-14 con el punto 858 | Gráfico | matplotlib desde los snapshots del repo (`gen_figuras.py`) |
 | B10 | **P0** | **Fig.9** Error de odometría OTOS por superficie (barras: A4-lámina 9.5% / sin lámina 0% / cartón 6.5%) | Gráfico | matplotlib desde datos de banco |
 | B11 | **P1** | **Fig.3** Esquemático recortado (TOP o Zircon) | Recorte PDF | Usar los PDFs ya existentes |
 | B12 | **P1** | Captura de los tests en verde (834/60/0) | Captura | Para TDP, poster y video |

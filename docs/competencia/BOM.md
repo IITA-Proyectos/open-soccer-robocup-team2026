@@ -49,7 +49,7 @@
 | Ultrasonido | **HC-SR04** (designador U6 en TOP) | 1 | genérico | Nuevo | Módulo (kit) | **USD 5.25** (SparkFun) | **USD 5.25** |
 | **Subtotal §1.2** | | | | | | | **USD 484.95** |
 
-> ⚠️ **Nota BNO055:** el repo monta **2 BNO055** pero **1 unidad (RIGHT, 0x29) está FALLADA**; el robot compite hoy con **1 BNO sano + 4 ToF**. Para replicabilidad/repuestos: prever **2–4 unidades** (Incheon). Precio real de referencia: **USD 34.95/u** (Adafruit #2472) o 29.95 (Qwiic #4646); el viejo ~USD 15 era una nota cualitativa del repo.
+> ⚠️ **Nota BNO055:** el repo monta **2 BNO055** pero **1 unidad (RIGHT, 0x29) está FALLADA** → hoy es **2 montados, 1 sano**; el robot compite con **1 BNO sano + 4 ToF**. Para replicabilidad/repuestos: prever **2–4 unidades** (Incheon). Precio real de referencia: **USD 34.95/u** (Adafruit #2472) o 29.95 (Qwiic #4646); el viejo ~USD 15 era una nota cualitativa del repo.
 
 ### 1.3 Odometría y sensores de piso (placa DOWN)
 
@@ -120,9 +120,9 @@ La rúbrica premia **decisiones de diseño basadas en datos y trade-offs**, no s
 | Decisión | Alternativas evaluadas | Dato / criterio | Elección |
 |---|---|---|---|
 | **Localización 2D: 4× VL53L7CX (ToF) vs LiDAR vs EKF/MCL** | LiDAR (~USD 100), array ToF (~USD 80 = 4× VL53L7CX), EKF (±0.5–1 cm/3–5 días), Particle Filter (~500 µs, "overkill para cancha 1.83×2.43 m con 4 paredes ortogonales") | ToF: **±2–3 cm**, CPU despreciable, **1 día** de dev, **~USD 80** vs **USD 100** del LiDAR | **Trilateración geométrica con 4 ToF** (`docs/lidar-tof-slam-analysis.md`, `research/.../2026-05-25-localizacion-tof-imu-analisis.md`) |
-| **2× BNO055** (redundancia de heading) | 1 IMU | "dos chips de ~USD 35 c/u; confiabilidad muy superior" | 2 IMU (hoy 1 sano; ver gap) |
+| **2× BNO055** (redundancia de heading) | 1 IMU | "dos chips de ~USD 35 c/u; confiabilidad muy superior" | 2 IMU (**2 montados, 1 sano**; ver gap) |
 | **2× OTOS** (odometría óptica) | encoders en rueda | mide **slip lateral y rotación** directo del piso; banco: 300 mm reales → 280.4 mm (6.5 % error, pasa tolerancia 8 %) — ver gráfico de error por superficie en `docs/competencia/assets/fig9_otos_error.png` | 2 OTOS dual-bus |
-| **MCU: Teensy 4.x (Cortex-M7 @600 MHz)** | ESP32, STM32 menores | cada MCU corre a **<30 % de CPU** (margen para Kalman/EKF/coordinación) | Teensy 4.0/4.1 |
+| **MCU: Teensy 4.x (Cortex-M7 @600 MHz)** | ESP32, STM32 menores | cada MCU corre a **<30 % de CPU** *(objetivo de diseño — no medido con osciloscopio)* (margen para Kalman/EKF/coordinación) | Teensy 4.0/4.1 |
 | **Sin kicker** | solenoide (2025 lo tenía) | menos componentes/energía/fallas; empuje por inercia | eliminado del firmware 2026-06-03 |
 | **OpenMV N6** (vs H7 Plus) | OpenMV H7 Plus | NPU Neural-ART para visión por color; restricción HW (usar `sensor`+`pyb.UART`) documentada | 2× N6 |
 
@@ -167,7 +167,7 @@ La rúbrica premia **decisiones de diseño basadas en datos y trade-offs**, no s
 | Árbitro homologado (mueve el robot end-to-end) | 2026-06-02/03 | `journal/2026-06-03-banco-*` |
 | **Esfuerzo total de ingeniería** | **≈ 4 meses** (feb–jun 2026), desarrollo asistido por múltiples agentes en ramas | journals |
 
-> 💡 **Métrica de proceso vendible:** **suite de tests host-native que crece de forma trazable sesión a sesión** — 180 → 246 → 262 → 324 → 354 → 470 → 658 → **834 tests / 60 suites / 0 failures (measured 2026-06-13 17:43 ART via `scripts/run-host-tests.sh`)**. Ver el gráfico de crecimiento en `docs/competencia/assets/fig8_test_growth.png` (generado por `gen_figuras.py`).
+> 💡 **Métrica de proceso vendible:** **suite de tests host-native que crece de forma trazable sesión a sesión** — 246 → 262 → 324 → 354 → 403 → 470 → 545 → 658 → 834 → **858 tests / 61 suites / 0 failures (measured 2026-06-14 via `scripts/run-host-tests.sh`, g++ de Webots)**. Ver el gráfico de crecimiento en `docs/competencia/assets/fig8_test_growth.png` (generado por `gen_figuras.py`).
 
 ---
 
@@ -208,7 +208,7 @@ La rúbrica otorga **+1 bonus por open-source de CAD/PCB/esquemáticos** y **+1 
 | 6 | **[SPEC rueda]** Ø/material/n.º rodillos/origen (impresa o comprada) de la rueda omni 2026 | Mecánica |
 | 7 | ⚙️ **[SPEC batería] PARCIAL**: ✅ **LiPo 2S · 7.4 V · 6800 mAh** (≈50 Wh, 1 pack/robot) cargada en §1.5. Pendiente: **C-rating, marca, peso** | Eléctrica |
 | 8 | **[Nuevo/Reusado motores/ruedas]** confirmar si tracción es nueva 2026 o reusada 2025 | Sustentabilidad |
-| 9 | ✅ Cifra final de tests **resuelta**: **834 tests / 60 suites / 0 failures (measured 2026-06-13 17:43 ART via `scripts/run-host-tests.sh`)** — figura en `docs/competencia/assets/fig8_test_growth.png` | Proceso |
+| 9 | ✅ Cifra final de tests **resuelta**: **858 tests / 61 suites / 0 failures (measured 2026-06-14 via `scripts/run-host-tests.sh`, g++ de Webots)** — figura en `docs/competencia/assets/fig8_test_growth.png` | Proceso |
 | 10 | **[FOTO]** de cada PCB poblada (TOP/DOWN/Zircon/COMM) y del robot armado para etiquetar en el poster | Imágenes |
 | 11 | **[GAP]** set-points reales de los MP1584 (trimpot, sin medir) y costo de PCBs prorrateado del lote JLCPCB | Eléctrica |
 | 12 | **[PLANTILLA]** verificar si existe plantilla oficial de BOM RCJ y transcribir | Formato |

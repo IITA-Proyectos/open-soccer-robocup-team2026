@@ -1,0 +1,201 @@
+<svg viewBox="0 0 1440 1560" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Inter', Arial, sans-serif">
+  <!-- ============================================================
+       Fig. (D12) — FSM tactica dual: delantero (ATK) vs arquero (GK) + transiciones globales
+       Pregunta: Que estados tiene cada rol, como transiciona, y que transiciones globales
+                 pisan cualquier estado?
+       Print math: viewBox 1440 px -> ~360 mm => 0.25 mm/px. Estado 34px bold; condicion 28-30px;
+                 titulo 58px. Nada < 27px.
+       Paleta: ATK azul #1D4E89 (acento #2b6cb0) / GK naranja #E8731A (#a8500d) /
+                 rojo #C8102E SOLO emergencia / gris #6B7280 externo.
+       Rol fijado al boot (ROBOT1=GK, ROBOT2=ATK); NO cambia en partido.
+       FUENTE verificada: strategy.cpp L59-71 (enums AtkState 8 / GkState 6), L60-65 ATK,
+                 L66-71 GK (GOTO_LINE diagonal un movimiento), transiciones ATK/GK.
+       La Fig.4 vieja (diagramas.md, ESTRATEGIA-ALTO-NIVEL.md) esta DESACTUALIZADA: no usar.
+       ============================================================ -->
+  <defs>
+    <marker id="dn" markerWidth="14" markerHeight="14" refX="6" refY="11" orient="auto"><path d="M1 1 L6 11 L11 1" fill="none" stroke="#333" stroke-width="2.6"/></marker>
+    <marker id="up" markerWidth="14" markerHeight="14" refX="6" refY="2" orient="auto"><path d="M1 11 L6 1 L11 11" fill="none" stroke="#333" stroke-width="2.6"/></marker>
+    <marker id="rt" markerWidth="13" markerHeight="13" refX="10" refY="6" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="#333" stroke-width="2.4"/></marker>
+    <marker id="lt" markerWidth="13" markerHeight="13" refX="3" refY="6" orient="auto"><path d="M11 1 L1 6 L11 11" fill="none" stroke="#333" stroke-width="2.4"/></marker>
+    <marker id="rtR" markerWidth="13" markerHeight="13" refX="10" refY="6" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="#C8102E" stroke-width="2.6"/></marker>
+    <marker id="dnR" markerWidth="14" markerHeight="14" refX="6" refY="11" orient="auto"><path d="M1 1 L6 11 L11 1" fill="none" stroke="#C8102E" stroke-width="2.8"/></marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f4f6f8"/></linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1440" height="1560" fill="url(#bg)"/>
+
+  <text x="48" y="70" font-size="58" font-weight="800" fill="#222">Dos roles, dos maquinas de estados</text>
+  <text x="48" y="114" font-size="33" fill="#555">El rol se fija al boot (ROBOT1 = arquero, ROBOT2 = delantero) y NO cambia en el partido</text>
+
+  <!-- ================= CONCERN TRANSVERSAL: EMERGENCY_LINE (rojo, encima de todo) ================= -->
+  <g>
+    <rect x="48" y="146" width="1344" height="120" rx="12" fill="#FDECEE" stroke="#C8102E" stroke-width="3.5"/>
+    <text x="70" y="188" font-size="33" font-weight="800" fill="#C8102E">ENCIMA de la FSM &#8212; freno EMERGENCY_LINE (main_central, &lt;15 ms)*</text>
+    <text x="70" y="226" font-size="29" fill="#333">Corte DURO antes de correr la FSM. DISTINTO de LINE_AVOID (que es el ESTADO de recuperacion, abajo).</text>
+    <text x="70" y="258" font-size="29" fill="#333">Sin kicker: el robot empuja la pelota por INERCIA, no dispara nada.</text>
+  </g>
+
+  <!-- ================= CAJA DE TRANSICIONES GLOBALES PRIORITARIAS ================= -->
+  <g>
+    <rect x="48" y="288" width="1344" height="158" rx="12" fill="#EFEFEF" stroke="#6B7280" stroke-width="3"/>
+    <text x="70" y="328" font-size="32" font-weight="800" fill="#4b5563">Transiciones GLOBALES &#8212; pisan cualquier estado</text>
+    <text x="70" y="368" font-size="30" fill="#222"><tspan font-weight="700" fill="#4b5563">(1)</tspan> !match_running &#8594; WAIT_START &#160;(ambos roles)</text>
+    <text x="70" y="404" font-size="30" fill="#222"><tspan font-weight="700" fill="#4b5563">(2)</tspan> imminent_exit &amp;&amp; line_fresh &#8594; LINE_AVOID (ATK) / linea anti-flapping (GK)</text>
+    <text x="70" y="440" font-size="30" fill="#222"><tspan font-weight="700" fill="#4b5563">(3)</tspan> flanco STOP&#8594;RUN &#8594; KICKOFF &#160;<tspan fill="#6B7280" font-size="28">(SOLO el delantero / ATK)</tspan></text>
+  </g>
+
+  <!-- Encabezados de columna -->
+  <text x="80" y="498" font-size="40" font-weight="800" fill="#1D4E89">DELANTERO (ATK) &#183; 8 estados</text>
+  <text x="800" y="498" font-size="40" font-weight="800" fill="#E8731A">ARQUERO (GK) &#183; 6 estados</text>
+  <line x1="720" y1="470" x2="720" y2="1410" stroke="#d6dae0" stroke-width="2" stroke-dasharray="4 8"/>
+
+  <!-- ============================================================
+       COLUMNA IZQUIERDA — ATK (azul). Estados como nodos redondeados.
+       Layout vertical: WAIT_START -> KICKOFF -> SEARCH -> {POSITION|APPROACH}
+       POSITION <-> APPROACH ; APPROACH -> PUSH -> PUSH_BACK -> (SEARCH)
+       LINE_AVOID al costado.
+       ============================================================ -->
+  <!-- columna principal x ~ 150..470 ; LINE_AVOID a la derecha x ~ 510..700 -->
+
+  <!-- WAIT_START -->
+  <rect x="150" y="520" width="330" height="64" rx="32" fill="#EAF0F7" stroke="#1D4E89" stroke-width="3"/>
+  <text x="315" y="561" font-size="32" font-weight="800" fill="#1D4E89" text-anchor="middle">WAIT_START</text>
+
+  <!-- KICKOFF -->
+  <rect x="150" y="624" width="330" height="64" rx="32" fill="#EAF0F7" stroke="#1D4E89" stroke-width="3"/>
+  <text x="315" y="665" font-size="32" font-weight="800" fill="#1D4E89" text-anchor="middle">KICKOFF</text>
+  <line x1="315" y1="584" x2="315" y2="620" stroke="#333" stroke-width="3" marker-end="url(#dn)"/>
+  <text x="328" y="610" font-size="28" fill="#444">START</text>
+
+  <!-- SEARCH -->
+  <rect x="150" y="728" width="330" height="64" rx="32" fill="#EAF0F7" stroke="#1D4E89" stroke-width="3"/>
+  <text x="315" y="769" font-size="32" font-weight="800" fill="#1D4E89" text-anchor="middle">SEARCH</text>
+  <line x1="315" y1="688" x2="315" y2="724" stroke="#333" stroke-width="3" marker-end="url(#dn)"/>
+  <text x="328" y="714" font-size="28" fill="#444">tras 250 ms</text>
+
+  <!-- POSITION -->
+  <rect x="150" y="852" width="250" height="64" rx="32" fill="#EAF0F7" stroke="#1D4E89" stroke-width="3"/>
+  <text x="275" y="893" font-size="32" font-weight="800" fill="#1D4E89" text-anchor="middle">POSITION</text>
+
+  <!-- APPROACH -->
+  <rect x="150" y="976" width="250" height="64" rx="32" fill="#EAF0F7" stroke="#1D4E89" stroke-width="3"/>
+  <text x="275" y="1017" font-size="32" font-weight="800" fill="#1D4E89" text-anchor="middle">APPROACH</text>
+
+  <!-- SEARCH -> POSITION  (ve pelota + eje valido + NO alineada) -->
+  <line x1="270" y1="792" x2="270" y2="848" stroke="#333" stroke-width="3" marker-end="url(#dn)"/>
+  <text x="150" y="826" font-size="27" fill="#444">ve pelota + eje OK + NO alineada</text>
+
+  <!-- SEARCH -> APPROACH directo (alineada o sin eje) — flecha curva por izquierda -->
+  <path d="M150 762 C 62 812, 62 968, 146 1000" fill="none" stroke="#2b6cb0" stroke-width="2.6" marker-end="url(#rt)"/>
+  <text x="36" y="906" font-size="26" fill="#2b6cb0">alineada</text>
+  <text x="36" y="934" font-size="26" fill="#2b6cb0">o sin eje</text>
+
+  <!-- POSITION -> APPROACH  (reached <80mm + aligned) -->
+  <line x1="240" y1="916" x2="240" y2="972" stroke="#333" stroke-width="3" marker-end="url(#dn)"/>
+  <text x="408" y="942" font-size="27" fill="#444">reached &lt;80mm</text>
+  <text x="408" y="972" font-size="27" fill="#444">+ aligned</text>
+  <!-- APPROACH -> POSITION  (histeresis +10 deg) -->
+  <line x1="320" y1="972" x2="320" y2="918" stroke="#333" stroke-width="3" marker-end="url(#up)"/>
+  <text x="408" y="1008" font-size="27" fill="#444">histeresis +10&#176;</text>
+
+  <!-- PUSH -->
+  <rect x="150" y="1100" width="250" height="64" rx="32" fill="#DDE8F4" stroke="#1D4E89" stroke-width="3.5"/>
+  <text x="275" y="1141" font-size="32" font-weight="800" fill="#1D4E89" text-anchor="middle">PUSH</text>
+
+  <!-- PUSH_BACK -->
+  <rect x="150" y="1224" width="250" height="64" rx="32" fill="#DDE8F4" stroke="#1D4E89" stroke-width="3.5"/>
+  <text x="275" y="1265" font-size="32" font-weight="800" fill="#1D4E89" text-anchor="middle">PUSH_BACK</text>
+
+  <!-- APPROACH -> PUSH (dist<80 && |ang|<=12) -->
+  <line x1="275" y1="1040" x2="275" y2="1096" stroke="#333" stroke-width="3" marker-end="url(#dn)"/>
+  <text x="412" y="1066" font-size="27" fill="#444">dist&lt;80mm</text>
+  <text x="412" y="1096" font-size="27" fill="#444">&amp; |ang|&lt;=12&#176;</text>
+
+  <!-- PUSH -> PUSH_BACK (tras 500 ms) -->
+  <line x1="275" y1="1164" x2="275" y2="1220" stroke="#333" stroke-width="3" marker-end="url(#dn)"/>
+  <text x="412" y="1196" font-size="27" fill="#444">tras 500 ms</text>
+
+  <!-- PUSH_BACK -> SEARCH (tras 250 ms) — flecha curva subiendo por la derecha de la columna -->
+  <path d="M400 1256 C 588 1256, 588 762, 484 762" fill="none" stroke="#2b6cb0" stroke-width="2.6" marker-end="url(#lt)"/>
+  <text x="498" y="754" font-size="26" fill="#2b6cb0">tras 250 ms</text>
+  <text x="498" y="782" font-size="26" fill="#2b6cb0">&#8594; SEARCH</text>
+
+  <!-- glosa PUSH / PUSH_BACK -->
+  <text x="150" y="1330" font-size="27" fill="#555">PUSH = empuje comprometido full-adelante por tiempo fijo (el "pateo" 2025).</text>
+  <text x="150" y="1362" font-size="27" fill="#555">PUSH_BACK = retroceso corto post-empuje.</text>
+
+  <!-- LINE_AVOID (ATK) al costado derecho de la columna -->
+  <rect x="540" y="1100" width="160" height="120" rx="16" fill="#FDECEE" stroke="#C8102E" stroke-width="3"/>
+  <text x="620" y="1148" font-size="28" font-weight="800" fill="#C8102E" text-anchor="middle">LINE_</text>
+  <text x="620" y="1182" font-size="28" font-weight="800" fill="#C8102E" text-anchor="middle">AVOID</text>
+  <text x="620" y="1212" font-size="27" fill="#C8102E" text-anchor="middle">(global 2)</text>
+
+  <!-- ============================================================
+       COLUMNA DERECHA — GK (naranja).
+       WAIT_START -> GOTO_LINE -> PATROL <-> INTERCEPT <-> CLEAR
+       LINE_AVOID al costado.
+       ============================================================ -->
+  <!-- columna x ~ 850..1180 ; LINE_AVOID a la derecha -->
+
+  <!-- WAIT_START -->
+  <rect x="850" y="520" width="330" height="64" rx="32" fill="#FDF1E7" stroke="#E8731A" stroke-width="3"/>
+  <text x="1015" y="561" font-size="32" font-weight="800" fill="#a8500d" text-anchor="middle">WAIT_START</text>
+
+  <!-- GOTO_LINE -->
+  <rect x="850" y="640" width="330" height="64" rx="32" fill="#FDF1E7" stroke="#E8731A" stroke-width="3"/>
+  <text x="1015" y="681" font-size="32" font-weight="800" fill="#a8500d" text-anchor="middle">GOTO_LINE</text>
+  <line x1="1015" y1="584" x2="1015" y2="636" stroke="#333" stroke-width="3" marker-end="url(#dn)"/>
+  <text x="1028" y="616" font-size="27" fill="#444">tras GK_START_DELAY_MS = 2000</text>
+
+  <!-- PATROL -->
+  <rect x="850" y="780" width="330" height="64" rx="32" fill="#FDF1E7" stroke="#E8731A" stroke-width="3"/>
+  <text x="1015" y="821" font-size="32" font-weight="800" fill="#a8500d" text-anchor="middle">PATROL</text>
+  <line x1="1015" y1="704" x2="1015" y2="776" stroke="#333" stroke-width="3" marker-end="url(#dn)"/>
+  <text x="1028" y="748" font-size="27" fill="#444">al detectar la linea del arco</text>
+
+  <!-- INTERCEPT -->
+  <rect x="850" y="966" width="330" height="64" rx="32" fill="#FDF1E7" stroke="#E8731A" stroke-width="3.5"/>
+  <text x="1015" y="1007" font-size="32" font-weight="800" fill="#a8500d" text-anchor="middle">INTERCEPT</text>
+
+  <!-- CLEAR -->
+  <rect x="850" y="1100" width="330" height="64" rx="32" fill="#FDF1E7" stroke="#E8731A" stroke-width="3"/>
+  <text x="1015" y="1141" font-size="32" font-weight="800" fill="#a8500d" text-anchor="middle">CLEAR</text>
+
+  <!-- PATROL <-> INTERCEPT -->
+  <line x1="975" y1="844" x2="975" y2="962" stroke="#333" stroke-width="3" marker-end="url(#dn)"/>
+  <text x="1192" y="900" font-size="27" fill="#444" text-anchor="end">ve pelota</text>
+  <line x1="1055" y1="962" x2="1055" y2="844" stroke="#333" stroke-width="3" marker-end="url(#up)"/>
+  <text x="1192" y="935" font-size="27" fill="#444" text-anchor="end">!ball_visible</text>
+
+  <!-- INTERCEPT <-> CLEAR -->
+  <line x1="975" y1="1030" x2="975" y2="1096" stroke="#333" stroke-width="3" marker-end="url(#dn)"/>
+  <text x="1192" y="1058" font-size="27" fill="#444" text-anchor="end">dist&lt;250 mm</text>
+  <line x1="1055" y1="1096" x2="1055" y2="1032" stroke="#333" stroke-width="3" marker-end="url(#up)"/>
+  <text x="1192" y="1092" font-size="27" fill="#444" text-anchor="end">dist&gt;400 mm (hist.)</text>
+
+  <!-- CLEAR -> PATROL (vuelve si !ball_visible) — curva por la izquierda -->
+  <path d="M850 1132 C 768 1132, 768 814, 846 814" fill="none" stroke="#a8500d" stroke-width="2.6" marker-end="url(#rt)"/>
+  <text x="726" y="1158" font-size="26" fill="#a8500d">!ball_visible</text>
+  <text x="726" y="1186" font-size="26" fill="#a8500d">&#8594; PATROL</text>
+
+  <!-- notas GK: GOTO_LINE diagonal + INTERCEPT anticipa -->
+  <text x="726" y="1234" font-size="27" fill="#555">GOTO_LINE = UN movimiento DIAGONAL (atras-y-derecha),</text>
+  <text x="726" y="1264" font-size="27" fill="#555">hasta tocar la linea del arco con el piso (no 2 fases).</text>
+  <text x="726" y="1304" font-size="27" fill="#555">INTERCEPT ANTICIPA con la X PREDICHA (ball_predict): si</text>
+  <text x="726" y="1334" font-size="27" fill="#555">va al arco propio, refuerza lead +50% y KP +50%.</text>
+
+  <!-- LINE_AVOID (GK) al costado derecho -->
+  <rect x="1230" y="966" width="162" height="120" rx="16" fill="#FDECEE" stroke="#C8102E" stroke-width="3"/>
+  <text x="1311" y="1014" font-size="28" font-weight="800" fill="#C8102E" text-anchor="middle">LINE_</text>
+  <text x="1311" y="1048" font-size="28" font-weight="800" fill="#C8102E" text-anchor="middle">AVOID</text>
+  <text x="1311" y="1078" font-size="27" fill="#C8102E" text-anchor="middle">(global 2)</text>
+
+  <!-- ================= Nota de madurez ================= -->
+  <g>
+    <rect x="48" y="1408" width="1344" height="78" rx="12" fill="#EAF0F7" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="70" y="1448" font-size="29" fill="#333"><tspan font-weight="800" fill="#1D4E89">Madurez (*):</tspan> la FSM esta en verde (host tests), pero la restriccion DOMINANTE hoy es la VISION sin recalibrar (TASK-022)</text>
+    <text x="70" y="1478" font-size="28" fill="#6B7280">&#8212; sin pelota/arcos confiables, ninguna transicion que dependa de la camara dispara como en banco.</text>
+  </g>
+
+  <text x="48" y="1528" font-size="27" fill="#666">Fig. &#8212; Cada rol es una FSM fija; tres transiciones globales (y un freno de linea por encima) pisan cualquier estado.  &#183;  Diagrama original del equipo &#8212; CC BY 4.0  &#183;  Fuente: strategy.cpp L59-71 (enums + transiciones).  (*objetivo/estado no medido en cancha)</text>
+</svg>

@@ -1,0 +1,186 @@
+<svg viewBox="0 0 1440 1560" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Inter', Arial, sans-serif">
+  <!-- ============================================================
+       Fig. (D15) — Arbol de fallos / fail-safe del sistema
+       Pregunta: ante cada modo de falla (enlace caido, loop colgado, borde, sensor muerto,
+                 heading falso, arbitro desconectado), que DETECTA el robot y que ACCION SEGURA toma?
+       Analogia: frenos y airbags de un auto: cada sistema vigila UNA cosa y actua solo.
+       Estructura: arbol por subsistema; cada hoja = [SENSOR DE FALLA] -> [SENAL] -> [ACCION FAIL-SAFE].
+       Print math: viewBox 1440 px -> ~360 mm => 0.25 mm/px. Cuerpo 28-32px; titulo 58px. Piso 27px.
+       Layout: 3 columnas. left x=44 w=448 (->492); mid x=500 w=448 (->948); right x=956 w=440 (->1396? no:
+               right cap 1392). Cada caja interna deja margen al borde de su tarjeta.
+       Paleta: TOP #1D4E89 / CENTRAL #E8731A / DOWN #1E8A4C / externo gris #6B7280 / ROJO #C8102E (seguridad).
+       Fuentes: main_central.cpp (WDOG1, freno borde + SAFE_NO_TOP), world_model.cpp (500 ms),
+                config_central.h:218 (COMMAND_TIMEOUT_MS removido), down_model.cpp (data_valid),
+                sensor_health.h, strategy.cpp (gate heading), comm_arbiter.cpp (arbitro pulldown=STOP).
+       ============================================================ -->
+  <defs>
+    <marker id="dn" markerWidth="14" markerHeight="14" refX="6" refY="11" orient="auto"><path d="M1 1 L6 11 L11 1" fill="none" stroke="#333" stroke-width="2.6"/></marker>
+    <marker id="dnr" markerWidth="14" markerHeight="14" refX="6" refY="11" orient="auto"><path d="M1 1 L6 11 L11 1" fill="none" stroke="#C8102E" stroke-width="2.6"/></marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f4f6f8"/></linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1440" height="1560" fill="url(#bg)"/>
+
+  <text x="44" y="72" font-size="58" font-weight="800" fill="#222">Arbol de fallos: que detecta y como frena seguro</text>
+  <text x="44" y="116" font-size="33" fill="#555">Como los frenos y airbags de un auto: cada vigilante mira UNA cosa y actua solo</text>
+
+  <!-- ===== Fila de cabecera: SENSOR DE FALLA -> SENAL -> ACCION FAIL-SAFE ===== -->
+  <g>
+    <rect x="44" y="152" width="1348" height="60" rx="10" fill="#EEF1F4" stroke="#9aa1ab" stroke-width="2"/>
+    <text x="110" y="191" font-size="31" font-weight="800" fill="#444">SENSOR DE FALLA</text>
+    <text x="420" y="191" font-size="30" fill="#6B7280">&#8594;</text>
+    <text x="540" y="191" font-size="31" font-weight="800" fill="#444">SENAL detectada</text>
+    <text x="880" y="191" font-size="30" fill="#6B7280">&#8594;</text>
+    <text x="1000" y="191" font-size="31" font-weight="800" fill="#C8102E">ACCION FAIL-SAFE</text>
+  </g>
+
+  <!-- =====================================================================
+       FILA 1: (A) Enlace TOP (azul) | (C) Loop CENTRAL (naranja) | (G) Arbitro (gris)
+       ===================================================================== -->
+
+  <!-- (A) ENLACE TOP->CENTRAL caido -->
+  <g>
+    <rect x="44" y="240" width="448" height="252" rx="14" fill="#EAF0F7" stroke="#1D4E89" stroke-width="3"/>
+    <rect x="44" y="240" width="14" height="252" rx="6" fill="#1D4E89"/>
+    <text x="76" y="282" font-size="32" font-weight="800" fill="#1D4E89">A &#183; Enlace TOP caido</text>
+    <text x="76" y="320" font-size="29" fill="#333">snapshot stale &gt; 500 ms</text>
+    <text x="76" y="352" font-size="28" fill="#6B7280">(SNAPSHOT_TIMEOUT_MS)</text>
+    <line x1="268" y1="364" x2="268" y2="398" stroke="#333" stroke-width="3.5" marker-end="url(#dn)"/>
+    <rect x="76" y="404" width="396" height="76" rx="9" fill="#FDECEE" stroke="#C8102E" stroke-width="2.5"/>
+    <text x="94" y="437" font-size="28" font-weight="700" fill="#C8102E">motors_stop() + LED</text>
+    <text x="94" y="469" font-size="28" fill="#555">SAFE_NO_TOP &#183; vuelve solo</text>
+  </g>
+
+  <!-- (C) LOOP del CENTRAL colgado -->
+  <g>
+    <rect x="500" y="240" width="448" height="252" rx="14" fill="#FDF1E7" stroke="#E8731A" stroke-width="3"/>
+    <rect x="500" y="240" width="14" height="252" rx="6" fill="#E8731A"/>
+    <text x="532" y="282" font-size="31" font-weight="800" fill="#a8500d">C &#183; Loop CENTRAL colgado</text>
+    <text x="532" y="320" font-size="28" fill="#333">WDOG1 hardware (i.MX RT1062)</text>
+    <text x="532" y="352" font-size="28" fill="#6B7280">timeout 1 s &#183; 500 ms no alcanza</text>
+    <line x1="724" y1="364" x2="724" y2="398" stroke="#333" stroke-width="3.5" marker-end="url(#dn)"/>
+    <rect x="532" y="404" width="396" height="76" rx="9" fill="#FDECEE" stroke="#C8102E" stroke-width="2.5"/>
+    <text x="550" y="437" font-size="28" font-weight="700" fill="#C8102E">resetea el Teensy</text>
+    <text x="550" y="469" font-size="28" fill="#555">GATEADO OFF* (ver banco)</text>
+  </g>
+
+  <!-- (G) ARBITRO desconectado -->
+  <g>
+    <rect x="956" y="240" width="436" height="252" rx="14" fill="#EFEFEF" stroke="#6B7280" stroke-width="3"/>
+    <rect x="956" y="240" width="14" height="252" rx="6" fill="#6B7280"/>
+    <text x="988" y="282" font-size="31" font-weight="800" fill="#4b5563">G &#183; Arbitro desconectado</text>
+    <text x="988" y="320" font-size="29" fill="#333">cable COMM suelto</text>
+    <text x="988" y="352" font-size="28" fill="#6B7280">pines 5/6 con PULLDOWN = 0</text>
+    <line x1="1174" y1="364" x2="1174" y2="398" stroke="#333" stroke-width="3.5" marker-end="url(#dn)"/>
+    <rect x="988" y="404" width="384" height="76" rx="9" fill="#FDECEE" stroke="#C8102E" stroke-width="2.5"/>
+    <text x="1004" y="437" font-size="28" font-weight="700" fill="#C8102E">OR=0 &#8594; STOP</text>
+    <text x="1004" y="469" font-size="28" fill="#555">debounce 40 ms &#183; boot=STOP</text>
+  </g>
+
+  <!-- =====================================================================
+       FILA 2: (B) Enlace DOWN (verde) | (D) Borde inminente (rojo) | (F) Heading (azul)
+       ===================================================================== -->
+
+  <!-- (B) ENLACE DOWN caido -->
+  <g>
+    <rect x="44" y="516" width="448" height="252" rx="14" fill="#E9F5EE" stroke="#1E8A4C" stroke-width="3"/>
+    <rect x="44" y="516" width="14" height="252" rx="6" fill="#1E8A4C"/>
+    <text x="76" y="558" font-size="32" font-weight="800" fill="#1E8A4C">B &#183; Enlace DOWN caido</text>
+    <text x="76" y="596" font-size="29" fill="#333">linea stale &gt; 500 ms</text>
+    <text x="76" y="628" font-size="28" fill="#6B7280">(LINE_TIMEOUT_MS)</text>
+    <line x1="268" y1="640" x2="268" y2="674" stroke="#333" stroke-width="3.5" marker-end="url(#dn)"/>
+    <rect x="76" y="680" width="396" height="76" rx="9" fill="#FDECEE" stroke="#C8102E" stroke-width="2.5"/>
+    <text x="94" y="713" font-size="28" font-weight="700" fill="#C8102E">ignora la linea (ciego)</text>
+    <text x="94" y="745" font-size="28" fill="#555">OTOS (0x11/0x12): aparte</text>
+  </g>
+
+  <!-- (D) BORDE INMINENTE -->
+  <g>
+    <rect x="500" y="516" width="448" height="252" rx="14" fill="#FDECEE" stroke="#C8102E" stroke-width="3.5"/>
+    <rect x="500" y="516" width="14" height="252" rx="6" fill="#C8102E"/>
+    <text x="532" y="558" font-size="32" font-weight="800" fill="#C8102E">D &#183; Borde inminente</text>
+    <text x="532" y="594" font-size="28" fill="#333">EMERGENCY_LINE (sobre la FSM)</text>
+    <text x="532" y="626" font-size="28" fill="#6B7280">imminent_exit &amp;&amp; line fresca</text>
+    <line x1="724" y1="640" x2="724" y2="674" stroke="#C8102E" stroke-width="3.5" marker-end="url(#dnr)"/>
+    <rect x="532" y="680" width="396" height="76" rx="9" fill="#FDE3E6" stroke="#C8102E" stroke-width="2.5"/>
+    <text x="550" y="713" font-size="28" font-weight="700" fill="#C8102E">motors_brake() + return</text>
+    <text x="550" y="745" font-size="28" fill="#555">freno activo &#183; meta &lt; 15 ms*</text>
+  </g>
+
+  <!-- (F) HEADING falso -->
+  <g>
+    <rect x="956" y="516" width="436" height="252" rx="14" fill="#EAF0F7" stroke="#1D4E89" stroke-width="3"/>
+    <rect x="956" y="516" width="14" height="252" rx="6" fill="#1D4E89"/>
+    <text x="988" y="558" font-size="32" font-weight="800" fill="#1D4E89">F &#183; Heading falso</text>
+    <text x="988" y="596" font-size="28" fill="#333">BNO no fija (heading_valid=0)</text>
+    <text x="988" y="628" font-size="28" fill="#6B7280">o |error rumbo| &gt; 45&#176;</text>
+    <line x1="1174" y1="640" x2="1174" y2="674" stroke="#333" stroke-width="3.5" marker-end="url(#dn)"/>
+    <rect x="988" y="680" width="384" height="76" rx="9" fill="#FDECEE" stroke="#C8102E" stroke-width="2.5"/>
+    <text x="1004" y="713" font-size="28" font-weight="700" fill="#C8102E">omega = 0 (no gira)</text>
+    <text x="1004" y="745" font-size="28" fill="#555">no persigue lo que ignora</text>
+  </g>
+
+  <!-- =====================================================================
+       FILA 3 (ancho completo): (E) Sensores de piso = compuerta maestra data_valid
+       ===================================================================== -->
+  <g>
+    <rect x="44" y="792" width="1348" height="216" rx="14" fill="#E9F5EE" stroke="#1E8A4C" stroke-width="3"/>
+    <rect x="44" y="792" width="14" height="216" rx="6" fill="#1E8A4C"/>
+    <text x="76" y="834" font-size="32" font-weight="800" fill="#1E8A4C">E &#183; Sensores de piso (DOWN) &#8212; compuerta maestra  data_valid</text>
+
+    <!-- baja data_valid a 0 -->
+    <rect x="76" y="852" width="640" height="140" rx="10" fill="#FDECEE" stroke="#C8102E" stroke-width="2.5"/>
+    <text x="96" y="888" font-size="29" font-weight="800" fill="#C8102E">data_valid &#8594; 0  (se descarta todo el piso)</text>
+    <text x="96" y="922" font-size="28" fill="#333">si lifted (EV_LIFTED) &#183; calib_suspect &#183;</text>
+    <text x="96" y="954" font-size="28" fill="#333">mux entero muerto (EV_MUX_DEAD) &#183;</text>
+    <text x="96" y="986" font-size="28" fill="#333">saturacion todo-blanco 7-de-8</text>
+
+    <!-- sensor individual: se excluye pero NO baja data_valid -->
+    <rect x="740" y="852" width="628" height="140" rx="10" fill="#F1F8F4" stroke="#1E8A4C" stroke-width="2.5"/>
+    <text x="760" y="888" font-size="29" font-weight="800" fill="#1E8A4C">1 sensor ruidoso o stuck &#8594; se EXCLUYE</text>
+    <text x="760" y="922" font-size="28" fill="#333">ruidoso &gt; 20 transiciones/1s  o  stuck</text>
+    <text x="760" y="954" font-size="28" fill="#333">(mismo RAW &gt; 5s) &#8594; sale del centroide,</text>
+    <text x="760" y="986" font-size="28" fill="#6B7280">pero data_valid sigue en 1 (degradado, no ciego)</text>
+  </g>
+
+  <!-- =====================================================================
+       GAP load-bearing (caja de alerta, ancho completo)
+       ===================================================================== -->
+  <g>
+    <rect x="44" y="1024" width="1348" height="188" rx="14" fill="#FFF4D6" stroke="#C8102E" stroke-width="3.5"/>
+    <text x="74" y="1062" font-size="31" font-weight="800" fill="#C8102E">&#9888; GAP declarado: "vivo" no es lo mismo que "accionable-para-frenar"</text>
+    <text x="74" y="1098" font-size="28" fill="#333">Con el enlace vivo pero data_valid=0 (mux muerto / saturacion / lifted), el freno de borde queda</text>
+    <text x="74" y="1130" font-size="28" fill="#333">DESACTIVADO sin aviso (imminent_exit exige data_valid!=0). Y 500 ms es 33&#215; el objetivo de 15 ms.</text>
+    <text x="74" y="1166" font-size="27" fill="#a8500d">Correccion: el watchdog de motores es por FRESCURA del snapshot (500 ms),</text>
+    <text x="74" y="1198" font-size="27" fill="#a8500d">no COMMAND_TIMEOUT_MS=200 ms (codigo muerto, config_central.h:218).</text>
+  </g>
+
+  <!-- =====================================================================
+       Panel de honestidad / estados
+       ===================================================================== -->
+  <g>
+    <rect x="44" y="1226" width="1348" height="140" rx="12" fill="#F4F5F7" stroke="#9aa1ab" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="68" y="1264" font-size="30" font-weight="800" fill="#4b5563">Honestidad (*): lo MEDIDO va firme; lo no validado en banco lleva asterisco</text>
+    <text x="68" y="1302" font-size="28" fill="#444">&#8226; GATEADO/OFF (C): el WDOG1 hardware esta APAGADO por default &#8212; hay que validarlo en banco.</text>
+    <text x="68" y="1336" font-size="28" fill="#444">&#8226; COAST? (D): falta confirmar que motors_brake() frena.  &#8226; arbitro OR-latch: PENDIENTE (TASK-016).</text>
+  </g>
+
+  <!-- ===== mini-leyenda de color (que placa vigila) ===== -->
+  <g font-size="27" fill="#333">
+    <rect x="56" y="1393" width="32" height="20" rx="4" fill="#EAF0F7" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="98" y="1411">TOP / percepcion</text>
+    <rect x="356" y="1393" width="32" height="20" rx="4" fill="#FDF1E7" stroke="#E8731A" stroke-width="2.5"/>
+    <text x="398" y="1411">CENTRAL / loop</text>
+    <rect x="664" y="1393" width="32" height="20" rx="4" fill="#E9F5EE" stroke="#1E8A4C" stroke-width="2.5"/>
+    <text x="706" y="1411">DOWN / piso</text>
+    <rect x="912" y="1393" width="32" height="20" rx="4" fill="#EFEFEF" stroke="#6B7280" stroke-width="2.5"/>
+    <text x="954" y="1411">externo / arbitro</text>
+    <rect x="1190" y="1393" width="32" height="20" rx="4" fill="#FDECEE" stroke="#C8102E" stroke-width="2.5"/>
+    <text x="1232" y="1411">seguridad</text>
+  </g>
+
+  <text x="44" y="1466" font-size="28" fill="#666">Cada falla tiene UN vigilante y UNA accion segura: el principio es "falla segura", ante la duda frenar o parar.</text>
+
+  <text x="44" y="1512" font-size="27" fill="#666">Fig. &#8212; Seis modos de falla con su sensor, senal y accion fail-safe; el gap data_valid=0 se declara.  &#183;  CC BY 4.0</text>
+  <text x="44" y="1544" font-size="27" fill="#666">Diagrama original del equipo.  Fuente: main_central.cpp, world_model.cpp, config_central.h:218, down_model.cpp.</text>
+</svg>

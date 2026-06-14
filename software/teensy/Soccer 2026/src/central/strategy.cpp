@@ -1054,17 +1054,19 @@ MotorCommand goalkeeper_tick() {
         constexpr float    GKS_RESQUARE_EXIT   = 12.0f;  // escuadre: corte en vivo
         constexpr uint32_t GKS_RESQUARE_MAX_MS = 900;    // tope del escuadre parado
         constexpr uint32_t GKS_SETTLE_MS       = 300;    // quieto post-escuadre
-        constexpr uint32_t GKS_ESCAPE_MS       = 1300;   // huida post-línea (banco 2026-06-14:
-                                                         // 600→900→1300, "le falta distancia de
-                                                         // escape". 420 mm/s · 1300 ms ≈ 55 cm.
-                                                         // 🔧 más perilla: GKS_ESCAPE_SPEED_MM_S.)
+        constexpr uint32_t GKS_ESCAPE_MS       = 1700;   // huida post-línea (banco 2026-06-14:
+                                                         // 600→900→1300→1700, "le sigue faltando
+                                                         // distancia". La trasera satura ~420 → el
+                                                         // lever seguro es la DURACIÓN, no más velocidad.)
         // ESCAPE más RÁPIDO que el strafe normal (GK_PATROL_SPEED=200) para despegarse de
         // la línea DECIDIDO y salir antes de volver a leer la línea (pedido María
         // 2026-06-14: "se quedaba trabado en la línea blanca"). 420 = "fiel pleno" → la
         // rueda trasera queda SOBRE su piso de PWM (no aplastada) = strafe limpio y veloz.
         // 420 mm/s · 600 ms ≈ 25 cm. 🔧 banco: si aún no despega, subir a ~500 o el
         // ESCAPE_MS; si se va de más, bajar la velocidad.
-        constexpr float    GKS_ESCAPE_SPEED_MM_S = 420.0f;
+        constexpr float    GKS_ESCAPE_SPEED_MM_S = 470.0f;  // 420→470 (toque más). OJO: arriba de
+                                                            // ~420 la trasera satura y dominan las
+                                                            // delanteras → más diagonal. No subir mucho.
 
 #ifdef GK_SIMPLE_BALL
         // CONDUCTA DE PELOTA (cámara) sobre el strafe — pedido María 2026-06-14.
@@ -1157,12 +1159,23 @@ MotorCommand goalkeeper_tick() {
                 if (line_data_fresh() && world_model_line_detected() &&
                     (now_ms - bounce_gate) >= GK_PATROL_BOUNCE_COOLDOWN_MS) {
                     const float la = world_model_get_line_angle_deg();
-                    const bool  la_behind = (la > 135.0f || la < -135.0f);
+                    // Clasificar "atrás" (su PROPIA línea de arco) en el MARCO CANCHA, NO en el
+                    // del robot: si está rotado, una línea LATERAL aparece girada y antes se
+                    // confundía con la de atrás → la ignoraba y NO escapaba → se metía MÁS
+                    // (banco María 2026-06-14: "yendo a la izquierda toca la línea y se mete
+                    // más"). Corregir por el rumbo: la_cancha = la + heading_now. 🔧 si saliera
+                    // al revés (rebota sobre su propia línea de atrás), cambiar + por -.
+                    float la_field = la;
+                    if (hv) {
+                        la_field += heading_now;
+                        while (la_field > 180.0f)  la_field -= 360.0f;
+                        while (la_field < -180.0f) la_field += 360.0f;
+                    }
+                    const bool la_behind = (la_field > 135.0f || la_field < -135.0f);
                     if (!la_behind) {
                         // OPUESTO al sentido de ENTRADA (pedido María 2026-06-14): invertir
-                        // el strafe en curso. Robusto al rumbo — NO depende de leer bien el
-                        // ángulo de la línea (que se lee mal cuando el robot está rotado, y
-                        // por eso antes a veces escapaba HACIA la línea metiéndose más).
+                        // el strafe en curso. Robusto al rumbo — NO depende del signo del
+                        // ángulo de la línea para elegir el lado.
                         dir_simple  = -dir_simple;
                         bounce_gate = now_ms;
                         phase = 4; phase_t0 = now_ms;   // PRIMERO escapar de la línea

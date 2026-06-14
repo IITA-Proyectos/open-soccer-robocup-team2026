@@ -1,0 +1,121 @@
+<svg viewBox="0 0 1440 1490" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Inter', Arial, sans-serif">
+  <!-- ============================================================
+       Fig. (D5) — Arbol de distribucion electrica / de potencia
+       Pregunta: Como llega la energia de la bateria a cada placa, sensor y motor, y donde NO esta medido?
+       Print math: viewBox 1440 px -> ancho impreso ~360 mm => 0.25 mm/px.
+       Cuerpo 34-36 px = 8.5-9 mm ~ 24-25.5 pt (>=24 pt OK). Tag placa 40 px ~ 28 pt. Titulo 64 px ~ 45 pt.
+       Notas/caption 30 px ~ 21 pt (tier caption). Layout v2: rieles/cargas a ANCHO COMPLETO por fila.
+       Paleta firma: TOP #1D4E89 / CENTRAL #E8731A / DOWN #1E8A4C / rojo seguridad #C8102E / gris.
+       Fuentes: BOM.md L70-86; ESTADO-ACTUAL.md L397-411 (brownout OTOS); config_central.h:218
+         (COMMAND_TIMEOUT removido); world_model.cpp (SNAPSHOT_TIMEOUT_MS=500); comm-board (LDO UA78M33);
+         hardware/electrical/README.md (stub = el gap).
+       ============================================================ -->
+  <defs>
+    <marker id="ar" markerWidth="13" markerHeight="13" refX="10" refY="6" orient="auto">
+      <path d="M1 1 L11 6 L1 11" fill="none" stroke="#555" stroke-width="2.4"/>
+    </marker>
+    <marker id="ard" markerWidth="13" markerHeight="13" refX="6" refY="10" orient="auto">
+      <path d="M1 1 L6 11 L11 1" fill="none" stroke="#B8860B" stroke-width="2.6"/>
+    </marker>
+    <marker id="arb" markerWidth="13" markerHeight="13" refX="10" refY="6" orient="auto">
+      <path d="M1 1 L11 6 L1 11" fill="none" stroke="#B8860B" stroke-width="2.6"/>
+    </marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f4f6f8"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1440" height="1490" fill="url(#bg)"/>
+
+  <!-- ===== Titulo ===== -->
+  <text x="48" y="74" font-size="64" font-weight="800" fill="#222">Como se alimenta el robot</text>
+  <text x="48" y="118" font-size="36" fill="#555">Cada placa fabrica sus rieles desde la bateria cruda &#8212; no hay bus de potencia central</text>
+
+  <!-- ===== Bateria (raiz) ===== -->
+  <g>
+    <rect x="480" y="150" width="560" height="150" rx="16" fill="#FFF7E6" stroke="#B8860B" stroke-width="4"/>
+    <rect x="480" y="150" width="18" height="150" rx="7" fill="#B8860B"/>
+    <text x="520" y="208" font-size="46" font-weight="800" fill="#7a5c00">BATERIA &#183; LiPo 2S</text>
+    <text x="520" y="252" font-size="34" fill="#333">7.4 V nom (8.4 plena / 6.0 corte) &#183; 6800 mAh &#183; ~50 Wh</text>
+    <text x="520" y="290" font-size="34" fill="#333">Conector Deans-T (XP1) &#183; 1 por placa</text>
+  </g>
+
+  <!-- ===== Tronco crudo 7.4 V: bus superior + columna izquierda + ramas ===== -->
+  <line x1="760" y1="300" x2="760" y2="330" stroke="#B8860B" stroke-width="5" marker-end="url(#ard)"/>
+  <line x1="120" y1="330" x2="1380" y2="330" stroke="#B8860B" stroke-width="5"/>
+  <line x1="120" y1="330" x2="120" y2="1182" stroke="#B8860B" stroke-width="5"/>
+  <text x="138" y="322" font-size="30" fill="#7a5c00" font-weight="700">7.4 V crudo &#183; cada placa por su propio Deans XP1 (no hay bus central)</text>
+  <line x1="120" y1="465" x2="180" y2="465" stroke="#B8860B" stroke-width="5" marker-end="url(#arb)"/>
+  <line x1="120" y1="699" x2="180" y2="699" stroke="#B8860B" stroke-width="5" marker-end="url(#arb)"/>
+  <line x1="120" y1="933" x2="180" y2="933" stroke="#B8860B" stroke-width="5" marker-end="url(#arb)"/>
+  <line x1="120" y1="1182" x2="180" y2="1182" stroke="#B8860B" stroke-width="5" marker-end="url(#arb)"/>
+
+  <!-- ============ FILA TOP (azul) y 360..570 ============ -->
+  <g>
+    <rect x="180" y="360" width="1200" height="210" rx="14" fill="#EEF2F6" stroke="#1D4E89" stroke-width="3"/>
+    <rect x="180" y="360" width="16" height="210" rx="6" fill="#1D4E89"/>
+    <text x="214" y="416" font-size="40" font-weight="800" fill="#1D4E89">TOP</text>
+    <text x="214" y="452" font-size="28" fill="#1D4E89">percepcion</text>
+    <rect x="400" y="384" width="280" height="92" rx="10" fill="#ffffff" stroke="#9bb3cc" stroke-width="2"/>
+    <text x="420" y="426" font-size="33" fill="#222">Schottky B5819W</text>
+    <text x="420" y="462" font-size="28" fill="#888">anti-polaridad</text>
+    <line x1="680" y1="430" x2="726" y2="430" stroke="#555" stroke-width="3" marker-end="url(#ar)"/>
+    <rect x="726" y="384" width="280" height="92" rx="10" fill="#ffffff" stroke="#9bb3cc" stroke-width="2"/>
+    <text x="746" y="438" font-size="32" font-weight="700" fill="#222">2&#215; MP1584 buck</text>
+    <text x="400" y="524" font-size="35" fill="#222"><tspan font-weight="700">+5 V</tspan> &#8594; Teensy 4.0      <tspan font-weight="700">+3.3 V</tspan> &#8594; 2 cam N6 &#183; 2 BNO055 &#183; 4 ToF</text>
+    <text x="400" y="558" font-size="28" fill="#a06a00">* del esquematico &#8212; fabricacion no verificada (TASK-013)</text>
+  </g>
+
+  <!-- ============ FILA CENTRAL (naranja) y 594..804 ============ -->
+  <g>
+    <rect x="180" y="594" width="1200" height="210" rx="14" fill="#FDF1E7" stroke="#E8731A" stroke-width="3"/>
+    <rect x="180" y="594" width="16" height="210" rx="6" fill="#E8731A"/>
+    <text x="214" y="650" font-size="40" font-weight="800" fill="#E8731A">CENTRAL</text>
+    <text x="214" y="686" font-size="28" fill="#E8731A">decision</text>
+    <rect x="400" y="618" width="320" height="92" rx="10" fill="#ffffff" stroke="#e0b58a" stroke-width="2"/>
+    <text x="420" y="660" font-size="33" fill="#222">PCB Zircon Rev v15</text>
+    <text x="420" y="696" font-size="28" fill="#C8102E">alim. interna no doc. (?)</text>
+    <line x1="720" y1="664" x2="766" y2="664" stroke="#555" stroke-width="3" marker-end="url(#ar)"/>
+    <rect x="766" y="618" width="300" height="92" rx="10" fill="#ffffff" stroke="#e0b58a" stroke-width="2"/>
+    <text x="786" y="656" font-size="32" font-weight="700" fill="#222">3&#215; H-bridge</text>
+    <text x="786" y="692" font-size="30" fill="#444">U5 &#183; U7 &#183; U17</text>
+    <text x="400" y="758" font-size="35" fill="#222">3 motores omni TT (kiwi 120&#176;) &#183; sin kicker &#183; <tspan fill="#C8102E">drivers: ? V</tspan></text>
+  </g>
+
+  <!-- ============ FILA DOWN (verde) y 828..1075 (con callout rojo) ============ -->
+  <g>
+    <rect x="180" y="828" width="1200" height="247" rx="14" fill="#E9F5EE" stroke="#1E8A4C" stroke-width="3"/>
+    <rect x="180" y="828" width="16" height="247" rx="6" fill="#1E8A4C"/>
+    <text x="214" y="884" font-size="40" font-weight="800" fill="#1E8A4C">DOWN</text>
+    <text x="214" y="920" font-size="28" fill="#1E8A4C">piso / linea</text>
+    <rect x="400" y="852" width="280" height="92" rx="10" fill="#ffffff" stroke="#9fcdb3" stroke-width="2"/>
+    <text x="420" y="906" font-size="33" fill="#222">Schottky B5819W</text>
+    <line x1="680" y1="898" x2="726" y2="898" stroke="#555" stroke-width="3" marker-end="url(#ar)"/>
+    <rect x="726" y="852" width="280" height="92" rx="10" fill="#ffffff" stroke="#9fcdb3" stroke-width="2"/>
+    <text x="746" y="906" font-size="32" font-weight="700" fill="#222">2&#215; MP1584 buck</text>
+    <text x="400" y="990" font-size="35" fill="#222"><tspan font-weight="700">+5 V</tspan> &#8594; Teensy 4.0      <tspan font-weight="700">+3.3 V</tspan> &#8594; 4&#215; CD4051 &#183; 2 OTOS &#183; 32 LED</text>
+    <rect x="400" y="1008" width="960" height="52" rx="9" fill="#FDECEE" stroke="#C8102E" stroke-width="2.5"/>
+    <text x="420" y="1043" font-size="30" fill="#C8102E"><tspan font-weight="800">RIESGO &#8212;</tspan> 3.3 V &#8594; OTOS: bateria floja = brownout (I2C falsa 0x64 / L=-- R=--). El USB NO los alimenta.</text>
+  </g>
+
+  <!-- ============ FILA COMM (gris) y 1099..1265 ============ -->
+  <g>
+    <rect x="180" y="1099" width="1200" height="166" rx="14" fill="#EFEFEF" stroke="#6B7280" stroke-width="3"/>
+    <rect x="180" y="1099" width="16" height="166" rx="6" fill="#6B7280"/>
+    <text x="214" y="1155" font-size="40" font-weight="800" fill="#4b5563">COMM</text>
+    <text x="214" y="1191" font-size="28" fill="#6B7280">arbitro</text>
+    <text x="400" y="1162" font-size="35" fill="#222">VIN cruda 5.3&#8211;25 V &#8594; <tspan font-weight="700">LDO UA78M33</tspan> (lineal, NO buck) &#8594; 3.3 V</text>
+    <text x="400" y="1208" font-size="32" fill="#666">ESP32-C6 + level shifter + OLED &#8594; salida = nivel GPIO 5/6 (arbitro) al TOP</text>
+  </g>
+
+  <!-- ============ Panel de honestidad ============ -->
+  <g>
+    <rect x="48" y="1289" width="1344" height="130" rx="12" fill="#F4F5F7" stroke="#9aa1ab" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="70" y="1328" font-size="32" font-weight="800" fill="#4b5563">Lo que todavia NO esta medido / documentado (honestidad de ingenieria)</text>
+    <text x="70" y="1366" font-size="30" fill="#444">&#8226; Sin switch maestro documentado &#183; sin monitoreo de bateria (battery_mv = 0, sin alarma de bajo voltaje).</text>
+    <text x="70" y="1402" font-size="30" fill="#444">&#8226; Set-points de los MP1584 (trimpots) nunca medidos &#183; voltaje de H-bridges y reparto del pack a 3 XP1: sin documentar.</text>
+  </g>
+
+  <text x="48" y="1462" font-size="29" fill="#666">Fig. &#8212; Cada placa se alimenta sola: la bateria cruda 7,4 V entra por su propio Deans y cada placa fabrica sus rieles.  &#183;  Diagrama original del equipo &#8212; CC BY 4.0  &#183;  Fuente: BOM.md + banco; Zircon &#169; Robomov.  ('?' / * = no medido)</text>
+</svg>

@@ -1,0 +1,119 @@
+<svg viewBox="0 0 1440 1300" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Inter', Arial, sans-serif">
+  <!-- ============================================================
+       Fig. (D10) — Layout fisico y cobertura de sensores (vista superior)
+       Pregunta: En 360 grados, donde esta cada sensor/actuador y que zona cubre (que ve y que NO)?
+       Print math: viewBox 1440 px -> ancho impreso ~360 mm => 0.25 mm/px. Cuerpo/labels 30-36 px (>=21-25 pt).
+       Escala del dibujo: robot R=100 mm -> 160 px => 1.6 px/mm. Centro robot en (720,580).
+       Convencion (CONVENCION-EJES-ROBOT.md): +Y=frente(arriba), +X=derecha, omega CCW; angulo=atan2(x,y).
+       Estilos (los 3 son TOP=azul -> se distinguen por trazo): camara=relleno translucido,
+         ToF=contorno punteado, ultrasonido=punteado fino, zona ciega camaras=trama gris.
+       Paleta firma: TOP #1D4E89 (vision/ToF/ultra) / CENTRAL #E8731A (ruedas) / DOWN #1E8A4C (linea/OTOS) / gris.
+       MEDIDO: ruedas (banco 06-08), montaje 4 ToF (05-30/31), 32 sensores linea (05-24).
+       ASUMIDO: FOV camaras (docs era H7, no N6) y haz HC-SR04 -> marcado con "?".
+       ============================================================ -->
+  <defs>
+    <pattern id="hatch" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="16" stroke="#9aa1ab" stroke-width="3"/>
+    </pattern>
+    <marker id="ag" markerWidth="13" markerHeight="13" refX="10" refY="6" orient="auto">
+      <path d="M1 1 L11 6 L1 11" fill="none" stroke="#444" stroke-width="2.2"/>
+    </marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f4f6f8"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1440" height="1300" fill="url(#bg)"/>
+
+  <!-- ===== Titulo ===== -->
+  <text x="48" y="74" font-size="64" font-weight="800" fill="#222">Que ve el robot a su alrededor</text>
+  <text x="48" y="118" font-size="34" fill="#555">Vista superior a escala &#8212; cobertura de camaras, ToF y ultrasonido, y los puntos ciegos</text>
+
+  <!-- ===== Coberturas (de atras hacia adelante en capas) ===== -->
+  <!-- Camaras: relleno azul translucido frente + atras -->
+  <path d="M720,580 L473.4,227.7 A430,430 0 0 1 966.6,227.7 Z" fill="#1D4E89" fill-opacity="0.14" stroke="#1D4E89" stroke-width="2"/>
+  <path d="M720,580 L966.6,932.3 A430,430 0 0 1 473.4,932.3 Z" fill="#1D4E89" fill-opacity="0.14" stroke="#1D4E89" stroke-width="2"/>
+  <!-- Zonas ciegas laterales de camara: trama gris -->
+  <path d="M720,580 L966.6,227.7 A430,430 0 0 1 966.6,932.3 Z" fill="url(#hatch)" fill-opacity="0.55"/>
+  <path d="M720,580 L473.4,932.3 A430,430 0 0 1 473.4,227.7 Z" fill="url(#hatch)" fill-opacity="0.55"/>
+  <!-- 4 ToF: contorno azul punteado, cierran 360 (conos +-45) -->
+  <g fill="none" stroke="#1D4E89" stroke-width="3" stroke-dasharray="11 8">
+    <path d="M720,580 L493.7,353.7 A320,320 0 0 1 946.3,353.7 Z"/>
+    <path d="M720,580 L946.3,353.7 A320,320 0 0 1 946.3,806.3 Z"/>
+    <path d="M720,580 L946.3,806.3 A320,320 0 0 1 493.7,806.3 Z"/>
+    <path d="M720,580 L493.7,806.3 A320,320 0 0 1 493.7,353.7 Z"/>
+  </g>
+  <!-- HC-SR04: cono frontal angosto, punteado fino -->
+  <path d="M720,580 L643.1,218.1 A370,370 0 0 1 796.9,218.1 Z" fill="#1D4E89" fill-opacity="0.05" stroke="#1D4E89" stroke-width="2" stroke-dasharray="2 7"/>
+
+  <!-- ===== Cuerpo del robot (tapa el desorden del centro) ===== -->
+  <circle cx="720" cy="580" r="160" fill="#eef1f4" stroke="#444" stroke-width="3"/>
+
+  <!-- ===== Anillo de 32 sensores de linea (verde, hueco atras-centro) ===== -->
+  <path d="M640,718.6 A160,160 0 1 1 800,718.6" fill="none" stroke="#1E8A4C" stroke-width="11" stroke-dasharray="5 13" stroke-linecap="round"/>
+
+  <!-- ===== 3 ruedas omni (naranja) ===== -->
+  <g fill="#E8731A" stroke="#a8500d" stroke-width="2">
+    <rect x="585" y="463" width="72" height="30" rx="7" transform="rotate(-45 621 481)"/>
+    <rect x="783" y="463" width="72" height="30" rx="7" transform="rotate(45 819 481)"/>
+    <rect x="684" y="705" width="72" height="30" rx="7"/>
+  </g>
+  <text x="560" y="455" font-size="30" font-weight="700" fill="#a8500d">M1</text>
+  <text x="845" y="455" font-size="30" font-weight="700" fill="#a8500d">M2</text>
+  <text x="700" y="700" font-size="30" font-weight="700" fill="#a8500d">M3</text>
+
+  <!-- ===== 2 OTOS (verde, odometria) ===== -->
+  <g fill="#1E8A4C" stroke="#14633a" stroke-width="2">
+    <rect x="650" y="592" width="22" height="22" rx="3" transform="rotate(45 661 603)"/>
+    <rect x="768" y="592" width="22" height="22" rx="3" transform="rotate(45 779 603)"/>
+  </g>
+  <text x="612" y="612" font-size="27" fill="#14633a">OTOS</text>
+  <text x="795" y="612" font-size="27" fill="#14633a">OTOS</text>
+
+  <!-- ===== Brujula de ejes (arriba-izquierda) ===== -->
+  <g>
+    <line x1="150" y1="380" x2="150" y2="250" stroke="#444" stroke-width="3" marker-end="url(#ag)"/>
+    <line x1="150" y1="380" x2="280" y2="380" stroke="#444" stroke-width="3" marker-end="url(#ag)"/>
+    <text x="120" y="232" font-size="30" font-weight="700" fill="#222">+Y frente</text>
+    <text x="290" y="390" font-size="30" font-weight="700" fill="#222">+X der</text>
+    <text x="96" y="430" font-size="28" fill="#666">angulo = atan2(x,y)</text>
+    <text x="96" y="462" font-size="28" fill="#666">0=frente &#183; +90=der &#183; -90=izq</text>
+  </g>
+
+  <!-- ===== Etiquetas de cobertura ===== -->
+  <text x="720" y="200" font-size="32" font-weight="700" fill="#1D4E89" text-anchor="middle">camara frontal</text>
+  <text x="720" y="236" font-size="28" fill="#1D4E89" text-anchor="middle">FOV ~? (N6, sin confirmar)</text>
+  <text x="720" y="978" font-size="32" font-weight="700" fill="#1D4E89" text-anchor="middle">camara trasera (~?)</text>
+  <text x="1062" y="566" font-size="30" font-weight="700" fill="#6B7280" text-anchor="middle">ZONA</text>
+  <text x="1062" y="600" font-size="30" font-weight="700" fill="#6B7280" text-anchor="middle">CIEGA</text>
+  <text x="378" y="566" font-size="30" font-weight="700" fill="#6B7280" text-anchor="middle">ZONA</text>
+  <text x="378" y="600" font-size="30" font-weight="700" fill="#6B7280" text-anchor="middle">CIEGA</text>
+  <text x="978" y="772" font-size="29" font-weight="700" fill="#1D4E89">4 ToF: 360&#176;</text>
+  <text x="978" y="804" font-size="26" fill="#1D4E89">(&#177;45&#176; c/u)</text>
+  <text x="720" y="828" font-size="29" font-weight="700" fill="#1E8A4C" text-anchor="middle">anillo 32 sensores &#183; hueco atras</text>
+
+  <!-- ===== Leyenda (banda inferior, 2 columnas) ===== -->
+  <g>
+    <rect x="48" y="1018" width="1344" height="200" rx="12" fill="#F4F5F7" stroke="#9aa1ab" stroke-width="2"/>
+    <!-- col 1 -->
+    <rect x="78" y="1042" width="56" height="32" rx="5" fill="#1D4E89" fill-opacity="0.14" stroke="#1D4E89" stroke-width="2"/>
+    <text x="148" y="1068" font-size="30" fill="#333">Camara OpenMV N6 &#215;2 (frente + atras)</text>
+    <rect x="78" y="1086" width="56" height="32" rx="5" fill="none" stroke="#1D4E89" stroke-width="3" stroke-dasharray="11 8"/>
+    <text x="148" y="1112" font-size="30" fill="#333">ToF VL53L7CX &#215;4 &#8212; conos &#177;45&#176;, cierran 360&#176;</text>
+    <rect x="78" y="1130" width="56" height="32" rx="5" fill="#1D4E89" fill-opacity="0.05" stroke="#1D4E89" stroke-width="2" stroke-dasharray="2 7"/>
+    <text x="148" y="1156" font-size="30" fill="#333">Ultrasonido HC-SR04 &#8212; frontal (haz: ?)</text>
+    <rect x="78" y="1174" width="56" height="32" rx="5" fill="url(#hatch)"/>
+    <text x="148" y="1200" font-size="30" fill="#333">Zona ciega de camaras (laterales)</text>
+    <!-- col 2 -->
+    <rect x="760" y="1044" width="50" height="26" rx="6" fill="#E8731A" stroke="#a8500d" stroke-width="2"/>
+    <text x="828" y="1068" font-size="30" fill="#333">Rueda omni &#215;3 (kiwi 120&#176;)</text>
+    <path d="M760,1102 A26 26 0 1 1 810,1102" fill="none" stroke="#1E8A4C" stroke-width="9" stroke-dasharray="4 10" stroke-linecap="round"/>
+    <text x="828" y="1112" font-size="30" fill="#333">Anillo 32 sensores de linea (+8 internos)</text>
+    <rect x="775" y="1136" width="22" height="22" rx="3" fill="#1E8A4C" transform="rotate(45 786 1147)"/>
+    <text x="828" y="1156" font-size="30" fill="#333">OTOS &#215;2 (odometria optica)</text>
+    <text x="760" y="1200" font-size="28" fill="#a06a00">* FOV camaras y haz HC-SR04: ASUMIDOS (docs era H7) &#8212; medir en banco.</text>
+  </g>
+
+  <text x="48" y="1262" font-size="29" fill="#666">Fig. &#8212; Las camaras ven solo al frente y atras (~140&#176;, con ciegos laterales); los 4 ToF cierran los 360&#176;.  &#183;  Diagrama original del equipo &#8212; CC BY 4.0  &#183;  Fuente: CONVENCION-EJES-ROBOT.md, config_central.h, FIRMWARE-PLACA-ARRIBA.md.  ('?' = no medido)</text>
+</svg>

@@ -1016,8 +1016,11 @@ MotorCommand goalkeeper_tick() {
     // === ARQUERO SIMPLE — STRAFE LATERAL MANTENIENDO EL FRENTE (pedido María,
     //     práctica 2026-06-12) ===
     // Conducta mínima y directa, distinta de la patrulla v3.3:
-    //   • Strafe lateral PURO a GK_PATROL_SPEED_MM_S (200 mm/s) desde donde se lo
-    //     coloca (SIN retroceso a la línea, SIN pulsos, SIN REACQ, SIN pelota).
+    //   • Al arrancar (pedido Gustavo 2026-06-14): RETROCEDE recto al arco hasta tocar
+    //     su línea de fondo y AVANZA ~10 cm para despegarse (fases GOTO_BACK→ADVANCE,
+    //     reusan la lógica de GOTO_LINE). Recién ahí entra al strafe.
+    //   • Strafe lateral PURO a GK_PATROL_SPEED_MM_S (200 mm/s) der↔izq con rebote en
+    //     los laterales (SIN pulsos, SIN REACQ, SIN pelota).
     //   • omega=0 (strafe puro, SIN corregir el frente durante el movimiento). Se
     //     PROBÓ omega continuo con el BNO (banco María 2026-06-12) y DESCONTROLÓ el
     //     robot (giro 0→-150° en 3 s) — la degeneración del mix giro+strafe ya
@@ -1055,14 +1058,15 @@ MotorCommand goalkeeper_tick() {
 
         static int             dir_simple  = +1;   // arranca hacia la derecha
         static uint32_t        bounce_gate = 0;
-        static uint8_t         phase       = 0;    // 0=MOVE 2=RESQUARE 3=SETTLE 4=ESCAPE
+        static uint8_t         phase       = 5;    // 5=GOTO_BACK 6=ADVANCE 0=MOVE 2=RESQUARE 3=SETTLE 4=ESCAPE
         static uint32_t        phase_t0    = 0;
+        static uint32_t        goto_clear_ms = 0;  // fase ADVANCE: desde cuándo la línea dejó de verse
         static PfmHeadingState pfm{};               // estado del PI+PFM (integ + ventana)
 
         if (!world_model_match_running()) {
             g_state_name = "GK_SIMPLE_WAIT";
             dir_simple = +1; bounce_gate = 0;   // reset (sin statics colgados)
-            phase = 0; phase_t0 = now_ms;
+            phase = 5; phase_t0 = now_ms; goto_clear_ms = 0;   // arranca por el retroceso al arco (#1)
             pfm_heading_reset(pfm);
             return cmd;                          // ceros → quieto
         }
@@ -1089,6 +1093,36 @@ MotorCommand goalkeeper_tick() {
         };
 
         switch (phase) {
+            case 5: {   // GOTO_BACK — retroceso recto al arco hasta tocar la línea de fondo (#1)
+                // Reusa GOTO_LINE fase 0 (banco Gustavo 2026-06-09 v2): -Y a GK_GOTO_LINE_VY_BACK
+                // con gyro-hold de rumbo, hasta que la DOWN ve su línea (la de atrás) o timeout.
+                g_state_name = "GK_SIMPLE_GOTO_BACK";
+                cmd.vx_mm_s = clamp_velocity_mm_s(
+                    static_cast<float>(GK_GOTO_LINE_VX_RIGHT) + GK_GOTO_LINE_VX_TRIM_MM_S);
+                cmd.vy_mm_s = clamp_velocity_mm_s(-static_cast<float>(GK_GOTO_LINE_VY_BACK));  // -Y = atrás
+                cmd.omega_centideg_s = gk_gyro_hold_omega(now_ms, GK_GOTO_LINE_HEADING_TRIM_DEG);
+                const bool line_here = world_model_line_detected() && world_model_line_data_valid();
+                const bool to = (now_ms - phase_t0) >= GK_GOTO_LINE_TIMEOUT_MS;
+                if (line_here || to) { phase = 6; phase_t0 = now_ms; goto_clear_ms = 0; }
+                break;
+            }
+            case 6: {   // ADVANCE — despegarse de la línea hasta dejar de verla + margen (#1)
+                // Reusa GOTO_LINE fase 1: +Y a GK_ADVANCE_SPEED_MM_S con gyro-hold, hasta que la
+                // línea DEJE de verse GK_ADVANCE_MS seguidos (o timeout). Recién ahí: strafe lateral.
+                g_state_name = "GK_SIMPLE_ADVANCE";
+                cmd.vx_mm_s = 0;
+                cmd.vy_mm_s = clamp_velocity_mm_s(static_cast<float>(GK_ADVANCE_SPEED_MM_S));  // +Y = adelante
+                cmd.omega_centideg_s = gk_gyro_hold_omega(now_ms, 0.0f);
+                if (!world_model_line_detected()) {
+                    if (goto_clear_ms == 0) goto_clear_ms = now_ms;
+                } else {
+                    goto_clear_ms = 0;   // la sigue viendo → reiniciar el margen
+                }
+                const bool cleared = (goto_clear_ms != 0) && (now_ms - goto_clear_ms) >= GK_ADVANCE_MS;
+                const bool to = (now_ms - phase_t0) >= GK_ADVANCE_TIMEOUT_MS;
+                if (cleared || to) { phase = 0; phase_t0 = now_ms; }   // → MOVE (strafe lateral der↔izq)
+                break;
+            }
             case 0: {   // MOVE — strafe CONTINUO + PID de rumbo al arco
                 g_state_name = "GK_SIMPLE_MOVE";
                 // Red de seguridad: el PID está perdiendo → escuadrarse parado.

@@ -120,6 +120,104 @@ int tt_serialize_jsonl(char* buf, int cap, const TopTelemetryFrame& f) {
     return off;
 }
 
+// ── Formato humano (texto legible, modo ENTER) ───────────────────────────────
+// ASCII puro a propósito: se lee en un monitor serie crudo, sin app. Sin símbolo
+// de grado ni acentos para no ensuciar terminales que no sean UTF-8. Los ángulos
+// vienen en centigrados (cd) → se imprimen en grados (cd/100, prefijo 'a').
+int tt_format_human(char* buf, int cap, const TopTelemetryFrame& f) {
+    if (!buf || cap <= 0) return -1;
+    int nt = f.num_tof;
+    if (nt < 0) nt = 0;
+    if (nt > TT_MAX_TOF) nt = TT_MAX_TOF;
+
+    int off = 0;
+
+    // L1 — encabezado
+    off = tt_append(buf, cap, off, "[TOP] seq %lu t=%lums frames=%lu\n",
+                    (unsigned long)f.seq, (unsigned long)f.t_ms,
+                    (unsigned long)f.frames_sent);
+    if (off < 0) return -1;
+
+    // L2 — camaras (pelota + 2 arcos)
+    off = tt_append(buf, cap, off, "  CAM F:%s B:%s | ",
+                    f.cam_front_ok ? "OK" : "--", f.cam_back_ok ? "OK" : "--");
+    if (off < 0) return -1;
+    if (f.ball_visible)
+        off = tt_append(buf, cap, off, "ball(%d,%d) c%u v(%d,%d)",
+                        (int)f.ball_x_mm, (int)f.ball_y_mm, (unsigned)f.ball_confidence,
+                        (int)f.ball_vx_mm_s, (int)f.ball_vy_mm_s);
+    else
+        off = tt_append(buf, cap, off, "ball --");
+    if (off < 0) return -1;
+    if (f.goal_yellow_visible)
+        off = tt_append(buf, cap, off, " | GY a%.1f d%d",
+                        f.goal_yellow_angle_cd / 100.0, (int)f.goal_yellow_distance_mm);
+    else
+        off = tt_append(buf, cap, off, " | GY --");
+    if (off < 0) return -1;
+    if (f.goal_blue_visible)
+        off = tt_append(buf, cap, off, " | GB a%.1f d%d\n",
+                        f.goal_blue_angle_cd / 100.0, (int)f.goal_blue_distance_mm);
+    else
+        off = tt_append(buf, cap, off, " | GB --\n");
+    if (off < 0) return -1;
+
+    // L3 — IMU (heading fusionado + por sensor)
+    off = tt_append(buf, cap, off,
+        "  IMU hdg %.2f %s L%.2f R%.2f dis%.2f (L:%s R:%s)\n",
+        tt_fz(f.imu_heading_deg), f.imu_heading_valid ? "VALID" : "INVALID",
+        tt_fz(f.imu_left_deg), tt_fz(f.imu_right_deg), tt_fz(f.imu_disagreement_deg),
+        f.imu_left_ok ? "ok" : "--", f.imu_right_ok ? "ok" : "--");
+    if (off < 0) return -1;
+
+    // L4 — ToF + HC-SR04
+    off = tt_append(buf, cap, off, "  ToF n=%d [", nt);
+    if (off < 0) return -1;
+    for (int i = 0; i < nt; ++i) {
+        if (f.tof_mm[i] == TT_TOF_NO_READING)
+            off = tt_append(buf, cap, off, (i == 0) ? "--" : ",--");
+        else
+            off = tt_append(buf, cap, off, (i == 0) ? "%u" : ",%u", (unsigned)f.tof_mm[i]);
+        if (off < 0) return -1;
+    }
+    off = tt_append(buf, cap, off, "] hc=");
+    if (off < 0) return -1;
+    if (f.hcsr04_mm == TT_TOF_NO_READING) off = tt_append(buf, cap, off, "--");
+    else                                  off = tt_append(buf, cap, off, "%u", (unsigned)f.hcsr04_mm);
+    if (off < 0) return -1;
+    if (f.tof_min_mm == TT_TOF_NO_READING) off = tt_append(buf, cap, off, " min=-- mm\n");
+    else                                   off = tt_append(buf, cap, off, " min=%u mm\n", (unsigned)f.tof_min_mm);
+    if (off < 0) return -1;
+
+    // L5 — WorldSnapshot fusionado (lo que viaja a CENTRAL)
+    if (!f.snap_valid) {
+        off = tt_append(buf, cap, off, "  SNAP (sin snapshot todavia)\n");
+        if (off < 0) return -1;
+        return off;
+    }
+    off = tt_append(buf, cap, off, "  SNAP x%d y%d hdg%.2f c%u | ",
+                    (int)f.snap_my_x_mm, (int)f.snap_my_y_mm,
+                    f.snap_my_heading_cd / 100.0, (unsigned)f.snap_my_confidence);
+    if (off < 0) return -1;
+    if (f.snap_ball_visible)
+        off = tt_append(buf, cap, off, "ball(%d,%d) c%u",
+                        (int)f.snap_ball_x_mm, (int)f.snap_ball_y_mm,
+                        (unsigned)f.snap_ball_confidence);
+    else
+        off = tt_append(buf, cap, off, "ball --");
+    if (off < 0) return -1;
+    off = tt_append(buf, cap, off,
+        " | opp a%.1f d%d %s | own %s | obst%u ref%u flags0x%02X\n",
+        f.snap_goal_opp_angle_cd / 100.0, (int)f.snap_goal_opp_distance_mm,
+        f.snap_goal_opp_visible ? "VIS" : "--",
+        f.snap_goal_own_visible ? "VIS" : "--",
+        (unsigned)f.snap_min_obstacle_mm, (unsigned)f.snap_referee_cmd,
+        (unsigned)f.snap_flags);
+    if (off < 0) return -1;
+
+    return off;
+}
+
 // ── Parser de comandos ───────────────────────────────────────────────────────
 namespace {
 

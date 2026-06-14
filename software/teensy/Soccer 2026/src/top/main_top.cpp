@@ -29,7 +29,7 @@
 #include "localization_runtime.h"  // fusión TOF+IMU → pose absoluta en cancha
 #include "types.h"
 #include "goal_polarity.h"         // autodetección color arco rival/propio
-#ifdef TOP_DEBUG_TELEMETRY
+#if defined(TOP_DEBUG_TELEMETRY) || defined(TOP_USB_MONITOR)
 #include "top_telemetry_serial.h"
 #endif
 
@@ -235,7 +235,7 @@ void setup() {
     digitalWrite(PIN_LED_STATUS, HIGH);
     Serial.println("[TOP] cerebro sensorial listo, enviando snapshots a CENTRAL (WDT 1s armado)");
 
-#ifdef TOP_DEBUG_TELEMETRY
+#if defined(TOP_DEBUG_TELEMETRY) || defined(TOP_USB_MONITOR)
     top_telemetry_init();
 #endif
 }
@@ -312,7 +312,7 @@ void loop() {
         comm_central_send_snapshot(snap);
     }
 
-#ifdef TOP_DEBUG_TELEMETRY
+#if defined(TOP_DEBUG_TELEMETRY) || defined(TOP_USB_MONITOR)
     top_telemetry_tick();
 #endif
 

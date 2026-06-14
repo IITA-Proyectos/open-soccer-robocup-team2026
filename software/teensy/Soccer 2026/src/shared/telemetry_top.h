@@ -7,7 +7,8 @@
 // de texto del host (stream, rate, recalibrar/guardar IMU).
 //
 // El glue con el hardware vive en src/top/top_telemetry_serial.cpp (Arduino-only,
-// GATEADO con -DTOP_DEBUG_TELEMETRY). Contrato: docs/firmware/TELEMETRIA-TOP.md.
+// gateado con -DTOP_USB_MONITOR —monitor dormido en competencia— o el legacy
+// -DTOP_DEBUG_TELEMETRY). Contrato: docs/firmware/TELEMETRIA-TOP.md.
 // App de PC: tools/monitor-base/ (vista TOP) / tools/monitor-top/.
 
 #pragma once
@@ -98,6 +99,13 @@ void tt_frame_init(TopTelemetryFrame& f, uint8_t num_tof);
 // Retorna bytes escritos (sin contar '\0') o -1 si no entra / args inválidos.
 // Recomendado cap >= 768.
 int tt_serialize_jsonl(char* buf, int cap, const TopTelemetryFrame& f);
+
+// Formatea `f` como BLOQUE de TEXTO HUMANO multi-línea (no JSON), legible de un
+// vistazo en un monitor serie crudo. Se usa en el modo "ENTER" del monitor de
+// competencia: el alumno aprieta Enter y ve cámaras/IMU/ToF/snapshot en claro,
+// sin la app de PC. Termina en '\n'. Retorna bytes escritos (sin contar '\0') o
+// -1 si no entra / args inválidos. Recomendado cap >= 512.
+int tt_format_human(char* buf, int cap, const TopTelemetryFrame& f);
 
 // ── Comandos host → firmware ─────────────────────────────────────────────────
 enum class TtCmd : uint8_t {

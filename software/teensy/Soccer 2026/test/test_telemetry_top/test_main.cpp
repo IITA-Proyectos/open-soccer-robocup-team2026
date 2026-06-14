@@ -114,6 +114,73 @@ void test_tt_negative_fields(void) {
     TEST_ASSERT_NOT_NULL(strstr(buf, "\"hdg\":-123.45"));
 }
 
+// ── Formato humano (bloque de texto legible — modo ENTER) ──
+// telemetry_top gana una tercera salida (2026-06-13, TASK-205): además del JSON
+// para la app, un bloque de TEXTO que el monitor dormido de competencia imprime
+// cuando un humano aprieta ENTER en un monitor serie crudo.
+
+void test_tt_human_shape_and_sections(void) {
+    TopTelemetryFrame f;
+    make_golden_frame(f);
+    char buf[768];
+    const int n = tt_format_human(buf, sizeof(buf), f);
+    TEST_ASSERT_TRUE(n > 0);
+    TEST_ASSERT_EQUAL_INT((int)strlen(buf), n);
+    TEST_ASSERT_EQUAL_CHAR('\n', buf[n - 1]);
+    // Las 5 secciones presentes y etiquetadas (no es JSON: arranca con '[').
+    TEST_ASSERT_EQUAL_CHAR('[', buf[0]);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "[TOP] seq 3"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "  CAM "));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "  IMU "));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "  ToF "));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "  SNAP "));
+}
+
+void test_tt_human_values_visible(void) {
+    TopTelemetryFrame f;
+    make_golden_frame(f);
+    char buf[768];
+    TEST_ASSERT_TRUE(tt_format_human(buf, sizeof(buf), f) > 0);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "ball(-120,340) c77 v(-15,200)"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "GY a45.0 d1200"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "GB --"));               // arco azul no visible
+    TEST_ASSERT_NOT_NULL(strstr(buf, "IMU hdg 42.50 VALID"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "ToF n=4 [150,800,--,1200]"));  // tof[2]=sentinel → --
+    TEST_ASSERT_NOT_NULL(strstr(buf, "min=150 mm"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "flags0x18"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "own --"));              // arco propio no visible
+}
+
+void test_tt_human_dashes_when_absent(void) {
+    // Frame init: sin cámaras vivas, sin pelota, sin snapshot, ToF en sentinel.
+    TopTelemetryFrame f;
+    tt_frame_init(f, 4);
+    f.seq = 1;
+    char buf[768];
+    TEST_ASSERT_TRUE(tt_format_human(buf, sizeof(buf), f) > 0);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "F:-- B:--"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "ball --"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "[--,--,--,--]"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "min=-- mm"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "IMU hdg 0.00 INVALID"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "SNAP (sin snapshot todavia)"));
+}
+
+void test_tt_human_buffer_too_small_returns_neg1(void) {
+    TopTelemetryFrame f;
+    make_golden_frame(f);
+    char small[16];
+    TEST_ASSERT_EQUAL_INT(-1, tt_format_human(small, sizeof(small), f));
+}
+
+void test_tt_human_null_args_return_neg1(void) {
+    TopTelemetryFrame f;
+    make_golden_frame(f);
+    TEST_ASSERT_EQUAL_INT(-1, tt_format_human(nullptr, 768, f));
+    char buf[8];
+    TEST_ASSERT_EQUAL_INT(-1, tt_format_human(buf, 0, f));
+}
+
 // ── Parser de comandos ──
 static TtCommand parse(const char* s) {
     return tt_parse_command(s, (int)strlen(s));
@@ -160,6 +227,11 @@ int main(int, char**) {
     RUN_TEST(test_tt_buffer_too_small_returns_neg1);
     RUN_TEST(test_tt_null_buf_returns_neg1);
     RUN_TEST(test_tt_negative_fields);
+    RUN_TEST(test_tt_human_shape_and_sections);
+    RUN_TEST(test_tt_human_values_visible);
+    RUN_TEST(test_tt_human_dashes_when_absent);
+    RUN_TEST(test_tt_human_buffer_too_small_returns_neg1);
+    RUN_TEST(test_tt_human_null_args_return_neg1);
     RUN_TEST(test_tt_parse_empty_none);
     RUN_TEST(test_tt_parse_ping_stream);
     RUN_TEST(test_tt_parse_rate);

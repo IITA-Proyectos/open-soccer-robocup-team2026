@@ -1,13 +1,30 @@
-// top_telemetry_serial.cpp — Glue Arduino de la telemetría USB de la TOP (FASE 2).
+// top_telemetry_serial.cpp — Glue Arduino de la telemetría/monitoreo USB de la TOP.
 //
-// TODO el cuerpo dentro de #ifdef TOP_DEBUG_TELEMETRY: con el flag OFF (envs de
-// competencia top_robot1/top_robot2) compila a traducción VACÍA → 0 bytes al
-// binario de competencia. El módulo PURO (serialización + comandos) vive en
-// src/shared/telemetry_top.{h,cpp} (host-testeado). Contrato: docs/firmware/TELEMETRIA-TOP.md.
+// Hermano del de DOWN (down_telemetry_serial.cpp): el monitor viaja EN el binario
+// de COMPETENCIA (envs top_robot2_pri y derivados, flag -DTOP_USB_MONITOR) pero
+// arranca DORMIDO — silencio total por USB hasta que el host habla. Tres estados:
+//
+//   • DORMIDO  (default): no envía NADA. En partido no hay USB → nunca despierta
+//              (match-safe).
+//   • MÁQUINA  : la app tools/monitor-* manda "STREAM ON" + "PING" (latido cada
+//              1 s) → stream JSON Lines continuo (para la app) + auto-off a los 3 s
+//              de silencio del host.
+//   • HUMANO   : en un monitor serie CRUDO, un ENTER (línea vacía o texto no
+//              reconocido; CR o LF) imprime un BLOQUE de texto legible
+//              (cámaras/IMU/ToF/snapshot) por TOP_MONITOR_HOST_TIMEOUT_MS (3 s),
+//              sin app y sin tipear comandos. Repetir Enter lo mantiene.
+//
+// El flag legacy -DTOP_DEBUG_TELEMETRY (envs top_*_debug_telemetry) también
+// enciende este módulo (gate OR) y se comporta IGUAL (dormido + wake). El módulo
+// PURO (serialización JSON + texto humano + parseo de comandos) vive en
+// src/shared/telemetry_top.{h,cpp} (host-testeado: test/test_telemetry_top).
+// Contrato: docs/firmware/TELEMETRIA-TOP.md.
+//
+// Sin ninguno de los dos flags: traducción VACÍA (0 bytes al binario).
 
 #include "top_telemetry_serial.h"
 
-#ifdef TOP_DEBUG_TELEMETRY
+#if defined(TOP_DEBUG_TELEMETRY) || defined(TOP_USB_MONITOR)
 
 #include <Arduino.h>
 #include "telemetry_top.h"
@@ -22,19 +39,25 @@ namespace iitasoccer {
 
 namespace {
 
-bool          g_stream_on   = true;
-uint32_t      g_interval_ms = 50;   // 20 Hz por default
+// ── Estado del monitor ───────────────────────────────────────────────────────
+enum class MonMode : uint8_t { ASLEEP, MACHINE, HUMAN };
+
+constexpr uint32_t TOP_MONITOR_HOST_TIMEOUT_MS = 3000;  // host mudo → DORMIDO
+constexpr uint32_t TOP_HUMAN_INTERVAL_MS       = 500;   // 2 Hz legible a ojo
+
+MonMode       g_mode        = MonMode::ASLEEP;
+uint32_t      g_interval_ms = 50;     // 20 Hz (modo MÁQUINA)
 uint32_t      g_seq         = 0;
-elapsedMillis g_since_emit;
+elapsedMillis g_since_emit;           // cadencia de TX
+uint32_t      g_last_host_rx_ms = 0;  // último latido del host (0 = "nunca")
 
 char g_rx_line[64];
 int  g_rx_len = 0;
 
-void emit_frame() {
-    TopTelemetryFrame f;
+// Llena TODO el frame (menos seq) leyendo el estado vivo de la TOP. Compartido
+// por el emisor de máquina (JSON) y el de humano (texto).
+void fill_frame(TopTelemetryFrame& f) {
     tt_frame_init(f, static_cast<uint8_t>(NUM_TOF));
-
-    f.seq  = g_seq++;
     f.t_ms = millis();
 
     // ── Cámaras ──
@@ -97,10 +120,16 @@ void emit_frame() {
         f.snap_referee_cmd          = snap.referee_cmd;
         f.snap_flags                = snap.flags;
     }
-    // Si todavía no se envió ningún snapshot, snap_valid queda 0 (td_frame_init).
+    // Si todavía no se envió ningún snapshot, snap_valid queda 0 (tt_frame_init).
 
     f.frames_sent = comm_central_get_frames_sent();
+}
 
+// Emite UN frame en JSON Lines (modo MÁQUINA, para la app).
+void emit_frame() {
+    TopTelemetryFrame f;
+    fill_frame(f);
+    f.seq = g_seq++;
     static char buf[1024];
     const int n = tt_serialize_jsonl(buf, sizeof(buf), f);
     if (n > 0) {
@@ -108,11 +137,40 @@ void emit_frame() {
     }
 }
 
+// Emite UN bloque de TEXTO legible (modo HUMANO, monitor crudo).
+void emit_human() {
+    TopTelemetryFrame f;
+    fill_frame(f);
+    f.seq = g_seq++;
+    static char hbuf[768];
+    const int n = tt_format_human(hbuf, sizeof(hbuf), f);
+    if (n > 0) {
+        Serial.write(reinterpret_cast<const uint8_t*>(hbuf), n);
+    }
+}
+
+// Ejecuta un comando ya parseado y gobierna las transiciones de modo.
 void dispatch(const TtCommand& c) {
+    // LATIDO: cualquier línea del host renueva la ventana de 3 s.
+    uint32_t now = millis();
+    g_last_host_rx_ms = (now == 0) ? 1 : now;   // 0 = "nunca" (sentinel)
+
     switch (c.cmd) {
-        case TtCmd::PING:        emit_frame(); break;
-        case TtCmd::STREAM_ON:   g_stream_on = true; break;
-        case TtCmd::STREAM_OFF:  g_stream_on = false; break;
+        case TtCmd::STREAM_ON:
+            g_mode = MonMode::MACHINE;
+            emit_frame();              // ack inmediato (estado completo)
+            break;
+
+        case TtCmd::STREAM_OFF:
+            g_mode = MonMode::ASLEEP;  // pausa explícita
+            break;
+
+        case TtCmd::PING:
+            // Latido de la app: si ya estamos en MÁQUINA, un frame de ack. Por sí
+            // solo NO despierta (si el host pausó con STREAM OFF, sigue dormido).
+            if (g_mode == MonMode::MACHINE) emit_frame();
+            break;
+
         case TtCmd::SET_RATE: {
             int32_t hz = c.arg;
             if (hz < 1)   hz = 1;
@@ -120,26 +178,44 @@ void dispatch(const TtCommand& c) {
             g_interval_ms = static_cast<uint32_t>(1000 / hz);
             break;
         }
-        case TtCmd::IMU_ZERO:    sensors_imu_recalibrate_zero(); break;
-        case TtCmd::IMU_SAVE:    sensors_imu_save_calibration(); break;
+
+        case TtCmd::IMU_ZERO:
+            sensors_imu_recalibrate_zero();
+            Serial.println("[TOP] heading cero recalibrado");
+            break;
+
+        case TtCmd::IMU_SAVE:
+            sensors_imu_save_calibration();
+            Serial.println("[TOP] calibracion IMU guardada");
+            break;
+
         case TtCmd::NONE:
         case TtCmd::UNKNOWN:
-        default: break;
+        default:
+            // ENTER pelado o texto no reconocido = un HUMANO en el monitor crudo.
+            // Despierta a HUMANO SOLO desde DORMIDO: así un LF suelto tras un
+            // comando CRLF de la app (que ya dejó el modo en MÁQUINA) no tumba el
+            // stream de máquina en curso.
+            if (g_mode == MonMode::ASLEEP) g_mode = MonMode::HUMAN;
+            break;
     }
 }
 
+// Drena el USB (Serial) sin bloquear, arma líneas y despacha comandos. CR o LF
+// terminan la línea → un Enter del monitor serie despacha sea cual sea su
+// fin-de-línea (CR, LF o CRLF). La línea vacía (Enter pelado) también despacha →
+// en competencia despierta el modo HUMANO (ver dispatch).
 void pump_rx() {
     while (Serial.available() > 0) {
         const char ch = static_cast<char>(Serial.read());
-        if (ch == '\n') {
+        if (ch == '\n' || ch == '\r') {
             dispatch(tt_parse_command(g_rx_line, g_rx_len));
             g_rx_len = 0;
-        } else if (ch != '\r') {
-            if (g_rx_len < static_cast<int>(sizeof(g_rx_line))) {
-                g_rx_line[g_rx_len++] = ch;
-            } else {
-                g_rx_len = 0;
-            }
+        } else if (g_rx_len < static_cast<int>(sizeof(g_rx_line))) {
+            g_rx_line[g_rx_len++] = ch;
+        } else {
+            // Línea demasiado larga (basura): descartar para no trabarse.
+            g_rx_len = 0;
         }
     }
 }
@@ -147,22 +223,43 @@ void pump_rx() {
 }  // namespace
 
 void top_telemetry_init() {
-    g_stream_on   = true;
-    g_interval_ms = 50;
+    g_mode        = MonMode::ASLEEP;
+    g_interval_ms = 50;   // 20 Hz (modo máquina)
     g_seq         = 0;
     g_rx_len      = 0;
     g_since_emit  = 0;
-    Serial.println("[TOP-TELEM] v1 ready");
+    g_last_host_rx_ms = 0;
+    // Una sola línea de boot (Teensy la descarta si no hay host); después, SILENCIO
+    // hasta que el host hable (la app con STREAM ON / PING, o un Enter en el monitor).
+    Serial.println("[TOP-MONITOR] dormido - esperando app (STREAM ON / PING) o ENTER");
 }
 
 void top_telemetry_tick() {
+    // RX: comandos del host (no bloquea).
     pump_rx();
-    if (g_stream_on && g_since_emit >= g_interval_ms) {
+
+    // APAGADO AUTOMÁTICO: si el host se calló (la app manda PING cada 1 s; un Enter
+    // cuenta como latido) por más de TOP_MONITOR_HOST_TIMEOUT_MS, volver al silencio.
+    // Solo aplica si ALGÚN host habló (g_last_host_rx_ms != 0) → en partido (nadie
+    // habla por USB) el monitor nunca despierta ni se "apaga", queda match-safe.
+    if (g_mode != MonMode::ASLEEP && g_last_host_rx_ms != 0 &&
+        (millis() - g_last_host_rx_ms) > TOP_MONITOR_HOST_TIMEOUT_MS) {
+        g_mode = MonMode::ASLEEP;
+        g_last_host_rx_ms = 0;
+    }
+
+    if (g_mode == MonMode::ASLEEP) return;
+
+    // TX: emitir según el modo, respetando la cadencia.
+    const uint32_t interval =
+        (g_mode == MonMode::HUMAN) ? TOP_HUMAN_INTERVAL_MS : g_interval_ms;
+    if (g_since_emit >= interval) {
         g_since_emit = 0;
-        emit_frame();
+        if (g_mode == MonMode::HUMAN) emit_human();
+        else                          emit_frame();
     }
 }
 
 }  // namespace iitasoccer
 
-#endif  // TOP_DEBUG_TELEMETRY
+#endif  // TOP_DEBUG_TELEMETRY || TOP_USB_MONITOR

@@ -54,7 +54,8 @@ Orden de bloques (la golden es byte-exacta): `cam` → **`camf`** → **`camb`**
  "camb":{"bvis":0,"bx":0,"by":0,"gy_vis":0,"gy_ang":0,"gy_dist":0,
          "gb_vis":1,"gb_ang":-9000,"gb_dist":800},
  "imu":{"hdg":42.50,"left":42.10,"right":42.90,"disagree":0.80,"lok":1,"rok":1,"valid":1},
- "tof":{"n":4,"d":[150,800,65535,1200],"hc":300,"min":150},
+ "tof":{"n":4,"d":[150,800,65535,1200],"hc":300,"min":150,
+        "z":[[140,160,65535,175, ...16 zonas...], ...1 grilla 4x4 por sensor...]},
  "snap":{"valid":1,"x":100,"y":-200,"hdg_cd":4250,"conf":80,"bx":-118,"by":338,"bvis":1,
          "bconf":77,"bvx":-15,"bvy":200,"opp_ang":4500,"opp_dist":1200,"opp_vis":1,
          "own_vis":0,"own_ang":0,"own_dist":0,"obst":150,"ref":1,"flags":24},
@@ -83,6 +84,7 @@ Orden de bloques (la golden es byte-exacta): `cam` → **`camf`** → **`camb`**
 | `imu` | `lok`/`rok`/`valid` | BNO izq/der listos; `valid` = heading_valid del snapshot (bit4). |
 | `tof` | `n`,`d[]` | cantidad de ToF (4) y sus distancias (mm). **`65535` = sin lectura** (TOF_NO_READING). |
 | `tof` | `hc`,`min` | HC-SR04 (mm) y el mínimo de los 4 ToF + HC-SR04. |
+| `tof` | `z` | **ADITIVO (2026-06-14):** zonas crudas **4×4 (16) por sensor**, ANTES del promedio (`mean_valid_zones`). Una grilla por ToF; cada zona `65535` = sin lectura. NO rompe el contrato: emitir `z` es aditivo y un parser viejo lo ignora (schema sigue **2**). Lo consume el monitor de salud (`--top-salud`). El enmascarado/rotación A2.2 sigue **sin aplicar** (solo lectura). |
 | `snap` | `valid` | 0 si todavía no se difundió ningún WorldSnapshot. Si 0, ignorar el resto del bloque. |
 | `snap` | `x`,`y`,`hdg_cd`,`conf` | **pose propia fusionada** (lo que va a CENTRAL): mm, centideg, confianza. |
 | `snap` | `bx`,`by`,`bvis`,`bconf`,`bvx`,`bvy` | pelota en el snapshot. |

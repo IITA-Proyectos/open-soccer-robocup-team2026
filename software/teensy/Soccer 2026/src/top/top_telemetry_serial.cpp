@@ -114,6 +114,11 @@ void fill_frame(TopTelemetryFrame& f) {
     if (nt > TT_MAX_TOF) nt = TT_MAX_TOF;
     for (int i = 0; i < nt; ++i) {
         f.tof_mm[i] = sensors_tof_get_distance_mm(static_cast<uint8_t>(i));
+        // Zonas crudas 4x4 (campo "z" aditivo) — antes del promedio.
+        for (int z = 0; z < TT_TOF_ZONES; ++z) {
+            f.tof_zones[i][z] = sensors_tof_get_zone_mm(
+                static_cast<uint8_t>(i), static_cast<uint8_t>(z));
+        }
     }
     f.hcsr04_mm  = sensors_hcsr04_get_distance_mm();
     f.tof_min_mm = sensors_tof_get_min_distance_mm();
@@ -188,7 +193,7 @@ void emit_frame() {
     TopTelemetryFrame f;
     fill_frame(f);
     f.seq = g_seq++;
-    static char buf[1536];
+    static char buf[2048];   // +"z" (zonas 4x4 por ToF) ⇒ frame v2 ~1350 B con 4 ToF
     const int n = tt_serialize_jsonl(buf, sizeof(buf), f);
     if (n > 0) {
         Serial.write(reinterpret_cast<const uint8_t*>(buf), n);

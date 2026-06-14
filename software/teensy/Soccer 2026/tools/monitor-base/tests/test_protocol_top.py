@@ -113,6 +113,14 @@ def test_golden_top_parses(golden_top_line):
     assert f.line.present is True
     assert f.line.event_names == ["IMMINENT_EXIT"]
 
+    # v2 — campo "z" (zonas 4x4 por sensor), aditivo: el golden del firmware ahora
+    # lo emite. sensor 0 trae 140,160,(sentinel),175; el resto sentinel → None.
+    assert f.tof.zones is not None
+    assert len(f.tof.zones) == 4 and all(len(s) == 16 for s in f.tof.zones)
+    assert f.tof.zones[0][0] == 140 and f.tof.zones[0][1] == 160
+    assert f.tof.zones[0][2] is None and f.tof.zones[0][3] == 175
+    assert all(z is None for z in f.tof.zones[1])
+
 
 def test_tof_and_line_na_are_none():
     # v2: todo en sentinela → ToF None, línea N/A None, base no-fresh.

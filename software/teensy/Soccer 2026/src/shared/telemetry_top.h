@@ -19,6 +19,7 @@ namespace iitasoccer {
 constexpr uint8_t TELEMETRY_TOP_SCHEMA = 2;   // v2 (2026-06-13): +per-cámara +base(OTOS/línea)
 
 constexpr int TT_MAX_TOF = 6;   // 4 fijos hoy + 2 futuros (NUM_TOF_MAX)
+constexpr int TT_TOF_ZONES = 16;  // zonas 4x4 por sensor (campo "z" aditivo v2)
 
 // Sentinel "sin lectura" de los ToF (espejo de TOF_NO_READING).
 constexpr uint16_t TT_TOF_NO_READING = 0xFFFFu;
@@ -93,6 +94,11 @@ struct TopTelemetryFrame {
     uint16_t tof_mm[TT_MAX_TOF];  // por sensor; TT_TOF_NO_READING = sin lectura
     uint16_t hcsr04_mm;
     uint16_t tof_min_mm;          // min de los 4 ToF + HC-SR04
+    // v2 ADITIVO ("z"): zonas crudas 4x4 (16) por sensor, ANTES del promedio
+    // (mean_valid_zones). Cada zona sin lectura = TT_TOF_NO_READING. Permite ver
+    // QUÉ zona miente y, a futuro, enmascararlas (A2.2). Emitir "z" es aditivo:
+    // un parser viejo lo ignora; el contrato (schema 2) NO se rompe.
+    uint16_t tof_zones[TT_MAX_TOF][TT_TOF_ZONES];
 
     // ── WorldSnapshot fusionado (lo que viaja a CENTRAL) ──
     uint8_t  snap_valid;          // 0 si todavía no se envió ninguno

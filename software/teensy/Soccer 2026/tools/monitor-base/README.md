@@ -85,10 +85,31 @@ IMU ZERO / IMU SAVE / stream / rate.
 
 ```bash
 python -m monitor_base --top --sim            # campo simulado (sin robot)
-python -m monitor_base --top --port COM6       # placa TOP real (env top_robot1_debug_telemetry)
+python -m monitor_base --top --port COM6       # placa TOP real (env top_robot2_pri, monitor dormido)
 python -m monitor_base --top --replay top.jsonl
 python -m monitor_base --top --selftest        # smoke headless
 ```
+
+### Vista de SALUD de la placa TOP (`--top-salud`)
+
+Tablero **operativo** para ver de un vistazo **qué sensor anda o miente** (no un
+radar de posición, un semáforo): un tile por sensor en verde/amarillo/rojo/gris
+(OK / REVISAR / FALLA / SIN DATO + el porqué), la **grilla de zonas 4×4 de cada
+ToF** (heatmap; gris = zona sin lectura), las cámaras front/back/fusión con alerta
+de **pelota fantasma**, la odometría OTOS/escape de la base (griseada si no es
+fresca), y **botones de config** para apagar el sensor que molesta y persistir en
+EEPROM.
+
+```bash
+python -m monitor_base --top-salud --sim         # sin robot (el sim emite zonas)
+python -m monitor_base --top-salud --port auto    # placa TOP real (env top_robot2_pri)
+python -m monitor_base --top-salud --selftest     # smoke headless
+```
+
+Comandos de los botones (van al firmware vía `STREAM`): `CAM F|B ON|OFF`,
+`BNO L|R ON|OFF`, `US ON|OFF`, `TOF <n> ON|OFF`, `TOF <n> POS FRONT|RIGHT|BACK|LEFT`,
+`CFG SAVE|LOAD|RESET`. Las **zonas** requieren un firmware con el campo `z` (si no
+viaja, la grilla muestra "pendiente firmware" y el resto del tablero anda igual).
 
 `--port` requiere `pip install pyserial`. El resto usa solo la stdlib de Python
 (incluido tkinter, que viene con CPython en Windows).
@@ -127,7 +148,9 @@ Núcleo PURO (testeable, sin GUI) + una vista delgada en Tkinter:
 | `calibration.py` | Asistente de auto-calib (min/max, umbral, margen, sospechosos). |
 | `simulator.py` / `simulator_top.py` | Genera telemetría sintética DOWN / TOP (sin robot) por el formato real. |
 | `sources.py` | Fuentes serial / replay / sim (DOWN y TOP, parser inyectable) + helpers puros. |
-| `gui.py` / `gui_gk.py` / `gui_top.py` | Vista Tkinter base (anillo) / arquero (línea+OTOS) / campo TOP (radar). |
+| `health.py` | **Veredicto de salud por sensor** de la TOP (OK/REVISAR/FALLA/SIN DATO) — puro, host-testeado. |
+| `zones.py` | Modelo de la **grilla de zonas 4×4** de un ToF + heatmap — puro. |
+| `gui.py` / `gui_gk.py` / `gui_top.py` / `gui_top_health.py` | Vista Tkinter base (anillo) / arquero (línea+OTOS) / campo TOP (radar) / **salud TOP (tablero)**. |
 | `recorder.py` | Graba la telemetría entrante a `.jsonl` (`--record`). |
 | `__main__.py` | CLI (`--sim/--port/--replay/--record/--selftest/--top`) + selftests headless. |
 

@@ -90,6 +90,11 @@ void sensors_tof_tick();
 // Distancia en mm del ToF idx (0..NUM_TOF-1), o TOF_NO_READING si no listo.
 uint16_t sensors_tof_get_distance_mm(uint8_t idx);
 
+// Zona cruda (0..15, grilla 4x4) del ToF idx en mm, o TOF_NO_READING si la zona
+// no tiene lectura válida / el sensor está deshabilitado o vencido. Para exponer
+// la grilla de zonas por telemetría (campo "z" del monitor TOP).
+uint16_t sensors_tof_get_zone_mm(uint8_t idx, uint8_t zone);
+
 // Distancia del HC-SR04 frontal en mm.
 uint16_t sensors_hcsr04_get_distance_mm();
 

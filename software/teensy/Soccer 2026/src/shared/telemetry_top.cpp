@@ -39,6 +39,11 @@ void tt_frame_init(TopTelemetryFrame& f, uint8_t num_tof) {
     for (int i = 0; i < TT_MAX_TOF; ++i) f.tof_mm[i] = TT_TOF_NO_READING;
     f.hcsr04_mm = TT_TOF_NO_READING;
     f.tof_min_mm = TT_TOF_NO_READING;
+    // Zonas (campo "z" aditivo): sentinel por defecto (un frame sin datos no
+    // serializa ceros que parecerían lectura real).
+    for (int i = 0; i < TT_MAX_TOF; ++i)
+        for (int z = 0; z < TT_TOF_ZONES; ++z)
+            f.tof_zones[i][z] = TT_TOF_NO_READING;
     // Sentinels N/A de la línea de la base: un frame recién init (sin datos de
     // DOWN) serializa como N/A, no como 0 (que parecería lectura real). El glue
     // los sobrescribe sólo cuando el dato está fresh.
@@ -118,8 +123,22 @@ int tt_serialize_jsonl(char* buf, int cap, const TopTelemetryFrame& f) {
                         (unsigned)f.tof_mm[i]);
         if (off < 0) return -1;
     }
-    off = tt_append(buf, cap, off, "],\"hc\":%u,\"min\":%u},",
+    // "z" (aditivo): zonas crudas por sensor [[16],[16],...] antes del closing }.
+    off = tt_append(buf, cap, off, "],\"hc\":%u,\"min\":%u,\"z\":[",
                     (unsigned)f.hcsr04_mm, (unsigned)f.tof_min_mm);
+    if (off < 0) return -1;
+    for (int i = 0; i < nt; ++i) {
+        off = tt_append(buf, cap, off, (i == 0) ? "[" : ",[");
+        if (off < 0) return -1;
+        for (int z = 0; z < TT_TOF_ZONES; ++z) {
+            off = tt_append(buf, cap, off, (z == 0) ? "%u" : ",%u",
+                            (unsigned)f.tof_zones[i][z]);
+            if (off < 0) return -1;
+        }
+        off = tt_append(buf, cap, off, "]");
+        if (off < 0) return -1;
+    }
+    off = tt_append(buf, cap, off, "]},");
     if (off < 0) return -1;
 
     // snap

@@ -40,6 +40,7 @@ namespace {
 
 // ----- Estado del modulo -----
 uint16_t g_distances_mm[NUM_TOF];
+uint16_t g_zones_mm[NUM_TOF][16];  // zonas crudas 4x4 por sensor (campo "z" de la telemetría)
 bool     g_ready[NUM_TOF];
 // Frescura por sensor (P1-TOF-STALE 2026-06-03): g_last_ok_ms[i] = millis() de la
 // ultima lectura BUENA; g_ever_ok[i] = si alguna vez hubo una. La decision
@@ -156,6 +157,19 @@ uint16_t mean_valid_zones(const VL53L7CX_ResultsData& r, uint8_t n_zones) {
     return static_cast<uint16_t>(sum / count);
 }
 
+// Copia las n_zones crudas del frame al buffer dst: distancia mm si la zona es
+// valida (status 5/6/9 y en rango), o TOF_NO_READING si no. Hermano de
+// mean_valid_zones pero SIN promediar — para exponer la grilla por telemetría.
+void fill_zones(const VL53L7CX_ResultsData& r, uint16_t* dst, uint8_t n_zones) {
+    for (uint8_t i = 0; i < n_zones; ++i) {
+        const uint8_t s = r.target_status[i];
+        const bool valid = (s == 5 || s == 6 || s == 9);
+        const int16_t mm = r.distance_mm[i];
+        dst[i] = (valid && mm >= 0 && mm <= static_cast<int16_t>(TOF_MAX_RANGE_MM))
+                 ? static_cast<uint16_t>(mm) : TOF_NO_READING;
+    }
+}
+
 }  // namespace
 
 // Duerme los 4 ToF (LP low) para dejar el bus I2C limpio ANTES de iniciar el BNO.
@@ -204,6 +218,7 @@ bool sensors_tof_init() {
         g_ready[i] = false;
         g_last_ok_ms[i] = 0;
         g_ever_ok[i] = false;   // sin lectura buena todavia -> getter da NO_READING
+        for (int z = 0; z < 16; ++z) g_zones_mm[i][z] = TOF_NO_READING;
     }
 
     // NOTA: NO tocamos los pines XSHUT (PIN_TOF_XSHUT[]). Validado el
@@ -320,6 +335,7 @@ void sensors_tof_tick() {
         // (aunque mean sea NO_READING = "nada en rango", es una respuesta
         // valida y reciente, no un dato colgado). Sellamos la frescura.
         g_distances_mm[i] = mean_valid_zones(g_tof_results, TOF_RESOLUTION_ZONES);
+        fill_zones(g_tof_results, g_zones_mm[i], TOF_RESOLUTION_ZONES);
         g_last_ok_ms[i]   = now;
         g_ever_ok[i]      = true;
     }
@@ -332,6 +348,7 @@ void sensors_tof_tick() {
             if (g_tof_frontal.getRangingData(&g_tof_results)) {
                 g_distances_mm[TOF_FRONTAL_IDX] =
                     mean_valid_zones(g_tof_results, TOF_RESOLUTION_ZONES);
+                fill_zones(g_tof_results, g_zones_mm[TOF_FRONTAL_IDX], TOF_RESOLUTION_ZONES);
                 g_last_ok_ms[TOF_FRONTAL_IDX] = millis();  // sello de frescura
                 g_ever_ok[TOF_FRONTAL_IDX]    = true;
             }
@@ -369,6 +386,15 @@ uint16_t sensors_tof_get_distance_mm(uint8_t idx) {
     return tof_fresh_or_no_reading(g_distances_mm[idx], g_last_ok_ms[idx],
                                    g_ever_ok[idx], millis(),
                                    TOF_STALE_TIMEOUT_MS);
+}
+
+// Zona cruda (0..15, grilla 4x4) del ToF idx, en mm. TOF_NO_READING si la zona
+// no es válida, el sensor está deshabilitado por config, o venció (P1-TOF-STALE):
+// reusa el getter de distancia como compuerta de frescura/habilitación.
+uint16_t sensors_tof_get_zone_mm(uint8_t idx, uint8_t zone) {
+    if (idx >= NUM_TOF || zone >= 16) return TOF_NO_READING;
+    if (sensors_tof_get_distance_mm(idx) == TOF_NO_READING) return TOF_NO_READING;
+    return g_zones_mm[idx][zone];
 }
 
 uint16_t sensors_hcsr04_get_distance_mm() { return g_hcsr04_mm; }

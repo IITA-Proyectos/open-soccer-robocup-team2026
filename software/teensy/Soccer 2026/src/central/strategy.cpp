@@ -1077,8 +1077,11 @@ MotorCommand goalkeeper_tick() {
         // SIN despeje todavía (GK_BALL_NEAR_MM / GK_BALL_PUSH_SPEED retirados; se re-agregan
         // cuando se quiera el impulso). Quedan solo los del centrado lateral.
         constexpr float GK_BALL_TRACK_DB_MM = 40.0f;   // deadband lateral (anti-jitter al centrar)
-        constexpr int   GK_BALL_TRACK_SIGN  = -1;      // signo del centrado. Banco 2026-06-14: iba al
-                                                       // REVÉS → -1. Si AÚN va al revés, poné +1 (eje X cámara↔strafe).
+        constexpr int   GK_BALL_TRACK_SIGN  = +1;      // signo del centrado. Banco 2026-06-14 (María): con
+                                                       // -1 se ALEJABA de la pelota (no se enfrentaba) → +1
+                                                       // para ir HACIA ella (pelota a la derecha → strafe a la
+                                                       // derecha → bx→0, queda de frente). Si volviera a
+                                                       // alejarse, poné -1 (eje X cámara↔strafe).
         constexpr float GK_BALL_MAX_ABS_X_MM = 900.0f; // |x| ≥ esto = lectura NO confiable → ignorar.
                                                        // Banco 2026-06-14: HABÍA pelota REAL, pero la fusión
                                                        // de las 2 cámaras de la TOP teletransporta la posición

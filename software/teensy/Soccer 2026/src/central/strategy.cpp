@@ -1054,8 +1054,10 @@ MotorCommand goalkeeper_tick() {
         constexpr float    GKS_RESQUARE_EXIT   = 12.0f;  // escuadre: corte en vivo
         constexpr uint32_t GKS_RESQUARE_MAX_MS = 900;    // tope del escuadre parado
         constexpr uint32_t GKS_SETTLE_MS       = 300;    // quieto post-escuadre
-        constexpr uint32_t GKS_ESCAPE_MS       = 900;    // huida post-línea (banco 2026-06-14:
-                                                         // 600→900, "tiene que durar más para salir")
+        constexpr uint32_t GKS_ESCAPE_MS       = 1300;   // huida post-línea (banco 2026-06-14:
+                                                         // 600→900→1300, "le falta distancia de
+                                                         // escape". 420 mm/s · 1300 ms ≈ 55 cm.
+                                                         // 🔧 más perilla: GKS_ESCAPE_SPEED_MM_S.)
         // ESCAPE más RÁPIDO que el strafe normal (GK_PATROL_SPEED=200) para despegarse de
         // la línea DECIDIDO y salir antes de volver a leer la línea (pedido María
         // 2026-06-14: "se quedaba trabado en la línea blanca"). 420 = "fiel pleno" → la

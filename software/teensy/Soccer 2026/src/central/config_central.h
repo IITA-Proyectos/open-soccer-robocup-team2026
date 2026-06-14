@@ -100,10 +100,13 @@ namespace iitasoccer {
     // Mismo síntoma y mismo fix que el arquero. Punto de partida = los valores de R1.
     // 🔧 TUNEAR: delanteras (idx0/idx1) ↑ si no empujan el robot en el piso (70→90…);
     //            trasera (idx2) ↓ si el robot ROTA en el strafe. ⚠️ NO pasar ~150 (queman).
-    constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 120 }; // trasera 107→120 (banco María 2026-06-14:
-    // la trasera M3 NO compensa en strafe → "medialuna"/arquea + escape corto. Ideal geométrico=140.
+    constexpr int MOTOR_MIN_PWM[3] = { 70, 70, 107 }; // ✅ REVERTIDO 120→107 (banco María 2026-06-14):
+    // subir la trasera a 120 EMPEORÓ la medialuna, NO la arregló. El modelo MEDIDO (skill
+    // dinamica-omni-3-ruedas) dice que {70,70,107} da strafe DERECHO y estable a 200 mm/s con ω=0
+    // (validado banco R2 2026-06-09). Con FLOOR_SCALE, subir el piso de la rueda DOMINANTE del strafe
+    // sobre-escala el vector de forma ASIMÉTRICA → yaw parásito direccional = medialuna PEOR. 107 = valor
+    // validado; la deriva sistemática residual la cancela el integrador del PFM (env con rumbo).
     // ⚠️ NO pasar ~150 (motores 5V a 7.4V se queman). ⚠️ Afecta R2 arquero Y delantero (config compartida).
-    // (banco 2026-06-09: trasera barrida 42→...→105→107 era el valor previo.)
     // Eficiencia relativa PWM→velocidad por rueda (×100) — piso por ESCALADO UNIFORME
     // (-DCENTRAL_FLOOR_SCALE, motor_floor_scale.h). ✅ DERIVADA DEL BANCO R2 2026-06-09:
     // la trasera (alineada al strafe) rinde ~1.31× más velocidad por PWM que las

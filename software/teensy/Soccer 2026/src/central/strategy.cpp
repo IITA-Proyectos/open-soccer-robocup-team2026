@@ -1073,12 +1073,12 @@ MotorCommand goalkeeper_tick() {
         // CERCA → despeje hacia adelante; LEJOS → seguir de costado a la pelota para quedar
         // enfrente (las líneas la acotan, NO se abre); sin pelota → patrulla de siempre.
         // Gateado: el env sin -DGK_SIMPLE_BALL (strafe_bb) queda BYTE-IDÉNTICO.
-        constexpr float GK_BALL_NEAR_MM     = 250.0f;  // dist < esto = "cerca" → despeje
-        constexpr float GK_BALL_PUSH_SPEED  = 500.0f;  // impulso de despeje hacia +Y (adelante)
-        constexpr float GK_BALL_TRACK_DB_MM = 40.0f;   // deadband lateral (anti-jitter al seguir)
-        constexpr int   GK_BALL_TRACK_SIGN  = -1;      // signo del seguimiento. Banco 2026-06-14:
-                                                       // iba al REVÉS (no seguía la pelota) → -1.
-                                                       // Si AÚN va al revés, poné +1 (eje X cámara↔strafe).
+        // PEDIDO María 2026-06-14: por AHORA solo CENTRARSE con la pelota y quedar de frente —
+        // SIN despeje todavía (GK_BALL_NEAR_MM / GK_BALL_PUSH_SPEED retirados; se re-agregan
+        // cuando se quiera el impulso). Quedan solo los del centrado lateral.
+        constexpr float GK_BALL_TRACK_DB_MM = 40.0f;   // deadband lateral (anti-jitter al centrar)
+        constexpr int   GK_BALL_TRACK_SIGN  = -1;      // signo del centrado. Banco 2026-06-14: iba al
+                                                       // REVÉS → -1. Si AÚN va al revés, poné +1 (eje X cámara↔strafe).
 #endif
 
         static int             dir_simple  = +1;   // arranca hacia la derecha
@@ -1193,29 +1193,21 @@ MotorCommand goalkeeper_tick() {
                     }
                 }
 #ifdef GK_SIMPLE_BALL
-                // CÁMARA: si ve la pelota, pre-empta la patrulla a ciegas. (El rebote por
-                // línea de arriba YA corrió → seguir a la pelota queda acotado por las líneas.)
+                // CÁMARA (pedido María 2026-06-14): si ve la pelota, SOLO centrarse con ella y
+                // quedar de frente — por ahora NADA de despeje. Strafe lateral para llevar la
+                // pelota a bx≈0 (centrada = enfrente); vy=0 (NO se va de su línea); el PFM la
+                // mantiene mirando al frente (= a la pelota cuando está adelante). Si ya está
+                // centrada (|bx|<deadband) → vx=0 → queda QUIETA y de frente. El rebote por
+                // línea de arriba YA corrió, así que el centrado queda acotado por las líneas.
                 if (world_model_ball_visible()) {
                     const float bx = world_model_get_ball_x_mm();   // +x = derecha (marco robot)
-                    const float by = world_model_get_ball_y_mm();   // +y = adelante
                     const int   xdir = (bx >  GK_BALL_TRACK_DB_MM) ?  GK_BALL_TRACK_SIGN
                                      : (bx < -GK_BALL_TRACK_DB_MM) ? -GK_BALL_TRACK_SIGN : 0;
-                    if (bx * bx + by * by < GK_BALL_NEAR_MM * GK_BALL_NEAR_MM) {
-                        // CERCA → DESPEJE: empuja hacia ADELANTE (+Y, lejos de su arco) y se
-                        // centra en la pelota. Rápido. (Confirmado María: hacia adelante.)
-                        g_state_name = "GK_SIMPLE_PUSH";
-                        cmd.vx_mm_s = clamp_velocity_mm_s(xdir * GK_BALL_PUSH_SPEED);
-                        cmd.vy_mm_s = clamp_velocity_mm_s(GK_BALL_PUSH_SPEED);
-                    } else {
-                        // LEJOS → SEGUIR de costado para quedar SIEMPRE enfrente de la pelota.
-                        // NO se abre (la red de rebote por línea lo acota); NO avanza (vy=0);
-                        // si ya está alineado (|bx|<deadband) se queda quieto.
-                        g_state_name = "GK_SIMPLE_TRACK";
-                        if (xdir != 0) dir_simple = xdir;
-                        cmd.vx_mm_s = clamp_velocity_mm_s(xdir * GK_PATROL_SPEED_MM_S);
-                        cmd.vy_mm_s = 0;
-                    }
-                    cmd.omega_centideg_s = pfm_omega();   // siempre de frente al arco
+                    g_state_name = "GK_SIMPLE_TRACK";
+                    if (xdir != 0) dir_simple = xdir;     // recuerda el lado (para el rebote por línea)
+                    cmd.vx_mm_s = clamp_velocity_mm_s(xdir * GK_PATROL_SPEED_MM_S);  // 0 si ya centrada
+                    cmd.vy_mm_s = 0;
+                    cmd.omega_centideg_s = pfm_omega();   // de frente
                     break;
                 }
 #endif

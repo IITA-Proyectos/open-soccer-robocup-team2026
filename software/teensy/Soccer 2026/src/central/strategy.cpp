@@ -1079,11 +1079,13 @@ MotorCommand goalkeeper_tick() {
         constexpr float GK_BALL_TRACK_DB_MM = 40.0f;   // deadband lateral (anti-jitter al centrar)
         constexpr int   GK_BALL_TRACK_SIGN  = -1;      // signo del centrado. Banco 2026-06-14: iba al
                                                        // REVÉS → -1. Si AÚN va al revés, poné +1 (eje X cámara↔strafe).
-        constexpr float GK_BALL_MAX_ABS_X_MM = 900.0f; // |x| ≥ esto = pelota IMPLAUSIBLE → ignorar. La
-                                                       // cámara/TOP reporta una FANTASMA saturada a ±1000
-                                                       // (banco 2026-06-14): tira al arquero fuera de la
-                                                       // línea a los dos lados. Doble función: un arquero
-                                                       // no persigue pelotas anchas (>~90cm), queda central.
+        constexpr float GK_BALL_MAX_ABS_X_MM = 900.0f; // |x| ≥ esto = lectura NO confiable → ignorar.
+                                                       // Banco 2026-06-14: HABÍA pelota REAL, pero la fusión
+                                                       // de las 2 cámaras de la TOP teletransporta la posición
+                                                       // (+1000 → −1000 en 20 ms: IMPOSIBLE para una pelota
+                                                       // real) → centrarse en eso tira al arquero a los dos
+                                                       // lados. Doble función: un arquero no persigue pelotas
+                                                       // anchas (>~90cm), queda central.
 #endif
 
         static int             dir_simple  = +1;   // arranca hacia la derecha
@@ -1207,13 +1209,13 @@ MotorCommand goalkeeper_tick() {
                 if (world_model_ball_visible()) {
                     const float bx = world_model_get_ball_x_mm();   // +x = derecha (marco robot)
                     const float by = world_model_get_ball_y_mm();   // +y = adelante
-                    // GATE ANTI-PELOTA-FANTASMA (banco María 2026-06-14, caja negra v1.2): la
-                    // cámara/TOP reporta una pelota FANTASMA pegada a la saturación (|x|≈1000) que
-                    // SALTA de +1000 a −1000 — visible incluso con el robot QUIETO al boot, con
-                    // velocidades desbordadas (±32768). Centrarse en eso tiraba al arquero fuera de
-                    // la línea para los DOS lados. Hasta que la TOP tenga el firmware de cámara
-                    // pegajosa (top_robot2_pri_sticky), IGNORAR detecciones implausibles (al borde o
-                    // atrás) → seguir patrullando. (No rompe el centrado: filtra el sensor roto.)
+                    // GATE lectura-no-confiable (banco María 2026-06-14, caja negra v1.2): HABÍA una
+                    // pelota REAL en la cancha, pero la fusión de las 2 cámaras de la TOP teletransporta
+                    // su posición reportada (de +1000 a −1000 en 20 ms — IMPOSIBLE para una pelota real).
+                    // Centrarse en ese dato saltarín tiraba al arquero fuera de la línea para los DOS
+                    // lados. Hasta que la TOP tenga el firmware de cámara pegajosa (top_robot2_pri_sticky,
+                    // arregla la fusión), IGNORAR lecturas no confiables (al borde |x|≥900 o atrás) →
+                    // seguir patrullando. El centrado fino se prueba con rumbo ON (bb), no en noheading.
                     const bool ball_ok = (bx > -GK_BALL_MAX_ABS_X_MM) &&
                                          (bx <  GK_BALL_MAX_ABS_X_MM) && (by > 0.0f);
                     if (ball_ok) {

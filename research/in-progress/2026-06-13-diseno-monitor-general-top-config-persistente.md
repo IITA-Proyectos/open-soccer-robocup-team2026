@@ -11,12 +11,18 @@ related-tasks: [TASK-205, TASK-206]
 related: [2026-06-06-diseno-monitoreo-telemetria-usb-y-apps-pc.md, TELEMETRIA-TOP.md]
 ---
 
-# Monitor General de la TOP — diseño
+# Monitor del SISTEMA DE POSICIONAMIENTO (placa TOP) — diseño
 
-> **Pedido (Gustavo, 2026-06-13):** un monitor de la TOP "tipo el de la placa DOWN", INTUITIVO,
-> que muestre TODO lo que percibe el robot y permita **deshabilitar sensores que mandan basura** y
-> **persistir esa config en la EEPROM de la TOP**. Lista de deseos completa abajo. Decisión tomada:
-> **Fase A (fail-safe + persistencia) ahora (P1 Incheon); Fase B (visualización rica) post-Incheon (P2/2027).**
+> **Pedido (Gustavo, 2026-06-13):** un monitor "tipo el de la placa DOWN", INTUITIVO, del **sistema
+> de posicionamiento**. La TOP es el HUB donde converge TODO antes de la CENTRAL: cámaras (pelota/
+> arcos) + IMU (heading) + ToF (paredes/obstáculos) + ultrasonido + **OTOS y línea+vector de escape
+> que la base (DOWN) difunde a la TOP** → se fusiona → **WorldSnapshot → CENTRAL**. El monitor tiene
+> que (1) **VER cómo andan todos esos sensores** (incl. lo que llega de la base), (2) **ver qué se
+> envía de la TOP a la CENTRAL**, y (3) **calibrar / setear parámetros** (y persistirlos). Permite
+> además **deshabilitar sensores que mandan basura**.
+>
+> Decisión: **Fase A (fail-safe + persistencia + exponer todo lo que ya llega) ahora (P1 Incheon);
+> Fase B (visualización rica: grillas 8×8, mapas) post-Incheon (P2/2027).**
 
 ## 0. Por qué fases
 
@@ -28,20 +34,25 @@ velocidad ±13 m/s) y enmascarar zonas ToF; el resto (grillas 8×8, mapas) es di
 
 | Pedido | Fase | Dónde vive |
 |---|---|---|
+| **Ver qué ve CADA cámara por separado** (front vs back): pelota / arco amarillo / arco azul + posición, no solo el fusionado | **A (P1)** | TOP fw (exponer `CamObs` front/back en telemetría) + GUI 2 paneles |
 | Deshabilitar cámara F/B, BNO L/R, ultrasonido | **A (P1)** | TOP fw + EEPROM |
 | ToF: deshabilitar sensor entero | **A (P1)** | TOP fw + EEPROM |
 | ToF: anular zonas (ej. filas superiores), rotar 90°, invertir eje | **A (P1)** | TOP fw + EEPROM |
 | Persistir TODA la config en EEPROM de la TOP, cargar al boot | **A (P1)** | TOP fw |
 | Reportar el estado de config en telemetría (qué está on/off) | **A (P1)** | TOP fw |
+| **OTOS (pose/vel) + línea + vector de escape** que la DOWN difunde a la TOP | **A (P1)** | TOP fw: los getters `comm_down_get_pose/velocity/line_status` **YA existen** → solo exponer en telemetría |
+| **Lo que la TOP envía a la CENTRAL** (WorldSnapshot) | **A (ya está)** | bloque `snap` de la telemetría actual |
 | Ver 8×8 zonas en grilla con color/barra, paneles front/der/atrás/izq | B (2027) | fw schema v2 + GUI |
 | Mapa de distancias al eje + mapa de posición absoluta | B (2027) | GUI |
-| OTOS y luz | B (2027) | son datos de **DOWN** (no TOP); agregarlos = unir telemetría DOWN+TOP en la app |
+| Luz CRUDA (32 sensores de la base) | — | vive SOLO en DOWN (su monitor ya la muestra); a la TOP solo llega la **línea ya procesada** (LineStatusV2), no los 32 valores |
 
 ## 1. Fase A — `TopConfig` (la estructura persistente)
 
 Módulo PURO nuevo `src/shared/top_config.{h,cpp}` (host-testeable). POD plano + (de)serialización a
-bytes para EEPROM + helpers de aplicación. **Defaults = TODO habilitado, sin rotación, sin máscara =
-comportamiento de competencia byte-idéntico** (la carga al boot es no-op si nunca se guardó nada).
+bytes para EEPROM + helpers de aplicación. **Defaults = TODO habilitado, sin rotación, sin máscara, y
+los `mount_bearing_deg` = el mapeo HARDCODEADO de hoy** (el de `CONVENCION-EJES`, ej. TOF2=der/
+TOF3=izq) → con la config en defaults el comportamiento de competencia es **byte-idéntico** (la carga
+al boot es no-op si nunca se guardó nada). Recién cuando el equipo reasigna y hace `CFG SAVE` cambia algo.
 
 ```c
 constexpr uint8_t  TOP_CONFIG_MAGIC   = 0x7C;   // marcador "TopConfig" en EEPROM
@@ -49,10 +60,16 @@ constexpr uint8_t  TOP_CONFIG_VERSION = 1;
 constexpr int      TOP_CFG_NUM_TOF    = 6;   // 4 hoy + 2 futuros (NUM_TOF_MAX)
 
 struct TofZoneConfig {
-    uint8_t  enabled;          // 1 = el sensor participa; 0 = NO_READING siempre
-    uint8_t  rotation_quarts;  // 0/1/2/3 = 0/90/180/270° aplicado al indexado 8×8
-    uint8_t  flip;             // bit0 = invertir X, bit1 = invertir Y
-    uint64_t zone_mask;        // 1 bit por zona; 1 = USAR, 0 = ANULAR (ej. filas superiores)
+    uint8_t  enabled;             // 1 = el sensor participa; 0 = NO_READING siempre
+    int16_t  mount_bearing_deg;   // UBICACIÓN: hacia dónde mira en el robot. 0=frente,
+                                  //   90=derecha, 180=atrás, 270=izquierda. Reemplaza el
+                                  //   mapeo HARDCODEADO de hoy (TOF2=der/TOF3=izq). Acepta
+                                  //   arbitrario (futuro 45°): es solo un ángulo para el radar
+                                  //   y la dirección del obstáculo, no requiere resampleo.
+    int16_t  zone_rotation_deg;   // ROTACIÓN del indexado de la grilla 8×8 (montaje del chip).
+                                  //   Fase A SOLO 0/90/180/270; 45° = futuro (resampleo de grilla).
+    uint8_t  flip;                // bit0 = invertir X, bit1 = invertir Y
+    uint64_t zone_mask;           // 1 bit por zona; 1 = USAR, 0 = ANULAR (ej. filas superiores)
 };
 
 struct TopConfig {
@@ -80,8 +97,9 @@ Mismo estilo que DOWN (texto, una línea; ya hay `tt_parse_command`):
 | `BNO L ON\|OFF` / `BNO R ON\|OFF` | habilita/deshabilita BNO izq/der (fusión heading) |
 | `US ON\|OFF` | habilita/deshabilita el HC-SR04 |
 | `TOF <n> ON\|OFF` | habilita/deshabilita el ToF n entero |
-| `TOF <n> ROT <0\|90\|180\|270>` | rota el indexado 8×8 del ToF n |
-| `TOF <n> FLIP <X\|Y\|NONE>` | invierte un eje del ToF n |
+| `TOF <n> POS FRONT\|BACK\|RIGHT\|LEFT` | **UBICACIÓN**: asigna hacia dónde mira (frente/atrás/der/izq = 0/180/90/270°). Futuro: `TOF <n> POS <deg>` para ángulos arbitrarios (45°) |
+| `TOF <n> ROT <0\|90\|180\|270>` | **ROTACIÓN** del indexado de la grilla 8×8 (montaje del chip). Futuro: 45° |
+| `TOF <n> FLIP <X\|Y\|NONE>` | invierte un eje de la grilla del ToF n |
 | `TOF <n> ZONE <ON\|OFF> <0..63>` | anula/activa una zona puntual |
 | `TOF <n> ZONEMASK <hex16>` | setea la máscara completa de una (la GUI manda esto al pintar) |
 | `CFG SAVE` | persiste `TopConfig` en EEPROM (ACK `[TOP] config guardada`) |
@@ -93,12 +111,19 @@ Mismo estilo que DOWN (texto, una línea; ya hay `tt_parse_command`):
 ## 3. Dónde se aplica cada flag (apply points)
 
 - **Cámara F/B** → `cameras_runtime`/`cameras_fusion`: si `cam_*_en==0`, tratar esa cámara como
-  watchdog-muerta (no entra a la fusión; `cam_*_ok` reporta el override). Mata la pelota fantasma.
+  watchdog-muerta (no entra a la fusión; `cam_*_ok` reporta el override). Mata la pelota fantasma. La
+  telemetría per-cámara (§5a) muestra cuál de las dos miente → se apaga ESA con dato, no a ciegas.
 - **BNO L/R** → `sensors_imu`: si deshabilitado, excluir de la fusión circular (como hoy con
   `TOP_BNO_PRIMARY_ONLY`, pero por config en vez de macro).
 - **ToF sensor** → `sensors_tof`: si `enabled==0`, devolver `TOF_NO_READING`.
-- **ToF zonas/rotación/flip** → `sensors_tof`: requiere leer las **64 zonas** del VL53L7CX (hoy se
-  reduce a 1 distancia internamente) y aplicar `top_config_apply_zone_mask` ANTES de reducir. Esta
+- **ToF ubicación (`mount_bearing_deg`)** → reemplaza el mapeo HARDCODEADO actual (`CONVENCION-EJES`:
+  TOF2=der/TOF3=izq). La distancia del sensor n se asocia a su bearing → así la GUI llena los paneles
+  front/der/atrás/izq con el sensor ASIGNADO, y la dirección del obstáculo en el WorldSnapshot
+  (`min_obstacle` + futura zona angular) usa el bearing, no el índice físico. Arbitrario (45°) ya
+  funciona acá sin resampleo.
+- **ToF zonas/rotación/flip (`zone_rotation_deg`,`flip`,`zone_mask`)** → `sensors_tof`: requiere leer
+  las **64 zonas** del VL53L7CX (hoy se reduce a 1 distancia internamente), aplicar rotación/flip al
+  indexado y `top_config_apply_zone_mask` (anular zonas) ANTES de reducir al mínimo. Esta
   infraestructura per-zona es **compartida con Fase B** (no es trabajo tirado).
 - **Ultrasonido** → `sensors_hcsr04`: si deshabilitado, `NO_READING`.
 
@@ -112,9 +137,26 @@ Mismo estilo que DOWN (texto, una línea; ya hay `tt_parse_command`):
 
 ## 5. Telemetría — bloque `cfg`
 
-Agregar al frame TOP (aditivo; `TELEMETRY_TOP_SCHEMA` 1→2) un bloque `cfg` con el estado actual
-(cam_en, bno_en, us_en, por-ToF enabled/rot/flip/zonemask) para que la GUI muestre qué está on/off
-sin adivinar. El bloque de texto humano (`tt_format_human`) suma una línea `CFG: ...`.
+Dos agregados al frame TOP (aditivos; `TELEMETRY_TOP_SCHEMA` 1→2):
+
+**(a) Detecciones POR CÁMARA** (`cam_front` / `cam_back`), no solo el fusionado. Cada una:
+`ball {vis,x,y}`, `yellow {vis,x|ang,y|dist}`, `blue {vis,...}` — los `CamObs` que la fusión ya
+consume hoy y tira. Con esto la GUI muestra **qué ve la frontal vs la trasera vs el fusionado** lado
+a lado → un desacuerdo (la pelota fantasma: front dice una cosa, back otra) se ve de un vistazo, y el
+equipo decide **cuál cámara apagar** (`CAM F|B OFF`) con dato, no a ciegas. Costo: chico (2 cámaras ×
+pocos campos). El fusionado actual (`cam`) se mantiene.
+
+**(b) Bloque `cfg`** con el estado actual (cam_en, bno_en, us_en, y por-ToF: `enabled`,
+**`bearing`** (ubicación), `rotation`, `flip`, `zonemask`) para que la GUI muestre qué está on/off y
+**dónde está asignado cada ToF** sin adivinar. El bloque de texto humano (`tt_format_human`) suma
+líneas `F:`/`B:` (por cámara) y `CFG:` (ej. `ToF0=front rot90 ...`).
+
+**(c) Bloque `base`** — lo que la TOP RECIBE de la DOWN (los getters `comm_down_get_*` ya existen):
+OTOS `pose {x,y,heading}` + `vel {vx,vy,omega}`, y línea `{present, escape_angle, penetration_mm,
+cross_track_mm, quality, frames_received, crc_errors}`. Así el monitor de posicionamiento ve también
+la **odometría** y el **vector de escape de borde** que vienen de la base, no solo los sensores
+propios de la TOP. (La luz CRUDA de 32 sensores NO llega a la TOP — eso es del monitor de DOWN.)
+El WorldSnapshot que la TOP manda a la CENTRAL ya está en el bloque `snap` (sin cambios).
 
 ## 6. Plan de prueba (banco — el equipo cierra hardware)
 

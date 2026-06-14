@@ -27,7 +27,8 @@ Módulo puro `top_config` + EEPROM + comandos + apply, según el spec
 
 ## Comandos (contrato con la GUI — el otro agente la construye a esto)
 
-`CAM F|B ON|OFF` · `BNO L|R ON|OFF` · `US ON|OFF` · `TOF n ON|OFF` · `TOF n ROT 0|90|180|270` ·
+`CAM F|B ON|OFF` · `BNO L|R ON|OFF` · `US ON|OFF` · `TOF n ON|OFF` ·
+**`TOF n POS FRONT|BACK|RIGHT|LEFT`** (ubicación; futuro `POS <deg>`) · `TOF n ROT 0|90|180|270` ·
 `TOF n FLIP X|Y|NONE` · `TOF n ZONE ON|OFF <0..63>` · `TOF n ZONEMASK <hex>` · `CFG SAVE|LOAD|RESET`.
 
 ## Criterio de cierre (banco — el equipo)

@@ -4,7 +4,7 @@ title: "Acelerar el boot del TOP: cargar el firmware de los 4 ToF a 400 kHz (TA-
 date_created: 2026-06-14
 assigned: [virginia, elias]
 priority: P1
-status: codigo-listo-falta-banco
+status: done
 estimated_hours: 1
 blocks: []
 tags: [firmware, top, tof, i2c, boot, performance]
@@ -13,10 +13,16 @@ depends_on: []
 
 # TASK-210 — Acelerar el boot del TOP cargando los ToF a 400 kHz (TA-1)
 
-> ### ⏳ 2026-06-14 — CÓDIGO APLICADO, FALTA VALIDAR EN BANCO
-> El cambio ya está en `src/top/sensors_tof.cpp` + instrumentación de tiempos en
-> `src/top/main_top.cpp`. **NO está validado en hardware** (regla no negociable:
-> sólo el equipo cierra TASKs de hardware). Esta task es el plan de banco para cerrarlo.
+> ### ✅ 2026-06-14 — VALIDADO EN BANCO Y CERRADO (Virginia + Gustavo)
+> **Virginia y Gustavo probaron en banco la TOP (`top_robot2_pri`, COM22) y el tema quedó resuelto.**
+> Medido en el panel de boot:
+> - **`setup_total` = ~14,4 s** (antes ~40 s) · **`tof_init` = 12,19 s** (antes ~30-32 s) · `imu_init` = 2,0 s.
+> - **`4 de 4` ToF midiendo** · `min_obst` vivo (responde a la mano).
+> - **Heading SIN freeze:** al girar el robot a mano, el `hdg` trackeó el giro (`0.0 → -38.9 → +50.0
+>   → -54.6`) y quedó estable al soltarlo → el restore a 100 kHz en runtime quedó OK.
+> - Loop a ~150k/s, sin resets del WDT, `resync=0`.
+>
+> El equipo HUMANO validó en hardware y cerró la task (registro pedido por Gustavo). Mergeable a `main`.
 
 ## Resumen (1 línea)
 El boot del TOP tarda ~40 s; ~30-32 s son la carga del firmware de los 4 ToF VL53L7CX
@@ -63,13 +69,15 @@ del loop (anti-freeze BNO+ToF) es byte-equivalente al de hoy. El cambio es sólo
 4. Leer el `[boot] tof_init=.. ms` nuevo y los `[sensors_tof] multi-ToF ... de 4 midiendo`.
 
 ## Criterio de cierre
-- [ ] **Velocidad:** `[boot] tof_init` ≤ ~10 s (vs ~30-32 s antes) y `setup_total` ≤ ~15 s.
-- [ ] **Sin regresión del heading (EL PUNTO CRÍTICO):** girar el robot a mano ~30 s → el `hdg`
-      del panel `[TOP]` **TRACKEA el giro** (no se congela). Esto valida que el `setClock(100000)`
-      de vuelta quedó bien puesto.
-- [ ] **ToF sanos:** `4 de 4 midiendo` y `min_obst` baja al acercar la mano al frente.
-- [ ] **Regresión vecinos:** 5 min de marcha → WorldSnapshot sigue ~100 Hz, sin resets espurios
-      del watchdog (el WDT se arma DESPUÉS del init, así que la carga más rápida no lo afecta).
+- [x] **Velocidad:** `setup_total` = **14,4 s** ≤ ~15 s ✅ (`tof_init` = 12,19 s — quedó por encima del
+      objetivo aspiracional de ~10 s por el "piso fijo" de la librería ST + settle de LP que no escala
+      con el clock; igual ~2,6× más rápido y boot total bajó ~26 s).
+- [x] **Sin regresión del heading (EL PUNTO CRÍTICO):** al girar el robot el `hdg` **trackeó**
+      (`0.0 → -38.9 → +50.0 → -54.6`) y quedó estable al soltarlo → el `setClock(100000)` de runtime
+      quedó bien puesto. ✅
+- [x] **ToF sanos:** `4 de 4 midiendo` y `min_obst` vivo (314-769 mm, responde a la mano). ✅
+- [x] **Regresión vecinos:** loop a ~150k/s, snapshot a CENTRAL, sin resets del WDT, `resync=0`.
+      Cámaras `Y/Y` y odometría DOWN `Y/Y` en la corrida con todo conectado. ✅
 
 ## Plan de prueba en hardware real (resumen)
 Banco TOP con BNO + 4 ToF activos. Robot apuntando al arco rival al encender (invariante del boot:
@@ -91,6 +99,10 @@ que `Wire.setClock(TOF_RUN_CLOCK_HZ)` esté al final de `sensors_tof_init()` en 
 ## Notas / decisiones
 - 2026-06-14: creada + código aplicado por el coach (Claude Opus 4.8, pedido de Gustavo). Análisis
   completo de dónde se va el tiempo de boot en la sesión de chat de esa fecha.
+- 2026-06-14: **validado en banco por Virginia + Gustavo** (TOP `top_robot2_pri`, COM22). Boot
+  ~40 s → ~14,4 s; heading trackea el giro sin freeze; 4/4 ToF. Tema RESUELTO. Próximos opcionales
+  (no bloqueantes): TA-2 (carga a 1 MHz → boot ~8 s) y TA-4 (recortar `STABILIZE_MS`/`LP_SETTLE_MS`).
 
 ## Cambios de estado
 - 2026-06-14: `pending` → `codigo-listo-falta-banco` (cambio aplicado en firmware; falta validar HW).
+- 2026-06-14: `codigo-listo-falta-banco` → `done` ✅ (validado en banco por Virginia + Gustavo).

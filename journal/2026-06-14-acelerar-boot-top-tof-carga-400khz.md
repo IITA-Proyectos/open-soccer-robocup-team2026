@@ -36,9 +36,16 @@ hardware: `diag_top_tof_quad_live.cpp` carga los 4 ToF a 400 kHz (banco 2026-05-
 queda igual (100 kHz) → comportamiento anti-freeze del loop sin cambios.
 
 ## Verificación
-- ✅ `pio run -e top_robot2_pri` → **SUCCESS** (40 s; FLASH code 74920, sin errores).
-- ⏳ Banco PENDIENTE (regla no negociable: el equipo cierra las TASK de HW). Criterio en TASK-210:
-  velocidad (tof_init ≤ ~10 s) + sin regresión de heading (girar robot → hdg trackea) + 4 ToF OK.
+- ✅ `pio run -e top_robot2_pri` → **SUCCESS** (FLASH code 74920, sin errores).
+- ✅ **BANCO (Virginia + Gustavo, 2026-06-14, TOP en COM22):** tema RESUELTO.
+  - **Boot ~40 s → ~14,4 s** (`setup_total`=14425 ms; `tof_init`=12190 ms; `imu_init`=2003 ms).
+  - **`4 de 4` ToF midiendo**; `min_obst` vivo (314-769 mm, responde a la mano).
+  - **Heading SIN freeze:** girando el robot a mano el `hdg` trackeó (`0.0 → -38.9 → +50.0 → -54.6`)
+    y quedó estable al soltarlo → confirma que el restore a 100 kHz en runtime quedó OK.
+  - Loop ~150k/s, sin resets del WDT, `resync=0`; cámaras `Y/Y` y odometría DOWN `Y/Y` con todo conectado.
+  - `imu_R=N` es ESPERADO (`top_robot2_pri` = `-DTOP_BNO_PRIMARY_ONLY`, secundario deshabilitado a propósito).
+- Nota de medición: `tof_init` quedó en ~12 s (no ~8 s) por el piso fijo de la librería ST (esperas
+  internas del init de cada ToF) + los `delay()` de settle de los LP, que no escalan con el clock.
 
 ## Futuro (no en esta sesión)
 TA-2 carga a 1 MHz (~3-4 s, requiere validar pull-ups + fallback a 400 kHz) · TA-3 solapar

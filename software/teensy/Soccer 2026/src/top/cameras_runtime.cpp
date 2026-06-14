@@ -3,6 +3,7 @@
 #include "cameras_fusion.h"
 #include "ball_velocity.h"
 #include "config_top.h"
+#include "top_eeprom_config.h"   // g_top_cfg.cam_front_en/cam_back_en (A2.1 fail-safe)
 #ifdef TOP_CAM_STICKY
 #include "ball_sticky.h"   // fusión "cámara pegajosa" (opcional práctica 2026-06-12)
 #endif
@@ -91,8 +92,12 @@ inline int16_t i16_clamp(float v) {
 }
 
 void recompute_fused(uint32_t now_ms) {
-    const bool front_alive = camera_alive(g_last_packet_ms_front, now_ms);
-    const bool back_alive  = camera_alive(g_last_packet_ms_back,  now_ms);
+    // A2.1: una cámara DESHABILITADA por config se trata como caída (no entra a la
+    // fusión) → apaga la pelota fantasma de la cámara que miente. El bloque
+    // per-cámara (g_ball_front/back) sigue mostrando lo CRUDO que manda (para
+    // confirmar por qué la apagaste).
+    const bool front_alive = camera_alive(g_last_packet_ms_front, now_ms) && g_top_cfg.cam_front_en;
+    const bool back_alive  = camera_alive(g_last_packet_ms_back,  now_ms) && g_top_cfg.cam_back_en;
 
     const CameraPacket& pf = g_parser_front.get_packet();
     const CameraPacket& pb = g_parser_back.get_packet();
@@ -248,10 +253,10 @@ int16_t cameras_get_goal_blue_back_angle_centideg()  { return g_blue_back.angle_
 int16_t cameras_get_goal_blue_back_distance_mm()     { return g_blue_back.distance_mm; }
 
 bool cameras_front_alive() {
-    return camera_alive(g_last_packet_ms_front, millis());
+    return camera_alive(g_last_packet_ms_front, millis()) && g_top_cfg.cam_front_en;
 }
 bool cameras_back_alive() {
-    return camera_alive(g_last_packet_ms_back, millis());
+    return camera_alive(g_last_packet_ms_back, millis()) && g_top_cfg.cam_back_en;
 }
 bool cameras_any_alive() {
     const uint32_t now_ms = millis();

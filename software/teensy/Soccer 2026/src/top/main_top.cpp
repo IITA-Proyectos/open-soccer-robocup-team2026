@@ -26,6 +26,7 @@
 #include "comm_down.h"         // recibe odometría OTOS desde ABAJO
 #include "comm_arbiter.h"      // bridge a placa COMM
 #include "comm_central.h"      // envía snapshot al CENTRAL
+#include "top_eeprom_config.h" // config persistente de sensores (A2.1, g_top_cfg)
 #include "localization_runtime.h"  // fusión TOF+IMU → pose absoluta en cancha
 #include "types.h"
 #include "goal_polarity.h"         // autodetección color arco rival/propio
@@ -205,6 +206,15 @@ void setup() {
     Serial.println("  IITA Soccer Open — TOP firmware");
     Serial.println("  Cerebro sensorial (Teensy 4.0)");
     Serial.println("=========================================");
+
+    // CONFIG PERSISTENTE (A2.1): cargar TopConfig de EEPROM ANTES de los inits de
+    // sensores (sus enables gobiernan qué se inicializa). Carga rapida (lectura +
+    // CRC). EEPROM en blanco/invalida -> defaults = competencia byte-identica.
+    if (top_config_load(&g_top_cfg)) {
+        Serial.println("[TOP] config cargada de EEPROM");
+    } else {
+        Serial.println("[TOP] config EEPROM vacia/invalida -> defaults (todo habilitado)");
+    }
 
     // ORDEN CRITICO (fix 2026-06-02, receta validada en diag_pose_live): los 4 VL53L7CX
     // arrancan en 0x29 = misma dir que el BNO DERECHO en el bus Wire. Para que NO choquen:

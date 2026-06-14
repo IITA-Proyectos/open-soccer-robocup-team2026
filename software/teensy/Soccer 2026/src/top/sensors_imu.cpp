@@ -29,6 +29,7 @@
 #include "sensors_imu.h"
 #include "config_top.h"
 #include "imu_fusion.h"
+#include "top_eeprom_config.h"   // g_top_cfg.bno_left_en/bno_right_en (A2.1 fail-safe)
 #ifdef TOP_ENABLE_BNO_FREEZE_DETECT
 #include "imu_freeze.h"   // detector de BNO congelado (GATED OFF por default)
 #endif
@@ -253,6 +254,12 @@ bool sensors_imu_init() {
     imu_fusion_init(g_fusion);
     g_fcfg = imu_fusion_default_cfg();
     for (int i = 0; i < IMU_FUSION_N; ++i) g_scfg[i] = imu_fusion_default_sensor_cfg();
+    // A2.1: un BNO deshabilitado por config queda EXCLUIDO de la fusión de heading
+    // (imu_fusion lo marca DEAD, peso 0 — imu_fusion.cpp:102). bno_left = idx0
+    // (primario), bno_right = idx1 (secundario). Apply mínimo: NO toca el begin()
+    // ni el orden crítico de init; solo el peso en la fusión. Default = todo on.
+    g_scfg[0].enabled = g_top_cfg.bno_left_en;
+    g_scfg[1].enabled = g_top_cfg.bno_right_en;
 
 #ifdef TOP_ENABLE_BNO_FREEZE_DETECT
     // Detector de congelamiento: umbral derivado del intervalo de lectura real

@@ -21,6 +21,7 @@
 #include "config_top.h"
 #include "sensors_tof.h"
 #include "sensors_imu.h"
+#include "top_eeprom_config.h"   // g_top_cfg.tof[i].mount_bearing_deg (A2.1 ubicación)
 #include <Arduino.h>
 
 namespace iitasoccer {
@@ -42,7 +43,11 @@ void localization_runtime_init() {
     // pinout_common.h; medir en HW y validar en banco (TASK del equipo).
     g_config.tof_offset_mm = TOF_OFFSET_MM;
     for (int i = 0; i < NUM_TOF; ++i) {
-        g_config.tof_mount_angle_deg[i] = TOF_MOUNT_ANGLE_DEG[i];
+        // A2.1: la UBICACIÓN de cada ToF viene de la config (default = el mapeo
+        // hardcodeado TOF_MOUNT_ANGLE_DEG → byte-idéntico salvo que se reasigne).
+        g_config.tof_mount_angle_deg[i] =
+            (i < TOP_CFG_NUM_TOF) ? (uint16_t)g_top_cfg.tof[i].mount_bearing_deg
+                                  : TOF_MOUNT_ANGLE_DEG[i];
     }
     g_config.prev_x_mm  = FIELD_WIDTH_MM / 2;   // centro como guess inicial
     g_config.prev_y_mm  = FIELD_HEIGHT_MM / 2;

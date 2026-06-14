@@ -174,11 +174,23 @@ enum class TtCmd : uint8_t {
     SET_RATE,     // "RATE <hz>"
     IMU_ZERO,     // "IMU ZERO"  → sensors_imu_recalibrate_zero()
     IMU_SAVE,     // "IMU SAVE"  → sensors_imu_save_calibration()
+    // ── Config de sensores (A2.1) — mutan g_top_cfg en RAM (efecto inmediato) ──
+    CAM_F_ON, CAM_F_OFF,   // "CAM F ON|OFF"
+    CAM_B_ON, CAM_B_OFF,   // "CAM B ON|OFF"
+    BNO_L_ON, BNO_L_OFF,   // "BNO L ON|OFF"
+    BNO_R_ON, BNO_R_OFF,   // "BNO R ON|OFF"
+    US_ON, US_OFF,         // "US ON|OFF"
+    TOF_SET_ENABLED,       // "TOF <n> ON|OFF"            → arg=n, arg2=1/0
+    TOF_SET_POS,           // "TOF <n> POS FRONT|BACK|RIGHT|LEFT" → arg=n, arg2=bearing_deg
+    CFG_SAVE,              // "CFG SAVE"  → persiste TopConfig en EEPROM
+    CFG_LOAD,              // "CFG LOAD"  → recarga de EEPROM
+    CFG_RESET,             // "CFG RESET" → defaults en RAM (no persiste)
 };
 
 struct TtCommand {
     TtCmd   cmd;
-    int32_t arg;
+    int32_t arg;    // ToF index (TOF_*), o Hz (SET_RATE)
+    int32_t arg2;   // valor (TOF_SET_ENABLED: 0/1; TOF_SET_POS: bearing_deg)
 };
 
 TtCommand tt_parse_command(const char* s, int len);

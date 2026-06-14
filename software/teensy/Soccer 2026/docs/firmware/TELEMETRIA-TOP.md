@@ -133,6 +133,24 @@ OTOS no está fresh; `LINE` muestra `STALE`/`INVALID` y `--` en los campos N/A.
 | `IMU ZERO` | `sensors_imu_recalibrate_zero()` (re-captura el heading inicial; apuntar al arco rival). |
 | `IMU SAVE` | `sensors_imu_save_calibration()` (persiste el perfil de calib del BNO en EEPROM). |
 
+### Config de sensores (A2.1 — mutan `g_top_cfg` en RAM; persisten con `CFG SAVE`)
+
+| Comando | Acción |
+|---------|--------|
+| `CAM F ON\|OFF` · `CAM B ON\|OFF` | habilita/deshabilita cámara frontal/trasera (deshabilitada = no entra a la fusión → apaga la pelota fantasma). Efecto inmediato. |
+| `BNO L ON\|OFF` · `BNO R ON\|OFF` | deshabilita un BNO de la fusión de heading (degrada al otro). Efecto pleno tras re-init. |
+| `US ON\|OFF` | HC-SR04: deshabilitado = no lee (NO_READING). Efecto inmediato. |
+| `TOF <n> ON\|OFF` | habilita/deshabilita el ToF n entero (NO_READING). Efecto inmediato. n=0..5. |
+| `TOF <n> POS FRONT\|BACK\|RIGHT\|LEFT` | **ubicación** del ToF n (bearing 0/180/90/270). Se aplica en localización; **efecto pleno tras `CFG SAVE` + reinicio**. |
+| `CFG SAVE` | persiste `TopConfig` en EEPROM (`[368,460]`). ACK `[TOP] config guardada en EEPROM`. |
+| `CFG LOAD` | recarga `TopConfig` de EEPROM. |
+| `CFG RESET` | vuelve a defaults (todo habilitado) en RAM (no persiste hasta `CFG SAVE`). |
+
+> El **estado de config** se ve en la línea `CFG` del texto humano (modo ENTER): p.ej.
+> `CFG cam[F1 B0] bno[L1 R1] us1 | tof[0:en1@0 1:en1@180 ...]`. (Todavía NO va en el JSON →
+> sin schema bump; el bloque `cfg` para la GUI queda como follow-up coordinado.) Detalle del
+> formato persistente: [`EEPROM-MAP.md`](EEPROM-MAP.md) + `src/shared/top_config.h`.
+
 ## 3. Build / banco
 
 El monitor ya viaja en el env de **competencia** (no hay que reflashear un env aparte):

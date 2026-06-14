@@ -34,6 +34,7 @@
 #include "sensors_tof.h"
 #include "comm_central.h"        // comm_central_get_last_snapshot (gateado)
 #include "comm_down.h"           // OTOS + línea/escape que llega de la base (A1)
+#include "top_eeprom_config.h"   // g_top_cfg + save/load (A2.1: comandos de config)
 #include "types.h"
 
 namespace iitasoccer {
@@ -204,6 +205,20 @@ void emit_human() {
     if (n > 0) {
         Serial.write(reinterpret_cast<const uint8_t*>(hbuf), n);
     }
+    // Línea CFG (A2.1): qué sensores están habilitados + bearing por ToF. La arma
+    // el GLUE porque tiene g_top_cfg (el módulo puro tt_format_human no lo conoce).
+    // No va en el JSON (sin schema bump): es solo para leer a ojo en banco.
+    char cfg[200];
+    int m = snprintf(cfg, sizeof(cfg), "  CFG cam[F%d B%d] bno[L%d R%d] us%d | tof[",
+                     g_top_cfg.cam_front_en ? 1 : 0, g_top_cfg.cam_back_en ? 1 : 0,
+                     g_top_cfg.bno_left_en ? 1 : 0, g_top_cfg.bno_right_en ? 1 : 0,
+                     g_top_cfg.ultrasonic_en ? 1 : 0);
+    for (int i = 0; i < NUM_TOF && i < TOP_CFG_NUM_TOF && m < (int)sizeof(cfg) - 1; ++i) {
+        m += snprintf(cfg + m, sizeof(cfg) - m, "%s%d:en%d@%d", i ? " " : "", i,
+                      g_top_cfg.tof[i].enabled ? 1 : 0, g_top_cfg.tof[i].mount_bearing_deg);
+    }
+    if (m < (int)sizeof(cfg) - 2) m += snprintf(cfg + m, sizeof(cfg) - m, "]\n");
+    if (m > 0) Serial.write(reinterpret_cast<const uint8_t*>(cfg), m);
 }
 
 // Ejecuta un comando ya parseado y gobierna las transiciones de modo.
@@ -244,6 +259,52 @@ void dispatch(const TtCommand& c) {
         case TtCmd::IMU_SAVE:
             sensors_imu_save_calibration();
             Serial.println("[TOP] calibracion IMU guardada");
+            break;
+
+        // ── Config de sensores (A2.1): mutan g_top_cfg en RAM (efecto inmediato en
+        // los apply-points) + ACK. Persisten recién con CFG SAVE. ──
+        case TtCmd::CAM_F_ON:  g_top_cfg.cam_front_en  = 1; Serial.println("[TOP] CAM F ON");  break;
+        case TtCmd::CAM_F_OFF: g_top_cfg.cam_front_en  = 0; Serial.println("[TOP] CAM F OFF"); break;
+        case TtCmd::CAM_B_ON:  g_top_cfg.cam_back_en   = 1; Serial.println("[TOP] CAM B ON");  break;
+        case TtCmd::CAM_B_OFF: g_top_cfg.cam_back_en   = 0; Serial.println("[TOP] CAM B OFF"); break;
+        case TtCmd::BNO_L_ON:  g_top_cfg.bno_left_en   = 1; Serial.println("[TOP] BNO L ON");  break;
+        case TtCmd::BNO_L_OFF: g_top_cfg.bno_left_en   = 0; Serial.println("[TOP] BNO L OFF (re-init para efecto pleno)"); break;
+        case TtCmd::BNO_R_ON:  g_top_cfg.bno_right_en  = 1; Serial.println("[TOP] BNO R ON");  break;
+        case TtCmd::BNO_R_OFF: g_top_cfg.bno_right_en  = 0; Serial.println("[TOP] BNO R OFF (re-init para efecto pleno)"); break;
+        case TtCmd::US_ON:     g_top_cfg.ultrasonic_en = 1; Serial.println("[TOP] US ON");     break;
+        case TtCmd::US_OFF:    g_top_cfg.ultrasonic_en = 0; Serial.println("[TOP] US OFF");    break;
+
+        case TtCmd::TOF_SET_ENABLED:
+            if (c.arg >= 0 && c.arg < TOP_CFG_NUM_TOF) {
+                g_top_cfg.tof[c.arg].enabled = (c.arg2 != 0) ? 1 : 0;
+                Serial.print("[TOP] TOF "); Serial.print(c.arg);
+                Serial.println(c.arg2 ? " ON" : " OFF");
+            } else { Serial.println("[TOP] ERROR: indice ToF fuera de rango"); }
+            break;
+
+        case TtCmd::TOF_SET_POS:
+            if (c.arg >= 0 && c.arg < TOP_CFG_NUM_TOF) {
+                g_top_cfg.tof[c.arg].mount_bearing_deg = (int16_t)c.arg2;
+                Serial.print("[TOP] TOF "); Serial.print(c.arg);
+                Serial.print(" POS bearing="); Serial.print(c.arg2);
+                // El bearing se aplica en localization_runtime_init() (boot). En vivo
+                // requiere re-init de localización (no cableado) → efecto pleno tras
+                // CFG SAVE + power-cycle.
+                Serial.println(" (efecto pleno tras CFG SAVE + reinicio)");
+            } else { Serial.println("[TOP] ERROR: indice ToF fuera de rango"); }
+            break;
+
+        case TtCmd::CFG_SAVE:
+            if (top_config_save(g_top_cfg)) Serial.println("[TOP] config guardada en EEPROM");
+            else                            Serial.println("[TOP] ERROR: no se pudo guardar config");
+            break;
+        case TtCmd::CFG_LOAD:
+            top_config_load(&g_top_cfg);
+            Serial.println("[TOP] config recargada de EEPROM");
+            break;
+        case TtCmd::CFG_RESET:
+            top_config_defaults(g_top_cfg);
+            Serial.println("[TOP] config a DEFAULTS (todo habilitado) - CFG SAVE para persistir");
             break;
 
         case TtCmd::NONE:

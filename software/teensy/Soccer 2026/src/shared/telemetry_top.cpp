@@ -352,7 +352,7 @@ int tt_format_human(char* buf, int cap, const TopTelemetryFrame& f) {
 // ── Parser de comandos ───────────────────────────────────────────────────────
 namespace {
 
-constexpr int TT_TOK_MAX = 3;
+constexpr int TT_TOK_MAX = 4;   // A2.1: "TOF <n> POS LEFT" son 4 tokens
 constexpr int TT_TOK_LEN = 12;
 
 int tt_tokenize(const char* s, int len, char tok[TT_TOK_MAX][TT_TOK_LEN]) {
@@ -376,7 +376,7 @@ inline bool tt_eq(const char* a, const char* b) { return strcmp(a, b) == 0; }
 }  // namespace
 
 TtCommand tt_parse_command(const char* s, int len) {
-    TtCommand out{TtCmd::NONE, 0};
+    TtCommand out{TtCmd::NONE, 0, 0};
     if (!s || len <= 0) return out;
 
     char tok[TT_TOK_MAX][TT_TOK_LEN];
@@ -399,6 +399,40 @@ TtCommand tt_parse_command(const char* s, int len) {
     } else if (tt_eq(tok[0], "IMU") && nt >= 2) {
         if (tt_eq(tok[1], "ZERO"))      out.cmd = TtCmd::IMU_ZERO;
         else if (tt_eq(tok[1], "SAVE")) out.cmd = TtCmd::IMU_SAVE;
+    } else if (tt_eq(tok[0], "CAM") && nt >= 3) {        // CAM F|B ON|OFF
+        const bool on = tt_eq(tok[2], "ON"), off2 = tt_eq(tok[2], "OFF");
+        if (on || off2) {
+            if (tt_eq(tok[1], "F"))      out.cmd = on ? TtCmd::CAM_F_ON : TtCmd::CAM_F_OFF;
+            else if (tt_eq(tok[1], "B")) out.cmd = on ? TtCmd::CAM_B_ON : TtCmd::CAM_B_OFF;
+        }
+    } else if (tt_eq(tok[0], "BNO") && nt >= 3) {        // BNO L|R ON|OFF
+        const bool on = tt_eq(tok[2], "ON"), off2 = tt_eq(tok[2], "OFF");
+        if (on || off2) {
+            if (tt_eq(tok[1], "L"))      out.cmd = on ? TtCmd::BNO_L_ON : TtCmd::BNO_L_OFF;
+            else if (tt_eq(tok[1], "R")) out.cmd = on ? TtCmd::BNO_R_ON : TtCmd::BNO_R_OFF;
+        }
+    } else if (tt_eq(tok[0], "US") && nt >= 2) {         // US ON|OFF
+        if (tt_eq(tok[1], "ON"))       out.cmd = TtCmd::US_ON;
+        else if (tt_eq(tok[1], "OFF")) out.cmd = TtCmd::US_OFF;
+    } else if (tt_eq(tok[0], "TOF") && nt >= 3) {        // TOF <n> ON|OFF | POS <dir>
+        char* end = nullptr;
+        const long n = strtol(tok[1], &end, 10);
+        if (end && *end == '\0' && n >= 0 && n < 64) {
+            if (tt_eq(tok[2], "ON"))  { out.cmd = TtCmd::TOF_SET_ENABLED; out.arg = (int32_t)n; out.arg2 = 1; }
+            else if (tt_eq(tok[2], "OFF")) { out.cmd = TtCmd::TOF_SET_ENABLED; out.arg = (int32_t)n; out.arg2 = 0; }
+            else if (tt_eq(tok[2], "POS") && nt >= 4) {
+                int32_t bearing = -1;
+                if (tt_eq(tok[3], "FRONT"))      bearing = 0;
+                else if (tt_eq(tok[3], "RIGHT")) bearing = 90;
+                else if (tt_eq(tok[3], "BACK"))  bearing = 180;
+                else if (tt_eq(tok[3], "LEFT"))  bearing = 270;
+                if (bearing >= 0) { out.cmd = TtCmd::TOF_SET_POS; out.arg = (int32_t)n; out.arg2 = bearing; }
+            }
+        }
+    } else if (tt_eq(tok[0], "CFG") && nt >= 2) {        // CFG SAVE|LOAD|RESET
+        if (tt_eq(tok[1], "SAVE"))       out.cmd = TtCmd::CFG_SAVE;
+        else if (tt_eq(tok[1], "LOAD"))  out.cmd = TtCmd::CFG_LOAD;
+        else if (tt_eq(tok[1], "RESET")) out.cmd = TtCmd::CFG_RESET;
     }
     return out;
 }

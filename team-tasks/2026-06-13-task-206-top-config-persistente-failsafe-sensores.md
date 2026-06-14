@@ -6,14 +6,20 @@ asignado: equipo (firmware TOP — Claude programa host-testeable; banco lo cier
 prioridad: P1
 pedido-por: Gustavo Viollaz (2026-06-13)
 relacionada: TASK-205 (monitor TOP), research/in-progress/2026-06-13-diseno-monitor-general-top-config-persistente.md
-estado: in-progress — A1 (telemetría: VER per-cámara + OTOS/línea/escape) HECHA 2026-06-14; A2 (config persistente EEPROM) pendiente
+estado: in-progress — A1 + A2.1 HECHAS (firmware) 2026-06-14; falta A2.2 (zonas/orientación ToF) + banco
 ---
 
-> **A1 HECHA (2026-06-14)** — la parte "VER cómo andan los sensores" del monitor: telemetría TOP
-> v2 con detecciones POR CÁMARA (`camf`/`camb`) + OTOS/línea/**vector de escape** de la base
-> (`base`/`line`) en JSON + texto humano. Gate host verde + `pio run -e top_robot2_pri` SUCCESS.
-> Detalle: `journal/2026-06-14-top-telemetria-v2-percamara-y-base-A1.md` + `TELEMETRIA-TOP.md` v2.
-> **Falta A2** (lo de abajo): la config persistente en EEPROM (deshabilitar + zonas/orientación).
+> **A1 HECHA (2026-06-14)** — "VER cómo andan los sensores": telemetría TOP v2 con detecciones POR
+> CÁMARA (`camf`/`camb`) + OTOS/línea/**vector de escape** de la base (`base`/`line`).
+> `journal/2026-06-14-top-telemetria-v2-percamara-y-base-A1.md`.
+>
+> **A2.1 HECHA (2026-06-14)** — config persistente fail-safe: deshabilitar **cámara F/B, BNO L/R,
+> ultrasonido, ToF entero** + **ubicación/bearing por ToF**, persistido en EEPROM (offset 368,
+> magic+CRC) + carga al boot (defaults no-op) + comandos `CAM/BNO/US/TOF/CFG` + línea `CFG` en el
+> texto humano. Módulo puro `top_config` (12 tests) + glue `top_eeprom_config` + apply-points.
+> Gate host verde + `pio run -e top_robot2_pri` SUCCESS. `journal/2026-06-14-top-config-persistente-eeprom-A2-1.md`,
+> `docs/firmware/EEPROM-MAP.md`. **Falta:** banco (regresión A/B + persistencia) + **A2.2** (zonas/
+> rotación/flip del ToF — requiere 64 zonas, medir loop 100 Hz) + bloque `cfg` JSON para la GUI.
 
 # TASK-206 — Config persistente de sensores de la TOP (fail-safe P1)
 

@@ -32,6 +32,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_VL53L7CX.h>
+#include "top_eeprom_config.h"   // g_top_cfg.ultrasonic_en / tof[i].enabled (A2.1)
 
 namespace iitasoccer {
 
@@ -348,7 +349,9 @@ void sensors_tof_tick() {
     // HC-SR04 ACTIVO en top_robot1/2 (TRIG=4 / ECHO=3, sin conflicto con UARTs).
     static uint32_t last_hc = 0;
     if (g_tick_count - last_hc >= 3) {
-        g_hcsr04_mm = read_hcsr04();
+        // A2.1: si el ultrasonido está deshabilitado por config, NO_READING sin
+        // leer (ahorra el pulseIn bloqueante de hasta 12 ms).
+        g_hcsr04_mm = g_top_cfg.ultrasonic_en ? read_hcsr04() : TOF_NO_READING;
         last_hc = g_tick_count;
     }
 #endif
@@ -360,6 +363,9 @@ void sensors_tof_tick() {
 // pasamos el estado + millis().
 uint16_t sensors_tof_get_distance_mm(uint8_t idx) {
     if (idx >= NUM_TOF) return TOF_NO_READING;
+    // A2.1: un ToF deshabilitado por config no reporta (min_obst y localización
+    // ya tratan NO_READING como inválido). Default = todos habilitados.
+    if (idx < TOP_CFG_NUM_TOF && !g_top_cfg.tof[idx].enabled) return TOF_NO_READING;
     return tof_fresh_or_no_reading(g_distances_mm[idx], g_last_ok_ms[idx],
                                    g_ever_ok[idx], millis(),
                                    TOF_STALE_TIMEOUT_MS);

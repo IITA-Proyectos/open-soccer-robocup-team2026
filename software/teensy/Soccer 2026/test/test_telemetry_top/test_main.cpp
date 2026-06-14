@@ -281,6 +281,43 @@ void test_tt_parse_unknown(void) {
     TEST_ASSERT_EQUAL(TtCmd::UNKNOWN, parse("HELLO").cmd);
 }
 
+// Comandos de config de sensores (A2.1).
+void test_tt_parse_config_commands(void) {
+    TEST_ASSERT_EQUAL(TtCmd::CAM_F_ON,  parse("CAM F ON").cmd);
+    TEST_ASSERT_EQUAL(TtCmd::CAM_B_OFF, parse("cam b off").cmd);
+    TEST_ASSERT_EQUAL(TtCmd::BNO_L_ON,  parse("BNO L ON").cmd);
+    TEST_ASSERT_EQUAL(TtCmd::BNO_R_OFF, parse("BNO R OFF").cmd);
+    TEST_ASSERT_EQUAL(TtCmd::US_ON,     parse("US ON").cmd);
+    TEST_ASSERT_EQUAL(TtCmd::US_OFF,    parse("us off").cmd);
+
+    TtCommand t = parse("TOF 2 ON");
+    TEST_ASSERT_EQUAL(TtCmd::TOF_SET_ENABLED, t.cmd);
+    TEST_ASSERT_EQUAL_INT32(2, t.arg);
+    TEST_ASSERT_EQUAL_INT32(1, t.arg2);
+    t = parse("TOF 3 OFF");
+    TEST_ASSERT_EQUAL(TtCmd::TOF_SET_ENABLED, t.cmd);
+    TEST_ASSERT_EQUAL_INT32(3, t.arg);
+    TEST_ASSERT_EQUAL_INT32(0, t.arg2);
+
+    t = parse("TOF 1 POS LEFT");           // 4 tokens (TT_TOK_MAX=4)
+    TEST_ASSERT_EQUAL(TtCmd::TOF_SET_POS, t.cmd);
+    TEST_ASSERT_EQUAL_INT32(1, t.arg);
+    TEST_ASSERT_EQUAL_INT32(270, t.arg2);
+    TEST_ASSERT_EQUAL_INT32(0,   parse("TOF 0 POS FRONT").arg2);
+    TEST_ASSERT_EQUAL_INT32(90,  parse("TOF 4 POS RIGHT").arg2);
+    TEST_ASSERT_EQUAL_INT32(180, parse("TOF 5 POS BACK").arg2);
+
+    TEST_ASSERT_EQUAL(TtCmd::CFG_SAVE,  parse("CFG SAVE").cmd);
+    TEST_ASSERT_EQUAL(TtCmd::CFG_LOAD,  parse("cfg load").cmd);
+    TEST_ASSERT_EQUAL(TtCmd::CFG_RESET, parse("CFG RESET").cmd);
+
+    // inválidos → UNKNOWN
+    TEST_ASSERT_EQUAL(TtCmd::UNKNOWN, parse("CAM X ON").cmd);
+    TEST_ASSERT_EQUAL(TtCmd::UNKNOWN, parse("TOF x ON").cmd);
+    TEST_ASSERT_EQUAL(TtCmd::UNKNOWN, parse("TOF 1 POS NOWHERE").cmd);
+    TEST_ASSERT_EQUAL(TtCmd::UNKNOWN, parse("CFG NOPE").cmd);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_tt_serialize_golden_exact);
@@ -301,6 +338,7 @@ int main(int, char**) {
     RUN_TEST(test_tt_parse_ping_stream);
     RUN_TEST(test_tt_parse_rate);
     RUN_TEST(test_tt_parse_imu);
+    RUN_TEST(test_tt_parse_config_commands);
     RUN_TEST(test_tt_parse_unknown);
     return UNITY_END();
 }

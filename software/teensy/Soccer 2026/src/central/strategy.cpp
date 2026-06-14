@@ -137,7 +137,7 @@ constexpr float ATK_SEARCH_VY_MM_S       = 200.0f;
 // rápido que 7 (o a tirones). VALIDAR EN BANCO; si no gira lento de verdad, ir por
 // giro pulsado o lazo cerrado con el yaw del OTOS.
 constexpr float ATK_SEARCH_OMEGA_DEG_S   = 7.0f;
-constexpr int16_t ATK_SEARCH_SPIN_PWM    = 50;  // (sin uso tras volver a omega; se deja por compat)
+constexpr int16_t ATK_SEARCH_SPIN_PWM    = 30;  // FALLBACK PWM crudo (si el omega 7 deg/s sale a tirones)
 // Confirmación temporal de pelota: hay que verla CONTINUO esto antes de perseguirla,
 // para filtrar falsos naranjas de 1-2 frames (pedido Elías 2026-06-14).
 constexpr uint32_t ATK_BALL_CONFIRM_MS   = 200;
@@ -797,8 +797,9 @@ MotorCommand attacker_tick() {
             g_state_name = "ATK_SEARCH";
             // Recorrer cancha con avance lento + rotación.
             cmd.vy_mm_s = static_cast<int16_t>(ATK_SEARCH_VY_MM_S);
-            // 2026-06-14 (pedido Elías): VUELTA al giro por OMEGA (deg/s) — 7 deg/s.
-            cmd.omega_centideg_s = omega_degps_to_centideg(ATK_SEARCH_OMEGA_DEG_S);  // #9
+            // FALLBACK (pedido Elías 2026-06-14): si el omega 7 deg/s salía A TIRONES por el
+            // piso de PWM, volver al giro por PWM CRUDO (impulso kickstart + lento, < piso 70).
+            cmd.spin_pwm = ATK_SEARCH_SPIN_PWM;
 
             // Confirmación temporal de la pelota: verla CONTINUO >= ATK_BALL_CONFIRM_MS
             // antes de salir a buscarla → filtra falsos naranjas de 1-2 frames.

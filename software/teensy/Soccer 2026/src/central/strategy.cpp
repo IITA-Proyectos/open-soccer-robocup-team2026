@@ -82,6 +82,7 @@ uint32_t g_atk_push_started_ms = 0;
 // por un tiempo FIJO en una dirección congelada al entrar (no re-mira la línea).
 uint32_t g_atk_line_avoid_started_ms  = 0;
 float    g_atk_line_avoid_retreat_deg = 0.0f;
+uint32_t g_atk_ball_seen_since_ms     = 0;   // confirmación temporal de pelota (anti falso naranja)
 #ifdef ATK_OTOS_NOGYRO
 // Empuje sin gyro: dirección congelada (vector unitario a la pelota al entrar a
 // PUSH) + yaw del OTOS capturado en ese instante (setpoint del rumbo sostenido).
@@ -130,12 +131,16 @@ constexpr float ATK_SEARCH_VY_MM_S       = 200.0f;
 // 2026-06-14 (banco Elías, práctica delantero R1): 60→30. A 60 deg/s giraba tan
 // rápido en SEARCH que pasaba de largo la pelota sin engancharla. TUNEAR en banco:
 // si a 30 no vence el piso de PWM y NO gira, subir a ~40 (ver dinamica-omni-3-ruedas).
-constexpr float ATK_SEARCH_OMEGA_DEG_S   = 30.0f;
-// 2026-06-14 (pedido Elías): en SPIN_ONLY el giro de búsqueda ya NO va por omega
-// (giraba rápido aun a 30 deg/s porque el piso de PWM es 70). Va por PWM CRUDO via
-// cmd.spin_pwm: impulso inicial (kickstart 130 / 40 ms) + giro lento a este PWM,
-// SALTÁNDOSE el piso. Si gira para el lado equivocado, poné el valor NEGATIVO.
-constexpr int16_t ATK_SEARCH_SPIN_PWM    = 50;
+// 2026-06-14 (pedido Elías): VUELTA al giro de búsqueda por OMEGA (deg/s) a 7 deg/s.
+// ⚠️ HARDWARE: el piso de PWM por rueda es 70; a 7 deg/s las velocidades de rueda
+// caen muy por debajo del piso → el piso puede LEVANTAR el PWM y hacer que gire más
+// rápido que 7 (o a tirones). VALIDAR EN BANCO; si no gira lento de verdad, ir por
+// giro pulsado o lazo cerrado con el yaw del OTOS.
+constexpr float ATK_SEARCH_OMEGA_DEG_S   = 7.0f;
+constexpr int16_t ATK_SEARCH_SPIN_PWM    = 50;  // (sin uso tras volver a omega; se deja por compat)
+// Confirmación temporal de pelota: hay que verla CONTINUO esto antes de perseguirla,
+// para filtrar falsos naranjas de 1-2 frames (pedido Elías 2026-06-14).
+constexpr uint32_t ATK_BALL_CONFIRM_MS   = 200;
 // v2 (2026-06-11, spec Gustavo): acercarse LENTO (movimiento 2025) — la potencia
 // va en el EMPUJE comprometido (PUSH), no en el acercamiento. 600→400.
 constexpr float ATK_APPROACH_MAX_SPEED   = 400.0f;
@@ -649,6 +654,9 @@ void transition_atk(AtkState new_state) {
     g_atk_state = new_state;
     // Reset PID en cada transición — evita arrastrar windup viejo.
     heading_pid_reset(g_heading_pid);
+    // Al (re)entrar a SEARCH, re-confirmar la pelota desde cero (no arrastrar un
+    // timer viejo → evita una "confirmación instantánea" tras LINE_AVOID/APPROACH).
+    if (new_state == AtkState::SEARCH) g_atk_ball_seen_since_ms = 0;
 }
 
 void transition_gk(GkState new_state) {
@@ -789,13 +797,21 @@ MotorCommand attacker_tick() {
             g_state_name = "ATK_SEARCH";
             // Recorrer cancha con avance lento + rotación.
             cmd.vy_mm_s = static_cast<int16_t>(ATK_SEARCH_VY_MM_S);
-#ifdef ATK_SEARCH_SPIN_ONLY
-            // Giro EN EL LUGAR por PWM crudo (impulso + lento a PWM 50, < piso 70).
-            cmd.spin_pwm = ATK_SEARCH_SPIN_PWM;
-#else
+            // 2026-06-14 (pedido Elías): VUELTA al giro por OMEGA (deg/s) — 7 deg/s.
             cmd.omega_centideg_s = omega_degps_to_centideg(ATK_SEARCH_OMEGA_DEG_S);  // #9
-#endif
+
+            // Confirmación temporal de la pelota: verla CONTINUO >= ATK_BALL_CONFIRM_MS
+            // antes de salir a buscarla → filtra falsos naranjas de 1-2 frames.
             if (world_model_ball_visible()) {
+                if (g_atk_ball_seen_since_ms == 0) g_atk_ball_seen_since_ms = now_ms;
+            } else {
+                g_atk_ball_seen_since_ms = 0;   // se cortó → no acumula falsos
+            }
+            const bool ball_confirmed =
+                g_atk_ball_seen_since_ms != 0 &&
+                (now_ms - g_atk_ball_seen_since_ms) >= ATK_BALL_CONFIRM_MS;
+            if (ball_confirmed) {
+                g_atk_ball_seen_since_ms = 0;   // limpiar para la próxima búsqueda
                 // v2: el eje de ataque sale de la CÁMARA o del 0 del BNO (spec
                 // 2025) — con eje disponible, pelota desalineada → POSITION
                 // (orbit). Solo sin NINGÚN eje (ni arco ni heading) APPROACH directo.

@@ -1079,6 +1079,11 @@ MotorCommand goalkeeper_tick() {
         constexpr float GK_BALL_TRACK_DB_MM = 40.0f;   // deadband lateral (anti-jitter al centrar)
         constexpr int   GK_BALL_TRACK_SIGN  = -1;      // signo del centrado. Banco 2026-06-14: iba al
                                                        // REVÉS → -1. Si AÚN va al revés, poné +1 (eje X cámara↔strafe).
+        constexpr float GK_BALL_MAX_ABS_X_MM = 900.0f; // |x| ≥ esto = pelota IMPLAUSIBLE → ignorar. La
+                                                       // cámara/TOP reporta una FANTASMA saturada a ±1000
+                                                       // (banco 2026-06-14): tira al arquero fuera de la
+                                                       // línea a los dos lados. Doble función: un arquero
+                                                       // no persigue pelotas anchas (>~90cm), queda central.
 #endif
 
         static int             dir_simple  = +1;   // arranca hacia la derecha
@@ -1201,14 +1206,27 @@ MotorCommand goalkeeper_tick() {
                 // línea de arriba YA corrió, así que el centrado queda acotado por las líneas.
                 if (world_model_ball_visible()) {
                     const float bx = world_model_get_ball_x_mm();   // +x = derecha (marco robot)
-                    const int   xdir = (bx >  GK_BALL_TRACK_DB_MM) ?  GK_BALL_TRACK_SIGN
-                                     : (bx < -GK_BALL_TRACK_DB_MM) ? -GK_BALL_TRACK_SIGN : 0;
-                    g_state_name = "GK_SIMPLE_TRACK";
-                    if (xdir != 0) dir_simple = xdir;     // recuerda el lado (para el rebote por línea)
-                    cmd.vx_mm_s = clamp_velocity_mm_s(xdir * GK_PATROL_SPEED_MM_S);  // 0 si ya centrada
-                    cmd.vy_mm_s = 0;
-                    cmd.omega_centideg_s = pfm_omega();   // de frente
-                    break;
+                    const float by = world_model_get_ball_y_mm();   // +y = adelante
+                    // GATE ANTI-PELOTA-FANTASMA (banco María 2026-06-14, caja negra v1.2): la
+                    // cámara/TOP reporta una pelota FANTASMA pegada a la saturación (|x|≈1000) que
+                    // SALTA de +1000 a −1000 — visible incluso con el robot QUIETO al boot, con
+                    // velocidades desbordadas (±32768). Centrarse en eso tiraba al arquero fuera de
+                    // la línea para los DOS lados. Hasta que la TOP tenga el firmware de cámara
+                    // pegajosa (top_robot2_pri_sticky), IGNORAR detecciones implausibles (al borde o
+                    // atrás) → seguir patrullando. (No rompe el centrado: filtra el sensor roto.)
+                    const bool ball_ok = (bx > -GK_BALL_MAX_ABS_X_MM) &&
+                                         (bx <  GK_BALL_MAX_ABS_X_MM) && (by > 0.0f);
+                    if (ball_ok) {
+                        const int xdir = (bx >  GK_BALL_TRACK_DB_MM) ?  GK_BALL_TRACK_SIGN
+                                       : (bx < -GK_BALL_TRACK_DB_MM) ? -GK_BALL_TRACK_SIGN : 0;
+                        g_state_name = "GK_SIMPLE_TRACK";
+                        if (xdir != 0) dir_simple = xdir;     // recuerda el lado (para el rebote)
+                        cmd.vx_mm_s = clamp_velocity_mm_s(xdir * GK_PATROL_SPEED_MM_S);  // 0 si centrada
+                        cmd.vy_mm_s = 0;
+                        cmd.omega_centideg_s = pfm_omega();   // de frente
+                        break;
+                    }
+                    // pelota implausible (fantasma) → cae a la patrulla de abajo (NO break)
                 }
 #endif
                 cmd.vx_mm_s = clamp_velocity_mm_s(dir_simple * GK_PATROL_SPEED_MM_S);

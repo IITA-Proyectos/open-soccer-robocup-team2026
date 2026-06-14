@@ -59,16 +59,11 @@ sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
 sensor.set_framesize(sensor.VGA)   # H calibrada en VGA — NO cambiar sin recalibrar.
 
-# 1. Activamos los automáticos para que midan la luz ambiente real de la pista
 sensor.set_auto_whitebal(True)
 sensor.set_auto_gain(True)
+#sensor.set_auto_exposure(True)
 
-# 2. Esperamos los 2 segundos para que la imagen se estabilice
 sensor.skip_frames(time=2000)
-
-# 3. ¡CRUCIAL!: Apagamos los automáticos para CONGELAR las ganancias y el balance
-sensor.set_auto_whitebal(False)
-sensor.set_auto_gain(False)
 
 #sensor.set_auto_exposure(False, exposure_us=37000)  # (opcional: exposición fija)
 
@@ -83,9 +78,9 @@ h = 18.7              # altura cámara (cm)
 r = 13.5/(2*math.pi)  # radio pelota (cm)
 
 # ----- Umbrales LAB (calibración) -----
-naranja_threshold = (21, 67, 18, 79, -32, 127)    # Pelota naranja  -> header 201
-amarillo_threshold = (17, 70, -27, 14, 38, 111)   # Arco amarillo   -> header 202
-azul_threshold = (4, 38, -13, 57, -64, -4)        # Arco azul       -> header 203
+naranja_threshold = (30, 61, 39, 70, 20, 50)    # Pelota naranja  -> header 201
+amarillo_threshold = (45, 65, 7, 20, 10, 30)   # Arco amarillo   -> header 202
+azul_threshold = (10, 30, 0, 30, -35, -10)        # Arco azul       -> header 203
 
 # ===== Contrato v2 (formato seguro que parsea el TOP) — packet de 11 bytes =====
 SENTINEL_CODED = 255    # X_coded==255 y Y_coded==255  ->  objeto NO detectado

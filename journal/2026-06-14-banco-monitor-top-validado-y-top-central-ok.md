@@ -42,6 +42,12 @@ vel a 100 Hz que falta (no es pérdida real, `crc=0`). Causa casi segura: **los 
 alimentan del 3.3 V de la batería (MP1584), NO del USB** → si la DOWN está por USB solo
 o la batería no entrega, OTOS = `conf=0` / sin vel. El propio diag lo apunta. → **TASK-308**.
 
+> **Corrección (mismo día, dato de María: el robot 2 NO tiene OTOS hasta nuevo aviso):**
+> la causa **NO era batería**. El DOWN estaba con el binario **`down`** (asume 2 OTOS) en
+> un robot **sin OTOS** → pose basura (`conf=0`) + vel inexistente + `seqGap`. **Fix:
+> flashear `down_robot2`** (`OTOS=0`); los consumidores caen al fallback sin OTOS.
+> TASK-308 corregida (causa = binario equivocado, no hardware; P1→P2).
+
 ## Cierres / estado de tareas
 - **TASK-209** (validar banco monitor TOP) → **CERRADA**: monitor en placa ✓ + TOP→CENTRAL ✓.
   Sub-checks finos (tapar sensor, botones config, pelota fantasma, cable-pull) no se

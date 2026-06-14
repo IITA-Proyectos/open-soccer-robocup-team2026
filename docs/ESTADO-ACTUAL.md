@@ -25,8 +25,10 @@ tipo: indice-operacional
 > monitor anda en la placa TOP real **y el TOP→CENTRAL llega [OK]** (`diag_central_rx_all`:
 > SNAPSHOT 66 Hz, 0 CRC, 0 seqGap). **TASK-209 CERRADA**; TASK-208 cumplida vía `--top-salud`.
 > Se arregló un **parpadeo** de la GUI (la ventana se redimensionaba cada frame). **Hallazgo
-> aparte (NO bloquea): el OTOS de la DOWN no da odometría** (pose `conf=0`, vel no difunde;
-> casi seguro batería) → **TASK-308**. A2.2 enmascarado sigue sin aplicar (zonas = solo
+> aparte (NO bloquea): el OTOS de la DOWN salía inválido** (pose `conf=0`, vel no difunde)
+> **porque R2 NO tiene OTOS y estaba con el binario `down` (OTOS=2); fix = flashear
+> `down_robot2` (OTOS=0)** → **TASK-308** (corregido: era binario equivocado, no batería).
+> A2.2 enmascarado sigue sin aplicar (zonas = solo
 > lectura). Contrato: `docs/firmware/TELEMETRIA-TOP.md` (campo `z`). Journals:
 > `journal/2026-06-14-monitor-top-salud-y-zonas-telemetria.md` +
 > `journal/2026-06-14-banco-monitor-top-validado-y-top-central-ok.md`.

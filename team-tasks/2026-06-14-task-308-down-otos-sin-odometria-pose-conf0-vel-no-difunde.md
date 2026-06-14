@@ -3,9 +3,9 @@ id: TASK-308
 title: "DOWN: OTOS sin odometría — pose conf=0 (todo ceros) y OTOS vel no se difunde"
 date_created: 2026-06-14
 assigned: [virginia-viollaz, elias, gviollaz]
-priority: P1
-status: pending
-blocks: [arquero/delantero que navegan con OTOS, cierre completo de TASK-031]
+priority: P2
+status: causa-identificada-binario-equivocado (flashear down_robot2)
+blocks: [cierre completo de TASK-031]
 tags: [hardware, down-board, otos, comunicaciones, bateria]
 ---
 
@@ -29,25 +29,28 @@ DOWN (Serial1): enlace [REVISAR]  (crc=0  seqGap=1400 y subiendo)
   100 Hz que falta. **No es pérdida real de tramas** (`crc=0`), es el slot de vel que no
   sale. O sea: `[FALTA] vel` y `seqGap` son **el mismo problema**.
 
-## Causa más probable (a confirmar)
+## ✅ CAUSA REAL (corregida 2026-06-14 con dato de María: **R2 NO tiene OTOS**)
 
-**Alimentación de los OTOS.** Los OTOS se alimentan del **3.3 V del MP1584, que viene de
-la BATERÍA — el USB NO los alimenta** (gotcha conocido del repo; ver
-`docs/ESTADO-ACTUAL.md` "CÓMO ENCENDER LOS OTOS" y journals 2026-05-24/29). Si la DOWN
-está por USB solo, o la batería no entrega corriente de verdad, los OTOS dan `conf=0` /
-sin vel. El propio diag lo apunta: *"revisar broadcast+batería en DOWN, no la CENTRAL"*.
+Mi primer diagnóstico ("casi seguro batería") **estaba MAL.** Con el dato de que **el
+robot 2 no tiene OTOS hasta nuevo aviso**, la explicación correcta es:
+
+- El DOWN estaba corriendo el binario **`down`** (que asume **`DOWN_NUM_OTOS_CONNECTED=2`**)
+  en un robot que **físicamente no tiene OTOS** → el read de OTOS no devuelve nada → la
+  pose sale con `conf=0` (basura) y la vel no se difunde. El `seqGap` es ese stream de vel
+  inexistente. **No es batería ni hardware roto: es el binario equivocado.**
+- El binario correcto para R2 es **`down_robot2`** (extends `down` + `-DDOWN_NUM_OTOS_CONNECTED=0`,
+  `platformio.ini:1340`). Con OTOS=0 el DOWN **no intenta leer OTOS** y los consumidores
+  (drive_straight, GK paralelo, cross_track) caen al **fallback exacto sin OTOS**.
 
 ## Criterio de cierre
 
-- [ ] **Power-cycle completo de la DOWN con batería cargada y entregando corriente**
-      (switch ON, Dean XP1 bien puesto), esperar 10 s, reconectar. Re-correr
-      `diag_central_rx_all` (o el monitor de base).
-- [ ] La **OTOS pose** pasa a `conf>0` con x/y reales al mover el robot.
-- [ ] La **OTOS vel** aparece (`[OK]` a ~100 Hz) y el `seqGap` del enlace DOWN se va a ~0.
-- [ ] Si tras el power-cycle la pose sigue en `conf=0`: NO es batería → escanear I²C al
-      boot (ambos OTOS deben dar `0x17`; una dirección rara tipo `0x64` = brownout) y, si
-      el I²C está sano pero la vel no sale, **revisar en el firmware del DOWN si la
-      difusión de `Velocity2D` (0x12) se gatea por validez** (`down_tx` / `main_down`).
+- [ ] **Flashear `down_robot2`** en la DOWN del robot 2:
+      `pio run -e down_robot2 -t upload`.
+- [ ] Re-correr `diag_central_rx_all`: el enlace DOWN debe quedar **limpio** — la LÍNEA
+      sigue `[OK]` a 200 Hz, y el OTOS ya **no aparece como pose-inválida/`conf=0`** ni
+      genera `seqGap` espurio (OTOS ausente = esperado, R2 no los tiene).
+- [ ] (Cuando lleguen los OTOS a R2) volver a `down` (OTOS=2) y reabrir la validación real
+      de odometría.
 
 ## Notas
 

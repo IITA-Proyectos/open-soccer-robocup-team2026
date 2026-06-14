@@ -223,10 +223,19 @@ void setup() {
     //   (3) recien ahi enumerar los ToF (despertar de a uno -> 0x2A..0x2D).
     // Bug anterior: el BNO se iniciaba con los ToF DESPIERTOS en 0x29 -> imu_R=N (o ambos)
     // + enumeracion ToF confundida -> min_obst=65535.
+    // BOOT TIMING (TA-1, 2026-06-14, TASK-210): medir cuánto tarda cada init para
+    // VALIDAR el ahorro de cargar el firmware de los ToF a 400 kHz. Se imprime al
+    // final del setup ("[boot] ..."). Cero costo en runtime (solo setup). Comparar
+    // el "tof_init" ANTES (carga a 100 kHz) y DESPUÉS (carga a 400 kHz) del cambio.
+    const uint32_t t_boot0 = millis();
     sensors_tof_predim_lp();  // (1) dormir ToF (LP low) -> bus limpio para el BNO
+    const uint32_t t_imu0 = millis();
     sensors_imu_init();       // (2) BNO 0x28 + 0x29 con los ToF dormidos
+    const uint32_t t_imu_ms = millis() - t_imu0;
     sensors_tof_scan_wire();  // DIAG 2026-06-02: con ToF dormidos, que BNO responde? 0x28? 0x29?
+    const uint32_t t_tof0 = millis();
     sensors_tof_init();       // (3) enumerar ToF a 0x2A..0x2D
+    const uint32_t t_tof_ms = millis() - t_tof0;
     // OJO: el robot DEBE apuntar al arco rival (+Y) al boot — esta llamada
     // calibra bno_offset_centideg leyendo el heading actual.
     iitasoccer::localization_runtime_init();
@@ -244,6 +253,16 @@ void setup() {
 
     digitalWrite(PIN_LED_STATUS, HIGH);
     Serial.println("[TOP] cerebro sensorial listo, enviando snapshots a CENTRAL (WDT 1s armado)");
+
+    // BOOT TIMING (TA-1, TASK-210): resumen de tiempos del arranque. Baseline esperado
+    // ANTES del cambio: tof_init ~30-32 s (4 ToF a 100 kHz). Objetivo DESPUÉS: ~8 s.
+    Serial.print("[boot] imu_init=");
+    Serial.print(t_imu_ms);
+    Serial.print(" ms  tof_init=");
+    Serial.print(t_tof_ms);
+    Serial.print(" ms  setup_total=");
+    Serial.print(millis() - t_boot0);
+    Serial.println(" ms  (TA-1: tof_init deberia bajar ~4x con carga a 400 kHz)");
 
 #if defined(TOP_DEBUG_TELEMETRY) || defined(TOP_USB_MONITOR)
     top_telemetry_init();

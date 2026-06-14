@@ -1,0 +1,140 @@
+<svg viewBox="0 0 1440 1460" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Inter', Arial, sans-serif">
+  <!-- ============================================================
+       Fig. (D1) — Topologia de conexion de 3 placas + COMM
+       Pregunta: Que cuelga de cada placa, como se enlazan (cable/direccion/baud), y por que CENTRAL
+                 recibe UBICACION ya fusionada (no crudo) + la emergencia de linea por enlace dedicado?
+       Print math: viewBox 1440 px -> ~360 mm => 0.25 mm/px. Board name 44px; cuerpo 30px ~21pt;
+                 micro pin/baud 28px (tier annotation). Titulo 60 px ~42 pt.
+       Estilos de enlace: solido=UART(dato) / punteado=nivel GPIO(arbitro) / guion=sin cablear / grueso=PWM.
+       Paleta: TOP #1D4E89 / CENTRAL #E8731A / DOWN #1E8A4C / rojo #C8102E (emergencia) / gris COMM.
+       Fuentes: types.h:133 (WorldSnapshot=31B v3), proto.h, pinout_common.h, config_*.h,
+         MAPA-CONEXIONES-3-PLACAS.md, ESTADO-ACTUAL.md. ASUMIDO: DOWN->TOP sin cablear (TASK-008),
+         TOP<->COMM ESP-NOW pendiente. Nota: pinout_common.h aun describe cableado BNO viejo de R1.
+       ============================================================ -->
+  <defs>
+    <marker id="dn" markerWidth="14" markerHeight="14" refX="6" refY="11" orient="auto"><path d="M1 1 L6 11 L11 1" fill="none" stroke="#333" stroke-width="2.6"/></marker>
+    <marker id="up" markerWidth="14" markerHeight="14" refX="6" refY="2" orient="auto"><path d="M1 11 L6 1 L11 11" fill="none" stroke="#C8102E" stroke-width="2.6"/></marker>
+    <marker id="rt" markerWidth="13" markerHeight="13" refX="10" refY="6" orient="auto"><path d="M1 1 L11 6 L1 11" fill="none" stroke="#555" stroke-width="2.4"/></marker>
+    <marker id="lt" markerWidth="13" markerHeight="13" refX="3" refY="6" orient="auto"><path d="M11 1 L1 6 L11 11" fill="none" stroke="#555" stroke-width="2.4"/></marker>
+    <marker id="upg" markerWidth="14" markerHeight="14" refX="6" refY="2" orient="auto"><path d="M1 11 L6 1 L11 11" fill="none" stroke="#9aa1ab" stroke-width="2.6"/></marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f4f6f8"/></linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1440" height="1460" fill="url(#bg)"/>
+
+  <text x="48" y="72" font-size="60" font-weight="800" fill="#222">Las 3 placas y como se conectan</text>
+  <text x="48" y="116" font-size="34" fill="#555">Cada placa es especialista &#8212; CENTRAL recibe UBICACION ya fusionada, no lecturas crudas</text>
+
+  <!-- ===== Sensores del TOP (izquierda) ===== -->
+  <g>
+    <rect x="48" y="182" width="396" height="186" rx="12" fill="#EEF2F6" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="68" y="220" font-size="27" font-weight="800" fill="#1D4E89">SENSORES DE PERCEPCION</text>
+    <text x="68" y="258" font-size="30" fill="#222">2 camaras OpenMV N6 (UART)</text>
+    <text x="68" y="294" font-size="30" fill="#222">2 BNO055 IMU (I2C) <tspan fill="#C8102E" font-size="26">*R1</tspan></text>
+    <text x="68" y="330" font-size="30" fill="#222">4 ToF VL53L7CX (I2C)</text>
+    <text x="68" y="360" font-size="29" fill="#222">HC-SR04 ultrasonido (GPIO)</text>
+  </g>
+  <line x1="444" y1="275" x2="496" y2="275" stroke="#555" stroke-width="3" marker-end="url(#rt)"/>
+
+  <!-- ===== Placa TOP ===== -->
+  <g>
+    <rect x="496" y="200" width="430" height="150" rx="14" fill="#EAF0F7" stroke="#1D4E89" stroke-width="3.5"/>
+    <rect x="496" y="200" width="16" height="150" rx="6" fill="#1D4E89"/>
+    <text x="536" y="256" font-size="44" font-weight="800" fill="#1D4E89">TOP</text>
+    <text x="536" y="296" font-size="29" fill="#333">Teensy 4.0 &#183; percepcion</text>
+    <text x="536" y="332" font-size="29" font-weight="700" fill="#1D4E89">el UNICO que fusiona</text>
+  </g>
+
+  <!-- ===== COMM (arriba-derecha) ===== -->
+  <g>
+    <rect x="966" y="200" width="426" height="132" rx="12" fill="#EFEFEF" stroke="#6B7280" stroke-width="3"/>
+    <text x="990" y="250" font-size="38" font-weight="800" fill="#4b5563">COMM</text>
+    <text x="1150" y="246" font-size="28" fill="#222">ESP32-C6</text>
+    <text x="990" y="290" font-size="28" fill="#333">arbitro RCJ (START/STOP)</text>
+    <text x="990" y="320" font-size="27" fill="#666">OLED &#183; acelerometro</text>
+  </g>
+  <line x1="966" y1="296" x2="930" y2="296" stroke="#6B7280" stroke-width="3" stroke-dasharray="3 7" marker-end="url(#lt)"/>
+  <text x="536" y="392" font-size="28" fill="#6B7280">arbitro = nivel GPIO 5/6 (NO UART) &#183; cable suelto = STOP</text>
+
+  <!-- ===== Enlace TOP -> CENTRAL : WorldSnapshot (estrella) ===== -->
+  <line x1="711" y1="350" x2="711" y2="556" stroke="#333" stroke-width="4" marker-end="url(#dn)"/>
+  <g>
+    <rect x="760" y="408" width="600" height="130" rx="12" fill="#FFFDF5" stroke="#1D4E89" stroke-width="3"/>
+    <text x="784" y="448" font-size="34" font-weight="800" fill="#1D4E89">WorldSnapshot v3</text>
+    <text x="784" y="486" font-size="30" fill="#222">tipo 0x60 &#183; 31 B @ 100 Hz &#183; 230400</text>
+    <text x="784" y="522" font-size="30" fill="#222">TOP S4 pin17 &#8594; CENTRAL S7 pin28</text>
+  </g>
+
+  <!-- ===== Placa CENTRAL ===== -->
+  <g>
+    <rect x="496" y="556" width="430" height="180" rx="14" fill="#FDF1E7" stroke="#E8731A" stroke-width="3.5"/>
+    <rect x="496" y="556" width="16" height="180" rx="6" fill="#E8731A"/>
+    <text x="536" y="610" font-size="44" font-weight="800" fill="#E8731A">CENTRAL</text>
+    <text x="536" y="648" font-size="28" fill="#333">Teensy 4.1 &#183; Zircon Rev v15</text>
+    <text x="536" y="686" font-size="30" fill="#333">world_model &#8594; FSM &#8594; PIDs</text>
+    <text x="536" y="720" font-size="28" fill="#333">&#8594; cinematica &#183; sin kicker</text>
+  </g>
+  <!-- CENTRAL -> motores : PWM grueso -->
+  <line x1="926" y1="646" x2="978" y2="646" stroke="#E8731A" stroke-width="7" marker-end="url(#rt)"/>
+  <g>
+    <rect x="978" y="566" width="414" height="160" rx="12" fill="#FBE9D9" stroke="#E8731A" stroke-width="2.5"/>
+    <text x="1000" y="628" font-size="36" font-weight="800" fill="#a8500d">3 motores omni</text>
+    <text x="1000" y="670" font-size="30" fill="#333">base kiwi 120&#176;</text>
+    <text x="1000" y="706" font-size="28" fill="#888">PWM directo (local)</text>
+  </g>
+
+  <!-- ===== Enlace DOWN -> CENTRAL : BUS EMERGENCIA (rojo) ===== -->
+  <line x1="711" y1="916" x2="711" y2="740" stroke="#C8102E" stroke-width="4" marker-end="url(#up)"/>
+  <g>
+    <rect x="756" y="772" width="636" height="150" rx="12" fill="#FDECEE" stroke="#C8102E" stroke-width="3"/>
+    <text x="780" y="812" font-size="30" font-weight="800" fill="#C8102E">BUS DE EMERGENCIA &#183; freno &lt;15 ms*</text>
+    <text x="780" y="850" font-size="30" fill="#222">LineStatusV2 0x10 &#183; 16 B @200 Hz</text>
+    <text x="780" y="886" font-size="30" fill="#222">Pose2D + Velocity2D &#183; 7 B @100 Hz</text>
+    <text x="780" y="916" font-size="28" fill="#555">DOWN S1 pin1 &#8594; CENTRAL S1 pin0 &#183; 230400</text>
+  </g>
+
+  <!-- ===== Placa DOWN ===== -->
+  <g>
+    <rect x="496" y="916" width="430" height="170" rx="14" fill="#E9F5EE" stroke="#1E8A4C" stroke-width="3.5"/>
+    <rect x="496" y="916" width="16" height="170" rx="6" fill="#1E8A4C"/>
+    <text x="536" y="970" font-size="44" font-weight="800" fill="#1E8A4C">DOWN</text>
+    <text x="536" y="1008" font-size="28" fill="#333">Teensy 4.0 &#183; piso / linea</text>
+    <text x="536" y="1046" font-size="30" fill="#333">difunde por broadcast</text>
+    <text x="536" y="1080" font-size="28" fill="#666">SEQ por enlace (detecta perdida)</text>
+  </g>
+  <!-- ===== Sensores del DOWN (izquierda) ===== -->
+  <g>
+    <rect x="48" y="906" width="396" height="190" rx="12" fill="#E9F5EE" stroke="#1E8A4C" stroke-width="2.5"/>
+    <text x="68" y="944" font-size="27" font-weight="800" fill="#1E8A4C">SENSORES DE PISO</text>
+    <text x="68" y="982" font-size="30" fill="#222">Anillo 32 sensores de linea</text>
+    <text x="88" y="1014" font-size="27" fill="#555">via 4&#215; mux CD4051 (analogico)</text>
+    <text x="68" y="1054" font-size="30" fill="#222">2 OTOS (odometria)</text>
+    <text x="88" y="1086" font-size="27" fill="#555">I2C 0x17 &#183; buses separados</text>
+  </g>
+  <line x1="444" y1="1000" x2="496" y2="1000" stroke="#555" stroke-width="3" marker-end="url(#rt)"/>
+  <!-- DOWN -> TOP : broadcast sin cablear (guion, atenuado) -->
+  <line x1="470" y1="916" x2="330" y2="836" stroke="#9aa1ab" stroke-width="3" stroke-dasharray="10 8" marker-end="url(#upg)"/>
+  <text x="60" y="812" font-size="27" fill="#9aa1ab">+ broadcast a TOP &#183; Serial5 &#8594; Serial1 &#183; sin cablear (TASK-008)</text>
+
+  <!-- ===== Callout clave ===== -->
+  <g>
+    <rect x="48" y="1126" width="1344" height="118" rx="12" fill="#EAF0F7" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="70" y="1166" font-size="32" font-weight="800" fill="#1D4E89">Por que CENTRAL no ve sensores crudos</text>
+    <text x="70" y="1204" font-size="30" fill="#333">El TOP es el UNICO que fusiona: CENTRAL recibe la UBICACION ya interpretada (su pose, la pelota, los arcos) en el WorldSnapshot</text>
+    <text x="70" y="1238" font-size="30" fill="#333">&#8212; y la emergencia de linea por un cable DEDICADO (DOWN&#8594;CENTRAL) para frenar en el borde sin depender de la percepcion.</text>
+  </g>
+
+  <!-- ===== Leyenda de enlaces ===== -->
+  <g font-size="29" fill="#333">
+    <line x1="60" y1="1296" x2="140" y2="1296" stroke="#333" stroke-width="4" marker-end="url(#rt)"/>
+    <text x="152" y="1305">UART (dato)</text>
+    <line x1="430" y1="1296" x2="510" y2="1296" stroke="#6B7280" stroke-width="3" stroke-dasharray="3 7"/>
+    <text x="522" y="1305">nivel GPIO (arbitro)</text>
+    <line x1="900" y1="1296" x2="980" y2="1296" stroke="#9aa1ab" stroke-width="3" stroke-dasharray="10 8"/>
+    <text x="992" y="1305">sin cablear / pendiente</text>
+    <line x1="1232" y1="1296" x2="1302" y2="1296" stroke="#E8731A" stroke-width="7"/>
+    <text x="1314" y="1305">PWM</text>
+  </g>
+
+  <text x="48" y="1372" font-size="27" fill="#666">Fig. &#8212; 3 Teensy especialistas + COMM; el dato que decide el partido es un WorldSnapshot de 31 B a 100 Hz.  &#183;  Diagrama original del equipo &#8212; CC BY 4.0  &#183;  Fuente: types.h, proto.h, pinout_common.h, MAPA-CONEXIONES.  (*objetivo no medido &#183; *R1: pinout_common.h aun describe el cableado BNO viejo)</text>
+</svg>

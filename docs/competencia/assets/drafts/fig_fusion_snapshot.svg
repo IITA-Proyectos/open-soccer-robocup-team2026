@@ -1,0 +1,130 @@
+<svg viewBox="0 0 1440 1320" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', 'Inter', Arial, sans-serif">
+  <!-- ============================================================
+       Fig. (D4) — Pipeline de fusion: que sensor crudo entra a cada CAMPO del WorldSnapshot
+       Pregunta: cuando se dice "CENTRAL recibe ubicacion ya fusionada, no crudo", cual sensor crudo
+                 alimenta EXACTAMENTE cada campo del snapshot que viaja por el cable?
+       Print math: viewBox 1440 px -> ~360 mm => 0.25 mm/px. Cuerpo 30-32 px (~21-23 pt); titulo 58px.
+                 Campos/fuentes anclados en types.h L92-132 (layout 19 campos, static_assert sizeof==31).
+       Familias de fuente (color de flecha): VISION azul #1D4E89 / SENSADO #2b6cb0 / EXTERNO gris #6B7280.
+       Flechas dibujadas DEBAJO de las cajas (cajas opacas encima) -> solo se ven en el corredor de fusion.
+       Fuentes: types.h, main_top.cpp (build_snapshot), comm_arbiter.cpp, localization.h, CONTRATO-DATOS-TOP.md.
+       ============================================================ -->
+  <defs>
+    <marker id="rt" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto"><path d="M1 1 L10 6 L1 11" fill="none" stroke="#777" stroke-width="2.2"/></marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f4f6f8"/></linearGradient>
+    <linearGradient id="frontier" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1D4E89" stop-opacity="0"/><stop offset="0.5" stop-color="#1D4E89" stop-opacity="0.10"/><stop offset="1" stop-color="#1D4E89" stop-opacity="0"/></linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1440" height="1320" fill="url(#bg)"/>
+
+  <text x="48" y="70" font-size="58" font-weight="800" fill="#222">Que viaja por el cable (y que NO)</text>
+  <text x="48" y="114" font-size="33" fill="#555">El TOP convierte lecturas CRUDAS en los 19 campos del WorldSnapshot (31 B)</text>
+
+  <!-- ===== Banda de frontera (fusion) ===== -->
+  <rect x="566" y="168" width="120" height="912" fill="url(#frontier)"/>
+  <line x1="626" y1="168" x2="626" y2="1080" stroke="#1D4E89" stroke-width="3" stroke-dasharray="9 9"/>
+  <text x="626" y="150" font-size="30" font-weight="800" fill="#1D4E89" text-anchor="middle">build_snapshot()  &#183;  el TOP FUSIONA  &#183;  CENTRAL solo copia</text>
+
+  <!-- ===== Flechas (DEBAJO de las cajas) ===== -->
+  <!-- VISION (azul): camaras(224) -> Pelota(245) y Arcos(372) -->
+  <g fill="none" stroke="#1D4E89" stroke-width="2.6" marker-end="url(#rt)">
+    <path d="M408 224 C 540 230, 540 245, 672 245"/>
+    <path d="M408 234 C 540 300, 540 372, 672 372"/>
+  </g>
+  <!-- SENSADO (azul medio): ToF(308)->Pose(505)&Obst(635); BNO(384)->Pose(505)&flags(775); HC(460)->Obst(635) -->
+  <g fill="none" stroke="#2b6cb0" stroke-width="2.6" marker-end="url(#rt)">
+    <path d="M408 308 C 540 400, 540 505, 672 505"/>
+    <path d="M408 316 C 540 470, 540 635, 672 635"/>
+    <path d="M408 384 C 540 440, 540 505, 672 505"/>
+    <path d="M408 392 C 540 580, 540 775, 672 775"/>
+    <path d="M408 460 C 540 540, 540 640, 672 640"/>
+  </g>
+  <!-- EXTERNO (gris): arbitro(540)->flags(775); ESP-NOW(616)->flags(775) -->
+  <g fill="none" stroke="#6B7280" stroke-width="2.6" marker-end="url(#rt)">
+    <path d="M408 540 C 540 640, 540 770, 672 770"/>
+    <path d="M408 616 C 540 700, 540 782, 672 782"/>
+  </g>
+
+  <!-- ===== Columna izquierda: LECTURAS CRUDAS ===== -->
+  <text x="68" y="186" font-size="28" font-weight="800" fill="#444">LECTURAS CRUDAS (en el TOP)</text>
+  <g>
+    <!-- VISION -->
+    <rect x="68" y="200" width="340" height="60" rx="9" fill="#EAF0F7" stroke="#1D4E89" stroke-width="2"/>
+    <rect x="68" y="200" width="12" height="60" rx="5" fill="#1D4E89"/>
+    <text x="96" y="238" font-size="30" fill="#222">2 camaras OpenMV N6</text>
+    <!-- SENSADO -->
+    <rect x="68" y="284" width="340" height="60" rx="9" fill="#EAF0F7" stroke="#2b6cb0" stroke-width="2"/>
+    <rect x="68" y="284" width="12" height="60" rx="5" fill="#2b6cb0"/>
+    <text x="96" y="322" font-size="30" fill="#222">4 ToF VL53L7CX</text>
+    <rect x="68" y="360" width="340" height="60" rx="9" fill="#EAF0F7" stroke="#2b6cb0" stroke-width="2"/>
+    <rect x="68" y="360" width="12" height="60" rx="5" fill="#2b6cb0"/>
+    <text x="96" y="398" font-size="30" fill="#222">BNO055 (heading)</text>
+    <rect x="68" y="436" width="340" height="60" rx="9" fill="#EAF0F7" stroke="#2b6cb0" stroke-width="2"/>
+    <rect x="68" y="436" width="12" height="60" rx="5" fill="#2b6cb0"/>
+    <text x="96" y="474" font-size="30" fill="#222">HC-SR04 (ultrasonido)</text>
+    <!-- EXTERNO -->
+    <rect x="68" y="512" width="340" height="60" rx="9" fill="#EFEFEF" stroke="#6B7280" stroke-width="2"/>
+    <rect x="68" y="512" width="12" height="60" rx="5" fill="#6B7280"/>
+    <text x="96" y="550" font-size="30" fill="#222">arbitro (GPIO 5/6)</text>
+    <rect x="68" y="588" width="340" height="60" rx="9" fill="#EFEFEF" stroke="#6B7280" stroke-width="2"/>
+    <rect x="68" y="588" width="12" height="60" rx="5" fill="#6B7280"/>
+    <text x="96" y="626" font-size="30" fill="#222">partner ESP-NOW (COMM)</text>
+  </g>
+
+  <!-- ===== Columna derecha: CAMPOS DEL WORLDSNAPSHOT ===== -->
+  <text x="672" y="186" font-size="28" font-weight="800" fill="#1D4E89">WorldSnapshot v3 &#183; 31 B &#183; 19 campos</text>
+  <g>
+    <!-- B Pelota -->
+    <rect x="672" y="200" width="720" height="118" rx="10" fill="#F4F8FC" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="696" y="240" font-size="31" font-weight="700" fill="#222">PELOTA &#8212; ball_x/y &#183; visible &#183; conf &#183; vx/vy</text>
+    <text x="696" y="280" font-size="29" fill="#555">&#8592; 2 camaras (la trasera se NIEGA: rotacion 180&#176;)</text>
+    <text x="696" y="310" font-size="26" fill="#a06a00">escala mm sin calibrar (CAMERA_UNIT_TO_MM=10.0*)</text>
+    <!-- C Arcos -->
+    <rect x="672" y="330" width="720" height="92" rx="10" fill="#F4F8FC" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="696" y="368" font-size="31" font-weight="700" fill="#222">ARCOS &#8212; goal_opp + goal_own (ang / dist / visible)</text>
+    <text x="696" y="404" font-size="29" fill="#555">&#8592; camaras (blobs de arco AMARILLO y AZUL)</text>
+    <!-- A Pose -->
+    <rect x="672" y="434" width="720" height="118" rx="10" fill="#F4F8FC" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="696" y="474" font-size="31" font-weight="700" fill="#222">POSE PROPIA &#8212; my_x/y &#183; my_heading &#183; pose_conf</text>
+    <text x="696" y="514" font-size="29" fill="#555">&#8592; trilateracion 4 ToF + heading BNO  (NO del OTOS)</text>
+    <text x="696" y="544" font-size="26" fill="#a06a00">casi siempre invalido* &#8594; CENTRAL juega RELATIVO</text>
+    <!-- D Obstaculo -->
+    <rect x="672" y="564" width="720" height="92" rx="10" fill="#F4F8FC" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="696" y="602" font-size="31" font-weight="700" fill="#222">OBSTACULO &#8212; min_obstacle_mm (0xFFFF = libre)</text>
+    <text x="696" y="638" font-size="29" fill="#555">&#8592; el MINIMO de los 4 ToF + el HC-SR04</text>
+    <!-- E Arbitro + flags -->
+    <rect x="672" y="668" width="720" height="150" rx="10" fill="#F4F8FC" stroke="#1D4E89" stroke-width="2.5"/>
+    <text x="696" y="708" font-size="31" font-weight="700" fill="#222">ARBITRO + FLAGS &#8212; referee_cmd &#183; flags</text>
+    <text x="696" y="746" font-size="29" fill="#555">&#8592; referee_cmd y bit3 match_running &#8592; arbitro (GPIO)</text>
+    <text x="696" y="780" font-size="29" fill="#555">&#8592; bit4 heading_valid &#8592; BNO convergio</text>
+    <text x="696" y="810" font-size="29" fill="#555">&#8592; bit1/2 partner &#8592; ESP-NOW (COMM)</text>
+  </g>
+
+  <!-- ===== Callout: lo que NO viaja ===== -->
+  <g>
+    <rect x="48" y="848" width="1344" height="128" rx="12" fill="#FDECEE" stroke="#C8102E" stroke-width="2.5"/>
+    <text x="70" y="888" font-size="31" font-weight="800" fill="#C8102E">Lo que NO viaja por el cable</text>
+    <text x="70" y="924" font-size="29" fill="#333">NO van pixeles &#183; NO van las 4 distancias ToF crudas &#183; NO van blobs en coordenadas de camara.</text>
+    <text x="70" y="958" font-size="29" fill="#333">Viaja la INTERPRETACION: pose en mm, angulo a arco en centideg, un solo min_obstacle.</text>
+  </g>
+
+  <!-- ===== Panel de honestidad ===== -->
+  <g>
+    <rect x="48" y="994" width="1344" height="128" rx="12" fill="#F4F5F7" stroke="#9aa1ab" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="70" y="1034" font-size="30" font-weight="800" fill="#4b5563">Honestidad (*) &#8212; lo medido vs lo asumido</text>
+    <text x="70" y="1070" font-size="29" fill="#444">&#8226; my_x/y casi nunca valida (ToF utiles solo en eje Y) &#8594; CENTRAL ignora la posicion y juega RELATIVO.</text>
+    <text x="70" y="1106" font-size="29" fill="#444">&#8226; ball_x/y en mm sin calibrar &#183; el OTOS recibido en el TOP NO se fusiona en my_x/y.</text>
+  </g>
+
+  <text x="48" y="1158" font-size="27" fill="#666">Fig. &#8212; cada campo del snapshot tiene su sensor de origen rastreable.  &#183;  CC BY 4.0  &#183;  Fuente: types.h, main_top.cpp.</text>
+
+  <!-- ===== mini-leyenda de familias de flecha ===== -->
+  <g font-size="26">
+    <line x1="48" y1="1200" x2="108" y2="1200" stroke="#1D4E89" stroke-width="2.6" marker-end="url(#rt)"/>
+    <text x="118" y="1208" fill="#333">vision (camaras)</text>
+    <line x1="430" y1="1200" x2="490" y2="1200" stroke="#2b6cb0" stroke-width="2.6" marker-end="url(#rt)"/>
+    <text x="500" y="1208" fill="#333">sensado propio (ToF / BNO / HC-SR04)</text>
+    <line x1="980" y1="1200" x2="1040" y2="1200" stroke="#6B7280" stroke-width="2.6" marker-end="url(#rt)"/>
+    <text x="1050" y="1208" fill="#333">externo (arbitro / partner)</text>
+  </g>
+</svg>

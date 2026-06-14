@@ -53,8 +53,13 @@ Paleta firma: azul=TOP, naranja=CENTRAL, verde=DOWN, rojo=emergencia.
   no bajar del mínimo de legibilidad de la rúbrica.
 - Cifras con `?`/`*` requieren **banco** para cerrarse (set-points MP1584 con multímetro;
   FOV real N6 + alcance HC-SR04). Claude no cierra eso (regla de hardware).
-- Siguen en el catálogo: **D1** (topología 3 placas) y **D4** (mapeo sensor→campo del
-  snapshot) — próximos a producir.
+- **D1** (topología 3 placas + COMM) y **D4** (mapeo sensor→campo del snapshot)
+  **producidas** → `assets/drafts/fig_topologia_3placas.{svg,png}` y
+  `assets/drafts/fig_fusion_snapshot.{svg,png}`. D1 muestra qué cuelga de cada placa +
+  enlaces con dirección/baud + bus de emergencia DOWN→CENTRAL; D4 es la prueba gráfica de
+  "CENTRAL recibe ubicación, no crudo" (sensor crudo → campo del WorldSnapshot, anclado en
+  `types.h`). Quedan sin producir el resto del catálogo (D3, D6, D8, D9, D11, D12 a regenerar
+  contra `strategy.cpp`, D13, D15, D16, D19–D21).
 - Alertas para futuras figuras: Fig.4 FSM (D12) está desactualizada (regenerar contra
   `strategy.cpp`); watchdog de motores real = `SNAPSHOT_TIMEOUT_MS=500` (no 200 ms);
   arcos amarillo/azul (no cyan/magenta); WorldSnapshot = 31 B v3 (un doc viejo dice 27 B);

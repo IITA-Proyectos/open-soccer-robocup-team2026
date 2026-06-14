@@ -110,25 +110,24 @@ constexpr uint8_t TOF_RESOLUTION_ZONES = 16;  // 4x4
 constexpr uint8_t TOF_RANGING_FREQ_HZ  = 15;
 
 // ----------------------------------------------------------------------------
-// CLOCKS I2C — DOS regímenes distintos (TA-1, 2026-06-14). Ver TASK-210.
-//  • TOF_INIT_CLOCK_HZ: SOLO para la carga del firmware blob (~85 KB/sensor) en
-//    sensors_tof_init(). Es fase "ToF-solo": el BNO ya está iniciado pero NADIE
-//    lo lee todavía (el loop no arrancó) → 400 kHz es SEGURO. Es el MISMO clock
-//    con el que diag_top_tof_quad_live cargó los 4 ToF, VALIDADO en banco
-//    2026-05-30. A 400 kHz la carga tarda ~4× menos que a 100 kHz (~32 s → ~8 s).
-//  • TOF_RUN_CLOCK_HZ: para el RUNTIME (loop). A 400 kHz el read multi-byte del
+// CLOCKS I2C — DOS regímenes distintos (TA-1 + TA-2, 2026-06-14). Ver TASK-210/211.
+//  • Carga del firmware (fase "ToF-solo": BNO iniciado pero nadie lo lee, el loop no
+//    arrancó): se hace a ALTA velocidad para acortar el boot. DEFAULT 1 MHz
+//    (TOF_INIT_CLOCK_FAST_HZ, TA-2), con FALLBACK a 400 kHz (TOF_INIT_CLOCK_HZ, TA-1)
+//    si algún sensor no carga. Ambos validados en banco (ver constantes abajo).
+//  • TOF_RUN_CLOCK_HZ: para el RUNTIME (loop). A >100 kHz el read multi-byte del
 //    BNO055 se corrompe CUANDO los ToF rangean en el mismo bus y el yaw se
 //    CONGELA (banco 2026-06-02/06-08). Por eso el bus VUELVE a 100 kHz al final
 //    de sensors_tof_init(), ANTES de que arranque el loop.
 // ⚠️ El restore a TOF_RUN_CLOCK_HZ al final del init es OBLIGATORIO: sin él se
 //    reintroduce el freeze del heading. Verificable en banco (girar el robot).
-constexpr uint32_t TOF_INIT_CLOCK_HZ = 400000;  // carga firmware (ToF-solo, validado TA-1)
+constexpr uint32_t TOF_INIT_CLOCK_HZ = 400000;  // FALLBACK de carga si 1 MHz falla (validado TA-1)
 constexpr uint32_t TOF_RUN_CLOCK_HZ  = 100000;  // runtime (coexistencia BNO+ToF)
-// TA-2 (TASK-211, BANCO): carga a 1 MHz (Fast Mode Plus) — opt-in con -DTOP_TOF_INIT_1MHZ.
-// Bajaría tof_init ~4 s más (~12 s → ~8 s). NO validado: depende de pull-ups/capacitancia/
-// bodge del bus. Si la carga a 1 MHz falla, el código RECAE a TOF_INIT_CLOCK_HZ (400 kHz,
-// validado TA-1) reseteando el sensor por LP → TA-2 nunca queda peor que TA-1. Sin el flag,
-// el binario es BYTE-IDÉNTICO a TA-1 (producción intacta).
+// TA-2 (TASK-211): carga a 1 MHz (Fast Mode Plus) = DEFAULT de producción desde 2026-06-14.
+// VALIDADO en banco por Gustavo + Virginia (>15 power-cycles en top_robot2_pri: 4/4 ToF a
+// 1 MHz, 0 fallbacks, boot ~9,6 s vs ~14,4 s a 400 kHz vs ~40 s original). Si algún ToF no
+// cargara a 1 MHz (bus marginal), el init RECAE a TOF_INIT_CLOCK_HZ (400 kHz) reseteando el
+// sensor por LP → arranque siempre robusto. Para forzar 400 kHz: bajar esta constante a 400000.
 constexpr uint32_t TOF_INIT_CLOCK_FAST_HZ = 1000000;
 
 // ----------------------------------------------------------------------------
@@ -277,13 +276,14 @@ bool sensors_tof_init() {
             digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);  // LP no controla este ToF
             continue;
         }
-#ifdef TOP_TOF_INIT_1MHZ
-        // TA-2 (banco): intentar la carga a 1 MHz; si falla (bus marginal a esa velocidad),
-        // RESETEAR el sensor por LP (pudo quedar a medio cargar) y reintentar a 400 kHz
-        // (validado TA-1). El log avisa cada fallback → si aparece, 1 MHz es marginal en ese ToF.
+        // Carga del firmware a 1 MHz (Fast Mode Plus) = DEFAULT de producción desde 2026-06-14
+        // (TA-2, TASK-211; validado por Gustavo + Virginia: >15 power-cycles, 4/4 a 1 MHz, 0 fallbacks).
+        // Si algún ToF no cargara a 1 MHz (bus marginal), RESETEA por LP (pudo quedar a medio cargar)
+        // y reintenta a 400 kHz (TA-1, validado) → red de seguridad: el arranque queda robusto pase
+        // lo que pase. El log avisa cada fallback (si aparece, ese ToF es marginal a 1 MHz).
         if (!g_tof_multi[i].begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, TOF_INIT_CLOCK_FAST_HZ)) {
             Serial.print(F("[sensors_tof] ToF ")); Serial.print(i);
-            Serial.println(F(": carga 1 MHz fallo -> reset LP + fallback 400 kHz (TA-2)"));
+            Serial.println(F(": carga 1 MHz fallo -> reset LP + fallback 400 kHz"));
             digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);
             delay(LP_SETTLE_MS);
             digitalWrite(PIN_TOF_XSHUT[i], LP_WAKE_LEVEL);
@@ -294,9 +294,6 @@ bool sensors_tof_init() {
                 continue;
             }
         }
-#else
-        if (!g_tof_multi[i].begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, TOF_INIT_CLOCK_HZ)) continue;  // 400 kHz (TA-1, validado)
-#endif
         if (!g_tof_multi[i].setAddress(TOF_I2C_ADDR_ASSIGNED[i]))           continue;
         g_tof_multi[i].setResolution(TOF_RESOLUTION_ZONES);
         g_tof_multi[i].setRangingFrequency(TOF_RANGING_FREQ_HZ);

@@ -4,7 +4,7 @@ title: "TA-2: cargar el firmware de los ToF a 1 MHz (bench env opt-in) — boot 
 date_created: 2026-06-14
 assigned: [virginia, elias]
 priority: P2
-status: codigo-listo-falta-banco
+status: done
 estimated_hours: 1
 blocks: []
 depends_on: [TASK-210]
@@ -13,11 +13,17 @@ tags: [firmware, top, tof, i2c, boot, performance]
 
 # TASK-211 — TA-2: carga de los ToF a 1 MHz (Fast Mode Plus)
 
-> ### ⏳ 2026-06-14 — CÓDIGO APLICADO (bench env), FALTA VALIDAR EN BANCO
-> Continuación de [TASK-210](2026-06-14-task-210-acelerar-boot-tof-carga-400khz.md) (TA-1, ya
-> cerrada: 400 kHz → boot ~14,4 s). TA-2 sube la carga a **1 MHz** para bajar otros ~4 s.
-> Implementado como **env de banco opt-in** (`top_robot2_pri_1mhz`); **producción
-> (`top_robot2_pri`) queda BYTE-IDÉNTICA a TA-1** hasta validar. Compila OK; falta banco.
+> ### ✅ 2026-06-14 — VALIDADO EN BANCO Y PROMOVIDO A DEFAULT (Gustavo + Virginia)
+> **Gustavo y Virginia corrieron >15 power-cycles de la TOP (`top_robot2_pri`, COM22): los 4 ToF
+> cargaron a 1 MHz en TODOS, CERO fallbacks → ANDA a 1 MHz.** Medido (1ª corrida representativa):
+> - **`setup_total` = 9,6 s** (TA-1 400 kHz = 14,4 s · original = ~40 s) · **`tof_init` = 6,86 s** · `imu_init` = 2,5 s.
+> - **`4 de 4` ToF midiendo** · `min_obst` vivo (292-510 mm) · **0 mensajes de fallback** en >15 arranques.
+> - Heading trackea el giro (`0.0 → -39.2 → +30.6 → -45.0`), sin freeze.
+>
+> **PROMOVIDO A DEFAULT:** 1 MHz dejó de ser opt-in. Ahora es el comportamiento por defecto en
+> `src/top/sensors_tof.cpp` (`TOF_INIT_CLOCK_FAST_HZ`, con fallback a 400 kHz) → **TODOS los programas
+> de booteo del TOP** (top_robot1/2, top_robot2_pri, etc.) arrancan a 1 MHz. Se eliminó el flag
+> `-DTOP_TOF_INIT_1MHZ` y el env de banco `top_robot2_pri_1mhz` (ya innecesarios).
 
 ## Resumen (1 línea)
 Cargar el firmware de los 4 VL53L7CX a **1 MHz** (en vez de 400 kHz) durante el boot → `tof_init`
@@ -53,16 +59,15 @@ Cargar el firmware de los 4 VL53L7CX a **1 MHz** (en vez de 400 kHz) durante el 
 4. **Repetir el power-cycle ~20 veces** (la integridad a 1 MHz puede ser intermitente).
 
 ## Criterio de cierre
-- [ ] **Velocidad:** `tof_init` baja respecto de los ~12 s de TA-1 (objetivo ~8 s).
-- [ ] **Fiabilidad:** en ~20 power-cycles, **`4 de 4 midiendo` SIEMPRE** y **0 mensajes de fallback**
-      (si aparece fallback aunque sea a veces → 1 MHz es marginal en este bus → quedarse en TA-1).
-- [ ] **Sin regresión:** heading trackea el giro (igual que TA-1), cámaras + DOWN OK.
+- [x] **Velocidad:** `tof_init` = **6,86 s** (vs ~12 s de TA-1) → boot total **9,6 s**. ✅ (superó el objetivo ~8 s).
+- [x] **Fiabilidad:** **>15 power-cycles**, `4 de 4 midiendo` SIEMPRE y **0 mensajes de fallback**. ✅
+- [x] **Sin regresión:** heading trackea el giro, sin freeze; runtime intacto a 100 kHz. ✅
 
-### Decisión post-banco
-- **Si pasa limpio** (0 fallbacks en 20 ciclos) → promover: mover `-DTOP_TOF_INIT_1MHZ` a
-  `top_robot2_pri` (default de producción) y reflashear ambos robots.
-- **Si hay fallbacks** → dejar producción en TA-1 (400 kHz). El env de 1 MHz queda como histórico.
-  Opcional: revisar pull-ups del bus I2C (bajar a 2,2 kΩ) y reintentar.
+### Decisión post-banco → PROMOVIDO ✅
+Pasó limpio (0 fallbacks en >15 ciclos) → **1 MHz es ahora el DEFAULT de producción**, hecho en el
+código (no por flag): `src/top/sensors_tof.cpp` carga a `TOF_INIT_CLOCK_FAST_HZ` (1 MHz) con fallback
+a 400 kHz. Aplica a TODOS los programas de booteo del TOP. Eliminados el flag `-DTOP_TOF_INIT_1MHZ`
+y el env de banco `top_robot2_pri_1mhz`. Ambos robots arrancan en ~9,6 s al reflashear desde `main`.
 
 ## Riesgos
 - **risk-no-fix:** se quedan en ~14 s de boot (ya competitivo). Cero impacto en partido.
@@ -73,6 +78,10 @@ Cargar el firmware de los 4 VL53L7CX a **1 MHz** (en vez de 400 kHz) durante el 
 ## Notas / decisiones
 - 2026-06-14: creada + código aplicado por el coach (Claude Opus 4.8, pedido de Gustavo), tras
   cerrar TA-1 (TASK-210) en banco con Virginia + Gustavo.
+- 2026-06-14: **validado en banco por Gustavo + Virginia** (>15 power-cycles, 0 fallbacks, ANDA a
+  1 MHz) → **promovido a default**. Boot final: **~9,6 s** (era ~40 s). Cadena boot completa:
+  ~40 s (original) → 14,4 s (TA-1, 400 kHz) → **9,6 s (TA-2, 1 MHz)**. Tema RESUELTO y cerrado.
 
 ## Cambios de estado
 - 2026-06-14: creada → `codigo-listo-falta-banco` (env de banco listo y compilando; falta HW).
+- 2026-06-14: `codigo-listo-falta-banco` → `done` ✅ (validado por Gustavo + Virginia; 1 MHz promovido a default).

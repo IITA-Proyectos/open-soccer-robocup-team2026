@@ -254,15 +254,15 @@ void setup() {
     digitalWrite(PIN_LED_STATUS, HIGH);
     Serial.println("[TOP] cerebro sensorial listo, enviando snapshots a CENTRAL (WDT 1s armado)");
 
-    // BOOT TIMING (TA-1, TASK-210): resumen de tiempos del arranque. Baseline esperado
-    // ANTES del cambio: tof_init ~30-32 s (4 ToF a 100 kHz). Objetivo DESPUÉS: ~8 s.
+    // BOOT TIMING (TA-1/TA-2, TASK-210/211): resumen de tiempos del arranque. Referencia:
+    // original ~40 s (4 ToF a 100 kHz) → ~14,4 s (TA-1, 400 kHz) → ~9,6 s (TA-2, 1 MHz, default).
     Serial.print("[boot] imu_init=");
     Serial.print(t_imu_ms);
     Serial.print(" ms  tof_init=");
     Serial.print(t_tof_ms);
     Serial.print(" ms  setup_total=");
     Serial.print(millis() - t_boot0);
-    Serial.println(" ms  (TA-1: tof_init deberia bajar ~4x con carga a 400 kHz)");
+    Serial.println(" ms  (carga ToF a 1 MHz, fallback 400 kHz — TA-2)");
 
 #if defined(TOP_DEBUG_TELEMETRY) || defined(TOP_USB_MONITOR)
     top_telemetry_init();

@@ -47,13 +47,16 @@ sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
 sensor.set_framesize(sensor.VGA)   # H calibrada en VGA — NO cambiar sin recalibrar.
 
-sensor.set_auto_whitebal(True)
+# 1) Dejar que el auto calibre, apuntando a la CANCHA (no a una ventana ni al techo):
 sensor.set_auto_gain(True)
-#sensor.set_auto_exposure(True)
+sensor.set_auto_whitebal(True)
+sensor.set_auto_exposure(True)
+sensor.skip_frames(time=2000)          # que se estabilice de verdad
 
-sensor.skip_frames(time=2000)
-
-#sensor.set_auto_exposure(False, exposure_us=37000)  # (opcional: exposición fija)
+# 2) CONGELAR lo que encontró (sin argumentos = mantiene el valor actual):
+sensor.set_auto_gain(False)
+sensor.set_auto_whitebal(False)
+sensor.set_auto_exposure(False)
 
 # invertir imagen (montaje 180°)
 sensor.set_hmirror(True)
@@ -67,8 +70,8 @@ r = 13.5/(2*math.pi)  # radio pelota (cm)
 
 # ----- Umbrales LAB (calibración) -----
 naranja_threshold = (21, 67, 30, 79, -32, 127)    # Pelota naranja  -> header 201
-amarillo_threshold = (17, 70, -27, 14, 38, 111)   # Arco amarillo   -> header 202
-azul_threshold = (4, 38, -13, 57, -64, -4)        # Arco azul       -> header 203
+amarillo_threshold = (50, 70, -27, 14, 38, 111)   # Arco amarillo   -> header 202
+azul_threshold = (15, 30, -13, 57, -64, -4)        # Arco azul       -> header 203
 
 # ----- Máscara de esquinas superiores (triángulos) -----
 # find_blobs() SÓLO acepta un ROI RECTANGULAR, así que un recorte triangular no se

@@ -16,12 +16,18 @@
 
 namespace iitasoccer {
 
-constexpr uint8_t TELEMETRY_TOP_SCHEMA = 1;
+constexpr uint8_t TELEMETRY_TOP_SCHEMA = 2;   // v2 (2026-06-13): +per-cámara +base(OTOS/línea)
 
 constexpr int TT_MAX_TOF = 6;   // 4 fijos hoy + 2 futuros (NUM_TOF_MAX)
 
 // Sentinel "sin lectura" de los ToF (espejo de TOF_NO_READING).
 constexpr uint16_t TT_TOF_NO_READING = 0xFFFFu;
+
+// Sentinels N/A para los campos de la base (espejo de LSV2_NA_* de types.h; se
+// definen acá para que el módulo siga puro/desacoplado — los valores coinciden:
+// el glue copia los LSV2_NA_* crudos y caen en estos mismos números).
+constexpr int16_t  TT_NA_I16 = -32768;
+constexpr uint16_t TT_NA_U16 = 0xFFFFu;
 
 // ── Snapshot que el glue arma cada tick y pasa al serializador ───────────────
 // POD plano. Todo lo que el firmware YA computa para competencia: las cámaras,
@@ -49,6 +55,29 @@ struct TopTelemetryFrame {
     int16_t  goal_blue_distance_mm;
     uint32_t cam_crc_errors;
     uint32_t cam_resyncs;
+
+    // ── Detecciones POR CÁMARA (pre-fusión) — A1 monitor de posicionamiento ──
+    // Lo que ve CADA óptica por separado, ANTES de fusionar. Combinar con
+    // cam_front_ok/cam_back_ok (watchdog) para distinguir "no ve" de "caída".
+    // El delta front↔back delata la pelota fantasma del promedio fusionado.
+    uint8_t  ball_front_visible;
+    int16_t  ball_front_x_mm;
+    int16_t  ball_front_y_mm;
+    uint8_t  ball_back_visible;
+    int16_t  ball_back_x_mm;
+    int16_t  ball_back_y_mm;
+    uint8_t  goal_yellow_front_visible;
+    int16_t  goal_yellow_front_angle_cd;
+    int16_t  goal_yellow_front_distance_mm;
+    uint8_t  goal_yellow_back_visible;
+    int16_t  goal_yellow_back_angle_cd;
+    int16_t  goal_yellow_back_distance_mm;
+    uint8_t  goal_blue_front_visible;
+    int16_t  goal_blue_front_angle_cd;
+    int16_t  goal_blue_front_distance_mm;
+    uint8_t  goal_blue_back_visible;
+    int16_t  goal_blue_back_angle_cd;
+    int16_t  goal_blue_back_distance_mm;
 
     // ── IMU (2× BNO055 fusionados) ──
     float    imu_heading_deg;     // fusión circular, CCW+
@@ -90,6 +119,34 @@ struct TopTelemetryFrame {
 
     // ── Diagnóstico ──
     uint32_t frames_sent;         // snapshots enviados a CENTRAL
+
+    // ── Lo que llega de la BASE (DOWN broadcast): OTOS + línea + vector de escape ──
+    // A1. El TOP recibe esto por comm_down; *_fresh = dato vivo (< 500 ms). Si no
+    // fresh, NO interpretar los valores (pueden ser stale/cero). data_valid es la
+    // compuerta maestra de la geometría de línea. El "vector de escape" = dirección
+    // down_escape_angle_cd + magnitud down_line_penetration_mm.
+    uint8_t  down_pose_fresh;
+    int16_t  down_pose_x_mm;
+    int16_t  down_pose_y_mm;
+    int16_t  down_pose_heading_cd;
+    uint8_t  down_pose_confidence;
+    uint8_t  down_vel_fresh;
+    int16_t  down_vel_vx_mm_s;
+    int16_t  down_vel_vy_mm_s;
+    int16_t  down_vel_omega_cd_s;
+    uint8_t  down_vel_slip;
+    uint8_t  down_line_fresh;
+    uint8_t  down_line_schema;
+    uint8_t  down_line_data_valid;
+    int16_t  down_line_angle_cd;        // N/A = TT_NA_I16
+    int16_t  down_escape_angle_cd;      // N/A = TT_NA_I16 (dirección del vector de escape)
+    uint16_t down_line_penetration_mm;  // N/A = TT_NA_U16 (magnitud del vector de escape)
+    int16_t  down_line_cross_track_mm;  // N/A = TT_NA_I16
+    uint8_t  down_line_present;
+    uint8_t  down_line_sensors_on;
+    uint8_t  down_line_event_flags;
+    uint8_t  down_line_quality;
+    uint8_t  down_line_sample_age_ms;
 };
 
 // Inicializa un frame a ceros + schema + ToF en sentinel.
@@ -97,14 +154,14 @@ void tt_frame_init(TopTelemetryFrame& f, uint8_t num_tof);
 
 // Serializa `f` a UNA línea JSON terminada en '\n' dentro de buf (capacidad cap).
 // Retorna bytes escritos (sin contar '\0') o -1 si no entra / args inválidos.
-// Recomendado cap >= 768.
+// Recomendado cap >= 1536 (v2 con per-cámara + base ronda ~950 B).
 int tt_serialize_jsonl(char* buf, int cap, const TopTelemetryFrame& f);
 
 // Formatea `f` como BLOQUE de TEXTO HUMANO multi-línea (no JSON), legible de un
 // vistazo en un monitor serie crudo. Se usa en el modo "ENTER" del monitor de
 // competencia: el alumno aprieta Enter y ve cámaras/IMU/ToF/snapshot en claro,
 // sin la app de PC. Termina en '\n'. Retorna bytes escritos (sin contar '\0') o
-// -1 si no entra / args inválidos. Recomendado cap >= 512.
+// -1 si no entra / args inválidos. Recomendado cap >= 1024 (v2: ~9 líneas).
 int tt_format_human(char* buf, int cap, const TopTelemetryFrame& f);
 
 // ── Comandos host → firmware ─────────────────────────────────────────────────

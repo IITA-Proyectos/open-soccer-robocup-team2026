@@ -6,8 +6,14 @@ asignado: equipo (firmware TOP — Claude programa host-testeable; banco lo cier
 prioridad: P1
 pedido-por: Gustavo Viollaz (2026-06-13)
 relacionada: TASK-205 (monitor TOP), research/in-progress/2026-06-13-diseno-monitor-general-top-config-persistente.md
-estado: pending — SPEC listo, firmware por implementar
+estado: in-progress — A1 (telemetría: VER per-cámara + OTOS/línea/escape) HECHA 2026-06-14; A2 (config persistente EEPROM) pendiente
 ---
+
+> **A1 HECHA (2026-06-14)** — la parte "VER cómo andan los sensores" del monitor: telemetría TOP
+> v2 con detecciones POR CÁMARA (`camf`/`camb`) + OTOS/línea/**vector de escape** de la base
+> (`base`/`line`) en JSON + texto humano. Gate host verde + `pio run -e top_robot2_pri` SUCCESS.
+> Detalle: `journal/2026-06-14-top-telemetria-v2-percamara-y-base-A1.md` + `TELEMETRIA-TOP.md` v2.
+> **Falta A2** (lo de abajo): la config persistente en EEPROM (deshabilitar + zonas/orientación).
 
 # TASK-206 — Config persistente de sensores de la TOP (fail-safe P1)
 

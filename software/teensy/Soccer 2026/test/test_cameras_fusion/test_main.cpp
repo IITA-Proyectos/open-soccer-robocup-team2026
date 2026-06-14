@@ -285,6 +285,39 @@ void test_sb4_in_range_values_unchanged(void) {
 // Runner
 // ============================================================================
 
+// ============================================================================
+// cam_obs_to_polar (A1: ángulo/distancia de UNA cámara, para arcos per-cámara)
+// ============================================================================
+
+void test_polar_front_zero_angle(void) {
+    CamObs o{}; o.x_mm = 0.0f; o.y_mm = 100.0f; o.visible = true;
+    GoalFused p = cam_obs_to_polar(o);
+    TEST_ASSERT_TRUE(p.visible);
+    TEST_ASSERT_INT16_WITHIN(1, 0, p.angle_centideg);     // 0° = al frente
+    TEST_ASSERT_INT16_WITHIN(1, 100, p.distance_mm);
+}
+
+void test_polar_right_is_plus_90(void) {
+    CamObs o{}; o.x_mm = 100.0f; o.y_mm = 0.0f; o.visible = true;
+    GoalFused p = cam_obs_to_polar(o);
+    TEST_ASSERT_INT16_WITHIN(1, 9000, p.angle_centideg);  // +90° = DERECHA
+    TEST_ASSERT_INT16_WITHIN(1, 100, p.distance_mm);
+}
+
+void test_polar_left_is_negative(void) {
+    CamObs o{}; o.x_mm = -100.0f; o.y_mm = 0.0f; o.visible = true;
+    GoalFused p = cam_obs_to_polar(o);
+    TEST_ASSERT_INT16_WITHIN(1, -9000, p.angle_centideg); // -90° = izquierda
+}
+
+void test_polar_invisible_is_zero(void) {
+    CamObs o{}; o.x_mm = 50.0f; o.y_mm = 50.0f; o.visible = false;
+    GoalFused p = cam_obs_to_polar(o);
+    TEST_ASSERT_FALSE(p.visible);
+    TEST_ASSERT_EQUAL_INT16(0, p.angle_centideg);
+    TEST_ASSERT_EQUAL_INT16(0, p.distance_mm);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
 
@@ -322,6 +355,11 @@ int main(int, char**) {
     RUN_TEST(test_sb4_ball_clamps_negative_overflow_no_wrap);
     RUN_TEST(test_sb4_goal_distance_clamps_no_wrap);
     RUN_TEST(test_sb4_in_range_values_unchanged);
+
+    RUN_TEST(test_polar_front_zero_angle);
+    RUN_TEST(test_polar_right_is_plus_90);
+    RUN_TEST(test_polar_left_is_negative);
+    RUN_TEST(test_polar_invisible_is_zero);
 
     return UNITY_END();
 }

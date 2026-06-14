@@ -10,7 +10,7 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
 GOLDEN_PATH = os.path.join(_HERE, "tests", "golden_frame_v3.jsonl")
-GOLDEN_TOP_PATH = os.path.join(_HERE, "tests", "golden_top_v1.jsonl")
+GOLDEN_TOP_PATH = os.path.join(_HERE, "tests", "golden_top_v2.jsonl")
 
 
 @pytest.fixture

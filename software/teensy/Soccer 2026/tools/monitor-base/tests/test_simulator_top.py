@@ -7,7 +7,7 @@ def test_lines_parse_and_schema():
     sim = SimulatorTop()
     for _ in range(60):
         f = parse_line_top(sim.next_line())
-        assert f.v == 1
+        assert f.v == 2
         assert f.tof.n == 4
         assert len(f.tof.distances_mm) == 4
 

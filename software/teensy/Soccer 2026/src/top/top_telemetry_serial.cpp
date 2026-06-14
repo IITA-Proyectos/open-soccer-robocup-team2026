@@ -33,6 +33,7 @@
 #include "sensors_imu.h"
 #include "sensors_tof.h"
 #include "comm_central.h"        // comm_central_get_last_snapshot (gateado)
+#include "comm_down.h"           // OTOS + línea/escape que llega de la base (A1)
 #include "types.h"
 
 namespace iitasoccer {
@@ -77,6 +78,26 @@ void fill_frame(TopTelemetryFrame& f) {
     f.goal_blue_distance_mm = cameras_get_goal_blue_distance_mm();
     f.cam_crc_errors        = cameras_get_crc_errors_total();
     f.cam_resyncs           = cameras_resyncs_total();
+
+    // ── Detecciones POR CÁMARA (pre-fusión, A1) ──
+    f.ball_front_visible            = cameras_get_ball_front_visible() ? 1 : 0;
+    f.ball_front_x_mm               = cameras_get_ball_front_x_mm();
+    f.ball_front_y_mm               = cameras_get_ball_front_y_mm();
+    f.ball_back_visible             = cameras_get_ball_back_visible() ? 1 : 0;
+    f.ball_back_x_mm                = cameras_get_ball_back_x_mm();
+    f.ball_back_y_mm                = cameras_get_ball_back_y_mm();
+    f.goal_yellow_front_visible     = cameras_get_goal_yellow_front_visible() ? 1 : 0;
+    f.goal_yellow_front_angle_cd    = cameras_get_goal_yellow_front_angle_centideg();
+    f.goal_yellow_front_distance_mm = cameras_get_goal_yellow_front_distance_mm();
+    f.goal_yellow_back_visible      = cameras_get_goal_yellow_back_visible() ? 1 : 0;
+    f.goal_yellow_back_angle_cd     = cameras_get_goal_yellow_back_angle_centideg();
+    f.goal_yellow_back_distance_mm  = cameras_get_goal_yellow_back_distance_mm();
+    f.goal_blue_front_visible       = cameras_get_goal_blue_front_visible() ? 1 : 0;
+    f.goal_blue_front_angle_cd      = cameras_get_goal_blue_front_angle_centideg();
+    f.goal_blue_front_distance_mm   = cameras_get_goal_blue_front_distance_mm();
+    f.goal_blue_back_visible        = cameras_get_goal_blue_back_visible() ? 1 : 0;
+    f.goal_blue_back_angle_cd       = cameras_get_goal_blue_back_angle_centideg();
+    f.goal_blue_back_distance_mm    = cameras_get_goal_blue_back_distance_mm();
 
     // ── IMU ──
     f.imu_heading_deg       = sensors_imu_get_heading_deg();
@@ -123,6 +144,42 @@ void fill_frame(TopTelemetryFrame& f) {
     // Si todavía no se envió ningún snapshot, snap_valid queda 0 (tt_frame_init).
 
     f.frames_sent = comm_central_get_frames_sent();
+
+    // ── Lo que llega de la BASE (DOWN): OTOS + línea + vector de escape (A1) ──
+    // Gateado por frescura: si no fresh, los valores quedan en sus defaults de
+    // tt_frame_init (pose/vel en 0, línea en sentinelas N/A) → no se muestran ceros
+    // como si fueran reales. Solo lectura; no toca nada de la conducta.
+    f.down_pose_fresh = comm_down_is_pose_fresh() ? 1 : 0;
+    if (f.down_pose_fresh) {
+        const Pose2D& p = comm_down_get_pose();
+        f.down_pose_x_mm       = p.x_mm;
+        f.down_pose_y_mm       = p.y_mm;
+        f.down_pose_heading_cd = p.heading_centideg;
+        f.down_pose_confidence = p.confidence;
+    }
+    f.down_vel_fresh = comm_down_is_vel_fresh() ? 1 : 0;
+    if (f.down_vel_fresh) {
+        const Velocity2D& v = comm_down_get_velocity();
+        f.down_vel_vx_mm_s    = v.vx_mm_s;
+        f.down_vel_vy_mm_s    = v.vy_mm_s;
+        f.down_vel_omega_cd_s = v.omega_centideg_s;
+        f.down_vel_slip       = v.slip_estimate;
+    }
+    f.down_line_fresh = comm_down_is_line_fresh() ? 1 : 0;
+    if (f.down_line_fresh) {
+        const LineStatusV2& l = comm_down_get_line_status();
+        f.down_line_schema         = l.schema_version;
+        f.down_line_data_valid     = l.data_valid;
+        f.down_line_angle_cd       = l.line_angle_centideg;
+        f.down_escape_angle_cd     = l.escape_angle_centideg;
+        f.down_line_penetration_mm = l.penetration_mm;
+        f.down_line_cross_track_mm = l.cross_track_mm;
+        f.down_line_present        = l.line_present;
+        f.down_line_sensors_on     = l.sensors_on_line;
+        f.down_line_event_flags    = l.event_flags;
+        f.down_line_quality        = l.quality;
+        f.down_line_sample_age_ms  = l.sample_age_ms;
+    }
 }
 
 // Emite UN frame en JSON Lines (modo MÁQUINA, para la app).
@@ -130,7 +187,7 @@ void emit_frame() {
     TopTelemetryFrame f;
     fill_frame(f);
     f.seq = g_seq++;
-    static char buf[1024];
+    static char buf[1536];
     const int n = tt_serialize_jsonl(buf, sizeof(buf), f);
     if (n > 0) {
         Serial.write(reinterpret_cast<const uint8_t*>(buf), n);
@@ -142,7 +199,7 @@ void emit_human() {
     TopTelemetryFrame f;
     fill_frame(f);
     f.seq = g_seq++;
-    static char hbuf[768];
+    static char hbuf[1024];
     const int n = tt_format_human(hbuf, sizeof(hbuf), f);
     if (n > 0) {
         Serial.write(reinterpret_cast<const uint8_t*>(hbuf), n);

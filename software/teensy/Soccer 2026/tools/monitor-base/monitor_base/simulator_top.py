@@ -41,14 +41,26 @@ class SimulatorTop:
         # Arco amarillo adelante, azul atrás.
         gy_ang = int(round(100 * (5.0 * math.sin(s * 0.03))))
         gb_ang = int(round(100 * (180.0 - 5.0 * math.sin(s * 0.03))))
+        line_present = 1 if (s % 40) < 20 else 0   # v2: la línea aparece/desaparece
         obj = {
-            "v": 1, "seq": s, "t_ms": self.t_ms,
+            "v": 2, "seq": s, "t_ms": self.t_ms,
             "cam": {
                 "fok": 1, "bok": 1, "bvis": ball_vis, "bx": ball_x, "by": ball_y,
                 "bconf": 80 if ball_vis else 0, "bvx": ball_vx, "bvy": -20,
                 "gy_vis": 1, "gy_ang": gy_ang, "gy_dist": 1200,
                 "gb_vis": 1, "gb_ang": gb_ang, "gb_dist": 2400,
                 "crc": 0, "resync": 0,
+            },
+            # v2: per-cámara — la frontal ve pelota + arco amarillo; la trasera el azul.
+            "camf": {
+                "bvis": ball_vis, "bx": ball_x, "by": ball_y,
+                "gy_vis": 1, "gy_ang": gy_ang, "gy_dist": 1200,
+                "gb_vis": 0, "gb_ang": 0, "gb_dist": 0,
+            },
+            "camb": {
+                "bvis": 0, "bx": 0, "by": 0,
+                "gy_vis": 0, "gy_ang": 0, "gy_dist": 0,
+                "gb_vis": 1, "gb_ang": gb_ang, "gb_dist": 2400,
             },
             "imu": {
                 "hdg": round(hdg, 2), "left": round(hdg - 0.3, 2),
@@ -65,6 +77,22 @@ class SimulatorTop:
                 "opp_ang": gy_ang, "opp_dist": 1200, "opp_vis": 1,
                 "own_vis": 0, "own_ang": 0, "own_dist": 0,
                 "obst": tmin, "ref": 1, "flags": 0x18,
+            },
+            # v2: lo que llega de la base (DOWN) — OTOS + línea + vector de escape.
+            "base": {
+                "pfresh": 1, "px": int(round(50 * math.sin(t * 0.3))),
+                "py": int(round(30 * t)) % 600, "phdg_cd": int(round(hdg * 100)),
+                "pconf": 70,
+                "vfresh": 1, "vx": 100, "vy": -10, "omega": int(round(hdg * 5)), "slip": 0,
+            },
+            "line": {
+                "fresh": 1, "schema": 2, "valid": 1,
+                "angle_cd": 4500 if line_present else -32768,
+                "escape_cd": -13500 if line_present else -32768,
+                "pen_mm": 60 if line_present else 65535,
+                "cross_mm": -32768,
+                "present": line_present, "sensors": 7 if line_present else 0,
+                "events": 0x01 if line_present else 0, "quality": 80, "age_ms": 2,
             },
             "diag": {"frames_sent": 1000 + s},
         }

@@ -85,4 +85,11 @@ GoalFused fuse_goal_dual(const CamObs& front,
                         bool front_alive,
                         bool back_alive);
 
+// Convierte UNA observación de cámara (ya en marco robot) a polar
+// (ángulo_centideg + distancia_mm), con la MISMA convención que fuse_goal_dual
+// (atan2(x,y), +90° = derecha). Sirve para exponer las detecciones POR CÁMARA en
+// la telemetría sin re-derivar la trigonometría en el glue Arduino. Si la obs no
+// es visible, devuelve {0,0,false}. Puro/host-testeable.
+GoalFused cam_obs_to_polar(const CamObs& o);
+
 }  // namespace iitasoccer

@@ -44,6 +44,32 @@ bool    cameras_goal_blue_visible();
 int16_t cameras_get_goal_blue_angle_centideg();
 int16_t cameras_get_goal_blue_distance_mm();
 
+// === Detecciones POR CÁMARA (pre-fusión) — A1 monitor de posicionamiento ===
+// Lo que ve CADA óptica por separado (frontal / trasera), antes de fusionar.
+// Permite ver el desacuerdo entre cámaras (pelota fantasma del promedio fusionado)
+// y decidir cuál apagar. Combinar con cameras_front_alive()/back_alive() para
+// distinguir "no ve" de "cámara caída". Pelota en x/y (mm); arcos en polar.
+bool    cameras_get_ball_front_visible();
+int16_t cameras_get_ball_front_x_mm();
+int16_t cameras_get_ball_front_y_mm();
+bool    cameras_get_ball_back_visible();
+int16_t cameras_get_ball_back_x_mm();
+int16_t cameras_get_ball_back_y_mm();
+
+bool    cameras_get_goal_yellow_front_visible();
+int16_t cameras_get_goal_yellow_front_angle_centideg();
+int16_t cameras_get_goal_yellow_front_distance_mm();
+bool    cameras_get_goal_yellow_back_visible();
+int16_t cameras_get_goal_yellow_back_angle_centideg();
+int16_t cameras_get_goal_yellow_back_distance_mm();
+
+bool    cameras_get_goal_blue_front_visible();
+int16_t cameras_get_goal_blue_front_angle_centideg();
+int16_t cameras_get_goal_blue_front_distance_mm();
+bool    cameras_get_goal_blue_back_visible();
+int16_t cameras_get_goal_blue_back_angle_centideg();
+int16_t cameras_get_goal_blue_back_distance_mm();
+
 // === Estado / watchdog ===
 bool     cameras_front_alive();
 bool     cameras_back_alive();

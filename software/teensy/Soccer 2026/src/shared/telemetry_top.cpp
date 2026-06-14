@@ -39,6 +39,13 @@ void tt_frame_init(TopTelemetryFrame& f, uint8_t num_tof) {
     for (int i = 0; i < TT_MAX_TOF; ++i) f.tof_mm[i] = TT_TOF_NO_READING;
     f.hcsr04_mm = TT_TOF_NO_READING;
     f.tof_min_mm = TT_TOF_NO_READING;
+    // Sentinels N/A de la línea de la base: un frame recién init (sin datos de
+    // DOWN) serializa como N/A, no como 0 (que parecería lectura real). El glue
+    // los sobrescribe sólo cuando el dato está fresh.
+    f.down_line_angle_cd       = TT_NA_I16;
+    f.down_escape_angle_cd     = TT_NA_I16;
+    f.down_line_cross_track_mm = TT_NA_I16;
+    f.down_line_penetration_mm = TT_NA_U16;
 }
 
 int tt_serialize_jsonl(char* buf, int cap, const TopTelemetryFrame& f) {
@@ -69,6 +76,28 @@ int tt_serialize_jsonl(char* buf, int cap, const TopTelemetryFrame& f) {
         (unsigned)(f.goal_blue_visible ? 1 : 0), (int)f.goal_blue_angle_cd,
         (int)f.goal_blue_distance_mm,
         (unsigned long)f.cam_crc_errors, (unsigned long)f.cam_resyncs);
+    if (off < 0) return -1;
+
+    // camf — detecciones de la cámara FRONTAL (pre-fusión, A1)
+    off = tt_append(buf, cap, off,
+        "\"camf\":{\"bvis\":%u,\"bx\":%d,\"by\":%d,\"gy_vis\":%u,\"gy_ang\":%d,"
+        "\"gy_dist\":%d,\"gb_vis\":%u,\"gb_ang\":%d,\"gb_dist\":%d},",
+        (unsigned)(f.ball_front_visible ? 1 : 0), (int)f.ball_front_x_mm, (int)f.ball_front_y_mm,
+        (unsigned)(f.goal_yellow_front_visible ? 1 : 0), (int)f.goal_yellow_front_angle_cd,
+        (int)f.goal_yellow_front_distance_mm,
+        (unsigned)(f.goal_blue_front_visible ? 1 : 0), (int)f.goal_blue_front_angle_cd,
+        (int)f.goal_blue_front_distance_mm);
+    if (off < 0) return -1;
+
+    // camb — detecciones de la cámara TRASERA (pre-fusión, A1)
+    off = tt_append(buf, cap, off,
+        "\"camb\":{\"bvis\":%u,\"bx\":%d,\"by\":%d,\"gy_vis\":%u,\"gy_ang\":%d,"
+        "\"gy_dist\":%d,\"gb_vis\":%u,\"gb_ang\":%d,\"gb_dist\":%d},",
+        (unsigned)(f.ball_back_visible ? 1 : 0), (int)f.ball_back_x_mm, (int)f.ball_back_y_mm,
+        (unsigned)(f.goal_yellow_back_visible ? 1 : 0), (int)f.goal_yellow_back_angle_cd,
+        (int)f.goal_yellow_back_distance_mm,
+        (unsigned)(f.goal_blue_back_visible ? 1 : 0), (int)f.goal_blue_back_angle_cd,
+        (int)f.goal_blue_back_distance_mm);
     if (off < 0) return -1;
 
     // imu
@@ -110,6 +139,29 @@ int tt_serialize_jsonl(char* buf, int cap, const TopTelemetryFrame& f) {
         (int)f.snap_goal_own_angle_cd, (int)f.snap_goal_own_distance_mm,
         (unsigned)f.snap_min_obstacle_mm, (unsigned)f.snap_referee_cmd,
         (unsigned)f.snap_flags);
+    if (off < 0) return -1;
+
+    // base — OTOS (pose + velocidad) que llega de la DOWN (A1)
+    off = tt_append(buf, cap, off,
+        "\"base\":{\"pfresh\":%u,\"px\":%d,\"py\":%d,\"phdg_cd\":%d,\"pconf\":%u,"
+        "\"vfresh\":%u,\"vx\":%d,\"vy\":%d,\"omega\":%d,\"slip\":%u},",
+        (unsigned)(f.down_pose_fresh ? 1 : 0), (int)f.down_pose_x_mm, (int)f.down_pose_y_mm,
+        (int)f.down_pose_heading_cd, (unsigned)f.down_pose_confidence,
+        (unsigned)(f.down_vel_fresh ? 1 : 0), (int)f.down_vel_vx_mm_s, (int)f.down_vel_vy_mm_s,
+        (int)f.down_vel_omega_cd_s, (unsigned)f.down_vel_slip);
+    if (off < 0) return -1;
+
+    // line — línea + vector de escape que llega de la DOWN (A1)
+    off = tt_append(buf, cap, off,
+        "\"line\":{\"fresh\":%u,\"schema\":%u,\"valid\":%u,\"angle_cd\":%d,\"escape_cd\":%d,"
+        "\"pen_mm\":%u,\"cross_mm\":%d,\"present\":%u,\"sensors\":%u,\"events\":%u,"
+        "\"quality\":%u,\"age_ms\":%u},",
+        (unsigned)(f.down_line_fresh ? 1 : 0), (unsigned)f.down_line_schema,
+        (unsigned)(f.down_line_data_valid ? 1 : 0), (int)f.down_line_angle_cd,
+        (int)f.down_escape_angle_cd, (unsigned)f.down_line_penetration_mm,
+        (int)f.down_line_cross_track_mm, (unsigned)(f.down_line_present ? 1 : 0),
+        (unsigned)f.down_line_sensors_on, (unsigned)f.down_line_event_flags,
+        (unsigned)f.down_line_quality, (unsigned)f.down_line_sample_age_ms);
     if (off < 0) return -1;
 
     // diag + cierre
@@ -162,6 +214,44 @@ int tt_format_human(char* buf, int cap, const TopTelemetryFrame& f) {
         off = tt_append(buf, cap, off, " | GB --\n");
     if (off < 0) return -1;
 
+    // L2b — detecciones POR CÁMARA (pre-fusión): front y back por separado.
+    // El delta front↔back delata la pelota fantasma del promedio fusionado.
+    off = tt_append(buf, cap, off, "  CAMF ");
+    if (off < 0) return -1;
+    if (f.ball_front_visible)
+        off = tt_append(buf, cap, off, "ball(%d,%d)", (int)f.ball_front_x_mm, (int)f.ball_front_y_mm);
+    else
+        off = tt_append(buf, cap, off, "ball --");
+    if (off < 0) return -1;
+    if (f.goal_yellow_front_visible)
+        off = tt_append(buf, cap, off, " GY a%.1f d%d", f.goal_yellow_front_angle_cd / 100.0, (int)f.goal_yellow_front_distance_mm);
+    else
+        off = tt_append(buf, cap, off, " GY --");
+    if (off < 0) return -1;
+    if (f.goal_blue_front_visible)
+        off = tt_append(buf, cap, off, " GB a%.1f d%d\n", f.goal_blue_front_angle_cd / 100.0, (int)f.goal_blue_front_distance_mm);
+    else
+        off = tt_append(buf, cap, off, " GB --\n");
+    if (off < 0) return -1;
+
+    off = tt_append(buf, cap, off, "  CAMB ");
+    if (off < 0) return -1;
+    if (f.ball_back_visible)
+        off = tt_append(buf, cap, off, "ball(%d,%d)", (int)f.ball_back_x_mm, (int)f.ball_back_y_mm);
+    else
+        off = tt_append(buf, cap, off, "ball --");
+    if (off < 0) return -1;
+    if (f.goal_yellow_back_visible)
+        off = tt_append(buf, cap, off, " GY a%.1f d%d", f.goal_yellow_back_angle_cd / 100.0, (int)f.goal_yellow_back_distance_mm);
+    else
+        off = tt_append(buf, cap, off, " GY --");
+    if (off < 0) return -1;
+    if (f.goal_blue_back_visible)
+        off = tt_append(buf, cap, off, " GB a%.1f d%d\n", f.goal_blue_back_angle_cd / 100.0, (int)f.goal_blue_back_distance_mm);
+    else
+        off = tt_append(buf, cap, off, " GB --\n");
+    if (off < 0) return -1;
+
     // L3 — IMU (heading fusionado + por sensor)
     off = tt_append(buf, cap, off,
         "  IMU hdg %.2f %s L%.2f R%.2f dis%.2f (L:%s R:%s)\n",
@@ -193,26 +283,67 @@ int tt_format_human(char* buf, int cap, const TopTelemetryFrame& f) {
     if (!f.snap_valid) {
         off = tt_append(buf, cap, off, "  SNAP (sin snapshot todavia)\n");
         if (off < 0) return -1;
-        return off;
+    } else {
+        off = tt_append(buf, cap, off, "  SNAP x%d y%d hdg%.2f c%u | ",
+                        (int)f.snap_my_x_mm, (int)f.snap_my_y_mm,
+                        f.snap_my_heading_cd / 100.0, (unsigned)f.snap_my_confidence);
+        if (off < 0) return -1;
+        if (f.snap_ball_visible)
+            off = tt_append(buf, cap, off, "ball(%d,%d) c%u",
+                            (int)f.snap_ball_x_mm, (int)f.snap_ball_y_mm,
+                            (unsigned)f.snap_ball_confidence);
+        else
+            off = tt_append(buf, cap, off, "ball --");
+        if (off < 0) return -1;
+        off = tt_append(buf, cap, off,
+            " | opp a%.1f d%d %s | own %s | obst%u ref%u flags0x%02X\n",
+            f.snap_goal_opp_angle_cd / 100.0, (int)f.snap_goal_opp_distance_mm,
+            f.snap_goal_opp_visible ? "VIS" : "--",
+            f.snap_goal_own_visible ? "VIS" : "--",
+            (unsigned)f.snap_min_obstacle_mm, (unsigned)f.snap_referee_cmd,
+            (unsigned)f.snap_flags);
+        if (off < 0) return -1;
     }
-    off = tt_append(buf, cap, off, "  SNAP x%d y%d hdg%.2f c%u | ",
-                    (int)f.snap_my_x_mm, (int)f.snap_my_y_mm,
-                    f.snap_my_heading_cd / 100.0, (unsigned)f.snap_my_confidence);
+
+    // L6 — BASE: OTOS (pose + velocidad) que llega de la DOWN. Si no fresh, STALE
+    // (no muestro ceros como si fueran posición real).
+    off = tt_append(buf, cap, off, "  BASE pose ");
     if (off < 0) return -1;
-    if (f.snap_ball_visible)
-        off = tt_append(buf, cap, off, "ball(%d,%d) c%u",
-                        (int)f.snap_ball_x_mm, (int)f.snap_ball_y_mm,
-                        (unsigned)f.snap_ball_confidence);
+    if (f.down_pose_fresh)
+        off = tt_append(buf, cap, off, "x%d y%d hdg%.2f c%u",
+                        (int)f.down_pose_x_mm, (int)f.down_pose_y_mm,
+                        f.down_pose_heading_cd / 100.0, (unsigned)f.down_pose_confidence);
     else
-        off = tt_append(buf, cap, off, "ball --");
+        off = tt_append(buf, cap, off, "STALE");
     if (off < 0) return -1;
-    off = tt_append(buf, cap, off,
-        " | opp a%.1f d%d %s | own %s | obst%u ref%u flags0x%02X\n",
-        f.snap_goal_opp_angle_cd / 100.0, (int)f.snap_goal_opp_distance_mm,
-        f.snap_goal_opp_visible ? "VIS" : "--",
-        f.snap_goal_own_visible ? "VIS" : "--",
-        (unsigned)f.snap_min_obstacle_mm, (unsigned)f.snap_referee_cmd,
-        (unsigned)f.snap_flags);
+    off = tt_append(buf, cap, off, " | vel ");
+    if (off < 0) return -1;
+    if (f.down_vel_fresh)
+        off = tt_append(buf, cap, off, "vx%d vy%d w%.1f slip%u\n",
+                        (int)f.down_vel_vx_mm_s, (int)f.down_vel_vy_mm_s,
+                        f.down_vel_omega_cd_s / 100.0, (unsigned)f.down_vel_slip);
+    else
+        off = tt_append(buf, cap, off, "STALE\n");
+    if (off < 0) return -1;
+
+    // L7 — LINE: línea + vector de escape de la DOWN. INVALID = compuerta maestra;
+    // '--' en los campos en sentinela N/A.
+    off = tt_append(buf, cap, off, "  LINE %s%s present%u sensors%u",
+                    f.down_line_fresh ? "FRESH" : "STALE",
+                    f.down_line_data_valid ? "" : " INVALID",
+                    (unsigned)(f.down_line_present ? 1 : 0), (unsigned)f.down_line_sensors_on);
+    if (off < 0) return -1;
+    if (f.down_line_angle_cd == TT_NA_I16) off = tt_append(buf, cap, off, " | angle --");
+    else                                   off = tt_append(buf, cap, off, " | angle a%.1f", f.down_line_angle_cd / 100.0);
+    if (off < 0) return -1;
+    if (f.down_escape_angle_cd == TT_NA_I16) off = tt_append(buf, cap, off, " esc --");
+    else                                     off = tt_append(buf, cap, off, " esc a%.1f", f.down_escape_angle_cd / 100.0);
+    if (off < 0) return -1;
+    if (f.down_line_penetration_mm == TT_NA_U16) off = tt_append(buf, cap, off, " pen --");
+    else                                         off = tt_append(buf, cap, off, " pen%umm", (unsigned)f.down_line_penetration_mm);
+    if (off < 0) return -1;
+    off = tt_append(buf, cap, off, " q%u ev0x%02X\n",
+                    (unsigned)f.down_line_quality, (unsigned)f.down_line_event_flags);
     if (off < 0) return -1;
 
     return off;

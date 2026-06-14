@@ -34,20 +34,48 @@ static void make_golden_frame(TopTelemetryFrame& f) {
     f.snap_goal_own_visible = 0; f.snap_goal_own_angle_cd = 0; f.snap_goal_own_distance_mm = 0;
     f.snap_min_obstacle_mm = 150; f.snap_referee_cmd = 1; f.snap_flags = 0x18;
     f.frames_sent = 1234;
+    // v2 — detecciones POR CÁMARA (front/back distintos a propósito → delta visible)
+    f.ball_front_visible = 1; f.ball_front_x_mm = -118; f.ball_front_y_mm = 338;
+    f.ball_back_visible = 0;  f.ball_back_x_mm = 0; f.ball_back_y_mm = 0;
+    f.goal_yellow_front_visible = 1; f.goal_yellow_front_angle_cd = 4500; f.goal_yellow_front_distance_mm = 1200;
+    f.goal_yellow_back_visible = 0;
+    f.goal_blue_front_visible = 0;
+    f.goal_blue_back_visible = 1; f.goal_blue_back_angle_cd = -9000; f.goal_blue_back_distance_mm = 800;
+    // v2 — base (DOWN): pose fresh + vel fresh + línea válida; cross_track queda en
+    // sentinela N/A (no se sobreescribe) para cubrir el camino "--".
+    f.down_pose_fresh = 1; f.down_pose_x_mm = 1500; f.down_pose_y_mm = 2000;
+    f.down_pose_heading_cd = 9000; f.down_pose_confidence = 75;
+    f.down_vel_fresh = 1; f.down_vel_vx_mm_s = 120; f.down_vel_vy_mm_s = -30;
+    f.down_vel_omega_cd_s = 4500; f.down_vel_slip = 12;
+    f.down_line_fresh = 1; f.down_line_schema = 2; f.down_line_data_valid = 1;
+    f.down_line_angle_cd = 4500; f.down_escape_angle_cd = -13500; f.down_line_penetration_mm = 80;
+    f.down_line_present = 1; f.down_line_sensors_on = 7; f.down_line_event_flags = 0x01;
+    f.down_line_quality = 88; f.down_line_sample_age_ms = 3;
 }
 
+// GOLDEN v2 (regenerado 2026-06-14, A1): +camf/camb (per-cámara) +base/line (DOWN).
+// Fuente de verdad cross-lenguaje: idéntico a tools/monitor-base/tests/golden_top_v2.jsonl.
 static const char* GOLDEN =
-    "{\"v\":1,\"seq\":3,\"t_ms\":5000,\"cam\":{\"fok\":1,\"bok\":0,\"bvis\":1,"
-    "\"bx\":-120,\"by\":340,\"bconf\":77,\"bvx\":-15,\"bvy\":200,\"gy_vis\":1,"
-    "\"gy_ang\":4500,\"gy_dist\":1200,\"gb_vis\":0,\"gb_ang\":-9000,"
-    "\"gb_dist\":2500,\"crc\":2,\"resync\":5},\"imu\":{\"hdg\":42.50,"
-    "\"left\":42.10,\"right\":42.90,\"disagree\":0.80,\"lok\":1,\"rok\":1,"
-    "\"valid\":1},\"tof\":{\"n\":4,\"d\":[150,800,65535,1200],\"hc\":300,"
-    "\"min\":150},\"snap\":{\"valid\":1,\"x\":100,\"y\":-200,\"hdg_cd\":4250,"
-    "\"conf\":80,\"bx\":-118,\"by\":338,\"bvis\":1,\"bconf\":77,\"bvx\":-15,"
-    "\"bvy\":200,\"opp_ang\":4500,\"opp_dist\":1200,\"opp_vis\":1,\"own_vis\":0,"
-    "\"own_ang\":0,\"own_dist\":0,\"obst\":150,\"ref\":1,\"flags\":24},"
-    "\"diag\":{\"frames_sent\":1234}}\n";
+    "{\"v\":2,\"seq\":3,\"t_ms\":5000,\"cam\":{\"fok\":1,\"bok\":0,\"bv"
+    "is\":1,\"bx\":-120,\"by\":340,\"bconf\":77,\"bvx\":-15,\"bvy\":200"
+    ",\"gy_vis\":1,\"gy_ang\":4500,\"gy_dist\":1200,\"gb_vis\":0,\"gb_a"
+    "ng\":-9000,\"gb_dist\":2500,\"crc\":2,\"resync\":5},\"camf\":{\"bv"
+    "is\":1,\"bx\":-118,\"by\":338,\"gy_vis\":1,\"gy_ang\":4500,\"gy_di"
+    "st\":1200,\"gb_vis\":0,\"gb_ang\":0,\"gb_dist\":0},\"camb\":{\"bvi"
+    "s\":0,\"bx\":0,\"by\":0,\"gy_vis\":0,\"gy_ang\":0,\"gy_dist\":0,\""
+    "gb_vis\":1,\"gb_ang\":-9000,\"gb_dist\":800},\"imu\":{\"hdg\":42.5"
+    "0,\"left\":42.10,\"right\":42.90,\"disagree\":0.80,\"lok\":1,\"rok"
+    "\":1,\"valid\":1},\"tof\":{\"n\":4,\"d\":[150,800,65535,1200],\"hc"
+    "\":300,\"min\":150},\"snap\":{\"valid\":1,\"x\":100,\"y\":-200,\"h"
+    "dg_cd\":4250,\"conf\":80,\"bx\":-118,\"by\":338,\"bvis\":1,\"bconf"
+    "\":77,\"bvx\":-15,\"bvy\":200,\"opp_ang\":4500,\"opp_dist\":1200,\""
+    "opp_vis\":1,\"own_vis\":0,\"own_ang\":0,\"own_dist\":0,\"obst\":15"
+    "0,\"ref\":1,\"flags\":24},\"base\":{\"pfresh\":1,\"px\":1500,\"py\""
+    ":2000,\"phdg_cd\":9000,\"pconf\":75,\"vfresh\":1,\"vx\":120,\"vy\""
+    ":-30,\"omega\":4500,\"slip\":12},\"line\":{\"fresh\":1,\"schema\":"
+    "2,\"valid\":1,\"angle_cd\":4500,\"escape_cd\":-13500,\"pen_mm\":80"
+    ",\"cross_mm\":-32768,\"present\":1,\"sensors\":7,\"events\":1,\"qu"
+    "ality\":88,\"age_ms\":3},\"diag\":{\"frames_sent\":1234}}\n";
 
 void test_tt_serialize_golden_exact(void) {
     TopTelemetryFrame f;
@@ -122,7 +150,7 @@ void test_tt_negative_fields(void) {
 void test_tt_human_shape_and_sections(void) {
     TopTelemetryFrame f;
     make_golden_frame(f);
-    char buf[768];
+    char buf[1024];
     const int n = tt_format_human(buf, sizeof(buf), f);
     TEST_ASSERT_TRUE(n > 0);
     TEST_ASSERT_EQUAL_INT((int)strlen(buf), n);
@@ -131,15 +159,50 @@ void test_tt_human_shape_and_sections(void) {
     TEST_ASSERT_EQUAL_CHAR('[', buf[0]);
     TEST_ASSERT_NOT_NULL(strstr(buf, "[TOP] seq 3"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "  CAM "));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "  CAMF "));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "  CAMB "));
     TEST_ASSERT_NOT_NULL(strstr(buf, "  IMU "));
     TEST_ASSERT_NOT_NULL(strstr(buf, "  ToF "));
     TEST_ASSERT_NOT_NULL(strstr(buf, "  SNAP "));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "  BASE "));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "  LINE "));
+}
+
+// v2: per-cámara + base/línea — valores y caminos FRESH/STALE/N-A.
+void test_tt_human_v2_per_camera_and_base(void) {
+    TopTelemetryFrame f;
+    make_golden_frame(f);
+    char buf[1024];
+    TEST_ASSERT_TRUE(tt_format_human(buf, sizeof(buf), f) > 0);
+    // per-cámara: la frontal ve la pelota en (-118,338); la trasera no.
+    TEST_ASSERT_NOT_NULL(strstr(buf, "CAMF ball(-118,338)"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "CAMB ball --"));
+    // base fresh + línea con vector de escape (escape_cd=-13500 → -135.0)
+    TEST_ASSERT_NOT_NULL(strstr(buf, "BASE pose x1500 y2000"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "LINE FRESH"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "esc a-135.0"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "pen80mm"));
+}
+
+void test_tt_human_base_stale_and_line_na(void) {
+    // Frame init: base NO fresh, línea sin datos → STALE + N/A, sin ceros falsos.
+    TopTelemetryFrame f;
+    tt_frame_init(f, 4);
+    f.seq = 1;
+    char buf[1024];
+    TEST_ASSERT_TRUE(tt_format_human(buf, sizeof(buf), f) > 0);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "BASE pose STALE"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "vel STALE"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "LINE STALE"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "angle --"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "esc --"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "pen --"));
 }
 
 void test_tt_human_values_visible(void) {
     TopTelemetryFrame f;
     make_golden_frame(f);
-    char buf[768];
+    char buf[1024];
     TEST_ASSERT_TRUE(tt_format_human(buf, sizeof(buf), f) > 0);
     TEST_ASSERT_NOT_NULL(strstr(buf, "ball(-120,340) c77 v(-15,200)"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "GY a45.0 d1200"));
@@ -156,7 +219,7 @@ void test_tt_human_dashes_when_absent(void) {
     TopTelemetryFrame f;
     tt_frame_init(f, 4);
     f.seq = 1;
-    char buf[768];
+    char buf[1024];
     TEST_ASSERT_TRUE(tt_format_human(buf, sizeof(buf), f) > 0);
     TEST_ASSERT_NOT_NULL(strstr(buf, "F:-- B:--"));
     TEST_ASSERT_NOT_NULL(strstr(buf, "ball --"));
@@ -230,6 +293,8 @@ int main(int, char**) {
     RUN_TEST(test_tt_human_shape_and_sections);
     RUN_TEST(test_tt_human_values_visible);
     RUN_TEST(test_tt_human_dashes_when_absent);
+    RUN_TEST(test_tt_human_v2_per_camera_and_base);
+    RUN_TEST(test_tt_human_base_stale_and_line_na);
     RUN_TEST(test_tt_human_buffer_too_small_returns_neg1);
     RUN_TEST(test_tt_human_null_args_return_neg1);
     RUN_TEST(test_tt_parse_empty_none);

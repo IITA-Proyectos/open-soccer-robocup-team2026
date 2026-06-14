@@ -49,6 +49,18 @@ BallFused  g_ball{};
 GoalFused  g_goal_yellow{};
 GoalFused  g_goal_blue{};
 
+// Detecciones POR CÁMARA (pre-fusión), para la telemetría del monitor de
+// posicionamiento (A1, 2026-06-13). recompute_fused() ya calcula estas CamObs y
+// hoy las descarta; acá las PERSISTIMOS para exponerlas sin re-derivar. Solo
+// lectura — NO cambian la fusión ni la conducta. La pelota queda como CamObs
+// (x/y float, marco robot); los arcos como polar (cam_obs_to_polar).
+CamObs     g_ball_front{};
+CamObs     g_ball_back{};
+GoalFused  g_yellow_front{};
+GoalFused  g_yellow_back{};
+GoalFused  g_blue_front{};
+GoalFused  g_blue_back{};
+
 // Estimador de velocidad de la pelota (módulo puro host-testeado).
 BallVelocityState        g_ball_vel{};
 const BallVelocityParams g_ball_vel_params = ball_velocity_default_params();
@@ -67,6 +79,15 @@ inline bool camera_alive(uint32_t last_ms, uint32_t now_ms) {
     // Convención: last_ms == 0 → todavía no recibimos ningún packet.
     if (last_ms == 0) return false;
     return (now_ms - last_ms) <= CAMERA_TIMEOUT_MS;
+}
+
+// Cast defensivo float→int16 (saturación en extremos) para los x/y per-cámara de
+// la pelota (CamObs guarda float). En el rango físico de hoy ([-1280,1280] mm) es
+// un cast común; el clamp protege si se sube CAMERA_UNIT_TO_MM al recalibrar.
+inline int16_t i16_clamp(float v) {
+    if (v >= 32767.0f)  return 32767;
+    if (v <= -32768.0f) return -32768;
+    return static_cast<int16_t>(v);
 }
 
 void recompute_fused(uint32_t now_ms) {
@@ -101,6 +122,16 @@ void recompute_fused(uint32_t now_ms) {
     const CamObs blue_b = cam_obs_to_robot_frame(
         pb.goal_blue_x, pb.goal_blue_y, pb.goal_blue_visible, 1, CAMERA_UNIT_TO_MM);
     g_goal_blue = fuse_goal_dual(blue_f, blue_b, front_alive, back_alive);
+
+    // Persistir las detecciones PRE-FUSIÓN por cámara (A1): pelota como CamObs
+    // (x/y), arcos como polar. NO gateadas por watchdog acá — el monitor combina
+    // con cameras_front_alive()/back_alive(). Lo que ve cada óptica, tal cual.
+    g_ball_front   = ball_f;
+    g_ball_back    = ball_b;
+    g_yellow_front = cam_obs_to_polar(yellow_f);
+    g_yellow_back  = cam_obs_to_polar(yellow_b);
+    g_blue_front   = cam_obs_to_polar(blue_f);
+    g_blue_back    = cam_obs_to_polar(blue_b);
 }
 
 }  // namespace
@@ -129,6 +160,9 @@ void cameras_init() {
     g_ball = BallFused{};
     g_goal_yellow = GoalFused{};
     g_goal_blue = GoalFused{};
+    g_ball_front = CamObs{};  g_ball_back = CamObs{};
+    g_yellow_front = GoalFused{};  g_yellow_back = GoalFused{};
+    g_blue_front = GoalFused{};  g_blue_back = GoalFused{};
     ball_velocity_reset(g_ball_vel);
 #ifdef TOP_CAM_STICKY
     ball_sticky_reset(g_ball_sticky);
@@ -190,6 +224,28 @@ int16_t cameras_get_goal_yellow_distance_mm()      { return g_goal_yellow.distan
 bool    cameras_goal_blue_visible()                { return g_goal_blue.visible; }
 int16_t cameras_get_goal_blue_angle_centideg()     { return g_goal_blue.angle_centideg; }
 int16_t cameras_get_goal_blue_distance_mm()        { return g_goal_blue.distance_mm; }
+
+// === Detecciones POR CÁMARA (pre-fusión) — A1 monitor de posicionamiento ===
+bool    cameras_get_ball_front_visible()           { return g_ball_front.visible; }
+int16_t cameras_get_ball_front_x_mm()              { return i16_clamp(g_ball_front.x_mm); }
+int16_t cameras_get_ball_front_y_mm()              { return i16_clamp(g_ball_front.y_mm); }
+bool    cameras_get_ball_back_visible()            { return g_ball_back.visible; }
+int16_t cameras_get_ball_back_x_mm()               { return i16_clamp(g_ball_back.x_mm); }
+int16_t cameras_get_ball_back_y_mm()               { return i16_clamp(g_ball_back.y_mm); }
+
+bool    cameras_get_goal_yellow_front_visible()        { return g_yellow_front.visible; }
+int16_t cameras_get_goal_yellow_front_angle_centideg() { return g_yellow_front.angle_centideg; }
+int16_t cameras_get_goal_yellow_front_distance_mm()    { return g_yellow_front.distance_mm; }
+bool    cameras_get_goal_yellow_back_visible()         { return g_yellow_back.visible; }
+int16_t cameras_get_goal_yellow_back_angle_centideg()  { return g_yellow_back.angle_centideg; }
+int16_t cameras_get_goal_yellow_back_distance_mm()     { return g_yellow_back.distance_mm; }
+
+bool    cameras_get_goal_blue_front_visible()        { return g_blue_front.visible; }
+int16_t cameras_get_goal_blue_front_angle_centideg() { return g_blue_front.angle_centideg; }
+int16_t cameras_get_goal_blue_front_distance_mm()    { return g_blue_front.distance_mm; }
+bool    cameras_get_goal_blue_back_visible()         { return g_blue_back.visible; }
+int16_t cameras_get_goal_blue_back_angle_centideg()  { return g_blue_back.angle_centideg; }
+int16_t cameras_get_goal_blue_back_distance_mm()     { return g_blue_back.distance_mm; }
 
 bool cameras_front_alive() {
     return camera_alive(g_last_packet_ms_front, millis());

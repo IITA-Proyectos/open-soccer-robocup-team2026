@@ -126,4 +126,19 @@ GoalFused fuse_goal_dual(const CamObs& front,
     return out;
 }
 
+GoalFused cam_obs_to_polar(const CamObs& o) {
+    GoalFused out{};
+    out.visible = o.visible;
+    if (o.visible) {
+        // Misma trigonometría que fuse_goal_dual (rama visible), para UNA cámara.
+        const float angle_rad = std::atan2(o.x_mm, o.y_mm);
+        out.angle_centideg = clamp_to_i16_trunc(angle_rad * (18000.0f / PI_F));
+        out.distance_mm = clamp_to_i16_trunc(std::sqrt(o.x_mm * o.x_mm + o.y_mm * o.y_mm));
+    } else {
+        out.angle_centideg = 0;
+        out.distance_mm = 0;
+    }
+    return out;
+}
+
 }  // namespace iitasoccer

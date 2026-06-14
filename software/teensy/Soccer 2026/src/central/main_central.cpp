@@ -277,18 +277,43 @@ void loop() {
     // ⚠️ BANCO (audit 2026-06-04): motors_brake() hace freno ACTIVO (corto HIGH/HIGH
     // en el H-bridge), no solo PWM=0 — pero FALTA CONFIRMAR en el Zircon que de
     // verdad frena y no queda en COAST (rueda libre). Medirlo antes de confiar el borde.
-    if (world_model_imminent_exit() && world_model_line_is_fresh()) {
-        motors_brake();                       // freno activo (corto en H-bridge), no solo PWM=0
-        digitalWrite(PIN_LED_STATUS, HIGH);   // LED fijo = alerta visual
+    // ANTI-LATCH (banco María 2026-06-14, caja negra v1.2 — root cause): el freno de
+    // borde LATCHEABA y CONGELABA al arquero sobre su línea IZQUIERDA. Mecanismo (probado
+    // con el log): imminent_exit quedaba en 1 → se frenaba y se hacía `return` salteando
+    // strategy_tick() en CADA vuelta → la huida (fase ESCAPE) NUNCA corría → el robot no se
+    // movía → la línea seguía inminente → imminent seguía en 1 = DEADLOCK (5+ s trabado,
+    // emerg=1 todo el tramo en el CSV). En la línea DERECHA imminent NO disparaba (geometría)
+    // y por eso ahí escapaba bien. No era el motor ni el GKS_ESCAPE_MS.
+    // Causa de raíz: el freno está para matar el MOMENTO de un roll-out RÁPIDO, pero el
+    // arquero VIVE pegado a su línea por diseño → pasados ~350 ms seguir frenando solo lo
+    // CONGELA. Fix: frenar el momento y luego SOLTAR (devolver control a la FSM, cuyo ESCAPE
+    // lo despega hacia adentro = lado contrario). Se mantiene soltado hasta que imminent
+    // baje (sin stutter). Sigue fail-safe ante un borde real: frena de verdad primero; lo
+    // único que se elimina es el congelamiento permanente (que era estrictamente peor).
+    constexpr uint32_t GK_EDGE_BRAKE_MAX_MS = 350;
+    static uint32_t s_edge_brake_since    = 0;
+    static bool     s_edge_brake_released = false;
+    const bool edge_now = world_model_imminent_exit() && world_model_line_is_fresh();
+    if (edge_now) {
+        if (s_edge_brake_since == 0) { s_edge_brake_since = millis(); s_edge_brake_released = false; }
+        if (!s_edge_brake_released && (millis() - s_edge_brake_since) >= GK_EDGE_BRAKE_MAX_MS) {
+            s_edge_brake_released = true;   // momento ya frenado → soltar y NO re-frenar hasta que baje
+        }
+        if (!s_edge_brake_released) {
+            motors_brake();                       // freno activo (corto en H-bridge), no solo PWM=0
+            digitalWrite(PIN_LED_STATUS, HIGH);   // LED fijo = alerta visual
 #ifdef CENTRAL_BLACKBOX
-        // Auditoría 2026-06-11: sin esto la caja negra quedaba CIEGA exactamente
-        // durante el freno de borde (el return saltea el tick) — el momento que
-        // más se quiere analizar. Graba con flag de emergencia (bit7/columna emerg).
-        blackbox_tick_emergency();
+            // Auditoría 2026-06-11: sin esto la caja negra quedaba CIEGA exactamente durante el
+            // freno (el return saltea el tick). Graba con flag de emergencia (columna emerg).
+            blackbox_tick_emergency();
 #endif
-        // No salimos del loop: seguimos leyendo los UARTs para enterarnos cuándo
-        // ABAJO baja la alerta y recuperar el control en el próximo tick.
-        return;
+            // No salimos del loop: seguimos leyendo los UARTs para enterarnos cuándo ABAJO baja la alerta.
+            return;
+        }
+        // soltado: caemos al strategy → la FSM (ESCAPE) despega al robot de su línea.
+    } else {
+        s_edge_brake_since    = 0;
+        s_edge_brake_released = false;   // imminent bajó → re-armar el freno para el próximo borde
     }
 
     // === Strategy + motores ===

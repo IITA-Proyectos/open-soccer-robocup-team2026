@@ -22,7 +22,7 @@ from .boot_status import BootStatusTracker
 from .health import STATUS_COLOR, STATUS_LABEL, Status, counts, evaluate
 from .protocol_top import TopFrame
 from .sources import FrameSource
-from .zones import NO_READING_COLOR, ZoneGrid, zone_color
+from .zones import NO_READING_COLOR, TOF_LABELS, ZoneGrid, zone_color
 
 # Comandos de config (grammar verificada en telemetry_top.cpp:378-438).
 # (etiqueta, comando ON, comando OFF) — toggles de habilitación.
@@ -35,7 +35,7 @@ TOGGLES = [
 ]
 TOF_POS = ("FRONT", "RIGHT", "BACK", "LEFT")
 NUM_TOF_BTN = 4         # ToF con botón de on/off + posición
-ZONE_CELL_PX = 16
+ZONE_CELL_PX = 32          # más grande: entra el valor mm por zona
 ZONE_GRID_W = 4
 
 
@@ -50,6 +50,8 @@ class MonitorTopHealthApp:
         self.frame_count = 0
         self.last_seq = -1
         self.dropped = 0
+        self._rate_hz = 0.0
+        self._last_t_ms: Optional[int] = None
         self.boot = BootStatusTracker()
         self._is_sim = getattr(source, "is_sim", False)
         # Estado OPTIMISTA de los toggles (el firmware no manda el estado de
@@ -86,8 +88,9 @@ class MonitorTopHealthApp:
         self._tiles_frame = ttk.Frame(body)
         self._tiles_frame.grid(row=1, column=0, sticky="nw", padx=(0, 14))
 
-        # Grillas de zonas de los ToF.
-        ttk.Label(body, text="ZONAS ToF (4×4 por sensor)",
+        # Grillas de zonas de los ToF (orientación canónica; rojo=cerca, verde=lejos,
+        # gris=sin lectura; el nº es la distancia en mm de esa zona).
+        ttk.Label(body, text="ZONAS ToF (4×4 · 🔴 cerca  🟢 lejos  ⬛ sin lectura · mm)",
                   font=("Segoe UI", 10, "bold")).grid(row=0, column=1, sticky="w")
         self._zones_frame = ttk.Frame(body)
         self._zones_frame.grid(row=1, column=1, sticky="nw")
@@ -187,6 +190,10 @@ class MonitorTopHealthApp:
             if gap > 0:
                 self.dropped += gap
         self.last_seq = f.seq
+        if self._last_t_ms is not None and f.t_ms > self._last_t_ms:
+            inst = 1000.0 / (f.t_ms - self._last_t_ms)
+            self._rate_hz = inst if self._rate_hz == 0 else 0.8 * self._rate_hz + 0.2 * inst
+        self._last_t_ms = f.t_ms
         if self.recorder is not None:
             self.recorder.write(f)
         self.last = f
@@ -209,9 +216,10 @@ class MonitorTopHealthApp:
         self._render_zones(f.tof)
         c = counts(items)
         self.header.configure(
-            text=(f"seq={f.seq}  frames={self.frame_count}  perdidos={self.dropped}  v{f.v}"
-                  f"     OK={c[Status.OK]}  REVISAR={c[Status.WARN]}  "
-                  f"FALLA={c[Status.DEAD]}  SIN DATO={c[Status.NODATA]}"))
+            text=(f"seq={f.seq}  {self._rate_hz:.0f} Hz  frames={self.frame_count}  "
+                  f"perdidos={self.dropped}  v{f.v}     OK={c[Status.OK]}  "
+                  f"REVISAR={c[Status.WARN]}  FALLA={c[Status.DEAD]}  "
+                  f"SIN DATO={c[Status.NODATA]}"))
         self._set_status(f"src OK · {self.source.describe()}")
 
     def _render_tiles(self, items) -> None:
@@ -249,20 +257,22 @@ class MonitorTopHealthApp:
             return
         self._zones_note.grid_remove()
         for i, sensor in enumerate(tof.zones):
-            grid = ZoneGrid.from_flat(sensor, width=ZONE_GRID_W)
+            # from_sensor → orientación CANÓNICA (corrige el ToF izquierdo 180°).
+            grid = ZoneGrid.from_sensor(sensor, i, width=ZONE_GRID_W)
             cv = self._zone_cv.get(i)
             if cv is None:
                 cv = self._make_zone_canvas(i, grid)
                 self._zone_cv[i] = cv
-            cells = cv["cells"]
+            cells, texts = cv["cells"], cv["texts"]
             for k, val in enumerate(grid.cells):
                 if k >= len(cells):
                     break
                 color = NO_READING_COLOR if val is None else zone_color(val)
                 cv["canvas"].itemconfig(cells[k], fill=color)
+                cv["canvas"].itemconfig(texts[k], text="" if val is None else str(val))
             vc = grid.valid_count
             cv["caption"].configure(
-                text=f"ToF {i}  ({vc}/{len(grid.cells)} con lectura)")
+                text=f"ToF {i} · {TOF_LABELS.get(i, '?')}  ({vc}/{len(grid.cells)})")
 
     def _make_zone_canvas(self, idx: int, grid: ZoneGrid) -> dict:
         wrap = ttk.Frame(self._zones_frame)
@@ -272,16 +282,20 @@ class MonitorTopHealthApp:
         canvas = tk.Canvas(wrap, width=w, height=h, bg="#0b0e11",
                            highlightthickness=0)
         canvas.pack()
-        cells = []
+        cells, texts = [], []
         for r in range(grid.height):
             for c in range(grid.width):
                 x0, y0 = c * ZONE_CELL_PX, r * ZONE_CELL_PX
                 cells.append(canvas.create_rectangle(
                     x0, y0, x0 + ZONE_CELL_PX - 1, y0 + ZONE_CELL_PX - 1,
-                    fill=NO_READING_COLOR, outline="#222"))
-        caption = ttk.Label(wrap, text=f"ToF {idx}", font=("Consolas", 8))
+                    fill=NO_READING_COLOR, outline="#1a1d20"))
+                texts.append(canvas.create_text(
+                    x0 + ZONE_CELL_PX / 2, y0 + ZONE_CELL_PX / 2,
+                    text="", fill="#0b0e11", font=("Consolas", 7)))
+        caption = ttk.Label(wrap, font=("Consolas", 8),
+                            text=f"ToF {idx} · {TOF_LABELS.get(idx, '?')}")
         caption.pack()
-        return {"canvas": canvas, "cells": cells, "caption": caption}
+        return {"canvas": canvas, "cells": cells, "texts": texts, "caption": caption}
 
     # ── Helpers ───────────────────────────────────────────────────────────
     def _set_status(self, text: str) -> None:

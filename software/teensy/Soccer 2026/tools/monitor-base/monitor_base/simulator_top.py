@@ -38,6 +38,19 @@ class SimulatorTop:
         hc = 300 + int(round(50 * math.sin(s * 0.08)))
         tof_real = [x for x in d if x != 65535] + [hc]
         tmin = min(tof_real) if tof_real else 65535
+        # v2 ADITIVO: zonas crudas 4x4 (16) por sensor para la vista de salud.
+        # Un sensor "caído" (sin lectura) → todas sus zonas en sentinela 65535.
+        zones = []
+        for i in range(self.num_tof):
+            if d[i] == 65535:
+                zones.append([65535] * 16)
+            else:
+                cells = []
+                for k in range(16):
+                    val = d[i] + int(round(60 * math.sin(s * 0.1 + i + k * 0.4)))
+                    # alguna zona ocasional sin lectura (muestra el caso "miente")
+                    cells.append(65535 if (s + i + k) % 37 == 0 else max(40, val))
+                zones.append(cells)
         # Arco amarillo adelante, azul atrás.
         gy_ang = int(round(100 * (5.0 * math.sin(s * 0.03))))
         gb_ang = int(round(100 * (180.0 - 5.0 * math.sin(s * 0.03))))
@@ -67,7 +80,7 @@ class SimulatorTop:
                 "right": round(hdg + 0.3, 2), "disagree": 0.6,
                 "lok": 1, "rok": 1, "valid": 1,
             },
-            "tof": {"n": self.num_tof, "d": d, "hc": hc, "min": tmin},
+            "tof": {"n": self.num_tof, "d": d, "hc": hc, "min": tmin, "z": zones},
             "snap": {
                 "valid": 1, "x": int(round(50 * math.sin(t * 0.3))),
                 "y": int(round(30 * t)) % 600, "hdg_cd": int(round(hdg * 100)),

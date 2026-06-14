@@ -3,8 +3,51 @@ import pytest
 
 from monitor_base.protocol import ProtocolError
 from monitor_base.protocol_top import (
-    SCHEMA_VERSION_TOP, decode_snap_flags, parse_line_top,
+    SCHEMA_VERSION_TOP, decode_snap_flags, parse_line_top, parse_obj_top,
 )
+
+
+def _v2_obj_with(tof_extra=None):
+    """dict v2 mínimo válido; tof_extra se mergea al bloque 'tof'."""
+    tof = {"n": 4, "d": [150, 800, 65535, 1200], "hc": 300, "min": 150}
+    if tof_extra:
+        tof.update(tof_extra)
+    return {
+        "v": 2, "seq": 0, "t_ms": 0,
+        "cam": {"fok": 1, "bok": 1, "bvis": 0, "bx": 0, "by": 0, "bconf": 0,
+                "bvx": 0, "bvy": 0, "gy_vis": 0, "gy_ang": 0, "gy_dist": 0,
+                "gb_vis": 0, "gb_ang": 0, "gb_dist": 0, "crc": 0, "resync": 0},
+        "camf": {"bvis": 0, "bx": 0, "by": 0, "gy_vis": 0, "gy_ang": 0,
+                 "gy_dist": 0, "gb_vis": 0, "gb_ang": 0, "gb_dist": 0},
+        "camb": {"bvis": 0, "bx": 0, "by": 0, "gy_vis": 0, "gy_ang": 0,
+                 "gy_dist": 0, "gb_vis": 0, "gb_ang": 0, "gb_dist": 0},
+        "imu": {"hdg": 0, "left": 0, "right": 0, "disagree": 0,
+                "lok": 1, "rok": 1, "valid": 1},
+        "tof": tof,
+        "snap": {"valid": 0, "x": 0, "y": 0, "hdg_cd": 0, "conf": 0, "bx": 0,
+                 "by": 0, "bvis": 0, "bconf": 0, "bvx": 0, "bvy": 0, "opp_ang": 0,
+                 "opp_dist": 0, "opp_vis": 0, "own_vis": 0, "own_ang": 0,
+                 "own_dist": 0, "obst": 65535, "ref": 0, "flags": 0},
+        "base": {"pfresh": 0, "px": 0, "py": 0, "phdg_cd": 0, "pconf": 0,
+                 "vfresh": 0, "vx": 0, "vy": 0, "omega": 0, "slip": 0},
+        "line": {"fresh": 0, "schema": 2, "valid": 0, "angle_cd": -32768,
+                 "escape_cd": -32768, "pen_mm": 65535, "cross_mm": -32768,
+                 "present": 0, "sensors": 0, "events": 0, "quality": 0, "age_ms": 0},
+        "diag": {"frames_sent": 0},
+    }
+
+
+def test_tof_zones_absent_is_none():
+    # Frame v2 SIN "z" (como el golden viejo) → zones None: compat hacia atrás.
+    f = parse_obj_top(_v2_obj_with())
+    assert f.tof.zones is None
+
+
+def test_tof_zones_present_parsed_with_sentinels():
+    # Campo "z" aditivo: una grilla por sensor; 65535 → None (sin lectura en la zona).
+    z = [[100, 200, 65535, 400], [500, 600, 700, 800]]
+    f = parse_obj_top(_v2_obj_with({"z": z}))
+    assert f.tof.zones == [[100, 200, None, 400], [500, 600, 700, 800]]
 
 
 def test_golden_top_parses(golden_top_line):

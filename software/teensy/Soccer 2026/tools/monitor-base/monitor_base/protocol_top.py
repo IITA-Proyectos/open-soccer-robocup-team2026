@@ -96,6 +96,11 @@ class Tof:
     distances_mm: List[Optional[int]]   # None = sin lectura (65535)
     hcsr04_mm: Optional[int]
     min_mm: Optional[int]
+    # v2 ADITIVO (campo "z", opcional): zonas crudas por sensor (grilla 4x4=16),
+    # antes del promedio. None = el firmware no las manda todavía. Cada celda en
+    # sentinela 65535 → None (zona sin lectura). NO rompe el contrato: un frame
+    # sin "z" (golden viejo) deja zones=None.
+    zones: Optional[List[List[Optional[int]]]] = None
 
 
 @dataclass
@@ -219,6 +224,14 @@ def _na_u16(v: int) -> Optional[int]:
     return None if int(v) == NA_U16 else int(v)
 
 
+def _zones(raw) -> Optional[List[List[Optional[int]]]]:
+    """Mapea el campo "z" (opcional) a zonas por sensor con 65535 → None.
+    None si el firmware no lo manda (compat hacia atrás)."""
+    if raw is None:
+        return None
+    return [[_tof(z) for z in sensor] for sensor in raw]
+
+
 def _camper(c: dict) -> CamPer:
     return CamPer(
         ball_visible=bool(c["bvis"]), ball_x_mm=int(c["bx"]), ball_y_mm=int(c["by"]),
@@ -260,6 +273,7 @@ def parse_obj_top(obj: dict, raw: str = "") -> TopFrame:
             n=int(t["n"]),
             distances_mm=[_tof(d) for d in t["d"]],
             hcsr04_mm=_tof(t["hc"]), min_mm=_tof(t["min"]),
+            zones=_zones(t.get("z")),   # campo aditivo opcional
         )
         s = obj["snap"]
         snap = Snap(

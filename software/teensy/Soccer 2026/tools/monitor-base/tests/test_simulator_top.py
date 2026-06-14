@@ -41,6 +41,17 @@ def test_tof_no_reading_appears():
     assert saw_none
 
 
+def test_simulator_emits_zones_grid():
+    # El sim emite el campo "z" aditivo: una grilla 4x4 por sensor, para que la
+    # vista de salud tenga zonas que dibujar sin robot.
+    sim = SimulatorTop()
+    f = parse_line_top(sim.next_line())
+    assert f.tof.zones is not None
+    assert len(f.tof.zones) == 4
+    assert all(len(s) == 16 for s in f.tof.zones)
+    assert any(any(z is not None for z in s) for s in f.tof.zones)
+
+
 def test_top_record_roundtrip(tmp_path):
     # El Recorder graba el raw_json del TopFrame; se relee con el parser TOP.
     from monitor_base.recorder import Recorder

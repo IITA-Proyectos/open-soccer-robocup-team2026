@@ -39,6 +39,8 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
                    help="con --sim: índices de sensores 'muertos' a inyectar, ej 5,17")
     p.add_argument("--top", action="store_true",
                    help="modo TOP (placa superior: cámaras/IMU/ToF/snapshot) en vez de la base")
+    p.add_argument("--top-salud", action="store_true",
+                   help="modo TOP — TABLERO DE SALUD por sensor (verde/rojo) + zonas ToF + botones de config")
     p.add_argument("--arquero", action="store_true",
                    help="vista de ARQUERO (seguidor de línea + OTOS izq/der): para probar en banco")
     p.add_argument("--selftest", action="store_true",
@@ -54,7 +56,7 @@ def _dead_list(s: str) -> List[int]:
 
 def _build_source(args: argparse.Namespace):
     from .sources import ReplaySource, SerialSource, SimSource, SimTopSource
-    if args.top:
+    if args.top or args.top_salud:
         from .protocol_top import parse_line_top
         if args.port:
             return SerialSource(args.port, baud=args.baud, parser=parse_line_top)
@@ -142,6 +144,49 @@ def run_selftest_top(frames: int = 200) -> int:
     return 0
 
 
+def run_selftest_top_salud(frames: int = 200) -> int:
+    """Smoke headless de la vista de SALUD: corre N frames del simulador por el
+    pipeline real (parser → salud → zonas) y reporta el tablero. Devuelve 0 si OK.
+    No abre ventana (sirve de CI y de 'corre sin display')."""
+    from .health import (STATUS_LABEL, Status, counts, evaluate, worst_status)
+    from .protocol_top import parse_line_top
+    from .simulator_top import SimulatorTop
+    from .zones import ZoneGrid
+
+    # Consolas Windows (cp1252) no bancan °/Δ/↔ → salida UTF-8 tolerante (como
+    # tools/blackbox/analizar_corrida.py). La GUI no usa esta ruta.
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:  # noqa: BLE001
+            pass
+
+    sim = SimulatorTop(rate_hz=20.0)
+    last = None
+    saw_zones = False
+    for _ in range(frames):
+        f = parse_line_top(sim.next_line())
+        last = evaluate(f)
+        if f.tof.zones:
+            for sensor in f.tof.zones:
+                if ZoneGrid.from_flat(sensor, width=4).valid_count > 0:
+                    saw_zones = True
+    assert last is not None
+    c = counts(last)
+    print(f"[selftest-salud] frames procesados : {frames}")
+    print(f"[selftest-salud] sensores          : OK={c[Status.OK]} "
+          f"REVISAR={c[Status.WARN]} FALLA={c[Status.DEAD]} SIN DATO={c[Status.NODATA]}")
+    print(f"[selftest-salud] peor estado       : {STATUS_LABEL[worst_status(last)]}")
+    print(f"[selftest-salud] zonas ToF         : {'presentes' if saw_zones else 'AUSENTES'}")
+    for it in last:
+        print(f"   {it.label:18s} {STATUS_LABEL[it.status]:9s} {it.detail}")
+    if not saw_zones:
+        print("[selftest-salud] FALLO: no llegaron zonas del simulador")
+        return 1
+    print("[selftest-salud] OK")
+    return 0
+
+
 def list_ports() -> int:
     """Lista los puertos serie y marca cuál parece el Teensy."""
     from .sources import list_serial_ports, autodetect_port
@@ -168,6 +213,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.list_ports:
         return list_ports()
     if args.selftest:
+        if args.top_salud:
+            return run_selftest_top_salud(args.selftest_frames)
         if args.top:
             return run_selftest_top(args.selftest_frames)
         return run_selftest(args.selftest_frames, _dead_list(args.sim_dead))
@@ -180,7 +227,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         recorder = Recorder(args.record)
         print(f"Grabando telemetría en {args.record}")
     try:
-        if args.top:
+        if args.top_salud:
+            from . import gui_top_health
+            gui_top_health.run_top_health(source, recorder=recorder)
+        elif args.top:
             from . import gui_top
             gui_top.run_top(source, recorder=recorder)
         elif args.arquero:

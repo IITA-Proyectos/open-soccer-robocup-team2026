@@ -122,8 +122,14 @@ constexpr uint8_t TOF_RANGING_FREQ_HZ  = 15;
 //    de sensors_tof_init(), ANTES de que arranque el loop.
 // ⚠️ El restore a TOF_RUN_CLOCK_HZ al final del init es OBLIGATORIO: sin él se
 //    reintroduce el freeze del heading. Verificable en banco (girar el robot).
-constexpr uint32_t TOF_INIT_CLOCK_HZ = 400000;  // carga firmware (ToF-solo, validado)
+constexpr uint32_t TOF_INIT_CLOCK_HZ = 400000;  // carga firmware (ToF-solo, validado TA-1)
 constexpr uint32_t TOF_RUN_CLOCK_HZ  = 100000;  // runtime (coexistencia BNO+ToF)
+// TA-2 (TASK-211, BANCO): carga a 1 MHz (Fast Mode Plus) — opt-in con -DTOP_TOF_INIT_1MHZ.
+// Bajaría tof_init ~4 s más (~12 s → ~8 s). NO validado: depende de pull-ups/capacitancia/
+// bodge del bus. Si la carga a 1 MHz falla, el código RECAE a TOF_INIT_CLOCK_HZ (400 kHz,
+// validado TA-1) reseteando el sensor por LP → TA-2 nunca queda peor que TA-1. Sin el flag,
+// el binario es BYTE-IDÉNTICO a TA-1 (producción intacta).
+constexpr uint32_t TOF_INIT_CLOCK_FAST_HZ = 1000000;
 
 // ----------------------------------------------------------------------------
 // HC-SR04 ultrasonido frontal — ACTIVO en top_robot1/2 (flag -DTOP_ENABLE_HCSR04).
@@ -271,7 +277,26 @@ bool sensors_tof_init() {
             digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);  // LP no controla este ToF
             continue;
         }
-        if (!g_tof_multi[i].begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, TOF_INIT_CLOCK_HZ)) continue;  // 400 kHz SOLO p/carga firmware (TA-1)
+#ifdef TOP_TOF_INIT_1MHZ
+        // TA-2 (banco): intentar la carga a 1 MHz; si falla (bus marginal a esa velocidad),
+        // RESETEAR el sensor por LP (pudo quedar a medio cargar) y reintentar a 400 kHz
+        // (validado TA-1). El log avisa cada fallback → si aparece, 1 MHz es marginal en ese ToF.
+        if (!g_tof_multi[i].begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, TOF_INIT_CLOCK_FAST_HZ)) {
+            Serial.print(F("[sensors_tof] ToF ")); Serial.print(i);
+            Serial.println(F(": carga 1 MHz fallo -> reset LP + fallback 400 kHz (TA-2)"));
+            digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);
+            delay(LP_SETTLE_MS);
+            digitalWrite(PIN_TOF_XSHUT[i], LP_WAKE_LEVEL);
+            delay(LP_SETTLE_MS);
+            if (!tof_i2c_acks(VL53L7CX_DEFAULT_ADDRESS) ||
+                !g_tof_multi[i].begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, TOF_INIT_CLOCK_HZ)) {
+                digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL);  // ni a 400 kHz -> saltear
+                continue;
+            }
+        }
+#else
+        if (!g_tof_multi[i].begin(VL53L7CX_DEFAULT_ADDRESS, &Wire, TOF_INIT_CLOCK_HZ)) continue;  // 400 kHz (TA-1, validado)
+#endif
         if (!g_tof_multi[i].setAddress(TOF_I2C_ADDR_ASSIGNED[i]))           continue;
         g_tof_multi[i].setResolution(TOF_RESOLUTION_ZONES);
         g_tof_multi[i].setRangingFrequency(TOF_RANGING_FREQ_HZ);

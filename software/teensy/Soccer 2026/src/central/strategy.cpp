@@ -1112,6 +1112,12 @@ MotorCommand goalkeeper_tick() {
         // PI+PFM: corrección fina por pulsos repartidos (ver pfm_heading.h).
         // Tick de strategy = 10 ms (100 Hz). Devuelve centideg/s del comando.
         auto pfm_omega = [&]() -> int16_t {
+#ifdef GK_STRAFE_NO_PFM
+            // DIAGNÓSTICO (banco María 2026-06-14): strafe SIN control de rumbo (open-loop,
+            // omega=0), idéntico a diag_central_strafe que "anda derecho". Si con esto la
+            // MEDIALUNA DESAPARECE → la causa era el PFM (sobre-corrección), NO los motores.
+            return 0;
+#endif
             const float w = pfm_heading_tick(pfm, pfm_heading_default_cfg(),
                                              hdg_err, hv, now_ms, 0.01f);
             return omega_degps_to_centideg(w);
@@ -1150,11 +1156,15 @@ MotorCommand goalkeeper_tick() {
             }
             case 0: {   // MOVE — strafe CONTINUO + PID de rumbo al arco
                 g_state_name = "GK_SIMPLE_MOVE";
+#ifndef GK_STRAFE_NO_PFM
                 // Red de seguridad: el PID está perdiendo → escuadrarse parado.
+                // (En el diagnóstico GK_STRAFE_NO_PFM se desactiva: sin control de rumbo el
+                //  aerr crecería y dispararía RESQUARE todo el tiempo, tapando el test.)
                 if (hv && aerr > GKS_RESQUARE_DEG) {
                     phase = 2; phase_t0 = now_ms;
                     break;
                 }
+#endif
                 // Rebote por línea lateral (cooldown anti-rebote-múltiple).
                 if (line_data_fresh() && world_model_line_detected() &&
                     (now_ms - bounce_gate) >= GK_PATROL_BOUNCE_COOLDOWN_MS) {

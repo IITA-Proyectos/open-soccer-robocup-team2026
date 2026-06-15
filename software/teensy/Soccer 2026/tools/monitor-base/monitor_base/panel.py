@@ -34,6 +34,7 @@ class Panel:
     key: str = "panel"          # identificador único
     icon: str = "●"             # glifo en la nav
     sends_commands: bool = False  # True si manda comandos a la placa
+    board: str = "top"          # "top" | "down" | "any" — a qué placa pertenece
 
     def __init__(self, parent: tk.Widget, ctx: PanelContext):
         self.ctx = ctx

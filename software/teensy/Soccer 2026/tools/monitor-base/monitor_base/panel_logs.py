@@ -24,6 +24,7 @@ class LogsPanel(Panel):
     title = "Logs"
     key = "logs"
     icon = "▤"
+    board = "any"
 
     def __init__(self, parent, ctx):
         self._logbuf: Optional[LogBuffer] = None

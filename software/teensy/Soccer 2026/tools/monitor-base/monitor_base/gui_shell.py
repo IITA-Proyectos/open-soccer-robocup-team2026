@@ -32,7 +32,6 @@ PHANTOM_MM = 500.0      # |camf.ball - camb.ball| para sospechar pelota fantasma
 def _registry() -> List[Type[Panel]]:
     """Todas las vistas del monitor (import perezoso para no cargar Tk en tests
     de lógica pura)."""
-    from .panel_logs import LogsPanel
     panels: List[Type[Panel]] = []
     for modname, clsname in (
             ("panel_field", "FieldPanel"),
@@ -42,13 +41,16 @@ def _registry() -> List[Type[Panel]]:
             ("panel_cam_fusion", "CamFusionPanel"),
             ("panel_timeline", "TimelinePanel"),
             ("panel_tof_setup", "TofSetupPanel"),
+            ("panel_base", "BasePanel"),          # placa BASE (DOWN)
+            ("panel_arquero", "ArqueroPanel"),    # placa BASE (DOWN)
+            ("panel_logs", "LogsPanel"),
+            ("panel_help", "HelpPanel"),
     ):
         try:
             mod = __import__(f"monitor_base.{modname}", fromlist=[clsname])
             panels.append(getattr(mod, clsname))
         except Exception:  # noqa: BLE001 — un panel que falte no tumba el monitor
             pass
-    panels.append(LogsPanel)
     return panels
 
 
@@ -105,6 +107,8 @@ class MonitorShell:
         self.conn_lbl.pack(side="left")
         self.metrics = tk.Label(top, text="", bg=BG2, fg=MUTED, font=MONO)
         self.metrics.pack(side="left", padx=16)
+        tk.Button(top, text="?  ayuda de esta vista", command=self._show_help,
+                  bg=PANEL, fg=ACCENT, relief="flat", padx=8).pack(side="right", padx=4, pady=4)
         self.rec_btn = tk.Button(top, text="⏺ grabar", command=self._toggle_record,
                                  bg=PANEL, fg=FG, relief="flat", padx=8)
         self.rec_btn.pack(side="right", padx=4, pady=4)
@@ -289,6 +293,26 @@ class MonitorShell:
             self.recorder = None
             self.rec_btn.configure(text="⏺ grabar", fg=FG)
             self.logbuf.add("info", "grabación detenida")
+
+    def _show_help(self) -> None:
+        """Ventana de ayuda CONTEXTUAL de la vista activa."""
+        from .help_text import panel_help
+        key = self.active.key if self.active else "ayuda"
+        title = self.active.title if self.active else "Ayuda"
+        win = tk.Toplevel(self.root)
+        win.title(f"Ayuda — {title}")
+        win.configure(bg=BG2)
+        win.geometry("520x420")
+        tk.Label(win, text=f"?  {title}", bg=BG2, fg=ACCENT,
+                 font=("Segoe UI Semibold", 13), anchor="w", padx=12, pady=8).pack(fill="x")
+        t = tk.Text(win, bg=PANEL, fg=FG, font=MONO, relief="flat", wrap="word",
+                    padx=14, pady=12, highlightthickness=0)
+        t.pack(fill="both", expand=True, padx=10, pady=(0, 6))
+        t.insert("1.0", panel_help(key))
+        t.configure(state="disabled")
+        tk.Button(win, text="cerrar", command=win.destroy, bg=PANEL, fg=FG,
+                  relief="flat", padx=12, pady=4).pack(pady=(0, 10))
+        win.transient(self.root)
 
     def _set_status(self, text: str) -> None:
         self.status.configure(text=text)

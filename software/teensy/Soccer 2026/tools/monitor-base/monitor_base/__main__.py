@@ -28,6 +28,8 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
                      help="reproducir una grabación de telemetría")
     p.add_argument("--list-ports", action="store_true",
                    help="lista los puertos serie disponibles (cuál parece el Teensy) y sale")
+    p.add_argument("--readme", "--guia", action="store_true",
+                   help="muestra la guía completa de la aplicación y sale")
     p.add_argument("--baud", type=int, default=115200, help="baud (default 115200)")
     p.add_argument("--rate", type=float, default=20.0,
                    help="tasa Hz para sim/replay (default 20)")
@@ -276,6 +278,15 @@ def list_ports() -> int:
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = _parse_args(argv)
+    if args.readme:
+        from .help_text import GUIDE
+        if hasattr(sys.stdout, "reconfigure"):
+            try:
+                sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:  # noqa: BLE001
+                pass
+        print(GUIDE)
+        return 0
     if args.list_ports:
         return list_ports()
     if args.selftest:

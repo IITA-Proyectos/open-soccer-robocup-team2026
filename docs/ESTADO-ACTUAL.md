@@ -307,6 +307,24 @@ nativo, pero ya no es el único camino. Ver
    §Resultado + `journal/2026-06-07-calibracion-distancia-camara-frontal-elias.md`. (Migración
    H7→N6, bugs P0 y velocidad de pelota ya estaban resueltos — Avance 2026-06-03.)
 
+### Avance 2026-06-15 — Confiabilidad del heading: cross-validación independiente + centinela dual-BNO @1Hz (módulos puros)
+- Pedido de Gustavo: heading MÁS CONFIABLE con AUTO-RECUPERACIÓN (decidir qué BNO está sano con datos
+  INDEPENDIENTES, no auto-referencia; centinela @1Hz del 2º BNO con ToF pausados; fusión cámara+OTOS;
+  reseteo si deriva). **Construye sobre TASK-212** (análisis subido por otra sesión — el mismo enfoque) +
+  aporta el **centinela dual-BNO @1Hz** (idea de Gustavo, no estaba en TASK-212). El **INC-1 (gyro-guard)
+  de hoy ES la Fase 0** de TASK-212; esto es la **Fase 1**. Journal: `journal/2026-06-15-fusion-confiabilidad-heading-bno.md`.
+- **Workflow de diseño (9 agentes) + verificación adversarial** reencuadró el alcance: (1) **FAILOVER
+  físico RECHAZADO para Incheon** — `imu_fusion` NO hace failover idx0→idx1 transparente (promedia), y un
+  failover a heading PLAUSIBLE-PERO-MALO es PEOR que `heading_valid=0` (el arquero rotaría fuera del arco).
+  Jerarquía: primario-sano > heading_valid=0 > secundario (2027). (2) La cámara NO mide ω si el arquero
+  hace strafe (traslación contamina). (3) **Anti-falso-veto**: con <2 refs INDEPENDIENTES, JAMÁS MALO.
+- **Implementado PURO + host-tested (riesgo cero, gateado):** `src/shared/goal_rate_tracker.h` (w_cam del
+  bearing del arco, resta angular envuelta — NO espejo de ball_velocity; `test_goal_rate_tracker` 7/7) +
+  `src/shared/imu_cross_validate.h` (salud por mediana de refs + anti-falso-veto + consenso + scheduler
+  del centinela con timeout; **NO failover**, solo veredicto/telemetría; `test_imu_cross_validate` 13/13).
+- **Bloqueado a banco (glue Arduino, 3 blockers) → TASK-213:** init del secundario, centinela 1Hz inline
+  en `sensors_tof_tick` (ToF-pausa), cableado cámara/OTOS. Failover físico = 2027.
+
 ### Avance 2026-06-15 — Optimización TOP no-bloqueante (workflow): INC-1 gyro-guard + INC-2 pose-age (gateados)
 - Continuación del trabajo RT, foco **placa TOP**, con metodología superpowers + 2 workflows (plan de 11
   agentes + verificación adversarial de 5). Todo gateado off-by-default → binarios byte-idénticos.

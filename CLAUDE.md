@@ -43,7 +43,7 @@ Para el formato exacto, ver la skill [`rcj-soccer-coach`](.claude/skills/rcj-soc
 
 ## Skills disponibles
 
-En `.claude/skills/` — 18 skills organizadas:
+En `.claude/skills/` — 22 skills organizadas:
 
 **Frame del coach:**
 - **`rcj-soccer-coach`** — formato exacto del feedback que entregás (P0/P1/P2, tema-a-analizar, plan de prueba obligatorio).
@@ -64,6 +64,13 @@ En `.claude/skills/` — 18 skills organizadas:
 - **`dinamica-omni-3-ruedas`** — la planta MEDIDA del robot (pisos PWM, regímenes, deriva parásita, mínimos físicos). Par obligatorio de la anterior.
 - **`localizacion-rcj-soccer`** — lente de coach para "¿dónde está el robot?": explica TODAS las técnicas que se nombran (odometría/VO, Visual SLAM, landmarks/trilateración, MCL/partículas, EKF, pose estimation) con veredicto honesto de factibilidad para OpenMV+Teensy, y las mapea a los módulos REALES del repo. Veredicto clave: la cancha es un mapa conocido → NO necesita SLAM, sino localización por landmarks + fusión. Referencia: `references/tecnicas-localizacion-explicadas.md`.
 - **`fusion-pose-odometria-landmarks`** — cómo CONSTRUIR/cablear/tunear el estimador que fusiona OTOS (odometría) + ToF (trilateración) + heading en una pose. El patrón predict/correct, los módulos `pose_fusion`/`pose_filter` que YA existen y NO están cableados, y el protocolo de medir el ruido ANTES de tunear. Par obligatorio de la anterior. Referencias: `references/complementario-ekf-particulas.md`, `references/medir-ruido-sensores.md`.
+
+**Tiempo real / sistemas críticos (transversal — el robot es bare-metal hoy; capitaliza 2027 + entender el oficio):**
+> Estas 4 son de ingeniería embebida de tiempo real en general, ancladas a los problemas REALES del robot (loop a 6 Hz, freeze del BNO, jitter, lazos PID) y con inyección electrónica / caja por cable / aeroespacial como casos de referencia. Pedidas por Gustavo 2026-06-14.
+- **`tiempo-real-determinismo`** — la lente raíz: hard/firm/soft real-time, latencia/jitter/WCET (el peor caso, no el promedio), qué mata el determinismo (I/O bloqueante en el lazo — la causa raíz del loop a 6 Hz y del freeze del BNO), superloop vs cyclic executive vs RTOS. Referencia: `references/medir-y-presupuestar-tiempo.md`.
+- **`rtos-scheduling-embebido`** — RTOS y scheduling: tareas/prioridades/preempción, RMS/EDF y planificabilidad, inversión de prioridad (Mars Pathfinder) + herencia/techo, mutex/semáforo/cola, ISR→tarea, stacks. Con veredicto honesto: este robot NO necesita un RTOS hoy. Referencia: `references/patrones-rtos-y-trampas.md`.
+- **`control-embebido-tiempo-real`** — la REALIZACIÓN en tiempo real del lazo de control (muestreo, discretización Euler/Tustin, punto fijo Q-format, jitter del `dt`, latencia sensor→actuador, multi-rate). NO pisa el tuning (`control-pid-zona-muerta`) ni la planta (`dinamica-omni-3-ruedas`). Referencia: `references/discretizacion-y-punto-fijo.md`.
+- **`sistemas-criticos-tolerancia-fallas`** — la capa de confiabilidad: estado seguro, watchdog, redundancia/votación (TMR), FDIR, degradación con gracia, normas (DO-178C/ISO 26262/MISRA). Incluye los 3 casos que pidió Gustavo (inyección electrónica/ECU, caja por cable, control aeroespacial). Referencia: `references/casos-inyeccion-caja-aeroespacial.md`.
 
 **Entregables de competencia:**
 - **`rcj-judging-package`** — BOM, poster A1, video técnico, portfolio digital, entrevista (lado PRODUCTOR: armar los entregables).

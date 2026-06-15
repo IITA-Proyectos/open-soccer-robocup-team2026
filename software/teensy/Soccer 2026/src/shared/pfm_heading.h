@@ -35,14 +35,22 @@ struct PfmHeadingCfg {
     float    omega_on_degps;  // magnitud FIJA del pulso ON (lo que el robot sí hace)
     float    integ_max_degps; // anti-windup: tope del integrador (≈ perturbación máx)
     uint32_t window_ms;       // ventana del duty-cycling (corta: 120-200 ms)
+    float    kd_rate;         // amortiguación: (°/s de corrección) por (°/s de giro
+                              // MEDIDO). La "D" de un PD: resta la velocidad de giro
+                              // actual para frenar el sobrepaso que la LATENCIA del
+                              // rumbo provoca. 0 = sin amortiguación (default → PFM
+                              // idéntico al previo). Ver heading_rate.h + coach
+                              // 2026-06-14 (CONTROL-ARQUERO-LATERAL-Y-LATENCIAS.md).
 };
 
 // Punto de partida de banco (titración en la skill control-pid-zona-muerta):
 // kp=2 (suave: el grueso lo pone el integrador), ki=0.4, deadband 5°,
 // omega_on=100°/s (sobre el mínimo útil con FLOOR_SCALE), integ ±100 (cubre los
-// ~80°/s de deriva parásita medida), ventana 160 ms (~16 ticks a 100 Hz).
+// ~80°/s de deriva parásita medida), ventana 160 ms (~16 ticks a 100 Hz),
+// kd_rate=0 (amortiguación APAGADA por default → comportamiento byte-idéntico al
+// histórico; el arquero la activa con -DGK_PFM_RATE_DAMP, tunear en banco).
 inline PfmHeadingCfg pfm_heading_default_cfg() {
-    return PfmHeadingCfg{2.0f, 0.4f, 5.0f, 100.0f, 100.0f, 160};
+    return PfmHeadingCfg{2.0f, 0.4f, 5.0f, 100.0f, 100.0f, 160, 0.0f};
 }
 
 struct PfmHeadingState {
@@ -56,12 +64,15 @@ inline void pfm_heading_reset(PfmHeadingState& s) {
 }
 
 // Un tick del lazo. err_deg = error de rumbo YA envuelto a ±180 (target-actual,
-// >0 ⇒ falta CCW). dt_s = período del tick (ej. 0.01 a 100 Hz). Devuelve el
-// omega a comandar ESTE tick en °/s: ±omega_on durante la fracción ON de la
-// ventana, 0 el resto. Sin err válido devuelve 0 y congela el integrador.
+// >0 ⇒ falta CCW). dt_s = período del tick (ej. 0.01 a 100 Hz). rate_degps =
+// velocidad de giro MEDIDA (°/s, CCW+; ej. de heading_rate.h) para la
+// amortiguación; 0 = sin amortiguar (default). Devuelve el omega a comandar ESTE
+// tick en °/s: ±omega_on durante la fracción ON de la ventana, 0 el resto. Sin
+// err válido devuelve 0 y congela el integrador.
 inline float pfm_heading_tick(PfmHeadingState& s, const PfmHeadingCfg& cfg,
                               float err_deg, bool err_valid,
-                              uint32_t now_ms, float dt_s) {
+                              uint32_t now_ms, float dt_s,
+                              float rate_degps = 0.0f) {
     if (!err_valid) return 0.0f;            // sin gyro: ni corregir ni aprender
 
     const float aerr = (err_deg < 0.0f) ? -err_deg : err_deg;
@@ -69,8 +80,10 @@ inline float pfm_heading_tick(PfmHeadingState& s, const PfmHeadingCfg& cfg,
         return 0.0f;                        // zona muerta: integrador se mantiene
     }
 
-    // PI: corrección deseada (promedio temporal objetivo).
-    float u = cfg.kp * err_deg + s.integ_degps;
+    // PI + amortiguación (PD): corrección deseada (promedio temporal objetivo).
+    // El término -kd_rate*rate resta la velocidad de giro actual → frena el
+    // sobrepaso por latencia (kd_rate=0 ⇒ idéntico al PI puro previo).
+    float u = cfg.kp * err_deg - cfg.kd_rate * rate_degps + s.integ_degps;
 
     // Duty de la ventana: qué fracción del tiempo va el pulso ON.
     float duty = u / cfg.omega_on_degps;

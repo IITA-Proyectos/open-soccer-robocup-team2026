@@ -100,7 +100,24 @@ constexpr uint32_t GYRO_CALIB_MS   = 2000;
 constexpr int      HEADING_SAMPLES = 10;
 
 // Band-aid contención BNO+ToF (2026-06-02): leer el BNO a ~20 Hz (50 ms), no a 100 Hz.
-constexpr uint32_t BNO_READ_INTERVAL_MS = 50;
+// El tope de 20 Hz es NECESARIO para el BNO SECUNDARIO (Wire, comparte con los ToF):
+// leerlo más seguido lo hace chocar con los reads de los ToF → yaw CONGELADO.
+//
+// TOP_BNO_FAST (coach 2026-06-14): cuando el ÚNICO BNO activo es el PRIMARIO, que vive
+// SOLO en Wire2 (24/25, sin ToF → sin contención; eso lo garantiza TOP_BNO_PRIMARY_ONLY),
+// ese tope es innecesario y AGREGA ~25-50 ms de latencia al lazo de rumbo del arquero
+// (la mitad del atraso total — ver docs/firmware/CONTROL-ARQUERO-LATERAL-Y-LATENCIAS.md).
+// Con el flag se lee a 100 Hz (10 ms) → dato de rumbo fresco cada tick del snapshot.
+// El BNO055 en modo fusión entrega a 100 Hz, así que 10 ms es el punto óptimo (leer más
+// seguido re-leería el mismo valor). 🔧 Validar en banco: que el loop del TOP siga holgado.
+#if defined(TOP_BNO_FAST)
+#  if !defined(TOP_BNO_PRIMARY_ONLY)
+#    error "TOP_BNO_FAST solo es seguro con -DTOP_BNO_PRIMARY_ONLY (BNO primario SOLO en Wire2, sin ToF). Sin eso leería rápido el secundario del bus compartido y volvería el freeze por contención."
+#  endif
+constexpr uint32_t BNO_READ_INTERVAL_MS = 10;   // 100 Hz: primario aislado en Wire2, sin contención
+#else
+constexpr uint32_t BNO_READ_INTERVAL_MS = 50;   // 20 Hz: band-aid de contención (secundario en Wire)
+#endif
 
 // Signo del heading. MEDIDO EN BANCO 2026-05-31: el chip da yaw CRECIENTE al
 // girar a la DERECHA (CW). La convención del firmware es CCW-positiva. Lo

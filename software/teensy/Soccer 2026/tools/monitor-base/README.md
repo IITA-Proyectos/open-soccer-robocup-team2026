@@ -29,6 +29,26 @@ placa base**: la app lo detecta, reconecta sola y muestra las vistas de la base 
 deja calibrar). La historia/estelas de la placa superior **no se pierden**. La barra
 superior indica a qué placa estás conectado y el estado del enlace.
 
+## Identidad de robot (R1/R2) y anti-cruce de config
+
+La barra superior muestra un **chip con el robot conectado** (`▣ Robot 1 · TOP`),
+identificado por el **N° de serie USB** del Teensy (la telemetría no trae ID de robot).
+Con eso:
+
+- **La config de ToF se guarda POR PLACA** (`tof_layout_<serial>.json`): R1 y R2 **no
+  comparten archivo** → imposible aplicarle a uno la config del otro.
+- **Toda escritura a la EEPROM del robot** (`CFG SAVE`, `CAL SAVE`, `IMU SAVE`, `CFG
+  RESET`) **pide confirmación nombrando el robot** conectado.
+- Un Teensy **desconocido** se muestra con su serial (`⚠ Robot ? · serial …`) — igual no
+  se cruza (cada serial su archivo). Para ponerle nombre, agregá su serial a
+  `monitor_base/robot_registry.json` (`{"<serial>": {"robot": 2, "board": "top", "name":
+  "Robot 2 · TOP"}}`) o al seed de `robot_registry.py`.
+
+La calibración de línea (verde/blanco, sensibilidad) **vive en la EEPROM de cada robot**,
+no en la app → no se cruza. Persistir en la EEPROM del TOP la config de ToF
+(posición/zonas) y un offset fino de cámara es trabajo de firmware: ver
+`team-tasks/2026-06-15-task-214-*` (+ TASK-206).
+
 ## Vistas
 
 **Placa SUPERIOR (TOP):**

@@ -266,6 +266,19 @@ def default_config_path() -> str:
     return os.path.join(here, "tof_layout.json")
 
 
+def config_path_for_serial(serial: Optional[str]) -> str:
+    """Ruta del .json de config POR PLACA, keyed por el N° de serie del Teensy →
+    R1 y R2 NUNCA comparten archivo (imposible cruzar posiciones/zonas de ToF).
+    Sin serial (sim/desconocido) cae al archivo legacy único. El N° de serie es el
+    identificador hardware-único del Teensy; la app lo resuelve del puerto USB."""
+    import os
+    here = os.path.dirname(os.path.abspath(__file__))
+    if not serial:
+        return os.path.join(here, "tof_layout.json")
+    slug = "".join(ch if ch.isalnum() else "_" for ch in str(serial))
+    return os.path.join(here, f"tof_layout_{slug}.json")
+
+
 def load_or_default(path: Optional[str] = None) -> TofLayout:
     import os
     p = path or default_config_path()

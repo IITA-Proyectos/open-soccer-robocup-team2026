@@ -23,6 +23,8 @@ from typing import Deque, List, Optional, Type
 from .panel import LogBuffer, Panel, PanelContext
 from .protocol import Frame as DownFrame
 from .protocol_top import TopFrame
+from .robot_registry import identify, load_registry
+from .safety import is_destructive_write
 from .shell_theme import (ACCENT, BAD, BG, BG2, FG, LINE, MONO, MUTED, OK,
                           PANEL, TITLE, UI_B, WARN, apply_theme)
 
@@ -76,6 +78,12 @@ class MonitorShell:
         self.ctx = PanelContext(send=self._send, log=self.logbuf.add,
                                 is_sim=self.is_sim, config_path=config_path)
         self.paused = False
+        # Identidad del robot (R1/R2) por N° de serie USB del Teensy (anti-cruce de
+        # placas): la app sabe a QUÉ robot está conectada y nombra al robot antes de
+        # escribirle a la EEPROM. La config ya está keyed por serial (config_path).
+        self._reg_extra = load_registry()
+        self._current_robot = None
+        self._last_robot_serial = None
         # estado MULTI-PLACA: métricas, último frame e historia por placa.
         self.current_board: Optional[str] = None
         self.last_by_board = {"top": None, "down": None}
@@ -106,6 +114,10 @@ class MonitorShell:
         top.grid(row=0, column=0, columnspan=2, sticky="we")
         tk.Label(top, text="◆ MONITOR ROBOT", bg=BG2, fg=ACCENT, font=TITLE,
                  padx=12, pady=8).pack(side="left")
+        # Chip de IDENTIDAD del robot (R1/R2 por N° de serie) — para no cruzar placas.
+        self.robot_chip = tk.Label(top, text="…", bg=PANEL, fg=MUTED,
+                                   font=("Segoe UI Semibold", 10), padx=10, pady=3)
+        self.robot_chip.pack(side="left", padx=(8, 0))
         self.conn_dot = tk.Label(top, text="●", bg=BG2, fg=MUTED, font=("Segoe UI", 14))
         self.conn_dot.pack(side="left", padx=(8, 2))
         self.conn_lbl = tk.Label(top, text="…", bg=BG2, fg=FG, font=MONO)
@@ -200,11 +212,35 @@ class MonitorShell:
         if self.is_sim:
             self.logbuf.add("warn", f"SIM: comando NO enviado ({cmd})")
             return
+        # Opción 2: gatear las ESCRITURAS a EEPROM con confirmación que nombra el
+        # robot conectado → no escribirle config al robot equivocado.
+        if is_destructive_write(cmd) and not self._confirm_write(cmd):
+            self.logbuf.add("warn", f"escritura a EEPROM CANCELADA por el operador ({cmd})")
+            return
         try:
             self.source.send(cmd)
             self.logbuf.add("cmd", f"→ {cmd}")
         except Exception as e:  # noqa: BLE001
             self.logbuf.add("bad", f"fallo enviando '{cmd}': {e}")
+
+    def _confirm_write(self, cmd: str) -> bool:
+        """Confirma una escritura a EEPROM nombrando el robot conectado (Opción 2).
+        Headless/sin display (tests) → no bloquea: deja pasar (el guard de sim ya
+        cubre el smoke; los tests no mandan comandos destructivos)."""
+        rid = self._current_robot
+        who = rid.name if rid else "robot SIN IDENTIFICAR"
+        warn = ("" if (rid and rid.known)
+                else "\n\n⚠ El robot NO está identificado por su N° de serie — "
+                     "verificá que es el correcto ANTES de escribir.")
+        try:
+            from tkinter import messagebox
+            return bool(messagebox.askyesno(
+                "Confirmar escritura a EEPROM del robot",
+                f"Vas a ESCRIBIR config persistente en:\n\n    {who}\n\n"
+                f"Comando:  {cmd}{warn}\n\n¿Confirmás?",
+                icon="warning", parent=self.root))
+        except Exception:  # noqa: BLE001 — sin display/headless: no bloquear
+            return True
 
     # ── Loop ────────────────────────────────────────────────────────────────
     def _tick(self) -> None:
@@ -302,7 +338,29 @@ class MonitorShell:
             except Exception:  # noqa: BLE001
                 break
 
+    def _update_robot_chip(self) -> None:
+        """Refleja a QUÉ robot (R1/R2) está conectada la app, por N° de serie USB
+        del Teensy. Avisa en el log si cambia (hot-swap a OTRO robot)."""
+        if self.is_sim:
+            self._current_robot = None
+            self.robot_chip.configure(text="◇ SIMULADOR", bg=PANEL, fg=MUTED)
+            return
+        rid = identify(self.source.serial_number(), self._reg_extra)
+        self._current_robot = rid
+        if rid.serial != self._last_robot_serial:
+            self._last_robot_serial = rid.serial
+            if rid.serial:
+                self.logbuf.add("ok" if rid.known else "warn",
+                                f"robot conectado: {rid.name}")
+        if rid.known:
+            self.robot_chip.configure(text=f"▣ {rid.name}", bg=OK, fg=BG)
+        elif rid.serial:
+            self.robot_chip.configure(text=f"⚠ {rid.name}", bg=WARN, fg=BG)
+        else:
+            self.robot_chip.configure(text="⚠ identificando…", bg=PANEL, fg=WARN)
+
     def _update_bar(self, got: bool) -> None:
+        self._update_robot_chip()
         live = got and not self.paused
         self.conn_dot.configure(fg=(OK if live else (WARN if self.paused else MUTED)))
         b = self.current_board

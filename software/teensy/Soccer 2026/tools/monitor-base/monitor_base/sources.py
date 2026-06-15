@@ -70,9 +70,22 @@ def list_serial_ports() -> List[dict]:
             "device": p.device,
             "description": p.description or "",
             "vid": p.vid, "pid": p.pid,
+            "serial_number": getattr(p, "serial_number", None),
             "is_teensy": (p.vid == TEENSY_VID),
         })
     return out
+
+
+def serial_for_port(device: Optional[str]) -> Optional[str]:
+    """N° de serie USB del puerto `device` (ej. 'COM11' → '19810740'), o None.
+    Es el identificador HARDWARE-único del Teensy → con él la app sabe a QUÉ robot
+    está conectada (la telemetría no trae ID) y persiste la config por placa."""
+    if not device:
+        return None
+    for p in list_serial_ports():
+        if p["device"] == device:
+            return p.get("serial_number")
+    return None
 
 
 def autodetect_port() -> Optional[str]:
@@ -147,6 +160,11 @@ class FrameSource:
         """Descripción humana de la fuente, para el título de la ventana
         ("¿estoy mirando el robot o el simulador?")."""
         return "fuente desconocida"
+
+    def serial_number(self) -> Optional[str]:
+        """N° de serie USB del Teensy conectado, o None (sim/replay/sin puerto).
+        El shell lo usa para identificar el robot (R1/R2) y persistir su config."""
+        return None
 
     def poll(self, max_items: int = 500) -> List[Frame]:
         out: List[Frame] = []
@@ -311,6 +329,7 @@ class SerialSource(FrameSource):
         self.reconnect_s = reconnect_s
         self._serial = None
         self._last_port: Optional[str] = None   # puerto resuelto (para describe)
+        self._serial_no: Optional[str] = None   # N° de serie USB (identidad del robot)
 
     def _resolve_port(self) -> str:
         if str(self.port_spec).lower() == "auto":
@@ -335,11 +354,15 @@ class SerialSource(FrameSource):
         port = self._resolve_port()
         ser = serial.Serial(port, self.baud, timeout=0.2)
         self._last_port = port
+        self._serial_no = serial_for_port(port)   # identidad del robot (R1/R2)
         self._push_text(f"conectado a {port} — esperando datos de la placa…")
         return ser
 
     def describe(self) -> str:
         return f"robot en {self._last_port or self.port_spec}"
+
+    def serial_number(self) -> Optional[str]:
+        return self._serial_no
 
     def send(self, cmd: str) -> None:
         ser = self._serial

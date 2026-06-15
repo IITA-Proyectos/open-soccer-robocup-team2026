@@ -341,8 +341,19 @@ def main(argv: Optional[List[str]] = None) -> int:
                      "tof_setup": "tofcfg"}
         if _wants_shell(args):
             start_key = next((k for d, k in top_views.items() if getattr(args, d)), None)
+            # Config POR ROBOT: resolver el N° de serie del puerto que va a usar la
+            # fuente → archivo de config keyed por serial (R1 y R2 no se cruzan).
+            # Sim/replay (sin port_spec) → None → archivo legacy único.
+            config_path = None
+            dev = getattr(source, "port_spec", None)
+            if dev is not None:
+                from .sources import autodetect_port, serial_for_port
+                from .tof_layout import config_path_for_serial
+                resolved = autodetect_port() if str(dev).lower() == "auto" else dev
+                config_path = config_path_for_serial(serial_for_port(resolved))
             from . import gui_shell
-            gui_shell.run_shell(source, recorder=recorder, start_key=start_key)
+            gui_shell.run_shell(source, recorder=recorder, start_key=start_key,
+                                config_path=config_path)
         elif args.top:
             from . import gui_top
             gui_top.run_top(source, recorder=recorder)

@@ -1,0 +1,6 @@
+# Estado LOCAL por maquina del monitor (NO versionar): la verdad de las 4 placas de
+# competencia vive en el seed de monitor_base/robot_registry.py. Estos .json son
+# agregados ad-hoc (registro de placas) y config de uso (layout de ToF por placa).
+monitor_base/robot_registry.json
+monitor_base/tof_layout.json
+monitor_base/tof_layout_*.json

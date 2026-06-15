@@ -58,7 +58,10 @@ constexpr int KICKSTART_WINDOW_MS  = 40;   // ventana del impulso (2025: 40 ms)
 constexpr int KICKSTART_FACTOR_X10 = 99;   // ×9.9: garantiza que toda rueda llegue al cap
 // Impulso FIJO POR RUEDA (banco robot2 2026-06-09): la trasera "se quedaba" al arrancar
 // con 130 → su golpe sube a 140 (transitorio de 40 ms, tolerable; NO pasar ~150).
-constexpr int KICKSTART_PWM_CAP[3] = { 130, 130, 140 };  // {M1, M2, M3=trasera}
+// 2026-06-14 (pedido Elías): impulso inicial MÁS FUERTE → {130,130,140}→{145,145,150}.
+// ⚠️ ~150 es el LÍMITE DE QUEMADO (motores 5V a 7,4V): NO subir más el PWM. Si hace
+// falta MÁS golpe, subir KICKSTART_WINDOW_MS (dura más), no el cap.
+constexpr int KICKSTART_PWM_CAP[3] = { 145, 145, 150 };  // {M1, M2, M3=trasera}
 #endif
 
 // Último PWM aplicado por motor (PRE-inversión de hardware: el signo es el "lógico"

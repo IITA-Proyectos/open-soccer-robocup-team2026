@@ -138,7 +138,7 @@ constexpr float ATK_SEARCH_VY_MM_S       = 200.0f;
 // rápido que 7 (o a tirones). VALIDAR EN BANCO; si no gira lento de verdad, ir por
 // giro pulsado o lazo cerrado con el yaw del OTOS.
 constexpr float ATK_SEARCH_OMEGA_DEG_S   = 7.0f;
-constexpr int16_t ATK_SEARCH_SPIN_PWM    = 30;  // FALLBACK PWM crudo (si el omega 7 deg/s sale a tirones)
+constexpr int16_t ATK_SEARCH_SPIN_PWM    = 40;  // 2026-06-14 (pedido Elías): 30→40. SEARCH gira por este PWM crudo directo (l.823).
 // Confirmación temporal de pelota: hay que verla CONTINUO esto antes de perseguirla,
 // para filtrar falsos naranjas de 1-2 frames (pedido Elías 2026-06-14).
 constexpr uint32_t ATK_BALL_CONFIRM_MS   = 200;

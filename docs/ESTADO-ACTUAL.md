@@ -296,10 +296,11 @@ nativo, pero ya no es el único camino. Ver
 > pierde la orientación fina por giroscopio. Detalle: `journal/2026-06-08-bno-contencion-bus-debug-y-arquero-sin-bno.md`.
 
 1. **COMM — firmware flasheado ✅ (2026-06-01); E2E del árbitro RESUELTO ✅ (2026-06-02, TASK-039).** El árbitro RCJ **NO viaja por UART**: señaliza como **NIVEL GPIO** hacia el TOP (Teensy 4.0) en **pin 5 = OUT1 (PLAY/STOP)** y **pin 6 = OUT2 (PLAY/STOP)** (en la práctica, en PLAY sube SOLO UNO de los dos —no son espejo—). Nivel: **0 = juego PARADO, 1 = juego EN CURSO (3.3 V)**. Firmware: `src/top/comm_arbiter.cpp::read_referee_gpio()` lee los pines 5/6 con `INPUT_PULLDOWN` y `match_running = (pin5 OR pin6)` (en PLAY sube SOLO UNO de los dos pines —el otro queda en 0— por eso AND nunca daba GO y OR sí; probado en banco 2026-06-02, Gustavo. Sigue siendo fail-safe: si se desconecta el cable del COMM, ambos pines leen 0 con `INPUT_PULLDOWN` → `match_running=false` → STOP). El probe temporal se removió de `main_top.cpp`. El **UART del módulo COMM (TOP `Serial2`, pines 7/8) queda SOLO para partner ESP-NOW / status** — el viejo `COMM_REFEREE_CMD` por UART quedó **obsoleto**. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART). El robot ya recibe START/STOP por GPIO → homologa el árbitro. TASK-006/TASK-039.
-2. **Cámaras — calibración de DISTANCIA ✅ HECHA (Elías, 2026-06-07)**, integrada a
-   producción **v2** (homografía en el script de producción `camaras-openmv/main.py` @**VGA**;
-   ⚠️ corrección 2026-06-15: el destino es `main.py`, NO `cam-*-n6.py` —deprecados—; misma H para las 4 cámaras,
-   decisión provisoria). TASK-022 ya **no** es "sin calibrar". **Lo que queda (banco, lo hace
+2. **Cámaras — homografía/distancia ✅ HECHA, AHORA PER-CÁMARA (Elías, 2026-06-14)**, integrada a
+   producción `camaras-openmv/main.py` @**VGA** (⚠️ el destino es `main.py`, NO `cam-*-n6.py` —deprecados—).
+   **Actualización 2026-06-14 (reportada por Gustavo):** Elías calibró **las 4 cámaras, cada una con
+   SU matriz de homografía propia** → cierra el paso 6 de TASK-022 y **supera** la "misma H para las 4
+   (provisoria)" del 2026-06-07. TASK-022 ya **no** es "sin calibrar". **Lo que queda (banco, lo hace
    el equipo):** (a) **deploy coordinado** — re-flashear las 2 cámaras (v2 @VGA con la H nueva)
    **+ el TOP** juntos (CRC OK / sin pelota fantasma); (b) medir y restar el **offset
    lente→centro del robot** (las distancias son desde el lente, no del centro); (c) **fps a

@@ -4,7 +4,7 @@ title: "Cámara operativa: sentinel, crash bytearray, exposición fija, calibrac
 date_created: 2026-05-18
 assigned: [mariaviollaz]
 priority: P0
-status: calib-COLORES-Y-DISTANCIA-CERRADA-2026-06-08-falta-deploy-coordinado-y-validacion-banco
+status: MATRICES-HOMOGRAFIA-PER-CAMARA-HECHAS-(Elias-2026-06-14)-falta-recalib-LAB-en-sede-Incheon
 estimated_hours: 24
 blocks: [percepción de pelota/arcos en Incheon]
 tags: [vision, camara, openmv, firmware, calibracion]
@@ -12,6 +12,29 @@ depends_on: []
 ---
 
 # TASK-022 — Cámara operativa
+
+## ✅ Actualización 2026-06-14 (Elías) — matrices de homografía PER-CÁMARA hechas
+
+**Reportado por Gustavo (2026-06-15):** Elías **completó el 2026-06-14 la calibración de
+las 4 cámaras, cada una con SU matriz de homografía propia.** Esto **cierra el paso 6**
+("1 script/H por cámara") y **supera** el estado provisional anterior (la "misma H para
+las 4 cámaras" del 2026-06-07, que era una decisión temporal). Ahora cada cámara reporta
+su XY con su propia H calibrada.
+
+- **Qué queda de TASK-022 (banco/sede, NO Claude):** la **recalibración de LAB de color
+  bajo la luz de Incheon** (la luz del venue invalida los thresholds de Salta) + lock de
+  exposición/WB en sede + medir fps@VGA + validar distancia con regla. Es inherente a
+  cualquier mundial: los colores se reajustan en cancha.
+- **Tooling listo para esa recalibración (2026-06-15):** `solve_homografia.py` ahora acepta
+  `--csv` + `--validate` + guardas anti-calibración-mala (ver
+  `journal/2026-06-15-task022-tooling-solver-homografia.md`); la H se pega en
+  `camaras-openmv/main.py` (producción), no en `cam-*-n6.py` (deprecado).
+- **Deuda menor (HI-5, opcional):** copiar las 4 matrices reales de Elías (de los `main.py`)
+  al baseline versionado de `robot_config/robot2.h` (hoy tiene placeholders genéricos), para
+  que el robot-def refleje el último-bueno. Lo hace quien tenga los valores (Elías/equipo).
+
+> Nota de proceso: Claude **registra** este hito sobre el reporte de Gustavo; la ejecución y
+> la validación son de Elías/el equipo (Claude no cierra TASKs de hardware por sí mismo).
 
 ## Por qué importa (P0)
 
@@ -113,7 +136,8 @@ Incheon. **La cierra el equipo humano** (Claude no cierra TASKs de hardware).
 Progreso del "Criterio de cierre":
 - [x] **Distancias calibradas** (homografía real con el ultra-wide @VGA) — *falta verificar
       contra regla con la H ya portada a v2*.
-- [x] Script por cámara con su homografía (hoy compartida, decisión provisoria).
+- [x] **Script por cámara con su homografía PROPIA** — ✅ HECHO por Elías 2026-06-14: las 4
+      cámaras calibradas, cada una con SU matriz (ya NO la H compartida provisoria del 06-07).
 - [ ] Cámara tapada → `ball_visible=false` (sentinel v2) — verificar tras el deploy.
 - [ ] Lock de exposición/WB/gain (la calib se hizo con autos ON) + estabilidad + luz Incheon.
 

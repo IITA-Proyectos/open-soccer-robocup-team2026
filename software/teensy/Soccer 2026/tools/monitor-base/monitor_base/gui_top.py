@@ -263,9 +263,9 @@ class MonitorTopApp:
 
         self._set_text(self.imu_txt,
             f"heading fusionado : {imu.heading_deg:+7.1f}°\n"
-            f"left / right      : {imu.left_deg:+7.1f}° / {imu.right_deg:+7.1f}°\n"
+            f"prim / sec        : {imu.left_deg:+7.1f}° / {imu.right_deg:+7.1f}°\n"
             f"desacuerdo        : {imu.disagreement_deg:5.1f}°  (>5° = problema)\n"
-            f"BNO L/R · valid   : {yn(imu.left_ok)}/{yn(imu.right_ok)} · {yn(imu.heading_valid)}\n")
+            f"BNO prim/sec·val  : {yn(imu.left_ok)}/{yn(imu.right_ok)} · {yn(imu.heading_valid)}\n")
 
         def mm(v):
             return "  —  " if v is None else f"{v:5d}"

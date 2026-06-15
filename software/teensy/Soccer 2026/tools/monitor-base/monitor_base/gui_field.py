@@ -42,7 +42,7 @@ FIELD_W_MM = 1820        # ancho (X, lateral)
 FIELD_H_MM = 2430        # largo (Y, arco-a-arco)
 GOAL_W_MM = 450          # ancho de boca de arco (aprox, solo dibujo)
 MARGIN_PX = 26
-TRAIL_MAX = 400
+TRAIL_MAX = 300          # cola acotada: con la atenuación, lo viejo desaparece igual
 
 
 # ── Geometría PURA (testeable, sin Tk) ──────────────────────────────────────
@@ -76,6 +76,84 @@ def pose_gap_mm(x1: float, y1: float, x2: float, y2: float) -> float:
     se cero-a al encender), así que sirve más para comparar la FORMA del recorrido
     que el número absoluto."""
     return math.hypot(x1 - x2, y1 - y2)
+
+
+# ── Estela con atenuación + glifos (PURO + helpers Tk, compartidos con panel_field) ──
+def _clamp8(v: float) -> int:
+    return 0 if v < 0 else (255 if v > 255 else int(v))
+
+
+def _hex_to_rgb(h: str) -> Tuple[int, int, int]:
+    h = h.lstrip("#")
+    if len(h) == 3:
+        h = "".join(ch * 2 for ch in h)
+    return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+
+
+def lerp_hex(c_from: str, c_to: str, t: float) -> str:
+    """Color hex intermedio: t=0 → c_from, t=1 → c_to (clampa t a [0,1])."""
+    t = 0.0 if t < 0 else (1.0 if t > 1 else t)
+    a, b = _hex_to_rgb(c_from), _hex_to_rgb(c_to)
+    return "#%02x%02x%02x" % (
+        _clamp8(a[0] + (b[0] - a[0]) * t),
+        _clamp8(a[1] + (b[1] - a[1]) * t),
+        _clamp8(a[2] + (b[2] - a[2]) * t),
+    )
+
+
+def fade_palette(n: int, c_bg: str, c_fg: str, gamma: float = 2.2) -> List[str]:
+    """n colores del punto más VIEJO (i=0, casi fondo → desaparece) al más NUEVO
+    (i=n-1, c_fg pleno). gamma>1 apaga rápido la cola → queda estela de cometa."""
+    if n <= 0:
+        return []
+    if n == 1:
+        return [c_fg]
+    g = gamma if gamma > 0 else 1.0
+    return [lerp_hex(c_bg, c_fg, (i / (n - 1)) ** g) for i in range(n)]
+
+
+def draw_faded_trail(canvas, points, fpx, c_bg: str, c_fg: str,
+                     w_min: float = 1.0, w_max: float = 3.0,
+                     gamma: float = 2.2, tag: str = "dyn") -> None:
+    """Dibuja la estela como SEGMENTOS: el color se atenúa hacia el fondo con la
+    edad (las lecturas viejas DESAPARECEN) y el grosor crece hacia el punto
+    actual (cabeza del cometa = lo más fuerte). points = (x,y) en mm; fpx = mm→px."""
+    n = len(points)
+    if n < 2:
+        return
+    cols = fade_palette(n, c_bg, c_fg, gamma)
+    prev = fpx(points[0][0], points[0][1])
+    for i in range(1, n):
+        cur = fpx(points[i][0], points[i][1])
+        t = i / (n - 1)
+        canvas.create_line(prev[0], prev[1], cur[0], cur[1], fill=cols[i],
+                           width=w_min + (w_max - w_min) * t,
+                           capstyle="round", tags=tag)
+        prev = cur
+
+
+def draw_robot_glyph(canvas, px: float, py: float, heading_deg: float,
+                     fill: str, outline: str, r: float = 13.0,
+                     tag: str = "dyn") -> None:
+    """Robot: footprint (anillo) + triángulo que apunta al frente + punto central."""
+    a = math.radians(heading_deg)
+    fx, fy = math.sin(a), math.cos(a)          # frente (en pantalla +Y es arriba)
+    bx_, by_ = math.cos(a), -math.sin(a)       # derecha
+    canvas.create_oval(px - r, py - r, px + r, py + r, outline=outline, tags=tag)
+    L = r + 4
+    nose = (px + fx * L, py - fy * L)
+    bl = (px - fx * 6 + bx_ * 8, py + fy * 6 - by_ * 8)
+    br = (px - fx * 6 - bx_ * 8, py + fy * 6 + by_ * 8)
+    canvas.create_polygon(*nose, *bl, *br, fill=fill, outline=outline, tags=tag)
+    canvas.create_oval(px - 2, py - 2, px + 2, py + 2, fill=outline, outline="", tags=tag)
+
+
+def draw_ball_glyph(canvas, px: float, py: float, fill: str, outline: str,
+                    c_bg: str, tag: str = "dyn") -> None:
+    """Pelota: halo suave + punto brillante (la posición actual = lo más fuerte)."""
+    halo = lerp_hex(c_bg, fill, 0.45)
+    canvas.create_oval(px - 11, py - 11, px + 11, py + 11, outline="", fill=halo, tags=tag)
+    canvas.create_oval(px - 6, py - 6, px + 6, py + 6, fill=fill, outline=outline, tags=tag)
 
 
 class Trail:
@@ -173,6 +251,7 @@ class FieldApp:
         c.create_line(x0, ymid, x1, ymid, fill="#3a7a4a")                      # media cancha
         r = (self.field_w * 0.18) / self.field_w * self.draw_w
         c.create_oval(cxmid - r, ymid - r, cxmid + r, ymid + r, outline="#3a7a4a")
+        c.create_oval(cxmid - 2, ymid - 2, cxmid + 2, ymid + 2, fill="#3a7a4a", outline="")  # punto central
         # Arcos (Y=largo = arriba, Y=0 = abajo).
         gx0, _ = self._fpx(self.field_w / 2 - GOAL_W_MM / 2, 0)
         gx1, _ = self._fpx(self.field_w / 2 + GOAL_W_MM / 2, 0)
@@ -210,22 +289,12 @@ class FieldApp:
     def _render(self, f: TopFrame) -> None:
         c = self.canvas
         c.delete("dyn")
-        # Estela del robot.
-        pts = self.robot_trail.points()
-        if len(pts) >= 2:
-            flat = []
-            for x, y in pts:
-                px, py = self._fpx(x, y)
-                flat += [px, py]
-            c.create_line(*flat, fill="#2bd27a", width=2, tags="dyn")
-        # Estela de la pelota (punteada = distancia sin calibrar).
-        bpts = self.ball_trail.points()
-        if len(bpts) >= 2:
-            flat = []
-            for x, y in bpts:
-                px, py = self._fpx(x, y)
-                flat += [px, py]
-            c.create_line(*flat, fill="#c9821f", width=1, dash=(3, 3), tags="dyn")
+        bg = "#0c3a18"
+        # Estelas atenuadas (cabeza fuerte, cola que se desvanece).
+        draw_faded_trail(c, self.robot_trail.points(), self._fpx, bg, "#2bd27a",
+                         w_min=1.0, w_max=3.0)
+        draw_faded_trail(c, self.ball_trail.points(), self._fpx, bg, "#c9821f",
+                         w_min=1.0, w_max=2.0)
         # Robot en la pose del snapshot (lo que el TOP manda a CENTRAL).
         if f.snap.valid:
             self._draw_robot(f.snap.my_x_mm, f.snap.my_y_mm, f.snap.my_heading_deg)
@@ -235,17 +304,11 @@ class FieldApp:
                                             f.snap.my_x_mm, f.snap.my_y_mm,
                                             f.snap.my_heading_deg)
                 px, py = self._fpx(bx, by)
-                c.create_oval(px - 7, py - 7, px + 7, py + 7, fill="#ff8c2a",
-                              outline="#ffd", tags="dyn")
+                draw_ball_glyph(c, px, py, "#ff8c2a", "#ffd", bg)
         # Overlay OTOS (opcional): estela + robot en CYAN para comparar.
         if self.show_otos.get():
-            opts = self.otos_trail.points()
-            if len(opts) >= 2:
-                flat = []
-                for x, y in opts:
-                    fpx, fpy = self._fpx(x, y)
-                    flat += [fpx, fpy]
-                c.create_line(*flat, fill="#33c4d6", width=1, dash=(2, 2), tags="dyn")
+            draw_faded_trail(c, self.otos_trail.points(), self._fpx, bg, "#33c4d6",
+                             w_min=1.0, w_max=2.0)
             if f.base.pose_fresh:
                 self._draw_robot(f.base.pose_x_mm, f.base.pose_y_mm,
                                  f.base.pose_heading_deg, fill="#1f7e8c", outline="#7fe6f2")
@@ -253,19 +316,8 @@ class FieldApp:
 
     def _draw_robot(self, x_mm: float, y_mm: float, heading_deg: float,
                     fill: str = "#2b6", outline: str = "#bfe") -> None:
-        c = self.canvas
         px, py = self._fpx(x_mm, y_mm)
-        a = math.radians(heading_deg)
-        # Frente = +Y a heading 0; vector frente en PX (Y invertido en pantalla).
-        L = 16
-        fx, fy = math.sin(a), math.cos(a)
-        nose = (px + fx * L, py - fy * L)
-        # Base del triángulo (perpendicular).
-        bx_, by_ = math.cos(a), -math.sin(a)
-        bl = (px - fx * 7 + bx_ * 9, py + fy * 7 - by_ * 9)
-        br = (px - fx * 7 - bx_ * 9, py + fy * 7 + by_ * 9)
-        c.create_polygon(*nose, *bl, *br, fill=fill, outline=outline, tags="dyn")
-        c.create_oval(px - 2, py - 2, px + 2, py + 2, fill=outline, outline="", tags="dyn")
+        draw_robot_glyph(self.canvas, px, py, heading_deg, fill=fill, outline=outline)
 
     def _render_info(self, f: TopFrame) -> None:
         def yn(b):

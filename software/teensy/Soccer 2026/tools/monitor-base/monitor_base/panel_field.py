@@ -21,7 +21,6 @@ status bar los pone el shell global, así que acá no van.
 """
 from __future__ import annotations
 
-import math
 import tkinter as tk
 from tkinter import ttk
 from typing import Optional, Tuple
@@ -32,6 +31,9 @@ from .gui_field import (
     GOAL_W_MM,
     MARGIN_PX,
     Trail,
+    draw_ball_glyph,
+    draw_faded_trail,
+    draw_robot_glyph,
     field_to_px,
     pose_gap_mm,
     robot_rel_to_field,
@@ -131,6 +133,7 @@ class FieldPanel(Panel):
         c.create_line(x0, ymid, x1, ymid, fill=_MID)                            # media cancha
         r = (self.field_w * 0.18) / self.field_w * self.draw_w
         c.create_oval(cxmid - r, ymid - r, cxmid + r, ymid + r, outline=_MID)
+        c.create_oval(cxmid - 2, ymid - 2, cxmid + 2, ymid + 2, fill=_MID, outline="")  # punto central
         # Arcos (Y=largo = arriba, Y=0 = abajo).
         gx0, _ = self._fpx(self.field_w / 2 - GOAL_W_MM / 2, 0)
         gx1, _ = self._fpx(self.field_w / 2 + GOAL_W_MM / 2, 0)
@@ -164,22 +167,12 @@ class FieldPanel(Panel):
     def _draw_dynamic(self, f: TopFrame) -> None:
         c = self.canvas
         c.delete("dyn")
-        # Estela del robot.
-        pts = self.robot_trail.points()
-        if len(pts) >= 2:
-            flat = []
-            for x, y in pts:
-                px, py = self._fpx(x, y)
-                flat += [px, py]
-            c.create_line(*flat, fill=_TRAIL_ROBOT, width=2, tags="dyn")
-        # Estela de la pelota (punteada = distancia sin calibrar).
-        bpts = self.ball_trail.points()
-        if len(bpts) >= 2:
-            flat = []
-            for x, y in bpts:
-                px, py = self._fpx(x, y)
-                flat += [px, py]
-            c.create_line(*flat, fill=_TRAIL_BALL, width=1, dash=(3, 3), tags="dyn")
+        # Estelas atenuadas: la cabeza (actual) es lo más fuerte y la cola se
+        # desvanece hacia el césped con la edad (lecturas viejas desaparecen).
+        draw_faded_trail(c, self.robot_trail.points(), self._fpx, _FIELD_BG,
+                         _TRAIL_ROBOT, w_min=1.0, w_max=3.0)
+        draw_faded_trail(c, self.ball_trail.points(), self._fpx, _FIELD_BG,
+                         _TRAIL_BALL, w_min=1.0, w_max=2.0)
         # Robot en la pose del snapshot (lo que el TOP manda a CENTRAL).
         if f.snap.valid:
             self._draw_robot(f.snap.my_x_mm, f.snap.my_y_mm, f.snap.my_heading_deg)
@@ -189,17 +182,11 @@ class FieldPanel(Panel):
                                             f.snap.my_x_mm, f.snap.my_y_mm,
                                             f.snap.my_heading_deg)
                 px, py = self._fpx(bx, by)
-                c.create_oval(px - 7, py - 7, px + 7, py + 7, fill=_BALL_FILL,
-                              outline=_BALL_OUTLINE, tags="dyn")
+                draw_ball_glyph(c, px, py, _BALL_FILL, _BALL_OUTLINE, _FIELD_BG)
         # Overlay OTOS (opcional): estela + robot en CYAN para comparar.
         if self.show_otos.get():
-            opts = self.otos_trail.points()
-            if len(opts) >= 2:
-                flat = []
-                for x, y in opts:
-                    fpx, fpy = self._fpx(x, y)
-                    flat += [fpx, fpy]
-                c.create_line(*flat, fill=_OTOS_TRAIL, width=1, dash=(2, 2), tags="dyn")
+            draw_faded_trail(c, self.otos_trail.points(), self._fpx, _FIELD_BG,
+                             _OTOS_TRAIL, w_min=1.0, w_max=2.0)
             if f.base.pose_fresh:
                 self._draw_robot(f.base.pose_x_mm, f.base.pose_y_mm,
                                  f.base.pose_heading_deg, fill=_OTOS_FILL,
@@ -208,19 +195,8 @@ class FieldPanel(Panel):
 
     def _draw_robot(self, x_mm: float, y_mm: float, heading_deg: float,
                     fill: str = _ROBOT_FILL, outline: str = _ROBOT_OUTLINE) -> None:
-        c = self.canvas
         px, py = self._fpx(x_mm, y_mm)
-        a = math.radians(heading_deg)
-        # Frente = +Y a heading 0; vector frente en PX (Y invertido en pantalla).
-        L = 16
-        fx, fy = math.sin(a), math.cos(a)
-        nose = (px + fx * L, py - fy * L)
-        # Base del triángulo (perpendicular).
-        bx_, by_ = math.cos(a), -math.sin(a)
-        bl = (px - fx * 7 + bx_ * 9, py + fy * 7 - by_ * 9)
-        br = (px - fx * 7 - bx_ * 9, py + fy * 7 + by_ * 9)
-        c.create_polygon(*nose, *bl, *br, fill=fill, outline=outline, tags="dyn")
-        c.create_oval(px - 2, py - 2, px + 2, py + 2, fill=outline, outline="", tags="dyn")
+        draw_robot_glyph(self.canvas, px, py, heading_deg, fill=fill, outline=outline)
 
     def _render_info(self, f: TopFrame) -> None:
         def yn(b):

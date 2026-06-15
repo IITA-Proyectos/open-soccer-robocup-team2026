@@ -1,8 +1,8 @@
 """Tests de la geometría PURA de gui_field.py (vista de cancha). Sin Tk."""
 from __future__ import annotations
 
-from monitor_base.gui_field import (Trail, field_to_px, pose_gap_mm,
-                                    robot_rel_to_field)
+from monitor_base.gui_field import (Trail, fade_palette, field_to_px, lerp_hex,
+                                    pose_gap_mm, robot_rel_to_field)
 
 
 def test_pose_gap_mm():
@@ -83,3 +83,43 @@ def test_trail_clear():
     t.push(0, 0); t.push(100, 0)
     t.clear()
     assert len(t) == 0
+
+
+# ── Estela atenuada: lerp_hex + fade_palette (parte pura del cometa) ─────────
+def test_lerp_hex_endpoints():
+    assert lerp_hex("#000000", "#ffffff", 0.0) == "#000000"
+    assert lerp_hex("#000000", "#ffffff", 1.0) == "#ffffff"
+
+
+def test_lerp_hex_midpoint():
+    assert lerp_hex("#000000", "#ffffff", 0.5) == "#7f7f7f"
+
+
+def test_lerp_hex_clamps_out_of_range():
+    assert lerp_hex("#000000", "#ffffff", -1.0) == "#000000"
+    assert lerp_hex("#000000", "#ffffff", 2.0) == "#ffffff"
+
+
+def test_lerp_hex_accepts_shorthand():
+    # '#0f0' == '#00ff00'; a t=1 devuelve el destino expandido.
+    assert lerp_hex("#000", "#0f0", 1.0) == "#00ff00"
+
+
+def test_fade_palette_oldest_is_bg_newest_is_fg():
+    pal = fade_palette(10, "#000000", "#ffffff")
+    assert pal[0] == "#000000"          # más viejo = fondo (desaparece)
+    assert pal[-1] == "#ffffff"         # más nuevo = color pleno (cabeza)
+    assert len(pal) == 10
+
+
+def test_fade_palette_is_monotonic_brightness():
+    # con gamma>0 el brillo crece del viejo al nuevo (cola que se apaga).
+    pal = fade_palette(8, "#000000", "#ffffff", gamma=2.2)
+    vals = [int(c[1:3], 16) for c in pal]
+    assert vals == sorted(vals)
+    assert vals[0] <= vals[-1]
+
+
+def test_fade_palette_degenerate_sizes():
+    assert fade_palette(0, "#000000", "#ffffff") == []
+    assert fade_palette(1, "#000000", "#ffffff") == ["#ffffff"]

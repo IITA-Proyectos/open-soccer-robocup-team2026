@@ -29,8 +29,8 @@ from .zones import NO_READING_COLOR, TOF_LABELS, ZoneGrid, zone_color
 TOGGLES = [
     ("Cámara frontal", "CAM F ON", "CAM F OFF"),
     ("Cámara trasera", "CAM B ON", "CAM B OFF"),
-    ("BNO izq", "BNO L ON", "BNO L OFF"),
-    ("BNO der", "BNO R ON", "BNO R OFF"),
+    ("BNO primario", "BNO L ON", "BNO L OFF"),    # idx0 (rol en la fusión, no "izq")
+    ("BNO secundario", "BNO R ON", "BNO R OFF"),  # idx1 (no "der")
     ("Ultrasonido", "US ON", "US OFF"),
 ]
 TOF_POS = ("FRONT", "RIGHT", "BACK", "LEFT")

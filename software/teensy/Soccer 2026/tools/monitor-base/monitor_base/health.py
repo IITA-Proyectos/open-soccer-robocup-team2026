@@ -96,11 +96,15 @@ def evaluate(f: TopFrame, phantom_threshold_mm: float = 200.0,
         out.append(SensorHealth("ball_fusion", "Pelota (fusión)", Status.OK,
                                 f"la ve la cámara {who}"))
 
-    # ── IMU: BNO L/R + rumbo fusionado ──
-    out.append(SensorHealth("bno_left", "BNO izq",
+    # ── IMU: BNO primario (idx0) / secundario (idx1) + rumbo fusionado ──
+    # Nombrados por su ROL en la fusión (idx0=primario que prioriza el árbitro,
+    # idx1=secundario/respaldo), NO por "izq/der" (los chips no están a los lados).
+    # El bus I²C y la dirección (0x28/0x29) son constantes de BUILD y no viajan en
+    # la telemetría → no se rotulan acá (mentirían según el firmware flasheado).
+    out.append(SensorHealth("bno_left", "BNO primario",
                             Status.OK if imu.left_ok else Status.DEAD,
                             f"{imu.left_deg:+.1f}°" if imu.left_ok else "no responde"))
-    out.append(SensorHealth("bno_right", "BNO der",
+    out.append(SensorHealth("bno_right", "BNO secundario",
                             Status.OK if imu.right_ok else Status.DEAD,
                             f"{imu.right_deg:+.1f}°" if imu.right_ok else "no responde"))
     if not imu.heading_valid:
@@ -108,7 +112,7 @@ def evaluate(f: TopFrame, phantom_threshold_mm: float = 200.0,
                                 "no confiable / congelado (heading_valid=0)"))
     elif imu.disagreement_deg > disagree_warn_deg:
         out.append(SensorHealth("heading", "Rumbo (fusión)", Status.WARN,
-                                f"desacuerdo L↔R Δ={imu.disagreement_deg:.1f}° "
+                                f"desacuerdo prim↔sec Δ={imu.disagreement_deg:.1f}° "
                                 f"(>{disagree_warn_deg:.0f}°)"))
     else:
         out.append(SensorHealth("heading", "Rumbo (fusión)", Status.OK,

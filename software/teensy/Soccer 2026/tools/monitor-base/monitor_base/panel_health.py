@@ -20,8 +20,11 @@ from .zones import NO_READING_COLOR, TOF_LABELS, ZoneGrid, zone_color
 TOGGLES = [
     ("Cámara frontal", "CAM F ON", "CAM F OFF"),
     ("Cámara trasera", "CAM B ON", "CAM B OFF"),
-    ("BNO izq", "BNO L ON", "BNO L OFF"),
-    ("BNO der", "BNO R ON", "BNO R OFF"),
+    # BNO por ROL en la fusión (idx0/idx1), no "izq/der" (los comandos BNO L/R del
+    # firmware son idx0/idx1 → no se tocan). Bus/dirección = constante de build, no
+    # viaja en telemetría → no se rotula (mentiría según el binario flasheado).
+    ("BNO primario", "BNO L ON", "BNO L OFF"),
+    ("BNO secundario", "BNO R ON", "BNO R OFF"),
     ("Ultrasonido", "US ON", "US OFF"),
 ]
 TOF_POS = ("FRONT", "RIGHT", "BACK", "LEFT")

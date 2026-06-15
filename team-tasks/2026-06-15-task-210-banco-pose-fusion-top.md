@@ -33,11 +33,12 @@ valida el equipo en banco.
 
 La skill `fusion-pose-odometria-landmarks` lo dice: **medir el ruido ANTES de tunear.**
 
-1. **Signo/eje del DELTA OTOS vs marco de cancha.** `pose_fusion` integra el DELTA de la
-   OTOS sin rotarlo al marco de cancha → asume que el marco OTOS ≈ marco cancha. Empujar el
-   robot +X y +Y a mano y confirmar que el delta OTOS va en el sentido correcto. Si está
-   rotado/invertido, la predicción "se va para el otro lado" — anotarlo (es fix de glue, no
-   del módulo).
+1. **Signo/eje del DELTA OTOS vs marco de cancha.** ✅ ACTUALIZADO 2026-06-15 (H1): `pose_fusion`
+   YA des-rota el delta OTOS por `net = bno_heading − otos_heading` (vía `rot_lut.h`, host-tested) —
+   antes lo integraba crudo. Lo que queda de BANCO: confirmar el **SIGNO** del net (¿es `bno−otos`
+   o al revés? ¿CCW o CW?) empujando el robot +X/+Y y girándolo a mano; si la pose "se va para el
+   otro lado" al girar, invertir el signo del net en `main_top.cpp` (glue). La MATEMÁTICA de la
+   rotación ya está correcta+testeada; solo la convención de signo es banco.
 2. **¿El ToF ANCLA?** Hoy con ToF sólo en el eje Y, `localization` casi nunca da `valid` →
    `pose_fusion` NUNCA inicializa → `build_snapshot` cae al comportamiento de hoy (la fusión
    es inerte). Confirmar si con la disposición actual de ToF la pose llega a `valid` alguna

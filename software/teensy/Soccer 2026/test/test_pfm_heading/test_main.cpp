@@ -121,6 +121,54 @@ void test_reset_clears_state(void){
     TEST_ASSERT_EQUAL_UINT32(0, s.win_t0_ms);
 }
 
+// --- Amortiguación por velocidad de giro (kd_rate, la "D" de un PD) ---
+
+void test_rate_damping_off_by_default(void){
+    // Con el cfg default (kd_rate=0) la velocidad de giro NO debe cambiar NADA:
+    // el comportamiento es byte-idéntico al PI previo (no-regresión).
+    const PfmHeadingCfg c = cfg_test();   // kd_rate=0 (default)
+    PfmHeadingState s1; pfm_heading_reset(s1);
+    PfmHeadingState s2; pfm_heading_reset(s2);
+    for (int i = 0; i < 50; ++i) {
+        const uint32_t t = 1000 + i * 10;
+        const float a = pfm_heading_tick(s1, c, 20.0f, true, t, 0.01f, 0.0f);
+        const float b = pfm_heading_tick(s2, c, 20.0f, true, t, 0.01f, 200.0f);  // rate grande
+        TEST_ASSERT_FLOAT_WITHIN(0.001f, a, b);   // sin kd_rate, el rate es inerte
+    }
+}
+
+void test_rate_damping_reduces_duty(void){
+    // Con kd_rate>0 y el robot girando HACIA el target (rate>0, err>0), la
+    // corrección deseada baja (u = kp·err − kd·rate + integ) → menos ticks ON.
+    PfmHeadingCfg c = cfg_test();
+    c.kd_rate = 0.4f;
+    PfmHeadingState s_norate; pfm_heading_reset(s_norate);
+    PfmHeadingState s_rate;   pfm_heading_reset(s_rate);
+    int on_norate = 0, on_rate = 0;
+    for (int i = 0; i < 16; ++i) {           // una ventana (160 ms)
+        const uint32_t t = 1000 + i * 10;
+        if (pfm_heading_tick(s_norate, c, 20.0f, true, t, 0.01f, 0.0f)  != 0.0f) ++on_norate;
+        if (pfm_heading_tick(s_rate,   c, 20.0f, true, t, 0.01f, 40.0f) != 0.0f) ++on_rate;
+    }
+    TEST_ASSERT_TRUE(on_rate < on_norate);   // amortigua: recorta el duty
+}
+
+void test_rate_damping_against_motion_can_boost(void){
+    // Girando EN CONTRA del target (rate<0, err>0) la amortiguación SUMA
+    // corrección (−kd·(−rate) = +): u sube. Coherencia de signo del término D.
+    PfmHeadingCfg c = cfg_test();
+    c.kd_rate = 0.4f;
+    PfmHeadingState s_norate; pfm_heading_reset(s_norate);
+    PfmHeadingState s_rate;   pfm_heading_reset(s_rate);
+    int on_norate = 0, on_rate = 0;
+    for (int i = 0; i < 16; ++i) {
+        const uint32_t t = 1000 + i * 10;
+        if (pfm_heading_tick(s_norate, c, 10.0f, true, t, 0.01f,  0.0f)  != 0.0f) ++on_norate;
+        if (pfm_heading_tick(s_rate,   c, 10.0f, true, t, 0.01f, -40.0f) != 0.0f) ++on_rate;
+    }
+    TEST_ASSERT_TRUE(on_rate >= on_norate);  // contra el movimiento → más corrección
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_deadband_zero_output);
@@ -131,5 +179,8 @@ int main(int, char**) {
     RUN_TEST(test_integrator_learns_sustained_disturbance);
     RUN_TEST(test_antiwindup_clamps_integrator);
     RUN_TEST(test_reset_clears_state);
+    RUN_TEST(test_rate_damping_off_by_default);
+    RUN_TEST(test_rate_damping_reduces_duty);
+    RUN_TEST(test_rate_damping_against_motion_can_boost);
     return UNITY_END();
 }

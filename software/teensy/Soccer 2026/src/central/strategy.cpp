@@ -32,6 +32,7 @@
 #include "ball_trajectory.h"
 #include "atk_nogyro.h"     // helpers puros del delantero sin gyro (práctica R1)
 #include "pfm_heading.h"    // control PI+PFM de rumbo p/ zona muerta (banco María)
+#include "heading_rate.h"   // estimador de velocidad de giro p/ amortiguar (coach 2026-06-14)
 
 #include <Arduino.h>
 #include <cmath>
@@ -1187,12 +1188,18 @@ MotorCommand goalkeeper_tick() {
         static uint32_t        phase_t0    = 0;
         static uint32_t        goto_clear_ms = 0;  // fase ADVANCE: desde cuándo la línea dejó de verse
         static PfmHeadingState pfm{};               // estado del PI+PFM (integ + ventana)
+#ifdef GK_PFM_RATE_DAMP
+        static HeadingRateState pfm_rate{};         // velocidad de giro p/ amortiguar (D del PD)
+#endif
 
         if (!world_model_match_running()) {
             g_state_name = "GK_SIMPLE_WAIT";
             dir_simple = +1; bounce_gate = 0;   // reset (sin statics colgados)
             phase = 5; phase_t0 = now_ms; goto_clear_ms = 0;   // arranca por el retroceso al arco (#1)
             pfm_heading_reset(pfm);
+#ifdef GK_PFM_RATE_DAMP
+            heading_rate_reset(pfm_rate);
+#endif
             return cmd;                          // ceros → quieto
         }
         if (phase_t0 == 0) phase_t0 = now_ms;
@@ -1218,8 +1225,31 @@ MotorCommand goalkeeper_tick() {
             // MEDIALUNA DESAPARECE → la causa era el PFM (sobre-corrección), NO los motores.
             return 0;
 #endif
+#ifdef GK_PFM_RATE_DAMP
+            // AMORTIGUACIÓN por velocidad de giro (la "D" de un PD): resta la
+            // velocidad de giro MEDIDA para frenar el sobrepaso que la latencia
+            // del rumbo provoca (la "medialuna"). La velocidad se estima de
+            // muestras FRESCAS de rumbo (heading_rate.h) — NO se deriva tick a
+            // tick, así que no mete el ruido de cuantización que la skill
+            // control-pid-zona-muerta advierte. Solo con rumbo válido (sin gyro no
+            // hay velocidad que restar). 🔧 Tunear GK_PFM_KD_RATE en banco.
+            constexpr float GK_PFM_KD_RATE = 0.30f;
+            PfmHeadingCfg pcfg = pfm_heading_default_cfg();
+            pcfg.kd_rate = GK_PFM_KD_RATE;
+            float rate_degps = 0.0f;
+            if (hv) {
+                rate_degps = heading_rate_update(pfm_rate, heading_now, now_ms,
+                                                 heading_rate_default_cfg());
+            } else {
+                heading_rate_reset(pfm_rate);  // sin rumbo: no arrastrar velocidad vieja
+            }
+            const float w = pfm_heading_tick(pfm, pcfg, hdg_err, hv, now_ms,
+                                             0.01f, rate_degps);
+#else
+            // Sin el flag: llamada EXACTA a la histórica (byte-idéntico).
             const float w = pfm_heading_tick(pfm, pfm_heading_default_cfg(),
                                              hdg_err, hv, now_ms, 0.01f);
+#endif
             return omega_degps_to_centideg(w);
         };
 

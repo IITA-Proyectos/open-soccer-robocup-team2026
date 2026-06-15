@@ -5,7 +5,7 @@ fecha: 2026-06-13
 asignado: equipo (firmware CENTRAL — Gustavo + alumno)
 prioridad: P1
 pedido-por: Gustavo Viollaz (banco en casa, cancha, 2026-06-13)
-relacionada: control-pid-zona-muerta (skill), pfm_heading.h, central_arquero_fsm (memoria)
+relacionada: control-pid-zona-muerta (skill), pfm_heading.h, heading_rate.h, docs/firmware/CONTROL-ARQUERO-LATERAL-Y-LATENCIAS.md, central_arquero_fsm (memoria)
 estado: pending
 ---
 
@@ -73,6 +73,36 @@ Aplicar la skill **`control-pid-zona-muerta`**. Hipótesis a probar, en orden:
   línea, no se mete de frente).
 - Sin oscilación/temblor nuevo alrededor del frente (que el fix no genere el
   problema opuesto).
+
+## Actualización 2026-06-15 (banco María + merge de mitigaciones)
+
+**Banco María (2026-06-14/15), env `central_robot2_arquero_strafe_cam_bb`:**
+- Se titraron los gains del PFM a **kp=1 / ki=0.2 / deadband=10° / ventana=160 ms**
+  (antes 2 / 0.4 / 5 / 160). Con el PFM ON seguía "muy feo".
+- **Hallazgo clave:** con el PFM/BNO **APAGADO** (`-DGK_STRAFE_NO_PFM`) el arquero
+  anda **MEJOR** que con el control de rumbo prendido → el problema es el **lazo de
+  rumbo / latencia del BNO**, no la base. (El `_cam_bb` quedó HOY con el PFM apagado,
+  temporal — borrar ese flag para reactivar el PID.)
+- **Deriva mecánica residual** del strafe a ω=0: **~8°/s** (pisos {70,70,107}). El
+  **piso** de la trasera es el lever EQUIVOCADO (subirlo mete asimetría por
+  FLOOR_SCALE → PEOR, medido 18 vs 8°/s). El lever simétrico es la **eficiencia**:
+  se bajó `MOTOR_EFF_X100[2]` **131→115** (+pot. trasera, A/B). **PENDIENTE medir con
+  caja negra** si endereza (si arquea al otro lado, volver hacia 131).
+
+**Mitigaciones MERGEADAS (rama coach/control-arquero, 2026-06-14 — gateadas OFF, binario de competencia byte-idéntico):**
+- **P0 — fast-BNO** (env `top_robot2_pri_fastbno`): lee el BNO primario a **100 Hz**
+  en vez de 20 → **menos latencia de rumbo** (ataca la causa, no solo la ganancia).
+- **P1 — rate-damp / la "D"** (env `central_robot2_arquero_strafe_cam_ratedamp`):
+  término derivativo `GK_PFM_KD_RATE` (hoy 0,30) alimentado por `heading_rate.h`
+  (velocidad de giro medida) → frena el **sobrepaso por latencia**. **Tunear en banco.**
+- Doc: `docs/firmware/CONTROL-ARQUERO-LATERAL-Y-LATENCIAS.md`.
+
+**Plan de banco actualizado — comparar con caja negra (criterio `|hdg_err| < 10°` sostenido):**
+1. **Hoy:** `_cam_bb` (PFM off, eff 115) — baseline "anda mejor sin BNO".
+2. **A/B eff:** ¿el eff 115 enderezó la deriva mecánica (vs 131)?
+3. **P0 solo:** `top_robot2_pri_fastbno` + `_cam_bb` con el PID reactivado (sacar `-DGK_STRAFE_NO_PFM`) — ¿se mantiene el frente con menos latencia?
+4. **P0+P1:** `central_robot2_arquero_strafe_cam_ratedamp` (PFM on + la "D") + `fastbno`, titrando `GK_PFM_KD_RATE` — el ataque completo a la oscilación.
+- ⚠️ Confirmar que `top_robot2_pri_fastbno` **no congela el rumbo** a 100 Hz (el i²c bajo carga; ver memoria UART/I²C — por eso el BNO se leía a 20 Hz).
 
 ## Cierre
 

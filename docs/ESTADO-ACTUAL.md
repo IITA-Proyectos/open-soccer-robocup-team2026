@@ -307,6 +307,21 @@ nativo, pero ya no es el único camino. Ver
    §Resultado + `journal/2026-06-07-calibracion-distancia-camara-frontal-elias.md`. (Migración
    H7→N6, bugs P0 y velocidad de pelota ya estaban resueltos — Avance 2026-06-03.)
 
+### Avance 2026-06-15 — Arquero strafe: tuning del control de rumbo + mitigaciones de latencia (banco María)
+- **Banco María (2026-06-14/15):** el arquero strafe (R2) andaba "muy feo" con el PFM de rumbo.
+  Hallazgo: **anda MEJOR sin BNO** (PFM apagado) → el problema es el **lazo de rumbo / latencia del
+  BNO**, no la base. Hoy el env `central_robot2_arquero_strafe_cam_bb` lleva `-DGK_STRAFE_NO_PFM`
+  **temporal** (borrar el flag para reactivar el PID). Gains titrados a kp1/ki0.2/db10/win160.
+- **Deriva mecánica residual** del strafe a ω=0 ≈ 8°/s: el **piso** de la trasera es el lever
+  EQUIVOCADO (asimetría por FLOOR_SCALE → peor, medido 18 vs 8); el simétrico es la **eficiencia** →
+  `MOTOR_EFF_X100[2]` 131→115 (A/B, **pendiente de banco**). + gate anti-lecturas-saltarinas de cámara
+  y signo de centrado de pelota +1 (anda: "queda buscándola").
+- **2 mitigaciones MERGEADAS (gateadas OFF → binario de competencia byte-idéntico):** **P0 fast-BNO**
+  (env `top_robot2_pri_fastbno`, BNO a 100 Hz vs 20 → menos latencia) y **P1 rate-damp/"D"** (env
+  `central_robot2_arquero_strafe_cam_ratedamp`, `GK_PFM_KD_RATE` + `heading_rate.h`). Doc:
+  `docs/firmware/CONTROL-ARQUERO-LATERAL-Y-LATENCIAS.md`. **Pendiente de banco → TASK-103** (4 casos con
+  caja negra). ⚠️ Para no re-implementar: estos 2 envs YA existen.
+
 ### Avance 2026-06-09 — Motores: MOTION LATERAL ESTÁNDAR validado en banco ROBOT2 (3 técnicas)
 - **Banco R2 (Gustavo, `diag_central_strafe_robot2_kick`): "anda bien".** Antes de esto, en el
   strafe de R2 la trasera movía pero las delanteras no rompían la inercia, y al frenar la

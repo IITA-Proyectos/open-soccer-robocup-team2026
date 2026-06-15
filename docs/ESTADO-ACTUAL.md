@@ -297,7 +297,8 @@ nativo, pero ya no es el único camino. Ver
 
 1. **COMM — firmware flasheado ✅ (2026-06-01); E2E del árbitro RESUELTO ✅ (2026-06-02, TASK-039).** El árbitro RCJ **NO viaja por UART**: señaliza como **NIVEL GPIO** hacia el TOP (Teensy 4.0) en **pin 5 = OUT1 (PLAY/STOP)** y **pin 6 = OUT2 (PLAY/STOP)** (en la práctica, en PLAY sube SOLO UNO de los dos —no son espejo—). Nivel: **0 = juego PARADO, 1 = juego EN CURSO (3.3 V)**. Firmware: `src/top/comm_arbiter.cpp::read_referee_gpio()` lee los pines 5/6 con `INPUT_PULLDOWN` y `match_running = (pin5 OR pin6)` (en PLAY sube SOLO UNO de los dos pines —el otro queda en 0— por eso AND nunca daba GO y OR sí; probado en banco 2026-06-02, Gustavo. Sigue siendo fail-safe: si se desconecta el cable del COMM, ambos pines leen 0 con `INPUT_PULLDOWN` → `match_running=false` → STOP). El probe temporal se removió de `main_top.cpp`. El **UART del módulo COMM (TOP `Serial2`, pines 7/8) queda SOLO para partner ESP-NOW / status** — el viejo `COMM_REFEREE_CMD` por UART quedó **obsoleto**. (fix 2026-06-02 / TASK-039: el árbitro es NIVEL GPIO en pines 5/6 del TOP, no UART). El robot ya recibe START/STOP por GPIO → homologa el árbitro. TASK-006/TASK-039.
 2. **Cámaras — calibración de DISTANCIA ✅ HECHA (Elías, 2026-06-07)**, integrada a
-   producción **v2** (homografía portada a `cam-*-n6.py` @**VGA**; misma H para las 4 cámaras,
+   producción **v2** (homografía en el script de producción `camaras-openmv/main.py` @**VGA**;
+   ⚠️ corrección 2026-06-15: el destino es `main.py`, NO `cam-*-n6.py` —deprecados—; misma H para las 4 cámaras,
    decisión provisoria). TASK-022 ya **no** es "sin calibrar". **Lo que queda (banco, lo hace
    el equipo):** (a) **deploy coordinado** — re-flashear las 2 cámaras (v2 @VGA con la H nueva)
    **+ el TOP** juntos (CRC OK / sin pelota fantasma); (b) medir y restar el **offset
@@ -306,6 +307,20 @@ nativo, pero ya no es el único camino. Ver
    distancias vs regla. Doc: [`CALIBRACION-HOMOGRAFIA-XY-N6.md`](firmware/CALIBRACION-HOMOGRAFIA-XY-N6.md)
    §Resultado + `journal/2026-06-07-calibracion-distancia-camara-frontal-elias.md`. (Migración
    H7→N6, bugs P0 y velocidad de pelota ya estaban resueltos — Avance 2026-06-03.)
+
+### Avance 2026-06-15 — TASK-022 (cámaras): tooling host del solver de homografía (acelera el banco, sin tocar hardware)
+- **El núcleo de TASK-022 es BANCO** (calibrar LAB/exposición bajo luz de Incheon, medir distancias con regla,
+  fps@VGA) — Claude NO lo cierra. Un workflow (7 agentes + verificación) identificó lo **host-testeable/tooling**
+  que sí acelera el banco. Journal: `journal/2026-06-15-task022-tooling-solver-homografia.md`.
+- **`solve_homografia.py` endurecido** (PC, numpy): **`--csv FILE`** (antes había que editar el fuente a mano en
+  cada recalibración — se corre ≥4 veces), **guardas anti-calibración-mala** (puntos colineales / <4 / H[2,2]~0 →
+  mensaje claro en vez de una H inválida silenciosa), **modo `--validate`** (predice X/Y de píxeles de prueba con la
+  H ANTES de flashear) + fix del emoji que crasheaba en consola Windows. Test nuevo `test_solve_homografia.py` **14/14**.
+- **HI-6 (doc P1, de-risk Incheon):** 3 docs mandaban a pegar la H en `cam-*-n6.py` (**DEPRECADO** 2026-06-08); el
+  destino real es `camaras-openmv/main.py`. Corregido el banner del doc de homografía + ESTADO + el `print_h_block`
+  del solver. (El equipo iba a flashear el archivo equivocado en sede.)
+- **Pendiente (banco, no Claude):** recalibrar LAB/exposición en sede, fps@VGA, validar distancia con regla. Opcional
+  (decisión Gustavo): HI-5 alinear el baseline LAB/H de `robot2.h` al último-bueno de `main.py`.
 
 ### Avance 2026-06-15 — Cierre host-testeable de la TOP: estimador pose_fusion numéricamente correcto + clamp drive_straight
 - Pedido de Gustavo: terminar TODOS los módulos/funcionalidades de la TOP. Un **workflow de inventario

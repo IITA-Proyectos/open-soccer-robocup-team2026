@@ -55,6 +55,9 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--polar", action="store_true",
                    help="modo TOP — vista POLAR cenital: conos de ToF (profundidad por zona) + "
                         "conos de cámara (pelota/arcos sí-no + posición)")
+    p.add_argument("--field", action="store_true",
+                   help="modo TOP — vista de CANCHA: robot ubicado por OTOS con orientación + "
+                        "estela, y pelota con estela (distancia sin calibrar)")
     p.add_argument("--selftest", action="store_true",
                    help="smoke headless: procesa N frames del sim y sale (sin GUI)")
     p.add_argument("--selftest-frames", type=int, default=200,
@@ -68,8 +71,8 @@ def _dead_list(s: str) -> List[int]:
 
 def _build_source(args: argparse.Namespace):
     from .sources import ReplaySource, SerialSource, SimSource, SimTopSource
-    if (args.top or args.top_salud or args.tof_setup
-            or args.tof_360 or args.timeline or args.cam_fusion or args.polar):
+    if (args.top or args.top_salud or args.tof_setup or args.tof_360
+            or args.timeline or args.cam_fusion or args.polar or args.field):
         from .protocol_top import parse_line_top
         if args.port:
             return SerialSource(args.port, baud=args.baud, parser=parse_line_top)
@@ -273,6 +276,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.list_ports:
         return list_ports()
     if args.selftest:
+        if args.field:
+            from . import gui_field
+            return gui_field.selftest(args.selftest_frames)
         if args.polar:
             from . import gui_polar
             return gui_polar.selftest(args.selftest_frames)
@@ -307,6 +313,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         elif args.polar:
             from . import gui_polar
             gui_polar.run_polar(source, recorder=recorder)
+        elif args.field:
+            from . import gui_field
+            gui_field.run_field(source, recorder=recorder)
         elif args.tof_360:
             from . import gui_tof_360
             gui_tof_360.run_tof_360(source, recorder=recorder)

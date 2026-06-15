@@ -46,6 +46,12 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--tof-setup", action="store_true",
                    help="modo TOP — CONFIGURAR los ToF: ubicación, rotar/espejar, y vetar zonas "
                         "según altura de pared + cancha (guarda a .json; baja a firmware)")
+    p.add_argument("--tof-360", action="store_true",
+                   help="modo TOP — TIRA 360 de los 4 ToF (izq|frente|der|atrás) + cámaras arriba")
+    p.add_argument("--timeline", action="store_true",
+                   help="modo TOP — TIMELINE/caja-negra EN VIVO del snapshot TOP→CENTRAL")
+    p.add_argument("--cam-fusion", action="store_true",
+                   help="modo TOP — comparador de CÁMARA front/back vs fusión (anti-pelota-fantasma)")
     p.add_argument("--selftest", action="store_true",
                    help="smoke headless: procesa N frames del sim y sale (sin GUI)")
     p.add_argument("--selftest-frames", type=int, default=200,
@@ -59,7 +65,8 @@ def _dead_list(s: str) -> List[int]:
 
 def _build_source(args: argparse.Namespace):
     from .sources import ReplaySource, SerialSource, SimSource, SimTopSource
-    if args.top or args.top_salud or args.tof_setup:
+    if (args.top or args.top_salud or args.tof_setup
+            or args.tof_360 or args.timeline or args.cam_fusion):
         from .protocol_top import parse_line_top
         if args.port:
             return SerialSource(args.port, baud=args.baud, parser=parse_line_top)
@@ -263,6 +270,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.list_ports:
         return list_ports()
     if args.selftest:
+        if args.tof_360:
+            from . import gui_tof_360
+            return gui_tof_360.selftest(args.selftest_frames)
+        if args.timeline:
+            from . import gui_timeline
+            return gui_timeline.selftest(args.selftest_frames)
+        if args.cam_fusion:
+            from . import gui_cam_fusion
+            return gui_cam_fusion.selftest(args.selftest_frames)
         if args.tof_setup:
             return run_selftest_tof_setup(args.selftest_frames)
         if args.top_salud:
@@ -282,6 +298,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.tof_setup:
             from . import gui_tof_setup
             gui_tof_setup.run_tof_setup(source, recorder=recorder)
+        elif args.tof_360:
+            from . import gui_tof_360
+            gui_tof_360.run_tof_360(source, recorder=recorder)
+        elif args.timeline:
+            from . import gui_timeline
+            gui_timeline.run_timeline(source, recorder=recorder)
+        elif args.cam_fusion:
+            from . import gui_cam_fusion
+            gui_cam_fusion.run_cam_fusion(source, recorder=recorder)
         elif args.top_salud:
             from . import gui_top_health
             gui_top_health.run_top_health(source, recorder=recorder)

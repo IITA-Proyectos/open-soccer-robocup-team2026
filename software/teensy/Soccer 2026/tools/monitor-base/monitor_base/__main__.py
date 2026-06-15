@@ -43,6 +43,9 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
                    help="modo TOP — TABLERO DE SALUD por sensor (verde/rojo) + zonas ToF + botones de config")
     p.add_argument("--arquero", action="store_true",
                    help="vista de ARQUERO (seguidor de línea + OTOS izq/der): para probar en banco")
+    p.add_argument("--tof-setup", action="store_true",
+                   help="modo TOP — CONFIGURAR los ToF: ubicación, rotar/espejar, y vetar zonas "
+                        "según altura de pared + cancha (guarda a .json; baja a firmware)")
     p.add_argument("--selftest", action="store_true",
                    help="smoke headless: procesa N frames del sim y sale (sin GUI)")
     p.add_argument("--selftest-frames", type=int, default=200,
@@ -56,7 +59,7 @@ def _dead_list(s: str) -> List[int]:
 
 def _build_source(args: argparse.Namespace):
     from .sources import ReplaySource, SerialSource, SimSource, SimTopSource
-    if args.top or args.top_salud:
+    if args.top or args.top_salud or args.tof_setup:
         from .protocol_top import parse_line_top
         if args.port:
             return SerialSource(args.port, baud=args.baud, parser=parse_line_top)
@@ -187,6 +190,53 @@ def run_selftest_top_salud(frames: int = 200) -> int:
     return 0
 
 
+def run_selftest_tof_setup(frames: int = 200) -> int:
+    """Smoke headless de la config de ToF: corre frames del sim por el parser y
+    ejercita la lógica pura (orientar zonas, sugerir+vetar por pared, roundtrip,
+    comandos a firmware) sin abrir ventana. Devuelve 0 si OK."""
+    from .protocol_top import parse_line_top
+    from .simulator_top import SimulatorTop
+    from .tof_layout import TofLayout
+
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:  # noqa: BLE001
+            pass
+
+    cfg = TofLayout()
+    sim = SimulatorTop(rate_hz=20.0)
+    last = None
+    oriented_ok = True
+    for _ in range(frames):
+        last = parse_line_top(sim.next_line())
+        if last.tof.zones:
+            for idx, raw in enumerate(last.tof.zones):
+                disp = cfg.oriented_cells(raw, idx)
+                if len(disp) != len(raw):
+                    oriented_ok = False
+    assert last is not None
+
+    rows = cfg.suggest_vetoed_rows()
+    cfg.apply_row_veto(rows)
+    back = TofLayout.from_dict(cfg.to_dict())
+    cmds = cfg.to_firmware_commands()
+    n_live = sum(1 for c in cmds if c.supported_now)
+    n_pend = sum(1 for c in cmds if not c.supported_now)
+
+    print(f"[selftest-tof] frames procesados : {frames}")
+    print(f"[selftest-tof] zonas en el stream: {'SÍ' if last.tof.zones else 'no (pendiente firmware)'}")
+    print(f"[selftest-tof] orientar zonas    : {'OK' if oriented_ok else 'FALLO'}")
+    print(f"[selftest-tof] filas sugeridas a vetar (pared {cfg.wall.wall_height_mm:.0f}mm): {rows}")
+    print(f"[selftest-tof] roundtrip config  : {'OK' if back.to_dict() == cfg.to_dict() else 'FALLO'}")
+    print(f"[selftest-tof] comandos firmware : {n_live} listos + {n_pend} pendientes")
+    if not oriented_ok or back.to_dict() != cfg.to_dict():
+        print("[selftest-tof] FALLO")
+        return 1
+    print("[selftest-tof] OK")
+    return 0
+
+
 def list_ports() -> int:
     """Lista los puertos serie y marca cuál parece el Teensy."""
     from .sources import list_serial_ports, autodetect_port
@@ -213,6 +263,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.list_ports:
         return list_ports()
     if args.selftest:
+        if args.tof_setup:
+            return run_selftest_tof_setup(args.selftest_frames)
         if args.top_salud:
             return run_selftest_top_salud(args.selftest_frames)
         if args.top:
@@ -227,7 +279,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         recorder = Recorder(args.record)
         print(f"Grabando telemetría en {args.record}")
     try:
-        if args.top_salud:
+        if args.tof_setup:
+            from . import gui_tof_setup
+            gui_tof_setup.run_tof_setup(source, recorder=recorder)
+        elif args.top_salud:
             from . import gui_top_health
             gui_top_health.run_top_health(source, recorder=recorder)
         elif args.top:

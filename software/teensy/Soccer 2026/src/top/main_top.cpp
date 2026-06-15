@@ -48,6 +48,7 @@
 #endif
 #include "pose_fusion.h"
 #include "pose_filter.h"
+#include "pose_age.h"      // gating fino de frescura del OTOS (INC-2)
 #endif
 #if defined(TOP_DEBUG_TELEMETRY) || defined(TOP_USB_MONITOR)
 #include "top_telemetry_serial.h"
@@ -155,7 +156,10 @@ WorldSnapshot build_snapshot() {
         in.tof_valid = pose.valid;
         in.otos_x_mm = otos.x_mm;   // OTOS absoluto acumulado; el módulo usa el DELTA internamente
         in.otos_y_mm = otos.y_mm;   // ⚠️ BANCO: validar signo/eje del delta OTOS vs marco de cancha
-        in.otos_fresh = comm_down_is_pose_fresh();
+        // Gating FINO (INC-2): rechaza OTOS más viejo que otos_stale_ms (≈60 ms) — a 100 Hz
+        // un OTOS sano llega cada ~10 ms; predecir contra un delta de 200 ms es basura. El
+        // booleano is_pose_fresh sólo corta a 500 ms. Nunca-recibido => edad MAX => no fresco.
+        in.otos_fresh = pose_age_is_fresh(comm_down_pose_age_ms(), s_pfcfg.otos_stale_ms);
         in.bno_heading_centideg = sensors_imu_get_heading_centideg();  // pass-through (no fusiona heading)
         in.dt_ms = static_cast<uint16_t>(static_cast<uint32_t>(s_pf_dt));
         s_pf_dt = 0;

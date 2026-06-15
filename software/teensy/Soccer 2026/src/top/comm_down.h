@@ -32,6 +32,10 @@ const LineStatusV2& comm_down_get_line_status();
 
 bool             comm_down_is_pose_fresh();
 const Pose2D&    comm_down_get_pose();
+// Edad (ms) del último OTOS recibido. Si NUNCA llegó => POSE_AGE_NEVER (no 0), para
+// gating FINO (p.ej. pose_fusion gatea a otos_stale_ms≈60 ms, más fino que el booleano
+// is_pose_fresh de 500 ms). Ver src/shared/pose_age.h. (INC-2 RT 2026-06-15.)
+uint32_t         comm_down_pose_age_ms();
 
 bool             comm_down_is_vel_fresh();
 const Velocity2D& comm_down_get_velocity();

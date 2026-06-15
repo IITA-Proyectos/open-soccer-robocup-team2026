@@ -54,6 +54,14 @@ de CENTRAL (mira `my_x/my_y/my_pose_confidence` del snapshot).
    de salto de `pose_fusion`/`pose_filter` corta teleports).
 3. **Deriva acotada:** moviendo el robot, la pose fusionada sigue la real sin irse (la OTOS
    predice, el ToF corrige). Sin ToF, deriva pura de OTOS (esperado).
+4. **Titular `otos_stale_ms` (INC-2, default 60 ms) bajo carga.** El gate fino de frescura
+   del OTOS (`pose_age_is_fresh(comm_down_pose_age_ms(), otos_stale_ms)`) corta a 60 ms — son
+   ~6 intervalos OTOS de margen. ⚠️ Si el loop del TOP se traba > 60 ms (p.ej. `pulseIn` del
+   HC-SR04 ~12 ms, causa raíz abierta en TASK-014), `otos_fresh` cae a false y `pose_fusion`
+   deja de predecir justo cuando la odometría más importa (drift silencioso en el gap). Medir
+   el **p99 de la edad del OTOS** bajo carga (con HC-SR04 activo); si p99 > ~40 ms, subir
+   `otos_stale_ms` a 100–150 ms hasta que TASK-014 cierre. Documentar el valor medido en
+   `ESTIMACION-FUSION-TOP.md`.
 
 ## Criterio de cierre
 

@@ -3,6 +3,7 @@
 #include "config_top.h"
 #include "proto.h"
 #include "line_view.h"
+#include "pose_age.h"       // edad fina del OTOS (INC-2): nunca-recibido => MAX, no 0
 
 #include <Arduino.h>
 #include <string.h>
@@ -138,6 +139,11 @@ const LineStatusV2& comm_down_get_line_status() { return g_line; }
 
 bool              comm_down_is_pose_fresh() { return fresh(g_pose_last_rx_ms); }
 const Pose2D&     comm_down_get_pose() { return g_pose; }
+// Edad fina del OTOS. g_pose_last_rx_ms==0 => nunca recibido => POSE_AGE_NEVER (el
+// helper ya lo trata como centinela, coherente con fresh() de arriba).
+uint32_t          comm_down_pose_age_ms() {
+    return pose_age_ms_pure(g_pose_last_rx_ms, millis(), g_pose_last_rx_ms != 0);
+}
 
 bool              comm_down_is_vel_fresh() { return fresh(g_vel_last_rx_ms); }
 const Velocity2D& comm_down_get_velocity() { return g_vel; }

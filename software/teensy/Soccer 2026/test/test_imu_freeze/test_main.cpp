@@ -30,6 +30,17 @@ static bool feed_constant(ImuFreezeState& s, int16_t value, int count,
     return frozen;
 }
 
+// Helper de la variante CON GUARDA DE GYRO: mismo heading con un gyro CONSTANTE.
+static bool feed_constant_g(ImuFreezeState& s, int16_t value, float gyro_dps, int count,
+                            uint32_t step_ms, uint32_t& now_ms, const ImuFreezeCfg& cfg) {
+    bool frozen = false;
+    for (int i = 0; i < count; ++i) {
+        frozen = imu_freeze_update_g(s, value, gyro_dps, now_ms, cfg);
+        now_ms += step_ms;
+    }
+    return frozen;
+}
+
 // Estado inicial: .bss zero-init == no visto, no congelado.
 void test_zero_init_not_frozen(void) {
     ImuFreezeState s{};
@@ -184,6 +195,29 @@ void test_cfg_from_rate_floor(void) {
     ImuFreezeCfg e = imu_freeze_cfg_from_rate(50, 5000);  // 100 lecturas
     TEST_ASSERT_EQUAL_UINT16(100, e.min_samples);
     TEST_ASSERT_EQUAL_UINT32(5000, e.min_ms);
+
+    // BLINDAJE (M1): cfg_from_rate DEBE heredar gyro_motion_cdps del default. Si un
+    // refactor lo dejara en 0, moving_now sería SIEMPRE true (|gyro|>=0) y se
+    // reintroduciría el falso-DEAD del robot quieto (el bug del 2026-06-08). Este
+    // assert lo atrapa en host antes de que llegue a la placa.
+    TEST_ASSERT_EQUAL_UINT16(IMU_FREEZE_GYRO_MOTION_CDPS, c.gyro_motion_cdps);
+    TEST_ASSERT_EQUAL_UINT16(IMU_FREEZE_GYRO_MOTION_CDPS, d.gyro_motion_cdps);
+    TEST_ASSERT_EQUAL_UINT16(IMU_FREEZE_GYRO_MOTION_CDPS, e.gyro_motion_cdps);
+}
+
+// M1 (cont.): un robot QUIETO con la cfg DERIVADA por cfg_from_rate NO debe congelar
+// (verifica end-to-end que la cfg derivada conserva la guarda de gyro, no solo el campo).
+void test_g_cfg_from_rate_still_robot_not_frozen(void) {
+    ImuFreezeCfg cfg = imu_freeze_cfg_from_rate(50, 1500);
+    ImuFreezeState s{};
+    uint32_t now = 0;
+    bool frozen = false;
+    for (int i = 0; i < (int)cfg.min_samples + 50; ++i) {
+        float g = 0.3f * (float)((i % 3) - 1);   // ruido sub-umbral
+        frozen = imu_freeze_update_g(s, 555, g, now, cfg);
+        now += 50;
+    }
+    TEST_ASSERT_FALSE(frozen);
 }
 
 // Negativos de centideg (heading < 0) se comparan exacto igual que positivos.
@@ -241,6 +275,198 @@ void test_millis_wrap_held_ms_safe(void) {
     TEST_ASSERT_TRUE(held_at_freeze < 4000u);   // del orden de T, no un valor gigante
 }
 
+// ===========================================================================
+// VARIANTE CON GUARDA DE GYRO (imu_freeze_update_g) — arregla el falso-DEAD
+// del robot quieto (flag TOP_ENABLE_BNO_FREEZE_DETECT, banco 2026-06-08).
+// ===========================================================================
+
+// Quantización del gyro a centideg/s: redondeo y saturación.
+void test_g_quantize_gyro(void) {
+    TEST_ASSERT_EQUAL_INT16(0,    imu_freeze_quantize_gyro_cdps(0.0f));
+    TEST_ASSERT_EQUAL_INT16(500,  imu_freeze_quantize_gyro_cdps(5.0f));
+    TEST_ASSERT_EQUAL_INT16(-300, imu_freeze_quantize_gyro_cdps(-3.0f));
+    TEST_ASSERT_EQUAL_INT16(32767,  imu_freeze_quantize_gyro_cdps(1e6f));   // satura +
+    TEST_ASSERT_EQUAL_INT16(-32768, imu_freeze_quantize_gyro_cdps(-1e6f));  // satura -
+}
+
+// Caso PELIGROSO: el robot GIRA (gyro 10 dps >> umbral 5) pero el heading queda
+// clavado al centidegrado => el heading está CONGELADO => CONGELA.
+void test_g_motion_plus_stuck_freezes(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();
+    uint32_t now = 0;
+    bool frozen = feed_constant_g(s, 1234, 10.0f, (int)cfg.min_samples + 5, 50, now, cfg);
+    TEST_ASSERT_TRUE(frozen);
+    TEST_ASSERT_TRUE(s.frozen);
+}
+
+// EL ARREGLO DEL FALSO-DEAD (clave): robot QUIETO => heading clavado + gyro al PISO
+// DE RUIDO (jitterea muy por debajo del umbral) => NO congela. El detector base
+// mataba acá el único heading sano (banco 2026-06-08); la guarda lo evita.
+void test_g_still_robot_not_frozen(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();
+    uint32_t now = 0;
+    bool frozen = false;
+    for (int i = 0; i < (int)cfg.min_samples + 50; ++i) {
+        float g = 0.3f * (float)((i % 3) - 1);   // -0.3, 0, +0.3 dps (ruido << 5 dps)
+        frozen = imu_freeze_update_g(s, 777, g, now, cfg);
+        now += 50;
+    }
+    TEST_ASSERT_FALSE(frozen);
+    TEST_ASSERT_FALSE(s.frozen);
+}
+
+// gyro EXACTAMENTE 0 clavado + heading clavado => NO congela (no distinguible de un
+// robot perfectamente quieto sin movimiento; elección conservadora documentada).
+void test_g_zero_gyro_stuck_not_frozen(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();
+    uint32_t now = 0;
+    bool frozen = feed_constant_g(s, 0, 0.0f, (int)cfg.min_samples + 50, 50, now, cfg);
+    TEST_ASSERT_FALSE(frozen);
+}
+
+// gyro girando pero heading CAMBIANDO normalmente => nunca congela (sensor vivo).
+void test_g_moving_heading_never_freezes(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();
+    uint32_t now = 0;
+    for (int i = 0; i < 300; ++i) {
+        int16_t v = (int16_t)(100 + (i % 5));  // heading cambia
+        TEST_ASSERT_FALSE(imu_freeze_update_g(s, v, 10.0f, now, cfg));
+        now += 50;
+    }
+    TEST_ASSERT_FALSE(s.frozen);
+}
+
+// _g es un refinamiento ESTRICTO del base: en el MISMO caso donde el base congela
+// (heading clavado, sin movimiento), _g con gyro quieto NO congela.
+void test_g_strict_refinement_vs_base(void) {
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();
+    ImuFreezeState sb{};
+    uint32_t nb = 0;
+    TEST_ASSERT_TRUE(feed_constant(sb, 50, 60, 50, nb, cfg));      // BASE: congela
+    ImuFreezeState sg{};
+    uint32_t ng = 0;
+    TEST_ASSERT_FALSE(feed_constant_g(sg, 50, 0.2f, 60, 50, ng, cfg));  // _g quieto: NO
+}
+
+// El movimiento del gyro DENTRO de la ventana (con el heading YA clavado) se RECUERDA:
+// rotación mientras el rumbo no se mueve, luego el gyro se aquieta => CONGELA igual.
+void test_g_motion_latched_in_window(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();
+    uint32_t now = 0;
+    imu_freeze_update_g(s, 900, 0.1f, now, cfg); now += 50;   // siembra heading (instante vivo)
+    imu_freeze_update_g(s, 900, 12.0f, now, cfg); now += 50;  // heading YA clavado + rotación => motion
+    bool frozen = false;
+    for (int i = 0; i < (int)cfg.min_samples + 5; ++i) {
+        frozen = imu_freeze_update_g(s, 900, 0.1f, now, cfg);  // se aquieta pero heading sigue clavado
+        now += 50;
+    }
+    TEST_ASSERT_TRUE(frozen);
+}
+
+// Un cambio de heading LIMPIA la marca de movimiento: tras moverse y resetear, si el
+// robot queda quieto (gyro al piso) con heading clavado, NO vuelve a congelar.
+void test_g_heading_change_clears_motion(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();
+    uint32_t now = 0;
+    feed_constant_g(s, 300, 10.0f, 10, 50, now, cfg);   // girando, heading clavado (poco)
+    imu_freeze_update_g(s, 301, 10.0f, now, cfg); now += 50;  // heading cambia => reset ventana
+    // Ahora quieto (gyro al piso) con el nuevo heading clavado: NO debe congelar.
+    bool frozen = false;
+    for (int i = 0; i < (int)cfg.min_samples + 50; ++i) {
+        frozen = imu_freeze_update_g(s, 301, 0.2f, now, cfg);
+        now += 50;
+    }
+    TEST_ASSERT_FALSE(frozen);
+}
+
+// Respeta el umbral de TIEMPO también en _g: gyro girando + heading clavado N veces
+// pero en < T ms NO congela todavía.
+void test_g_time_threshold_respected(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();
+    uint32_t now = 0;
+    bool frozen = feed_constant_g(s, 7, 10.0f, (int)cfg.min_samples + 10, 1, now, cfg);
+    TEST_ASSERT_FALSE(frozen);   // alcanzó N y hubo movimiento, pero NO T
+}
+
+// M2: borde EXACTO del umbral. 5.0 dps => 500 cdeg/s == umbral default; el corte es
+// >= => CONGELA. 4.99 dps => 499 < 500 => NO congela. Fija el comparador y el redondeo.
+void test_g_gyro_exactly_at_threshold_freezes(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();   // gyro_motion_cdps = 500
+    uint32_t now = 0;
+    TEST_ASSERT_TRUE(feed_constant_g(s, 1234, 5.0f, (int)cfg.min_samples + 5, 50, now, cfg));
+}
+void test_g_gyro_just_below_threshold_not_frozen(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();
+    uint32_t now = 0;
+    // 4.99 dps => 499 cdeg/s < 500 => sub-umbral => NO congela aunque el heading esté clavado.
+    TEST_ASSERT_FALSE(feed_constant_g(s, 1234, 4.99f, (int)cfg.min_samples + 50, 50, now, cfg));
+}
+
+// M3: rotación NEGATIVA (el robot gira al otro lado) + heading clavado => CONGELA.
+// Ejercita la rama abs de negativos del cómputo de magnitud.
+void test_g_negative_rotation_stuck_freezes(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();
+    uint32_t now = 0;
+    TEST_ASSERT_TRUE(feed_constant_g(s, -500, -10.0f, (int)cfg.min_samples + 5, 50, now, cfg));
+}
+// Límite patológico: -400 dps cuantiza a -40000 → satura a -32768; |·| no debe
+// hacer overflow (por eso el cómputo usa int32/uint32). Sigue contando como movimiento.
+void test_g_negative_saturation_no_overflow(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();
+    uint32_t now = 0;
+    TEST_ASSERT_TRUE(feed_constant_g(s, 7, -400.0f, (int)cfg.min_samples + 5, 50, now, cfg));
+}
+
+// MINOR: el latch PERSISTE tras congelar aunque el gyro se aquiete (mientras el
+// heading siga clavado). No se "descongela" por falta de movimiento posterior.
+void test_g_latch_persists_after_freeze(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();
+    uint32_t now = 0;
+    TEST_ASSERT_TRUE(feed_constant_g(s, 80, 10.0f, (int)cfg.min_samples + 5, 50, now, cfg));
+    // Ahora gyro al piso, mismo heading clavado: sigue frozen.
+    for (int i = 0; i < 20; ++i) { imu_freeze_update_g(s, 80, 0.1f, now, cfg); now += 50; }
+    TEST_ASSERT_TRUE(s.frozen);
+}
+
+// MINOR: tras congelar, UN cambio de heading limpia el latch (equivalente _g del
+// test_change_after_freeze_clears del detector base).
+void test_g_change_after_freeze_clears(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();
+    uint32_t now = 0;
+    TEST_ASSERT_TRUE(feed_constant_g(s, 80, 10.0f, (int)cfg.min_samples + 5, 50, now, cfg));
+    TEST_ASSERT_FALSE(imu_freeze_update_g(s, 81, 10.0f, now, cfg));  // heading cambió
+    TEST_ASSERT_FALSE(s.frozen);
+    TEST_ASSERT_FALSE(s.gyro_motion_seen);   // ventana nueva: marca de movimiento reseteada
+}
+
+// MINOR: jitter de gyro alto pero SIEMPRE sub-umbral (4.0/4.5/4.9 dps) + heading
+// clavado => NO congela (ruido grande no es rotación; defiende el umbral).
+void test_g_subthreshold_jitter_never_freezes(void) {
+    ImuFreezeState s{};
+    ImuFreezeCfg cfg = imu_freeze_default_cfg();
+    uint32_t now = 0;
+    const float jit[3] = {4.0f, 4.5f, 4.9f};
+    bool frozen = false;
+    for (int i = 0; i < (int)cfg.min_samples + 50; ++i) {
+        frozen = imu_freeze_update_g(s, 333, jit[i % 3], now, cfg);
+        now += 50;
+    }
+    TEST_ASSERT_FALSE(frozen);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_zero_init_not_frozen);
@@ -256,5 +482,23 @@ int main(int, char**) {
     RUN_TEST(test_cfg_from_rate_floor);
     RUN_TEST(test_negative_centideg_freezes);
     RUN_TEST(test_millis_wrap_held_ms_safe);
+    // Variante con guarda de gyro (imu_freeze_update_g)
+    RUN_TEST(test_g_quantize_gyro);
+    RUN_TEST(test_g_motion_plus_stuck_freezes);
+    RUN_TEST(test_g_still_robot_not_frozen);
+    RUN_TEST(test_g_zero_gyro_stuck_not_frozen);
+    RUN_TEST(test_g_moving_heading_never_freezes);
+    RUN_TEST(test_g_strict_refinement_vs_base);
+    RUN_TEST(test_g_motion_latched_in_window);
+    RUN_TEST(test_g_heading_change_clears_motion);
+    RUN_TEST(test_g_time_threshold_respected);
+    RUN_TEST(test_g_cfg_from_rate_still_robot_not_frozen);
+    RUN_TEST(test_g_gyro_exactly_at_threshold_freezes);
+    RUN_TEST(test_g_gyro_just_below_threshold_not_frozen);
+    RUN_TEST(test_g_negative_rotation_stuck_freezes);
+    RUN_TEST(test_g_negative_saturation_no_overflow);
+    RUN_TEST(test_g_latch_persists_after_freeze);
+    RUN_TEST(test_g_change_after_freeze_clears);
+    RUN_TEST(test_g_subthreshold_jitter_never_freezes);
     return UNITY_END();
 }

@@ -307,6 +307,26 @@ nativo, pero ya no es el único camino. Ver
    §Resultado + `journal/2026-06-07-calibracion-distancia-camara-frontal-elias.md`. (Migración
    H7→N6, bugs P0 y velocidad de pelota ya estaban resueltos — Avance 2026-06-03.)
 
+### Avance 2026-06-15 — Optimización TOP no-bloqueante (workflow): INC-1 gyro-guard + INC-2 pose-age (gateados)
+- Continuación del trabajo RT, foco **placa TOP**, con metodología superpowers + 2 workflows (plan de 11
+  agentes + verificación adversarial de 5). Todo gateado off-by-default → binarios byte-idénticos.
+  Journal: `journal/2026-06-15-top-optimizacion-no-bloqueante.md`.
+- **Hallazgo del workflow:** el loop del TOP YA está muy afinado (round-robin ToF + payload recortado →
+  ~190k/s, TX no-bloqueante, RX acotado + addMemoryForRead, I²C 1 MHz init). El pendiente de alto valor
+  NO era la arquitectura ISR/DMA (eso es post-Incheon) sino re-habilitar el **freeze-detector del BNO**
+  (apagado por falso-DEAD el 2026-06-08), que además BLOQUEA `pose_fusion` (lo exige por `#error`).
+- **INC-1 (P0) — guarda de gyro en `imu_freeze`:** nueva variante pura `imu_freeze_update_g` (la vieja
+  intacta) que solo declara congelado si el gyro probó rotación REAL mientras el heading quedó clavado →
+  **robot quieto nunca muere** (mata el falso-DEAD) y no es inerte. Cableada en `sensors_imu.cpp` (gyro ya
+  leído, 0 I²C extra). `test_imu_freeze` 13→30. Envs banco `top_robot1_bnofreeze` + `top_robot2_pri_bnofreeze`.
+- **INC-2 (P1) — edad fina del OTOS:** `pose_age.h` puro (nunca-recibido → edad MÁX, no 0) + getter
+  `comm_down_pose_age_ms()` + gating de `pose_fusion` a `otos_stale_ms`≈60 ms (vs booleano de 500 ms).
+- **Verificación adversarial: 0 blockers / 0 majors de corrección.** Sus hallazgos de cobertura ya
+  aplicados (blindaje anti-regresión del falso-DEAD, bordes de umbral, rotación negativa).
+- **Diferido (post-Incheon, banco):** INC-3 (snapshot_assembler — choca con pose_fusion) e INC-4/5/6
+  (sensor_slot ISR + RX-IRQ + emisor por timer — glue no host-testeable; el review halló un blocker de
+  concurrencia real en el emisor por timer). Banco: **TASK-211** (freeze-detect) + **TASK-210** (pose_fusion + otos_stale_ms).
+
 ### Avance 2026-06-15 — Integración RT GATEADA: quick-wins CENTRAL + pose_fusion TOP + motor_slew (todo OFF-by-default)
 - **Se CABLEÓ parte del análisis RT al firmware vivo, todo gateado off-by-default → binarios de
   competencia byte-idénticos.** Rama feature + PR (NO push directo). Gate host 937/67/0 sin cambios

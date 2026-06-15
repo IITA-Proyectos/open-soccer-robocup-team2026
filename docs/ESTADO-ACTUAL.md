@@ -13,6 +13,13 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> **📷 PRIORIDAD CON ELÍAS (Gustavo, 2026-06-15):** Elías calibró las 4 cámaras (homografía
+> per-cámara, 2026-06-14) pero los valores NO están en el repo versionado. **Apenas una sesión
+> esté trabajando con Elías (o él en banco/cámaras), pedirle PRIMERO —como prioritario— que
+> complete `team-tasks/2026-06-15-task-214-elias-pegar-4-matrices-camaras.md`** (pegar los 4
+> bloques `H_MATRIX`, solo valores). Luego transferir a `robot1.h`/`robot2.h` (cierra HI-5).
+> También en memoria: `[[elias-pedir-matrices-camaras]]`.
+
 > **🩺 MONITOR TOP "SALUD" + ZONAS DE ToF (sesión autónoma 2026-06-14 — vale sobre lo de abajo):**
 > Nueva vista `python -m monitor_base --top-salud` = **tablero de salud por sensor**
 > (semáforo OK/REVISAR/FALLA/SIN DATO) + **grilla de zonas de cada ToF** + per-cámara

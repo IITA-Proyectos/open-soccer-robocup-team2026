@@ -96,6 +96,18 @@ def autodetect_port() -> Optional[str]:
     return None   # ambiguo: que el caller liste y elija
 
 
+def auto_parse(line: str):
+    """Sniff por LÍNEA: parsea TOP o BASE según las claves del JSON. Es lo que usa
+    el monitor unificado para detectar la placa por los datos (hot-swap del USB):
+    si mové el cable de la TOP a la base, las líneas cambian de forma y este parser
+    elige el correcto sin reconfigurar nada."""
+    if '"ring"' in line:
+        return parse_line(line)        # placa BASE (DOWN): tiene ring/line/otos
+    if '"cam"' in line:
+        return parse_line_top(line)    # placa SUPERIOR (TOP): tiene cam/imu/tof/snap
+    raise ProtocolError("línea de telemetría no reconocida (ni TOP ni BASE)")
+
+
 # ── Fuentes con hilo + cola ──────────────────────────────────────────────────
 
 class FrameSource:

@@ -21,12 +21,21 @@ from tkinter import ttk
 from typing import Deque, List, Optional, Type
 
 from .panel import LogBuffer, Panel, PanelContext
+from .protocol import Frame as DownFrame
 from .protocol_top import TopFrame
 from .shell_theme import (ACCENT, BAD, BG, BG2, FG, LINE, MONO, MUTED, OK,
                           PANEL, TITLE, UI_B, WARN, apply_theme)
 
 HEARTBEAT_S = 2.0       # cada cuánto el log registra un latido de datos
 PHANTOM_MM = 500.0      # |camf.ball - camb.ball| para sospechar pelota fantasma
+
+BOARD_LONG = {"top": "PLACA SUPERIOR (TOP)", "down": "PLACA BASE (DOWN)", "any": "GENERAL"}
+BOARD_SHORT = {"top": "PLACA SUPERIOR", "down": "PLACA BASE"}
+
+
+def board_of(f) -> str:
+    """Qué placa produjo el frame (por su tipo)."""
+    return "down" if isinstance(f, DownFrame) else "top"
 
 
 def _registry() -> List[Type[Panel]]:
@@ -63,24 +72,20 @@ class MonitorShell:
         self.recorder = recorder
         self.is_sim = getattr(source, "is_sim", False)
         self.logbuf = LogBuffer()
-        self.frame_hist: Deque[TopFrame] = deque(maxlen=600)
+        self.frame_hist: Deque = deque(maxlen=600)          # combinada (para Logs)
         self.ctx = PanelContext(send=self._send, log=self.logbuf.add,
                                 is_sim=self.is_sim, config_path=config_path)
         self.paused = False
-        # métricas
-        self.frame_count = 0
-        self.last_seq = -1
-        self.dropped = 0
-        self._rate_hz = 0.0
-        self._last_t_ms: Optional[int] = None
+        # estado MULTI-PLACA: métricas, último frame e historia por placa.
+        self.current_board: Optional[str] = None
+        self.last_by_board = {"top": None, "down": None}
+        self.metrics_by = {b: {"seq": -1, "rate": 0.0, "frames": 0, "dropped": 0, "last_t": None}
+                           for b in ("top", "down")}
         self._last_beat = 0.0
-        # estados para anomalías
-        self._prev_hv: Optional[bool] = None
-        self._prev_valid: Optional[bool] = None
-        self._prev_ref: Optional[int] = None
+        self._anom: dict = {}        # estados previos para anomalías (por clave)
 
         apply_theme(root)
-        root.title("IITA Soccer — Monitor TOP")
+        root.title("IITA Soccer — Monitor del robot")
         root.configure(bg=BG)
         self._build_layout(panel_classes or _registry())
         self.logbuf.add("ok", f"conectado a {self.source.describe()}"
@@ -99,7 +104,7 @@ class MonitorShell:
         # Barra superior.
         top = tk.Frame(r, bg=BG2)
         top.grid(row=0, column=0, columnspan=2, sticky="we")
-        tk.Label(top, text="◆ MONITOR TOP", bg=BG2, fg=ACCENT, font=TITLE,
+        tk.Label(top, text="◆ MONITOR ROBOT", bg=BG2, fg=ACCENT, font=TITLE,
                  padx=12, pady=8).pack(side="left")
         self.conn_dot = tk.Label(top, text="●", bg=BG2, fg=MUTED, font=("Segoe UI", 14))
         self.conn_dot.pack(side="left", padx=(8, 2))
@@ -116,18 +121,17 @@ class MonitorShell:
                                    bg=PANEL, fg=FG, relief="flat", padx=8)
         self.pause_btn.pack(side="right", padx=4, pady=4)
 
-        # Navegación lateral.
-        nav = tk.Frame(r, bg=BG2, width=170)
-        nav.grid(row=1, column=0, sticky="ns")
-        nav.grid_propagate(False)
-        tk.Label(nav, text="VISTAS", bg=BG2, fg=MUTED, font=("Segoe UI", 8, "bold"),
-                 anchor="w", padx=12, pady=8).pack(fill="x", pady=(6, 2))
+        # Navegación lateral (con scroll por si hay muchas vistas).
+        self.nav = tk.Frame(r, bg=BG2, width=184)
+        self.nav.grid(row=1, column=0, sticky="ns")
+        self.nav.grid_propagate(False)
 
         # Contenido (paneles apilados).
         content = tk.Frame(r, bg=BG)
         content.grid(row=1, column=1, sticky="nsew")
         content.rowconfigure(0, weight=1); content.columnconfigure(0, weight=1)
 
+        # 1) Instanciar todos los paneles.
         self.panels: List[Panel] = []
         self._nav_btns = {}
         self.active: Optional[Panel] = None
@@ -138,15 +142,23 @@ class MonitorShell:
                 self.logbuf.add("bad", f"panel '{getattr(cls,'key','?')}' no cargó: {e}")
                 continue
             p.container.grid(row=0, column=0, sticky="nsew")
-            # Logs necesita el buffer + historial.
-            if hasattr(p, "attach"):
+            if hasattr(p, "attach"):     # Logs: buffer + historial
                 try:
                     p.attach(self.logbuf, self.frame_hist)
                 except Exception:  # noqa: BLE001
                     pass
             self.panels.append(p)
-            b = tk.Button(nav, text=f" {p.icon}  {p.title}", anchor="w", bg=BG2, fg=FG,
-                          relief="flat", font=UI_B, padx=12, pady=7,
+
+        # 2) Nav agrupada por placa (TOP / BASE / GENERAL), con encabezados.
+        last_board = None
+        for p in self.panels:
+            if p.board != last_board:
+                last_board = p.board
+                tk.Label(self.nav, text=BOARD_LONG.get(p.board, p.board), bg=BG2, fg=MUTED,
+                         font=("Segoe UI", 8, "bold"), anchor="w",
+                         padx=12, pady=2).pack(fill="x", pady=(8, 0))
+            b = tk.Button(self.nav, text=f" {p.icon}  {p.title}", anchor="w", bg=BG2, fg=FG,
+                          relief="flat", font=UI_B, padx=12, pady=6,
                           activebackground="#1d2a36", activeforeground=ACCENT,
                           command=lambda k=p.key: self._select(k))
             b.pack(fill="x")
@@ -174,11 +186,14 @@ class MonitorShell:
         new.container.tkraise()
         try:
             new.on_show()
-            if self.frame_hist:
-                new.render(self.frame_hist[-1])
+            f = (self.last_by_board.get(new.board) if new.board in ("top", "down")
+                 else (self.frame_hist[-1] if self.frame_hist else None))
+            if f is not None:
+                new.render(f)
         except Exception as e:  # noqa: BLE001
             self.logbuf.add("bad", f"render '{key}': {e}")
-        self._set_status(f"vista: {new.title}")
+        extra = "" if new.board == "any" else f"  ·  {BOARD_LONG.get(new.board, '')}"
+        self._set_status(f"vista: {new.title}{extra}")
 
     # ── Comandos ────────────────────────────────────────────────────────────
     def _send(self, cmd: str) -> None:
@@ -200,56 +215,82 @@ class MonitorShell:
         self._update_bar(bool(frames))
         self.root.after(60, self._tick)
 
-    def _pump(self, f: TopFrame) -> None:
-        """Procesa un frame: métricas, historial, anomalías al log, render activo."""
-        self.frame_count += 1
-        if self.last_seq >= 0:
-            gap = f.seq - self.last_seq - 1
+    def _pump(self, f) -> None:
+        """Procesa un frame (TOP o BASE): métricas por placa, historial, anomalías,
+        hot-swap y render del panel activo si corresponde a esa placa."""
+        b = board_of(f)
+        m = self.metrics_by[b]
+        m["frames"] += 1
+        if m["seq"] >= 0:
+            gap = f.seq - m["seq"] - 1
             if gap > 0:
-                self.dropped += gap
-        self.last_seq = f.seq
-        if self._last_t_ms is not None and f.t_ms > self._last_t_ms:
-            inst = 1000.0 / (f.t_ms - self._last_t_ms)
-            self._rate_hz = inst if self._rate_hz == 0 else 0.85 * self._rate_hz + 0.15 * inst
-        self._last_t_ms = f.t_ms
+                m["dropped"] += gap
+        m["seq"] = f.seq
+        if m["last_t"] is not None and f.t_ms > m["last_t"]:
+            inst = 1000.0 / (f.t_ms - m["last_t"])
+            m["rate"] = inst if m["rate"] == 0 else 0.85 * m["rate"] + 0.15 * inst
+        m["last_t"] = f.t_ms
+        self.last_by_board[b] = f
         self.frame_hist.append(f)
         if self.recorder is not None:
             self.recorder.write(f)
-        self._log_anomalies(f)
-        if self.active is not None:
+        if b != self.current_board:
+            self._on_board_change(b)
+        self._log_anomalies(f, b)
+        if self.active is not None and self.active.board in (b, "any"):
             try:
                 self.active.render(f)
             except Exception as e:  # noqa: BLE001
                 self.logbuf.add("bad", f"render '{self.active.key}': {e}")
 
-    def _log_anomalies(self, f: TopFrame) -> None:
-        hv = f.imu.heading_valid
-        if self._prev_hv is not None and hv != self._prev_hv:
-            self.logbuf.add("ok" if hv else "warn",
-                            "heading recuperado" if hv else "heading INVÁLIDO (sin rumbo fiable)")
-        self._prev_hv = hv
-        sv = f.snap.valid
-        if self._prev_valid is not None and sv != self._prev_valid:
-            self.logbuf.add("ok" if sv else "warn",
-                            "snapshot VÁLIDO" if sv else "snapshot inválido (TOP no manda pose)")
-        self._prev_valid = sv
-        ref = f.snap.referee_cmd
-        if self._prev_ref is not None and ref != self._prev_ref:
-            self.logbuf.add("info", f"árbitro → {f.snap.referee_name}")
-        self._prev_ref = ref
-        # Pelota fantasma: ambas cámaras ven pelota y discrepan mucho.
-        cf, cb = f.camf, f.camb
-        if cf.ball_visible and cb.ball_visible:
-            d = ((cf.ball_x_mm - cb.ball_x_mm) ** 2 + (cf.ball_y_mm - cb.ball_y_mm) ** 2) ** 0.5
-            if d > PHANTOM_MM:
-                self.logbuf.add("warn", f"posible PELOTA FANTASMA (Δfront/back={d:.0f}mm)")
-        # Latido de datos.
+    def _on_board_change(self, b: str) -> None:
+        """Detectó datos de OTRA placa (hot-swap del USB) o la primera placa."""
+        prev = self.current_board
+        self.current_board = b
+        name = BOARD_LONG.get(b, b)
+        self.logbuf.add("ok", f"placa detectada: {name}" if prev is None
+                        else f"HOT-SWAP → {name}  (la otra placa queda guardada)")
+        # Si la vista activa no es de esta placa (ni 'any'), saltar a su vista por defecto.
+        if self.active is None or self.active.board not in (b, "any"):
+            first = next((p for p in self.panels if p.board == b), None)
+            if first is not None:
+                self._select(first.key)
+
+    def _log_anomalies(self, f, b: str) -> None:
+        if b == "top":
+            hv = f.imu.heading_valid
+            if self._anom.get("hv") is not None and hv != self._anom["hv"]:
+                self.logbuf.add("ok" if hv else "warn",
+                                "heading recuperado" if hv else "heading INVÁLIDO (sin rumbo fiable)")
+            self._anom["hv"] = hv
+            sv = f.snap.valid
+            if self._anom.get("sv") is not None and sv != self._anom["sv"]:
+                self.logbuf.add("ok" if sv else "warn",
+                                "snapshot VÁLIDO" if sv else "snapshot inválido (TOP no manda pose)")
+            self._anom["sv"] = sv
+            ref = f.snap.referee_cmd
+            if self._anom.get("ref") is not None and ref != self._anom["ref"]:
+                self.logbuf.add("info", f"árbitro → {f.snap.referee_name}")
+            self._anom["ref"] = ref
+            cf, cb = f.camf, f.camb
+            if cf.ball_visible and cb.ball_visible:
+                d = ((cf.ball_x_mm - cb.ball_x_mm) ** 2 + (cf.ball_y_mm - cb.ball_y_mm) ** 2) ** 0.5
+                if d > PHANTOM_MM:
+                    self.logbuf.add("warn", f"posible PELOTA FANTASMA (Δfront/back={d:.0f}mm)")
+        else:  # DOWN (placa base)
+            lv = f.line.valid
+            if self._anom.get("lv") is not None and lv != self._anom["lv"]:
+                self.logbuf.add("ok" if lv else "warn",
+                                "línea válida" if lv else "línea inválida (base)")
+            self._anom["lv"] = lv
+            if f.lifted and not self._anom.get("lifted"):
+                self.logbuf.add("warn", "robot LEVANTADO (base)")
+            self._anom["lifted"] = f.lifted
         now = time.time()
         if now - self._last_beat >= HEARTBEAT_S:
             self._last_beat = now
-            self.logbuf.add("info",
-                f"datos seq={f.seq} {self._rate_hz:.0f}Hz hdg={f.imu.heading_deg:+.1f}° "
-                f"snap={'OK' if sv else '--'} pelota={'sí' if f.snap.ball_visible else 'no'}")
+            self.logbuf.add("info", f"datos [{BOARD_SHORT.get(b, b)}] seq={f.seq} "
+                                    f"{self.metrics_by[b]['rate']:.0f}Hz")
 
     def _drain_errors(self) -> None:
         errs = getattr(self.source, "errors", None)
@@ -264,10 +305,17 @@ class MonitorShell:
     def _update_bar(self, got: bool) -> None:
         live = got and not self.paused
         self.conn_dot.configure(fg=(OK if live else (WARN if self.paused else MUTED)))
-        self.conn_lbl.configure(text=self.source.describe() + (" · SIM" if self.is_sim else ""))
-        self.metrics.configure(
-            text=f"seq {self.last_seq}   {self._rate_hz:.0f} Hz   frames {self.frame_count}   "
-                 f"perdidos {self.dropped}" + ("   ⏸ PAUSA" if self.paused else ""))
+        b = self.current_board
+        name = BOARD_SHORT.get(b, "esperando placa")
+        self.conn_lbl.configure(text=f"{name} · {self.source.describe()}"
+                                + (" · SIM" if self.is_sim else ""))
+        m = self.metrics_by.get(b) if b else None
+        if m:
+            self.metrics.configure(
+                text=f"seq {m['seq']}   {m['rate']:.0f} Hz   frames {m['frames']}   "
+                     f"perdidos {m['dropped']}" + ("   ⏸ PAUSA" if self.paused else ""))
+        else:
+            self.metrics.configure(text="esperando datos…")
 
     # ── Barra: acciones ─────────────────────────────────────────────────────
     def _toggle_pause(self) -> None:
@@ -339,7 +387,9 @@ def smoke(frames: int = 60) -> int:
     """Smoke headless: construye el shell con TODOS los paneles, pasa frames del
     simulador por cada vista (build + render reales) y destruye. 0 si OK."""
     import sys
+    from .protocol import parse_line
     from .protocol_top import parse_line_top
+    from .simulator import Simulator
     from .simulator_top import SimulatorTop
     from .sources import SimTopSource
     if hasattr(sys.stdout, "reconfigure"):
@@ -355,15 +405,19 @@ def smoke(frames: int = 60) -> int:
         print(f"[smoke-monitor] FALLO construyendo el shell: {e}")
         root.destroy()
         return 1
-    sim = SimulatorTop(rate_hz=50.0)
+    top_sim, down_sim = SimulatorTop(rate_hz=50.0), Simulator(rate_hz=50.0)
     names = []
     rc = 0
     for p in shell.panels:
-        names.append(p.key)
+        names.append(f"{p.key}/{p.board}")
         shell._select(p.key)
-        for _ in range(max(3, frames // max(1, len(shell.panels)))):
+        # Alimentar con frames de la placa que corresponde (ejercita el routing
+        # multi-placa + el hot-swap al alternar TOP/BASE).
+        down = (p.board == "down")
+        for _ in range(8):
             try:
-                shell._pump(parse_line_top(sim.next_line()))
+                line = down_sim.next_line() if down else top_sim.next_line()
+                shell._pump(parse_line(line) if down else parse_line_top(line))
             except Exception as e:  # noqa: BLE001
                 print(f"[smoke-monitor] FALLO en panel '{p.key}': {e}")
                 rc = 1

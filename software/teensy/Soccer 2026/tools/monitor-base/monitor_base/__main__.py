@@ -74,17 +74,27 @@ def _dead_list(s: str) -> List[int]:
     return [int(x) for x in s.split(",") if x.strip().isdigit()] if s else []
 
 
+def _wants_shell(args: argparse.Namespace) -> bool:
+    """La CONSOLA unificada es el modo por defecto (y de --monitor + flags de vista
+    TOP). Las únicas excepciones son las vistas viejas standalone --top / --arquero."""
+    return not (args.top or args.arquero)
+
+
 def _build_source(args: argparse.Namespace):
-    from .sources import ReplaySource, SerialSource, SimSource, SimTopSource
-    if (args.top or args.top_salud or args.tof_setup or args.tof_360
-            or args.timeline or args.cam_fusion or args.polar or args.field or args.monitor):
-        from .protocol_top import parse_line_top
+    from .sources import (ReplaySource, SerialSource, SimSource, SimTopSource,
+                          auto_parse)
+    if _wants_shell(args):
+        # Fuente MULTI-PLACA: sniffea TOP vs BASE por línea (hot-swap del USB).
         if args.port:
-            return SerialSource(args.port, baud=args.baud, parser=parse_line_top)
+            return SerialSource(args.port, baud=args.baud, parser=auto_parse)
         if args.replay:
             return ReplaySource(args.replay, rate_hz=args.rate,
-                                loop=not args.no_loop, parser=parse_line_top)
-        return SimTopSource(rate_hz=args.rate)
+                                loop=not args.no_loop, parser=auto_parse)
+        if args.sim:
+            return SimTopSource(rate_hz=args.rate)   # el sim es de la placa TOP
+        # Sin flag de fuente: AUTODETECTAR el Teensy y sniffear qué placa es.
+        return SerialSource("auto", baud=args.baud, parser=auto_parse)
+    # Vistas viejas standalone (--arquero = base; --top = radar viejo).
     if args.port:
         return SerialSource(args.port, baud=args.baud)
     if args.replay:
@@ -324,24 +334,21 @@ def main(argv: Optional[List[str]] = None) -> int:
         recorder = Recorder(args.record)
         print(f"Grabando telemetría en {args.record}")
     try:
-        # Los flags TOP abren la MISMA consola unificada, arrancando en esa vista
-        # (--monitor = vista por defecto). Una sola app; los flags son atajos.
-        top_views = {"monitor": None, "field": "cancha", "polar": "polar",
-                     "tof_360": "tof360", "top_salud": "salud", "cam_fusion": "cam",
-                     "timeline": "timeline", "tof_setup": "tofcfg"}
-        start_key = next((k for d, k in top_views.items() if getattr(args, d)), "__std__")
-        if start_key != "__std__":
+        # La CONSOLA unificada es el default. Los flags de vista son atajos que la
+        # abren arrancando en esa vista. --top/--arquero = vistas viejas standalone.
+        top_views = {"field": "cancha", "polar": "polar", "tof_360": "tof360",
+                     "top_salud": "salud", "cam_fusion": "cam", "timeline": "timeline",
+                     "tof_setup": "tofcfg"}
+        if _wants_shell(args):
+            start_key = next((k for d, k in top_views.items() if getattr(args, d)), None)
             from . import gui_shell
             gui_shell.run_shell(source, recorder=recorder, start_key=start_key)
         elif args.top:
             from . import gui_top
             gui_top.run_top(source, recorder=recorder)
-        elif args.arquero:
+        else:  # args.arquero
             from . import gui_gk
             gui_gk.run_gk(source, recorder=recorder)
-        else:
-            from . import gui
-            gui.run(source, recorder=recorder)
     except Exception as e:  # noqa: BLE001 — tkinter sin display, etc.
         print(f"No se pudo iniciar la GUI ({e}). "
               f"Probá --selftest para un chequeo sin ventana.", file=sys.stderr)

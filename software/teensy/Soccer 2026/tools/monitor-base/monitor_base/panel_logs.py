@@ -114,15 +114,24 @@ class LogsPanel(Panel):
     def on_show(self):
         self._last_seq = -1            # redibujar al entrar
 
-    def render(self, f: TopFrame) -> None:
-        # Franja del último frame.
-        s = f.snap
-        self.live.configure(text=(
-            f"seq {f.seq:<6} t={f.t_ms:<8} v{f.v}   hdg={f.imu.heading_deg:+6.1f}° "
-            f"valid={'Y' if f.imu.heading_valid else 'N'}   snap={'OK' if s.valid else '--'}   "
-            f"pelota={'SÍ' if s.ball_visible else 'no'}   "
-            f"min_obst={'--' if s.min_obstacle_mm is None else str(s.min_obstacle_mm)+'mm'}   "
-            f"árbitro={s.referee_name}"))
+    def render(self, f) -> None:
+        # Franja del último frame (adaptada a la placa: TOP o BASE).
+        if hasattr(f, "snap"):                       # placa SUPERIOR (TOP)
+            s = f.snap
+            self.live.configure(text=(
+                f"[TOP] seq {f.seq:<6} v{f.v}  hdg={f.imu.heading_deg:+6.1f}° "
+                f"valid={'Y' if f.imu.heading_valid else 'N'}  snap={'OK' if s.valid else '--'}  "
+                f"pelota={'SÍ' if s.ball_visible else 'no'}  "
+                f"min_obst={'--' if s.min_obstacle_mm is None else str(s.min_obstacle_mm)+'mm'}  "
+                f"árbitro={s.referee_name}"))
+        elif hasattr(f, "line") and hasattr(f, "ring"):   # placa BASE (DOWN)
+            ln = f.line
+            self.live.configure(text=(
+                f"[BASE] seq {f.seq:<6} v{f.v}  línea={'válida' if ln.valid else '--'} "
+                f"ang={'--' if ln.angle_deg is None else f'{ln.angle_deg:+.1f}°'} "
+                f"sensores={ln.sensors_on_line}  "
+                f"OTOS x={f.otos.x_mm:.0f} y={f.otos.y_mm:.0f}  "
+                f"{'LEVANTADO' if f.lifted else ''}"))
         # Log (solo si cambió).
         if self._logbuf is None or self._logbuf.seq == self._last_seq:
             return

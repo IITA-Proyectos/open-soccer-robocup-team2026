@@ -112,7 +112,14 @@ namespace iitasoccer {
     // la trasera (alineada al strafe) rinde ~1.31× más velocidad por PWM que las
     // delanteras oblicuas: el strafe derecho salió con PWM 107/70 = 1.53 cuando la
     // cinemática pide velocidad 2:1 → eficiencia = 2/1.53 ≈ 1.31.
-    constexpr int MOTOR_EFF_X100[3] = { 100, 100, 131 };
+    // 🔧 A/B BANCO 2026-06-14 (María, arquero SIN BNO): 131→115 = MÁS potencia a la trasera (M3),
+    // SIMÉTRICA (bajar la eff → más PWM a la trasera a AMBOS lados; NO toca el piso → SIN la
+    // asimetría que metía subir el piso). Objetivo: enderezar el strafe open-loop (deriva ~8°/s,
+    // signo sugiere trasera floja). 🔧 TUNEAR: bajar (115→110…) = aún más trasera; si rota al OTRO
+    // lado (la trasera se adelanta) → SUBIR de vuelta hacia 131. REVERTIR = 131 (valor medido).
+    // Solo afecta builds con -DCENTRAL_FLOOR_SCALE (el arquero). En escape (470) la trasera se capa
+    // sola a ~150 (no se quema), solo baja un toque el escape.
+    constexpr int MOTOR_EFF_X100[3] = { 100, 100, 115 };
                                                       // OJO: en el strafe la trasera DEBE ir al
                                                       // DOBLE de velocidad que las delanteras
                                                       // (cinemática: fronts 0.5·vx, rear 1.0·vx);

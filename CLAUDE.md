@@ -43,7 +43,7 @@ Para el formato exacto, ver la skill [`rcj-soccer-coach`](.claude/skills/rcj-soc
 
 ## Skills disponibles
 
-En `.claude/skills/` — 16 skills organizadas:
+En `.claude/skills/` — 18 skills organizadas:
 
 **Frame del coach:**
 - **`rcj-soccer-coach`** — formato exacto del feedback que entregás (P0/P1/P2, tema-a-analizar, plan de prueba obligatorio).
@@ -62,6 +62,8 @@ En `.claude/skills/` — 16 skills organizadas:
 - **`openmv-vision-tuning`** — calibración de cámaras OpenMV (color LAB, exposición, FOV, multi-camera) para distintas iluminaciones. Crítica para Incheon.
 - **`control-pid-zona-muerta`** — lazos PID con actuador cuantizado (PFM/duty-cycling, deadband, PI-feedforward, titración de banco). Obligatoria para CUALQUIER cambio de control de movimiento.
 - **`dinamica-omni-3-ruedas`** — la planta MEDIDA del robot (pisos PWM, regímenes, deriva parásita, mínimos físicos). Par obligatorio de la anterior.
+- **`localizacion-rcj-soccer`** — lente de coach para "¿dónde está el robot?": explica TODAS las técnicas que se nombran (odometría/VO, Visual SLAM, landmarks/trilateración, MCL/partículas, EKF, pose estimation) con veredicto honesto de factibilidad para OpenMV+Teensy, y las mapea a los módulos REALES del repo. Veredicto clave: la cancha es un mapa conocido → NO necesita SLAM, sino localización por landmarks + fusión. Referencia: `references/tecnicas-localizacion-explicadas.md`.
+- **`fusion-pose-odometria-landmarks`** — cómo CONSTRUIR/cablear/tunear el estimador que fusiona OTOS (odometría) + ToF (trilateración) + heading en una pose. El patrón predict/correct, los módulos `pose_fusion`/`pose_filter` que YA existen y NO están cableados, y el protocolo de medir el ruido ANTES de tunear. Par obligatorio de la anterior. Referencias: `references/complementario-ekf-particulas.md`, `references/medir-ruido-sensores.md`.
 
 **Entregables de competencia:**
 - **`rcj-judging-package`** — BOM, poster A1, video técnico, portfolio digital, entrevista (lado PRODUCTOR: armar los entregables).

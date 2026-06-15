@@ -307,6 +307,21 @@ nativo, pero ya no es el único camino. Ver
    §Resultado + `journal/2026-06-07-calibracion-distancia-camara-frontal-elias.md`. (Migración
    H7→N6, bugs P0 y velocidad de pelota ya estaban resueltos — Avance 2026-06-03.)
 
+### Avance 2026-06-15 — Cierre host-testeable de la TOP: estimador pose_fusion numéricamente correcto + clamp drive_straight
+- Pedido de Gustavo: terminar TODOS los módulos/funcionalidades de la TOP. Un **workflow de inventario
+  (10 agentes + verificación adversarial)** mapeó el TOP y separó lo terminable host-testeable del glue
+  Arduino de banco. **Verdad central honesta:** el pipeline de competencia ya está vivo/byte-idéntico; el
+  grueso del remanente es glue (ISR/DMA/timer/Wire) de banco. Journal: `journal/2026-06-15-cierre-top-estimador-correcto.md`.
+- **Se cerraron los 3 agujeros NUMÉRICOS del estimador `pose_fusion`** (estaba cableado pero MAL al girar):
+  **H1** módulo nuevo `rot_lut.h` (sin/cos Q12 círculo completo) + des-rotación del delta OTOS al marco de
+  cancha (`net=bno−otos`; antes integraba crudo → deriva en dirección equivocada al girar); **H2** gate de
+  seed por consenso (3 ToF consistentes antes de anclar — evita anclar contra un rival/pared al boot);
+  **H3** campo `heading_valid` (no anclar/corregir con heading muerto). Cableado gateado en `main_top`.
+- **H6** clamp de omega en `drive_straight` (float, ±327 °/s) — no desborda el centideg int16 del caller.
+- **Honestidad:** estos fixes NO cambian el binario de competencia (byte-idéntico) — dejan el estimador
+  correcto para el día de banco. Encender `TOP_ENABLE_POSE_FUSION` sigue siendo banco (TASK-210/211).
+- Tests: `test_rot_lut` 8 + `test_pose_fusion` 11→16 + `test_drive_straight` 9→10.
+
 ### Avance 2026-06-15 — Confiabilidad del heading: cross-validación independiente + centinela dual-BNO @1Hz (módulos puros)
 - Pedido de Gustavo: heading MÁS CONFIABLE con AUTO-RECUPERACIÓN (decidir qué BNO está sano con datos
   INDEPENDIENTES, no auto-referencia; centinela @1Hz del 2º BNO con ToF pausados; fusión cámara+OTOS;

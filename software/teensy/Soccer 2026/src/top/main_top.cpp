@@ -161,6 +161,8 @@ WorldSnapshot build_snapshot() {
         // booleano is_pose_fresh sólo corta a 500 ms. Nunca-recibido => edad MAX => no fresco.
         in.otos_fresh = pose_age_is_fresh(comm_down_pose_age_ms(), s_pfcfg.otos_stale_ms);
         in.bno_heading_centideg = sensors_imu_get_heading_centideg();  // pass-through (no fusiona heading)
+        in.otos_heading_centideg = otos.heading_centideg;   // H1: des-rotar el delta OTOS al marco de cancha
+        in.heading_valid = sensors_imu_get_heading_valid();  // H3: no anclar/corregir con heading muerto/congelado
         in.dt_ms = static_cast<uint16_t>(static_cast<uint32_t>(s_pf_dt));
         s_pf_dt = 0;
 

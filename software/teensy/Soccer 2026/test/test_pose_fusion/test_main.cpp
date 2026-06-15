@@ -30,15 +30,22 @@ PoseFusionInputs make_inputs(int16_t tof_x, int16_t tof_y, bool tof_valid,
     in.otos_fresh           = otos_fresh;
     in.bno_heading_centideg = heading;
     in.dt_ms                = dt_ms;
+    in.heading_valid        = true;   // H3: por default el heading es sano; los casos
+                                      //     que prueban heading muerto lo ponen false a mano.
     return in;
 }
 
-// Seed: primer tick con ToF válido en (x,y). Deja el estado inicializado.
+// Seed: alimenta seed_min_samples (H2) lecturas ToF CONSISTENTES en (x,y) para anclar.
+// Deja el estado inicializado y otos_prev = (x,y).
 PoseFusionOutput seed_at(PoseFusionState& st, int16_t x, int16_t y) {
-    PoseFusionInputs in = make_inputs(x, y, /*tof_valid=*/true,
-                                      /*otos=*/x, y, /*otos_fresh=*/true,
-                                      /*heading=*/0, /*dt=*/10);
-    return pose_fusion_update(st, in, cfg);
+    PoseFusionOutput out{};
+    for (uint8_t i = 0; i < cfg.seed_min_samples; ++i) {
+        PoseFusionInputs in = make_inputs(x, y, /*tof_valid=*/true,
+                                          /*otos=*/x, y, /*otos_fresh=*/true,
+                                          /*heading=*/0, /*dt=*/10);
+        out = pose_fusion_update(st, in, cfg);
+    }
+    return out;
 }
 
 }  // namespace
@@ -52,18 +59,78 @@ void tearDown(void) {}
 void test_seed_con_tof_inicializa(void) {
     PoseFusionState st;
     pose_fusion_reset(st);
-    // Primer update con tof_valid en (1000,800), otos cualquier valor.
+    PoseFusionOutput out{};
+    // H2: hacen falta seed_min_samples lecturas consistentes. Las primeras N-1 NO anclan.
+    for (uint8_t i = 0; i + 1 < cfg.seed_min_samples; ++i) {
+        PoseFusionInputs in = make_inputs(1000, 800, /*tof_valid=*/true,
+                                          /*otos=*/12345, -999, /*otos_fresh=*/true,
+                                          /*heading=*/0, /*dt=*/10);
+        out = pose_fusion_update(st, in, cfg);
+        TEST_ASSERT_FALSE(out.valid);   // todavía juntando consenso
+    }
+    // La lectura N-ésima ancla.
     PoseFusionInputs in = make_inputs(1000, 800, /*tof_valid=*/true,
                                       /*otos=*/12345, -999, /*otos_fresh=*/true,
                                       /*heading=*/0, /*dt=*/10);
-    PoseFusionOutput out = pose_fusion_update(st, in, cfg);
+    out = pose_fusion_update(st, in, cfg);
 
     TEST_ASSERT_TRUE(out.valid);
     TEST_ASSERT_INT16_WITHIN(2, 1000, out.x_mm);
     TEST_ASSERT_INT16_WITHIN(2, 800, out.y_mm);
     TEST_ASSERT_TRUE(out.confidence >= cfg.conf_tof_anchor);  // >= 90
-    // El seed cuenta como anclaje al absoluto.
     TEST_ASSERT_TRUE((out.source_flags & POSE_FUSION_FLAG_TOF_CORR) != 0);
+}
+
+// H2: una lectura OUTLIER lejana en medio del consenso REINICIA el contador.
+void test_h2_seed_outlier_reinicia(void) {
+    PoseFusionState st;
+    pose_fusion_reset(st);
+    // 2 lecturas consistentes en (1000,800)...
+    pose_fusion_update(st, make_inputs(1000, 800, true, 0, 0, true, 0, 10), cfg);
+    pose_fusion_update(st, make_inputs(1000, 800, true, 0, 0, true, 0, 10), cfg);
+    // ...una lejana (rival/pared) reinicia el consenso → seed_count vuelve a 1.
+    PoseFusionOutput out = pose_fusion_update(st, make_inputs(1700, 100, true, 0, 0, true, 0, 10), cfg);
+    TEST_ASSERT_FALSE(out.valid);
+    TEST_ASSERT_EQUAL_UINT8(1, st.seed_count);
+}
+
+// H3: heading inválido durante el seed → NUNCA ancla (no se confía en la pose ToF).
+void test_h3_seed_sin_heading_no_ancla(void) {
+    PoseFusionState st;
+    pose_fusion_reset(st);
+    PoseFusionOutput out{};
+    for (int i = 0; i < 10; ++i) {
+        PoseFusionInputs in = make_inputs(1000, 800, /*tof_valid=*/true,
+                                          0, 0, true, 0, 10);
+        in.heading_valid = false;   // heading muerto
+        out = pose_fusion_update(st, in, cfg);
+    }
+    TEST_ASSERT_FALSE(out.valid);
+    TEST_ASSERT_EQUAL_UINT8(0, st.seed_count);   // nunca avanzó el consenso
+}
+
+// H3: ya inicializado, un ToF con heading inválido NO corrige (se mantiene por predicción).
+void test_h3_correccion_sin_heading_no_aplica(void) {
+    PoseFusionState st;
+    pose_fusion_reset(st);
+    seed_at(st, 1000, 800);
+    // Deriva OTOS +150mm.
+    int16_t otos_x = 1000;
+    for (int i = 0; i < 10; ++i) {
+        otos_x += 15;
+        pose_fusion_update(st, make_inputs(0, 0, false, otos_x, 800, true, 0, 10), cfg);
+    }
+    // ToF en (1000,800) pero heading inválido → NO debe corregir el drift.
+    PoseFusionOutput out{};
+    for (int i = 0; i < 30; ++i) {
+        PoseFusionInputs in = make_inputs(1000, 800, /*tof_valid=*/true,
+                                          otos_x, 800, true, 0, 10);
+        in.heading_valid = false;
+        out = pose_fusion_update(st, in, cfg);
+        TEST_ASSERT_TRUE((out.source_flags & POSE_FUSION_FLAG_TOF_CORR) == 0);  // no corrige
+    }
+    // El drift sigue (no se corrigió hacia el ToF): x se mantiene ~1150.
+    TEST_ASSERT_INT16_WITHIN(8, 1150, out.x_mm);
 }
 
 // ============================================================
@@ -346,11 +413,66 @@ void test_clamp_salida_dentro_de_cancha(void) {
 }
 
 // ============================================================
+// test_h1_derota_delta_otos — el delta OTOS se integra en el marco de CANCHA
+// (no en el de la OTOS): con net de rotación 90°, un avance OTOS en +X cae en +Y.
+// ============================================================
+void test_h1_derota_delta_otos(void) {
+    PoseFusionState st;
+    pose_fusion_reset(st);
+    // Seed en (1000,800) con bno_heading=90° (9000 cdeg) y otos_heading=0 → net 90°.
+    // H2: hace falta el consenso de seed_min_samples lecturas.
+    for (uint8_t i = 0; i < cfg.seed_min_samples; ++i) {
+        PoseFusionInputs seed = make_inputs(1000, 800, /*tof_valid=*/true,
+                                            /*otos=*/0, 0, /*otos_fresh=*/true,
+                                            /*heading=*/9000, /*dt=*/10);
+        seed.otos_heading_centideg = 0;
+        pose_fusion_update(st, seed, cfg);
+    }
+    // initialized, otos_prev=(0,0)
+
+    // La OTOS avanza +40mm/tick en SU +X. Con net 90° CCW, (40,0)→(0,40) en cancha.
+    PoseFusionOutput out{};
+    for (int i = 1; i <= 4; ++i) {
+        PoseFusionInputs in = make_inputs(0, 0, /*tof_valid=*/false,
+                                          /*otos_x=*/static_cast<int16_t>(40 * i), 0,
+                                          /*otos_fresh=*/true, /*heading=*/9000, /*dt=*/10);
+        in.otos_heading_centideg = 0;
+        out = pose_fusion_update(st, in, cfg);
+    }
+    // 160mm de avance OTOS en +X → en cancha es +Y: x ~ 1000 (sin cambio), y ~ 960.
+    TEST_ASSERT_INT16_WITHIN(8, 1000, out.x_mm);
+    TEST_ASSERT_INT16_WITHIN(8, 960, out.y_mm);
+}
+
+// Regresión: con bno_heading == otos_heading (net 0), la de-rotación es IDENTIDAD
+// (el delta se integra crudo, como antes de H1).
+void test_h1_net_cero_es_identidad(void) {
+    PoseFusionState st;
+    pose_fusion_reset(st);
+    for (uint8_t i = 0; i < cfg.seed_min_samples; ++i) {
+        PoseFusionInputs seed = make_inputs(500, 500, true, 0, 0, true, /*heading=*/4500, 10);
+        seed.otos_heading_centideg = 4500;   // net = 0
+        pose_fusion_update(st, seed, cfg);
+    }
+    PoseFusionOutput out{};
+    for (int i = 1; i <= 3; ++i) {
+        PoseFusionInputs in = make_inputs(0, 0, false, static_cast<int16_t>(30 * i), 0, true, 4500, 10);
+        in.otos_heading_centideg = 4500;   // net 0 siempre
+        out = pose_fusion_update(st, in, cfg);
+    }
+    TEST_ASSERT_INT16_WITHIN(2, 590, out.x_mm);   // +90mm crudo en +X
+    TEST_ASSERT_INT16_WITHIN(2, 500, out.y_mm);
+}
+
+// ============================================================
 // Runner
 // ============================================================
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_seed_con_tof_inicializa);
+    RUN_TEST(test_h2_seed_outlier_reinicia);
+    RUN_TEST(test_h3_seed_sin_heading_no_ancla);
+    RUN_TEST(test_h3_correccion_sin_heading_no_aplica);
     RUN_TEST(test_sin_tof_y_sin_otos_no_inicializa);
     RUN_TEST(test_otos_sola_deriva_poco_en_corto);
     RUN_TEST(test_tof_corrige_drift_otos);
@@ -361,5 +483,7 @@ int main(void) {
     RUN_TEST(test_otos_reset_clamp_no_teletransporta);
     RUN_TEST(test_heading_siempre_pass_through);
     RUN_TEST(test_clamp_salida_dentro_de_cancha);
+    RUN_TEST(test_h1_derota_delta_otos);
+    RUN_TEST(test_h1_net_cero_es_identidad);
     return UNITY_END();
 }

@@ -54,6 +54,11 @@ struct PoseFusionConfig {
     uint8_t  conf_otos_only;          // confidence base cuando solo hay OTOS sin ToF reciente. Default 50.
     uint8_t  conf_decay_per_100ms;    // cuántos puntos/100ms baja la confidence en deriva pura. Default 5.
     uint8_t  conf_min;                // piso de confidence mientras el estado siga inicializado. Default 10.
+    // H2 (gate de seed): exigir N lecturas ToF CONSISTENTES consecutivas antes de
+    // anclar el origen. Sin esto, un rival contra la pared al boot ancla un mapa
+    // rotado todo el partido. Default 3 lecturas dentro de seed_tol_mm.
+    uint8_t  seed_min_samples;        // lecturas ToF consistentes para anclar. Default 3.
+    uint16_t seed_tol_mm;             // tolerancia entre lecturas de seed (por eje). Default 150.
 };
 
 // Helper con los defaults documentados arriba.
@@ -70,6 +75,10 @@ struct PoseFusionState {
     int16_t  otos_prev_y_mm;          // último y OTOS consumido
     bool     otos_prev_valid;         // ya hay un sample OTOS previo del cual sacar delta
     uint32_t ms_since_tof_corr;       // ms acumulados desde la última corrección ToF aceptada
+    // H2 (gate de seed): consenso de ToF antes de anclar (zero-init = sin consenso aún).
+    uint8_t  seed_count;              // lecturas ToF consistentes consecutivas juntadas
+    int16_t  seed_x_mm;               // última lectura ToF candidata a seed
+    int16_t  seed_y_mm;
 };
 
 // Pone todo en 0 / no inicializado.
@@ -90,8 +99,19 @@ struct PoseFusionInputs {
                                       //   cfg.otos_stale_ms≈60 ms), NO el booleano grueso de 500 ms.
     // Heading del BNO (pass-through; nunca se fusiona acá).
     int16_t bno_heading_centideg;
+    // Heading que reporta la OTOS (su propio marco). H1 (2026-06-15): el delta OTOS
+    // se DES-ROTA por (bno_heading − otos_heading) antes de integrarlo, porque el delta
+    // viene en el marco de la OTOS, no en el de la cancha. El glue lo llena con
+    // comm_down_get_pose().heading_centideg. Default 0 → sin rotación (compat).
+    int16_t otos_heading_centideg;
     // dt del tick en ms (del scheduler del runtime; típico 10).
     uint16_t dt_ms;
+    // H3 (bug #22): validez del heading (= sensors_imu_get_heading_valid()). La pose
+    // ToF se calcula USANDO el heading; si el heading está muerto/congelado, esa pose
+    // es basura → NO se ancla ni se corrige hacia ella (se mantiene por predicción).
+    // Default false sería inseguro para el caller; el glue lo llena explícito. En los
+    // tests, make_inputs lo pone true (heading sano) salvo los casos que prueban false.
+    bool heading_valid;
 };
 
 // --- SALIDA ---

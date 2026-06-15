@@ -22,10 +22,13 @@ DriveStraightCmd drive_straight_compute(const DriveStraightIn& in,
     // CCW) -> omega>0 -> gira CCW para alcanzar el target (reduce el error).
     const float heading_err = drive_straight_angdiff_deg(in.target_heading_deg,
                                                          in.cur_heading_deg);
-    // ⚠️ SIN clamp: el caller debe acotar omega antes de castear a centideg int16 (omega*100).
-    // Hoy OK porque el único uso (ATK KICKOFF) llama con target≈cur → omega≈0. Si se usa con un
-    // target de heading REAL, clampear a ±327 °/s para no desbordar cmd.omega_centideg_s (eval 2026-06-03).
     cmd.omega_deg_s = cfg.kp_heading * heading_err;
+    // H6 (bug #24, 2026-06-15): CLAMP en FLOAT a ±omega_max ANTES de que el caller haga
+    // omega×100 → centideg int16. Sin esto, un target de heading REAL (error grande) daba
+    // un omega gigante que desbordaba cmd.omega_centideg_s (±327 °/s ×100 < 32767). Es
+    // aditivo: con error chico (KICKOFF actual, target≈cur) no toca nada (byte-idéntico).
+    if (cmd.omega_deg_s >  cfg.omega_max_deg_s) cmd.omega_deg_s =  cfg.omega_max_deg_s;
+    if (cmd.omega_deg_s < -cfg.omega_max_deg_s) cmd.omega_deg_s = -cfg.omega_max_deg_s;
 
     // Lateral: cancela la deriva medida por OTOS. Signo opuesto a otos_vy.
     cmd.vy_mm_s = -cfg.kp_lateral * in.otos_vy_mm_s;

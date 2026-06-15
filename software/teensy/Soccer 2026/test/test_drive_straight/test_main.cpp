@@ -183,6 +183,30 @@ void test_zero_gains_pass_through_fwd_only(void) {
 }
 
 // ============================================================================
+// H6 (bug #24): clamp de omega a ±omega_max
+// ============================================================================
+
+void test_h6_omega_clamped_to_max(void) {
+    DriveStraightCfg cfg = make_cfg();   // kp_heading = 3.0
+    cfg.omega_max_deg_s = 327.0f;
+    DriveStraightIn in;
+    in.otos_vy_mm_s   = 0.0f;
+    in.fwd_speed_mm_s = 100.0f;
+    // error +170° × 3 = 510 °/s > 327 → satura a +327.
+    in.cur_heading_deg = 0.0f; in.target_heading_deg = 170.0f;
+    DriveStraightCmd cmd = drive_straight_compute(in, cfg);
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, 327.0f, cmd.omega_deg_s);
+    // error −170° → satura a −327.
+    in.target_heading_deg = -170.0f;
+    cmd = drive_straight_compute(in, cfg);
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, -327.0f, cmd.omega_deg_s);
+    // error chico (10° × 3 = 30) → dentro de rango, sin clamp (regresión KICKOFF).
+    in.target_heading_deg = 10.0f;
+    cmd = drive_straight_compute(in, cfg);
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, 30.0f, cmd.omega_deg_s);
+}
+
+// ============================================================================
 // MAIN
 // ============================================================================
 
@@ -201,6 +225,8 @@ int main(int, char**) {
 
     RUN_TEST(test_fwd_speed_respected_independent_of_corrections);
     RUN_TEST(test_zero_gains_pass_through_fwd_only);
+
+    RUN_TEST(test_h6_omega_clamped_to_max);
 
     return UNITY_END();
 }

@@ -307,6 +307,31 @@ nativo, pero ya no es el único camino. Ver
    §Resultado + `journal/2026-06-07-calibracion-distancia-camara-frontal-elias.md`. (Migración
    H7→N6, bugs P0 y velocidad de pelota ya estaban resueltos — Avance 2026-06-03.)
 
+### Avance 2026-06-15 — Integración RT GATEADA: quick-wins CENTRAL + pose_fusion TOP + motor_slew (todo OFF-by-default)
+- **Se CABLEÓ parte del análisis RT al firmware vivo, todo gateado off-by-default → binarios de
+  competencia byte-idénticos.** Rama feature + PR (NO push directo). Gate host 937/67/0 sin cambios
+  (los cambios son glue Arduino; los módulos puros ya tenían sus tests). Journal:
+  `journal/2026-06-15-integracion-rt-gateada.md`.
+- **A1 `CENTRAL_DEBUG_SERIAL`** — el bloque de ~30 `Serial.print` cada 500 ms del `loop()` de CENTRAL
+  ahora está gateado. El flag se DEFINE en `central_robot1/2` (byte-idéntico HOY); para SACAR el pico de
+  jitter, **borrar el flag del env de competencia en banco**.
+- **A2 `CENTRAL_TOP_RX_BIGBUF`** — `Serial7.addMemoryForRead(buf,512)` en `comm_top.cpp` (hoy 64 B → el
+  snapshot del TOP se descarta en silencio si una vuelta se alarga). Default OFF = 64 B = binario de hoy;
+  el equipo agrega el flag en banco (chequear que `resync` del link TOP baja).
+- **B `pose_fusion`+`pose_filter`** — CABLEADOS en `main_top.cpp::build_snapshot` tras `-DTOP_ENABLE_POSE_FUSION`
+  (env nuevo `top_robot2_pri_posefusion`). **INTERLOCK DURO**: `#error` si se prende sin
+  `-DTOP_ENABLE_BNO_FREEZE_DETECT` (el heading es la raíz). **Seguro por diseño**: hasta que el ToF ancle
+  (hoy casi nunca: sólo eje Y) la fusión NO inicializa → cae al comportamiento de localization de hoy.
+  ⚠️ `ball_sticky` (`TOP_CAM_STICKY`) e `imu_freeze` (`TOP_ENABLE_BNO_FREEZE_DETECT`) YA estaban cableados
+  de antes — verificado, no se re-hizo.
+- **C `motor_slew`** (Capa 2 lazo CENTRAL) — CABLEADO tras `-DCENTRAL_MOTOR_SLEW` (env nuevo
+  `central_robot2_strafe_slew_bb`): rampa `{vx,vy,omega}` antes de la cinemática. Los **reflejos
+  (freno de borde, STOP/SAFE_NO_TOP) BYPASEAN la rampa** (se aplican YA + `slew_reset`).
+- **NO cableados a propósito** (decisión de coach): `state_timer` + `sensor_slot`/`snapshot_assembler`
+  (son del rewrite de FSM/loop NUEVOS → cablearlos = reescribir `strategy.cpp`/`main_*.cpp`, prohibido)
+  y `line_early_escape` (cambia la señal de borde safety-crítica → necesita banco para titular el trigger).
+  Ver el journal para el razonamiento.
+
 ### Avance 2026-06-15 — Arquero strafe: tuning del control de rumbo + mitigaciones de latencia (banco María)
 - **Banco María (2026-06-14/15):** el arquero strafe (R2) andaba "muy feo" con el PFM de rumbo.
   Hallazgo: **anda MEJOR sin BNO** (PFM apagado) → el problema es el **lazo de rumbo / latencia del

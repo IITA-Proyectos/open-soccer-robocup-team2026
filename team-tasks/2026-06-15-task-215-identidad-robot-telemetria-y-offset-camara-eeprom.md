@@ -1,5 +1,5 @@
 ---
-task: 214
+task: 215
 titulo: "TOP firmware (sesión RT): ID de robot en telemetría (Opción 3) + offset de cámara persistente (Idea B) + cerrar lazo de validación de config ToF (Idea A = TASK-206 A2.2 + echo cfg)"
 fecha: 2026-06-15
 asignado: equipo — sesión que reescribe el firmware TOP en real-time (banco lo cierra el equipo)
@@ -9,7 +9,7 @@ relacionada: TASK-206 (config persistente TOP), TASK-022 (homografía cámara), 
 estado: backlog (firmware) — el lado APP (Opción 1 identidad por-serial + Opción 2 guard de escritura) YA está hecho y verificado (monitor-base, 2026-06-15)
 ---
 
-# TASK-214 — Identidad de robot + ajuste fino de cámara + validación de config ToF (lado firmware)
+# TASK-215 — Identidad de robot + ajuste fino de cámara + validación de config ToF (lado firmware)
 
 > **Contexto (Gustavo, 2026-06-15):** la app de PC no podía saber si miraba R1 o R2 (la
 > telemetría NO trae ID de robot) → riesgo de cruzar config de ToF / escribir a la EEPROM del

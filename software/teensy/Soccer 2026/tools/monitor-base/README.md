@@ -47,7 +47,7 @@ Con eso:
 La calibración de línea (verde/blanco, sensibilidad) **vive en la EEPROM de cada robot**,
 no en la app → no se cruza. Persistir en la EEPROM del TOP la config de ToF
 (posición/zonas) y un offset fino de cámara es trabajo de firmware: ver
-`team-tasks/2026-06-15-task-214-*` (+ TASK-206).
+`team-tasks/2026-06-15-task-215-*` (+ TASK-206).
 
 ## Vistas
 

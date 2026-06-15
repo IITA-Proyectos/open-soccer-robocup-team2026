@@ -70,8 +70,9 @@ Sistema de tareas asignadas a miembros del equipo para Incheon 2026.
 | [TASK-304](2026-06-06-task-304-down-firmware-debug-telemetria-calibracion.md) | **Modo DEBUG/telemetría + calibración en firmware DOWN (stream USB)** ⭐ próximo desarrollo | Virginia + Gustavo | **P0** | in-progress — v1 (módulo+protocolo+app+test host verde; glue Arduino pio-pendiente) |
 | [TASK-305](2026-06-06-task-305-app-pc-monitoreo-calibracion-base.md) | **App PC monitoreo + calibración de la BASE (anillo de 32 + línea + LineStatusV2)** ⭐ | Virginia + Gustavo | **P0** | in-progress — v1 app Python (sim+pytest verde; cierre en banco) |
 | [TASK-205](2026-06-06-task-205-top-debug-telemetria-y-app-monitoreo.md) | Modo DEBUG/telemetría TOP + app PC de monitoreo superior | Virginia | P1 | pending |
+| [TASK-105](2026-06-12-task-105-central-telemetria-y-app-monitoreo-visual.md) | Modo DEBUG/telemetría CENTRAL + app PC visual de la FSM/decisiones (fase 3, pedida por Elías) | a confirmar | P2 | pending |
 
-> **Nota 2026-06-06:** abierto el sistema de **monitoreo/telemetría USB + apps PC** (próximo desarrollo PRIORITARIO). Diseño en `research/in-progress/2026-06-06-diseno-monitoreo-telemetria-usb-y-apps-pc.md`. Orden: **TASK-304 (firmware base) → TASK-305 (app base)** [P0] ; luego TASK-205 (superior). Es la versión USB de hoy del roadmap de telemetría "estilo F1" (CANbus + ESP32, `MEJORAS-PENDIENTES.md` (e) E4).
+> **Nota 2026-06-06:** abierto el sistema de **monitoreo/telemetría USB + apps PC** (próximo desarrollo PRIORITARIO). Diseño en `research/in-progress/2026-06-06-diseno-monitoreo-telemetria-usb-y-apps-pc.md`. Orden: **TASK-304 (firmware base) → TASK-305 (app base)** [P0] ; luego TASK-205 (superior) y TASK-105 (CENTRAL, P2). Es la versión USB de hoy del roadmap de telemetría "estilo F1" (CANbus + ESP32, `MEJORAS-PENDIENTES.md` (e) E4).
 
 > **Nota:** esta tabla quedó parcialmente desactualizada (faltan TASK-027 a 032
 > y 035-038, que existen como archivos en este dir). El índice vivo está en

@@ -40,6 +40,10 @@ namespace iitasoccer {
 struct DriveStraightCfg {
     float kp_heading = 3.0f;
     float kp_lateral = 0.5f;
+    // H6 (bug #24): tope de |omega| en °/s. El caller hace omega×100 → centideg int16;
+    // 327 °/s ×100 = 32700 < 32767, así NUNCA desborda. drive_straight_compute clampea
+    // a ±omega_max para que un target de heading REAL no produzca un omega gigante.
+    float omega_max_deg_s = 327.0f;
 };
 
 // Entradas: el setpoint de heading (orientación de cancha deseada), el heading

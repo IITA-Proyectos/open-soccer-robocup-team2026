@@ -203,6 +203,12 @@ inline void xval_update(XvalState& s, const XvalParams& p, uint32_t now_ms) {
     const float tol = p.tol_base_dps + p.tol_slope * absf(w_truth);
     const bool moving = absf(w_truth) > p.min_net_rotation_dps;
 
+    // CONSENSO FUERTE (anti-falso-veto, regla de TASK-212): solo se puede escalar a
+    // MALO si las 2 refs INDEPENDIENTES (OTOS+cámara) coinciden ENTRE SÍ. Si discrepan
+    // (una miente: cámara por strafe/homografía, OTOS por patinazo), NO hay consenso →
+    // no vetar, solo bajar score. Con <2 refs indep, jamás hay consenso fuerte.
+    const bool strong_consensus = otos_ok && cam_ok && (absf(s.w_otos - s.w_cam) <= tol);
+
     // 5) VENTANA EVALUABLE: o el robot gira de verdad (comparar tasas), o las refs dicen
     //    "quieto" (entonces el primario también debería ~0; si inventa rotación = deriva).
     const float err = absf(s.w_pri - w_truth);
@@ -217,9 +223,9 @@ inline void xval_update(XvalState& s, const XvalParams& p, uint32_t now_ms) {
     }
 
     if (diverge) {
-        if (n_indep >= 2) {
-            // ≥2 refs INDEPENDIENTES coinciden (entre sí, por la mediana) y discrepan del
-            // primario → consenso fuerte. Escalar tras K ventanas sostenidas.
+        if (n_indep >= 2 && strong_consensus) {
+            // ≥2 refs INDEPENDIENTES que COINCIDEN entre sí y discrepan del primario →
+            // consenso fuerte. Escalar tras K ventanas sostenidas.
             if (s.bad_streak < 0xFF) s.bad_streak++;
             s.verdict = (s.bad_streak >= p.consensus_k) ? XvalVerdict::MALO : XvalVerdict::SOSPECHA;
             if (s.verdict == XvalVerdict::MALO) s.cooldown_until_ms = now_ms + p.cooldown_ms;

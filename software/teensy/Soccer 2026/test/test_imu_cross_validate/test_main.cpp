@@ -212,9 +212,45 @@ void test_sentinel_healthy_gate(void) {
     TEST_ASSERT_FALSE(xval_sentinel_healthy(s));
 }
 
+// H5 (path R1, que SÍ tiene OTOS): con el OTOS como ÚNICA ref independiente, una
+// divergencia grande NUNCA declara MALO (1 ref podría mentir por patinazo). Solo SOSPECHA.
+void test_otos_single_ref_never_malo(void) {
+    XvalState s{}; xval_reset(s);
+    XvalParams p = xval_default_params();
+    uint32_t now = 1000;
+    for (int i = 0; i < 30; ++i) {
+        xval_feed_primary(s, 0.0f, false, now);
+        xval_feed_otos(s, 30.0f, /*valid*/true, now);   // SOLO OTOS (R1)
+        xval_update(s, p, now);
+        now += 10;
+    }
+    TEST_ASSERT_NOT_EQUAL(vi(XvalVerdict::MALO), vi(xval_primary_verdict(s)));
+    TEST_ASSERT_EQUAL(1, (int)xval_n_indep_refs(s));
+}
+
+// CONSENSO DÉBIL (gap cerrado): 2 refs independientes que DISCREPAN entre sí (una miente)
+// NO escalan a MALO aunque el primario difiera de la mediana. Solo SOSPECHA.
+void test_two_indep_refs_disagree_never_malo(void) {
+    XvalState s{}; xval_reset(s);
+    XvalParams p = xval_default_params();
+    uint32_t now = 1000;
+    for (int i = 0; i < 30; ++i) {
+        xval_feed_primary(s, 30.0f, false, now);   // el primario coincide con el OTOS
+        xval_feed_otos(s, 30.0f, true, now);       // OTOS dice 30
+        xval_feed_camera(s, -30.0f, true, now);    // cámara dice -30 (discrepan fuerte entre sí)
+        xval_update(s, p, now);
+        now += 10;
+    }
+    // n_indep=2 pero SIN consenso fuerte (|30-(-30)|>tol) → nunca MALO.
+    TEST_ASSERT_NOT_EQUAL(vi(XvalVerdict::MALO), vi(xval_primary_verdict(s)));
+    TEST_ASSERT_EQUAL(2, (int)xval_n_indep_refs(s));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_healthy_agrees);
+    RUN_TEST(test_otos_single_ref_never_malo);
+    RUN_TEST(test_two_indep_refs_disagree_never_malo);
     RUN_TEST(test_inc1_frozen_is_malo);
     RUN_TEST(test_drift_two_refs_malo_after_k);
     RUN_TEST(test_drift_at_rest);

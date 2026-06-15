@@ -1,0 +1,213 @@
+1
+00:00:00,000 --> 00:00:05,000
+We became national champions —
+
+2
+00:00:05,000 --> 00:00:09,800
+with two robots that, honestly,
+weren't good enough.
+
+3
+00:00:10,000 --> 00:00:14,000
+So for the World Championship
+we made a decision:
+
+4
+00:00:14,000 --> 00:00:17,500
+rebuild two robots from scratch,
+much more solid.
+
+5
+00:00:17,500 --> 00:00:19,900
+We're IITA Low Battery Messi,
+Salta, Argentina.
+
+6
+00:00:20,000 --> 00:00:25,000
+But starting from scratch
+had one problem
+
+7
+00:00:25,000 --> 00:00:29,800
+we know well in Argentina:
+getting the parts.
+
+8
+00:00:30,000 --> 00:00:34,500
+Here, importing is slow
+and complicated.
+
+9
+00:00:34,500 --> 00:00:39,000
+We couldn't order it all at once,
+or from one place:
+
+10
+00:00:39,000 --> 00:00:43,000
+customs forced us
+to split the orders.
+
+11
+00:00:43,000 --> 00:00:45,900
+Parts arrived bit by bit,
+over weeks.
+
+12
+00:00:46,000 --> 00:00:50,000
+So for a long time we had
+no complete robot
+
+13
+00:00:50,000 --> 00:00:54,000
+to test anything physically —
+and the deadline kept coming.
+
+14
+00:00:54,000 --> 00:00:57,900
+So how do you move forward
+without the robot?
+
+15
+00:00:58,000 --> 00:01:01,500
+This is the feature
+we're proudest of:
+
+16
+00:01:01,500 --> 00:01:04,900
+we tested the robot's BRAIN
+without the robot.
+
+17
+00:01:05,000 --> 00:01:09,000
+The idea is simple: we split
+the robot's program in two.
+
+18
+00:01:09,000 --> 00:01:13,000
+On one side, the brain —
+where to go, how to kick,
+
+19
+00:01:13,000 --> 00:01:16,500
+the strategy — in pure modules,
+
+20
+00:01:16,500 --> 00:01:19,800
+with nothing tied
+to the hardware.
+
+21
+00:01:20,000 --> 00:01:24,500
+Since that brain needs
+no sensors or motors,
+
+22
+00:01:24,500 --> 00:01:29,000
+we run the whole thing
+on a laptop.
+
+23
+00:01:29,000 --> 00:01:32,800
+No board, no battery,
+no waiting for parts.
+
+24
+00:01:33,000 --> 00:01:37,000
+And this is what we see
+
+25
+00:01:37,000 --> 00:01:40,800
+when we run all the tests,
+right now:
+
+26
+00:01:41,000 --> 00:01:45,000
+Hundreds of automated tests.
+Zero failures.
+
+27
+00:01:45,000 --> 00:01:48,500
+In seconds,
+without touching the robot.
+
+28
+00:01:48,500 --> 00:01:52,000
+Every bug we found,
+we turned into a test —
+
+29
+00:01:52,000 --> 00:01:54,800
+so it never happens again.
+
+30
+00:01:55,000 --> 00:01:58,000
+And the best part:
+you can copy it —
+
+31
+00:01:58,000 --> 00:02:00,800
+especially if parts are
+hard to get. Three steps.
+
+32
+00:02:01,000 --> 00:02:05,000
+One: take the decision logic
+
+33
+00:02:05,000 --> 00:02:08,500
+out of the robot code,
+
+34
+00:02:08,500 --> 00:02:11,800
+into separate modules —
+no sensor or motor deps.
+
+35
+00:02:12,000 --> 00:02:15,500
+Two: keep the test framework
+
+36
+00:02:15,500 --> 00:02:19,000
+inside your own repository,
+
+37
+00:02:19,000 --> 00:02:21,800
+so it works offline,
+with nothing to block it.
+
+38
+00:02:22,000 --> 00:02:26,500
+Three: compile and run the tests
+
+39
+00:02:26,500 --> 00:02:30,500
+on your laptop
+with a single command.
+
+40
+00:02:30,500 --> 00:02:34,800
+Change anything, and in seconds
+you know if you broke the brain.
+
+41
+00:02:35,000 --> 00:02:40,500
+When the parts finally arrived,
+
+42
+00:02:40,500 --> 00:02:45,800
+the brain was already tested —
+and the robot started to move.
+
+43
+00:02:46,000 --> 00:02:50,000
+All our code is open —
+MIT-licensed, on GitHub.
+
+44
+00:02:50,000 --> 00:02:54,000
+If building your robot
+is uphill too, take it.
+
+45
+00:02:54,000 --> 00:02:57,800
+See you in Incheon. Thank you!

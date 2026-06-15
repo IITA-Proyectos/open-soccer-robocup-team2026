@@ -42,7 +42,7 @@ struct PfmHeadingCfg {
 // omega_on=100°/s (sobre el mínimo útil con FLOOR_SCALE), integ ±100 (cubre los
 // ~80°/s de deriva parásita medida), ventana 160 ms (~16 ticks a 100 Hz).
 inline PfmHeadingCfg pfm_heading_default_cfg() {
-    return PfmHeadingCfg{2.0f, 0.4f, 5.0f, 100.0f, 100.0f, 160};
+    return PfmHeadingCfg{1.0f, 0.2f, 10.0f, 100.0f, 100.0f, 160};
 }
 
 struct PfmHeadingState {

@@ -42,7 +42,7 @@
 |---|---|---|
 | 0-15 s | `María Virginia Viollaz` | "Somos `IITA Low Battery Messi`, de Salta, Argentina, en la sub-liga **Open**. Llegamos a Incheon como **campeones nacionales** de la Roboliga Argentina 2025. Traemos **2 robots**: un **arquero** y un **delantero**." |
 | 15-40 s | `María Virginia Viollaz` | "Nuestro robot usa una **arquitectura distribuida de 3 placas**: una placa **percibe** (2 cámaras OpenMV N6, 1 IMU, 4 sensores ToF), una placa **decide** (FSM táctica + 3 motores omni) y una placa **toca el piso** (anillo de 32 sensores de línea + 2 sensores ópticos de odometría). Se hablan por UART a 230400 baud." |
-| 40-65 s | `Elías Cordero` | "Lo que más nos enorgullece es **cómo verificamos el firmware sin la placa**: la lógica de decisión vive en módulos C++ puros que compilamos y testeamos en la PC con g++. Hoy corremos **834 tests host-native en 60 suites, 0 fallos** (medido 2026-06-13 17:43 ART con `scripts/run-host-tests.sh`). Eso nos deja **iterar rápido y seguro** a días de la competencia." |
+| 40-65 s | `Elías Cordero` | "Lo que más nos enorgullece es **cómo verificamos el firmware sin la placa**: la lógica de decisión vive en módulos C++ puros que compilamos y testeamos en la PC con g++. Hoy corremos **858 tests host-native en 61 suites, 0 fallos** (medido 2026-06-14 con `scripts/run-host-tests.sh`). Eso nos deja **iterar rápido y seguro** a días de la competencia." |
 | 65-85 s | `Elías Cordero` | "Y una decisión táctica de la que estamos orgullosos: el **arquero anticipa**. En vez de seguir la posición actual de la pelota, proyecta dónde **va a estar** usando su velocidad (`pos + v·0.2 s`, con tope). Se lo mostramos en cancha si quieren." |
 | 85-90 s | ambos | "Todo está **open-source con licencia MIT** en GitHub, documentado para que otro equipo lo replique. ¿Por dónde quieren empezar?" |
 
@@ -100,7 +100,7 @@
 
 ### 3.3 — Cómo cargamos firmware rápido (tener esto preparado ANTES)
 - **Build/flash embebido**: `pio run -e central_robot1 -t upload` (o `top_robot1` / `down`). El entorno compila **100% offline** (libs vendoreadas en `lib/`), así que **no dependemos de internet del venue**.
-- **Verificación instantánea sin placa**: `bash scripts/run-host-tests.sh` → corre los 834 tests host en segundos (834 tests / 60 suites / 0 failures, medido 2026-06-13 17:43 ART). **Mostrar esto al juez es un golazo**: "antes de subir al robot, lo validamos en la PC". **Aclaración honesta:** el runner host compila los **módulos puros** (shared + down); los tests de central/top usan Arduino y se compilan **on-target** en la placa.
+- **Verificación instantánea sin placa**: `bash scripts/run-host-tests.sh` → corre los 858 tests host en segundos (858 tests / 61 suites / 0 failures, medido 2026-06-14). **Mostrar esto al juez es un golazo**: "antes de subir al robot, lo validamos en la PC". **Aclaración honesta:** el runner host compila los **módulos puros** (shared + down); los tests de central/top usan Arduino y se compilan **on-target** en la placa.
 - **Diagnóstico de banco**: hay ~40 sketches en `src/diag/` (`diag_central_motors`, `diag_central_strafe`, `diag_central_rx_all`...) que reusan los parsers de producción. Si la tarea es "mové un motor", `diag_central_motors` ya lo hace.
 - **Truco de bring-up que evita perder tiempo (decirlo si algo no responde):** los sensores I²C (ToF y OTOS) **persisten su dirección con 3.3 V** → si no aparecen, hacer **power-cycle real** (cortar batería + USB ~10 s), no solo reset. Saberlo ahorra 20 min de debug en vivo.
 
@@ -230,8 +230,8 @@
 
 **P: ¿Cómo testean? (la estrella) 💡**
 > "Separamos la **lógica de decisión en módulos C++ puros** —sin Arduino— y los testeamos en la PC con g++.
-> Hoy: **834 tests / 60 suites / 0 failures** (medido 2026-06-13 17:43 ART con `scripts/run-host-tests.sh`), que
-> crecieron de forma trazable (246 → 262 → 324 → 354 → 545 → 658 → 834). Ver el gráfico de crecimiento en
+> Hoy: **858 tests / 61 suites / 0 failures** (medido 2026-06-14 con `scripts/run-host-tests.sh`), que
+> crecieron de forma trazable (246 → 262 → 324 → 354 → 403 → 470 → 545 → 658 → 834 → 858). Ver el gráfico de crecimiento en
 > `docs/competencia/assets/fig8_test_growth.png`. **Aclaración honesta:** el runner host compila los
 > **módulos puros** (shared + down); los tests de central/top usan Arduino y se compilan **on-target**.
 > Nació de un problema real: el **antivirus bloqueaba PlatformIO**, así que vendoreamos el framework de tests
@@ -239,7 +239,7 @@
 > firmware embebido **sin tener la placa en la mano**."
 
 **P: ¿Cómo se aseguran de que un cambio no rompe lo que andaba?**
-> "Dos cosas: (1) **gate verde obligatorio** —los 834 tests pasan (834 / 60 / 0)— antes de cualquier merge; y (2)
+> "Dos cosas: (1) **gate verde obligatorio** —los 858 tests pasan (858 / 61 / 0)— antes de cualquier merge; y (2)
 > **fallback byte-idéntico**: cada feature nueva, si el dato no está disponible, produce **exactamente** el
 > comando anterior. Lo verificamos con un test que compara la salida con y sin el dato. Así una feature
 > 'duerme' hasta que el dato fluye y **nunca mete una regresión**."
@@ -309,7 +309,7 @@ otro equipo lo replique — si quieren les pasamos el repo." (Refuerza Documenta
 - **Materiales y dimensiones del chasis 2026** (altura entre pisos/standoffs, piezas impresas, diámetro y peso del robot) — no documentados; afecta respuestas de la categoría Mechanical.
 - **STL/CAD del chasis 2026** para poder decir "es replicable" con confianza (los del repo son del 2025 con dribbler/solenoide ya descartados).
 - **Estado de la coordinación partner (ESP-NOW) en banco** — para responder con seguridad la pregunta de "robot-robot".
-- **Número de tests vigente** al momento de viajar: verificado **834 tests / 60 suites / 0 failures (2026-06-13 17:43 ART vía `scripts/run-host-tests.sh`)**. Correr el runner el día anterior y usar la cifra real del día.
+- **Número de tests vigente** al momento de viajar: verificado **858 tests / 61 suites / 0 failures (2026-06-14 vía `scripts/run-host-tests.sh`)**. Correr el runner el día anterior y usar la cifra real del día.
 - **Nombre legal de IITA** (✅ resuelto 2026-06-05): **IITA = Instituto de Innovación y Tecnología Aplicada** / Fundación Innovar. Unificado en todos los docs.
 - **Figuras de datos** (`docs/competencia/assets/fig8_test_growth.png`, `fig9_otos_error.png`): generarlas con `gen_figuras.py` antes de viajar — el script existe pero los PNG aún no están generados en `assets/`.
 - **Traducción al inglés** de todo el material de entrevista (requisito de idioma de la competencia): la versión EN vive en `docs/competencia/en/ENTREVISTA-PREP.md`; falta **ensayarla en voz alta**.

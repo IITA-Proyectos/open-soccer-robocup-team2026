@@ -56,6 +56,25 @@ const char* g_state_name = "INIT";
 // Nivel 2 (este batch) agrega:
 //   ATK: KICKOFF (set play inicial), POSITION (behind-the-ball orbit)
 //   GK:  CLEAR (despeje cuando la pelota está cerca)
+//
+// === Diccionario en español de las conductas (mismo orden que el switch) ===
+// Guía de lectura completa: docs/firmware/STRATEGY-CPP-COMO-FUNCIONA.md
+// Delantero — el que ataca (attacker_tick):
+//   WAIT_START = ESPERAR          · quieto hasta el arranque del árbitro
+//   KICKOFF    = SAQUE            · empujón inicial recto al frente
+//   SEARCH     = BUSCAR           · gira y avanza buscando la pelota
+//   POSITION   = RODEAR           · se pone DETRÁS de la pelota, mirando al arco
+//   APPROACH   = ACERCARSE        · va derecho a la pelota
+//   PUSH       = EMPUJAR          · empuje a fondo, "a ciegas" (la pelota tapa la cámara)
+//   PUSH_BACK  = RETROCEDER       · se despega corto y vuelve a BUSCAR
+//   LINE_AVOID = HUIR DE LA LÍNEA · retroceso para no salirse de la cancha
+// Arquero — el que ataja (goalkeeper_tick):
+//   WAIT_START = ESPERAR          · quieto; tras el GO se va a acomodar
+//   GOTO_LINE  = IR A LA LÍNEA    · se pega a su arco (retrocede y se despega un poco)
+//   PATROL     = PATRULLAR        · va de lado a lado tapando el arco
+//   INTERCEPT  = INTERCEPTAR      · sigue DÓNDE VA A ESTAR la pelota (la adivina un poco)
+//   CLEAR      = DESPEJAR         · sale a empujar la pelota lejos del arco
+//   LINE_AVOID = HUIR DE LA LÍNEA · retroceso de emergencia por el borde
 enum class AtkState : uint8_t {
     WAIT_START, KICKOFF, SEARCH, POSITION, APPROACH, LINE_AVOID,
     // v2 delantero (2026-06-11, spec Gustavo = movimiento validado del robot 2025):
@@ -738,13 +757,13 @@ MotorCommand attacker_tick() {
     }
 
     switch (g_atk_state) {
-        case AtkState::WAIT_START: {
+        case AtkState::WAIT_START: {   // ESPERAR — quieto hasta el arranque del árbitro
             g_state_name = "ATK_WAIT_START";
             // El flanco STOP→RUN lo maneja la sección global de arriba.
             return cmd;
         }
 
-        case AtkState::KICKOFF: {
+        case AtkState::KICKOFF: {   // SAQUE — empujón inicial recto al frente
             g_state_name = "ATK_KICKOFF";
             // Set play: boost recto al frente con heading hacia 0° absoluto
             // durante ATK_KICKOFF_DURATION_MS. Después transitions a SEARCH.
@@ -784,7 +803,7 @@ MotorCommand attacker_tick() {
             return cmd;
         }
 
-        case AtkState::LINE_AVOID: {
+        case AtkState::LINE_AVOID: {   // HUIR DE LA LÍNEA — retroceso para no salirse de la cancha
             g_state_name = "ATK_LINE_AVOID";
             // 2026-06-14 (pedido Elías): salida rápida FIJA por ATK_LINE_AVOID_DURATION_MS
             // en la dirección congelada al ENTRAR (opuesta a la línea). NO re-mira la
@@ -814,7 +833,7 @@ MotorCommand attacker_tick() {
             return cmd;
         }
 
-        case AtkState::SEARCH: {
+        case AtkState::SEARCH: {   // BUSCAR — gira y avanza buscando la pelota
             g_state_name = "ATK_SEARCH";
             // Recorrer cancha con avance lento + rotación.
             cmd.vy_mm_s = static_cast<int16_t>(ATK_SEARCH_VY_MM_S);
@@ -851,7 +870,7 @@ MotorCommand attacker_tick() {
             return cmd;
         }
 
-        case AtkState::POSITION: {
+        case AtkState::POSITION: {   // RODEAR — se pone DETRÁS de la pelota, mirando al arco
             g_state_name = "ATK_POSITION";
             // Behind-the-ball: ir al target que queda DETRÁS de la pelota
             // mirando al arco. Cuando llego al target Y estoy mirando al arco,
@@ -912,7 +931,7 @@ MotorCommand attacker_tick() {
             return cmd;
         }
 
-        case AtkState::APPROACH: {
+        case AtkState::APPROACH: {   // ACERCARSE — va derecho a la pelota
             g_state_name = "ATK_APPROACH";
             const float bx = world_model_get_ball_x_mm();
             const float by = world_model_get_ball_y_mm();
@@ -1012,7 +1031,7 @@ MotorCommand attacker_tick() {
             return cmd;
         }
 
-        case AtkState::PUSH: {
+        case AtkState::PUSH: {   // EMPUJAR — empuje a fondo, "a ciegas" (la pelota tapa la cámara)
             g_state_name = "ATK_PUSH";
 #ifdef ATK_OTOS_NOGYRO
             // EMPUJE SIN GYRO (práctica R1): dirección CONGELADA al vector a la
@@ -1054,7 +1073,7 @@ MotorCommand attacker_tick() {
             return cmd;
         }
 
-        case AtkState::PUSH_BACK: {
+        case AtkState::PUSH_BACK: {   // RETROCEDER — se despega corto y vuelve a BUSCAR
             g_state_name = "ATK_PUSH_BACK";
             // Retroceso corto post-empuje ("PATEANDO_atras" del 2025): despegarse
             // de la pelota y de la línea del área antes de volver a buscar (evita
@@ -1374,7 +1393,7 @@ MotorCommand goalkeeper_tick() {
     }
 
     switch (g_gk_state) {
-        case GkState::WAIT_START: {
+        case GkState::WAIT_START: {   // ESPERAR — quieto; tras el GO se va a acomodar
             g_state_name = "GK_WAIT_START";
             if (world_model_match_running()) {
                 // DELAY DE ARRANQUE (banco): tiempo para acomodar el robot tras el GO.
@@ -1391,7 +1410,7 @@ MotorCommand goalkeeper_tick() {
             return cmd;
         }
 
-        case GkState::GOTO_LINE: {
+        case GkState::GOTO_LINE: {   // IR A LA LÍNEA — se pega a su arco (retrocede y se despega un poco)
             if (g_goto_line_phase == 0) {
                 // ── Fase 0: RETROCESO recto con GYRO HOLD hasta tocar la línea ──
                 g_state_name = "GK_GOTO_LINE";
@@ -1449,7 +1468,7 @@ MotorCommand goalkeeper_tick() {
             return cmd;
         }
 
-        case GkState::LINE_AVOID: {
+        case GkState::LINE_AVOID: {   // HUIR DE LA LÍNEA — retroceso de emergencia por el borde
             g_state_name = "GK_LINE_AVOID";
             const float line_angle = world_model_get_line_angle_deg();
             const float retreat = line_angle + 180.0f;
@@ -1463,7 +1482,7 @@ MotorCommand goalkeeper_tick() {
             return cmd;
         }
 
-        case GkState::PATROL: {
+        case GkState::PATROL: {   // PATRULLAR — va de lado a lado tapando el arco
             // ── PATRULLA v3 SEGMENTADA (mover-parar-corregir-mover) ──
             // El strafe continuo acumulaba yaw físico (~80°/s) imposible de pelear
             // en movimiento. Ahora: tramo corto → freno → si quedó chueco, pulsos
@@ -1638,7 +1657,7 @@ MotorCommand goalkeeper_tick() {
             return cmd;
         }
 
-        case GkState::INTERCEPT: {
+        case GkState::INTERCEPT: {   // INTERCEPTAR — sigue DÓNDE VA A ESTAR la pelota (la adivina un poco)
             g_state_name = "GK_INTERCEPT";
             const float bx = world_model_get_ball_x_mm();
             const float by = world_model_get_ball_y_mm();
@@ -1706,7 +1725,7 @@ MotorCommand goalkeeper_tick() {
             return cmd;
         }
 
-        case GkState::CLEAR: {
+        case GkState::CLEAR: {   // DESPEJAR — sale a empujar la pelota lejos del arco
             g_state_name = "GK_CLEAR";
             // Despeje: ir DERECHO a la pelota a velocidad alta (no PID lateral
             // — ya no estamos defendiendo el arco, estamos atacando la pelota).

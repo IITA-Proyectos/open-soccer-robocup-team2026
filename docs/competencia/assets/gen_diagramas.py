@@ -151,8 +151,10 @@ def fig2_dataflow():
 
     # TOP -> CENTRAL : WorldSnapshot v3
     arrow(ax, right(fusion), left(wm),
-          label="WorldSnapshot v3 · 0x60 · 31 B · 100 Hz · 230400\nTOP Serial4 pin17 → CEN Serial7 pin28",
-          color=C_TOP, rad=0.10, lx=8.78, ly=6.55, label_fontsize=7.2)
+          label="WorldSnapshot v3 · 0x60 · 31 B · 100 Hz de diseno · 230400\n"
+                "TOP Serial4 pin17 → CEN Serial7 pin28\n"
+                "✓ banco 2026-06-14: 66 Hz · crc=0 · seqGap=0",
+          color=C_TOP, rad=0.10, lx=8.78, ly=6.62, label_fontsize=7.0)
 
     # CENTRAL: wm -> fsm -> motores
     arrow(ax, bot(wm), top(fsm), color=C_CEN)
@@ -227,11 +229,12 @@ def fig4_fsm():
 
     # ─────────────── ARQUERO (derecha) ───────────────
     container(ax, 7.20, 0.55, 6.55, 6.40, "ARQUERO (GOALKEEPER)", C_BG_CEN, C_CEN)
-    g_wait = fsm_state(ax, 9.20, 5.92, "WAIT_START", C_CEN)
-    g_pat  = fsm_state(ax, 9.20, 5.05, "PATROL", C_CEN)
-    g_int  = fsm_state(ax, 9.20, 4.05, "INTERCEPT\n(anticipa con ball_predict)", C_CEN, fontsize=7.6)
-    g_clr  = fsm_state(ax, 9.20, 2.95, "CLEAR\n(despeja por inercia)", C_CEN, fontsize=7.8)
-    g_line = fsm_state(ax, 9.20, 1.55, "LINE_AVOID", C_ARB)
+    g_wait = fsm_state(ax, 9.20, 6.02, "WAIT_START", C_CEN)
+    g_goto = fsm_state(ax, 9.20, 5.12, "GOTO_LINE\n(va a su linea de arco)", C_CEN, fontsize=7.8)
+    g_pat  = fsm_state(ax, 9.20, 4.22, "PATROL", C_CEN)
+    g_int  = fsm_state(ax, 9.20, 3.28, "INTERCEPT\n(anticipa con ball_predict)", C_CEN, fontsize=7.6)
+    g_clr  = fsm_state(ax, 9.20, 2.30, "CLEAR\n(despeja por inercia)", C_CEN, fontsize=7.8)
+    g_line = fsm_state(ax, 9.20, 1.32, "LINE_AVOID", C_ARB)
 
     # rol -> ATK / GK
     arrow(ax, left(rol), (3.42, 6.85), label="HIGH = DELANTERO", color=C_TOP,
@@ -264,23 +267,25 @@ def fig4_fsm():
           label_fontsize=6.6)
 
     # ── ARQUERO transiciones ──
-    arrow(ax, bot(g_wait), top(g_pat), label="match_running",
-          color=C_CEN, lx=10.75, ly=5.62, label_fontsize=6.9)
+    arrow(ax, bot(g_wait), top(g_goto), label="match_running",
+          color=C_CEN, lx=10.82, ly=5.90, label_fontsize=6.9)
+    arrow(ax, bot(g_goto), top(g_pat), label="llega a la\nlinea de arco",
+          color=C_CEN, lx=10.92, ly=5.00, label_fontsize=6.5)
     arrow(ax, bot(g_pat), top(g_int), label="ve la pelota",
-          color=C_CEN, lx=10.7, ly=4.78, label_fontsize=6.9)
+          color=C_CEN, lx=10.78, ly=4.08, label_fontsize=6.9)
     arrow(ax, (g_int[0], g_int[1] + g_int[3] * 0.30),
           (g_clr[0], g_clr[1] + g_clr[3] * 0.66),
-          label="pelota cerca\n(<250 mm)", color=C_CEN, rad=0.28, lx=8.35, ly=3.5,
+          label="pelota cerca\n(<250 mm)", color=C_CEN, rad=0.28, lx=8.30, ly=3.12,
           label_fontsize=6.6)
     arrow(ax, (g_clr[0] + g_clr[2], g_clr[1] + g_clr[3] * 0.66),
           (g_int[0] + g_int[2], g_int[1] + g_int[3] * 0.30),
-          label="se alejo\n(>400 mm, hist.)", color=C_CEN, rad=0.28, lx=12.4, ly=3.5,
+          label="se alejo\n(>400 mm, hist.)", color=C_CEN, rad=0.28, lx=12.45, ly=3.12,
           label_fontsize=6.6)
     arrow(ax, left(g_int), (g_pat[0], g_pat[1] + 0.10),
-          label="perdio la pelota", color=C_CEN, rad=0.30, lx=8.0, ly=4.7,
+          label="perdio la pelota", color=C_CEN, rad=0.30, lx=8.0, ly=3.92,
           label_fontsize=6.6)
     arrow(ax, right(g_clr), (g_pat[0] + g_pat[2], g_pat[1] + 0.10),
-          label="perdio la pelota", color=C_CEN, rad=-0.32, lx=12.5, ly=4.55,
+          label="perdio la pelota", color=C_CEN, rad=-0.32, lx=12.5, ly=3.7,
           label_fontsize=6.6)
 
     # LINE_AVOID (bypass desde cualquier estado) — flecha discontinua entrante
@@ -290,9 +295,10 @@ def fig4_fsm():
     ax.text(2.25 + 1.175, 1.30, "entra desde CUALQUIER estado si\nimminent_exit + linea fresca; sale a SEARCH",
             ha="center", va="top", fontsize=6.6, color=C_ARB, style="italic")
 
-    arrow(ax, bot(g_pat), top(g_line), color=C_ARB, ls="--", lw=1.3, rad=-0.45)
-    ax.text(9.20 + 1.175, 1.30, "igual que el delantero;\nsale a PATROL",
-            ha="center", va="top", fontsize=6.6, color=C_ARB, style="italic")
+    arrow(ax, left(g_pat), left(g_line), color=C_ARB, ls="--", lw=1.3, rad=0.55)
+    ax.text(9.20 + g_line[2] + 0.20, g_line[1] + g_line[3] * 0.5,
+            "entra desde CUALQUIER\nestado (igual que el\ndelantero); sale a PATROL",
+            ha="left", va="center", fontsize=6.6, color=C_ARB, style="italic")
 
     # ── Nota global ──
     ax.text(7.0, 0.30,

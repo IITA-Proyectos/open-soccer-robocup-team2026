@@ -6,9 +6,9 @@
 ---
 title: "TECHNICAL POSTER — RoboCupJunior Soccer Open 2026 (working version EN)"
 date: 2026-06-04
-status: draft-judged
-language: english (TRANSLATE from Spanish before submission)
-target-format: A1 landscape (max 70.7 cm high × 100 cm wide)
+status: draft-judge
+language: English (TRANSLATE from Spanish before submission)
+target-format: A1 landscape = ISO A1 84.1 cm wide × 59.4 cm high (DO NOT exceed — see size note below)
 rubric: RoboCupJunior Soccer 2026 — Poster Design & Presentation (5 pts, 6 criteria × 0/1/3/5)
 ---
 
@@ -18,12 +18,14 @@ rubric: RoboCupJunior Soccer 2026 — Poster Design & Presentation (5 pts, 6 cri
 > TRANSLATE EVERYTHING to English before printing/sending.**
 >
 > *Working draft in Spanish. The FINAL poster must be submitted in ENGLISH (RCJ rubric requirement). Translate before printing.*
+>
+> ⚠️ **SIZE — read before layout (hard requirement).** The RCJ Soccer 2026 rubric requires that the poster **DO NOT exceed A1** (`.claude/skills/rcj-deliverables-judge/references/rubrica-oficial-2026.md`). Layout EVERYTHING in **A1 landscape = 84.1 cm wide × 59.4 cm high** (the ASCII grid below is already drawn in landscape at that ratio: width 84.1 > height 59.4). Re-flow the 12 columns to that measure in the design tool (Figma/Inkscape). Confirm the exact limit in the 2026 rules before printing.
 
 ---
 
 # HOW TO READ THIS DRAFT (note for the team, NOT for printing)
 
-This file describes the **physical layout** of an **A1 landscape** poster (max **70.7 cm high × 100 cm wide**).
+This file describes the **physical layout** of an **A1 landscape** poster (max **84.1 cm wide × 59.4 cm high** — DO NOT exceed A1).
 Each section below is a **ZONE of the poster** with: (a) its position in the grid, (b) the **EXACT TEXT** to be printed, and (c) the **images** with `[PHOTO: ...]`.
 
 The **zone titles are written so that a JUDGE can find each criterion of the rubric at a glance**:
@@ -33,31 +35,31 @@ The **zone titles are written so that a JUDGE can find each criterion of the rub
 | **Abstract** | Zone B — "ABSTRACT" | Excellent |
 | **Method / Robot Production / Design** | Zones C, D, E, F — "METHOD & DESIGN" | Excellent |
 | **Data / Results / Discussion** | Zones G, H — "DATA, RESULTS & DISCUSSION" | Excellent |
-| **Photos / Images** | All zones (≥12 figures labeled Fig.N + credits in footer) | Excellent |
+| **Photos / Images** | All zones (14 figures labeled Fig.N + credits in footer) | **Developing today → Proficient achievable** (6 of 14 figures exist as files: diagrams Fig.2/4/8/9 + Fig.13 ToF zones + Fig.14 health tree — all regenerated/created 2026-06-14; Fig.12 timeline is draft; missing the 8 photos `[PHOTO:]`) |
 | **Layout** | 12-column grid, fixed palette, fixed fonts (Footer Zone) | Excellent |
 | **Presentation** (live) | Session script — Zone I "PRESENTATION PLAN" | Excellent |
 
 ---
 
-# POSTER GRID (A1 landscape, 100 cm wide × 70.7 cm high)
+# POSTER GRID (A1 landscape, 84.1 cm wide × 59.4 cm high)
 
 ```
- 100 cm WIDE  →
+ 84.1 cm WIDE  →
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ ZONE A · TITLE / IDENTIFICATION  (full-width top band, ~10 cm high)                      │  ▲
+│ ZONE A · TITLE / IDENTIFICATION  (full-width top band, ~8 cm high)                       │  ▲
 ├───────────────┬──────────────────────────────────┬───────────────────────────────────────┤  │
-│ ZONE B        │ ZONE C  METHOD & DESIGN (1/3):     │ ZONE G  DATA, RESULTS & DISCUSSION    │  │
-│ ABSTRACT      │  Architecture + justification      │  (1/2): iteration table               │  │
-│ (col 1-3)     │  (col 4-8)                          │  test→data→modification (col 9-12)   │  │  70.7 cm
+│ ZONE B        │ ZONE C  Why 3 boards?          │ ZONE G  DATA, RESULTS & DISCUSSION    │  │
+│ ABSTRACT      │  Architecture + justification   │  (1/2): iterations table               │  │
+│ (col 1-3)     │  (col 4-8)                      │  testing→data→modification (col 9-12) │  │ 59.4 cm
 │               ├──────────────────────────────────┤                                       │  of
-│ ZONE B2       │ ZONE D  METHOD & DESIGN (2/3):     │                                       │  HEIGHT
-│ TEAM JOURNEY  │  Sensors + language + software      ├───────────────────────────────────────┤  │
-│ (journey)     │  (col 4-8)                          │ ZONE H  DATA (2/2): testing methods    │  │
-│ (col 1-3)     ├──────────────────────────────────┤  repeatable + graphs (col 9-12)       │  │
-│               │ ZONE E  METHOD & DESIGN (3/3):     │                                       │  │
-│ ZONE B3       │  BOM + cost + development time     ├───────────────────────────────────────┤  │
-│ OPEN SOURCE   │  (col 4-8)                          │ ZONE I  PRESENTATION PLAN + QR        │  │
-│ (col 1-3)     │ ZONE F  large photo of the robot    │  (col 9-12)                           │  │
+│ ZONE B2       │ ZONE D  What does it sense, with what code?│                               │  │
+│ TEAM JOURNEY  │  Sensors + language + software  ├───────────────────────────────────────┤  │
+│ (journey)     │  (col 4-8)                      │ ZONE H  DATA (2/2): testing methods    │  │
+│ (col 1-3)     ├──────────────────────────────────┤  repeatable + graphs (col 9-12)     │  │
+│               │ ZONE E  How much does it cost, how long did it take?│                      │  │
+│ ZONE B3       │  BOM + cost + timeline          ├───────────────────────────────────────┤  │
+│ OPEN SOURCE   │  (col 4-8)                      │ ZONE I  PRESENTATION PLAN + QR        │  │
+│ (col 1-3)     │ ZONE F  Large photo of the robot│  (col 9-12)                           │  │
 ├───────────────┴──────────────────────────────────┴───────────────────────────────────────┤  │
 │ FOOTER ZONE · Image credits · License · Fonts/palette · Repo  (full-width band)       │  ▼
 └──────────────────────────────────────────────────────────────────────────────────────────┘
@@ -68,15 +70,17 @@ The **zone titles are written so that a JUDGE can find each criterion of the rub
 ---
 
 # ZONE A — TITLE / IDENTIFICATION
-*(Full-width top band — fulfills the mandatory element "Title/Identification": team name + region + Open sub-league)*
+*(Full-width top band — fulfills the mandatory element "Title/Identification": team name + region + sub-league Open)*
 
 **EXACT TEXT (printed):**
 
 > ## IITA Low Battery Messi
-> ### Push to Score: a kicker-less, 3-board soccer robot verified in software
-> *(suggested in English: "Push to Score: a kicker-less, 3-board soccer robot verified in software")*
+> ### We learned to design our own hardware using AI — and we validated it ourselves
+> *(suggested English: "We learned to design our own hardware with AI — and validated it ourselves")*
+> #### Technical subtitle: Push to score — a kicker-less, 3-board soccer robot verified by software
+> *(suggested English: "Push to Score: a kicker-less, 3-board soccer robot verified in software")*
 >
-> **RoboCupJunior Soccer — Open League** · **Region:** Salta, Argentina · qualified in the national final of the Roboliga Argentina 2025 (organized by UAI)
+> **RoboCupJunior Soccer — Open League** · **Region:** Salta, Argentina · qualified for the national final of the Argentine Roboliga 2025 (organized by UAI)
 > **Organization:** IITA (Institute of Innovation and Applied Technology) / Innovar Foundation
 > **National champions Roboliga Argentina (Dec-2025 (UAI)) → RoboCup 2026, Incheon (June 30 – July 6)**
 
@@ -84,20 +88,24 @@ The **zone titles are written so that a JUDGE can find each criterion of the rub
 `[PHOTO: clean render or photo of the complete robot (3/4 view) to the right of the band, neutral background]`
 `[PHOTO: small flag/icon of Argentina + "Salta" for the region]`
 
-> **Gap note:** confirm the **exact regional classification** before printing (✅ team name: IITA Low Battery Messi).
+> **Gap note:** confirm the **exact regional** qualification before printing (✅ team name: IITA Low Battery Messi).
 
 ---
 
 # ZONE B — ABSTRACT
-*(Left column, top — mandatory element "Abstract". Aims for **Excellent**: summarizes EACH critical component with scientific language and a clear intention to share actionable knowledge. DOES NOT repeat the details of the other zones: it synthesizes them.)*
+*(Left column, top — mandatory element "Abstract". Aims for **Excellent**: summarizes EACH critical component with scientific language and a clear intention to share actionable knowledge. Does NOT repeat the details of the other zones: it synthesizes.)*
 
 **EXACT TEXT (printed):**
 
 > ## ABSTRACT
 >
-> We present a RoboCupJunior Soccer Open robot with a **distributed architecture of 3 Teensy boards + 1 communication module**, where each microcontroller is **specialized, not generalist**: **TOP** (Teensy 4.0) perceives the world (2 OpenMV N6 cameras, 1 BNO055 IMU, 4 VL53L7CX ToF sensors, 1 ultrasonic, RCJ referee via GPIO) and publishes a **WorldSnapshot of 31 bytes at 100 Hz**; **CENTRAL** (Teensy 4.1 on Zircon PCB) decides (tactical state machine + omni-3 inverse kinematics + PIDs) and moves **3 omni kiwi wheels at 120°**; **DOWN** (Teensy 4.0) is the structural plate and floor sensor (**ring of 32 multiplexed line sensors + 2 optical odometers OTOS), and **broadcasts** its measurement to both boards (*symmetric broadcast* with loss detection by sequence).
+> **What we are most proud of: we learned to design our own hardware using AI as a tool — and we validated it ourselves.** We are students; we did not know how to design electronic boards. For the world cup, we rebuilt two robots with an AI-assisted flow that we called **VIBE** (Claude Code by MCP to EasyEDA) and learned to design the two new boards from scratch, **TOP** (perception) and **DOWN** (floor/line). AI was the tool; the team learned, decided, and validated — we are responsible for everything that went onto the robot.
 >
-> The robot **has no physical kicker**: the striker **pushes the ball by inertia** when aligning with the opposing goal, which reduces components, energy, and points of failure. The central methodological contribution is a **discipline of embedded firmware verification on the PC without the board**: the decision logic lives in **pure C++ modules** compiled and tested with `g++` offline (**658 tests / 47 suites / 0 failures**, measured on 2026-06-05 19:50 ART with `scripts/run-host-tests.sh`), with thin Arduino glue. Three differential innovations: **(1) fail-safe in layers** with a direct emergency bus DOWN→CENTRAL to stop in **<15 ms** at the edge; **(2) fallback byte-identical** that lets each new feature "sleep" until its data flows, without regression; **(3) goalkeeper that anticipates by ball speed**. The project is **open-source (MIT)** and includes manufacturable PCBs (EasyEDA), byte-by-byte data contracts, and an *engineering diary* with each iteration measured in the lab. **Honest status (we do not oversell):** the #1 blocker remaining for Incheon is the **vision without recalibration** (LAB color + homography); functions like **2D trilateration with ToF**, the **goalkeeper's strafe**, and the **drive-straight with OTOS** are *code-complete* and verified on host, but **pending validation in the lab** (their behaviors "sleep" until their data flows). This poster documents the design with enough detail for **another team to replicate it**.
+> **The robot is a distributed architecture of 3 Teensy boards + 1 communication module**, each microcontroller a specialist: **TOP** (Teensy 4.0, new board) perceives (2 OpenMV N6 cameras, IMU BNO055, 4 ToF VL53L7CX, ultrasonic, RCJ referee via GPIO) and publishes a **WorldSnapshot of 31 bytes at 100 Hz design** *(bank 2026-06-14: 66 Hz)*. **CENTRAL** (Teensy 4.1 on reused Zircon PCB — the champion brain of 2025) decides (tactical FSM + omni-3 kinematics + PIDs) and moves **3 omni wheels at 120°**. **DOWN** (Teensy 4.0, new board) is the structural plate and the floor sensor (ring of 32 line sensors + 2 OTOS), and **broadcasts** its measurement to both boards. The striker **has no kicker**: it pushes the ball by inertia (fewer components, energy, and points of failure).
+>
+> **The method we contribute to the community** is the discipline of **verifying the firmware on the PC without the board**: the logic lives in pure C++ modules, tested with `g++` offline. That is the **guarantee** that the learning was serious and not "copy-paste from AI": **858 tests / 61 suites / 0 failures** (measured 2026-06-14 with `scripts/run-host-tests.sh` using Webots' g++).
+>
+> **Honest state (we do not oversell):** the #1 blocker remaining for Incheon is **vision without recalibration** (LAB color + homography under the venue light). The 2D trilateration with ToF, the goalkeeper's strafe, and the drive-straight with OTOS are *code-complete* and verified on host, but pending validation on the bench — their behaviors "sleep" until their data flows, without regression. This poster documents the **method** and the **design** in detail so that **another junior team can replicate it**.
 
 ---
 
@@ -107,30 +115,37 @@ The **zone titles are written so that a JUDGE can find each criterion of the rub
 **EXACT TEXT (printed):**
 
 > ## OUR JOURNEY
-> - **Dec-2025 — national champions with a MUCH more basic robot:** on top **a single camera** (without ToF or ultrasonic), below **only 3 light sensors**, all on the Zircon board… and **still we won the 1st national competition of RoboCupJunior Soccer in Argentina**.
+> - **Dec-2025 — national champions with a MUCH more basic robot:** on top **a single camera** (no ToF or ultrasonic), below **only 3 light sensors**, all on the Zircon board… and **still we won the 1st national competition of RoboCupJunior Soccer in Argentina**.
 > - **2026 — the leap:** same champion brain (Zircon), much more perception. On top: **2 cameras + IMU + 4 ToF + ultrasonic**. Below: **ring of 32 sensors + 2 OTOS**. Redesign to **3 boards** adding perception (TOP) and floor (DOWN) — *continuity, not discard*.
-> - **May–Jun 2026:** bring-up of the 3 physical boards, ~30 documented lab sessions, test suite from 180 → **658 tests / 47 suites / 0 failures** (measured on 2026-06-05 19:50 ART with `scripts/run-host-tests.sh`).
+> - **May–Jun 2026:** bring-up of the 3 physical boards, ~30 documented bench sessions, host test suite growing **246 → 262 → 324 → 354 → 403 → 470 → 545 → 658 → 834 → 858 / 0 failures** (hundreds of host tests, 0 failures — see Fig.8).
 > - **Jun–Jul 2026:** Incheon. Team's declared strategy: **invest in learning**, play honest matches and capture data.
 >
-> ### 🤖 Innovation 2026 — how we worked (methodology "VIBE", AI-assisted)
-> We adopted an AI-assisted flow (Claude) that we call **VIBE**: the AI **accelerates** design and documentation, and the **18-year-old team decides, validates in the lab, and is solely responsible** for what goes on the robot. Four fronts: **VIBE PCB Design** (EasyEDA led by Claude via MCP), **VIBE 3D Design** (Fusion 360 via MCP — just starting), **VIBE Coding** (C++ firmware with a safety net of 658 host tests) and **Claude for documenting and managing** the project (TDP, byte-by-byte data contracts, *journal*). **The goal of VIBE is to accelerate times: compress the entire cycle from concept to robot running. Our goal: to cover it all —PCB + manufacturing, 3D + printing, assembly, programming, documentation, and testing— in 30 days, and we believe it is possible.** *(This year the cycle was slower due to material import difficulties in Argentina, not due to the method.)* We share the **methodology** —not just the code— as a contribution to the RoboCupJunior community.
+> ### 🤖 ⭐ OUR PROUD FEATURE — we learned to design hardware with AI (methodology "VIBE")
+> **We did not know how to design electronic boards.** The most important thing about this project is not a sensor: it is that we learned to design them with AI as a tool. How we did it, concretely:
+> - **VIBE PCB Design** — the **two new boards (TOP and DOWN) were designed almost entirely with AI** (Claude Code by MCP to EasyEDA). It was not "we already knew": it was learning HOW to design PCBs with AI.
+> - **Honest trial-and-error:** we also **tried to command Flux with AI, but it did NOT work.** We mention it because part of learning is what did not work.
+> - **VIBE 3D Design** — redesign of the motor support in Fusion 360 via AI (just starting) to fit the motors further inside.
+> - **VIBE Coding** — C++ firmware with the safety net of **hundreds of host tests, 0 failures** (the guarantee: we validated on the PC before trusting; it is not copy-paste from AI).
+>
+> **The goal of VIBE is to compress the concept→robot-running cycle.** Goal: to complete it all (PCB, manufacturing, 3D, printing, assembly, firmware, docs, testing) in **30 days** — we believe it is possible. *(This year was slower due to material importation in Argentina, not due to the method.)* We share the **methodology** as a contribution to RoboCupJunior, so that another junior team can do the same.
 >
 > ### 🛣️ Next step (declared roadmap)
-> **Robot-to-robot communication** (goalkeeper ↔ striker) via **ESP-NOW** through the COMM board (ESP32-C6, already on the robot): share pose, if each sees the ball and its state to **coordinate strategy**. It needs to be integrated into the WorldSnapshot and validated in the lab — true to our discipline, the cooperative behavior "sleeps" until the data flows, without regression. We also plan to switch to **4 omni wheels** with **shorter motors, with encoders** (more stability and control, and space freed for the **kicker** and the **dribbler**, which are left for next year).
-> **(FUTURE — next year)** Evolve the modular design interface from **point-to-point UART** to a **CAN trunk bus** between the 3 Teensy boards (robust to noise, a couple of wires, scalable to N nodes) + a **4th ESP32 gateway board** that bridges the bus to the outside wirelessly: for the **companion robot** and for **telemetry** — live monitoring like **Formula 1** (see sensors in training, record and analyze to improve the software).
+> **Robot-to-robot communication** (goalkeeper ↔ striker) via **ESP-NOW** through the COMM board (ESP32-C6, already in the robot): share pose, if each sees the ball and its state to **coordinate strategy**. It needs to be integrated into the WorldSnapshot and validated on the bench — true to our discipline, the cooperative behavior "sleeps" until the data flows, without regression. We also plan to switch to **4 omni wheels** with **shorter motors, with encoders** (more stability and control, and space freed for the **kicker** and the **dribbler**, which are left for next year).
+> **(FUTURE — next year)** Evolve the modular design interface from **point-to-point UART** to a **CAN backbone** between the 3 Teensy boards (robust to noise, a couple of wires, scalable to N nodes) + a **4th ESP32 gateway board** that bridges the bus to the outside wirelessly: for the **companion robot** and for **telemetry** — live monitoring like **Formula 1** (see sensors in training, record and analyze to improve the software).
 
-`[BEFORE/AFTER PHOTO — Fig.1a: champion robot of the National 2025 — basic version: 1 camera, 3 light sensors · Fig.1b: robot 2026 — 2 cameras + IMU + 4 ToF + ultrasonic on top, ring of 32 sensors + 2 OTOS below. Same Zircon brain.]`
+`[PHOTO BEFORE/AFTER — Fig.1a: champion robot of the National 2025 — basic version: 1 camera, 3 light sensors · Fig.1b: robot 2026 — 2 cameras + IMU + 4 ToF + ultrasonic on top, ring of 32 sensors + 2 OTOS below. Same Zircon brain.]`
 `[PHOTO: IITA team with the robot/trophy at the National 2025 (UAI) — label Fig.1]`
 
 > **Team roles:**
-> | Role | Member | Technical Contribution |
-> |---|---|---|
-> | Mentor (does not travel) | Gustavo Viollaz | Coordination, lab sessions, integration of 3 boards |
-> | Coach | Enzo Juárez Velázquez | PCB design (EasyEDA), hardware *bodges*, electrical validation |
-> | Competitor | María Virginia Viollaz (18) | Computer vision, trajectories, camera parser |
-> | Competitor | Elías Cordero (Electromechanical Engineering, UNSa) | Motor lab, kinematics, measurements |
-
-> **Gap note:** confirm **formal roster** (ages/category) and "who did what" for credits.
+> | Role | Member | Technical Contribution | Travels to Incheon? |
+> |---|---|---|---|
+> | **Project Director** | Gustavo Viollaz | Coordination, integration of the 3 boards, bench sessions | **No** (work obligations) |
+> | **Main Coach** | Enzo Juárez Velázquez | PCB design with AI (VIBE PCB design, EasyEDA via MCP), electrical validation, hardware *bodges* | **Yes** |
+> | **Secondary Coach** | Cecilia Budeguer | Support in Incheon (team backup; Enzo also leads the IITA team of RCJ Rescue Line in Korea) | **Yes** |
+> | **Competitor** | María Virginia Viollaz (18) | Computer vision, trajectories, camera parser; learned to design with AI | **Yes** |
+> | **Competitor** | Elías Cordero (Electromechanical Engineer, UNSa) | Motors, kinematics, measurements; learned to design with AI | **Yes** |
+>
+> *The **team learned, decided, and validated**; the design with AI was **guided by the main coach Enzo**, with students María and Elías learning, deciding, and validating. AI was the tool — we are the responsible ones.*
 
 ---
 
@@ -140,9 +155,9 @@ The **zone titles are written so that a JUDGE can find each criterion of the rub
 **EXACT TEXT (printed):**
 
 > ## OPEN SOURCE (ALL published, MIT)
-> - **Software:** complete firmware for the 3 boards (C++17) + vision (MicroPython) + **658 tests / 47 suites / 0 failures** (measured on 2026-06-05 19:50 ART with `scripts/run-host-tests.sh`) + lab scripts.
-> - **Hardware:** complete **EasyEDA** projects for TOP and DOWN (schematic + PCB + Gerbers + BOM + Pick&Place); CENTRAL = Zircon Rev v15 (public schematic).
-> - **How, not just what:** living documents **TRUTH-SOURCES** (one canonical doc per topic), **DATA-MAP** (each message: type/size/pin/frequency/who fills and consumes it) and **engineering diary** with each iteration.
+> - **Software:** complete firmware of the 3 boards (C++17) + vision (MicroPython) + **hundreds of host tests, 0 failures** (live figure and method in Zone H) + bench scripts.
+> - **Hardware:** complete **EasyEDA** projects of TOP and DOWN —**the two boards we learned to design with AI** (VIBE PCB design, Claude via MCP)— with schematic + PCB + Gerbers + BOM + Pick&Place; CENTRAL = Zircon Rev v15 (public schematic, **reused champion brain 2025**).
+> - **How, not just what:** living documents **TRUTH-SOURCES** (a canonical doc per topic), **DATA-MAP** (each message: type/size/pin/frequency/who fills and consumes it) and **engineering diary** with each iteration.
 >
 > **Repo:** `https://github.com/IITA-Proyectos/open-soccer-robocup-team2026` `[QR to repo]`
 
@@ -154,120 +169,150 @@ The **zone titles are written so that a JUDGE can find each criterion of the rub
 **EXACT TEXT (printed):**
 
 > ## METHOD AND DESIGN — Why 3 boards?
-> Each board processes **where the sensor is** and decides in **the center** (standard rule of mobile robotics). This reduces UART traffic, aims to leave each MCU **<30% CPU** (*design goal*, not yet measured with an oscilloscope) and allows replacing one board without touching the others.
+> *The two new boards of this architecture (**TOP** and **DOWN**) were **designed learning with AI** (VIBE PCB design, Claude via MCP to EasyEDA); **CENTRAL** is the reused champion Zircon 2025. The architecture below is the **evidence of what we designed this way and how we validated it**.*
 >
-> **Design in 2 modules, a clean data interface:** the robot is divided into a **TOP MODULE = perception + communication + sensor fusion** (knowing where everything is —ball, goals, obstacles— and at what speed it moves, fused in the **WorldSnapshot**; in the future, communicate with the **companion robot** to share info) and a **BOTTOM MODULE = drive train + decision brain** (motors, drivers, and game logic; a floor auxiliary board —DOWN— sends its line/odometry info **already pre-processed** upwards; in the future, encoders). **Advantage:** each module can be improved and tested separately → **accelerates times** (see "VIBE"). The bottom leaves **room for KICKER + DRIBBLER** (this year it was not done due to lack of time to mount shorter motors → the feasible was done: the striker pushes by inertia).
+> Each board processes **where the sensor is** and decides in **the center** (standard rule of mobile robotics). This reduces UART traffic, aims to keep each MCU **<30% CPU** *(design goal — not measured with oscilloscope, TASK-014)* and allows replacing one board without touching the others.
+>
+> **Design in 2 modules, a clean data interface:** the robot is split into a **UPPER MODULE = perception + communication + sensor fusion** (knowing where everything is —ball, goals, obstacles— and at what speed it moves, fused in the **WorldSnapshot**; in the future, communicate with the **companion robot** to share info) and a **LOWER MODULE = drive train + decision brain** (motors, drivers, and game logic; a floor auxiliary board —DOWN— sends its line/odometry info **already pre-processed** upwards; in the future, encoders). **Advantage:** each module can be improved and tested separately → **accelerates times** (see "VIBE"). The lower module leaves **room for KICKER + DRIBBLER** (this year it was not done due to lack of time to mount shorter motors → the realizable was done: the striker pushes by inertia).
 >
 > | Board | MCU | Role | Sensors / actuators |
 > |---|---|---|---|
-> | **TOP** | Teensy 4.0 | "I see the world" | 2 OpenMV N6 cameras · 1 BNO055 IMU · 4 VL53L7CX ToF · 1 HC-SR04 · GPIO referee |
+> | **TOP** | Teensy 4.0 | "I see the world" | 2 OpenMV N6 cameras · 2 IMU BNO055 (1 healthy) · 4 ToF VL53L7CX · 1 HC-SR04 · referee GPIO |
 > | **CENTRAL** | Teensy 4.1 (Zircon) | "I decide" | Tactical FSM · omni-3 kinematics · 3 PIDs · **3 motors** |
 > | **DOWN** | Teensy 4.0 | "I touch the ground" | 32 line sensors (4 mux CD4051) · 2 OTOS |
 > | **COMM** | ESP32-C6 | RCJ referee | GPIO level 3.3 V to TOP |
 >
 > **Justified decisions (data-driven):**
 > - **No kicker:** the striker pushes by inertia → less mass, less energy, fewer failures.
-> - **Emergency bus DOWN→CENTRAL** (1 UART hop): at 1 m/s the robot travels **1 mm/ms**; passing the edge alarm through 2 UARTs in series adds ~25 mm of *overshoot* → a direct shortcut is wired to stop in **<15 ms**.
+> - **Emergency bus DOWN→CENTRAL** (1 UART hop): at 1 m/s the robot travels **1 mm/ms**; passing the edge alarm through 2 UARTs in series adds ~25 mm of *overshoot* → a direct shortcut is wired to stop in **<15 ms** *(design goal — not measured with oscilloscope, TASK-014)*.
+> - **Localization with 4 ToF (no LiDAR or EKF):** the ToF array costs **~USD 80**, gives **±2–3 cm** and was programmed in **~1 day**; an EKF/MCL would require **3–5 days** of development and a LiDAR ~USD 100 for a field with 4 orthogonal walls → we chose the cheap, simple, and sufficient solution (BOM §2).
 > - **All PIDs in CENTRAL:** a single place with all gains.
 > - **Continuity:** CENTRAL is the Zircon that won the National 2025; if a new board fails, it degrades to monolithic mode.
 
-`[PHOTO: rendered block diagram of data flow — 3 boxes TOP/CENTRAL/DOWN with arrows labeled "WorldSnapshot 31 B @100 Hz", "LineStatusV2 16 B @200 Hz", "emergency bus" — Fig.2 · file docs/competencia/assets/fig2_dataflow.png (gen_diagramas.py)]`
+`[FIGURE Fig.2 — Data flow between the 3 boards · rendered block diagram: boxes TOP/CENTRAL/DOWN with arrows labeled "WorldSnapshot 31 B @100 Hz design", "LineStatusV2 16 B @200 Hz", "emergency bus" · file docs/competencia/assets/fig2_dataflow.png (gen_diagramas.py) · Original diagram by the team — CC BY 4.0]`
 
 ---
 
-# ZONE D — METHOD & DESIGN (2/3): SENSORS, LANGUAGE, AND SOFTWARE
+# ZONE D — METHOD & DESIGN (2/3): SENSORS, LANGUAGE AND SOFTWARE
 *(Center, middle — covers the mandatory "programming language" and "sensors used", with software insight.)*
 
 **EXACT TEXT (printed):**
 
-> ## SENSING, LANGUAGE, AND SOFTWARE
-> **Languages:** **C++17** (firmware, `namespace iitasoccer`, packed structs with `static_assert` of size) + **MicroPython** (OpenMV N6 vision, color detection in LAB space).
-> **Build:** PlatformIO (57 environments) + an offline `g++` runner for tests.
+> ## What does it sense and with what code?
+> *The firmware was written with **VIBE Coding** (C++ assisted by AI) over a safety net of **hundreds of host tests, 0 failures** — the guarantee that everything we learned to design was validated by us before uploading it to the robot (live figure and method in Zone H).*
 >
-> **Sensors and their purposes:**
+> **Languages:** **C++17** (firmware, `namespace iitasoccer`, packed structs with `static_assert` of size) + **MicroPython** (OpenMV N6 vision, color detection in LAB space).
+> **Build:** PlatformIO (**more than 80 environments `[env:]`**: production + the rest, diagnostic/bench/test) + an offline `g++` runner for tests.
+>
+> **Sensors and their purpose:**
 > | Sensor | Quantity | Function |
 > |---|---|---|
-> | OpenMV N6 camera (STM32N6 + NPU) | 2 | Ball + goals (QVGA, ~30 Hz) |
-> | BNO055 IMU | 1 healthy | Heading (yaw) |
-> | VL53L7CX ToF (8×8 zones) | 4 | Distance to walls → **2D localization** |
-> | OTOS (optical odometry) | 2 | Pose/speed by floor *slip* |
-> | Line ring (phototransistor) | 32 | Court edge (braking) |
+> | OpenMV N6 Camera (STM32N6 + NPU) | 2 | Ball + goals (QVGA, ~30 Hz) |
+> | IMU BNO055 | 2 (1 healthy) | Heading (yaw) |
+> | ToF VL53L7CX (reads **4×4 = 16 raw zones**) | 4 | Distance to walls → **2D localization** |
+> | OTOS (optical odometry) | 2 | Pose/velocity by floor *slip* |
+> | Line sensor ring (phototransistor) | 32 | Field edge (braking) |
 > | HC-SR04 ultrasonic | 1 | Front obstacle (redundant with ToF) |
 >
+> **Sensing innovation — raw zones of the ToF (2026-06-14).** Previously, the firmware averaged the 16 zones of each ToF to ONE distance and discarded the rest. Now the telemetry **exposes the raw 4×4 grid of each sensor** (field `z`, additive): we see WHAT part of the wall is close, not just "how close". *(Masking/rotation of zones — ignoring those not pointing to the field — is roadmap; today the zones are read-only.)*
+>
 > **Software insight (code structure):**
-> - **WorldSnapshot v3 = 31 B** (`static_assert(sizeof==31)`), evolution of contract v1(24 B)→v2(27 B)→v3(31 B).
+> - **WorldSnapshot v3 = 31 B** (`static_assert(sizeof==31)`), evolution of contract v1(24 B)→v2(27 B)→v3(31 B). It is published by the TOP at **100 Hz design** *(bank 2026-06-14: 66 Hz)*.
 > - **Robust UART protocol:** frame `[0xAA | LEN | TYPE | SEQ | PAYLOAD | CRC16-CCITT | 0x55]`; the decoder is a byte-by-byte state machine that **resynchronizes itself** (a garbage byte does not contaminate the next frame).
 > - **Pure omni-3 kinematics:** `v_i = -vx·sin(θ_i) + vy·cos(θ_i) + ω·R`, with **proportional** saturation (scales the 3 wheels to preserve trajectory).
-> - **Goalkeeper that anticipates:** aims for the **predicted X** = `pos + v·lookahead` (not the current X).
+> - **Goalkeeper anticipating:** aims at the **predicted X** = `pos + v·lookahead` (not at the current X).
 
-`[PHOTO: screenshot of the suite of 658 host tests passing in green (terminal run-host-tests.sh) — Fig.3]`
-`[DIAGRAM: flowchart of the dual tactical FSM — ATTACKER: WAIT_START→KICKOFF→SEARCH→POSITION→APPROACH (+LINE_AVOID); GOALKEEPER: WAIT_START→PATROL→INTERCEPT→CLEAR (+LINE_AVOID); EMERGENCY_LINE bypasses the FSM. (The push to the goal is NOT a state: it occurs within APPROACH.) Source list: the Mermaid diagram from docs/competencia/assets/diagramas.md (verified vs strategy.cpp); detail in docs/firmware/ESTRATEGIA-ALTO-NIVEL.md — Fig.4 · file docs/competencia/assets/fig4_fsm.png (gen_diagramas.py)]`
+`[FIGURE Fig.3 — The safety net: 858 host tests in green · capture of the terminal run-host-tests.sh · Original photo by the team, CC BY 4.0]`
+`[FIGURE Fig.4 — How the robot decides: the dual tactical FSM · flowchart — ATTACKER: WAIT_START→KICKOFF→SEARCH→POSITION→APPROACH (+LINE_AVOID); GOALKEEPER: WAIT_START→GOTO_LINE→PATROL→INTERCEPT→CLEAR (+LINE_AVOID); EMERGENCY_LINE bypasses the FSM. (The push to the goal is NOT a state: it occurs within APPROACH.) Source: Mermaid diagram from docs/competencia/assets/diagramas.md (verified vs strategy.cpp + strategy_transitions.h); detail in docs/firmware/ESTRATEGIA-ALTO-NIVEL.md · file docs/competencia/assets/fig4_fsm.png (gen_diagramas.py — ✓ regenerated 2026-06-14 with GOTO_LINE) · Original diagram by the team — CC BY 4.0]`
+`[FIGURE Fig.13 — What does a ToF really see? The 16 raw zones 4×4 of a sensor (ILLUSTRATIVE values) in canonical orientation · sensing innovation 2026-06-14 · file docs/competencia/assets/drafts/fig_zonas_tof_4x4.png · Original diagram by the team — CC BY 4.0]`
 
 ---
 
-# ZONE E — METHOD & DESIGN (3/3): BOM, COST, AND DEVELOPMENT TIME
+# ZONE E — METHOD & DESIGN (3/3): BOM, COST AND DEVELOPMENT TIME
 *(Center, bottom — mandatory elements "development time and cost" + "BOM of major components".)*
 
 **EXACT TEXT (printed):**
 
-> ## MAJOR COMPONENTS (BOM) · COST · TIME
+> ## How much does it cost and how long did it take? (BOM · cost · time)
 >
 > The **complete BOM of major components** (with **part numbers**, **source/supplier**, column **New vs. reused**, **Kit/Custom** and actual unit costs LCSC) is the **single source** `docs/competencia/BOM.md` — this poster **references** it, does not duplicate it. Header extract:
 >
-> | Major Component | Part number/model | Qty. | New / Reused | Unit Cost (USD) |
+> | Major Component | Part number / model | Qty. | New / Reused | Unit Cost (USD) |
 > |---|---|---|---|---|
-> | OpenMV N6 camera | OpenMV Cam N6 (STM32N6 + NPU) | 2 | New | **USD 165 each** (int. ref.; the most expensive) |
+> | OpenMV N6 Camera | OpenMV Cam N6 (STM32N6 + NPU) | 2 | New | **USD 165 each** (int. ref.; the most expensive) |
 > | MCU TOP / DOWN | Teensy 4.0 (LCSC `C99001332551`) | 2 | New | **USD 23.80 each** (int. ref.) |
-> | MCU CENTRAL | Teensy 4.1 (on Zircon PCB) | 1 | **Reused** (champion 2025) | **USD 31.50** (int. ref.) |
-> | BNO055 IMU | Bosch BNO055 (U10/U11) | 2 (1 healthy) | New | **~USD 35 each** (int. ref.) |
-> | VL53L7CX ToF | ST VL53L7CX (Pololu module) | 4 | New | **USD 19.95 each** (int. ref.) |
+> | MCU CENTRAL | Teensy 4.1 (on PCB Zircon) | 1 | **Reused** (champion 2025) | **USD 31.50** (int. ref.) |
+> | IMU BNO055 | Bosch BNO055 (U10/U11) | 2 (1 healthy) | New | **~USD 35 each** (int. ref.) |
+> | ToF VL53L7CX | ST VL53L7CX (Pololu module) | 4 | New | **USD 19.95 each** (int. ref.) |
 > | OTOS SparkFun | SparkFun OTOS (U5/U6) | 2 | New | **USD 84.95 each** (int. ref.) |
-> | Zircon Rev v15 PCB (CENTRAL) | Robomov Zircon Rev v15 (COTS) | 1 | **Reused** | **USD 250** (max. ref.; loose pending — kit USD 529) |
+> | PCB Zircon Rev v15 (CENTRAL) | Robomov Zircon Rev v15 (COTS) | 1 | **Reused** | **USD 250** (max ref.; loose pending — kit USD 529) |
 > | Mux CD4051BM | TI CD4051BM (LCSC `C353976`) | 4 | New | 0.96 |
 > | Buck regulator MP1584-EN | MP1584-EN (SIP module) | 6 | New | **USD 0.90 each** (int. ref.) |
 > | LiPo Battery 2S 7.4 V | **LiPo 2S 6800 mAh** (≈50 Wh; C/brand to confirm) | 1 | New | **USD 42.99** (ref. Gens Ace 50C) |
-> | 3 DC motors + 3 omni wheels | Motor "TT" + omni wheel KIWI | 3+3 | New | **USD 23.95 each motor** (max. ref. Pololu HP; TT ~3) + wheels 6.50 |
+> | 3 DC motors + 3 omni wheels | Motor "TT" + omni wheel KIWI | 3+3 | New | **USD 23.95 each motor** (max ref. Pololu HP; TT ~3) + wheels 6.50 |
 > | **TOTAL per robot** | — | — | — | **≈ USD 1,168 new · ≈ USD 887 reusing CENTRAL** (int. ref., highest value/item; 2 robots ≈ USD 2,055–2,336) |
 >
-> **Development time:** redesign 2026 ≈ **8 weeks** of intensive engineering (May–June), based on the champion robot 2025; total effort ≈ **4 months** (Feb–Jun 2026) traceable in `journal/`. Test suite growing **180 → 246 → 262 → 324 → 354 → 545 → 658** (measured on 2026-06-05 19:50 ART with `scripts/run-host-tests.sh`; see Fig.8).
+> **Development time — dated milestones (traceable in `journal/`, BOM §3.2):**
+> | Milestone | Date |
+> |---|---|
+> | Project kickoff | 2026-02-21 |
+> | Bring-up DOWN (32 sensors + 2 OTOS) | 2026-05-24 |
+> | Bring-up TOP (4 ToF on single bus, BNO) | 2026-05-25 → 05-31 |
+> | Approved referee (moves the robot for the 1st time) | 2026-06-02/03 |
+> | Complete robot demo | 2026-06-11 |
+> | TOP→CENTRAL validated on bench (66 Hz, 0 CRC) | 2026-06-14 |
+>
+> Total effort ≈ **4 months** (Feb–Jun 2026); the intensive redesign (May–June) was about **8 weeks** based on the champion robot 2025. *The TOP and DOWN boards were designed learning with AI (VIBE PCB design); the motor support was redesigned in 3D (VIBE 3D, Fusion via AI — just starting).* Host test suite growing **246 → 262 → 324 → 354 → 403 → 470 → 545 → 658 → 834 → 858** (hundreds of host tests, 0 failures — see Fig.8 and Zone H).
 >
 > **Actual prices available in the repo (unit LCSC, quoted verbatim in BOM.md):** phototransistor ALS-PT19 ≈ 0.116 · CD4051BM 0.96 · LED 0402 0.016 · diode B5819W 0.024 USD.
+>
+> `[FIGURE Fig.12 — Timeline of the construction process (kickoff → TOP→CENTRAL) · draft in docs/competencia/assets/drafts/fig_proceso_constructivo_timeline.svg/.png — finish and number when laying out · Original diagram by the team — CC BY 4.0]`
 
-> **Gap note (record):** costs = **international reference price** (USD, verified 2026-06-05; single source `BOM.md` §3). **Pending from the team (small):** price of the **loose Zircon** (Robomov lists the kit at USD 529), what **motor** they use (TT ~USD 3 vs Pololu HP USD 23.95), the **exchange rate ARS/USD** of the day, and the **hours** of development. The local *landed* cost is **higher** due to Argentine import restrictions.
+> **Gap note (record):** costs = **international reference price** (USD, verified 2026-06-05; single source `BOM.md` §3). **Exchange rate (2026-06-13): 1480 ARS = 1 USD.** As a MINIMUM reference in pesos (USD × 1480): ≈ **ARS 1,728,640/new robot** · ≈ **ARS 1,312,760/reusing CENTRAL**. ⚠️ This is a **floor**, not the real cost: the local *landed* cost is **HIGHER** due to Argentine taxes and import restrictions (customs forces to split orders). **Pending from the team (small):** price of the **loose Zircon** (Robomov lists the kit at USD 529), what **motor** they use (TT ~USD 3 vs Pololu HP USD 23.95) and the **development hours**.
 
 ---
 
 # ZONE F — MAIN PHOTO OF THE ROBOT
-*(Center, base — visual anchor of the poster. Fulfills "Photos/Images: abundant, labeled, and cited".)*
+*(Center, base — visual anchor of the poster. Fulfills "Photos/Images: abundant, labeled and cited".)*
 
-`[PHOTO: complete robot 2026, top view showing the 3 omni wheels at 120° and the stack of 3 boards — Fig.5, label TOP/CENTRAL/DOWN with guide lines]`
-`[PHOTO: side view showing the stack of boards (standoffs) and motor mounting — Fig.6]`
-`[PHOTO: detail of the ring of 32 line sensors on the underside of the DOWN plate — Fig.7]`
+`[PHOTO Fig.5 — top view of the robot 2026: photo + LABEL OVERLAY (data-figure) with guide lines to the 3 boards (TOP blue / CENTRAL orange / DOWN green) and to the **3 omni wheels at 120°**. The color of each label = the color of the board in the poster palette.]`
+`[PHOTO Fig.6 — side view: the stack of boards (standoffs) + the motor assembly.]`
+`[PHOTO Fig.7 — detail of the ring of 32 line sensors on the underside of the DOWN plate.]`
 
-> **Footer:** *Fig.5–7 — Robot IITA 2026. Original photos from the team (CC BY 4.0).*
+> **Pre-written footer (cite when laying out):**
+> - *Fig.5 — The robot at a glance: 3 specialist boards + 3 omni wheels at 120°. Original photo by the team with label overlay, CC BY 4.0.*
+> - *Fig.6 — The stack of boards and the drive train. Original photo by the team, CC BY 4.0.*
+> - *Fig.7 — The ring of 32 sensors that detects the edge of the field. Original photo by the team, CC BY 4.0.*
 
 ---
 
-# ZONE G — DATA, RESULTS & DISCUSSION (1/2): TEST ITERATIONS → MODIFICATION
+# ZONE G — DATA, RESULTS & DISCUSSION (1/2): TESTING ITERATIONS → MODIFICATION
 *(Right column, upper half — mandatory element "Data/Results/Discussion". Aims for **Excellent**: significant test data + **MAJOR modifications made as a result of testing** + clear link testing→evaluation→modification.)*
 
 **EXACT TEXT (printed):**
 
-> ## DATA, RESULTS, AND DISCUSSION
-> Each row is a **real** lab iteration: we measure → evaluate → **modify the source at a single point** → re-verify with the host suite.
+> ## DATA, RESULTS AND DISCUSSION
+> Each row is a **real** iteration: we measured → evaluated → **modified the source at a single point** → re-verified. The **Maturity** column indicates how far it reached: **VALIDATED ON BENCH** (on the real board) · **VERIFIED ON HOST** (tests `g++` / golden / `pio` compiles) · **DIAGNOSED** (cause found, fix pending on bench).
 
-> | # | Observed Problem | Measured Data (lab) | Applied Modification |
-> |---|---|---|---|
-> | 1 | **The 4 ToF collide on I²C** (all start at 0x29); PCB rev 1.0 did not route XSHUT (8 *No-Connect*) | Forensic of the schematic: 0 nets XSHUT. After *bodge* + **power-cycle**: 4 LP on pins {9,10,11,12} enumerate to **0x2A–0x2D** | Migrate the 4 ToF to the single `Wire` bus; free `Wire2` (24/25, bus of the 2nd BNO from the freeze fix); **unlocks 2D localization** |
-> | 2 | **BNO heading freezes** in production (yaw stuck at −108.3°) even though the snapshot arrives healthy | BNO + ToF do not coexist at 400 kHz; at **100 kHz + BNO @20 Hz** the heading survives (band-aid) | I²C at 100 kHz + reading the BNO at 20 Hz; design decision: the heading-hold of the goalkeeper uses the **OTOS** (local), not the BNO |
-> | 3 | **OTOS odometry** reports garbage on A4 sheet | A4 with sheet: 28.6/300 mm (9.5%); A4 without sheet: 0.3 mm; **corrugated cardboard: 280.4/300 mm = 6.5% error** (< 8% tol.) | Remove sheet + require textured floor → **10× improvement**; the green RCJ court already meets this |
-> | 4 | **Referee did not reach the Teensy** (the TOP expected a UART frame that the COMM never emits) | The official COMM delivers START/STOP as **GPIO level 3.3 V**; in PLAY it raises **only one** pin | Read pins 5/6 with `INPUT_PULLDOWN`, `match_running = pin5 **OR** pin6`; fail-safe to STOP. **The referee moved the robot for the 1st time** |
-> | 5 | **Motor 2 (U17) spun inverted** due to HW (INA/INB crossed; until the repair of Jun-2026) | Lab wheel-by-wheel (María/Elías) | `MOTOR_INVERT = {+1, −1, +1}` applied in **one single place** *(today both robots `{+1,+1,+1}` after the Jun-2026 rewiring — same single point)* |
-> | 6 | In *strafe* lateral **only motor 1 spins** | At `vx=150`/`MAX=1000`, M1 and M2 receive ~13% PWM (33/255) → below start; **M3 at 180° projects 0 (correct)** | Diagnosis: deadzone PWM + kiwi geometry (not a pin bug). Proposal `MOTOR_MIN_PWM` 25–45 per robot |
-> | 7 | **int16 overflow of omega** (CRITICAL): clamp 360 → 36000 centideg > 32767 → spin **inverted to the max** | Audit with 13 subagents; verified against the code | `HeadingPID.output_clamp` 360 → **327** (327·100 < 32767); anti *sign-flip* test |
-> | 8 | **CENTRAL blind to the line**: decoded the old contract (5 B) and discarded all 16 B frames | `payload_len==5` rejected **100%** of real frames | Migrate to `LineStatusV2` (16 B); harness g++ 8/8 PASS |
+> | # | Observed Problem | Measured Data | Modification Applied | Maturity |
+> |---|---|---|---|---|
+> | 1 | **The 4 ToF clash on I²C** (all start at 0x29); PCB rev 1.0 did not route XSHUT (8 *No-Connect*) | Forensic of the schematic: 0 nets XSHUT. After *bodge* + **power-cycle**: 4 LP on pins {9,10,11,12} enumerate to **0x2A–0x2D** | Migrate the 4 ToF to the single `Wire` bus; free `Wire2` (24/25, bus of the 2nd BNO); **unlocks 2D localization** | **VALIDATED ON BENCH** |
+> | 2 | **BNO heading freezes** in production (yaw stuck at −108.3°) although the snapshot arrives healthy | BNO + ToF cannot coexist at 400 kHz; at **100 kHz + BNO @20 Hz** the heading survives (band-aid) | I²C at 100 kHz + BNO at 20 Hz; decision: the goalkeeper's heading-hold uses the **OTOS** (local), not the BNO | **VALIDATED ON BENCH** (open problem) |
+> | 3 | **OTOS odometry** reports garbage on A4 | A4 with sheet: 28.6/300 mm (9.5%); A4 without sheet: 0.3 mm; **corrugated cardboard: 280.4/300 mm = 6.5% error** (< 8% tol.) | Remove sheet + require textured floor → **10× improvement**; the green RCJ field already meets this | **VALIDATED ON BENCH** |
+> | 4 | **Referee did not reach the Teensy** (the TOP expected a UART frame that the COMM never emits) | The official COMM delivers START/STOP as **GPIO level 3.3 V**; in PLAY it raises **only one** pin | Read pins 5/6 with `INPUT_PULLDOWN`, `match_running = pin5 **OR** pin6`; fail-safe to STOP | **VALIDATED ON BENCH** — *moved the robot for the 1st time* |
+> | 5 | **Motor 2 (U17) spun inverted** due to HW (INA/INB crossed; until the fix in Jun-2026) | Wheel-by-wheel bench (María/Elías) | `MOTOR_INVERT` in **one place** *(today both robots `{+1,+1,+1}` after the re-wiring of Jun-2026)* | **VALIDATED ON BENCH** |
+> | 6 | In *strafe* lateral **only motor 1 spins** | At `vx=150`/`MAX=1000`, M1 and M2 receive ~13% PWM (33/255) → below start; **M3 at 180° projects 0 (correct)** | Diagnosis: deadzone PWM + kiwi geometry (not a pin bug) → PWM floor per wheel `{70,70,107}` + initial boost | **VALIDATED ON BENCH** (R2; R1 to verify) |
+> | 7 | **int16 overflow of omega** (CRITICAL): clamp 360 → 36000 centideg > 32767 → spin **inverted to the max** | Adversarial internal review; verified against the code | `HeadingPID.output_clamp` 360 → **327** (327·100 < 32767); anti *sign-flip* test | **VERIFIED ON HOST** |
+> | 8 | **CENTRAL blind to the line**: decoded the old contract (5 B) and discarded all 16 B frames | `payload_len==5` rejected **100%** of real frames | Migrate to `LineStatusV2` (16 B); harness g++ 8/8 PASS | **VERIFIED ON HOST** |
+> | 9 | **Ghost ball:** fusion averaged the 2 cameras when both saw the ball → non-existent midpoint | The telemetry per camera (camf/camb) shows the **delta front↔back** that reveals the average | TOP telemetry v2 exposes each camera separately → it is decided WITH DATA which to turn off | **VERIFIED ON HOST** (golden C++⇄Python byte-identical) |
+> | 10 | A lying sensor (ghost camera) continued contaminating the fusion after restart | — | **Persistent config in EEPROM**: turn off camera/BNO/US/ToF + fix location of each ToF, and have it **survive the power-cycle** | **VERIFIED ON HOST** (test_top_config 12, pio SUCCESS) — pending bench |
+> | 11 | The **physical start button** (pin 9 of the Zircon) got STUCK on GO on 2026-06-12 (polarity) | The onboard button caused issues in both robots | **Disabled by default** in ALL of CENTRAL (opt-in that no env defines); the start goes to serial keyboard + referee via GPIO | **VERIFIED ON HOST** (competition envs byte-identical) — pending bench |
+> | 12 | The striker R1 (practice env) spun so fast searching that it passed the ball | Practice bench with students | Search spin 60→30 °/s + line avoidance as soon as it sees white (timed exit) | **VERIFIED ON HOST** (practice env; duration to tune on bench) |
+> | 13 | The goalkeeper **strafe with back-to-goal + advance** (new FSM GOTO_BACK→ADVANCE→strafe) | Bench 2026-06-14: the **FSM sequence ran**, BUT the heading oscillates ±37° (sometimes it stops) | Reaffirms why we DO NOT use continuous heading PID (it destabilizes) but PI+PFM; review with CSV 2026-06-15 | **VALIDATED ON BENCH (partial)** — open behavior |
+> | 14 | The OTOS of the DOWN sent pose `conf=0` (all zeros) in ROBOT2 | `diag_central_rx_all`: OTOS pose 100 Hz but x=y=hdg=0, vel never broadcasts | **Wrong binary:** R2 has no OTOS and was with the binary `down` (assumes 2) → flash `down_robot2` (OTOS=0), consumers fall to fallback | **VALIDATED ON BENCH** (finding + fix) |
+> | 15 | **We tried to command Flux with AI** to design PCB | Did not work | Switched to EasyEDA from MCP (VIBE PCB design) — we mention it because honest trial-and-error is part of learning | Trial discarded |
 
-> **Discussion:** major modifications **#1, #4, and #8 unlocked entire capabilities** (2D localization, referee homologation, edge braking). The parallel audit (20 subsystems, adversarial review) concluded with **15/20 "solid", 0 critical**.
+> **Discussion:** the major modifications **#1, #4, #8 and #9 unlocked or protected entire capabilities** (2D localization, referee approval, edge braking, detecting the ghost ball). We deliberately distinguish **validated on bench** (on the real board) from **verified on host** (compiles/passes tests but not yet on the board). Our **adversarial internal review** (20 subsystems in one pass of 2026-06-04 → 15/20 "solid", 0 critical; + passes with several subagents) is NOT an independent metric: it is our own quality control.
 
 ---
 
@@ -276,68 +321,78 @@ The **zone titles are written so that a JUDGE can find each criterion of the rub
 
 **EXACT TEXT (printed):**
 
-> ## TEST METHODS (repeatable by any team)
+> ## TESTING METHODS (repeatable by any team)
 > **M1 — Host-native verification (without the board).** The logic lives in pure C++ modules; they compile with
 > `g++ -std=gnu++17 -I src/shared lib/Unity/src/unity.c src/shared/*.cpp test/test_X/*.cpp` and run the binary.
-> **Result: 658 tests / 47 suites / 0 failures** (measured on 2026-06-05 19:50 ART with `scripts/run-host-tests.sh`). **Living figure —** we re-measure it every session and it keeps rising; that's why it goes with date and time, it never gets outdated. It avoids the antivirus that blocked PlatformIO.
+> **Result: 858 tests / 61 suites / 0 failures** (measured **2026-06-14** with `scripts/run-host-tests.sh`). **Live figure —** we re-measure it every session and it keeps rising; that’s why it has a date, it never becomes outdated. It avoids the antivirus that blocked PlatformIO. **Reproducibility (key for the demo):** `run-host-tests.sh` needs a `g++` in the PATH — we use the one that comes with **Webots**; **without a compiler in the PATH the script reports 0 tests** (it’s not that they fail: they don’t compile). We document the toolchain so that the judge/demo does not get a misleading 0.
 >
-> **M2 — Mandatory power-cycle on I²C bring-up.** The addresses of the VL53L7CX and the OTOS **persist with 3V3**; a reset is not enough. Protocol: *flash → cut and restore power (10 s) → open monitor*. (Without this: false negative "no sensor responds".)
+> **M2 — Mandatory power-cycle in bring-up I²C.** The addresses of the VL53L7CX and the OTOS **persist with 3V3**; a reset is not enough. Protocol: *flash → cut and restore power (10 s) → open monitor*. (Without this: false negative "no sensor responds".)
 >
 > **M3 — Odometry on textured surface.** Move 300 mm controlled and compare; tolerance 8% (result: 6.5%). Script `diag_otos_move_test.py`.
 >
-> **M4 — Diagnosis that reuses production parsers.** The ~40 lab sketches **do not reimplement** the decoder: they validate `payload_len` against `sizeof` and detect *staleness*/CRC/SEQ-gap.
+> **M4 — Diagnosis that reuses production parsers.** The ~40 bench sketches **do not reimplement** the decoder: they validate `payload_len` against `sizeof` and detect *staleness*/CRC/SEQ-gap.
+>
+> **M5 — TOP→CENTRAL link validated on bench (2026-06-14).** With `diag_central_rx_all` on the CENTRAL: the WorldSnapshot from the TOP arrives at **66 Hz** (100 Hz design), with **0 CRC** and **0 seqGap**, and decodes entirely (pose, valid heading, ball, rival goal). It is proof that the 3 boards truly communicate, not just in simulation.
+>
+> **M6 — Health dashboard by sensor (`python -m monitor_base --top-salud`), validated on the TOP board (2026-06-14).** Traffic light OK/REVIEW/FAIL/MISSING DATA by sensor (cameras incl. ghost ball, BNO L/R, 4 ToF, US, OTOS, line, snapshot) + grid of raw zones of each ToF. Connected to the real board and showed real data. *(It’s a separate Python ecosystem: 116 Python tests from the monitor — NOT added to the 858 host tests C++.)*
 
-`[GRAPH: bars of the growth of the test suite — 180 → 246 → 262 → 324 → 354 → 545 → 658 — Fig.8 · file docs/competencia/assets/fig8_test_growth.png (gen_figuras.py)]`
-`[GRAPH: bars of OTOS odometry error by surface — A4-sheet 9.5% error, A4-clean 0%, cardboard 6.5% — Fig.9 · file docs/competencia/assets/fig9_otos_error.png (gen_figuras.py)]`
-`[PHOTO: lab session with serial monitor decoding a WorldSnapshot / diag_central_motors — Fig.10]`
-`[PHOTO: the bodge of the 4 LP ToF wired to GPIO 9/10/11/12 (strong visual story) — Fig.11]`
+`[FIGURE Fig.8 — The safety net grew steadily · bars: 246 → 262 → 324 → 354 → 403 → 470 → 545 → 658 → 834 → 858 tests · file docs/competencia/assets/fig8_test_growth.png (gen_figuras.py — ✓ regenerated 2026-06-14 with point 858) · Original diagram by the team — CC BY 4.0]`
+`[FIGURE Fig.9 — Odometry depends on the floor · OTOS error bars by surface: A4-sheet 9.5%, A4-clean 0%, cardboard 6.5% — only the cardboard 6.5% is verified on bench (TASK-029); sheet/clean pending confirmation · file docs/competencia/assets/fig9_otos_error.png (gen_figuras.py) · Original diagram by the team — CC BY 4.0]`
+`[FIGURE Fig.14 — How does the monitor know a sensor is lying, without the field? The logic of the health dashboard (health.py): traffic light OK/REVIEW/FAIL/MISSING DATA by sensor + the criterion that triggers it · rules verified on host (16 tests), dashboard validated on bench 2026-06-14 · file docs/competencia/assets/drafts/fig_arbol_salud.png · Original diagram by the team — CC BY 4.0]`
+`[PHOTO Fig.10 — A bench session: the serial monitor decoding a WorldSnapshot (diag_central_motors). Original photo by the team, CC BY 4.0.]`
+`[PHOTO Fig.11 — The bodge: the 4 LP of ToF wired to GPIO 9/10/11/12 (strong visual story). Original photo by the team, CC BY 4.0.]`
 
-> **Gap note:** CPU loads (~20/25/22%) and latencies (<15 ms) are **design goals**, not measurements with an oscilloscope (TASK-014). Measure before asserting them as data.
+> **Honesty note:** CPU loads (~20/25/22%) and latencies (<15 ms) are *design goals — not measured with oscilloscope, TASK-014*. Measure before asserting them as data.
 
 ---
 
 # ZONE I — PRESENTATION PLAN
-*(Right column, base — aims for the **Presentation** criterion: present the ENTIRE session + actively engage with judges/participants/invited guests + answer all questions.)*
+*(Right column, base — aims at the **Presentation** criterion: present the ENTIRE session + actively engage with judges/participants/invited guests + answer all questions.)*
 
 **EXACT TEXT (printed, brief):**
 
 > ## VISIT OUR ROBOT
-> We demonstrate live: **(1)** the suite of **658 tests / 47 suites / 0 failures** running on the notebook, **(2)** the edge braking **<15 ms**, **(3)** the anticipating goalkeeper. Ask us how to replicate any of it.
+> We demonstrate live: **(0)** how **we learned to design the TOP and DOWN boards with AI** (EasyEDA + Claude via MCP) — our proud feature, with the honesty of trial-and-error (Flux did not work); **(1)** the suite of **858 tests / 61 suites / 0 failures** running on the notebook (the guarantee that we validated it ourselves); **(2)** the edge braking *(<15 ms design)*; **(3)** the anticipating goalkeeper. Ask us how to replicate any — and how to learn to design with AI just like us.
 > `[QR to repo]`  ·  `[QR to TDP video <3 min]`
 
 **Internal team checklist (NOT printed) to ensure Excellent in Presentation:**
-- The **4 members** present and rotating; each one masters their domain (vision / motors / PCB / integration).
-- Live lab: notebook with `run-host-tests.sh` ready + a lab diag to show the decoder.
-- Question bank rehearsed by category (General, Electrical, Mechanical, Strategy, Software, Development&Documentation).
+- In Incheon: **competitors María and Elías + main coach Enzo** (who also assists the IITA team of RCJ Rescue Line) **+ secondary coach Cecilia** (backup). **Director Gustavo does NOT travel.** The attendees rotate; each masters their domain (vision / motors / PCB-design-with-AI / integration).
+- **BLOCKER before traveling:** verify that `run-host-tests.sh` runs **GREEN on THE demo notebook** with its toolchain (the `g++` of Webots in the PATH). Without a compiler in the PATH the script gives **0 tests** and the demo of "the guarantee" fails live.
+- Live bench: notebook with `run-host-tests.sh` ready + a bench diag to show the decoder (e.g. `diag_central_rx_all` showing the TOP→CENTRAL at 66 Hz).
+- Prepared question bank by category (General, Electrical, Mechanical, Strategy, Software, Development&Documentation).
 - Material to give/share (QR, one-pager) → adds to Sportsmanship and Community.
 
 ---
 
-# FOOTER ZONE — CREDITS, LAYOUT, AND LICENSE
+# FOOTER ZONE — CREDITS, LAYOUT AND LICENSE
 *(Full-width bottom band — closes the **Layout** criterion (consistent fonts, no errors) and **Photos** (cited).)*
 
 **EXACT TEXT (printed, small):**
 
 > **License:** code and hardware under **MIT** © 2026 IITA / Innovar Foundation.
-> **Images:** Fig.1, 5–7, 10–11 original photos from the team (CC BY 4.0). Fig.2–4, 8–9 original diagrams generated by the team. Zircon schematic © Robomov (use with attribution).
+> **Images:** Fig.1, 3, 5–7, 10–11 original photos/captures from the team (CC BY 4.0). Fig.2, 4, 8–9, 12, 13, 14 original diagrams generated by the team (CC BY 4.0). Zircon schematic © Robomov (use with attribution).
 > **Repo:** https://github.com/IITA-Proyectos/open-soccer-robocup-team2026
 
 **LAYOUT Specification (design guide, NOT printed):**
-- **Fonts (2, consistent):** titles in a geometric *sans* (e.g., Montserrat/Inter Bold); body in a readable humanist *sans* (e.g., Inter/Source Sans). Sizes: zone titles ≥48 pt, subtitles ≥32 pt, body ≥24 pt (legible at 1.5 m).
+- **Fonts (2, consistent):** titles in a geometric *sans* (e.g. Montserrat/Inter Bold); body in a legible humanist *sans* (e.g. Inter/Source Sans). Sizes: zone titles ≥48 pt, subtitles ≥32 pt, body ≥24 pt (legible at 1.5 m at A1; do the printing math BEFORE drawing each figure — see skill `rcj-diagramas-poster`).
 - **Fixed palette (4 colors):** deep blue (TOP), orange (CENTRAL), green (DOWN) + neutral gray background. Each board zone uses its color to create a mental map.
-- **Figure numbering** Fig.1…Fig.11 consistent; each figure with its **caption labeled and cited**.
+- **Figure numbering** Fig.1…Fig.12 consistent; each figure with its **caption labeled and cited**.
 - **Mandatory spell check** after translating to English (Layout criterion requires *no spelling errors*).
-- **Original design** (not generic template): the color code by board + the data flow diagram are the poster's creative "signature".
+- **Original design** (not generic template): the color code by board + the data flow diagram are the creative "signature" of the poster.
+
+> **What IS PRINTED vs internal note (layout rule):** only what is inside the blocks `> ## ...` ("EXACT TEXT (printed)") + the figures `[FIGURE ...]`/`[PHOTO ...]` with their caption goes to the poster. **NOT printed** is anything under a heading marked "(NOT for printing)" / "(NOT printed)" / "(NOT for printing)" nor the italic lines `*(...)*` that open each ZONE (they are zone/rubric guides for the team).
 
 ---
 
 # FINAL CHECKLIST BEFORE PRINTING (NOT printed)
 
 - [ ] **TRANSLATE EVERYTHING to English** (hard rubric requirement) and run spell check.
-- [x] ✅ Complete ID 2026-06-05: team IITA Low Battery Messi · region Roboliga Argentina 2025 (UAI) · roster (María Virginia Viollaz / Elías Cordero + coach Enzo Juárez Velázquez / mentor Cecilia Budeguer).
-- [ ] Costs of **international reference already loaded** (highest value/item: ≈USD 1,168 new / 887 reusing CENTRAL; 2 robots ≈2,055–2,336). Battery **6800 mAh** loaded. Pending from the team: **price of loose Zircon, actual motor, C-rating/brand battery, ARS/USD exchange rate of the day, and hours**.
-- [ ] Take and place **all `[PHOTO:]`** (Fig.1–11) labeled and cited.
-- [x] ✅ Generated 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Only need to layout them in A1.
-- [ ] Confirm the **live number of tests** at closure (verified **658 tests / 47 suites / 0 failures** on 2026-06-05 18:39 ART with `scripts/run-host-tests.sh`; re-run before printing).
-- [ ] Verify that the poster fits in **A1 landscape (≤70.7×100 cm)** and is legible at 1.5 m.
-- [ ] Generate **QRs** (repo + TDP video).
+- [x] ✅ Complete Identity 2026-06-13: team IITA Low Battery Messi · region Roboliga Argentina 2025 (UAI) · confirmed roster — **Director Gustavo Viollaz (does not travel)** · **Main Coach Enzo Juárez Velázquez (travels)** · **Secondary Coach Cecilia Budeguer (travels)** · competitors **María Virginia Viollaz** and **Elías Cordero (travel)**.
+- [ ] Costs of **international reference already loaded** (highest value/item: ≈USD 1,168 new / 887 reusing CENTRAL; 2 robots ≈2,055–2,336). **Exchange rate loaded: 1480 ARS = 1 USD (2026-06-13)** → floor in pesos ≈ARS 1,728,640/new robot (USD×1480 = MINIMUM; real landed higher due to import). Battery **6800 mAh** loaded. Pending from the team: **loose Zircon price, real motor, C-rating/brand battery and hours**.
+- [ ] Take and place **all `[PHOTO:]`** (team photos: Fig.1, 5–7, 10–11) labeled and cited. Pre-written captions already in each zone.
+- [x] ✅ Generated 2026-06-05 (PNG @300dpi): **Fig.2** (fig2_dataflow.png), **Fig.4** (fig4_fsm.png), **Fig.8–9** (fig8/fig9). Need to layout in A1 **and regenerate Fig.4 with GOTO_LINE + Fig.8 with point 858**.
+- [ ] Finish **Fig.12** (timeline of the construction process) from the draft `assets/drafts/fig_proceso_constructivo_timeline.svg`.
+- [ ] Confirm the **live number of tests** at closure (verified **858 tests / 61 suites / 0 failures** on **2026-06-14** with `scripts/run-host-tests.sh` using Webots' g++; **re-run the day before delivery and re-propagate the figure**).
+- [ ] **BLOCKER:** verify that `run-host-tests.sh` runs **GREEN on THE demo notebook** (with its toolchain `g++` in the PATH) BEFORE traveling — without a compiler gives 0 tests.
+- [ ] Verify that the poster fits in **A1 landscape (≤84.1 cm wide × 59.4 cm high)** and is legible at 1.5 m.
+- [ ] Generate the **QR** (repo + TDP video).

@@ -102,7 +102,7 @@ Esta sección es la que sostiene todo lo demás. Sin esto, "usamos IA" sería un
 
 | Control | Qué es | Por qué nos protege |
 |---|---|---|
-| **Gate de tests host-native** | Una suite de **834 tests / 60 suites / 0 fallos** (cifra viva, medida 2026-06-13 17:43 ART con `scripts/run-host-tests.sh`) que compila la lógica pura en la PC con `g++`. Tiene que estar en **verde** antes de cualquier merge. | Es un **árbitro objetivo**: si la IA (o un humano) rompe algo, el gate lo caza. La correctitud no depende de confiar en la IA. |
+| **Gate de tests host-native** | Una suite de **858 tests / 61 suites / 0 fallos** (cifra viva, medida 2026-06-14 con `scripts/run-host-tests.sh`) que compila la lógica pura en la PC con `g++`. Tiene que estar en **verde** antes de cualquier merge. | Es un **árbitro objetivo**: si la IA (o un humano) rompe algo, el gate lo caza. La correctitud no depende de confiar en la IA. |
 | **Fallback byte-idéntico + feature flags** | Cada capacidad nueva entra como **módulo puro gateado** (`#ifdef`), apagado por defecto, con fallback **byte-idéntico** al binario anterior. | El binario de competencia **no cambia** hasta que validamos. Una idea de la IA no puede "colarse" al robot sin aprobación. |
 | **Validación de banco** | El comportamiento físico (motores, sensores, visión, frenado de borde) se prueba con el robot. | La IA no valida hardware; **nosotros sí**. La realidad es el juez final. |
 | **Ownership por archivo** | En trabajo paralelo, un solo agente (o persona) edita cada archivo. | Evita conflictos y mantiene la responsabilidad clara. |

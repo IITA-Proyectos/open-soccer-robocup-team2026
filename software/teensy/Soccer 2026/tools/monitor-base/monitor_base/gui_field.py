@@ -16,6 +16,13 @@ y manda a CENTRAL — NO recalcula nada. Lo único que calcula es la ESTELA hist
   • La calidad de la pose/pelota depende de la calibración del firmware (homografía,
     TASK-022). La app es FIEL al dato que recibe CENTRAL; si está sin calibrar, se ve
     sin calibrar (justamente sirve para diagnosticar eso). No lo corrige ni lo maquilla.
+  • OVERLAY OTOS (opcional, checkbox): dibuja en CYAN la pose recalculada por la
+    odometría de la base (base.px/py/phdg) ADEMÁS de la del snapshot (verde), como
+    dato COMPLEMENTARIO de cross-check — para ver cuán confiable es la pose que va a
+    CENTRAL comparándola con la odometría. No reemplaza el dato del snapshot; lo
+    acompaña. En R2 el OTOS está deshabilitado → el overlay no aparece (honesto).
+    Los marcos pueden diferir (el OTOS se cero-a al encender): comparar la FORMA del
+    recorrido más que el número absoluto.
 
 Sin display: `--field --selftest`.
 """
@@ -63,6 +70,14 @@ def field_to_px(x_mm: float, y_mm: float, draw_w: float, draw_h: float,
     return px, py
 
 
+def pose_gap_mm(x1: float, y1: float, x2: float, y2: float) -> float:
+    """Distancia (mm) entre dos poses. Para el cross-check snapshot vs OTOS:
+    cuánto difieren en el plano. OJO: pueden estar en marcos distintos (el OTOS
+    se cero-a al encender), así que sirve más para comparar la FORMA del recorrido
+    que el número absoluto."""
+    return math.hypot(x1 - x2, y1 - y2)
+
+
 class Trail:
     """Estela: buffer acotado de posiciones (x,y) en mm de cancha."""
     def __init__(self, maxlen: int = TRAIL_MAX):
@@ -102,6 +117,7 @@ class FieldApp:
         self._is_sim = getattr(source, "is_sim", False)
         self.robot_trail = Trail()
         self.ball_trail = Trail()
+        self.otos_trail = Trail()        # overlay opcional (cross-check vs OTOS)
 
         # Tamaño de dibujo (mantiene proporción de la cancha).
         self.draw_h = 560.0
@@ -133,6 +149,12 @@ class FieldApp:
                             bg="#0c0f12", fg="#d8e0e8", relief="flat")
         self.info.pack()
         ttk.Button(side, text="↺ Borrar estelas", command=self._clear_trails).pack(pady=6, anchor="w")
+        # Overlay OTOS opcional: dibuja la pose recalculada por la odometría de la
+        # base (cyan) para COMPARAR con la pose del snapshot (verde) y ver cuán
+        # confiable es. En R2 el OTOS está deshabilitado → no aparece (honesto).
+        self.show_otos = tk.BooleanVar(value=False)
+        ttk.Checkbutton(side, text="Comparar con OTOS (cyan)",
+                        variable=self.show_otos).pack(anchor="w")
         self.status = ttk.Label(self.root, text="iniciando…", anchor="w",
                                 relief="sunken", padding=4)
         self.status.pack(fill="x", side="bottom")
@@ -181,6 +203,9 @@ class FieldApp:
                                             f.snap.my_x_mm, f.snap.my_y_mm,
                                             f.snap.my_heading_deg)
                 self.ball_trail.push(bx, by)
+        # OTOS (overlay opcional): acumular siempre (se dibuja solo si se habilita).
+        if f.base.pose_fresh:
+            self.otos_trail.push(float(f.base.pose_x_mm), float(f.base.pose_y_mm))
 
     def _render(self, f: TopFrame) -> None:
         c = self.canvas
@@ -212,9 +237,22 @@ class FieldApp:
                 px, py = self._fpx(bx, by)
                 c.create_oval(px - 7, py - 7, px + 7, py + 7, fill="#ff8c2a",
                               outline="#ffd", tags="dyn")
+        # Overlay OTOS (opcional): estela + robot en CYAN para comparar.
+        if self.show_otos.get():
+            opts = self.otos_trail.points()
+            if len(opts) >= 2:
+                flat = []
+                for x, y in opts:
+                    fpx, fpy = self._fpx(x, y)
+                    flat += [fpx, fpy]
+                c.create_line(*flat, fill="#33c4d6", width=1, dash=(2, 2), tags="dyn")
+            if f.base.pose_fresh:
+                self._draw_robot(f.base.pose_x_mm, f.base.pose_y_mm,
+                                 f.base.pose_heading_deg, fill="#1f7e8c", outline="#7fe6f2")
         self._render_info(f)
 
-    def _draw_robot(self, x_mm: float, y_mm: float, heading_deg: float) -> None:
+    def _draw_robot(self, x_mm: float, y_mm: float, heading_deg: float,
+                    fill: str = "#2b6", outline: str = "#bfe") -> None:
         c = self.canvas
         px, py = self._fpx(x_mm, y_mm)
         a = math.radians(heading_deg)
@@ -226,8 +264,8 @@ class FieldApp:
         bx_, by_ = math.cos(a), -math.sin(a)
         bl = (px - fx * 7 + bx_ * 9, py + fy * 7 - by_ * 9)
         br = (px - fx * 7 - bx_ * 9, py + fy * 7 + by_ * 9)
-        c.create_polygon(*nose, *bl, *br, fill="#2b6", outline="#bfe", tags="dyn")
-        c.create_oval(px - 2, py - 2, px + 2, py + 2, fill="#bfe", outline="", tags="dyn")
+        c.create_polygon(*nose, *bl, *br, fill=fill, outline=outline, tags="dyn")
+        c.create_oval(px - 2, py - 2, px + 2, py + 2, fill=outline, outline="", tags="dyn")
 
     def _render_info(self, f: TopFrame) -> None:
         def yn(b):
@@ -240,6 +278,18 @@ class FieldApp:
         else:
             pose = "—  (snapshot no válido)"
             snapst = "⚠ snapshot NO válido (el TOP todavía no manda pose)"
+        otos = ""
+        if self.show_otos.get():
+            if f.base.pose_fresh:
+                gap = (pose_gap_mm(s.my_x_mm, s.my_y_mm, f.base.pose_x_mm, f.base.pose_y_mm)
+                       if s.valid else None)
+                otos = (f"\n-- OTOS (comparación) --\n"
+                        f"pose OTOS       : x={f.base.pose_x_mm:+5d} y={f.base.pose_y_mm:+5d} "
+                        f"hdg={f.base.pose_heading_deg:+.1f}°\n"
+                        f"|snap − OTOS|   : {'—' if gap is None else f'{gap:.0f} mm'}  "
+                        f"(marcos pueden diferir; mirá la FORMA)\n")
+            else:
+                otos = "\n-- OTOS (comparación) --\nsin OTOS fresco (en R2 está deshabilitado)\n"
         self._set_text(self.info,
             f"SNAPSHOT→CENTRAL : {snapst}\n"
             f"pose robot      : {pose}\n"
@@ -249,6 +299,7 @@ class FieldApp:
             f"¿PELOTA?        : {yn(s.ball_visible)}\n"
             f"pelota (rel.)   : x={s.ball_x_mm:+5d} y={s.ball_y_mm:+5d}\n"
             f"estela pelota   : {len(self.ball_trail)} puntos\n"
+            f"{otos}"
             f"\n"
             f"cancha          : {int(self.field_w)} × {int(self.field_h)} mm\n"
             f"frames          : {self.frame_count}\n")
@@ -256,6 +307,7 @@ class FieldApp:
     def _clear_trails(self) -> None:
         self.robot_trail.clear()
         self.ball_trail.clear()
+        self.otos_trail.clear()
         self._set_status("estelas borradas")
 
     def _set_text(self, w: tk.Text, text: str) -> None:

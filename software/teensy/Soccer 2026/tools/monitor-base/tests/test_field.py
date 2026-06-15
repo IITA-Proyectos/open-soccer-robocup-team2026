@@ -1,7 +1,14 @@
 """Tests de la geometría PURA de gui_field.py (vista de cancha). Sin Tk."""
 from __future__ import annotations
 
-from monitor_base.gui_field import (Trail, field_to_px, robot_rel_to_field)
+from monitor_base.gui_field import (Trail, field_to_px, pose_gap_mm,
+                                    robot_rel_to_field)
+
+
+def test_pose_gap_mm():
+    assert pose_gap_mm(0, 0, 3, 4) == 5.0          # 3-4-5
+    assert pose_gap_mm(10, 10, 10, 10) == 0.0
+    assert abs(pose_gap_mm(0, 0, 0, 100) - 100.0) < 1e-9
 
 
 # ── robot_rel_to_field ──────────────────────────────────────────────────────

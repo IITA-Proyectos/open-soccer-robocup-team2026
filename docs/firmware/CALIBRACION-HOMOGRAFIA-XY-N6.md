@@ -15,9 +15,17 @@ firmware-source: >
 
 # Calibrar el XY de las cámaras N6 — procedimiento SIMPLE y CONFIABLE
 
+> ⚠️ **DESTINO DE PRODUCCIÓN (corrección 2026-06-15, HI-6): pegá la `H_MATRIX` en
+> `hardware/electronics/camaras-openmv/main.py`, NO en `cam-*-n6.py`.** Los
+> `cam-*-n6.py` están **DEPRECADOS** (banner "NO USAR EN PRODUCCIÓN", 2026-06-08) y
+> `main.py` es el script canónico que se flashea (ver `FUENTES-DE-VERDAD.md`). Donde
+> abajo diga "pegar en `cam-*-n6.py`", leé **`main.py`**. El `solve_homografia.py` ya
+> imprime el bloque apuntando a `main.py`, y acepta `--csv` + `--validate` (confirmá la
+> H numéricamente ANTES de flashear).
+
 > **Qué resuelve esto.** Que cuando la cámara ve la pelota (o un arco), reporte
 > **bien dónde está** en cm relativos al robot (X = izquierda/derecha, Y =
-> distancia adelante). Eso es la **homografía** (`H_MATRIX` en `cam-*-n6.py`).
+> distancia adelante). Eso es la **homografía** (`H_MATRIX` en `main.py`).
 > Hoy esa matriz es un **placeholder** → las distancias/ángulos están mal hasta
 > calibrar. Esto es parte de **TASK-022**.
 

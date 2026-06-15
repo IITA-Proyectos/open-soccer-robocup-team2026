@@ -10,6 +10,7 @@
 //   PASO 5 — salida + clamp a cancha (solo la SALIDA, no el estado interno).
 
 #include "pose_fusion.h"
+#include "rot_lut.h"   // H1: des-rotación del delta OTOS al marco de cancha (sin/cos Q12)
 
 namespace iitasoccer {
 
@@ -65,6 +66,8 @@ PoseFusionConfig pose_fusion_default_config() {
     cfg.conf_otos_only        = 50;
     cfg.conf_decay_per_100ms  = 5;
     cfg.conf_min              = 10;
+    cfg.seed_min_samples      = 3;     // H2: 3 ToF consistentes antes de anclar
+    cfg.seed_tol_mm           = 150;   // tolerancia entre lecturas de seed (por eje)
     return cfg;
 }
 
@@ -78,6 +81,9 @@ void pose_fusion_reset(PoseFusionState& st) {
     st.otos_prev_y_mm   = 0;
     st.otos_prev_valid  = false;
     st.ms_since_tof_corr = 0;
+    st.seed_count       = 0;
+    st.seed_x_mm        = 0;
+    st.seed_y_mm        = 0;
 }
 
 PoseFusionOutput pose_fusion_update(PoseFusionState& st,
@@ -89,18 +95,41 @@ PoseFusionOutput pose_fusion_update(PoseFusionState& st,
     // ---- PASO 0 — Pass-through de heading (SIEMPRE, no se fusiona) ----
     st.heading_centideg = in.bno_heading_centideg;
 
-    // ---- PASO 1 — Seed / inicialización ----
+    // ---- PASO 1 — Seed / inicialización (H2 consenso de ToF + H3 heading válido) ----
     if (!st.initialized) {
-        if (in.tof_valid) {
-            // Primer absoluto disponible -> arrancamos anclados al ToF.
-            st.x_mm_q0           = in.tof_x_mm;
-            st.y_mm_q0           = in.tof_y_mm;
-            st.confidence        = cfg.conf_tof_anchor;
-            st.initialized       = true;
-            st.ms_since_tof_corr = 0;
-            out.source_flags |= POSE_FUSION_FLAG_TOF_CORR;  // el seed cuenta como anclaje
+        // Solo anclamos con ToF Y HEADING válidos: la pose ToF se calcula USANDO el
+        // heading; anclar con heading muerto rotaría el mapa todo el partido (H3, bug #22).
+        if (in.tof_valid && in.heading_valid) {
+            if (st.seed_count == 0) {
+                st.seed_count = 1;
+            } else {
+                const int32_t sdx = iabs32(static_cast<int32_t>(in.tof_x_mm) - st.seed_x_mm);
+                const int32_t sdy = iabs32(static_cast<int32_t>(in.tof_y_mm) - st.seed_y_mm);
+                if (sdx <= static_cast<int32_t>(cfg.seed_tol_mm) &&
+                    sdy <= static_cast<int32_t>(cfg.seed_tol_mm)) {
+                    if (st.seed_count < 255) st.seed_count++;   // lectura consistente
+                } else {
+                    st.seed_count = 1;   // OUTLIER lejano (rival/pared): reinicia el consenso
+                }
+            }
+            st.seed_x_mm = in.tof_x_mm;   // seguir la lectura más reciente
+            st.seed_y_mm = in.tof_y_mm;
+
+            if (st.seed_count >= cfg.seed_min_samples) {
+                // Consenso alcanzado: anclamos al ToF más reciente.
+                st.x_mm_q0           = in.tof_x_mm;
+                st.y_mm_q0           = in.tof_y_mm;
+                st.confidence        = cfg.conf_tof_anchor;
+                st.initialized       = true;
+                st.ms_since_tof_corr = 0;
+                out.source_flags |= POSE_FUSION_FLAG_TOF_CORR;  // el seed cuenta como anclaje
+            } else {
+                st.confidence = 0;   // todavía juntando consenso
+            }
         } else {
-            // La OTOS sola no provee origen absoluto: esperamos un ToF.
+            // Sin ToF/heading válido: esperamos. NO reseteamos seed_count por ausencia
+            // (el consenso es sobre lecturas tof_valid, no sobre ticks; un ToF intermitente
+            // no debe perder el progreso). Solo un OUTLIER lejano reinicia (arriba).
             st.confidence = 0;
         }
 
@@ -127,10 +156,19 @@ PoseFusionOutput pose_fusion_update(PoseFusionState& st,
         if (st.otos_prev_valid) {
             int32_t dx = static_cast<int32_t>(in.otos_x_mm) - st.otos_prev_x_mm;
             int32_t dy = static_cast<int32_t>(in.otos_y_mm) - st.otos_prev_y_mm;
-            // Anti-glitch: descarta saltos de reset/wrap de la OTOS.
+            // Anti-glitch: descarta saltos de reset/wrap de la OTOS (sobre el delta CRUDO).
             clamp_vector_magnitude(dx, dy, cfg.max_step_mm);
-            st.x_mm_q0 += dx;
-            st.y_mm_q0 += dy;
+            // H1 (bug #8): el delta viene en el marco de la OTOS, NO en el de la cancha.
+            // Des-rotarlo por el net (bno_heading − otos_heading) antes de integrar. Con
+            // headings iguales o 0 → net 0 → rotación identidad (compat con heading=0).
+            // ⚠️ BANCO: validar el SIGNO/EJE del net contra el marco real de la cancha.
+            const int net_deg = static_cast<int>(
+                (static_cast<int32_t>(in.bno_heading_centideg)
+                 - static_cast<int32_t>(in.otos_heading_centideg)) / 100);
+            int32_t fdx, fdy;
+            rot_rotate_q12(dx, dy, net_deg, fdx, fdy);
+            st.x_mm_q0 += fdx;
+            st.y_mm_q0 += fdy;
             out.source_flags |= POSE_FUSION_FLAG_OTOS_PRED;
         }
         // Actualizar prev (siempre que la OTOS esté fresca).
@@ -144,8 +182,11 @@ PoseFusionOutput pose_fusion_update(PoseFusionState& st,
     }
 
     // ---- PASO 3 — CORRECCIÓN (anclar a ToF) ----
+    // H3 (bug #22): exigir heading_valid. La pose ToF se calcula CON el heading; si está
+    // muerto/congelado, corregir hacia ella rota el mapa. Sin heading válido → solo
+    // predicción (la confidence decae por ms_since_tof_corr como en un gap de ToF).
     bool corrected_this_tick = false;
-    if (in.tof_valid) {
+    if (in.tof_valid && in.heading_valid) {
         int32_t ex = static_cast<int32_t>(in.tof_x_mm) - st.x_mm_q0;  // residual ToF vs pose predicha
         int32_t ey = static_cast<int32_t>(in.tof_y_mm) - st.y_mm_q0;
         int32_t err = iabs32(ex);                                     // L-inf, barata

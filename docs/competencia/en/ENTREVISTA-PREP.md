@@ -6,11 +6,11 @@
 # Group Team Interview — Team Cheat-Sheet (RoboCupJunior Soccer Open 2026, Incheon)
 
 > **What is the Group Team Interview (5 pts):** live challenge alongside 1-3 teams. It has 3 parts:
-> **(1) Show & Tell**, **(2) Teamwork-Task** (judges assign a programming task on the spot) and **(3) Questions** (bank of questions by category). Judged on 3 criteria, each on a scale of 0/1/3/5. **We aim for Excellent (5) in all three.**
+> **(1) Show & Tell**, **(2) Teamwork-Task** (judges present a programming task on the spot) and **(3) Questions** (bank of questions by category). It is judged on 3 criteria, each on a scale of 0/1/3/5. **We aim for Excellent (5) in all three.**
 >
 > **Gold rule of the interview (what the judge looks for):** that **EVERYONE** contributes, that there is **real technical fluency** (not reciting) and **innovative approaches**. No one monopolizes, no one is left silent.
 >
-> **Language note:** the interview is conducted in **English** (competition language). The 🇬🇧 marker indicates phrases that should be translated and rehearsed aloud before Incheon; the English version of this sheet lives in `docs/competencia/en/ENTREVISTA-PREP.md`.
+> **Language note:** the interview is conducted in **English** (competition language). The 🇬🇧 marker indicates phrases that should be translated and practiced aloud before Incheon; the English version of this sheet lives in `docs/competencia/en/ENTREVISTA-PREP.md`.
 
 ---
 
@@ -20,15 +20,15 @@
 |---|---|---|
 | **Teamwork & Communication** | Smooth collaboration, members support each other, **clear roles**, **EVERYONE contributes** | §2 (role distribution) + §1 (everyone speaks in the Show&Tell) + §5 (protocol for passing the floor) |
 | **Technical Understanding** | **Strong technical fluency** and problem-solving | §4 (model answers by category, with real numbers) |
-| **Task Execution** | Completes **efficiently** with **innovative approaches** | §3 (tips for the Teamwork-Task: how to divide, where the code is, quick flash) |
+| **Task Execution** | Completes **efficiently** with **innovative approaches** | §3 (tips for the Teamwork-Task: how to divide tasks, where the code is, quick flash) |
 
-> **Placeholders to complete before Incheon** (recorded in gaps at the end): `IITA Low Battery Messi`, definitive roles of `María Virginia Viollaz`/`Elías Cordero`, and confirm that 2 people are competing in Incheon (the repo roster: Gustavo Viollaz director, Enzo Juárez Velázquez coach, María Virginia Viollaz and Elías Cordero competitors). In the interview, **the present competitors speak**; the coach does not answer for them.
+> **Placeholders to complete before Incheon** (recorded in gaps at the end): `IITA Low Battery Messi`, final roles of `María Virginia Viollaz`/`Elías Cordero`, and confirm that 2 people are competing in Incheon (roster from the repo: **Gustavo Viollaz** project director **does not travel**; traveling are **Enzo Juárez Velázquez** head coach, **Cecilia Budeguer** assistant coach, and competitors **María Virginia Viollaz** and **Elías Cordero**). In the interview, **the present competitors speak**; the coaches do not answer for them.
 
 ---
 
 ## §1 — Show & Tell (60-90 s) → aims for Teamwork & Communication (Excellent)
 
-> **Objective:** in 90 s the judge must see (a) a real robot, (b) ONE differentiating idea, and (c) that **the team works as a team**. Anti-monologue strategy: **each member says a part**, chained. Bring the robot powered on (or a robot + laptop with the green test suite in the background).
+> **Objective:** in 90 s the judge must see (a) a real robot, (b) ONE differentiating idea, and (c) that **the team works as a team**. Anti-monologue strategy: **each member says a part**, in sequence. Bring the robot powered on (or a robot + laptop with the green test suite in the background).
 
 **Script distributed (timed, 2 voices — adapt if there are more competitors):**
 
@@ -36,9 +36,9 @@
 |---|---|---|
 | 0-15 s | `María Virginia Viollaz` | "We are `IITA Low Battery Messi`, from Salta, Argentina, in the **Open** sub-league. We arrive in Incheon as **national champions** of the Argentine Roboliga 2025. We bring **2 robots**: a **goalkeeper** and a **striker**." |
 | 15-40 s | `María Virginia Viollaz` | "Our robot uses a **distributed architecture of 3 boards**: one board **perceives** (2 OpenMV N6 cameras, 1 IMU, 4 ToF sensors), one board **decides** (tactical FSM + 3 omni motors) and one board **touches the ground** (ring of 32 line sensors + 2 optical odometry sensors). They communicate via UART at 230400 baud." |
-| 40-65 s | `Elías Cordero` | "What we are most proud of is **how we verify the firmware without the board**: the decision logic lives in pure C++ modules that we compile and test on the PC with g++. Today we run **658 host-native tests in 47 suites, 0 failures** (measured 2026-06-05 19:50 ART with `scripts/run-host-tests.sh`). This allows us to **iterate quickly and safely** just days before the competition." |
+| 40-65 s | `Elías Cordero` | "What we are most proud of is **how we verify the firmware without the board**: the decision logic lives in pure C++ modules that we compile and test on the PC with g++. Today we run **858 host-native tests in 61 suites, 0 failures** (measured 2026-06-14 with `scripts/run-host-tests.sh`). This allows us to **iterate quickly and safely** just days before the competition." |
 | 65-85 s | `Elías Cordero` | "And a tactical decision we are proud of: the **goalkeeper anticipates**. Instead of following the current position of the ball, it projects where it **will be** using its speed (`pos + v·0.2 s`, with a cap). We can show it on the field if you want." |
-| 85-90 s | both | "Everything is **open-source with an MIT license** on GitHub, documented so that another team can replicate it. Where would you like to start?" |
+| 85-90 s | both | "Everything is **open-source with MIT license** on GitHub, documented so that another team can replicate it. Where would you like to start?" |
 
 **Delivery tips (raise Teamwork & Communication to Excellent):**
 - **Explicit passing of the floor**: "...and that was mainly worked on by `Elías Cordero`, you tell them" → shows clear roles and support.
@@ -50,11 +50,11 @@
 
 ## §2 — Technical role distribution → aims for Teamwork & Communication (Excellent: "clear roles, everyone contributes")
 
-> **Idea:** each competitor **masters an area** and is the "owner" of those questions. When a question arises, the owner answers and the other **adds a detail**, never stepping on each other. Below is a proposed distribution based on the repo's history (María/Virginia with experience in **vision and trajectories**; Elías in **robotics and electromechanical engineering**). **Confirm/adjust names before Incheon.**
+> **Idea:** each competitor **masters an area** and is the "owner" of those questions. When a question comes, the owner answers and the other **adds a detail**, never overlapping. Below is a proposed distribution based on the repo's history (María/Virginia with experience in **vision and trajectories**; Elías in **robotics and electromechanical engineering**). **Confirm/adjust names before Incheon.**
 
 | Area | Suggested Owner | Why (evidence from the repo) | Typical question they answer without hesitation |
 |---|---|---|---|
-| **Vision + Strategy/Trajectories** | `María Virginia Viollaz` (vision + trajectories) | 2025 experience in computer vision and trajectories | "How do you detect the ball?" / "How does the goalkeeper decide where to go?" |
+| **Vision + Strategy/Trajectories** | `María Virginia Viollaz` (vision + trajectories) | 2025 experience in artificial vision and trajectories | "How do you detect the ball?" / "How does the goalkeeper decide where to go?" |
 | **Electronics + Mechanics/Traction** | `Elías Cordero` (robotics + Electromechanical Eng.) | Electromechanical Engineering student; motor bank | "Why omni motors at 120°?" / "How did you choose the components?" |
 | **Software / Architecture / Testing** | **shared** (both) | It is the team's differentiator; both must be able to explain the idea of "pure modules + host tests" | "How do you test without the board?" / "How do the 3 boards communicate?" |
 | **Development & Documentation** | **shared** | Engineering journal + SOURCES-OF-TRUTH + traceable tests | "How do you track progress?" / "How do you know something is working?" |
@@ -64,50 +64,50 @@
 
 ---
 
-## §3 — Live Teamwork-Task (judges assign the task) → aims for Task Execution (Excellent: "efficient + innovative")
+## §3 — Live Teamwork-Task (judges present the task) → aims for Task Execution (Excellent: "efficient + innovative")
 
-> The judge gives a programming task on the spot (e.g.: "make the robot turn until it sees the ball and approach", "stop when crossing the line", "patrol side to side"). **Do not improvise the organization: follow this protocol.** What earns Excellent is that a **method** is visible (not chaos) and a **unique approach** (reuse our pure modules + flash quickly).
+> The judge gives a programming task on the spot (e.g.: "make the robot turn until it sees the ball and approach", "make it stop when crossing the line", "make it patrol side to side"). **Do not improvise the organization: follow this protocol.** What earns Excellent is that a **method** is seen (not chaos) and a **unique approach** (reuse our pure modules + flash quickly).
 
-### 3.1 — How we divide (say it aloud for the judge to hear)
-1. **30 s of shared planning**: one repeats the task in their own words and proposes the approach ("this is basically the FSM in APPROACH state / it's a lateral strafe / it's the edge braking"). The other confirms or adjusts.
+### 3.1 — How we divide tasks (say it aloud for the judge to hear)
+1. **30 s of shared planning**: one repeats the task in their own words and proposes the approach ("this is basically the FSM in APPROACH state / it’s a lateral strafe / it’s the edge braking"). The other confirms or adjusts.
 2. **Roles for the task**: one **writes the code**, the other **prepares the flashing and watches the robot** (eyes on the hardware, not on the screen). They switch if the task has 2 parts.
-3. **Talk while doing**: narrate what is being touched ("I’m going to modify `strategy.cpp` in APPROACH state, I’m increasing the approach speed"). The judge scores based on what they understand.
+3. **Talk while doing**: narrate what is being touched ("I’m going to modify `strategy.cpp` in APPROACH state, I’m increasing the approach speed"). The judge scores what they understand.
 
 ### 3.2 — Where the code is (know this by heart = speed = Task Execution)
 
-| What do you want the robot to do | File to touch | Concrete hint |
+| What you want the robot to do | File to touch | Concrete hint |
 |---|---|---|
 | Decide what to do (chase, patrol, intercept) | `software/teensy/Soccer 2026/src/central/strategy.cpp` | Dual FSM: ATTACKER (KICKOFF/SEARCH/POSITION/APPROACH/LINE_AVOID) and GOALKEEPER (PATROL/INTERCEPT/CLEAR/LINE_AVOID) |
 | Move the robot in a direction (vx, vy, ω) | `software/teensy/Soccer 2026/src/shared/kinematics.{h,cpp}` | Omni-3 inverse kinematics: `v_i = -vx·sin(θ_i) + vy·cos(θ_i) + ω·R`. **+X=right, +Y=front, ω CCW+** |
-| Apply PWM to the motors | `software/teensy/Soccer 2026/src/central/motors_zircon.{h,cpp}` | 8-bit PWM 0-255. `MOTOR_INVERT` (inversion by motor; until the repair of jun-2026 R1 used `{+1,-1,+1}` for the M2/U17 inverted by HW — today both robots use `{+1,+1,+1}`) |
+| Apply PWM to the motors | `software/teensy/Soccer 2026/src/central/motors_zircon.{h,cpp}` | 8-bit PWM 0-255. `MOTOR_INVERT` (inversion per motor; until the repair of jun-2026 R1 used `{+1,-1,+1}` for the M2/U17 inverted by HW — today both robots use `{+1,+1,+1}`) |
 | Adjust a control loop | `software/teensy/Soccer 2026/src/shared/pids.{h,cpp}` | heading + lateral + distance. **NOTE: clamp of HeadingPID ≤327** (ω·100 is int16, 360 overflows) |
 | Anticipate the ball (goalkeeper) | `software/teensy/Soccer 2026/src/shared/ball_predict.{h,cpp}` | `lookahead_s=0.2`, `max_lead_mm=400` (tuneables) |
 | Robot constants (speed, geometry) | `software/teensy/Soccer 2026/src/central/config_central.h` | `MAX_SPEED_MM_S=1000`, `WHEEL_ANGLES_DEG={330,210,90}` (M1=front-LEFT · M2=front-RIGHT · M3=rear, CALIBRATED 2026-06-08), `MOTOR_MIN_PWM[3]={70,70,107}` (PWM floor per wheel — robot2 bank 2026-06-09; robot1 same values, validated on floor jun-2026). Pending from bank: fine-tuning of lateral. |
 
-### 3.3 — How we load firmware quickly (have this prepared BEFORE)
+### 3.3 — How we quickly load firmware (have this prepared BEFORE)
 - **Embedded build/flash**: `pio run -e central_robot1 -t upload` (or `top_robot1` / `down`). The environment compiles **100% offline** (vendor libraries in `lib/`), so **we do not depend on venue internet**.
-- **Instant verification without the board**: `bash scripts/run-host-tests.sh` → runs the 658 host tests in seconds (658 tests / 47 suites / 0 failures, measured 2026-06-05 19:50 ART). **Showing this to the judge is a home run**: "before uploading to the robot, we validate it on the PC". **Honest clarification:** the host runner compiles the **pure modules** (shared + down); the central/top tests use Arduino and are compiled **on-target** on the board.
+- **Instant verification without the board**: `bash scripts/run-host-tests.sh` → runs the 858 host tests in seconds (858 tests / 61 suites / 0 failures, measured 2026-06-14). **Showing this to the judge is a big win**: "before uploading to the robot, we validate it on the PC". **Honest clarification:** the host runner compiles the **pure modules** (shared + down); the central/top tests use Arduino and are compiled **on-target** on the board.
 - **Bank diagnostics**: there are ~40 sketches in `src/diag/` (`diag_central_motors`, `diag_central_strafe`, `diag_central_rx_all`...) that reuse the production parsers. If the task is "move a motor", `diag_central_motors` already does it.
-- **Bring-up trick that avoids wasting time (say this if something is unresponsive):** I²C sensors (ToF and OTOS) **retain their address with 3.3 V** → if they do not appear, do a **real power-cycle** (cut battery + USB ~10 s), not just reset. Knowing this saves 20 min of live debugging.
+- **Bring-up trick that avoids wasting time (say this if something is unresponsive):** I²C sensors (ToF and OTOS) **persist their address with 3.3 V** → if they do not appear, do a **real power-cycle** (cut battery + USB ~10 s), not just reset. Knowing this saves 20 min of live debugging.
 
 ### 3.4 — Innovative approach to show (what raises Task Execution to Excellent)
 - "We are going to solve it **by reusing a pure module that is already tested** instead of writing new logic blindly" → efficiency + engineering criterion.
-- "We add **fallback**: if the new data is not available, it does exactly what it did before" → this is our *fallback byte-identical* technique, zero regression. Very marketable.
+- "We add **fallback**: if the new data is not available, it does exactly what it did before" → it’s our *fallback byte-identical* technique, zero regression. Very marketable.
 
 ---
 
 ## §4 — Questions: model answers by category → aims for Technical Understanding (Excellent: "strong technical fluency + problem-solving")
 
-> Each answer: **concrete data + why + (if applicable) a real iteration**. The judge rewards us for giving **numbers** and telling **a data-driven decision**, not generalities. 🇬🇧 = rehearse in English.
+> Each answer: **concrete data + why + (if applicable) a real iteration**. The judge rewards us for providing **numbers** and telling **a data-driven decision**, not generalities. 🇬🇧 = practice in English.
 > Answers marked with 💡 include an iteration story (testing→data→change) — those score the highest.
 
 ### General (design decisions, inspiration)
 
 **Q: Why did you choose a 3-board architecture instead of a single one?**
-> "For one principle: **process where the sensor is and decide in the center**. The vision board processes the cameras and the IMU, the central one only receives a summary of the world (a *WorldSnapshot* of **31 bytes at 100 Hz**) and decides. Each microcontroller stays **under 30% CPU**, leaving us room for improvements. Additionally, it is **modular**: if in 2027 we change the camera, we only touch the firmware of that board."
+> "For a principle: **process where the sensor is and decide in the center**. The vision board processes the cameras and the IMU, the central one only receives a summary of the world (a *WorldSnapshot* of **31 bytes at 100 Hz**) and decides. Each microcontroller stays **under 30% CPU**, so we have room for improvements. Also, it is **modular**: if we change the camera in 2027, we only touch the firmware of that board."
 
 **Q: What inspired you / where did you get the architecture from?**
-> "It is the standard pattern for mobile robotics (used by Middle Size League teams like CAMBADA). And we started from **what already worked for us**: the central board is the **Zircon** with which we won the National 2025; we added the perception and ground boards around it without replacing it."
+> "It is the standard pattern for mobile robotics (used by Middle Size League teams like CAMBADA). And we started from **what already worked for us**: the central board is the **Zircon** with which we won the National 2025; the perception and ground boards were added around it without replacing it."
 
 ### Electrical (component selection, troubleshooting)
 
@@ -115,23 +115,23 @@
 > "COTS and cheap criteria, purchasable at LCSC: **Teensy 4.0/4.1** (Cortex-M7 at 600 MHz) as brains, **VL53L7CX** multi-zone ToF for distance, **BNO055** for heading, **OTOS from SparkFun** for optical odometry, and **OpenMV N6** cameras. We power with **LiPo 2S (7.4 V)** → protection with Schottky diodes → 2 buck regulators **MP1584** per board (5 V logic, 3.3 V sensors). We characterized the drift of the OTOS in the bank — see the error graph in `docs/competencia/assets/fig9_otos_error.png`."
 
 **Q (troubleshooting): Tell me about an electrical problem you had and how you solved it.** 💡
-> "The **4 ToF sensors** all start on the same I²C address (0x29) and clash on a shared bus. Investigating the schematic, we discovered that the pins for enumerating them **were not routed** on the PCB. Enzo made a **bodge**: he wired the control pin of each ToF to a GPIO of the Teensy. And we learned something key: their addresses **persist while they have 3.3 V**, so we need to **power-cycle**, not just reset. After that, the 4 ToF enumerate to 0x2A-0x2D and **2D localization by trilateration** was unlocked."
+> "The **4 ToF sensors** all start in the same I²C direction (0x29) and clash on a shared bus. Investigating the schematic, we discovered that the pins for enumerating them **were not routed** on the PCB. Enzo made a **bodge**: he wired the control pin of each ToF to a GPIO of the Teensy. And we learned something key: their addresses **persist while they have 3.3 V**, so we need to **power-cycle**, not just reset. After that, the 4 ToF enumerate to 0x2A-0x2D and 2D **localization by trilateration** was unlocked."
 
 **Q: Why is one motor inverted in the code?**
 > "The driver for motor 2 (U17) had the inputs crossed by hardware on the Zircon shield. Instead of rewiring, we corrected it in **one place in the firmware**: `MOTOR_INVERT={+1,-1,+1}`. We **validated it in the bank** by turning each motor separately with `diag_central_motors`."
 >
-> *(Note jun-2026: in the repair of robot 1, the M2 was rewired correctly → today both robots use `{+1,+1,+1}`. The story still serves as a design example: the inversion lives in ONE single point of the firmware, which is why adapting to the rewiring was just editing an array.)*
+> *(Note jun-2026: in the repair of robot 1, the M2 was rewired correctly → today both robots use `{+1,+1,+1}`. The story still holds as a design example: the inversion lives in ONE single point of the firmware, which is why adapting to the rewiring was just editing an array.)*
 
 ### Mechanical (features, materials, manufacturing)
 
 **Q: How does the robot move?**
-> "Omnidirectional **KIWI base**: 3 omni wheels at **120°** with 3 DC motors. This gives us holonomic movement (it can go in any direction without turning). The inverse kinematics is in a pure module tested with **11 tests**, and includes **proportional saturation**: if one wheel saturates, we scale all 3 equally to avoid distorting the trajectory."
+> "Base **omnidirectional KIWI**: 3 omni wheels at **120°** with 3 DC motors. This gives us holonomic movement (it can go in any direction without turning). The inverse kinematics is in a pure module tested with **11 tests**, and includes **proportional saturation**: if one wheel saturates, we scale all 3 equally to avoid distorting the trajectory."
 
 **Q: Do you have a kicker?**
 > "No. The robot **pushes the ball by inertia** when the striker aligns with the opposing goal (tolerance **12°**, less than **80 mm**). It’s a design decision: **fewer components, less energy, fewer points of failure**. The logic is in the `behind_ball` module with 16 tests."
 
 **Q: What is the chassis made of?**
-> "The **structural base plate is directly the PCB below** (≈175 × 166 mm, rounded plate-like contour, M3 mounting). The 3 boards stack like floors. `[GAP: confirm materials of the rest of the chassis, height between floors and printed parts 2026 — recorded in gaps]`."
+> "The **structural base plate is directly the PCB below** (≈175 × 166 mm, rounded plate type contour, M3 mounting). The 3 boards stack like floors. `[GAP: confirm materials of the rest of the chassis, height between floors and printed parts 2026 — recorded in gaps]`."
 
 **Q (manufacturing): How did you manufacture it?**
 > "The **3 custom PCBs** were designed in EasyEDA and are manufacturable as is (we have gerbers + BOM). The central one is commercial (Zircon from Robomov). The mechanical parts are **3D printed**. `[GAP: upload the STL of the chassis 2026 — those in the repo are from 2025 with dribbler/solenoid already discarded]`."
@@ -139,7 +139,7 @@
 ### Strategy (positioning, tactics)
 
 **Q: What does the goalkeeper do?**
-> "Patrols the goal and, when the ball approaches, **intercepts by anticipating**: instead of going to the current X of the ball, it goes to the **predicted** X = position + speed × 0.2 s, with a cap of 400 mm. The ball's speed is calculated on the vision board by finite differences with an EMA filter. If the ball is stationary, the lead is 0 and it behaves like a normal goalkeeper — **automatic fallback**."
+> "Patrols the goal and, when the ball approaches, **intercepts by anticipating**: instead of going to the current X of the ball, it goes to the predicted X = position + speed × 0.2 s, with a cap of 400 mm. The speed of the ball is calculated on the vision board by finite differences with an EMA filter. If the ball is stationary, the lead is 0 and it behaves like a normal goalkeeper — **automatic fallback**."
 
 **Q: And the striker?**
 > "Looks for the ball, **positions behind** it aligned to the opposing goal, and **pushes**. The FSM has the states SEARCH → POSITION → APPROACH → push, with a `LINE_AVOID` state that **bypasses everything** if it is about to leave the field."
@@ -156,10 +156,10 @@
 > "UART with a **custom protocol**: `[START 0xAA | LEN | TYPE | SEQ | PAYLOAD | CRC-16 | END 0x55]`. The **CRC** detects corruption and the **SEQ** detects lost packets. The decoder is a **byte-by-byte state machine that resynchronizes itself**: a garbage byte does not contaminate the next frame. And there are **watchdogs**: if a stream does not arrive in 500 ms, the central board goes into safe mode."
 
 **Q: How do you debug? Tell me about a real software bug.** 💡
-> "We have ~40 diagnostic sketches that reuse the production parsers. A real bug: the central board became **blind to the line** because it was decoding the old format (5 bytes) and **discarding** the new frames (16 bytes). It was invisible in telemetry — it looked the same as a loose cable. We caught it with a **harness in g++ offline** from the real chain encode→decode→interpret, migrated to the new format and covered it with tests. **Team rule**: when facing a failure, first grep the journal to see if it has happened before."
+> "We have ~40 diagnostic sketches that reuse the production parsers. A real bug: the central board became **blind to the line** because it was decoding the old format (5 bytes) and **discarding** the new frames (16 bytes). It was invisible in telemetry — it looked the same as a loose cable. We caught it with a **harness in g++ offline** from the real chain encode→decode→interpret, migrated to the new format, and covered it with tests. **Team rule**: when facing a failure, first grep the journal to see if it has happened before."
 
 **Q: Coordination between the 2 robots?**
-> "Via **ESP-NOW** through the communication board (ESP32-C6). The partner shares pose and if it sees the ball, and that enters the WorldSnapshot. `[GAP: confirm status of partner coordination in bank]`."
+> "Via **ESP-NOW** through the communication board (ESP32-C6). The partner shares pose and if it sees the ball, and that goes into the WorldSnapshot. `[GAP: confirm status of partner coordination in bank]`."
 
 ### Development & Documentation (inspiration, tracking, testing)
 
@@ -167,10 +167,10 @@
 > "With three live indices: **CURRENT-STATE** (robot state on 1 page, mandatory reading), **SOURCES-OF-TRUTH** (a canonical doc per topic; whoever creates or surpasses a doc updates the table in the **same commit**) and a chronological **engineering journal**. Plus **self-contained packs** by subsystem for onboarding."
 
 **Q: How do you test? (the star) 💡**
-> "We separate the **decision logic into pure C++ modules** —without Arduino— and test them on the PC with g++. Today: **658 tests / 47 suites / 0 failures** (measured 2026-06-05 19:50 ART with `scripts/run-host-tests.sh`), which grew traceably (246 → 262 → 324 → 354 → 545 → 658). See the growth graph in `docs/competencia/assets/fig8_test_growth.png`. **Honest clarification:** the host runner compiles the **pure modules** (shared + down); the central/top tests use Arduino and are compiled **on-target**. It was born from a real problem: the **antivirus blocked PlatformIO**, so we vendorized the testing framework and wrote a runner in g++ that **bypasses the antivirus and runs without internet**. This allows us to verify embedded firmware **without having the board in hand**."
+> "We separate the **decision logic into pure C++ modules** —without Arduino— and test them on the PC with g++. Today: **858 tests / 61 suites / 0 failures** (measured 2026-06-14 with `scripts/run-host-tests.sh`), which grew traceably (246 → 262 → 324 → 354 → 403 → 470 → 545 → 658 → 834 → 858). See the growth graph in `docs/competencia/assets/fig8_test_growth.png`. **Honest clarification:** the host runner compiles the **pure modules** (shared + down); the central/top tests use Arduino and are compiled **on-target**. It was born from a real problem: the **antivirus blocked PlatformIO**, so we vendorized the testing framework and wrote a runner in g++ that **bypasses the antivirus and runs without internet**. This allows us to verify embedded firmware **without having the board in hand**."
 
 **Q: How do you ensure that a change does not break what was working?**
-> "Two things: (1) **mandatory green gate** —the 658 tests pass (658 / 47 / 0)— before any merge; and (2) **fallback byte-identical**: each new feature, if the data is not available, produces **exactly** the previous command. We verify this with a test that compares the output with and without the data. This way a feature can 'sleep' until the data flows and **never introduces a regression**."
+> "Two things: (1) **mandatory green gate** —the 858 tests pass (858 / 61 / 0)— before any merge; and (2) **fallback byte-identical**: each new feature, if the data is not available, produces **exactly** the previous command. We verify this with a test that compares the output with and without the data. This way a feature **'sleeps'** until the data flows and **never introduces a regression**."
 
 **Q: Do you use version control? How do you work as a team?**
 > "Git in a public repo shared on GitHub (**IITA**, https://github.com/IITA-Proyectos/open-soccer-robocup-team2026), **MIT, all open-source**. We develop in branches and always `git fetch` + merge before pushing. Each commit carries **human/AI attribution**. We audit the firmware with independent reviews (20 subsystems, critical findings go through a **second skeptical reviewer**)."
@@ -179,14 +179,14 @@
 
 ## §5 — Team protocol during the interview (what the judge observes, not what we say)
 
-> This is what separates a 3 from a 5 in **Teamwork & Communication**. Rehearse like a choreography.
+> This is what separates a 3 from a 5 in **Teamwork & Communication**. Practice like choreography.
 
 | Situation | What to do (for Excellent) | What NOT to do |
 |---|---|---|
 | Question from my partner's area | "That was mainly worked on by `[X]`, you tell them" + the owner responds + **I add a detail** | Answer myself over the owner |
 | I don’t know the answer | "Honestly, I have that halfway, we validated it in the bank; what I do know is..." + redirect to what I do master | Make up / stay silent |
-| My partner gets stuck | Support them: "and a detail that helps here is..." | Leave them alone or correct them publicly with harshness |
-| The judge asks something we haven’t validated in the bank | **Be honest**: "it is implemented and tested on host, needs validation on the field" | Say it works if we haven’t tested it |
+| My partner gets stuck | Support them: "and a detail that helps here is..." | Leave them alone or correct them publicly harshly |
+| The judge asks something we haven’t validated in the bank | **Be honest**: "it’s implemented and tested on host, needs validation on the field" | Say it works if we haven’t tested it |
 | There are other teams in the room | Greet, listen to their answers, offer help if they ask | Ignore them (the rubric rewards commitment to all) |
 
 **Team closing phrase (memorize, 🇬🇧):** "Everything you saw is open-source and documented so that another team can replicate it — if you want, we can share the repo." (Reinforces Documentation & Community and leaves a good impression.)
@@ -197,21 +197,21 @@
 
 > Telling the truth **with an engineering framework** adds; lying and being caught detracts. Have these ready:
 
-- **Vision not recalibrated for Incheon:** "The vision code is solid and tested; what is missing is **bank calibration** (LAB + homography) for the venue lighting. We have the kit ready to recalibrate in <5 min." (This is our real blocker #1 — do not hide it.)
-- **Kinematics:** "The **wheel angles are already calibrated** (`{330,210,90}`, bank 2026-06-08, with the real physical arrangement: M1 front-left, M2 front-right, M3 rear); we still need to measure the **radius** of the assembled robot and the **fine-tuning of the lateral**. The kinematics module is pure and tested."
+- **Vision not recalibrated for Incheon:** "The vision code is solid and tested; what’s missing is **bank calibration** (LAB + homography) for the venue lighting. We have the kit ready to recalibrate in <5 min." (This is our real blocker #1 — do not hide it.)
+- **Kinematics:** "The **wheel angles are already calibrated** (`{330,210,90}`, bank 2026-06-08, with the actual physical layout: M1 front-left, M2 front-right, M3 rear); we still need to measure the **radius** of the assembled robot and the **fine-tuning of the lateral**. The kinematics module is pure and tested."
 - **1 healthy IMU:** "We run with **1 healthy BNO055 + 4 ToF**; the second IMU failed and the risk is documented. The pose still computes."
-- **Heading freezing:** "We detected that the IMU and the ToF compete on the I²C bus and the heading froze; we mitigated by lowering the bus to 100 kHz and reading the IMU at 20 Hz. The underlying fix (IMU on a separate bus) is noted."
+- **Heading freezing:** "We detected that the IMU and ToF compete on the I²C bus and the heading was freezing; we mitigated by lowering the bus to 100 kHz and reading the IMU at 20 Hz. The underlying fix (IMU on a separate bus) is noted."
 
 ---
 
 ## §7 — Preparation checklist (do BEFORE traveling)
 
 - [ ] Complete `IITA Low Battery Messi` and confirm who the **present competitors** are in Incheon.
-- [ ] Each competitor rehearses **their area** (§2) until they can respond fluently, with numbers.
+- [ ] Each competitor practices **their area** (§2) until they can respond fluently, with numbers.
 - [ ] **Translate to English** §1 (Show&Tell) and the 💡 answers from §4, and practice them aloud. 🇬🇧
-- [ ] Rehearse the **timed Show&Tell** (90 s) 3 times with the robot in hand.
-- [ ] Rehearse the **protocol for passing the floor** (§5) in a mock-up of 5 questions.
-- [ ] Laptop ready: repo cloned, `pio` working offline, `scripts/run-host-tests.sh` tested the day before, robots charged with `_robot1`/`_robot2`.
+- [ ] Practice the **timed Show&Tell** (90 s) 3 times with the robot in hand.
+- [ ] Practice the **protocol for passing the floor** (§5) in a mock-up of 5 questions.
+- [ ] Laptop ready: repo cloned, `pio` working offline, `scripts/run-host-tests.sh` tested the day before, robots loaded with `_robot1`/`_robot2`.
 - [ ] Have the **map of "where the code is"** (§3.2) printed or on screen for the Teamwork-Task.
 - [ ] Internalize the **power-cycle** (§3.3) to avoid wasting time if a sensor does not appear.
 
@@ -219,13 +219,13 @@
 
 ## Gaps (missing real data — complete before Incheon)
 
-- Official `IITA Low Battery Messi` registered in RoboCup Junior for Incheon (confirmed 2026-06-05; "IITA - Open Soccer RoboCup Team 2026" is the internal descriptor of the repo).
-- ✅ RESOLVED 2026-06-05: competing **María Virginia Viollaz** (vision/strategy) and **Elías Cordero** (electromechanical), both 18. Also traveling are **Enzo Juárez Velázquez (coach)** and **Cecilia Budeguer (mentor)**; **Gustavo Viollaz (mentor)** is not traveling.
+- `IITA Low Battery Messi` officially registered in RoboCup Junior for Incheon (confirmed 2026-06-05; "IITA - Open Soccer RoboCup Team 2026" is the internal descriptor of the repo).
+- ✅ RESOLVED: competing **María Virginia Viollaz** (vision/strategy) and **Elías Cordero** (electromechanics), both 18. Also traveling are **Enzo Juárez Velázquez (head coach)** and **Cecilia Budeguer (assistant coach)**; **Gustavo Viollaz (project director)** does not travel.
 - ✅ RESOLVED 2026-06-05: Salta, Argentina · champions of the national final of the Argentine Roboliga 2025 (UAI).
 - **Materials and dimensions of the chassis 2026** (height between floors/standoffs, printed parts, diameter and weight of the robot) — not documented; affects answers in the Mechanical category.
 - **STL/CAD of the chassis 2026** to confidently say "it is replicable" (those in the repo are from 2025 with dribbler/solenoid already discarded).
 - **Status of partner coordination (ESP-NOW) in bank** — to confidently answer the "robot-robot" question.
-- **Current number of tests** at the time of travel: verified **658 tests / 47 suites / 0 failures (2026-06-05 18:39 ART via `scripts/run-host-tests.sh`)**. Run the runner the day before and use the real figure of the day.
+- **Current number of tests** at the time of travel: verified **858 tests / 61 suites / 0 failures (2026-06-14 via `scripts/run-host-tests.sh`)**. Run the runner the day before and use the real figure of the day.
 - **Legal name of IITA** (✅ resolved 2026-06-05): **IITA = Institute of Innovation and Applied Technology** / Innovar Foundation. Unified in all docs.
 - **Data figures** (`docs/competencia/assets/fig8_test_growth.png`, `fig9_otos_error.png`): generate them with `gen_figuras.py` before traveling — the script exists but the PNGs are not yet generated in `assets/`.
-- **Translation to English** of all interview material (competition language requirement): the EN version lives in `docs/competencia/en/ENTREVISTA-PREP.md`; still needs **to be rehearsed aloud**.
+- **Translation to English** of all interview material (competition language requirement): the EN version lives in `docs/competencia/en/ENTREVISTA-PREP.md`; still needs **to be practiced aloud**.

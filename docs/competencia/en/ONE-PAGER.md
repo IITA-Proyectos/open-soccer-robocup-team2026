@@ -15,7 +15,7 @@ printing: 1 page, A4 or letter, vertical
 # IITA Low Battery Messi
 ### RoboCupJunior Soccer Open 2026 · IITA — Institute of Innovation and Applied Technology, Salta, Argentina
 
-**Omnidirectional soccer robot with 3 plates (TOP / CENTRAL / DOWN) + OpenMV vision, no kicker — moves by pushing the ball through inertia.**
+**Omnidirectional soccer robot with 3 plates (TOP / CENTRAL / DOWN) + OpenMV vision, no kicker — pushes the ball by inertia.**
 
 **Modular design in 2 parts:** the **UPPER** perceives, communicates, and merges sensors (knowing where everything is and at what speed; in the future, communicating with the partner robot); the **LOWER** is the drive train + decision-making brain, with an auxiliary floor plate that pre-processes its info. Each module is improved and tested separately, and there is space below to add a kicker + dribbler.
 
@@ -25,26 +25,26 @@ printing: 1 page, A4 or letter, vertical
 
 ## What makes it different — 3 ideas to copy
 
-- **Fail-safe in layers with direct emergency bus DOWN→CENTRAL.** At 1 m/s the robot travels 1 mm/ms; passing the edge alarm through two UARTs in series adds ~25 mm of *overshoot*. A direct single-hop cable stops the robot at the edge of the field in **< 15 ms**.
+- **Fail-safe in layers with direct emergency bus DOWN→CENTRAL.** At 1 m/s the robot travels 1 mm/ms; passing the edge alarm through two UARTs in series adds ~25 mm of *overshoot*. A direct single-jump cable stops the robot at the edge of the field in **< 15 ms** *(design goal, not yet measured with oscilloscope)*.
 - **Fallback byte-identical.** Each new feature (goalkeeper anticipating, drive-straight with OTOS, strafe by cross_track) produces **exactly the same command** as the previous behavior when its data is N/A — thus each feature **"sleeps" until its data flows**, without regression. Verified with a test comparing the output with and without the new data.
-- **Goalkeeper anticipating by ball speed.** Aims for the **predicted** X = `pos + clamp(v · lookahead)`, not the current X. With ball speed 0 / unavailable, `lead = 0` → reverts to byte-identical to the simple goalkeeper.
+- **Goalkeeper anticipating by ball speed.** Aims at the **predicted** X = `pos + clamp(v · lookahead)`, not the current X. With ball speed 0 / not available, `lead = 0` → reverts byte-identical to the simple goalkeeper. *(This feature is code-complete and tested on host; not yet validated on the bench: currently "sleeps" by fallback until the ball speed flows.)*
 
 ---
 
 ## Verification without board
 
-- **658 tests / 47 suites / 0 failures** *(live figure: measured 2026-06-05 18:39 ART; grows with each session → will be higher in Incheon)*, host-native (`g++`), **100% offline.**
-- The decision logic lives in **pure C++ modules** (no Arduino / Wire / Serial); compiles and runs on a laptop without the robot. Verification cycle: seconds.
+- **858 tests / 61 suites / 0 failures** *(live figure: measured 2026-06-14 with `scripts/run-host-tests.sh`, g++ from Webots; grows with each session → will be higher in Incheon)*, host-native (`g++`), **100% offline.**
+- The decision logic lives in **pure C++ modules** (no Arduino / Wire / Serial); compiles and runs on a notebook without the robot. Verification cycle: seconds.
 - Run it yourself: `scripts/run-host-tests.sh`.
 
 ---
 
 ## What you can copy (MIT)
 
-- **Byte-by-byte data contracts** — each message documented (type / size / pin / frequency / who fills it / who consumes it), e.g. the `WorldSnapshot` of 31 bytes.
+- **Byte-by-byte data contracts** — each documented message (type / size / pin / frequency / who fills it / who consumes it), e.g. the `WorldSnapshot` of 31 bytes.
 - **The host test harness** — `run-host-tests.sh` and the pattern that allows testing embedded firmware on the PC, without hardware.
-- **The PCBs** — complete **EasyEDA** projects of the TOP and DOWN plates (schematic + PCB + Gerbers + BOM + Pick&Place), refabricable as is.
-- **The engineering diary** — each bench iteration: we measure → evaluate → fix at a single point → re-verify.
+- **The PCBs** — complete **EasyEDA** projects of the TOP and DOWN plates (schematic + PCB + Gerbers + BOM + Pick&Place), refabricable as is. *(The CAD/STL of the 2026 chassis is still NOT in the repo — pending upload.)*
+- **The engineering diary** — each bench iteration: we measure → evaluate → fix in one point → re-verify.
 
 ---
 
@@ -58,4 +58,4 @@ Repo URL: `https://github.com/IITA-Proyectos/open-soccer-robocup-team2026`
 
 ---
 
-*IITA — Salta, Argentina · National champions RoboCupJunior Soccer Argentina (Dec 2025) → RoboCup 2026, Incheon. **Honest evolution:** we won the National with a much more basic robot (1 camera on top, 3 light sensors below, without ToF or ultrasound); the 2026 redesign improved it significantly by reusing the champion brain. We invested in learning. Made to be copied.*
+*IITA — Salta, Argentina · National champions RoboCupJunior Soccer Argentina (Dec 2025) → RoboCup 2026, Incheon. **Honest evolution:** we won the National with a much more basic robot (1 camera on top, 3 light sensors below, no ToF or ultrasound); the 2026 redesign improved it significantly by reusing the champion brain. We invested in learning. Made to be copied.*

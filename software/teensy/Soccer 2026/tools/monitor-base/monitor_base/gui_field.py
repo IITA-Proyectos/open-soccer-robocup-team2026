@@ -4,18 +4,18 @@ Dibuja la cancha completa y, dentro, el ROBOT en su posición con orientación +
 ESTELA de su recorrido, y la PELOTA con su estela. Convención de cancha (memoria
 field_axis_convention): +X = lateral (ancho, 1820), +Y = arco-a-arco (largo, 2430).
 
-⚠ HONESTIDAD (no negociable, ver el análisis del IDE parte B + TASK-022):
-  • La pose del robot se toma del OTOS (base.px/py/phdg) = ODOMETRÍA real de la
-    base (DOWN), que es lo ÚNICO confiable. NO se usa snap.x/y (depende de la
-    homografía de cámara SIN calibrar → daría posiciones plausibles-pero-falsas).
-    Si el OTOS no está fresco (ej. en R2 está deshabilitado: down_robot2 OTOS=0),
-    NO se inventa una posición: se avisa "sin odometría".
-  • La pelota se ubica = pose del robot + detección relativa de cámara. La
-    DIRECCIÓN a la pelota es fiable; la DISTANCIA depende de la homografía sin
-    calibrar (UNIT_TO_MM placeholder, TASK-022) → se dibuja PUNTEADA y se avisa
-    "distancia sin calibrar". No es un dato para tunear encima todavía.
-  • El heading del OTOS es relativo a su CERO (orientación al encender), no al
-    norte de la cancha. La orientación mostrada es relativa a ese cero.
+PRINCIPIO (corrección María 2026-06-15): la app MUESTRA lo que el TOP ya calcula
+y manda a CENTRAL — NO recalcula nada. Lo único que calcula es la ESTELA histórica.
+  • Pose del robot = `snap.my_x/y/heading` del WorldSnapshot (lo que el TOP envía a
+    CENTRAL; main_top.cpp:176-200). Se dibuja tal cual; si `snap.valid` es False se
+    avisa, no se inventa.
+  • La pelota viene RELATIVA al robot en el snapshot (snap.ball_x/y =
+    cameras_get_ball_*; main_top.cpp:205-206). Para ubicarla en la cancha se la rota
+    con la PROPIA pose del snapshot (no se recalcula la pose; sólo se compone el
+    relativo con lo que ya manda el TOP).
+  • La calidad de la pose/pelota depende de la calibración del firmware (homografía,
+    TASK-022). La app es FIEL al dato que recibe CENTRAL; si está sin calibrar, se ve
+    sin calibrar (justamente sirve para diagnosticar eso). No lo corrige ni lo maquilla.
 
 Sin display: `--field --selftest`.
 """
@@ -122,8 +122,8 @@ class FieldApp:
                      bg="#b32d00", fg="#ffe27a", font=("Segoe UI", 12, "bold"), pady=5).pack(fill="x")
         tk.Label(self.root, bg="#11151a", fg="#ffd27a", anchor="w", padx=8, pady=3,
                  font=("Segoe UI", 9),
-                 text="Robot por ODOMETRÍA OTOS (fiable). Pelota: dirección fiable, "
-                      "DISTANCIA sin calibrar (homografía pendiente, TASK-022) → punteada.").pack(fill="x")
+                 text="Muestra la POSE que el TOP manda a CENTRAL (snapshot my_x/y/hdg) tal cual. "
+                      "La app solo agrega la ESTELA. Pelota = relativa del snapshot ubicada con esa pose.").pack(fill="x")
         main = ttk.Frame(self.root, padding=8); main.pack(fill="both", expand=True)
         self.canvas = tk.Canvas(main, width=self.cw, height=self.ch,
                                 bg="#0c3a18", highlightthickness=0)
@@ -173,12 +173,13 @@ class FieldApp:
         self.root.after(self.poll_ms, self._tick)
 
     def _accumulate(self, f: TopFrame) -> None:
-        if f.base.pose_fresh:
-            self.robot_trail.push(float(f.base.pose_x_mm), float(f.base.pose_y_mm))
-            if f.cam.ball_visible:
-                bx, by = robot_rel_to_field(f.cam.ball_x_mm, f.cam.ball_y_mm,
-                                            f.base.pose_x_mm, f.base.pose_y_mm,
-                                            f.base.pose_heading_deg)
+        # Pose = lo que el TOP manda a CENTRAL (snapshot). NO se recalcula.
+        if f.snap.valid:
+            self.robot_trail.push(float(f.snap.my_x_mm), float(f.snap.my_y_mm))
+            if f.snap.ball_visible:
+                bx, by = robot_rel_to_field(f.snap.ball_x_mm, f.snap.ball_y_mm,
+                                            f.snap.my_x_mm, f.snap.my_y_mm,
+                                            f.snap.my_heading_deg)
                 self.ball_trail.push(bx, by)
 
     def _render(self, f: TopFrame) -> None:
@@ -200,17 +201,17 @@ class FieldApp:
                 px, py = self._fpx(x, y)
                 flat += [px, py]
             c.create_line(*flat, fill="#c9821f", width=1, dash=(3, 3), tags="dyn")
-        # Robot (si hay odometría).
-        if f.base.pose_fresh:
-            self._draw_robot(f.base.pose_x_mm, f.base.pose_y_mm, f.base.pose_heading_deg)
-        # Pelota actual (punteada).
-        if f.base.pose_fresh and f.cam.ball_visible:
-            bx, by = robot_rel_to_field(f.cam.ball_x_mm, f.cam.ball_y_mm,
-                                        f.base.pose_x_mm, f.base.pose_y_mm,
-                                        f.base.pose_heading_deg)
-            px, py = self._fpx(bx, by)
-            c.create_oval(px - 7, py - 7, px + 7, py + 7, fill="#ff8c2a",
-                          outline="#ffd", dash=(2, 2), tags="dyn")
+        # Robot en la pose del snapshot (lo que el TOP manda a CENTRAL).
+        if f.snap.valid:
+            self._draw_robot(f.snap.my_x_mm, f.snap.my_y_mm, f.snap.my_heading_deg)
+            # Pelota: relativa del snapshot, ubicada con la pose del snapshot.
+            if f.snap.ball_visible:
+                bx, by = robot_rel_to_field(f.snap.ball_x_mm, f.snap.ball_y_mm,
+                                            f.snap.my_x_mm, f.snap.my_y_mm,
+                                            f.snap.my_heading_deg)
+                px, py = self._fpx(bx, by)
+                c.create_oval(px - 7, py - 7, px + 7, py + 7, fill="#ff8c2a",
+                              outline="#ffd", tags="dyn")
         self._render_info(f)
 
     def _draw_robot(self, x_mm: float, y_mm: float, heading_deg: float) -> None:
@@ -231,25 +232,26 @@ class FieldApp:
     def _render_info(self, f: TopFrame) -> None:
         def yn(b):
             return "SÍ" if b else "no"
-        if f.base.pose_fresh:
-            pose = (f"x={f.base.pose_x_mm:+5d}  y={f.base.pose_y_mm:+5d}  "
-                    f"hdg={f.base.pose_heading_deg:+.1f}°  conf={f.base.pose_confidence}")
-            odo = "OTOS fresco ✓"
+        s = f.snap
+        if s.valid:
+            pose = (f"x={s.my_x_mm:+5d}  y={s.my_y_mm:+5d}  "
+                    f"hdg={s.my_heading_deg:+.1f}°  conf={s.my_confidence}")
+            snapst = "snapshot VÁLIDO ✓ (lo que va a CENTRAL)"
         else:
-            pose = "—  (sin odometría OTOS)"
-            odo = "⚠ SIN OTOS: no puedo ubicar el robot (en R2 el OTOS está deshabilitado)"
+            pose = "—  (snapshot no válido)"
+            snapst = "⚠ snapshot NO válido (el TOP todavía no manda pose)"
         self._set_text(self.info,
-            f"ODOMETRÍA     : {odo}\n"
-            f"pose robot    : {pose}\n"
-            f"estela robot  : {len(self.robot_trail)} puntos\n"
+            f"SNAPSHOT→CENTRAL : {snapst}\n"
+            f"pose robot      : {pose}\n"
+            f"heading válido  : {yn(f.imu.heading_valid)}\n"
+            f"estela robot    : {len(self.robot_trail)} puntos\n"
             f"\n"
-            f"¿PELOTA?      : {yn(f.cam.ball_visible)}\n"
-            f"pelota rel.   : x={f.cam.ball_x_mm:+5d} y={f.cam.ball_y_mm:+5d} "
-            f"(distancia SIN calibrar)\n"
-            f"estela pelota : {len(self.ball_trail)} puntos\n"
+            f"¿PELOTA?        : {yn(s.ball_visible)}\n"
+            f"pelota (rel.)   : x={s.ball_x_mm:+5d} y={s.ball_y_mm:+5d}\n"
+            f"estela pelota   : {len(self.ball_trail)} puntos\n"
             f"\n"
-            f"cancha        : {int(self.field_w)} × {int(self.field_h)} mm\n"
-            f"frames        : {self.frame_count}\n")
+            f"cancha          : {int(self.field_w)} × {int(self.field_h)} mm\n"
+            f"frames          : {self.frame_count}\n")
 
     def _clear_trails(self) -> None:
         self.robot_trail.clear()
@@ -292,23 +294,23 @@ def selftest(frames: int = 200) -> int:
     sim = SimulatorTop(rate_hz=20.0)
     rtrail, btrail = Trail(), Trail()
     last = None
-    fresh_seen = False
+    valid_seen = False
     for _ in range(frames):
         last = parse_line_top(sim.next_line())
-        if last.base.pose_fresh:
-            fresh_seen = True
-            rtrail.push(float(last.base.pose_x_mm), float(last.base.pose_y_mm))
-            if last.cam.ball_visible:
-                bx, by = robot_rel_to_field(last.cam.ball_x_mm, last.cam.ball_y_mm,
-                                            last.base.pose_x_mm, last.base.pose_y_mm,
-                                            last.base.pose_heading_deg)
+        if last.snap.valid:
+            valid_seen = True
+            rtrail.push(float(last.snap.my_x_mm), float(last.snap.my_y_mm))
+            if last.snap.ball_visible:
+                bx, by = robot_rel_to_field(last.snap.ball_x_mm, last.snap.ball_y_mm,
+                                            last.snap.my_x_mm, last.snap.my_y_mm,
+                                            last.snap.my_heading_deg)
                 btrail.push(bx, by)
     assert last is not None
     # Chequeo de la transformación: a heading 0, 'al frente' (rel_y) suma a +Y.
     fx, fy = robot_rel_to_field(0, 500, 100, 100, 0.0)
     geom_ok = abs(fx - 100) < 1e-6 and abs(fy - 600) < 1e-6
     print(f"[selftest-field] frames procesados : {frames}")
-    print(f"[selftest-field] OTOS fresco visto  : {fresh_seen}")
+    print(f"[selftest-field] snapshot válido    : {valid_seen}")
     print(f"[selftest-field] estela robot/pelota: {len(rtrail)} / {len(btrail)} puntos")
     print(f"[selftest-field] transformación rel→cancha: {'OK' if geom_ok else 'FALLO'}")
     if not geom_ok:

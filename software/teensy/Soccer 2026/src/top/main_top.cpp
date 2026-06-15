@@ -30,6 +30,26 @@
 #include "localization_runtime.h"  // fusión TOF+IMU → pose absoluta en cancha
 #include "types.h"
 #include "goal_polarity.h"         // autodetección color arco rival/propio
+
+// === Estimador de pose fusionada (B3 RT 2026-06-15, GATEADO off-by-default) ===
+// Cablea pose_fusion (complementario ToF+OTOS) + pose_filter (suavizado + gate de
+// salto) detrás de TOP_ENABLE_POSE_FUSION. Default OFF → build_snapshot usa la pose
+// de localization tal cual hoy (byte-idéntico). Ver doc ESTIMACION-FUSION-TOP.md.
+//
+// PRE-REQUISITO DURO (pedido explícito de Gustavo): el HEADING es la RAÍZ. Un rumbo
+// congelado/malo rota TODO el mapa, y la corrección ToF de pose_fusion ancla en el
+// lugar equivocado. Por eso pose_fusion NO COMPILA sin el detector de BNO congelado
+// (TOP_ENABLE_BNO_FREEZE_DETECT) activo. Si ves este #error: activá primero el freeze
+// detector y validalo en banco (que no dé falsos-DEAD con el robot quieto) ANTES de
+// prender la fusión de pose.
+#ifdef TOP_ENABLE_POSE_FUSION
+#if !defined(TOP_ENABLE_BNO_FREEZE_DETECT)
+#error "TOP_ENABLE_POSE_FUSION requiere TOP_ENABLE_BNO_FREEZE_DETECT: el heading es la raiz; un rumbo congelado rota todo el mapa. Activa primero el freeze-detector (y validalo en banco)."
+#endif
+#include "pose_fusion.h"
+#include "pose_filter.h"
+#include "pose_age.h"      // gating fino de frescura del OTOS (INC-2)
+#endif
 #if defined(TOP_DEBUG_TELEMETRY) || defined(TOP_USB_MONITOR)
 #include "top_telemetry_serial.h"
 #endif
@@ -109,9 +129,65 @@ WorldSnapshot build_snapshot() {
     // El runtime cachea el último cómputo; si valid=false (p.ej. <2 TOFs útiles),
     // x/y caen a 0 y confidence=0 para que el CENTRAL sepa ignorar la POSICIÓN.
     auto pose = iitasoccer::localization_runtime_get_pose();
+#ifdef TOP_ENABLE_POSE_FUSION
+    // Fusión complementaria ToF(absoluto) + OTOS(odometría) + suavizado/gate de salto.
+    // SEGURIDAD POR DISEÑO: mientras la fusión NO esté anclada (initialized=false →
+    // pfo.valid=false), que es el caso de HOY (el ToF casi nunca da valid: sólo hay
+    // ToF en el eje Y), caemos al comportamiento EXACTO de localization → byte-idéntico
+    // hasta que el ToF ancle de verdad, que es justo cuando la fusión empieza a aportar.
+    // Heading: NO se fusiona acá (sigue saliendo del BNO en s.my_heading_centideg abajo).
+    {
+        static PoseFusionState  s_pf{};
+        static PoseFilterState  s_pflt{};
+        static PoseFusionConfig s_pfcfg   = pose_fusion_default_config();
+        static PoseFilterConfig s_pfltcfg = pose_filter_default_config();
+        static bool             s_pf_ready = false;
+        static elapsedMillis    s_pf_dt;
+        if (!s_pf_ready) {
+            pose_fusion_reset(s_pf);
+            pose_filter_init(s_pflt);
+            s_pf_ready = true;
+        }
+
+        const Pose2D& otos = comm_down_get_pose();
+        PoseFusionInputs in{};
+        in.tof_x_mm  = pose.x_mm;
+        in.tof_y_mm  = pose.y_mm;
+        in.tof_valid = pose.valid;
+        in.otos_x_mm = otos.x_mm;   // OTOS absoluto acumulado; el módulo usa el DELTA internamente
+        in.otos_y_mm = otos.y_mm;   // ⚠️ BANCO: validar signo/eje del delta OTOS vs marco de cancha
+        // Gating FINO (INC-2): rechaza OTOS más viejo que otos_stale_ms (≈60 ms) — a 100 Hz
+        // un OTOS sano llega cada ~10 ms; predecir contra un delta de 200 ms es basura. El
+        // booleano is_pose_fresh sólo corta a 500 ms. Nunca-recibido => edad MAX => no fresco.
+        in.otos_fresh = pose_age_is_fresh(comm_down_pose_age_ms(), s_pfcfg.otos_stale_ms);
+        in.bno_heading_centideg = sensors_imu_get_heading_centideg();  // pass-through (no fusiona heading)
+        in.dt_ms = static_cast<uint16_t>(static_cast<uint32_t>(s_pf_dt));
+        s_pf_dt = 0;
+
+        PoseFusionOutput pfo = pose_fusion_update(s_pf, in, s_pfcfg);
+        if (pfo.valid) {
+            // pose_filter como red de salto/suavizado sobre la pose ya fusionada.
+            FilterPose meas{};
+            meas.x_mm             = pfo.x_mm;
+            meas.y_mm             = pfo.y_mm;
+            meas.heading_centideg = pfo.heading_centideg;
+            meas.confidence       = pfo.confidence;
+            FilterPose filt = pose_filter_update(s_pflt, s_pfltcfg, meas, true);
+            s.my_x_mm            = filt.x_mm;
+            s.my_y_mm            = filt.y_mm;
+            s.my_pose_confidence = filt.confidence;
+        } else {
+            // Fusión aún no anclada → comportamiento IDÉNTICO a hoy.
+            s.my_x_mm            = pose.x_mm;
+            s.my_y_mm            = pose.y_mm;
+            s.my_pose_confidence = pose.valid ? 70 : 0;
+        }
+    }
+#else
     s.my_x_mm             = pose.x_mm;
     s.my_y_mm             = pose.y_mm;
     s.my_pose_confidence  = pose.valid ? 70 : 0;
+#endif
 
     // Heading: SIEMPRE del IMU, desacoplado de la validez de la POSICIÓN.
     // localization_compute() solo escribe pose.heading_centideg dentro del bloque

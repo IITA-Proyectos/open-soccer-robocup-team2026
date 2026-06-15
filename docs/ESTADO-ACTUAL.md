@@ -307,6 +307,69 @@ nativo, pero ya no es el único camino. Ver
    §Resultado + `journal/2026-06-07-calibracion-distancia-camara-frontal-elias.md`. (Migración
    H7→N6, bugs P0 y velocidad de pelota ya estaban resueltos — Avance 2026-06-03.)
 
+### Avance 2026-06-15 — Confiabilidad del heading: cross-validación independiente + centinela dual-BNO @1Hz (módulos puros)
+- Pedido de Gustavo: heading MÁS CONFIABLE con AUTO-RECUPERACIÓN (decidir qué BNO está sano con datos
+  INDEPENDIENTES, no auto-referencia; centinela @1Hz del 2º BNO con ToF pausados; fusión cámara+OTOS;
+  reseteo si deriva). **Construye sobre TASK-212** (análisis subido por otra sesión — el mismo enfoque) +
+  aporta el **centinela dual-BNO @1Hz** (idea de Gustavo, no estaba en TASK-212). El **INC-1 (gyro-guard)
+  de hoy ES la Fase 0** de TASK-212; esto es la **Fase 1**. Journal: `journal/2026-06-15-fusion-confiabilidad-heading-bno.md`.
+- **Workflow de diseño (9 agentes) + verificación adversarial** reencuadró el alcance: (1) **FAILOVER
+  físico RECHAZADO para Incheon** — `imu_fusion` NO hace failover idx0→idx1 transparente (promedia), y un
+  failover a heading PLAUSIBLE-PERO-MALO es PEOR que `heading_valid=0` (el arquero rotaría fuera del arco).
+  Jerarquía: primario-sano > heading_valid=0 > secundario (2027). (2) La cámara NO mide ω si el arquero
+  hace strafe (traslación contamina). (3) **Anti-falso-veto**: con <2 refs INDEPENDIENTES, JAMÁS MALO.
+- **Implementado PURO + host-tested (riesgo cero, gateado):** `src/shared/goal_rate_tracker.h` (w_cam del
+  bearing del arco, resta angular envuelta — NO espejo de ball_velocity; `test_goal_rate_tracker` 7/7) +
+  `src/shared/imu_cross_validate.h` (salud por mediana de refs + anti-falso-veto + consenso + scheduler
+  del centinela con timeout; **NO failover**, solo veredicto/telemetría; `test_imu_cross_validate` 13/13).
+- **Bloqueado a banco (glue Arduino, 3 blockers) → TASK-213:** init del secundario, centinela 1Hz inline
+  en `sensors_tof_tick` (ToF-pausa), cableado cámara/OTOS. Failover físico = 2027.
+
+### Avance 2026-06-15 — Optimización TOP no-bloqueante (workflow): INC-1 gyro-guard + INC-2 pose-age (gateados)
+- Continuación del trabajo RT, foco **placa TOP**, con metodología superpowers + 2 workflows (plan de 11
+  agentes + verificación adversarial de 5). Todo gateado off-by-default → binarios byte-idénticos.
+  Journal: `journal/2026-06-15-top-optimizacion-no-bloqueante.md`.
+- **Hallazgo del workflow:** el loop del TOP YA está muy afinado (round-robin ToF + payload recortado →
+  ~190k/s, TX no-bloqueante, RX acotado + addMemoryForRead, I²C 1 MHz init). El pendiente de alto valor
+  NO era la arquitectura ISR/DMA (eso es post-Incheon) sino re-habilitar el **freeze-detector del BNO**
+  (apagado por falso-DEAD el 2026-06-08), que además BLOQUEA `pose_fusion` (lo exige por `#error`).
+- **INC-1 (P0) — guarda de gyro en `imu_freeze`:** nueva variante pura `imu_freeze_update_g` (la vieja
+  intacta) que solo declara congelado si el gyro probó rotación REAL mientras el heading quedó clavado →
+  **robot quieto nunca muere** (mata el falso-DEAD) y no es inerte. Cableada en `sensors_imu.cpp` (gyro ya
+  leído, 0 I²C extra). `test_imu_freeze` 13→30. Envs banco `top_robot1_bnofreeze` + `top_robot2_pri_bnofreeze`.
+- **INC-2 (P1) — edad fina del OTOS:** `pose_age.h` puro (nunca-recibido → edad MÁX, no 0) + getter
+  `comm_down_pose_age_ms()` + gating de `pose_fusion` a `otos_stale_ms`≈60 ms (vs booleano de 500 ms).
+- **Verificación adversarial: 0 blockers / 0 majors de corrección.** Sus hallazgos de cobertura ya
+  aplicados (blindaje anti-regresión del falso-DEAD, bordes de umbral, rotación negativa).
+- **Diferido (post-Incheon, banco):** INC-3 (snapshot_assembler — choca con pose_fusion) e INC-4/5/6
+  (sensor_slot ISR + RX-IRQ + emisor por timer — glue no host-testeable; el review halló un blocker de
+  concurrencia real en el emisor por timer). Banco: **TASK-211** (freeze-detect) + **TASK-210** (pose_fusion + otos_stale_ms).
+
+### Avance 2026-06-15 — Integración RT GATEADA: quick-wins CENTRAL + pose_fusion TOP + motor_slew (todo OFF-by-default)
+- **Se CABLEÓ parte del análisis RT al firmware vivo, todo gateado off-by-default → binarios de
+  competencia byte-idénticos.** Rama feature + PR (NO push directo). Gate host 937/67/0 sin cambios
+  (los cambios son glue Arduino; los módulos puros ya tenían sus tests). Journal:
+  `journal/2026-06-15-integracion-rt-gateada.md`.
+- **A1 `CENTRAL_DEBUG_SERIAL`** — el bloque de ~30 `Serial.print` cada 500 ms del `loop()` de CENTRAL
+  ahora está gateado. El flag se DEFINE en `central_robot1/2` (byte-idéntico HOY); para SACAR el pico de
+  jitter, **borrar el flag del env de competencia en banco**.
+- **A2 `CENTRAL_TOP_RX_BIGBUF`** — `Serial7.addMemoryForRead(buf,512)` en `comm_top.cpp` (hoy 64 B → el
+  snapshot del TOP se descarta en silencio si una vuelta se alarga). Default OFF = 64 B = binario de hoy;
+  el equipo agrega el flag en banco (chequear que `resync` del link TOP baja).
+- **B `pose_fusion`+`pose_filter`** — CABLEADOS en `main_top.cpp::build_snapshot` tras `-DTOP_ENABLE_POSE_FUSION`
+  (env nuevo `top_robot2_pri_posefusion`). **INTERLOCK DURO**: `#error` si se prende sin
+  `-DTOP_ENABLE_BNO_FREEZE_DETECT` (el heading es la raíz). **Seguro por diseño**: hasta que el ToF ancle
+  (hoy casi nunca: sólo eje Y) la fusión NO inicializa → cae al comportamiento de localization de hoy.
+  ⚠️ `ball_sticky` (`TOP_CAM_STICKY`) e `imu_freeze` (`TOP_ENABLE_BNO_FREEZE_DETECT`) YA estaban cableados
+  de antes — verificado, no se re-hizo.
+- **C `motor_slew`** (Capa 2 lazo CENTRAL) — CABLEADO tras `-DCENTRAL_MOTOR_SLEW` (env nuevo
+  `central_robot2_strafe_slew_bb`): rampa `{vx,vy,omega}` antes de la cinemática. Los **reflejos
+  (freno de borde, STOP/SAFE_NO_TOP) BYPASEAN la rampa** (se aplican YA + `slew_reset`).
+- **NO cableados a propósito** (decisión de coach): `state_timer` + `sensor_slot`/`snapshot_assembler`
+  (son del rewrite de FSM/loop NUEVOS → cablearlos = reescribir `strategy.cpp`/`main_*.cpp`, prohibido)
+  y `line_early_escape` (cambia la señal de borde safety-crítica → necesita banco para titular el trigger).
+  Ver el journal para el razonamiento.
+
 ### Avance 2026-06-15 — Arquero strafe: tuning del control de rumbo + mitigaciones de latencia (banco María)
 - **Banco María (2026-06-14/15):** el arquero strafe (R2) andaba "muy feo" con el PFM de rumbo.
   Hallazgo: **anda MEJOR sin BNO** (PFM apagado) → el problema es el **lazo de rumbo / latencia del

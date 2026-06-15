@@ -40,8 +40,28 @@ void handle_frame(const Frame& f) {
 // Reasignado 2026-05-31 (decisión Gustavo, cableado en banco): antes Serial1 (0/1);
 // se movió a Serial7 (28/29, pines de expansión libres del Zircon) cuando el link
 // DOWN→CENTRAL tomó Serial1 (0/1). Ver MAPA-CONEXIONES-3-PLACAS.md.
+//
+// BUFFER RX (quick-win RT 2026-06-15, GATEADO por CENTRAL_TOP_RX_BIGBUF, DEFAULT OFF):
+// el RX de Serial7 trae solo 64 B de buffer interno. El WorldSnapshot del TOP (frame
+// ~37 B con header+CRC) llega a 100 Hz; si una vuelta del loop de la CENTRAL se alarga
+// (p.ej. el freno de borde retiene el loop, o un tramo de strategy pesado), 64 B se
+// llenan en <1 frame y los bytes nuevos se DESCARTAN en silencio → frame corrupto →
+// el decoder resincroniza y se pierde ese snapshot SIN aviso (solo sube resync). El
+// link DOWN→CENTRAL ya usa 512 B (comm_down); esto le da el mismo colchón al de TOP:
+// 512 B ≈ 13 frames de holgura. addMemoryForRead() es API de Teensy (no host-testeable);
+// es glue Arduino puro, por eso gateado y default OFF para no tocar el binario de
+// competencia. Para activarlo: agregar -DCENTRAL_TOP_RX_BIGBUF al env tras validar en
+// banco (chequear que comm_top_get_resync_events() baja bajo carga). Cero riesgo de
+// regresión: más buffer solo puede ayudar; el costo es ~512 B de SRAM (Teensy 4.1: 512 KB).
+#ifdef CENTRAL_TOP_RX_BIGBUF
+static uint8_t s_top_rx_buf[512];   // estático: debe sobrevivir todo el runtime
+#endif
+
 void comm_top_init() {
     Serial7.begin(UART_BAUD);
+#ifdef CENTRAL_TOP_RX_BIGBUF
+    Serial7.addMemoryForRead(s_top_rx_buf, sizeof(s_top_rx_buf));
+#endif
 }
 
 void comm_top_tick() {

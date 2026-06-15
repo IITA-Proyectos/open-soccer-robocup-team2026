@@ -85,7 +85,9 @@ struct PoseFusionInputs {
     // El módulo calcula el delta internamente vs otos_prev_*.
     int16_t otos_x_mm;
     int16_t otos_y_mm;
-    bool    otos_fresh;               // = comm_down_is_pose_fresh() (gateado por el caller)
+    bool    otos_fresh;               // freshness GATEADA por el caller. INC-2 (2026-06-15):
+                                      //   main_top usa pose_age_is_fresh(comm_down_pose_age_ms(),
+                                      //   cfg.otos_stale_ms≈60 ms), NO el booleano grueso de 500 ms.
     // Heading del BNO (pass-through; nunca se fusiona acá).
     int16_t bno_heading_centideg;
     // dt del tick en ms (del scheduler del runtime; típico 10).

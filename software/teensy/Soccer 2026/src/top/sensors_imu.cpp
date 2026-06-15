@@ -413,7 +413,12 @@ void sensors_imu_tick() {
     for (int i = 0; i < IMU_FUSION_N; ++i) {
         if (!in[i].present) continue;
         const int16_t hcdeg = static_cast<int16_t>(in[i].heading_deg * 100.0f);
-        if (imu_freeze_update(g_freeze[i], hcdeg, now, g_freeze_cfg)) {
+        // VARIANTE CON GUARDA DE GYRO (2026-06-15): arregla el falso-DEAD del robot
+        // QUIETO que hizo QUITAR este flag de los envs el 2026-06-08. Solo declara
+        // congelado si ADEMÁS el gyro probó que el robot estaba GIRANDO mientras el
+        // heading quedó clavado (in[i].gyro_z_dps ya leído este tick → CERO I²C extra).
+        // Ver src/shared/imu_freeze.h::imu_freeze_update_g.
+        if (imu_freeze_update_g(g_freeze[i], hcdeg, in[i].gyro_z_dps, now, g_freeze_cfg)) {
             in[i].present = false;   // congelado → fusion lo verá ausente → DEAD
         }
     }

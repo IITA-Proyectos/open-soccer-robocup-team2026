@@ -30,6 +30,9 @@
 #ifdef CENTRAL_BLACKBOX
 #include "blackbox.h"       // caja negra de corridas (gateada, envs *_bb)
 #endif
+#ifdef CENTRAL_MOTOR_SLEW
+#include "motor_slew.h"     // limitador de slew/rampa del comando (Capa 2 lazo RT, gateado)
+#endif
 
 using namespace iitasoccer;
 
@@ -42,7 +45,34 @@ namespace iitasoccer { uint32_t comm_down_line_schema_rejects(); }
 namespace {
 
 elapsedMillis g_since_strategy_tick;
-elapsedMillis g_since_debug;
+#ifdef CENTRAL_DEBUG_SERIAL
+elapsedMillis g_since_debug;   // solo usada por el bloque de telemetría USB (gateado)
+#endif
+
+#ifdef CENTRAL_MOTOR_SLEW
+// === Rampa de comando de motores (Capa 2 del lazo RT, GATEADA off-by-default) ===
+// Suaviza el comando {vx,vy,omega} en el espacio de EJES (antes de la cinemática) para
+// que un salto crudo no haga patinar las ruedas: arranque parejo, dirección limpia. Sin
+// el flag, el binario de competencia NO cambia. Los REFLEJOS (freno de borde, STOP /
+// SAFE_NO_TOP) BYPASEAN la rampa: se aplican YA (motors_brake/motors_stop directos) y
+// resetean el estado para que la rampa no tironee desde un valor viejo el tick siguiente
+// (regla dura del lazo RT; ver motor_slew.h + HANDOFF-INTEGRACION-RT.md).
+//
+// Pendiente máx por eje por tick (la FSM corre a 100 Hz). PLACEHOLDERS conservadores
+// (poco limitantes) → habilitar el flag NO cripplea la conducta de hoy; TUNEAR en banco
+// (bajar el valor = rampa más suave). Overridables por -DCENTRAL_SLEW_*.
+#ifndef CENTRAL_SLEW_DVX
+#define CENTRAL_SLEW_DVX 120   // mm/s por tick
+#endif
+#ifndef CENTRAL_SLEW_DVY
+#define CENTRAL_SLEW_DVY 120   // mm/s por tick
+#endif
+#ifndef CENTRAL_SLEW_DW
+#define CENTRAL_SLEW_DW  600   // centideg/s por tick
+#endif
+SlewState     g_motor_slew{};
+const SlewCfg g_motor_slew_cfg = { { CENTRAL_SLEW_DVX, CENTRAL_SLEW_DVY, CENTRAL_SLEW_DW } };
+#endif  // CENTRAL_MOTOR_SLEW
 
 uint32_t g_loop_count = 0;
 
@@ -301,6 +331,9 @@ void loop() {
         }
         if (!s_edge_brake_released) {
             motors_brake();                       // freno activo (corto en H-bridge), no solo PWM=0
+#ifdef CENTRAL_MOTOR_SLEW
+            slew_reset(g_motor_slew);             // reflejo: la rampa NO debe tironear al soltar el freno
+#endif
             digitalWrite(PIN_LED_STATUS, HIGH);   // LED fijo = alerta visual
 #ifdef CENTRAL_BLACKBOX
             // Auditoría 2026-06-11: sin esto la caja negra quedaba CIEGA exactamente durante el
@@ -323,12 +356,32 @@ void loop() {
         if (!world_model_snapshot_is_fresh()) {
             // ARRIBA caído > 500 ms → SAFE_NO_TOP. Parar motores, parpadear LED.
             motors_stop();
+#ifdef CENTRAL_MOTOR_SLEW
+            slew_reset(g_motor_slew);            // reflejo de pérdida de mundo: rampa en cero
+#endif
             digitalWrite(PIN_LED_STATUS, (millis() / 200) % 2);
 #ifdef CENTRAL_BLACKBOX
             blackbox_tick(MotorCommand{});   // timeline completa aun sin snapshot
 #endif
         } else {
             MotorCommand cmd = strategy_tick();
+#ifdef CENTRAL_MOTOR_SLEW
+            // Capa 2: rampar {vx,vy,omega} antes de la cinemática (arranque parejo).
+            {
+                int16_t axes[SLEW_AXES] = { cmd.vx_mm_s, cmd.vy_mm_s, cmd.omega_centideg_s };
+                if (cmd.spin_pwm != 0) {
+                    // Override de giro crudo: motors_apply_command IGNORA vx/vy/omega y
+                    // hace PWM directo. No rampamos (no aplica); sincronizamos el estado
+                    // para que al SALIR del spin la rampa no tironee desde un valor viejo.
+                    slew_force(g_motor_slew, axes);
+                } else {
+                    slew_apply(g_motor_slew, axes, g_motor_slew_cfg);
+                    cmd.vx_mm_s          = axes[0];
+                    cmd.vy_mm_s          = axes[1];
+                    cmd.omega_centideg_s = axes[2];
+                }
+            }
+#endif
             motors_apply_command(cmd);
             digitalWrite(PIN_LED_STATUS, HIGH);  // OK
 #ifdef CENTRAL_BLACKBOX
@@ -338,6 +391,14 @@ void loop() {
     }
 
     // === Debug print cada 500 ms ===
+    // GATEADO por CENTRAL_DEBUG_SERIAL (2026-06-15, quick-win RT): este bloque corre
+    // SIEMPRE hoy y volcaba ~30 Serial.print por USB cada 500 ms dentro del loop de
+    // motores → pico de jitter periódico si el buffer USB CDC se llena. Para no tocar
+    // el binario de competencia, el flag se DEFINE en los envs central_robot1/robot2
+    // (y por herencia en todas las variantes) → byte-idéntico HOY. La quita real del
+    // jitter es un flip de banco: borrar el flag del env de competencia tras validar
+    // que la telemetría no hace falta en cancha. Mismo patrón que CENTRAL_BLACKBOX.
+#ifdef CENTRAL_DEBUG_SERIAL
     if (g_since_debug >= 500) {
         g_since_debug = 0;
         Serial.print("[CENTRAL] loop=");
@@ -403,4 +464,5 @@ void loop() {
         Serial.print("/");
         Serial.println(g_loop_monitor.ema_us, 0);
     }
+#endif  // CENTRAL_DEBUG_SERIAL
 }

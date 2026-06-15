@@ -202,16 +202,35 @@ es el bloqueante #1 de Incheon.
 4. **Fase 4 (si se hace):** con pelota — confirmar que **NUNCA** frena en defensa activa, que el
    timeout y el abort-por-pelota sacan del settle, que el cooldown evita el bucle.
 
+## Actualización 2026-06-15 (pt.2) — Fase 0 implementada + Fase 1 (núcleo puro) + centinela dual-BNO
+
+Sesión posterior (Gustavo + Claude) **construyó sobre este análisis**:
+- **Fase 0 (freeze-detector saneado) = HECHA**: `imu_freeze.h::imu_freeze_update_g` con GUARDA
+  DE GYRO (congela solo si el gyro probó rotación real con el heading clavado → robot quieto
+  nunca da falso-DEAD). Cableada gateada. Banco: **TASK-211**.
+- **Fase 1 (cross-validación) = NÚCLEO PURO host-testeado**: `imu_cross_validate.h` +
+  `goal_rate_tracker.h` (matemática de salud/consenso/anti-falso-veto/scheduler; veredicto +
+  telemetría, **sin failover**). Glue + banco: **TASK-213**.
+- **Idea nueva de Gustavo absorbida**: centinela dual-BNO @1Hz (2º BNO leído con ToF pausados)
+  como fuente de diagnóstico — diseñado y verificado adversarialmente (3 blockers, todos en el glue).
+- **Confirmado por un 2º review**: el **failover físico NO entra en Incheon** (imu_fusion NO hace
+  failover transparente; un heading plausible-pero-malo es peor que heading_valid=0). Es trabajo 2027.
+
+Detalle: `journal/2026-06-15-fusion-confiabilidad-heading-bno.md` + TASK-211 + TASK-213.
+
 ## Cierre 2026-06-15 — qué está cerrado y qué no
 
 **CERRADO: el ANÁLISIS.** Lo que se pidió (el estudio profundo del enfoque de cross-validación
 con datos independientes + auto-recuperación) **está entregado** en este documento, verificado
 contra el código y pasado por un chequeo adversarial que reencuadró el alcance (Parte B).
 
-**NO está hecho ni validado: la IMPLEMENTACIÓN.** Las Fases 0-4 son trabajo futuro. Esta TASK se
-cierra **como documento de análisis/decisión**, NO como feature implementada. Cuando el equipo
-decida retomarla, **abrir una task de implementación nueva** (Fase 0 = freeze-detector saneado es
-el 80/20). Prioridad global P2; el robot compite hoy sin esto.
+**EN CÓDIGO (no validado en banco): Fase 0 + Fase 1-núcleo** (ver pt.2 arriba): freeze-detector
+con gyro-guard + `imu_cross_validate.h`/`goal_rate_tracker.h` (núcleo puro host-testeado),
+gateados. **Pendiente: el GLUE + el banco** (TASK-211, TASK-213). **Trabajo futuro/2027:** el
+failover físico y el reset activo (Fases 2-4) — confirmado por 2º review que **NO entran en
+Incheon** (un heading plausible-pero-malo es peor que `heading_valid=0`). Prioridad global P2; el
+robot compite hoy sin esto. Esta TASK queda **como documento de análisis/decisión**, NO marca la
+feature como `done` (la implementación la cierra el equipo tras banco).
 
 ## Cierre (cómo se valida la implementación, cuando se haga)
 

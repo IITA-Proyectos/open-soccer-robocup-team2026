@@ -58,6 +58,9 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--field", action="store_true",
                    help="modo TOP — vista de CANCHA: robot ubicado por OTOS con orientación + "
                         "estela, y pelota con estela (distancia sin calibrar)")
+    p.add_argument("--monitor", action="store_true",
+                   help="MONITOR UNIFICADO: consola industrial con todas las vistas en un menú + "
+                        "logs (la forma recomendada de usar el monitor TOP)")
     p.add_argument("--selftest", action="store_true",
                    help="smoke headless: procesa N frames del sim y sale (sin GUI)")
     p.add_argument("--selftest-frames", type=int, default=200,
@@ -72,7 +75,7 @@ def _dead_list(s: str) -> List[int]:
 def _build_source(args: argparse.Namespace):
     from .sources import ReplaySource, SerialSource, SimSource, SimTopSource
     if (args.top or args.top_salud or args.tof_setup or args.tof_360
-            or args.timeline or args.cam_fusion or args.polar or args.field):
+            or args.timeline or args.cam_fusion or args.polar or args.field or args.monitor):
         from .protocol_top import parse_line_top
         if args.port:
             return SerialSource(args.port, baud=args.baud, parser=parse_line_top)
@@ -276,6 +279,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.list_ports:
         return list_ports()
     if args.selftest:
+        if args.monitor:
+            from . import gui_shell
+            return gui_shell.smoke(args.selftest_frames)
         if args.field:
             from . import gui_field
             return gui_field.selftest(args.selftest_frames)
@@ -307,27 +313,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         recorder = Recorder(args.record)
         print(f"Grabando telemetría en {args.record}")
     try:
-        if args.tof_setup:
-            from . import gui_tof_setup
-            gui_tof_setup.run_tof_setup(source, recorder=recorder)
-        elif args.polar:
-            from . import gui_polar
-            gui_polar.run_polar(source, recorder=recorder)
-        elif args.field:
-            from . import gui_field
-            gui_field.run_field(source, recorder=recorder)
-        elif args.tof_360:
-            from . import gui_tof_360
-            gui_tof_360.run_tof_360(source, recorder=recorder)
-        elif args.timeline:
-            from . import gui_timeline
-            gui_timeline.run_timeline(source, recorder=recorder)
-        elif args.cam_fusion:
-            from . import gui_cam_fusion
-            gui_cam_fusion.run_cam_fusion(source, recorder=recorder)
-        elif args.top_salud:
-            from . import gui_top_health
-            gui_top_health.run_top_health(source, recorder=recorder)
+        # Los flags TOP abren la MISMA consola unificada, arrancando en esa vista
+        # (--monitor = vista por defecto). Una sola app; los flags son atajos.
+        top_views = {"monitor": None, "field": "cancha", "polar": "polar",
+                     "tof_360": "tof360", "top_salud": "salud", "cam_fusion": "cam",
+                     "timeline": "timeline", "tof_setup": "tofcfg"}
+        start_key = next((k for d, k in top_views.items() if getattr(args, d)), "__std__")
+        if start_key != "__std__":
+            from . import gui_shell
+            gui_shell.run_shell(source, recorder=recorder, start_key=start_key)
         elif args.top:
             from . import gui_top
             gui_top.run_top(source, recorder=recorder)

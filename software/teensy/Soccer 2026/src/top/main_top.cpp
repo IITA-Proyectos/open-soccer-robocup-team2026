@@ -395,6 +395,13 @@ void loop() {
     cameras_tick();        // OpenMV front (Serial3) + back (Serial5)
 
     // === Sensores periódicos ===
+    // Ventana bus-quiet compartida por R1 (deconflict del primario) y R2 (centinela del
+    // 2º BNO en Wire): el read del BNO sólo ocurre si pasaron ≥ TOP_BNO_TOF_GAP_MS desde el
+    // último read de ToF. Definido ARRIBA del #if/#else para que lo vean las DOS ramas
+    // (antes vivía dentro del #if R1 → el #else del centinela R2 no lo veía: no compilaba).
+#ifndef TOP_BNO_TOF_GAP_MS
+#define TOP_BNO_TOF_GAP_MS 8
+#endif
 #ifdef TOP_BNO_TOF_DECONFLICT
     // ROBOT1: el BNO comparte el bus `Wire` con los 4 ToF. Si el read multi-byte del
     // BNO cae PEGADO a un read de ToF, el yaw se CONGELA (banco 2026-06-08; mismo
@@ -414,9 +421,6 @@ void loop() {
     // ≥ TOP_BNO_TOF_GAP_MS desde el final del último read de ToF. Con ToF cada
     // 30 ms y gap de 8 ms queda una ventana limpia de ~7-20 ms por ciclo — el BNO
     // mantiene su cadencia interna de 20 Hz sin tocar al ToF.
-#ifndef TOP_BNO_TOF_GAP_MS
-#define TOP_BNO_TOF_GAP_MS 8
-#endif
     static uint32_t s_last_tof_end_ms = 0;
     if (g_since_tof_tick >= TOF_TICK_INTERVAL_MS) {
         g_since_tof_tick = 0;

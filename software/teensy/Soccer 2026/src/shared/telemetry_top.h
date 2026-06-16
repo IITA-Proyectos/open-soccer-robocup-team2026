@@ -88,6 +88,11 @@ struct TopTelemetryFrame {
     uint8_t  imu_left_ok;
     uint8_t  imu_right_ok;
     uint8_t  imu_heading_valid;   // flag heading_valid del snapshot (bit4)
+    // Centinela (TASK-213): el 2º BNO NO entra a la fusión (imu_right_ok=0 por
+    // TOP_BNO_PRIMARY_ONLY) pero SÍ se lee @1 Hz como 2da opinión. Estos 2 campos dejan
+    // que el monitor lo muestre como "centinela @1Hz" + su heading, en vez de "falla".
+    uint8_t  imu_sentinel_ok;     // 1 = el 2º BNO se inicializó y se lee como centinela
+    float    imu_sentinel_deg;    // último yaw del centinela (CCW+ crudo), @1 Hz
 
     // ── ToF (4 VL53L7CX) + HC-SR04 ──
     uint8_t  num_tof;             // NUM_TOF (4)

@@ -86,9 +86,20 @@ def test_heading_warn_on_disagreement():
 
 
 def test_bno_dead_when_not_ready():
+    # rok=0 y SIN centinela (sok ausente → default 0) → falla real.
     items = evaluate(make_frame(imu={"rok": 0}))
     assert status_of(items, "bno_right") == Status.DEAD
     assert status_of(items, "bno_left") == Status.OK
+
+
+def test_bno_secundario_centinela_no_es_falla():
+    # Modo primario-solo (TOP_BNO_PRIMARY_ONLY): el 2º BNO NO entra a la fusión (rok=0)
+    # pero vive como CENTINELA @1Hz (sok=1) → debe verse SANO (OK), no rojo, con su heading.
+    items = evaluate(make_frame(imu={"rok": 0, "sok": 1, "sdeg": -33.2}))
+    assert status_of(items, "bno_right") == Status.OK
+    detail = next(i.detail for i in items if i.key == "bno_right")
+    assert "centinela" in detail.lower()
+    assert "-33.2" in detail
 
 
 def test_tof_nodata_on_sentinel():

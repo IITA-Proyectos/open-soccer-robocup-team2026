@@ -511,8 +511,13 @@ float   sensors_imu_get_gyro_z_dps() { return 0.0f; }
 
 #ifdef TOP_ENABLE_BNO_SENTINEL
 bool sensors_imu_sentinel_ready() { return g_sentinel_init_ok; }
+// Último yaw que leyó el centinela del 2º BNO (Wire), CCW+, crudo: SIN el offset de boot
+// (es otro chip con otro mount → no comparte el cero del primario). Se actualiza @1 Hz en
+// sensors_imu_sentinel_step. Sirve para que el monitor muestre que el 2º BNO da heading vivo.
+float sensors_imu_sentinel_heading_deg() { return g_sec_yaw_prev_deg; }
 #else
 bool sensors_imu_sentinel_ready() { return false; }
+float sensors_imu_sentinel_heading_deg() { return 0.0f; }
 #endif
 
 // Paso del CENTINELA @1Hz. Lo llama el LOOP en la ventana bus-quiet (aislada de los reads

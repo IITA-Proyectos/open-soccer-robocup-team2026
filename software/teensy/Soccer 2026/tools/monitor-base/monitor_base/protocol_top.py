@@ -88,6 +88,12 @@ class Imu:
     left_ok: bool
     right_ok: bool
     heading_valid: bool
+    # Centinela (TASK-213): el 2º BNO NO entra a la fusión (right_ok=0 por
+    # TOP_BNO_PRIMARY_ONLY) pero se lee @1Hz como 2da opinión. Estos dejan que el
+    # monitor lo muestre como "centinela" + su heading en vez de "falla".
+    # default por compat con frames/goldens viejos sin estos campos.
+    sentinel_ok: bool = False
+    sentinel_deg: float = 0.0
 
 
 @dataclass
@@ -267,6 +273,7 @@ def parse_obj_top(obj: dict, raw: str = "") -> TopFrame:
             heading_deg=float(i["hdg"]), left_deg=float(i["left"]),
             right_deg=float(i["right"]), disagreement_deg=float(i["disagree"]),
             left_ok=bool(i["lok"]), right_ok=bool(i["rok"]), heading_valid=bool(i["valid"]),
+            sentinel_ok=bool(i.get("sok", 0)), sentinel_deg=float(i.get("sdeg", 0.0)),
         )
         t = obj["tof"]
         tof = Tof(

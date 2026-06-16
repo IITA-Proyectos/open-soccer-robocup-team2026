@@ -108,6 +108,10 @@ void fill_frame(TopTelemetryFrame& f) {
     f.imu_left_ok           = sensors_imu_left_ready() ? 1 : 0;
     f.imu_right_ok          = sensors_imu_right_ready() ? 1 : 0;
     f.imu_heading_valid     = sensors_imu_get_heading_valid() ? 1 : 0;
+    // Centinela (TASK-213): el 2º BNO vive como 2da opinión @1Hz aunque NO esté en la fusión
+    // (imu_right_ok=0 por TOP_BNO_PRIMARY_ONLY). Getters con #else=false/0 → sin sentinel da 0.
+    f.imu_sentinel_ok       = sensors_imu_sentinel_ready() ? 1 : 0;
+    f.imu_sentinel_deg      = sensors_imu_sentinel_heading_deg();
 
 #ifdef TOP_ENABLE_HEADING_XVAL
     // Salud del heading por cross-validación (TASK-213). Este es el ÚNICO call-site de

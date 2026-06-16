@@ -85,6 +85,7 @@ uint8_t sensors_imu_xval_verdict();    // 0=SANO,1=SOSPECHA,2=MALO
 uint8_t sensors_imu_xval_score();      // 0..100
 uint8_t sensors_imu_xval_n_indep();    // refs independientes válidas
 bool    sensors_imu_sentinel_ready();  // el 2º BNO (centinela) se inicializó OK
+float   sensors_imu_sentinel_heading_deg();  // último yaw del centinela (2º BNO), CCW+ crudo, @1Hz
 float   sensors_imu_get_gyro_z_dps();  // gyro_z del primario, ya leído este tick (CCW+)
 
 #ifdef TOP_ENABLE_HEADING_XVAL

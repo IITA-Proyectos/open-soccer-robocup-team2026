@@ -108,11 +108,12 @@ int tt_serialize_jsonl(char* buf, int cap, const TopTelemetryFrame& f) {
     // imu
     off = tt_append(buf, cap, off,
         "\"imu\":{\"hdg\":%.2f,\"left\":%.2f,\"right\":%.2f,\"disagree\":%.2f,"
-        "\"lok\":%u,\"rok\":%u,\"valid\":%u},",
+        "\"lok\":%u,\"rok\":%u,\"valid\":%u,\"sok\":%u,\"sdeg\":%.2f},",
         tt_fz(f.imu_heading_deg), tt_fz(f.imu_left_deg), tt_fz(f.imu_right_deg),
         tt_fz(f.imu_disagreement_deg),
         (unsigned)(f.imu_left_ok ? 1 : 0), (unsigned)(f.imu_right_ok ? 1 : 0),
-        (unsigned)(f.imu_heading_valid ? 1 : 0));
+        (unsigned)(f.imu_heading_valid ? 1 : 0),
+        (unsigned)(f.imu_sentinel_ok ? 1 : 0), tt_fz(f.imu_sentinel_deg));
     if (off < 0) return -1;
 
     // tof
@@ -276,10 +277,11 @@ int tt_format_human(char* buf, int cap, const TopTelemetryFrame& f) {
 
     // L3 — IMU (heading fusionado + por sensor)
     off = tt_append(buf, cap, off,
-        "  IMU hdg %.2f %s L%.2f R%.2f dis%.2f (L:%s R:%s)\n",
+        "  IMU hdg %.2f %s L%.2f R%.2f dis%.2f (L:%s R:%s) cent:%s %.2f\n",
         tt_fz(f.imu_heading_deg), f.imu_heading_valid ? "VALID" : "INVALID",
         tt_fz(f.imu_left_deg), tt_fz(f.imu_right_deg), tt_fz(f.imu_disagreement_deg),
-        f.imu_left_ok ? "ok" : "--", f.imu_right_ok ? "ok" : "--");
+        f.imu_left_ok ? "ok" : "--", f.imu_right_ok ? "ok" : "--",
+        f.imu_sentinel_ok ? "@1Hz" : "--", tt_fz(f.imu_sentinel_deg));
     if (off < 0) return -1;
 
     // L4 — ToF + HC-SR04

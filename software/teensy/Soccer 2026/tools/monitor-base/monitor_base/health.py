@@ -104,9 +104,19 @@ def evaluate(f: TopFrame, phantom_threshold_mm: float = 200.0,
     out.append(SensorHealth("bno_left", "BNO primario",
                             Status.OK if imu.left_ok else Status.DEAD,
                             f"{imu.left_deg:+.1f}°" if imu.left_ok else "no responde"))
-    out.append(SensorHealth("bno_right", "BNO secundario",
-                            Status.OK if imu.right_ok else Status.DEAD,
-                            f"{imu.right_deg:+.1f}°" if imu.right_ok else "no responde"))
+    # BNO secundario, 3 estados (NO confundir "fuera de fusión" con "falla"):
+    #  (1) right_ok    → en la fusión (modo 2-BNO).
+    #  (2) sentinel_ok → NO en la fusión pero VIVO como CENTINELA @1Hz (modo primario-solo,
+    #      TOP_BNO_PRIMARY_ONLY): 2da opinión para la cross-validación. Es SANO, no falla.
+    #  (3) ninguno     → no responde (DEAD de verdad).
+    if imu.right_ok:
+        out.append(SensorHealth("bno_right", "BNO secundario", Status.OK,
+                                f"{imu.right_deg:+.1f}° (en fusión)"))
+    elif imu.sentinel_ok:
+        out.append(SensorHealth("bno_right", "BNO secundario (centinela)", Status.OK,
+                                f"centinela @1Hz: {imu.sentinel_deg:+.1f}° (fuera de fusión, 2da opinión)"))
+    else:
+        out.append(SensorHealth("bno_right", "BNO secundario", Status.DEAD, "no responde"))
     if not imu.heading_valid:
         out.append(SensorHealth("heading", "Rumbo (fusión)", Status.DEAD,
                                 "no confiable / congelado (heading_valid=0)"))

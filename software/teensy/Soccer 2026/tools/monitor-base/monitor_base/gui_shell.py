@@ -27,6 +27,8 @@ from .robot_registry import identify, load_registry
 from .safety import is_destructive_write
 from .shell_theme import (ACCENT, BAD, BG, BG2, FG, LINE, MONO, MUTED, OK,
                           PANEL, TITLE, UI_B, WARN, apply_theme)
+from .tooltip import attach_tooltip
+from .tooltips_text import tip
 
 HEARTBEAT_S = 2.0       # cada cuánto el log registra un latido de datos
 PHANTOM_MM = 500.0      # |camf.ball - camb.ball| para sospechar pelota fantasma
@@ -102,6 +104,7 @@ class MonitorShell:
         self._select(start_key or self.panels[0].key)
         self.root.after(60, self._tick)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.root.bind("<F1>", lambda _e: self._show_help())   # ayuda contextual
 
     # ── Layout ──────────────────────────────────────────────────────────────
     def _build_layout(self, panel_classes: List[Type[Panel]]) -> None:
@@ -124,14 +127,18 @@ class MonitorShell:
         self.conn_lbl.pack(side="left")
         self.metrics = tk.Label(top, text="", bg=BG2, fg=MUTED, font=MONO)
         self.metrics.pack(side="left", padx=16)
-        tk.Button(top, text="?  ayuda de esta vista", command=self._show_help,
-                  bg=PANEL, fg=ACCENT, relief="flat", padx=8).pack(side="right", padx=4, pady=4)
+        help_btn = tk.Button(top, text="?  ayuda (F1)", command=self._show_help,
+                             bg=PANEL, fg=ACCENT, relief="flat", padx=8)
+        help_btn.pack(side="right", padx=4, pady=4)
+        attach_tooltip(help_btn, tip("shell.help"))
         self.rec_btn = tk.Button(top, text="⏺ grabar", command=self._toggle_record,
                                  bg=PANEL, fg=FG, relief="flat", padx=8)
         self.rec_btn.pack(side="right", padx=4, pady=4)
+        attach_tooltip(self.rec_btn, tip("shell.record"))
         self.pause_btn = tk.Button(top, text="⏸ pausa", command=self._toggle_pause,
                                    bg=PANEL, fg=FG, relief="flat", padx=8)
         self.pause_btn.pack(side="right", padx=4, pady=4)
+        attach_tooltip(self.pause_btn, tip("shell.pause"))
 
         # Navegación lateral (con scroll por si hay muchas vistas).
         self.nav = tk.Frame(r, bg=BG2, width=160)

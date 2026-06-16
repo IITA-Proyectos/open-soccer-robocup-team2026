@@ -15,6 +15,8 @@ from .health import STATUS_COLOR, STATUS_LABEL, Status, counts, evaluate
 from .panel import Panel
 from .protocol_top import TopFrame
 from .shell_theme import BG, CARD, FG, MONO, MUTED, UI_B
+from .tooltip import attach_tooltip
+from .tooltips_text import tip
 from .zones import NO_READING_COLOR, TOF_LABELS, ZoneGrid, zone_color
 
 TOGGLES = [
@@ -74,6 +76,7 @@ class HealthPanel(Panel):
             b.configure(text=f"{label}: ON",
                         command=lambda l=label, o=on_cmd, f=off_cmd, btn=b: self._toggle(l, o, f, btn))
             b.pack(side="left", padx=2)
+            attach_tooltip(b, tip(on_cmd))
         tofrow = ttk.Frame(parent); tofrow.pack(fill="x", pady=(4, 0))
         for n in range(NUM_TOF_BTN):
             cell = ttk.Frame(tofrow); cell.pack(side="left", padx=4)
@@ -82,13 +85,18 @@ class HealthPanel(Panel):
             b.configure(text=f"ToF{n}: ON",
                         command=lambda k=key, nn=n, btn=b: self._toggle(k, f"TOF {nn} ON", f"TOF {nn} OFF", btn))
             b.pack()
+            attach_tooltip(b, tip("TOF ON"))
             var = tk.StringVar(value="POS")
-            ttk.OptionMenu(cell, var, "POS", *TOF_POS,
-                           command=lambda pos, nn=n: self.ctx.send(f"TOF {nn} POS {pos}")).pack()
+            om = ttk.OptionMenu(cell, var, "POS", *TOF_POS,
+                                command=lambda pos, nn=n: self.ctx.send(f"TOF {nn} POS {pos}"))
+            om.pack()
+            attach_tooltip(om, tip("TOF POS"))
         cfgrow = ttk.Frame(parent); cfgrow.pack(fill="x", pady=(4, 0))
         for label, cmd in (("Guardar EEPROM", "CFG SAVE"), ("Recargar", "CFG LOAD"),
                            ("Reset defaults", "CFG RESET")):
-            ttk.Button(cfgrow, text=label, command=lambda c=cmd: self.ctx.send(c)).pack(side="left", padx=2)
+            cb = ttk.Button(cfgrow, text=label, command=lambda c=cmd: self.ctx.send(c))
+            cb.pack(side="left", padx=2)
+            attach_tooltip(cb, tip(cmd))
 
     def _toggle(self, key: str, on_cmd: str, off_cmd: str, btn: ttk.Button) -> None:
         now_on = not self._enabled.get(key, True)

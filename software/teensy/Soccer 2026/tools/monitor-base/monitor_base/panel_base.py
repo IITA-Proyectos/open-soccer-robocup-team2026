@@ -22,6 +22,8 @@ from .calibration import CalibrationAssistant, DEFAULT_MIN_MARGIN
 from .panel import Panel
 from .protocol import Frame
 from .sensor_health import SensorHealthTracker
+from .tooltip import attach_tooltip
+from .tooltips_text import tip
 
 RING_PX = 400
 SENSOR_R = 11
@@ -80,6 +82,7 @@ class BasePanel(Panel):
         self.canvas = tk.Canvas(left, width=RING_PX, height=RING_PX,
                                 bg="#101418", highlightthickness=0)
         self.canvas.pack()
+        attach_tooltip(self.canvas, tip("base.ring"))
         self.canvas.bind("<Button-1>", self._on_canvas_click)               # click → inspector
         self.canvas.bind("<Double-Button-1>", self._on_canvas_double_click) # doble → on/off
         ttk.Label(left, text="Anillo de 32 sensores — +Y = frente · CLICK = inspeccionar · DOBLE CLICK = habilitar/deshabilitar",
@@ -121,8 +124,9 @@ class BasePanel(Panel):
                 ("1· Capturar VERDE (sobre el verde)", "CAL CARPET"),
                 ("2· Capturar BLANCO (sobre la línea)", "CAL WHITE"),
                 ("3· GUARDAR (calib + sensibilidad)", "CAL SAVE")]:
-            ttk.Button(parent, text=label,
-                       command=lambda c=cmd: self._send(c)).pack(fill="x", pady=2)
+            b = ttk.Button(parent, text=label, command=lambda c=cmd: self._send(c))
+            b.pack(fill="x", pady=2)
+            attach_tooltip(b, tip(cmd))
 
         self.verdict_lbl = tk.Label(parent, text="esperando datos…",
                                     font=("Segoe UI", 11, "bold"),
@@ -145,6 +149,7 @@ class BasePanel(Panel):
             variable=self.global_sens_var, command=self._on_global_sens_change)
         self.global_sens_scale.pack(side="left", fill="x", expand=True)
         self.global_sens_lbl.pack(side="left")
+        attach_tooltip(self.global_sens_scale, tip("base.sens_global"))
 
         # ── Barras de cercanía al umbral por sensor ──
         ttk.Label(parent, text="Cercanía al umbral por sensor (barra a la DERECHA = ve "
@@ -154,6 +159,7 @@ class BasePanel(Panel):
             parent, width=_BARS_COLS * _BARS_CW, height=_BARS_ROWS * _BARS_CH,
             bg="#101418", highlightthickness=0)
         self._bars_canvas.pack()
+        attach_tooltip(self._bars_canvas, tip("base.bars"))
         self._bars_canvas.bind("<Button-1>", self._on_bars_click)
         self._bars_canvas.bind("<Double-Button-1>", self._on_bars_double_click)
 
@@ -170,9 +176,9 @@ class BasePanel(Panel):
                 ("Auto OFF", "CAL AUTO OFF"),
                 ("CAL LOAD", "CAL LOAD"),
                 ("Reset OTOS", "OTOS RESET")]):
-            ttk.Button(adv, text=label, width=10,
-                       command=lambda c=cmd: self._send(c)).grid(
-                row=0, column=i, padx=2)
+            b = ttk.Button(adv, text=label, width=10, command=lambda c=cmd: self._send(c))
+            b.grid(row=0, column=i, padx=2)
+            attach_tooltip(b, tip(cmd))
 
     def _build_inspector_panel(self, parent: ttk.Frame) -> None:
         box = ttk.LabelFrame(parent, text="Inspector de sensor")
@@ -187,6 +193,7 @@ class BasePanel(Panel):
         self.toggle_btn = ttk.Button(row, text="Habilitar/Deshabilitar",
                                      command=self._toggle_selected, state="disabled")
         self.toggle_btn.pack(side="left")
+        attach_tooltip(self.toggle_btn, tip("base.sensor_toggle"))
         sframe = ttk.Frame(box)
         sframe.pack(fill="x", pady=2)
         ttk.Label(sframe, text="sens propia:").pack(side="left")
@@ -198,6 +205,7 @@ class BasePanel(Panel):
             state="disabled")
         self.sensor_sens_scale.pack(side="left", fill="x", expand=True)
         self.sensor_sens_lbl.pack(side="left")
+        attach_tooltip(self.sensor_sens_scale, tip("base.sens_persensor"))
 
     # ── Comandos a la placa (vía el shell) ────────────────────────────────────
     def _send(self, cmd: str) -> None:

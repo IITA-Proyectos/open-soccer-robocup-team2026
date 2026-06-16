@@ -16,6 +16,8 @@ from .panel import LEVELS, LogBuffer, Panel
 from .protocol_top import TopFrame
 from .shell_theme import (BAD, BG, FG, INFO, LINE, MONO, MONO_SM, MUTED, OK,
                           PANEL, WARN)
+from .tooltip import attach_tooltip
+from .tooltips_text import tip
 
 LEVEL_COLOR = {"info": FG, "ok": OK, "warn": WARN, "bad": BAD, "cmd": INFO}
 
@@ -58,10 +60,16 @@ class LogsPanel(Panel):
                            command=lambda l=lvl: self._set_filter(l))
             b.pack(side="left", padx=1)
             self._fbtns[lvl] = b
+            attach_tooltip(b, tip(f"logs.{lab}"))
         self._auto_btn = ttk.Button(bar, text="⏸ autoscroll", command=self._toggle_auto)
         self._auto_btn.pack(side="right", padx=2)
-        ttk.Button(bar, text="🗑 limpiar", command=self._clear).pack(side="right", padx=2)
-        ttk.Button(bar, text="⎘ exportar", command=self._export).pack(side="right", padx=2)
+        attach_tooltip(self._auto_btn, tip("logs.autoscroll"))
+        clr_b = ttk.Button(bar, text="🗑 limpiar", command=self._clear)
+        clr_b.pack(side="right", padx=2)
+        attach_tooltip(clr_b, tip("logs.clear"))
+        exp_b = ttk.Button(bar, text="⎘ exportar", command=self._export)
+        exp_b.pack(side="right", padx=2)
+        attach_tooltip(exp_b, tip("logs.export"))
 
         # Texto de logs.
         wrap = tk.Frame(parent, bg=BG)

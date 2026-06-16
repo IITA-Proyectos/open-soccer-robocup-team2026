@@ -25,6 +25,8 @@ from .protocol_top import TopFrame
 from .shell_theme import BG, CARD, FG, MUTED, PANEL, UI_B
 from .tof_layout import (FLIPS, POSITIONS, ROTATIONS, TofLayout,
                          default_config_path, load_or_default)
+from .tooltip import attach_tooltip
+from .tooltips_text import tip
 from .zones import NO_READING_COLOR, zone_color
 
 CELL = 40              # px por zona (grande para clickear)
@@ -77,10 +79,16 @@ class TofSetupPanel(Panel):
         # Panel de config (guardar/cargar/bajar).
         cfgrow = ttk.LabelFrame(parent, text="CONFIG", padding=6)
         cfgrow.pack(fill="x", padx=6, pady=(0, 4))
-        ttk.Button(cfgrow, text="💾 Guardar .json", command=self._save).pack(side="left", padx=3)
-        ttk.Button(cfgrow, text="📂 Cargar .json", command=self._load).pack(side="left", padx=3)
-        ttk.Button(cfgrow, text="⬇ Bajar a la placa (firmware)",
-                   command=self._push_to_fw).pack(side="left", padx=12)
+        save_b = ttk.Button(cfgrow, text="💾 Guardar .json", command=self._save)
+        save_b.pack(side="left", padx=3)
+        attach_tooltip(save_b, tip("tofset.savejson"))
+        load_b = ttk.Button(cfgrow, text="📂 Cargar .json", command=self._load)
+        load_b.pack(side="left", padx=3)
+        attach_tooltip(load_b, tip("tofset.loadjson"))
+        push_b = ttk.Button(cfgrow, text="⬇ Bajar a la placa (firmware)",
+                            command=self._push_to_fw)
+        push_b.pack(side="left", padx=12)
+        attach_tooltip(push_b, tip("tofset.push"))
         self.cfg_note = ttk.Label(cfgrow, style="Muted.TLabel", text=f"archivo: {os.path.basename(self.cfg_path)}")
         self.cfg_note.pack(side="left", padx=8)
 
@@ -95,8 +103,10 @@ class TofSetupPanel(Panel):
         posrow = ttk.Frame(wrap); posrow.pack()
         ttk.Label(posrow, text="pos:").pack(side="left")
         posvar = tk.StringVar(value=self.cfg.position.get(idx, "FRONT"))
-        ttk.OptionMenu(posrow, posvar, posvar.get(), *POSITIONS,
-                       command=lambda v, i=idx: self._set_pos(i, v)).pack(side="left")
+        posmenu = ttk.OptionMenu(posrow, posvar, posvar.get(), *POSITIONS,
+                                 command=lambda v, i=idx: self._set_pos(i, v))
+        posmenu.pack(side="left")
+        attach_tooltip(posmenu, tip("tofset.pos"))
 
         # Canvas de zonas (clickeable).
         w = GRID_W * CELL
@@ -117,15 +127,19 @@ class TofSetupPanel(Panel):
                                        fill=VETO_X, width=2, state="hidden"),
                 ))
         canvas.bind("<Button-1>", lambda e, i=idx: self._on_zone_click(i, e))
+        attach_tooltip(canvas, tip("tofset.zonegrid"))
 
         # Botones rotar / espejo / on-off.
         btns = ttk.Frame(wrap); btns.pack()
         rotbtn = ttk.Button(btns, width=9, command=lambda i=idx: self._cycle_rot(i))
         rotbtn.pack(side="left", padx=1)
+        attach_tooltip(rotbtn, tip("tofset.rot"))
         flipbtn = ttk.Button(btns, width=9, command=lambda i=idx: self._cycle_flip(i))
         flipbtn.pack(side="left", padx=1)
+        attach_tooltip(flipbtn, tip("tofset.flip"))
         onbtn = ttk.Button(btns, width=7, command=lambda i=idx: self._toggle_sensor(i))
         onbtn.pack(side="left", padx=1)
+        attach_tooltip(onbtn, tip("tofset.onoff"))
 
         card = {"wrap": wrap, "title": title, "posvar": posvar, "canvas": canvas,
                 "cells": cells, "texts": texts, "xs": xs,
@@ -139,13 +153,18 @@ class TofSetupPanel(Panel):
             cell = ttk.Frame(row); cell.pack(side="left", padx=4)
             ttk.Label(cell, text=label, font=("Segoe UI", 8)).pack()
             var = tk.StringVar(value=str(getattr(self.cfg.wall, key)))
-            ttk.Entry(cell, textvariable=var, width=8).pack()
+            ent = ttk.Entry(cell, textvariable=var, width=8)
+            ent.pack()
+            attach_tooltip(ent, tip("tofset.fields"))
             self._wall_vars[key] = var
         btns = ttk.Frame(parent); btns.pack(fill="x", pady=(4, 0))
-        ttk.Button(btns, text="🔎 Sugerir y vetar filas que ven por encima de la pared",
-                   command=self._suggest_and_apply).pack(side="left", padx=3)
-        ttk.Button(btns, text="↺ Reset zonas (todas ON)",
-                   command=self._reset_zones).pack(side="left", padx=3)
+        suggest_b = ttk.Button(btns, text="🔎 Sugerir y vetar filas que ven por encima de la pared",
+                               command=self._suggest_and_apply)
+        suggest_b.pack(side="left", padx=3)
+        attach_tooltip(suggest_b, tip("tofset.suggest"))
+        resetz_b = ttk.Button(btns, text="↺ Reset zonas (todas ON)", command=self._reset_zones)
+        resetz_b.pack(side="left", padx=3)
+        attach_tooltip(resetz_b, tip("tofset.resetzones"))
         self.wall_note = ttk.Label(parent, foreground="#9bd", font=("Consolas", 8), text="")
         self.wall_note.pack(anchor="w", pady=(2, 0))
 

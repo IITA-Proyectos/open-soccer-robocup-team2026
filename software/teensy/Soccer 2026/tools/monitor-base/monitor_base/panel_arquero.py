@@ -31,6 +31,8 @@ from . import geometry
 from .panel import Panel
 from .protocol import Frame
 from .shell_theme import BG, FG, MUTED, PANEL
+from .tooltip import attach_tooltip
+from .tooltips_text import tip
 
 # Sensores "traseros" = los que miran hacia atrás del robot (y < umbral): los que
 # ven la línea del arco cuando el arquero está de frente a la cancha. Mismo
@@ -100,8 +102,9 @@ class ArqueroPanel(Panel):
 
         bottom = ttk.Frame(main, padding=(0, 8))
         bottom.grid(row=4, column=0, columnspan=2, sticky="we")
-        ttk.Button(bottom, text="↺ Limpiar estela",
-                   command=self._clear_trail).grid(row=0, column=0, padx=3)
+        clr = ttk.Button(bottom, text="↺ Limpiar estela", command=self._clear_trail)
+        clr.grid(row=0, column=0, padx=3)
+        attach_tooltip(clr, tip("arquero.clear"))
 
     def _clear_trail(self) -> None:
         self.trail.clear()

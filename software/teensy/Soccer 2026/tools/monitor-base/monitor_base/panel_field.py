@@ -42,6 +42,8 @@ from .panel import Panel
 from .protocol_top import TopFrame
 from .shell_theme import BG, FG, MUTED, PANEL
 from .tof_layout import load_or_default
+from .tooltip import attach_tooltip
+from .tooltips_text import tip
 
 # Colores propios de la cancha (verde césped + marcas), independientes de la
 # paleta industrial: la cancha es un "área de dato" con su semántica de color.
@@ -111,10 +113,13 @@ class FieldPanel(Panel):
         # (cyan) para COMPARAR con la pose del snapshot (verde). En R2 el OTOS
         # está deshabilitado → no aparece (honesto).
         self.show_otos = tk.BooleanVar(value=False)
-        ttk.Checkbutton(side, text="Comparar con OTOS (cyan)",
-                        variable=self.show_otos).pack(anchor="w", pady=(6, 0))
-        ttk.Button(side, text="↺ Borrar estelas",
-                   command=self._clear_trails).pack(pady=6, anchor="w")
+        otos_chk = ttk.Checkbutton(side, text="Comparar con OTOS (cyan)",
+                                   variable=self.show_otos)
+        otos_chk.pack(anchor="w", pady=(6, 0))
+        attach_tooltip(otos_chk, tip("field.otos"))
+        clr_btn = ttk.Button(side, text="↺ Borrar estelas", command=self._clear_trails)
+        clr_btn.pack(pady=6, anchor="w")
+        attach_tooltip(clr_btn, tip("field.clear"))
 
         self._draw_field()
 

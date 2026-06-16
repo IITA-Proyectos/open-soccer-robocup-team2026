@@ -547,7 +547,7 @@ mira. No cambiar la lógica de drop.
 | Item | Tipo | Prioridad |
 |---|---|---|
 | **ADC dual + averaging 1** (Capa 1+2 del §3) | refina `line_ring`, gateado | P1 |
-| **Detección temprana + LUT vecino-físico + gate del vector** (§4) | refina `dm_update`, gateado | P1 |
+| ~~Detección temprana + LUT vecino-físico + gate del vector~~ (§4) — ✅ **CABLEADO 2026-06-16** (`-DDOWN_EARLY_EVIDENCE`, host-tested; banco pendiente TASK-309) | refina `dm_update`, gateado | P1 |
 | **Sellado a sentinela + criterio confiable + piso healthy_count** (§6.4) | refina `dm_update`, gateado | P1 |
 | **OTOS Nivel 0** (400 kHz + burst) (§7) | refina `otos`, gateado | P1 |
 | `world_model_get_escape_angle()` + consumo ESCAPE (CENTRAL) | nuevo, gateado | P1 (post-Incheon) |
@@ -569,7 +569,7 @@ banco lo valida. Orden por relación impacto/riesgo:
 | **F0** | `LoopMonitor` + env diag que imprime `g_last_tick_us` (CARD DOWN-4). **MEDIR el "ANTES".** | — | nulo |
 | **F1** | ADC averaging 1 + dual-ADC (§3 Capa 1+2) | `-DDOWN_ADC_FAST` | bajo/medio |
 | **F2** | OTOS Nivel 0 (400 kHz + `getPosVelAcc`) | `-DDOWN_OTOS_FAST_I2C` | bajo |
-| **F3** | Detección temprana + LUT vecino-físico (§4) | `-DDOWN_EARLY_EVIDENCE` | medio |
+| **F3** ✅glue 2026-06-16 | Detección temprana + LUT vecino-físico (§4) — CABLEADO en `dm_update` (unión por vecino físico a `validated[]`, ESTRICTAMENTE ADITIVA), host-tested (`test_down_early_evidence` 3, gate ON/OFF), env `down_earlyev`. Banco pendiente (TASK-309). | `-DDOWN_EARLY_EVIDENCE` | medio |
 | **F4** | Sellado a sentinela + criterio confiable (§6.4 A/B/C) | `-DDOWN_RELIABLE_GATE` | bajo/medio |
 | **F5** | RX: separar parseo/ejecución + addMemoryForRead (§8.1) | `-DDOWN_RX_HARDEN` | bajo |
 | **F6** | OTOS Nivel 1 (IntervalTimer línea) + `sensor_slot.h` (§7-8) | `-DDOWN_OTOS_ISR_PACING` | medio (re-entrancia) |

@@ -19,7 +19,11 @@ Diseño: [`docs/firmware/ARQUITECTURA-LAZO-DOWN-RT.md`](../docs/firmware/ARQUITE
 (validado adversarialmente + banner de estado). Todo host-tested + compila; **NADA probado en
 banco** (regla #1: solo el equipo con la placa cierra). Módulos puros nuevos: `adc_scan_plan.h`,
 `line_neighbors.h`, `line_reliable_gate.h`, `rx_calib_defer.h`, `rx_byte_budget.h`,
-`down_blackboard.h` + `line_early_escape.h` refinado — **79 tests host, full gate 1162/0**.
+`down_blackboard.h` + `line_early_escape.h` refinado — **79 tests host**. **F3 cableado al loop
+2026-06-16** (unión por vecino físico en `dm_update`, gateada `-DDOWN_EARLY_EVIDENCE`, +
+`test_down_early_evidence`). **Full gate host medido 2026-06-16: 88 suites / 1186 tests / 0 fallos**
+(gate ON: `test_native_earlyev` 3/3; gate OFF byte-idéntico). Compila: `down` + `down_earlyev` +
+`down_rt_all` SUCCESS.
 
 | Fase | Gate / env de banco | Qué mide/valida en banco |
 |---|---|---|
@@ -27,9 +31,10 @@ banco** (regla #1: solo el equipo con la placa cierra). Módulos puros nuevos: `
 | **F1a** | `-DDOWN_ADC_FAST` / `down_adcfast` | averaging=1: barrido ~717µs → ~205µs. **Que el bit white NO flickee** sobre el path `dm_update`. |
 | **F1b** | `-DDOWN_ADC_DUAL` / `down_adcdual` | dual-ADC: ~205µs → ~126µs. **Comparar el delta crudo carpet/blanco del MISMO mux por ADC1 vs ADC2** (offset por-ADC; la calib individual lo absorbe porque el umbral se mide con el MISMO ADC del runtime). |
 | **F2** | `-DDOWN_OTOS_FAST_I2C` / `down_otosfast` | OTOS: `loop_us(max)` con/sin el flag (esperado spike ~3-4 ms → <0.6 ms). 30 min de marcha: **0 fallos I²C espurios a 400 kHz** (si hay, bajar reloj). |
+| **F3** ✅cableado 2026-06-16 | `-DDOWN_EARLY_EVIDENCE` / `down_earlyev` | Detección TEMPRANA por vecino FÍSICO en `dm_update`. Robot a velocidad conocida cruzando la línea → medir **penetración_mm al aviso temprano (sensors_on_line 1-5) vs inminente (≥6)** + **0 falsos positivos** en marcha normal sobre carpet. Re-confirmar que `imminent_depth=6` mantiene el MISMO timing de freno duro (la unión es aditiva → sensors_on_line nunca baja). |
 | **F4** | `-DDOWN_RELIABLE_GATE` / `down_reliable` | Titular `reliable_min_healthy` (≥24/32) y `reliable_min_sensors_for_vector` (3) con el robot quieto contando `healthy_count`. Robot levantado / sensor tapado → `data_valid=0` + geometría SELLADA a N/A. |
 | **F5** | `-DDOWN_RX_HARDEN` / `down_rxharden` | Inyectar 0x21 en vivo → la cadencia de LINE_URGENT a CENTRAL **NO se interrumpe** (calib diferido). Saturar RX con basura → 0 comandos perdidos (CRC resincroniza). |
-| todas | `down_rt_all` | F0+F1+F2+F4+F5 juntas (verifica que coexisten; medir el conjunto). |
+| todas | `down_rt_all` | F0+F1+F2+F3+F4+F5 juntas (verifica que coexisten; medir el conjunto). |
 
 ## ⚠️ Notas de la revisión adversarial del glue (leer antes del banco)
 

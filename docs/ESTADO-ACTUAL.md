@@ -1,7 +1,7 @@
 ---
 title: "Estado actual del robot — vivo, 1 página"
 date: 2026-05-29
-last-updated-by: "Claude (sesión 2026-06-11 post-demo — práctica alumnos 2026-06-12: delantero R1 sin gyro por OTOS + arquero integral R2 con caja negra v1.2)"
+last-updated-by: "Claude (sesión 2026-06-16 — F3 detección temprana de línea por vecino físico CABLEADA en dm_update, gateada -DDOWN_EARLY_EVIDENCE, host-tested; banco pendiente TASK-309)"
 status: vivo
 tipo: indice-operacional
 ---
@@ -12,6 +12,17 @@ tipo: indice-operacional
 > obligatoria** (después de `git pull`). Si lo que estás por hacer contradice
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
+
+> **⚡ DOWN F3 — DETECCIÓN TEMPRANA DE LÍNEA CABLEADA (2026-06-16, gateada):** sobre la reingeniería
+> RT de DOWN (commit `9d6acc7`), se cableó **F3** en `dm_update`: une a `validated[]` los blancos con
+> un PAR físicamente adyacente (`line_neighbors.h`, no el vecino de índice que en esta placa puede
+> estar a 14 cm) → el aviso a CENTRAL (`line_present`/`sensors_on_line`/`escape_angle`) sale ANTES,
+> sin esperar los 6 sensores del `imminent`, **sin tocar el wire-contract**. ESTRICTAMENTE ADITIVO
+> (sensors_on_line nunca baja → el freno duro nunca llega más tarde). Gateado `-DDOWN_EARLY_EVIDENCE`
+> (env `down_earlyev`) → competencia `[env:down]` **byte-idéntica**. Host: gate ON 3/3, gate OFF 88
+> suites/1186/0; `down`+`down_earlyev`+`down_rt_all` compilan. **Banco pendiente → TASK-309 (CARD F3).**
+> Pendiente la otra mitad (CENTRAL consume el vector temprano, post-Incheon). Journal:
+> `journal/2026-06-16-f3-deteccion-temprana-vecino-fisico-cableada.md`.
 
 > **📷 PRIORIDAD CON ELÍAS (Gustavo, 2026-06-15):** Elías calibró las 4 cámaras (homografía
 > per-cámara, 2026-06-14) pero los valores NO están en el repo versionado. **Apenas una sesión

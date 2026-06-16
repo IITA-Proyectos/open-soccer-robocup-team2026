@@ -4,6 +4,9 @@
 #ifdef DOWN_RELIABLE_GATE
 #include "line_reliable_gate.h"   // F4 (§6.4): compuerta de lectura confiable (PURO, host-tested)
 #endif
+#ifdef DOWN_EARLY_EVIDENCE
+#include "line_neighbors.h"   // F3 (§4.2): LUT de VECINO FÍSICO del anillo (PURO, host-tested)
+#endif
 namespace iitasoccer {
 
 // ============================================================================
@@ -125,6 +128,31 @@ LineMetrics dm_line_metrics(const bool* validated, int n) {
     return out;
 }
 
+#ifdef DOWN_EARLY_EVIDENCE
+// F3 (§4.2/4.3) — LUT de VECINO FÍSICO del anillo, construida UNA sola vez desde
+// la geometría real SENSOR_POS (mismo patrón de cache que dm_outer_radius_mm).
+// Sólo mapea el anillo COMPLETO (n==32). Gateada -DDOWN_EARLY_EVIDENCE → sin el
+// flag esta función no existe y el binario de competencia es byte-idéntico.
+//
+// LnSensorPos y SensorPos2D comparten layout {x_mm,y_mm} pero son tipos distintos
+// (line_neighbors.h es PURO y autónomo, no incluye sensor_geometry.h): se copia
+// campo a campo (cero costo, corre una vez al primer tick con n==32).
+const LineNeighbors* dm_phys_neighbors() {
+    static LineNeighbors lut;
+    static bool built = false;
+    if (!built) {
+        LnSensorPos pos[SENSOR_COUNT];
+        for (int i = 0; i < SENSOR_COUNT; ++i) {
+            pos[i].x_mm = SENSOR_POS[i].x_mm;
+            pos[i].y_mm = SENSOR_POS[i].y_mm;
+        }
+        ln_build(pos, SENSOR_COUNT, &lut);
+        built = true;
+    }
+    return &lut;
+}
+#endif
+
 }  // namespace
 
 LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
@@ -158,6 +186,33 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     }
     bool validated[DM_MAX_SENSORS];
     lf_spatial_filter(white, validated, n);
+
+#ifdef DOWN_EARLY_EVIDENCE
+    // F3 (§4.2/4.3) — DETECCIÓN TEMPRANA por VECINO FÍSICO. El filtro espacial de
+    // arriba usa el vecino de ÍNDICE (i-1/i+1 con wrap), pero en esta placa hay
+    // pares de índice contiguos que están físicamente LEJOS (idx 7↔8 = 141 mm;
+    // 23↔24 = 116 mm; 31↔0 = 102 mm — line_neighbors.h). Un blanco REAL cuyo único
+    // vecino-de-índice quedó lejos (y por eso no encendió) cae como "aislado" y se
+    // descarta — el modo de falla del arquero sobre la línea de fondo.
+    //
+    // Acá UNIMOS a validated[] los blancos que SÍ tienen un PAR físicamente
+    // adyacente también blanco (ln_adjacent, simétrico → ambos del par entran, nunca
+    // un punto suelto). Es ESTRICTAMENTE ADITIVO: sólo prende validated[i], jamás lo
+    // apaga → sensors_on_line nunca BAJA respecto de hoy, así que el freno duro
+    // (EV_IMMINENT_EXIT, sensors_on_line>=imminent_depth) nunca se dispara más tarde.
+    // Las exclusiones de salud/débil/saturación de abajo se aplican igual a estos.
+    // n==32 (la LUT mapea el anillo completo). Gateado → competencia byte-idéntica.
+    if (n == SENSOR_COUNT) {
+        const LineNeighbors* phys = dm_phys_neighbors();
+        for (int i = 0; i < n; ++i) {
+            if (!white[i] || validated[i]) continue;   // no-blanco o ya validado
+            for (int j = 0; j < n; ++j) {
+                if (j == i || !white[j]) continue;
+                if (ln_adjacent(phys, i, j)) { validated[i] = true; break; }
+            }
+        }
+    }
+#endif
 
     // TEMA 1 P0 — actualizar MuxWatchdog con valores RAW (no filtered).
     // Queremos detectar mux pegado a nivel hardware, antes del suavizado.

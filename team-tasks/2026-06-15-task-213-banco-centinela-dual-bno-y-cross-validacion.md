@@ -5,7 +5,7 @@ date_created: 2026-06-15
 assigned: [equipo (firmware TOP)]
 priority: P2  # sube a P1 si el primario único se muestra poco confiable en banco
 pedido-por: Gustavo Viollaz (2026-06-15)
-status: pending  # módulos puros LISTOS + host-tested; el GLUE Arduino y el banco = PENDIENTE
+status: glue-PROGRAMADO-2026-06-15  # módulos puros + GLUE Arduino ESCRITOS (gateados); falta `pio run` (compilar) + banco. Ver journal 2026-06-15-glue-cross-validacion-heading-completado.md
 relacionada: TASK-212 (análisis), TASK-211 (freeze-detector INC-1 = Fase 0), TASK-022 (cámaras), TASK-014 (pulseIn), TASK-207
 tags: [firmware, top, bno055, imu, fusion-sensorial, centinela, otos, camaras, robustez]
 depends_on: []

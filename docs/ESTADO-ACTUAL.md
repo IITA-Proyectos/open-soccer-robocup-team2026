@@ -316,6 +316,22 @@ nativo, pero ya no es el único camino. Ver
    §Resultado + `journal/2026-06-07-calibracion-distancia-camara-frontal-elias.md`. (Migración
    H7→N6, bugs P0 y velocidad de pelota ya estaban resueltos — Avance 2026-06-03.)
 
+### Avance 2026-06-15 — Glue de la cross-validación del heading COMPLETADO (TASK-213): centinela dual-BNO + feed + telemetría (gateado)
+- Pedido de Gustavo: completar la PROGRAMACIÓN del glue (no esperar a banco para programar). Hecho: la
+  cross-validación de salud del heading ahora CORRE en el firmware, gateado off-by-default → binario de
+  competencia byte-idéntico. Workflow de diseño (8 agentes) + verificación. Journal:
+  `journal/2026-06-15-glue-cross-validacion-heading-completado.md`.
+- **Hallazgo:** la arquitectura no-bloqueante ISR/DMA/timer es POST-Incheon (el centinela+cross-validación
+  corren ENTEROS en contexto de loop, sin ISR) → glue acotado y de bajo riesgo.
+- **PURO (host-tested, 1003/0):** fix `imu_cross_validate.h` (`sentinel_fresh_timeout_ms`=1300, sin esto la
+  rama del centinela era código muerto) + `vel_lateral.h` NUEVO (gate anti-strafe de la cámara) + 3 campos
+  `xval` en `telemetry_top` (la salud del heading se ve en el monitor).
+- **GLUE Arduino (gateado, lo compila el equipo):** `sensors_imu` (estado + feed primario + xval_update +
+  init 2º BNO + `sentinel_step`), `main_top` (feed cámara/OTOS + ventana bus-quiet del centinela en R2),
+  `cameras_runtime`/`comm_down` (wrappers), `top_telemetry_serial` (pobla xval). Env banco `top_robot2_pri_xval`.
+- **Pendiente banco (TASK-213):** `pio run` + **analizador lógico** en Wire (read 2º BNO <10ms aislado) +
+  medir ruido del ω + marco de Velocity2D + signos. `top_robot1/2/pri` byte-idénticos.
+
 ### Avance 2026-06-15 — TASK-022 (cámaras): tooling host del solver de homografía (acelera el banco, sin tocar hardware)
 - **El núcleo de TASK-022 es BANCO** (calibrar LAB/exposición bajo luz de Incheon, medir distancias con regla,
   fps@VGA) — Claude NO lo cierra. Un workflow (7 agentes + verificación) identificó lo **host-testeable/tooling**

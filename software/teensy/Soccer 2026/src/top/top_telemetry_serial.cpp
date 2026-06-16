@@ -109,6 +109,15 @@ void fill_frame(TopTelemetryFrame& f) {
     f.imu_right_ok          = sensors_imu_right_ready() ? 1 : 0;
     f.imu_heading_valid     = sensors_imu_get_heading_valid() ? 1 : 0;
 
+#ifdef TOP_ENABLE_HEADING_XVAL
+    // Salud del heading por cross-validación (TASK-213). Este es el ÚNICO call-site de
+    // los getters xval → 100% dentro de #ifdef: con el flag OFF nadie los referencia y
+    // --gc-sections (default Teensy) los descarta → binario de competencia byte-idéntico.
+    f.xval_verdict = sensors_imu_xval_verdict();
+    f.xval_score   = sensors_imu_xval_score();
+    f.xval_n_indep = sensors_imu_xval_n_indep();
+#endif
+
     // ── ToF + HC-SR04 ──
     int nt = NUM_TOF;
     if (nt > TT_MAX_TOF) nt = TT_MAX_TOF;

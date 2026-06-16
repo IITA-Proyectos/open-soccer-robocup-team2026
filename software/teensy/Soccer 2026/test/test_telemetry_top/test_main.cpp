@@ -57,7 +57,7 @@ static void make_golden_frame(TopTelemetryFrame& f) {
 // GOLDEN v2 (regenerado 2026-06-14, A1): +camf/camb (per-cámara) +base/line (DOWN).
 // Fuente de verdad cross-lenguaje: idéntico a tools/monitor-base/tests/golden_top_v2.jsonl.
 static const char* GOLDEN =
-    "{\"v\":2,\"seq\":3,\"t_ms\":5000,\"cam\":{\"fok\":1,\"bok\":0,\"bvis\":1,\"bx\":-120,\"by\":340,\"bconf\":77,\"bvx\":-15,\"bvy\":200,\"gy_vis\":1,\"gy_ang\":4500,\"gy_dist\":1200,\"gb_vis\":0,\"gb_ang\":-9000,\"gb_dist\":2500,\"crc\":2,\"resync\":5},\"camf\":{\"bvis\":1,\"bx\":-118,\"by\":338,\"gy_vis\":1,\"gy_ang\":4500,\"gy_dist\":1200,\"gb_vis\":0,\"gb_ang\":0,\"gb_dist\":0},\"camb\":{\"bvis\":0,\"bx\":0,\"by\":0,\"gy_vis\":0,\"gy_ang\":0,\"gy_dist\":0,\"gb_vis\":1,\"gb_ang\":-9000,\"gb_dist\":800},\"imu\":{\"hdg\":42.50,\"left\":42.10,\"right\":42.90,\"disagree\":0.80,\"lok\":1,\"rok\":1,\"valid\":1},\"tof\":{\"n\":4,\"d\":[150,800,65535,1200],\"hc\":300,\"min\":150,\"z\":[[140,160,65535,175,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535],[65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535],[65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535],[65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535]]},\"snap\":{\"valid\":1,\"x\":100,\"y\":-200,\"hdg_cd\":4250,\"conf\":80,\"bx\":-118,\"by\":338,\"bvis\":1,\"bconf\":77,\"bvx\":-15,\"bvy\":200,\"opp_ang\":4500,\"opp_dist\":1200,\"opp_vis\":1,\"own_vis\":0,\"own_ang\":0,\"own_dist\":0,\"obst\":150,\"ref\":1,\"flags\":24},\"base\":{\"pfresh\":1,\"px\":1500,\"py\":2000,\"phdg_cd\":9000,\"pconf\":75,\"vfresh\":1,\"vx\":120,\"vy\":-30,\"omega\":4500,\"slip\":12},\"line\":{\"fresh\":1,\"schema\":2,\"valid\":1,\"angle_cd\":4500,\"escape_cd\":-13500,\"pen_mm\":80,\"cross_mm\":-32768,\"present\":1,\"sensors\":7,\"events\":1,\"quality\":88,\"age_ms\":3},\"diag\":{\"frames_sent\":1234}}\n";
+    "{\"v\":2,\"seq\":3,\"t_ms\":5000,\"cam\":{\"fok\":1,\"bok\":0,\"bvis\":1,\"bx\":-120,\"by\":340,\"bconf\":77,\"bvx\":-15,\"bvy\":200,\"gy_vis\":1,\"gy_ang\":4500,\"gy_dist\":1200,\"gb_vis\":0,\"gb_ang\":-9000,\"gb_dist\":2500,\"crc\":2,\"resync\":5},\"camf\":{\"bvis\":1,\"bx\":-118,\"by\":338,\"gy_vis\":1,\"gy_ang\":4500,\"gy_dist\":1200,\"gb_vis\":0,\"gb_ang\":0,\"gb_dist\":0},\"camb\":{\"bvis\":0,\"bx\":0,\"by\":0,\"gy_vis\":0,\"gy_ang\":0,\"gy_dist\":0,\"gb_vis\":1,\"gb_ang\":-9000,\"gb_dist\":800},\"imu\":{\"hdg\":42.50,\"left\":42.10,\"right\":42.90,\"disagree\":0.80,\"lok\":1,\"rok\":1,\"valid\":1},\"tof\":{\"n\":4,\"d\":[150,800,65535,1200],\"hc\":300,\"min\":150,\"z\":[[140,160,65535,175,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535],[65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535],[65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535],[65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535,65535]]},\"snap\":{\"valid\":1,\"x\":100,\"y\":-200,\"hdg_cd\":4250,\"conf\":80,\"bx\":-118,\"by\":338,\"bvis\":1,\"bconf\":77,\"bvx\":-15,\"bvy\":200,\"opp_ang\":4500,\"opp_dist\":1200,\"opp_vis\":1,\"own_vis\":0,\"own_ang\":0,\"own_dist\":0,\"obst\":150,\"ref\":1,\"flags\":24},\"base\":{\"pfresh\":1,\"px\":1500,\"py\":2000,\"phdg_cd\":9000,\"pconf\":75,\"vfresh\":1,\"vx\":120,\"vy\":-30,\"omega\":4500,\"slip\":12},\"line\":{\"fresh\":1,\"schema\":2,\"valid\":1,\"angle_cd\":4500,\"escape_cd\":-13500,\"pen_mm\":80,\"cross_mm\":-32768,\"present\":1,\"sensors\":7,\"events\":1,\"quality\":88,\"age_ms\":3},\"diag\":{\"frames_sent\":1234,\"xval_v\":0,\"xval_s\":0,\"xval_ni\":0}}\n";
 
 void test_tt_serialize_golden_exact(void) {
     TopTelemetryFrame f;
@@ -300,8 +300,25 @@ void test_tt_parse_config_commands(void) {
     TEST_ASSERT_EQUAL(TtCmd::UNKNOWN, parse("CFG NOPE").cmd);
 }
 
+// xval (TASK-213): default 0 al init + round-trip de los 3 campos en el JSON.
+void test_tt_xval_fields(void) {
+    TopTelemetryFrame f;
+    tt_frame_init(f, 4);
+    TEST_ASSERT_EQUAL_UINT8(0, f.xval_verdict);
+    TEST_ASSERT_EQUAL_UINT8(0, f.xval_score);
+    TEST_ASSERT_EQUAL_UINT8(0, f.xval_n_indep);
+    f.xval_verdict = 2; f.xval_score = 73; f.xval_n_indep = 2;
+    char buf[2048];
+    const int n = tt_serialize_jsonl(buf, sizeof(buf), f);
+    TEST_ASSERT_TRUE(n > 0);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"xval_v\":2"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"xval_s\":73"));
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"xval_ni\":2"));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
+    RUN_TEST(test_tt_xval_fields);
     RUN_TEST(test_tt_serialize_golden_exact);
     RUN_TEST(test_tt_init_tof_sentinels);
     RUN_TEST(test_tt_init_sets_schema);

@@ -185,7 +185,9 @@ int tt_serialize_jsonl(char* buf, int cap, const TopTelemetryFrame& f) {
 
     // diag + cierre
     off = tt_append(buf, cap, off,
-        "\"diag\":{\"frames_sent\":%lu}}\n", (unsigned long)f.frames_sent);
+        "\"diag\":{\"frames_sent\":%lu,\"xval_v\":%u,\"xval_s\":%u,\"xval_ni\":%u}}\n",
+        (unsigned long)f.frames_sent,
+        (unsigned)f.xval_verdict, (unsigned)f.xval_score, (unsigned)f.xval_n_indep);
     if (off < 0) return -1;
 
     return off;
@@ -203,10 +205,11 @@ int tt_format_human(char* buf, int cap, const TopTelemetryFrame& f) {
 
     int off = 0;
 
-    // L1 — encabezado
-    off = tt_append(buf, cap, off, "[TOP] seq %lu t=%lums frames=%lu\n",
+    // L1 — encabezado (+ veredicto de salud del heading: v=SANO/SOSP/MALO, s=score, n=refs)
+    off = tt_append(buf, cap, off, "[TOP] seq %lu t=%lums frames=%lu xval:v%u s%u n%u\n",
                     (unsigned long)f.seq, (unsigned long)f.t_ms,
-                    (unsigned long)f.frames_sent);
+                    (unsigned long)f.frames_sent,
+                    (unsigned)f.xval_verdict, (unsigned)f.xval_score, (unsigned)f.xval_n_indep);
     if (off < 0) return -1;
 
     // L2 — camaras (pelota + 2 arcos)

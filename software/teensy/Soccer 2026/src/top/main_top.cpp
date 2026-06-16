@@ -50,6 +50,10 @@
 #include "pose_filter.h"
 #include "pose_age.h"      // gating fino de frescura del OTOS (INC-2)
 #endif
+
+#ifdef TOP_ENABLE_HEADING_XVAL
+#include "vel_lateral.h"   // gate anti-strafe de la cámara para la cross-validación (TASK-213)
+#endif
 #if defined(TOP_DEBUG_TELEMETRY) || defined(TOP_USB_MONITOR)
 #include "top_telemetry_serial.h"
 #endif
@@ -269,6 +273,34 @@ WorldSnapshot build_snapshot() {
     // bit 2 (partner_sees_ball) requiere parseo del partner snapshot — futuro.
     s.flags = flags;
 
+#ifdef TOP_ENABLE_HEADING_XVAL
+    // Cross-validación de salud del heading (TASK-213): alimentar las refs INDEPENDIENTES
+    // con la polaridad del arco ya resuelta. xval_update NO corre acá (lo hace 1×/tick
+    // sensors_imu_tick); acá sólo se guardan números O(1) → no pesa en el snapshot @100Hz.
+    {
+        const uint32_t now2 = millis();
+        // Cámara: tasa de rotación del bearing del arco RIVAL (goal_rate). Gate anti-strafe:
+        // si el robot TRASLADA (|vel_lateral| no ~0), d(bearing)/dt se contamina → invalidar.
+        const GoalRateResult gr = cameras_goal_rate_update(s.goal_opp_angle_centideg,
+                                                           s.goal_opp_visible != 0, now2);
+        const Velocity2D& vel = comm_down_get_velocity();
+#if defined(OTOS_VEL_FRAME_IS_FIELD)
+        const int16_t vl_heading = s.my_heading_centideg;   // OTOS en marco cancha → des-rotar
+#else
+        const int16_t vl_heading = 0;   // hipótesis conservadora: marco robot (lateral = vy)
+#endif
+        const VelLateral vl = vel_lateral_from_otos(vel.vx_mm_s, vel.vy_mm_s, vl_heading);
+        const bool have_trans = comm_down_is_vel_fresh();
+        // Sin vel fresca (R2 sin OTOS) NO se puede descartar strafe → conservador: cam_valid=gr.valid
+        // (el anti-falso-veto con <2 refs indep nunca da MALO cubre ese riesgo).
+        const bool cam_valid = gr.valid &&
+            (!have_trans || !vel_lateral_is_strafing(vl.lateral_mm_s, 50));
+        XvalState& xs = sensors_imu_xval_state();
+        xval_feed_camera(xs, gr.rate_dps, cam_valid, now2);
+        xval_feed_otos(xs, comm_down_get_omega_dps(), comm_down_omega_valid(), now2);
+    }
+#endif
+
     return s;
 }
 
@@ -363,6 +395,13 @@ void loop() {
     cameras_tick();        // OpenMV front (Serial3) + back (Serial5)
 
     // === Sensores periódicos ===
+    // Ventana bus-quiet compartida por R1 (deconflict del primario) y R2 (centinela del
+    // 2º BNO en Wire): el read del BNO sólo ocurre si pasaron ≥ TOP_BNO_TOF_GAP_MS desde el
+    // último read de ToF. Definido ARRIBA del #if/#else para que lo vean las DOS ramas
+    // (antes vivía dentro del #if R1 → el #else del centinela R2 no lo veía: no compilaba).
+#ifndef TOP_BNO_TOF_GAP_MS
+#define TOP_BNO_TOF_GAP_MS 8
+#endif
 #ifdef TOP_BNO_TOF_DECONFLICT
     // ROBOT1: el BNO comparte el bus `Wire` con los 4 ToF. Si el read multi-byte del
     // BNO cae PEGADO a un read de ToF, el yaw se CONGELA (banco 2026-06-08; mismo
@@ -382,9 +421,6 @@ void loop() {
     // ≥ TOP_BNO_TOF_GAP_MS desde el final del último read de ToF. Con ToF cada
     // 30 ms y gap de 8 ms queda una ventana limpia de ~7-20 ms por ciclo — el BNO
     // mantiene su cadencia interna de 20 Hz sin tocar al ToF.
-#ifndef TOP_BNO_TOF_GAP_MS
-#define TOP_BNO_TOF_GAP_MS 8
-#endif
     static uint32_t s_last_tof_end_ms = 0;
     if (g_since_tof_tick >= TOF_TICK_INTERVAL_MS) {
         g_since_tof_tick = 0;
@@ -398,13 +434,33 @@ void loop() {
         sensors_imu_tick();
     }
 #else
+    // ROBOT2: el primario vive en Wire2 (sin contención). El CENTINELA (2º BNO en Wire)
+    // SÍ comparte bus con los ToF → su read @1Hz debe quedar AISLADO temporalmente de los
+    // reads de ToF (≥ TOP_BNO_TOF_GAP_MS), igual que el band-aid del primario de R1; sin
+    // ese aislamiento se reintroduce el freeze por contención. ⚠️ BANCO (TASK-213): medir
+    // con analizador lógico que el read del secundario (<10 ms) queda solo en el bus.
+    // Gateado: con TOP_ENABLE_BNO_SENTINEL OFF, este #else queda EXACTO (byte-idéntico).
+#ifdef TOP_ENABLE_BNO_SENTINEL
+    static uint32_t s_last_tof_end_ms2 = 0;
+#endif
     if (g_since_imu_tick >= IMU_TICK_INTERVAL_MS) {
         g_since_imu_tick = 0;
         sensors_imu_tick();
+#ifdef TOP_ENABLE_BNO_SENTINEL
+        // Centinela: leer el 2º BNO sólo si pasó GAP_MS desde el último read de ToF en Wire
+        // (ventana bus-quiet). El scheduler @1Hz + el read viven en sensors_imu_sentinel_step;
+        // casi siempre retorna sin tocar el bus (sólo lee ~1×/s).
+        if ((millis() - s_last_tof_end_ms2) >= (uint32_t)TOP_BNO_TOF_GAP_MS) {
+            sensors_imu_sentinel_step(millis());
+        }
+#endif
     }
     if (g_since_tof_tick >= TOF_TICK_INTERVAL_MS) {
         g_since_tof_tick = 0;
         sensors_tof_tick();
+#ifdef TOP_ENABLE_BNO_SENTINEL
+        s_last_tof_end_ms2 = millis();   // marca el fin del read de ToF para la ventana bus-quiet
+#endif
     }
 #endif
     if (g_since_loc_tick >= 33) {  // ~30 Hz — matchea cadencia de los TOFs

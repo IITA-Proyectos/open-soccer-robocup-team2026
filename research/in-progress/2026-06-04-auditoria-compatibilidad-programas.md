@@ -119,7 +119,7 @@ Por **accion**, que es lo accionable, el desglose es: **deprecar-mover ~16**, **
 | `software/staging/shared/test-bno055-imuplus/...ino` | test | incompatible-fixable | el mejor del lote (IMUPLUS) pero falta 100k/20Hz; = diag_bno_left | NO (staging) |
 | `software/staging/shared/test-movimiento-omnidireccional/...ino` | test | incompatible-fixable | depende de zirconLib (HW ausente); angulos rueda 30/150/270 divergentes | NO (staging) |
 | `software/staging/down_board/light_sensors/prueba-leer-S1.cpp` | diag | incompatible-fixable | comentario pines vs codigo contradictorios; solo canal 0; = diag_down | NO (staging) |
-| `hardware/electronics/*-pack/.../firmware/teensy/config_top.h, cameras_fusion, cameras_runtime` | pack-snapshot | comentarios-stale | config monolitico viejo: Serial4->COMM, ToF XSHUT {2,3,4,5}, BNO sin nota 0x29 | N/A (no build path) |
+| `hardware/electronics/*-pack/.../firmware/teensy/config_top.h, cameras_fusion, cameras_runtime` | pack-snapshot | comentarios-stale | config monolitico viejo: Serial4->COMM, ToF XSHUT {2,3,4,5} (⚠️ Corrección 2026-06-15: el "BNO sin nota 0x29" daba por hecho un 2º BNO en 0x29 — falso; los 2 BNO son 0x28 en buses separados, `Wire2` 24/25 y `Wire` 18/19) | N/A (no build path) |
 | `hardware/electronics/{central,top,down}-pack/.../shared/types.h` | pack-snapshot | incompatible-deprecar | `WorldSnapshot==27` (v2), `kicker_fire`, `kicker_ready`; falta EV_SENSOR_NOISY | N/A (no build path) |
 | `hardware/electronics/central-pack/.../config_central.h` | pack-snapshot | incompatible-deprecar | UART_TOP en Serial1 (vivo=Serial7); KICKER; sin MOTOR_INVERT | N/A (no build path) |
 | `hardware/electronics/central-pack/.../main_central.cpp` (+ comm/motors/strategy/world_model/shared) | pack-snapshot | incompatible-deprecar | UART intercambiado; arrastra types v2+kicker; kicker_init() | N/A (no build path) |
@@ -130,7 +130,7 @@ Por **accion**, que es lo accionable, el desglose es: **deprecar-mover ~16**, **
 
 | Archivo | tipo | veredicto | Que comentario miente | tiene_env |
 |---|---|---|---|---|
-| `src/diag/diag_top_i2c_scan.cpp` | diag | compatible | omite 0x2D; "otro BNO en Wire2 (24/25)" optimista (0x29 fallado; bus de 24/25 = `Wire2`/LPI2C4, no `Wire1` — corrección 2026-06-09) | si `[env:diag_top_i2c_scan]` |
+| `src/diag/diag_top_i2c_scan.cpp` | diag | compatible | omite 0x2D; "otro BNO en Wire2 (24/25)" optimista (bus de 24/25 = `Wire2`/LPI2C4, no `Wire1` — corrección 2026-06-09. ⚠️ Corrección 2026-06-15: NO hay BNO en 0x29 ni unidad fallada — los 2 BNO son 0x28 en buses separados, primario en `Wire2` 24/25 y secundario en `Wire` 18/19 junto a los ToF) | si `[env:diag_top_i2c_scan]` |
 | `src/diag/diag_pose_live.cpp` | diag | comentarios-stale | L21/L178 ejes invertidos (X=largo) vs constantes correctas; 400k con ToF activos | si `[env:diag_pose_live]` |
 | `src/diag/diag_central_atras_adelante.cpp` | programa-anterior | compatible | "conflicto Serial2 7/8" stale (link a DOWN se movio a Serial1) | si `[env:diag_central_atras_adelante]` |
 | `src/diag/diag_central_drive_straight.cpp` | diag | comentarios-stale | dice "WorldSnapshot por Serial1"; runtime ya usa Serial7; "v2" stale (hoy v3) | si drive_robot1/robot2 |

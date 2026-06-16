@@ -63,6 +63,13 @@ diferente y seguir midiendo correctamente.
 > **PRIMARIO/confiable** (el que comparte bus con los ToF es el que se CONGELA = SECUNDARIO).
 > Tabla actualizada abajo. (El 0x29-en-`Wire` del diseño viejo era la unidad RIGHT, que además
 > resultó FALLADA — el robot corre con 1 BNO sano.)
+>
+> > ⚠️ **Corrección 2026-06-15 (banco, AMBOS robots R1 y R2 — confirmada por Gustavo).** NO existe
+> > ningún BNO en 0x29; tampoco hay unidad "RIGHT" ni BNO fallado. Cada robot lleva **2× BNO055
+> > sanos, AMBOS en 0x28**, en buses separados: PRIMARIO en `Wire2` (24/25), solo, sin contención;
+> > SECUNDARIO en `Wire` (18/19), junto a los 4 ToF. El robot corre con los **2 BNO sanos**, no
+> > con uno. (0x29 sigue siendo la dirección de fábrica de los ToF VL53L7CX, que se reasignan a
+> > 0x2A–0x2D al enumerar — eso es correcto y no cambia.)
 
 | Sensor | Bus | Dirección | Rol | Modo |
 |--------|-----|-----------|-----|------|

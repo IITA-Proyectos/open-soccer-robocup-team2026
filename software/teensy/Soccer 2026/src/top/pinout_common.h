@@ -20,16 +20,17 @@ namespace iitasoccer {
 constexpr int WIRE2_SCL_PIN = 24;
 constexpr int WIRE2_SDA_PIN = 25;
 
-// Recableado 2026-05-31 (confirmado en banco con diag_bno_addr_check):
-// los 2 BNO055 de ROBOT1 quedaron en el MISMO bus `Wire` (18/19), en direcciones
-// distintas. RIGHT tiene su pad ADR puenteado a 3V3 -> 0x29. Esto deja LIBRE el bus
-// **Wire2** (24/25) en R1. (En ROBOT2 ese bus Wire2 lleva el 2º BNO PRIMARIO —
-// confirmado en banco 2026-06-09, ver robot2.h.)
-// OJO: 0x29 lo comparten el BNO RIGHT y la dirección de fábrica de los ToF;
-// por eso los ToF se enumeran a 0x2A..0x2D al boot (ver topología ToF abajo)
-// y nunca quedan en 0x29 una vez enumerados.
-constexpr uint8_t BNO055_LEFT_I2C_ADDR  = 0x28;
-constexpr uint8_t BNO055_RIGHT_I2C_ADDR = 0x29;  // ADR puenteado a 3V3
+// Arquitectura BNO UNIFICADA (corrección 2026-06-15): AMBOS robots tienen 2 BNO055
+// en 0x28, en BUSES SEPARADOS — uno SOLO en Wire2 (24/25, sin ToF; el PRIMARIO) y otro
+// en Wire (18/19, compartido con los 4 ToF; el SECUNDARIO). El viejo esquema de robot1
+// (2º BNO en 0x29 por ADR puenteado a 3V3, en el mismo bus Wire) fue un ERROR, ya
+// corregido en hardware: NO hay ningún BNO en 0x29.
+// OJO: 0x29 es la dirección de FÁBRICA de los ToF VL53L7CX; por eso los ToF se enumeran
+// a 0x2A..0x2D al boot (ver topología ToF abajo) y nunca quedan en 0x29 una vez enumerados.
+constexpr uint8_t BNO055_LEFT_I2C_ADDR  = 0x28;  // PRIMARIO (Wire2) y SECUNDARIO (Wire): AMBOS 0x28
+// Alias legacy: ya NO existe un BNO en 0x29. Apunta a 0x28 para que el código/diag viejo
+// que aún lo nombre quede correcto (ambos BNO comparten dirección, distinto bus).
+constexpr uint8_t BNO055_RIGHT_I2C_ADDR = BNO055_LEFT_I2C_ADDR;  // legacy → 0x28 (ya NO 0x29)
 constexpr uint8_t VL53L7CX_DEFAULT_I2C_ADDR = 0x29;  // de fábrica; se reasigna al enumerar
 
 // ============================================================

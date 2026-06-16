@@ -103,14 +103,19 @@ tipo: indice-operacional
 >   el freeze era del BUS `Wire` compartido bajo carga (la conclusión 2026-06-08 del repo).
 >   El equipo RECABLEÓ la TOP de robot1 a la arquitectura de robot2 (BNO primario
 >   en bus propio Wire2 24/25 + secundario en Wire). **TERMINADO 2026-06-11: recableado
->   validado (scan I²C 0x28 en Wire2 ✓). Flashear `top_robot2_pri`** (los envs
->   `top_robot1*` quedan para el cableado viejo). **⚠️ BNOs de R1 hoy DESCONECTADOS**
+>   validado (scan I²C 0x28 en Wire2 ✓). **ACTUALIZACIÓN 2026-06-15: los envs `top_robot1*`
+>   se UNIFICARON en firmware a esta arquitectura (2 BNO @ 0x28, buses separados) — ya NO son
+>   "cableado viejo"; sirven igual que `top_robot2_pri` para el R1 recableado. Falta validar en
+>   banco (TASK-216).** **⚠️ BNOs de R1 hoy DESCONECTADOS**
 >   (uno congelaba y el soft-resync arrastraba al sano) → **R1 corre SIN gyro**
 >   (test del giro pendiente de reconectar BNO).
 >   El BNO "muerto" original → re-test en bus propio (posible repuesto gratis). Cada CENTRAL
 >   con su env per-robot; desde el recableado 2026-06-11 el M2 de R1 quedó DERECHO →
 >   `MOTOR_INVERT={+1,+1,+1}` en ambos (`8d5fc90`, validado piso).
-> · **BNO-R (0x29): MUERTO desde antes** (unidad quemada) — `imu_R=N` es lo esperado, no es noticia.
+> · **2º BNO de R1 (SECUNDARIO, Wire @ 0x28): venía MUERTO** (unidad quemada) — `imu_R=N` es lo
+>   esperado, no es noticia. **Corrección 2026-06-15: NO está en 0x29.** Ambos BNO de cada robot son
+>   0x28 en buses separados (primario Wire2, secundario Wire). Ya NO hay ningún BNO en 0x29 (eso fue
+>   un error de cableado/doc ya corregido; 0x29 es solo la dir de fábrica de los ToF).
 > · **TOP de R1 heredó los fixes**: loop ~220k/s, ToF 4/4 (`min_obst` ok) en el banco 2026-06-10.
 > · **DEMO de R1 = `diag_central_arbitro_strafe_robot1`** (validado end-to-end con la app
 >   2026-06-11); ToF derecho (LP pin 11) no enumera — pendiente cable. **CORRECCIÓN 2026-06-11

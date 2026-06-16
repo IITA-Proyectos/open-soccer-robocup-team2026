@@ -100,8 +100,9 @@ fuentes:
 > está **solo en `Wire2` (24/25), sin ToF** → no sufre contención I²C con los ToF → es el
 > **más confiable** y la fuente de heading preferida. El **SECUNDARIO** comparte `Wire`
 > (18/19) con los 4 ToF y es el que se **congela** cuando el read del BNO choca con los ToF
-> → es el respaldo. (Fix de fondo de ROBOT1: hoy tiene 1 BNO en `Wire` con los ToF =
-> posición secundaria; el fix es agregarle un BNO en `Wire2` solo, como primario.)
+> → es el respaldo. (Corrección 2026-06-15, confirmada en banco por Gustavo: **AMBOS robots
+> R1 y R2 ya llevan los 2 BNO** — primario solo en `Wire2` (24/25), secundario en `Wire`
+> (18/19) con los ToF; ambos en 0x28. No queda nada por agregar.)
 >
 > **Remap de `Wire2`** (pines 24/25): los pines default de `Wire2` en Teensy 4.0 son 24/25,
 > pero la librería Wire suele requerir fijar SDA/SCL antes de `begin()`. El firmware debe

@@ -2,10 +2,10 @@
 id: TASK-040
 title: "BNO/ToF en TOP: bus I²C marginal + 2º BNO (0x29) no inicia"
 date_created: 2026-06-02
-date_updated: 2026-06-02
+date_updated: 2026-06-15
 assigned: [enzo, gustavo]
 priority: P1
-status: pending
+status: SUPERADA-2026-06-15  # la arquitectura cambió: ya NO hay 2º BNO en 0x29 (ambos 0x28, buses separados). Ver banner.
 estimated_hours: 3
 blocks: [heading robusto (2 BNO) + localización por trilateración (4 ToF)]
 relacionado: [TASK-038, TASK-039]
@@ -13,6 +13,14 @@ tags: [top-board, bno055, vl53l7cx, i2c, hardware, multimetro, bring-up]
 ---
 
 # TASK-040 — Bus I²C del TOP marginal: 2º BNO (0x29) no arranca + ToF 0/4
+
+> ✅ **SUPERADA (2026-06-15).** Esta TASK debuggeaba un 2º BNO en **0x29** (ADR puenteado a 3V3,
+> en el bus `Wire`) que no arrancaba. **Esa arquitectura fue un ERROR, ya corregido en hardware:**
+> ambos robots tienen sus 2 BNO en **0x28**, en **buses separados** (primario en `Wire2` 24/25 sin
+> ToF, secundario en `Wire` 18/19 con los ToF). Ya **no hay ningún BNO en 0x29**, así que el "2º BNO
+> 0x29 no inicia" dejó de existir. El firmware se unificó a esa realidad el 2026-06-15
+> (ver `journal/2026-06-16-correccion-bno-0x28-unificado.md` + TASK-216). El texto de abajo queda
+> como **registro histórico** del debug del bus marginal.
 
 > **Para Enzo (banco).** Resumen de una sesión larga de debug (Gustavo + coach,
 > 2026-06-02). Conclusión: **es un problema de HARDWARE en el bus I²C `Wire` (18/19)**

@@ -109,8 +109,8 @@ Estas tareas deben completarse ANTES de viajar al mundial.
 - **Prioridad**: Baja
 - **Descripción**: Colocar un segundo BNO055 en la capa superior del robot (lejos de motores). Comparar lecturas de ambos y usar el promedio o descartar el que presente saltos por impacto.
 - **Análisis**: Otros equipos top de Soccer Open usan esta técnica. El segundo sensor podría ir en NDOF (lejos de motores, menor interferencia) mientras el principal va en IMUPLUS. Si el de NDOF calibra bien, puede servir como referencia absoluta periódica.
-- **Dependencias**: Segundo sensor BNO055, dirección I2C alternativa (0x29 con pin ADR en alto)
-- **Estado**: Idea, no investigado
+- **Dependencias**: Segundo sensor BNO055 en **bus I2C separado** (`Wire2`, 24/25), ambos en **0x28** (corrección 2026-06-15: NO se usa 0x29 / ADR a 3V3 — eso fue un error; los 2 conviven por estar en buses distintos, no por dirección distinta).
+- **Estado**: ✅ Hardware IMPLEMENTADO en ambos robots (2 BNO @ 0x28: primario `Wire2` / secundario `Wire`). La comparación/descarte por impacto en software = cross-validación del heading (TASK-213).
 
 ### HW-005: Encoders magnéticos en motores actuales
 - **Tipo**: Hardware

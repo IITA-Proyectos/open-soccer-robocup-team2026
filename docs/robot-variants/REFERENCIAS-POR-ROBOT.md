@@ -100,15 +100,21 @@ Archivos: `src/top/sensors_imu.cpp/.h`, `src/top/pinout_common.h`. **HARDCODED-C
 
 > ⚠️ **R1 recableado 2026-06-11 a arq. R2**: primario `Wire2` (24/25) + secundario `Wire`
 > (hoy ambos BNO de R1 DESCONECTADOS → R1 corre sin gyro). La columna "valor actual (ROBOT1)"
-> de abajo describe el **cableado viejo** de R1 (ambos BNO en `Wire`, 0x28/0x29) — para la TOP
+> de abajo describe el **cableado viejo** de R1 (ambos BNO en `Wire`, ambos 0x28) — para la TOP
 > de R1 recableada vale lo de la columna ROBOT2 (env `top_robot2_pri`).
+>
+> ⚠️ **Corrección 2026-06-15 (confirmada por Gustavo en banco, AMBOS robots):** la arquitectura
+> BNO es la MISMA en R1 y R2 → 2× BNO055 **ambos en 0x28**, en buses SEPARADOS (PRIMARIO en `Wire2`
+> 24/25 sin ToF; SECUNDARIO en `Wire` 18/19 con los ToF). **NO existe ningún BNO en 0x29.** El viejo
+> esquema "2º BNO con ADR puenteado a 3V3 → 0x29" / "los 2 BNO en `Wire` en 0x28 y 0x29" / "RIGHT @ 0x29"
+> fue un ERROR ya corregido en hardware. (0x29 SÍ sigue siendo la dirección de fábrica de los ToF — §4.)
 
 | Referencia | archivo:línea | valor actual (ROBOT1) | per-robot? | cómo se selecciona | nota ROBOT2 |
 |---|---|---|---|---|---|
 | Nº de BNO | `sensors_imu.cpp:43-46`, `imu_fusion.h` `IMU_FUSION_N` | 2 slots (LEFT+RIGHT), hoy 1 sano | **HARDCODED-COMÚN** | ninguno | R2 tiene 2 BNO **funcionales** (uno por bus). |
-| **Bus de cada BNO** | `sensors_imu.cpp:43-44` | **AMBOS en `&Wire`** (18/19) | **HARDCODED-COMÚN** | ninguno | ⚠️ **MISMATCH R2**: R2 tiene el 2º BNO en **`Wire2`** (LPI2C4, pines 24/25, back-pad bajo el Teensy; cables soldados por debajo). El firmware hoy pone los 2 en `Wire`. Para R2 el 2º BNO debe leerse de `Wire2`. Por convención, el BNO solo en `Wire2` (sin ToF) es el **PRIMARIO** (más confiable); el de `Wire` (con los ToF) es el **SECUNDARIO**. **Cambio de código requerido** (no sólo config). |
-| Direcciones BNO | `pinout_common.h:26-27` | LEFT 0x28, RIGHT 0x29 (ADR puenteado) | **HARDCODED-COMÚN** | ninguno | ⚠️ **MISMATCH R2**: el usuario dice que los 2 BNO de R2 comparten la **MISMA base 0x28** (no se distinguen por dirección; se distinguen por BUS). El esquema R1 (0x28 vs 0x29 mismo bus) NO aplica a R2. |
-| Detección / readiness | `sensors_imu.cpp:48` `g_ready[]`, `:222-238` sondeo 0x29 con chip-id 0xA0 | sondea 0x29 en `Wire`, init sólo si es BNO real | **HARDCODED-COMÚN** | ninguno | La heurística "0x29 = 2º BNO" es específica de R1. En R2 el 2º BNO está en `Wire2@0x28` (24/25) → la detección actual NO lo encontraría. **A-CONFIRMAR / rediseñar para R2.** |
+| **Bus de cada BNO** | `sensors_imu.cpp:43-44` | **AMBOS en `&Wire`** (18/19) | **HARDCODED-COMÚN** | ninguno | ⚠️ **MISMATCH (AMBOS robots, corrección 2026-06-15)**: R1 y R2 tienen el **PRIMARIO** en **`Wire2`** (LPI2C4, pines 24/25, back-pad bajo el Teensy; cables soldados por debajo), solo en su bus y SIN ToF → sin contención; y el **SECUNDARIO** en **`Wire`** (18/19), junto a los 4 ToF. ✅ **RESUELTO 2026-06-15**: el firmware ya instancia el PRIMARIO en `Wire2` y el SECUNDARIO en `Wire` (unificado en `sensors_imu.cpp`, R1+R2). Falta validar R1 en banco (TASK-216). |
+| Direcciones BNO | `pinout_common.h:26-27` | ambos 0x28 | **HARDCODED-COMÚN** | ninguno | ✅ **RESUELTO 2026-06-15**: los 2 BNO comparten la **MISMA base 0x28** (no se distinguen por dirección; se distinguen por BUS). NO existe ningún BNO en 0x29 — el viejo esquema "0x28 vs 0x29 mismo bus / ADR puenteado a 3V3" fue un ERROR ya corregido en hardware. (0x29 sigue siendo la dirección de FÁBRICA de los ToF VL53L7CX — ver §4 — y eso NO se toca.) |
+| Detección / readiness | `sensors_imu.cpp` `g_ready[]` (init por ACK en cada bus) | init unificado en 0x28 (sin sondeo 0x29) | **HARDCODED-COMÚN** | ninguno | ✅ **RESUELTO 2026-06-15**: la rama de sondeo 0x29 se ELIMINÓ. Ambos BNO se inician en 0x28 — PRIMARIO en `Wire2`, SECUNDARIO en `Wire` — cada uno con guarda de ACK en su bus. NO hay BNO en 0x29. |
 | `HEADING_SIGN` | `sensors_imu.cpp:83` | `-1.0f` (chip CW+ → firmware CCW+) | **HARDCODED-COMÚN** | ninguno | A-CONFIRMAR-EN-BANCO en R2: si el BNO se montó con otra orientación, el signo puede diferir (medido en banco R1 2026-05-31). |
 | `BNO_READ_INTERVAL_MS` | `sensors_imu.cpp:78` | 50 (≈20 Hz, band-aid BNO+ToF en `Wire`) | **HARDCODED-COMÚN** | ninguno | En R2, con el 2º BNO en `Wire2` (24/25, bus aparte, sin ToF → es el PRIMARIO), la contención BNO+ToF podría no existir → se podría leer más rápido. Oportunidad, no bloqueante. |
 | Clock I²C | `sensors_imu.cpp:188` `Wire.setClock(100000)` | 100 kHz (coexistencia BNO+ToF) | **HARDCODED-COMÚN** | ninguno | idem: R2 con BNO en `Wire2` (24/25) podría volver a 400 kHz en ese bus. |
@@ -294,9 +300,9 @@ NO existe un único "robot definition". Es exactamente lo que el agente de dise�
 - **Ya PER-ROBOT y bien (HW):** motores (pines M1/M2/M3 + MOTOR_INVERT en `config_central.h`); arrays ToF (`PIN_TOF_XSHUT`, `TOF_I2C_ADDR_ASSIGNED`, `NUM_TOF_ACTIVE`, `ROBOT_HAS_*` en `pinout_robotN.h`). **≈ 8 referencias.**
 - **PER-ROBOT pero R2 = copia SIN validar (A-CONFIRMAR-EN-BANCO):** `MOTOR_INVERT` R2, `PIN_TOF_XSHUT` R2, mapeo posición ToF R2. **≈ 3.**
 - **HARDCODED-COMÚN que DEBERÍAN ser per-robot según datos del usuario:** **≈ 7 críticas**
-  1. Bus del 2º BNO (`Wire` vs **`Wire2`** 24/25 en R2; el de `Wire2`, solo/sin ToF, es el PRIMARIO) — `sensors_imu.cpp:43-44` ⚠️ **MISMATCH + cambio de código**.
-  2. Direcciones BNO (0x28/0x29 mismo bus vs **2×0x28 en buses distintos** en R2) — `pinout_common.h:26-27` ⚠️ **MISMATCH**.
-  3. Detección del 2º BNO (heurística 0x29 chip-id) — `sensors_imu.cpp:222-238` ⚠️ no sirve para R2.
+  1. Bus del 2º BNO (PRIMARIO en **`Wire2`** 24/25, SECUNDARIO en `Wire`, AMBOS robots) — `sensors_imu.cpp` ✅ **RESUELTO 2026-06-15 (firmware unificado; falta banco R1 → TASK-216)**.
+  2. Direcciones BNO (2×0x28 en buses distintos, AMBOS robots; NO hay BNO en 0x29) — `pinout_common.h:26-27` ✅ **RESUELTO 2026-06-15**.
+  3. Detección del 2º BNO (init por ACK en cada bus, 0x28) — `sensors_imu.cpp` ✅ **RESUELTO 2026-06-15**: la rama de sondeo 0x29 se eliminó.
   4. `TOF_MOUNT_ANGLE_DEG` (ToF de R2 rotados ~90°) — `pinout_common.h:104` (está en common, debería ir a pinout_robotN.h).
   5. Modelo de ToF (R2 ≠ VL53L7CX) — `sensors_tof.cpp` instancia `Adafruit_VL53L7CX` fijo.
   6. FOV/apertura por sensor (un ToF de R2 ~40°) — **constante AUSENTE en todo el firmware**.
@@ -308,7 +314,7 @@ NO existe un único "robot definition". Es exactamente lo que el agente de dise�
 | # | Subsistema | Lo que dice el usuario de R2 | Estado del firmware HOY | Acción |
 |---|---|---|---|---|
 | 1 | OTOS | R2 **sin OTOS** | `[env:down]` compila con 2 OTOS; no hay `down_robot2` | env nuevo con `-DDOWN_NUM_OTOS_CONNECTED=0` (código ya soporta 0). `pinout_robot2.h:51` además declara `ROBOT_HAS_OTOS 1` (TOP) — inconsistente con R2. |
-| 2 | BNO | 2 BNO, uno en `Wire` y otro en **`Wire2`** (24/25), ambos **0x28** (el de `Wire2`, sin ToF, = PRIMARIO) | firmware: 2 BNO en `Wire`, 0x28/0x29 | cambio de código en `sensors_imu.cpp` (leer 2º BNO de Wire2) — per-robot. |
+| 2 | BNO | **AMBOS robots**: 2 BNO, uno en `Wire` y otro en **`Wire2`** (24/25), ambos **0x28**; el de `Wire2`, sin ToF, = PRIMARIO. **NO hay BNO en 0x29.** | ✅ **RESUELTO 2026-06-15**: firmware unificado (primario `Wire2@0x28`, secundario `Wire@0x28`) | hecha (código); falta validar **R1** en banco (TASK-216). |
 | 3 | ToF | modelo distinto, rotados ~90°, uno ~40° FOV | modelo/ángulos/FOV comunes | mover `TOF_MOUNT_ANGLE_DEG` a per-robot; parametrizar modelo+FOV; validar pines en banco. |
 | 4 | Motores | mismo modelo, posiblemente dirección/pines distintos por error de armado | ✅ **RESUELTO banco 2026-06-09**: pines IGUALES a R1 (NO rotados), `MOTOR_INVERT={+1,+1,+1}`, `MOTOR_MIN_PWM={70,70,107}` validados en R2 | hecha. Queda el espejo: verificar en **R1** los valores estándar del lateral (`{70,70,107}` + impulso `{130,130,140}` + lead 66 ms). |
 | 5 | Cámaras | calibración distancia (homografía) y quizá color, en un robot-definition | en `.py` por cámara, no por robot, placeholders | diseñar config por robot; recalibrar (TASK-022). |

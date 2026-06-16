@@ -41,7 +41,7 @@
 | Tiempo | Quién | Línea (en español de trabajo — 🇬🇧 traducir) |
 |---|---|---|
 | 0-15 s | `María Virginia Viollaz` | "Somos `IITA Low Battery Messi`, de Salta, Argentina, en la sub-liga **Open**. Llegamos a Incheon como **campeones nacionales** de la Roboliga Argentina 2025. Traemos **2 robots**: un **arquero** y un **delantero**." |
-| 15-40 s | `María Virginia Viollaz` | "Nuestro robot usa una **arquitectura distribuida de 3 placas**: una placa **percibe** (2 cámaras OpenMV N6, 1 IMU, 4 sensores ToF), una placa **decide** (FSM táctica + 3 motores omni) y una placa **toca el piso** (anillo de 32 sensores de línea + 2 sensores ópticos de odometría). Se hablan por UART a 230400 baud." |
+| 15-40 s | `María Virginia Viollaz` | "Nuestro robot usa una **arquitectura distribuida de 3 placas**: una placa **percibe** (2 cámaras OpenMV N6, 2 IMU, 4 sensores ToF), una placa **decide** (FSM táctica + 3 motores omni) y una placa **toca el piso** (anillo de 32 sensores de línea + 2 sensores ópticos de odometría). Se hablan por UART a 230400 baud." |
 | 40-65 s | `Elías Cordero` | "Lo que más nos enorgullece es **cómo verificamos el firmware sin la placa**: la lógica de decisión vive en módulos C++ puros que compilamos y testeamos en la PC con g++. Hoy corremos **858 tests host-native en 61 suites, 0 fallos** (medido 2026-06-14 con `scripts/run-host-tests.sh`). Eso nos deja **iterar rápido y seguro** a días de la competencia." |
 | 65-85 s | `Elías Cordero` | "Y una decisión táctica de la que estamos orgullosos: el **arquero anticipa**. En vez de seguir la posición actual de la pelota, proyecta dónde **va a estar** usando su velocidad (`pos + v·0.2 s`, con tope). Se lo mostramos en cancha si quieren." |
 | 85-90 s | ambos | "Todo está **open-source con licencia MIT** en GitHub, documentado para que otro equipo lo replique. ¿Por dónde quieren empezar?" |
@@ -279,11 +279,13 @@ otro equipo lo replique — si quieren les pasamos el repo." (Refuerza Documenta
 - **Cinemática:** "Los **ángulos de rueda ya están calibrados** (`{330,210,90}`, banco 2026-06-08, con la
   disposición física real: M1 delantera-izquierda, M2 delantera-derecha, M3 trasera); resta medir el **radio**
   del robot armado y el **tuneo fino del lateral**. El módulo de cinemática es puro y testeado."
-- **1 sola IMU sana:** "Corremos con **1 BNO055 sano + 4 ToF**; la segunda IMU falló y está documentado el
-  riesgo. La pose igual computa."
-- **Heading que se congela:** "Detectamos que la IMU y los ToF compiten en el bus I²C y el heading se
-  congelaba; mitigamos bajando el bus a 100 kHz y leyendo la IMU a 20 Hz. El fix de fondo (IMU en bus
-  aparte) está anotado."
+- **2 IMUs sanas:** "Corremos con **2 BNO055 sanos + 4 ToF**; cada BNO va en su propia dirección I²C 0x28
+  pero en **buses separados** (el primario solo en Wire2, el secundario en Wire junto a los ToF). La pose
+  computa con redundancia de heading."
+- **Heading que se congela:** "Detectamos que una IMU y los ToF competían en el bus I²C y el heading se
+  congelaba; mitigamos bajando el bus a 100 kHz y leyendo la IMU a 20 Hz. El **fix de fondo ya está aplicado**:
+  el BNO primario quedó en su **propio bus** (Wire2, pines 24/25), aislado de los ToF; el secundario sigue en
+  Wire junto a los ToF como respaldo."
 
 ---
 

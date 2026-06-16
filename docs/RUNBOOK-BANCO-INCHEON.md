@@ -220,10 +220,11 @@ Test de aceptación con el parser de PRODUCCIÓN (`cameras.cpp`). NO recalibra: 
 
 ### 2.1 — `top_robot1_bnofreeze` (detector de BNO congelado, IMU-1)
 
-**Qué arregla:** el robot corre con **1 solo BNO sano** (0x28). Si su yaw se
-congela a mitad de partido (el chip sigue ackeando pero el heading queda clavado),
-hoy pasa como VÁLIDO. Este detector lo baja a DEAD. (Único HIGH de la auditoría
-2026-06-04.) Flag: `TOP_ENABLE_BNO_FREEZE_DETECT`. Defaults del detector
+**Qué arregla:** el robot lleva **2 BNO sanos, ambos en 0x28, en buses separados**
+(primario en `Wire2` 24/25 sin ToF; secundario en `Wire` 18/19 junto a los 4 ToF).
+Si el yaw de un BNO se congela a mitad de partido (el chip sigue ackeando pero el
+heading queda clavado), hoy pasa como VÁLIDO. Este detector lo baja a DEAD. (Único
+HIGH de la auditoría 2026-06-04.) Flag: `TOP_ENABLE_BNO_FREEZE_DETECT`. Defaults del detector
 (`src/shared/imu_freeze.h`): **N = 40 lecturas bit-idénticas** + **T = 1500 ms**
 (a 20 Hz ≈ 2 s); ambos umbrales deben cumplirse.
 
@@ -460,9 +461,12 @@ fluya el dato (OTOS/cross_track) y se tuneen los gains en banco. Tres tunes:
   **S4 (16/17) → CENTRAL** · S5 ← cámara trasera (U9, pin 21).
 - Árbitro = **NIVEL GPIO en pines 5/6** (no UART): `match_running = pin5 OR pin6`,
   `INPUT_PULLDOWN`, 0=stop/1=go (fail-safe: cable suelto → ambos 0 → STOP).
-- I²C: 1 BNO sano (0x28) + 4 ToF (0x2A..0x2D) en `Wire` (18/19) **@100 kHz**, BNO
-  leído @20 Hz. ToF LP en pines {9,10,11,12} activo-ALTO. HC-SR04 en 4/3.
-  ⚠️ El BNO derecho (0x29) es la unidad FALLADA; el robot corre con 1 BNO.
+- I²C: 2 BNO sanos (ambos 0x28, en buses separados) — primario en `Wire2` (24/25),
+  SOLO en su bus, sin ToF; secundario en `Wire` (18/19) junto a los 4 ToF
+  (0x2A..0x2D) **@100 kHz**, BNO leído @20 Hz. ToF LP en pines {9,10,11,12}
+  activo-ALTO. HC-SR04 en 4/3.
+  ⚠️ NINGÚN BNO va en 0x29: 0x29 es solo la dirección de FÁBRICA de los VL53L7CX,
+  que se reasignan a 0x2A..0x2D al enumerar.
 
 **CENTRAL (Teensy 4.1):**
 - **S7 (pin 28) ← TOP** (cable del TOP pin17/TX4) · **S1 (pin 0) ← DOWN** ·

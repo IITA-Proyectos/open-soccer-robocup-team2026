@@ -86,7 +86,9 @@ constexpr float MAX_SPEED_MM_S  = 1000.0f;           // [R1=1000] estimado (comu
 // parte INFERIOR del Teensy 4.0 (back-pad) = pines 24/25 = bus **Wire2** (LPI2C4).
 // ⚠️ CORRECCION 2026-06-09: 24/25 es Wire2, NO Wire1 (Wire1 = 16/17). CONFIRMADO en
 // banco (diag_top_i2c_scan, commit 9da8e9e): BNO2 0x28 VIVO en Wire2; Wire1 vacío.
-//   [R1: 2 slots LEFT/RIGHT en el MISMO Wire, 0x28 / 0x29; hoy solo 1 sano (0x28).]
+//   [R1: UNIFICADO a esta misma arquitectura el 2026-06-15 (2 BNO @ 0x28 en buses
+//    separados, primario Wire2 / secundario Wire). El viejo "LEFT/RIGHT en el mismo
+//    Wire, 0x28 / 0x29" fue un ERROR ya corregido. Falta validar R1 en banco (TASK-216).]
 //
 // ★ CONVENCION PRIMARIO/SECUNDARIO (Gustavo 2026-06-09): el BNO PRIMARIO (fuente de
 // heading preferida) es el que está SOLO en Wire2 (sin ToF → sin contencion i2c → NO

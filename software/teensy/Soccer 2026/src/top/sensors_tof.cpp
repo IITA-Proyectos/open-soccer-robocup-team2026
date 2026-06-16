@@ -195,8 +195,9 @@ void fill_zones(const VL53L7CX_ResultsData& r, uint16_t* dst, uint8_t n_zones) {
 
 // Duerme los 4 ToF (LP low) para dejar el bus I2C limpio ANTES de iniciar el BNO.
 // Receta validada en diag_pose_live: (1) dim ToF -> (2) init BNO -> (3) enumerar ToF.
-// Sin esto, el BNO se inicia con los ToF DESPIERTOS en 0x29 (misma dir que el BNO
-// derecho) -> el/los BNO no aparecen. Llamar en setup() ANTES de sensors_imu_init().
+// Sin esto, el BNO secundario (Wire @ 0x28) se inicia con los ToF DESPIERTOS en su dir
+// de fábrica 0x29 ensuciando el bus -> el/los BNO no aparecen. (Ya NO hay BNO en 0x29 —
+// corrección 2026-06-15.) Llamar en setup() ANTES de sensors_imu_init().
 void sensors_tof_predim_lp() {
 #ifdef TOP_ENABLE_MULTI_TOF
     Wire.begin();

@@ -106,17 +106,17 @@ LiPo 2S 7.4 V nominal ──► Conector Deans-T-F (XP1)
 
 ## 1.3 PLACA TOP — buses I²C y selección de sensores
 
-Los **6 sensores I²C cuelgan del mismo bus `Wire` (pines 18/19)**: 2 BNO055 (0x28, 0x29) + 4 ToF VL53L7CX (0x2A–0x2D).
+Los sensores I²C se reparten en **dos buses**: los 4 ToF VL53L7CX (0x2A–0x2D) + el BNO055 SECUNDARIO cuelgan de `Wire` (pines 18/19); el BNO055 PRIMARIO va **solo** en `Wire2` (pines 24/25), sin ToF. **Ambos BNO055 quedan en 0x28** (cada uno en su bus, sin colisión).
 
 | Sensor | Cant. | Dirección | Bus | Por qué se eligió |
 |---|---|---|---|---|
-| BNO055 (IMU 9-DOF) | 2 | 0x28 / 0x29 | `Wire` | Heading absoluto fusionado on-chip; redundancia ante impactos/interferencia magnética de motores |
+| BNO055 (IMU 9-DOF) | 2 | 0x28 (ambos) | `Wire2` (primario) / `Wire` (secundario) | Heading absoluto fusionado on-chip; redundancia ante impactos/interferencia magnética de motores. Van en **buses separados** (ambos en 0x28) para que el primario no comparta bus con los ToF |
 | VL53L7CX (ToF multizona) | 4 | 0x2A–0x2D | `Wire` | Localización 2D por trilateración (4 paredes ortogonales); FoV 60°, ±15 mm a <2 m. **En PRODUCCIÓN se leen 4×4 = 16 zonas** (la resolución 8×8 = 64 zonas quedó diferida: triplica/quintuplica el tráfico I²C y arriesga el loop de 100 Hz; sólo vive en el diag de banco) |
 | HC-SR04 (ultrasonido) | 1 | — (GPIO) | — | Distancia frontal redundante (hoy gateado OFF) |
 
 **Decisión clave (data-driven):** **I²C a 100 kHz** y leer el BNO a **20 Hz** (no 100 Hz).
 **Por qué:** el BNO055 y los VL53L7CX **no coexisten** en el mismo bus a alta velocidad: con los ToF rangeando, la lectura multi-byte del BNO se corrompe.
-**Dato:** a 400 kHz (o 100 kHz con el BNO leído fuerte) **el yaw se congela**; a **100 kHz + BNO @20 Hz** el heading sigue OK en banco. (El *arranque* es aparte y mejoró: la **carga del firmware-blob de los 4 ToF se promovió a 1 MHz** —VALIDADO EN BANCO 2026-06-14, >15 power-cycles, 0 *fallbacks*—, bajando el boot del TOP de **~40 s → 14,4 s → ~9,6 s** (TASK-211).) Lo del bus de *ranging* a 100 kHz es un *band-aid*: el fix de fondo (anotado en el código) es mover el BNO a un bus aparte (`Wire2`, pines 24/25). Esto fija la convención de heading: el BNO que está **solo en su bus (`Wire2`, sin ToF) es el PRIMARIO** —sin contención I²C con los ToF, por eso es el más confiable—; el que comparte `Wire` (18/19) con los 4 ToF es el **SECUNDARIO** (respaldo, y el que se congela). **Estado real honesto:** el BNO RIGHT (0x29) es una **unidad fallada**; el robot corre con 1 BNO sano (0x28) + 4 ToF, todos estables.
+**Dato:** a 400 kHz (o 100 kHz con el BNO leído fuerte) **el yaw se congela**; a **100 kHz + BNO @20 Hz** el heading sigue OK en banco. (El *arranque* es aparte y mejoró: la **carga del firmware-blob de los 4 ToF se promovió a 1 MHz** —VALIDADO EN BANCO 2026-06-14, >15 power-cycles, 0 *fallbacks*—, bajando el boot del TOP de **~40 s → 14,4 s → ~9,6 s** (TASK-211).) Lo del bus de *ranging* a 100 kHz es un *band-aid*: el fix de fondo (anotado en el código) es mover el BNO a un bus aparte (`Wire2`, pines 24/25). Esto fija la convención de heading: el BNO que está **solo en su bus (`Wire2`, pines 24/25, sin ToF) es el PRIMARIO** —sin contención I²C con los ToF, por eso es el más confiable—; el que comparte `Wire` (18/19) con los 4 ToF es el **SECUNDARIO** (respaldo, y el que se congela). **Ambos BNO055 están en la dirección 0x28** (cada uno solo en su bus, así que no colisionan). **Estado real honesto:** el robot corre con los 2 BNO sanos (ambos 0x28, en buses separados) + 4 ToF, todos estables.
 
 ### Iteración eléctrica de referencia — enumerar 4 ToF en un solo bus
 

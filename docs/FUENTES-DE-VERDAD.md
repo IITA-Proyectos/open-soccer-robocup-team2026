@@ -96,8 +96,11 @@ tipo: indice
    ToF al bus `Wire` (18/19)**. Banco 2026-05-30 (`diag_top_tof_census`, tras
    power-cycle): los **4 LP funcionan** → pines **{9,10,11,12} activo-alto**,
    enumeran a **0x2A/0x2B/0x2C/0x2D**. Esto liberó el bus `Wire2` (24/25) del TOP
-   (corrección 2026-06-09: el bus de 24/25 es `Wire2`/LPI2C4, no `Wire1`; es donde va
-   el 2º BNO — TASK-207) y habilita localización 2D por trilateración. Pines/direcciones reales
+   (corrección 2026-06-09: el bus de 24/25 es `Wire2`/LPI2C4, no `Wire1`; ahí va el BNO
+   PRIMARIO, solo, sin ToF — TASK-207. **Arquitectura BNO canónica (corrección 2026-06-15):
+   AMBOS robots, 2 BNO @ 0x28 en buses separados — primario Wire2 / secundario Wire; NO hay
+   ningún BNO en 0x29. Fuente: `src/top/sensors_imu.h` + `src/top/pinout_common.h`.**)
+   y habilita localización 2D por trilateración. Pines/direcciones reales
    ya en `pinout_robot1.h`/`pinout_robot2.h` (`PIN_TOF_XSHUT={9,10,11,12}`,
    `NUM_TOF_ACTIVE=4`). **Lección**: las direcciones I²C de los VL53L7CX
    persisten con 3V3 → power-cycle obligatorio al enumerar (no reset).

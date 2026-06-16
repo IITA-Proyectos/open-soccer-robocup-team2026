@@ -1,13 +1,20 @@
-// diag_bno_addr_check.cpp — Verifica que los 2 BNO055 esten en direcciones
-// distintas (0x28 y 0x29) en el MISMO bus Wire. NO es firmware de competencia.
+// diag_bno_addr_check.cpp — Escanea 0x28/0x29 en Wire y confirma con CHIP_ID si lo
+// que responde es un BNO055. NO es firmware de competencia.
 //
-// Contexto (2026-05-31)
-// ---------------------
-// El recableado dejo TODO en el bus principal Wire (18/19) para liberar Wire1.
-// El 2do BNO se soldó y se conecta a Wire tambien. PROBLEMA: el BNO055 NO se
-// redirecciona por software (no tiene setAddress; solo 0x28 o 0x29 segun el pin
-// ADR fisico: ADR->GND = 0x28, ADR->3.3V = 0x29). Para que los 2 convivan, uno
-// queda en 0x28 (default) y al otro se le puentea ADR a 3.3V -> 0x29.
+// ⚠️ OBSOLETO EN SU PREMISA (corrección 2026-06-15): este diag fue escrito para el
+//    esquema viejo de "2 BNO en el MISMO bus Wire con uno puenteado a 0x29". ESO FUE
+//    UN ERROR, ya corregido en hardware: AMBOS robots tienen sus 2 BNO en 0x28, en
+//    BUSES SEPARADOS (primario en Wire2, secundario en Wire). YA NO hay ningún BNO en
+//    0x29. Para ver los DOS BNO reales usá `diag_bno_dual_live` (lee Wire + Wire2).
+//    Este diag sigue sirviendo para CONFIRMAR que en 0x29 (Wire) NO queda ningún BNO
+//    (solo debería verse el 0x28 del secundario, con los ToF dormidos).
+//
+// Contexto histórico (2026-05-31, esquema ya descartado)
+// ------------------------------------------------------
+// El recableado de entonces dejo los 2 BNO en el bus Wire (18/19). El BNO055 NO se
+// redirecciona por software (solo 0x28 o 0x29 segun el pin ADR fisico: ADR->GND = 0x28,
+// ADR->3.3V = 0x29). Se intentó convivir poniendo uno en 0x28 y puenteando el otro a
+// 0x29 — esquema luego ABANDONADO por la arquitectura de buses separados de arriba.
 //
 // Este diag confirma el resultado del puente, SIN ambiguedad:
 //   - Pone los 4 ToF a DORMIR (LP pins 9/10/11/12 en LOW) para que NO aparezcan

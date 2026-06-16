@@ -49,12 +49,12 @@
 | Component | Part number / model | Qty | Source / supplier | New / Reused | Kit / Custom | Unit cost | Total cost |
 |---|---|---|---|---|---|---|---|
 | Vision camera | **OpenMV Cam N6** (STM32N6 Cortex-M55 + NPU Neural-ART, PAG7936 sensor, QVGA RGB565 ~30 Hz) | 2 | OpenMV | New | Module (kit) | **USD 165/u** (openmv.io) | **USD 330.00** |
-| IMU (heading/yaw) | **Bosch BNO055** (designators U10/U11) | 2 | Bosch (module) | New | Module (kit) in 4P header | **USD 34.95/u** (Adafruit #2472) | **USD 69.90** ⚠️ see note |
+| IMU (heading/yaw) | **Bosch BNO055** (designators U10/U11; both at 0x28, on separate buses Wire2/Wire) | 2 | Bosch (module) | New | Module (kit) in 4P header | **USD 34.95/u** (Adafruit #2472) | **USD 69.90** ⚠️ see note |
 | Multi-zone ToF sensor | **ST VL53L7CX** (8×8 zones, FoV 60°, Pololu module) | 4 | STMicro / Pololu | New | Module (kit) | **USD 19.95/u** (Pololu #3418) | **USD 79.80** |
 | Ultrasonic | **HC-SR04** (designator U6 on TOP) | 1 | generic | New | Module (kit) | **USD 5.25** (SparkFun) | **USD 5.25** |
 | **Subtotal §1.2** | | | | | | | **USD 484.95** |
 
-> ⚠️ **Note BNO055:** the repo mounts **2 BNO055** but **1 unit (RIGHT, 0x29) is FAULTY** → today it is **2 mounted, 1 healthy**; the robot competes with **1 healthy BNO + 4 ToF**. For replicability/spares: foresee **2–4 units** (Incheon). Actual reference price: **USD 34.95/u** (Adafruit #2472) or 29.95 (Qwiic #4646); the old ~USD 15 was a qualitative note from the repo.
+> ⚠️ **Note BNO055:** the repo mounts **2 BNO055**, **both at I²C 0x28 on SEPARATE buses** (corrected 2026-06-15, confirmed on bench by Gustavo on both R1 and R2): the **PRIMARY** on `Wire2` (pins 24/25), alone on its bus → no contention; the **SECONDARY** on `Wire` (pins 18/19), alongside the 4 ToF VL53L7CX. There is **no BNO at 0x29** (the old "2nd BNO with ADR bridged to 3V3 → 0x29 / both BNO on the same Wire bus / faulty RIGHT unit" scheme was an error, already fixed in hardware). The robot competes with **2 BNO055 + 4 ToF**. For replicability/spares: foresee **2–4 units** (Incheon). Actual reference price: **USD 34.95/u** (Adafruit #2472) or 29.95 (Qwiic #4646); the old ~USD 15 was a qualitative note from the repo.
 
 ### 1.3 Odometry and floor sensors (DOWN board)
 
@@ -125,7 +125,7 @@ The rubric rewards **data-driven design decisions and trade-offs**, not just the
 | Decision | Alternatives evaluated | Data / criterion | Choice |
 |---|---|---|---|
 | **2D Localization: 4× VL53L7CX (ToF) vs LiDAR vs EKF/MCL** | LiDAR (~USD 100), ToF array (~USD 80 = 4× VL53L7CX), EKF (±0.5–1 cm/3–5 days), Particle Filter (~500 µs, "overkill for field 1.83×2.43 m with 4 orthogonal walls") | ToF: **±2–3 cm**, negligible CPU, **1 day** of dev, **~USD 80** vs **USD 100** for LiDAR | **Geometric trilateration with 4 ToF** (`docs/lidar-tof-slam-analysis.md`, `research/.../2026-05-25-localizacion-tof-imu-analisis.md`) |
-| **2× BNO055** (redundancy of heading) | 1 IMU | "two chips of ~USD 35 each; much superior reliability" | 2 IMU (**2 mounted, 1 healthy**; see gap) |
+| **2× BNO055** (redundancy of heading) | 1 IMU | "two chips of ~USD 35 each; much superior reliability" | 2 IMU (**both at 0x28 on separate buses Wire2/Wire**) |
 | **2× OTOS** (optical odometry) | encoders on wheel | measures **lateral slip and rotation** directly from the floor; bench: 300 mm real → 280.4 mm (6.5 % error, passes 8 % tolerance) — see error graph by surface in `docs/competencia/assets/fig9_otos_error.png` | 2 OTOS dual-bus |
 | **MCU: Teensy 4.x (Cortex-M7 @600 MHz)** | ESP32, smaller STM32 | each MCU runs at **<30 % CPU** *(design goal — not measured with oscilloscope)* (margin for Kalman/EKF/coordinating) | Teensy 4.0/4.1 |
 | **No kicker** | solenoid (2025 had it) | fewer components/energy/failures; push by inertia | eliminated from firmware 2026-06-03 |

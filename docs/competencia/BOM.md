@@ -49,7 +49,7 @@
 | Ultrasonido | **HC-SR04** (designador U6 en TOP) | 1 | genérico | Nuevo | Módulo (kit) | **USD 5.25** (SparkFun) | **USD 5.25** |
 | **Subtotal §1.2** | | | | | | | **USD 484.95** |
 
-> ⚠️ **Nota BNO055:** el repo monta **2 BNO055** pero **1 unidad (RIGHT, 0x29) está FALLADA** → hoy es **2 montados, 1 sano**; el robot compite con **1 BNO sano + 4 ToF**. Para replicabilidad/repuestos: prever **2–4 unidades** (Incheon). Precio real de referencia: **USD 34.95/u** (Adafruit #2472) o 29.95 (Qwiic #4646); el viejo ~USD 15 era una nota cualitativa del repo.
+> ⚠️ **Nota BNO055:** el robot monta **2 BNO055**, **ambos en I²C 0x28 pero en buses SEPARADOS** (corrección 2026-06-15, confirmada en banco en R1 y R2): el **PRIMARIO** va solo en `Wire2` (pines 24/25), **sin ToF → sin contención**; el **SECUNDARIO** va en `Wire` (pines 18/19), junto a los 4 ToF. **No hay ningún BNO en 0x29** — el esquema viejo (2º BNO con ADR a 3V3 → 0x29, o "RIGHT @ 0x29 fallada") fue un error ya corregido en hardware. El robot compite con **2 BNO sanos + 4 ToF**. Para replicabilidad/repuestos: prever **2–4 unidades** (Incheon). Precio real de referencia: **USD 34.95/u** (Adafruit #2472) o 29.95 (Qwiic #4646); el viejo ~USD 15 era una nota cualitativa del repo.
 
 ### 1.3 Odometría y sensores de piso (placa DOWN)
 
@@ -120,7 +120,7 @@ La rúbrica premia **decisiones de diseño basadas en datos y trade-offs**, no s
 | Decisión | Alternativas evaluadas | Dato / criterio | Elección |
 |---|---|---|---|
 | **Localización 2D: 4× VL53L7CX (ToF) vs LiDAR vs EKF/MCL** | LiDAR (~USD 100), array ToF (~USD 80 = 4× VL53L7CX), EKF (±0.5–1 cm/3–5 días), Particle Filter (~500 µs, "overkill para cancha 1.83×2.43 m con 4 paredes ortogonales") | ToF: **±2–3 cm**, CPU despreciable, **1 día** de dev, **~USD 80** vs **USD 100** del LiDAR | **Trilateración geométrica con 4 ToF** (`docs/lidar-tof-slam-analysis.md`, `research/.../2026-05-25-localizacion-tof-imu-analisis.md`) |
-| **2× BNO055** (redundancia de heading) | 1 IMU | "dos chips de ~USD 35 c/u; confiabilidad muy superior" | 2 IMU (**2 montados, 1 sano**; ver gap) |
+| **2× BNO055** (redundancia de heading) | 1 IMU | "dos chips de ~USD 35 c/u; confiabilidad muy superior" | 2 IMU (**2 sanos**; ambos en 0x28 en buses separados — `Wire2` sin ToF + `Wire` con los ToF) |
 | **2× OTOS** (odometría óptica) | encoders en rueda | mide **slip lateral y rotación** directo del piso; banco: 300 mm reales → 280.4 mm (6.5 % error, pasa tolerancia 8 %) — ver gráfico de error por superficie en `docs/competencia/assets/fig9_otos_error.png` | 2 OTOS dual-bus |
 | **MCU: Teensy 4.x (Cortex-M7 @600 MHz)** | ESP32, STM32 menores | cada MCU corre a **<30 % de CPU** *(objetivo de diseño — no medido con osciloscopio)* (margen para Kalman/EKF/coordinación) | Teensy 4.0/4.1 |
 | **Sin kicker** | solenoide (2025 lo tenía) | menos componentes/energía/fallas; empuje por inercia | eliminado del firmware 2026-06-03 |

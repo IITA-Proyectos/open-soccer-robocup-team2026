@@ -199,8 +199,8 @@
 
 - **Vision not recalibrated for Incheon:** "The vision code is solid and tested; what’s missing is **bank calibration** (LAB + homography) for the venue lighting. We have the kit ready to recalibrate in <5 min." (This is our real blocker #1 — do not hide it.)
 - **Kinematics:** "The **wheel angles are already calibrated** (`{330,210,90}`, bank 2026-06-08, with the actual physical layout: M1 front-left, M2 front-right, M3 rear); we still need to measure the **radius** of the assembled robot and the **fine-tuning of the lateral**. The kinematics module is pure and tested."
-- **1 healthy IMU:** "We run with **1 healthy BNO055 + 4 ToF**; the second IMU failed and the risk is documented. The pose still computes."
-- **Heading freezing:** "We detected that the IMU and ToF compete on the I²C bus and the heading was freezing; we mitigated by lowering the bus to 100 kHz and reading the IMU at 20 Hz. The underlying fix (IMU on a separate bus) is noted."
+- **2 IMUs on separate buses:** "We run with **2 BNO055 (both at 0x28) on separate I²C buses + 4 ToF**: the **primary IMU on Wire2 (pins 24/25), alone on its bus** with no ToF and therefore no contention; the **secondary IMU on Wire (pins 18/19)** alongside the 4 ToF. The pose computes from the contention-free primary."
+- **Heading freezing:** "We detected that the IMU and ToF were competing on the I²C bus and the heading was freezing; we **fixed it by moving the primary IMU to its own bus (Wire2), where it has no ToF contention**. We also keep the bus conservative (100 kHz) for the secondary IMU that shares Wire with the ToF."
 
 ---
 

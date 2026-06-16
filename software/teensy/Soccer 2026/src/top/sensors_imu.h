@@ -1,16 +1,16 @@
 // sensors_imu.h — Wrapper de los 2 BNO055 de la placa TOP.
 //
-// Hardware — POR ROBOT (la impl está gateada con #if defined(ROBOT2)):
-//   ROBOT1 (recableado 2026-05-31, banco diag_bno_addr_check):
-//     BNO055 LEFT  → Wire (18/19) @ 0x28 (ADR flotante)
-//     BNO055 RIGHT → Wire (18/19) @ 0x29 (ADR a 3V3) — unidad FALLADA, se saltea.
-//     OJO: 0x29 es también la dir de fábrica de los ToF; se enumeran a 0x2A..0x2D.
-//   ROBOT2 (banco 2026-06-09): 2 BNO en BUSES SEPARADOS, ambos @ 0x28:
+// Hardware — UNIFICADO PARA AMBOS ROBOTS (corrección 2026-06-15):
+//   2 BNO055 en 0x28, en BUSES SEPARADOS (mismo esquema en R1 y R2):
 //     idx 0 = PRIMARIO   → Wire2 (24/25 nativos, LPI2C4) — SOLO en su bus, sin ToF
 //             → sin contención i2c → NO se congela. Es la fuente preferida.
 //     idx 1 = SECUNDARIO → Wire (18/19) — comparte bus con los 4 ToF. Respaldo.
-//     (Corrección 2026-06-09: 24/25 = Wire2, NO "Wire1"; Wire1 real = 16/17.)
-//     En los getters/diag, "LEFT"=idx0=PRIMARIO y "RIGHT"=idx1=SECUNDARIO en R2.
+//   NO hay ningún BNO en 0x29: el viejo "RIGHT @ 0x29 (ADR a 3V3)" de robot1 fue un
+//   ERROR de cableado, ya corregido en hardware. 0x29 es solo la dir de fábrica de los
+//   ToF VL53L7CX, que se reasignan a 0x2A..0x2D al enumerar.
+//   (R2 validado en banco 2026-06-09; R1 unificado en firmware 2026-06-15 → falta banco.)
+//   (24/25 = Wire2, NO "Wire1"; Wire1 real = 16/17.)
+//   En los getters/diag, "LEFT"=idx0=PRIMARIO y "RIGHT"=idx1=SECUNDARIO.
 //
 // Lecciones aplicadas de docs/internal/giroscopo-bno055-analisis-tecnico.md:
 //   • Modo IMUPLUS (acel + gyro, sin magnetómetro) → evita interferencia magnética

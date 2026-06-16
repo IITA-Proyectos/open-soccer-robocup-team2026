@@ -172,7 +172,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 >
 > | Placa | MCU | Rol | Sensores / actuadores |
 > |---|---|---|---|
-> | **TOP** | Teensy 4.0 | "Veo el mundo" | 2 cámaras OpenMV N6 · 2 IMU BNO055 (1 sano) · 4 ToF VL53L7CX · 1 HC-SR04 · árbitro GPIO |
+> | **TOP** | Teensy 4.0 | "Veo el mundo" | 2 cámaras OpenMV N6 · 2 IMU BNO055 (ambos 0x28, buses separados: Wire2 24/25 + Wire 18/19) · 4 ToF VL53L7CX · 1 HC-SR04 · árbitro GPIO |
 > | **CENTRAL** | Teensy 4.1 (Zircon) | "Decido" | FSM táctica · cinemática omni-3 · 3 PIDs · **3 motores** |
 > | **DOWN** | Teensy 4.0 | "Toco el suelo" | 32 sensores de línea (4 mux CD4051) · 2 OTOS |
 > | **COMM** | ESP32-C6 | árbitro RCJ | nivel GPIO 3.3 V hacia TOP |
@@ -203,7 +203,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > | Sensor | Cantidad | Función |
 > |---|---|---|
 > | Cámara OpenMV N6 (STM32N6 + NPU) | 2 | Pelota + arcos (QVGA, ~30 Hz) |
-> | IMU BNO055 | 2 (1 sano) | Heading (yaw) |
+> | IMU BNO055 | 2 (ambos 0x28, en buses I²C separados) | Heading (yaw) |
 > | ToF VL53L7CX (lee **4×4 = 16 zonas** crudas) | 4 | Distancia a paredes → **localización 2D** |
 > | OTOS (odometría óptica) | 2 | Pose/velocidad por *slip* del piso |
 > | Anillo de línea (fototransistor) | 32 | Borde de cancha (frenado) |
@@ -237,7 +237,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 > | Cámara OpenMV N6 | OpenMV Cam N6 (STM32N6 + NPU) | 2 | Nuevo | **USD 165 c/u** (ref. int.; el más caro) |
 > | MCU TOP / DOWN | Teensy 4.0 (LCSC `C99001332551`) | 2 | Nuevo | **USD 23.80 c/u** (ref. int.) |
 > | MCU CENTRAL | Teensy 4.1 (en PCB Zircon) | 1 | **Reusado** (campeón 2025) | **USD 31.50** (ref. int.) |
-> | IMU BNO055 | Bosch BNO055 (U10/U11) | 2 (1 sano) | Nuevo | **~USD 35 c/u** (ref. int.) |
+> | IMU BNO055 | Bosch BNO055 (U10/U11) | 2 (ambos 0x28, buses separados) | Nuevo | **~USD 35 c/u** (ref. int.) |
 > | ToF VL53L7CX | ST VL53L7CX (módulo Pololu) | 4 | Nuevo | **USD 19.95 c/u** (ref. int.) |
 > | OTOS SparkFun | SparkFun OTOS (U5/U6) | 2 | Nuevo | **USD 84.95 c/u** (ref. int.) |
 > | PCB Zircon Rev v15 (CENTRAL) | Robomov Zircon Rev v15 (COTS) | 1 | **Reusado** | **USD 250** (ref. máx.; suelto pendiente — kit USD 529) |
@@ -291,7 +291,7 @@ Los **títulos de zona están redactados para que un JUEZ encuentre cada criteri
 
 > | # | Problema observado | Dato medido | Modificación aplicada | Madurez |
 > |---|---|---|---|---|
-> | 1 | **Los 4 ToF chocan en I²C** (todos nacen en 0x29); el PCB rev 1.0 no ruteó XSHUT (8 *No-Connect*) | Forense del esquemático: 0 nets XSHUT. Tras *bodge* + **power-cycle**: 4 LP en pines {9,10,11,12} enumeran a **0x2A–0x2D** | Migrar los 4 ToF al bus único `Wire`; liberar `Wire2` (24/25, bus del 2º BNO); **desbloquea la localización 2D** | **VALIDADO EN BANCO** |
+> | 1 | **Los 4 ToF chocan en I²C** (todos nacen en 0x29); el PCB rev 1.0 no ruteó XSHUT (8 *No-Connect*) | Forense del esquemático: 0 nets XSHUT. Tras *bodge* + **power-cycle**: 4 LP en pines {9,10,11,12} enumeran a **0x2A–0x2D** | Migrar los 4 ToF al bus único `Wire` (junto al BNO secundario, ambos BNO en 0x28); dejar `Wire2` (24/25) como bus dedicado del BNO primario, sin ToF; **desbloquea la localización 2D** | **VALIDADO EN BANCO** |
 > | 2 | **Heading del BNO se congela** en producción (yaw clavado en −108.3°) aunque el snapshot llega sano | BNO + ToF no coexisten a 400 kHz; a **100 kHz + BNO @20 Hz** el heading sobrevive (band-aid) | I²C a 100 kHz + BNO a 20 Hz; decisión: el heading-hold del arquero usa el **OTOS** (local), no el BNO | **VALIDADO EN BANCO** (problema abierto) |
 > | 3 | **Odometría OTOS** reporta basura sobre hoja A4 | A4 con lámina: 28.6/300 mm (9.5%); A4 sin lámina: 0.3 mm; **cartón corrugado: 280.4/300 mm = 6.5% error** (< 8% tol.) | Quitar lámina + exigir piso texturado → **mejora 10×**; la cancha verde de RCJ ya lo cumple | **VALIDADO EN BANCO** |
 > | 4 | **Árbitro no llegaba al Teensy** (el TOP esperaba un frame UART que la COMM nunca emite) | La COMM oficial entrega START/STOP como **nivel GPIO 3.3 V**; en PLAY sube **un solo** pin | Leer pines 5/6 con `INPUT_PULLDOWN`, `match_running = pin5 **OR** pin6`; fail-safe a STOP | **VALIDADO EN BANCO** — *movió el robot por 1ª vez* |

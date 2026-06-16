@@ -1,4 +1,6 @@
-// diag_bno_left.cpp — Test DIRECTO del BNO055 LEFT (0x28) SOLO. NO toca el 2do BNO (0x29).
+// diag_bno_left.cpp — Test DIRECTO de UN BNO055 en 0x28 (Wire) SOLO, en crudo.
+// (Nota 2026-06-15: ambos BNO están en 0x28 en buses separados; este diag lee solo el
+//  de Wire. Ya NO hay ningún BNO en 0x29 — el viejo "2do BNO @ 0x29" fue un error.)
 //
 // Lee el chip en CRUDO con la lib Adafruit (sin la fusion de sensors_imu) para diagnosticar
 // por que el heading queda clavado: muestra en vivo el YAW (Euler), el GIROSCOPIO (dps) y el

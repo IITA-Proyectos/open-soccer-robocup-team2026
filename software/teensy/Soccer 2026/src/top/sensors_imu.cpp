@@ -7,14 +7,14 @@
 //   • ejecutar lo que el módulo pide (soft-resync de un sensor que driftó),
 //   • persistir/restaurar la calibración de cada chip en EEPROM (Capa 2).
 //
-// Arquitectura del hardware — POR ROBOT (gateado, ver #if defined(ROBOT2)):
-//   ROBOT1 (recableado 2026-05-31, banco): AMBOS BNO en el bus Wire (18/19).
-//     LEFT=0x28 (ADR flotante), RIGHT=0x29 (ADR a 3V3; unidad FALLADA, se saltea).
-//   ROBOT2 (banco 2026-06-09): 2 BNO en BUSES SEPARADOS, ambos 0x28:
+// Arquitectura del hardware — UNIFICADA AMBOS ROBOTS (corrección 2026-06-15):
+//   2 BNO055 en 0x28, en BUSES SEPARADOS (R2 desde 2026-06-09; R1 unificado 2026-06-15):
 //     PRIMARIO   (idx 0) = Wire2 (24/25 nativos, LPI2C4) — SOLO en su bus, sin
 //                          ToF -> sin contención i2c -> NO se congela. Manda.
 //     SECUNDARIO (idx 1) = Wire (18/19) — comparte bus con los 4 ToF. Respaldo.
-//     (24/25 = Wire2, NO "Wire1"; corrección 2026-06-09, commit 9da8e9e.)
+//   NO hay ningún BNO en 0x29: el viejo "RIGHT @ 0x29 (ADR a 3V3, unidad fallada)" de robot1
+//   fue un ERROR, ya corregido en hardware. 0x29 = solo dir de fábrica de los ToF.
+//   (24/25 = Wire2, NO "Wire1"; corrección 2026-06-09, commit 9da8e9e.)
 //
 // Tiempo de boot (DOC-FIX 2026-06-03): el init del BNO no es "~2 s" como decía
 // la nota vieja. A 100 kHz (coexistencia con los ToF) el begin()+estabilización+
@@ -45,30 +45,22 @@ namespace iitasoccer {
 
 namespace {
 
-#if defined(ROBOT2)
-// --- ROBOT2: 2 BNO en BUSES SEPARADOS (banco 2026-06-09; tabla en robot2.h:
-// IMU_BNO_BUS={2,0}, IMU_BNO_ADDR={0x28,0x28}) ---
-// El PRIMARIO va en el ÍNDICE 0 a propósito: imu_fusion prioriza idx0 y cae al
-// que esté `present` (failover gratis — cubierto en test_imu_fusion: idx0-manda
-// en empate + caída a idx1 si el primario muere/está ausente).
+// --- ARQUITECTURA UNIFICADA (corrección 2026-06-15, banco): AMBOS robots tienen
+// 2 BNO055 en 0x28, en BUSES SEPARADOS. Antes robot1 figuraba con su 2º BNO en 0x29
+// (ADR puenteado a 3V3) — ESO FUE UN ERROR, ya corregido en hardware. NO hay ningún
+// BNO en 0x29 (0x29 es solo la dir de fábrica transitoria de los ToF VL53L7CX, que se
+// reasignan a 0x2A..0x2D al enumerar). robot2 ya venía así (banco 2026-06-09); robot1
+// se unificó a este mismo path → falta validación de banco de robot1 (TASK-216).
+// El PRIMARIO va en el ÍNDICE 0 a propósito: imu_fusion prioriza idx0 y cae al que
+// esté `present` (failover gratis — test_imu_fusion: idx0-manda en empate + caída a
+// idx1 si el primario muere/está ausente).
+//   idx 0 = PRIMARIO   → Wire2 (24/25 nativos, LPI2C4): SOLO en su bus, sin ToF →
+//           sin contención i2c → no se congela. Fuente preferida.
+//   idx 1 = SECUNDARIO → Wire (18/19): comparte bus con los 4 ToF. Respaldo.
 Adafruit_BNO055 g_bno_primary  (55, BNO055_LEFT_I2C_ADDR, &Wire2);  // PRIM: Wire2 (24/25) @0x28, solo
 Adafruit_BNO055 g_bno_secondary(56, BNO055_LEFT_I2C_ADDR, &Wire);   // SEC:  Wire (18/19) @0x28, con ToF
 Adafruit_BNO055* const g_bno[IMU_FUSION_N]  = { &g_bno_primary, &g_bno_secondary };
 const uint8_t          g_addr[IMU_FUSION_N] = { BNO055_LEFT_I2C_ADDR, BNO055_LEFT_I2C_ADDR };
-#else
-// --- Los 2 BNO en el mismo bus Wire (ver cabecera) ---
-#ifdef TOP_BNO1_ON_WIRE2
-// PLAN B HARDWARE (banco demo 2026-06-11): BNO1 de robot1 en BUS PROPIO Wire2
-// (24/25, back-pads) — la arquitectura que en robot2 demostró cero contención.
-// Requiere mover físicamente SDA/SCL del BNO a los pads 24/25 (alim queda igual).
-Adafruit_BNO055 g_bno_left (55, BNO055_LEFT_I2C_ADDR,  &Wire2);
-#else
-Adafruit_BNO055 g_bno_left (55, BNO055_LEFT_I2C_ADDR,  &Wire);
-#endif
-Adafruit_BNO055 g_bno_right(56, BNO055_RIGHT_I2C_ADDR, &Wire);
-Adafruit_BNO055* const g_bno[IMU_FUSION_N]  = { &g_bno_left, &g_bno_right };
-const uint8_t          g_addr[IMU_FUSION_N] = { BNO055_LEFT_I2C_ADDR, BNO055_RIGHT_I2C_ADDR };
-#endif
 
 bool  g_ready[IMU_FUSION_N]       = { false, false };
 float g_offset[IMU_FUSION_N]      = { 0.0f, 0.0f };  // cero capturado (yaw crudo)
@@ -189,34 +181,16 @@ uint8_t read_gyro_calib(Adafruit_BNO055& bno) {
     bno.getCalibration(&sys, &gyro, &accel, &mag);
     return gyro;
 }
-#if defined(ROBOT2)
-// Presencia en un bus ARBITRARIO: en ROBOT2 el primario vive en Wire2, no en
-// Wire. (En R2, i2c_present()/read_reg() de R1 no se compilan — eran solo del
-// sondeo 0x29 del RIGHT — para no dejar funciones sin uso con -Wall.)
+// Presencia en un bus ARBITRARIO (Wire o Wire2). Guard anti-cuelgue: solo se hace
+// begin() de un BNO si su dirección ACKea en SU bus (un begin() sobre una dirección
+// fantasma cuelga el bus I2C entero). Ambos BNO viven en 0x28 pero en buses distintos
+// (primario en Wire2, secundario en Wire) → se sondea cada uno en el suyo.
+// (El sondeo de chip-id en 0x29 — i2c_present()/read_reg() — se retiró con la corrección
+//  2026-06-15: ya no hay ningún BNO en 0x29.)
 bool i2c_present_on(TwoWire& bus, uint8_t addr) {
     bus.beginTransmission(addr);
     return bus.endTransmission() == 0;
 }
-#else
-bool i2c_present(uint8_t addr) {
-    Wire.beginTransmission(addr);
-    return Wire.endTransmission() == 0;
-}
-#endif
-
-#if !defined(ROBOT2)
-// Lee 1 byte de un registro (repeated-start). true si pudo leer. Sirve para
-// distinguir un BNO (CHIP_ID reg 0x00 = 0xA0) de un ToF u otro chip en la misma dir.
-// (Solo R1: lo usa el sondeo 0x29 del RIGHT; en R2 no hay nada en 0x29.)
-bool read_reg(uint8_t addr, uint8_t reg, uint8_t& out) {
-    Wire.beginTransmission(addr);
-    Wire.write(reg);
-    if (Wire.endTransmission(false) != 0) return false;
-    if (Wire.requestFrom((int)addr, 1) != 1) return false;
-    out = Wire.read();
-    return true;
-}
-#endif
 
 float norm180(float h) {
     while (h > 180.0f) h -= 360.0f;
@@ -265,9 +239,9 @@ bool init_one_bno(Adafruit_BNO055& bno) {
 
 bool sensors_imu_init() {
     // Bus I2C. Los ToF ya fueron DORMIDOS (LP low) por sensors_tof_predim_lp() ANTES
-    // de esta llamada, asi que 0x28 y 0x29 quedan limpios para los 2 BNO (receta
-    // validada en diag_pose_live: dim ToF -> init BNO -> enumerar ToF). (2026-06-02)
-    // Wire1 ya NO se usa aca (recableado 2026-05-31).
+    // de esta llamada, asi que el 0x28 del BNO secundario de Wire queda limpio (sin los
+    // ToF en su 0x29 de fábrica); el primario vive en Wire2, aparte (receta validada en
+    // diag_pose_live: dim ToF -> init BNO -> enumerar ToF). (2026-06-02)
     Wire.begin();
     Wire.setClock(100000);  // 100 kHz: el BNO055 y los VL53L7CX NO coexisten a 400 kHz — con
                             // los ToF rangeando, el read multi-byte del BNO se corrompe y el
@@ -302,11 +276,10 @@ bool sensors_imu_init() {
     for (int i = 0; i < IMU_FUSION_N; ++i) imu_freeze_reset(g_freeze[i]);
 #endif
 
-#if defined(ROBOT2)
-    // ROBOT2: PRIMARIO primero (Wire2 24/25, idx 0), SECUNDARIO después (Wire, idx 1).
-    // Guard anti-cuelgue en AMBOS (lección del RIGHT de R1: un begin() sobre una
-    // dirección fantasma CUELGA el bus entero): solo init si hace ACK en SU bus.
-    // En Wire el 0x28 queda limpio porque los ToF ya fueron dormidos por predim.
+    // AMBOS robots (arquitectura unificada 2026-06-15): PRIMARIO primero (Wire2 24/25,
+    // idx 0), SECUNDARIO después (Wire, idx 1). Guard anti-cuelgue en AMBOS (un begin()
+    // sobre una dirección fantasma CUELGA el bus entero): solo init si hace ACK en SU
+    // bus. En Wire el 0x28 queda limpio porque los ToF ya fueron dormidos por predim.
     if (i2c_present_on(Wire2, g_addr[0])) {
         Serial.println("[IMU] Init BNO PRIMARIO (Wire2 24/25 @ 0x28, bus propio sin ToF)...");
         g_ready[0] = init_one_bno(g_bno_primary);
@@ -336,41 +309,8 @@ bool sensors_imu_init() {
         Serial.println("[IMU] SECUNDARIO (Wire 0x28) sin ACK -> SALTEO (bus sano).");
     }
 #endif
-#else
-    Serial.println("[IMU] Init BNO055 LEFT (Wire @ 0x28)...");
-    g_ready[0] = init_one_bno(g_bno_left);
-    Serial.println(g_ready[0] ? "[IMU] LEFT OK" : "[IMU] LEFT FAIL (continuando)");
-
-    // GUARD anti-cuelgue (fix 2026-06-02): el begin() del RIGHT reintenta 3 s; si 0x29
-    // esta fantasma/marginal (puente ADR->3V3 flojo, 2do BNO sin alim), ese begin CUELGA
-    // el bus I2C entero y se lleva puesto al LEFT (deja de leerse, hdg clavado) y a los
-    // ToF (enumeracion 0/4). diag_pose_live nunca tuvo esto porque solo usa el LEFT.
-    // Por eso: solo iniciamos el RIGHT si 0x29 HACE ACK (con los ToF ya dormidos por
-    // predim, en 0x29 solo puede estar el 2do BNO). Si no contesta, lo salteamos y el
-    // bus queda sano -> LEFT + ToF funcionan (degradado a 1 BNO). Cuando se arregle el
-    // puente, 0x29 ACKea y el RIGHT entra solo.
-    // 0x29 puede ser el 2do BNO (puente ADR) O un ToF que no se durmio (default 0x29,
-    // p.ej. por el conflicto pin 10 = LP ToF[1] + dipswitch de rol). Leemos CHIP_ID:
-    // BNO055 = 0xA0. SOLO iniciamos el RIGHT si es un BNO real; si no, salteamos (un
-    // begin() de BNO sobre un ToF/chip raro CUELGA el bus y mata LEFT + ToF).
-    uint8_t id29 = 0;
-    const bool ack29  = i2c_present(BNO055_RIGHT_I2C_ADDR);
-    const bool read29 = ack29 && read_reg(BNO055_RIGHT_I2C_ADDR, 0x00, id29);
-    Serial.print("[IMU] Sondeo 0x29 -> ACK=");
-    Serial.print(ack29 ? "SI" : "NO");
-    if (ack29) { Serial.print(" chip_id=0x"); Serial.print(id29, HEX); }
-    Serial.println();
-    if (read29 && id29 == 0xA0) {
-        Serial.println("[IMU] 0x29 es BNO real (0xA0). Init BNO055 RIGHT...");
-        g_ready[1] = init_one_bno(g_bno_right);
-        Serial.println(g_ready[1] ? "[IMU] RIGHT OK" : "[IMU] RIGHT FAIL (continuando)");
-    } else {
-        g_ready[1] = false;
-        Serial.println("[IMU] 0x29 NO es un BNO sano -> SALTEO (no cuelgo el bus).");
-        Serial.println("      -> chip_id != 0xA0: hay un ToF SIN DORMIR en 0x29 (revisar"
-                       " LP del ToF[1] / dipswitch en pin 10). ACK=NO: 2do BNO ausente/puente.");
-    }
-#endif  // ROBOT2 / ROBOT1 (init por-BNO)
+    // (Rama robot1 con sondeo 0x29 RETIRADA 2026-06-15: robot1 se unificó a la
+    //  arquitectura de arriba — 2 BNO @ 0x28 en buses separados. Ya no hay BNO en 0x29.)
 
 #if defined(TOP_ENABLE_BNO_SENTINEL) && defined(ROBOT2)
     // CENTINELA (TASK-213): inicializar el 2º BNO (Wire) al boot para usarlo como

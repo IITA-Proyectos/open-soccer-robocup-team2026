@@ -111,24 +111,24 @@ LiPo 2S 7.4 V nominal ──► Deans-T-F connector (XP1)
 
 ## 1.3 TOP BOARD — I²C buses and sensor selection
 
-The **6 I²C sensors hang from the same `Wire` bus (pins 18/19)**: 2 BNO055 (0x28, 0x29) + 4 ToF VL53L7CX (0x2A–0x2D).
+The **2 BNO055 are both at 0x28 but on SEPARATE buses** (PRIMARY alone on `Wire2`, pins 24/25; SECONDARY on `Wire`, pins 18/19), while the **4 ToF VL53L7CX share `Wire`** (factory 0x29, reassigned to 0x2A–0x2D on enumeration). So `Wire` carries the SECONDARY BNO + 4 ToF, and `Wire2` carries only the PRIMARY BNO.
 
 | Sensor | Qty | Address | Bus | Why it was chosen |
 |---|---|---|---|---|
-| BNO055 (IMU 9-DOF) | 2 | 0x28 / 0x29 | `Wire` | On-chip fused absolute heading; redundancy against impacts/magnetic interference from motors |
+| BNO055 (IMU 9-DOF) | 2 | 0x28 (both) | `Wire2` (primary) + `Wire` (secondary) | On-chip fused absolute heading; redundancy against impacts/magnetic interference from motors. Both at 0x28 on separate buses (they cannot share one), so the primary on `Wire2` has no ToF contention |
 | VL53L7CX (multi-zone ToF) | 4 | 0x2A–0x2D | `Wire` | 2D localization by trilateration (4 orthogonal walls); FoV 60°, ±15 mm at <2 m. **In PRODUCTION, 4×4 = 16 zones are read** (the 8×8 = 64 zones resolution was deferred: it triples/quintuples the I²C traffic and risks the 100 Hz loop; it only lives in the bench diag) |
 | HC-SR04 (ultrasonic) | 1 | — (GPIO) | — | Redundant frontal distance (currently gated OFF) |
 
 **Key decision (data-driven):** **I²C at 100 kHz** and read the BNO at **20 Hz** (not 100 Hz).  
 **Why:** the BNO055 and the VL53L7CX **do not coexist** on the same bus at high speed: with the ToF ranging, the multi-byte reading of the BNO gets corrupted.  
-**Data:** at 400 kHz (or 100 kHz with the BNO read strong) **the yaw freezes**; at **100 kHz + BNO @20 Hz** the heading remains OK on the bench. (The *boot* is separate and improved: the **firmware-blob load of the 4 ToF was promoted to 1 MHz** —BENCH-VALIDATED 2026-06-14, >15 power-cycles, 0 *fallbacks*—, reducing the TOP boot from **~40 s → 14.4 s → ~9.6 s** (TASK-211).) The *ranging* bus at 100 kHz is a *band-aid*: the underlying fix (noted in the code) is to move the BNO to a separate bus (`Wire2`, pins 24/25). This fixes the heading convention: the BNO that is **alone on its bus (`Wire2`, without ToF) is the PRIMARY** —without I²C contention with the ToF, that’s why it’s the most reliable—; the one that shares `Wire` (18/19) with the 4 ToF is the **SECONDARY** (backup, and the one that freezes). **Honest real state:** the BNO RIGHT (0x29) is a **failed unit**; the robot runs with 1 healthy BNO (0x28) + 4 ToF, all stable.
+**Data:** at 400 kHz (or 100 kHz with the BNO read strong) **the yaw freezes**; at **100 kHz + BNO @20 Hz** the heading remains OK on the bench. (The *boot* is separate and improved: the **firmware-blob load of the 4 ToF was promoted to 1 MHz** —BENCH-VALIDATED 2026-06-14, >15 power-cycles, 0 *fallbacks*—, reducing the TOP boot from **~40 s → 14.4 s → ~9.6 s** (TASK-211).) The *ranging* bus at 100 kHz is a *band-aid* for the SECONDARY BNO; the underlying fix is already applied for the PRIMARY: it lives on a **separate bus** (`Wire2`, pins 24/25). This defines the heading convention: the BNO **alone on its bus (`Wire2`, without ToF) is the PRIMARY** —without I²C contention with the ToF, that’s why it’s the most reliable—; the one that shares `Wire` (18/19) with the 4 ToF is the **SECONDARY** (backup, and the one that can freeze under bus load). **Honest real state:** both BNO are at 0x28 on their own bus; the robot runs on the PRIMARY (`Wire2`) + 4 ToF (`Wire`), all stable, with the SECONDARY as redundancy.
 
 ### Electrical iteration reference — enumerating 4 ToF on a single bus
 
 **Problem:** the 4 VL53L7CX start at 0x29 → collide. Forensic analysis of the schematic/PCB rev 1.0 revealed that the 4 XSHUT/LPn pads were **intentionally unrouted** (8 explicit No-Connect flags, 0 nets in the netlist). The `PIN_TOF_XSHUT` line from the config was fiction inherited from aspirational design.  
 **What we tried:** forensic search for XSHUT/LPn strings in the JSON SCH+PCB (0 matches); **physical bodge** (Enzo) wiring the LP pin of each ToF to a GPIO reusing the INT trace; 5 incremental diagnostic sketches.  
 **Data:** after power-cycle, the 4 LP work on pins **{9, 10, 11, 12}** (active-high) and enumerate to 0x2A–0x2D. **Reproducible lesson:** the I²C addresses of the VL53L7CX **persist while there is 3V3** — you must **power-cycle, not reset**, or the bus starts dirty and enumeration gives a false negative ("no LP works").  
-**Modification:** `PIN_TOF_XSHUT = {9,10,11,12}`, `NUM_TOF_ACTIVE = 4`; `Wire2` (24/25) freed (it’s the bus of the 2nd BNO from the freeze fix); 2D localization by trilateration unlocked at HW level. **Collateral conflict noted:** pin 10 (LP of ToF[1]) collides with the role dipswitch → relocate. Routing XSHUT on the PCB remains as item P0 of the wishlist for TOP rev 1.1 (post-Incheon).
+**Modification:** `PIN_TOF_XSHUT = {9,10,11,12}`, `NUM_TOF_ACTIVE = 4`; `Wire2` (24/25) freed (it’s the bus of the PRIMARY BNO, alone, from the freeze fix); 2D localization by trilateration unlocked at HW level. **Collateral conflict noted:** pin 10 (LP of ToF[1]) collides with the role dipswitch → relocate. Routing XSHUT on the PCB remains as item P0 of the wishlist for TOP rev 1.1 (post-Incheon).
 
 ### Electrical iteration reference — "measure the Hz of your loop, don’t assume it" (the best we have)
 

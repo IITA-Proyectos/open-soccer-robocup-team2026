@@ -327,11 +327,13 @@ void setup() {
     }
 
     // ORDEN CRITICO (fix 2026-06-02, receta validada en diag_pose_live): los 4 VL53L7CX
-    // arrancan en 0x29 = misma dir que el BNO DERECHO en el bus Wire. Para que NO choquen:
+    // arrancan en su dir de FÁBRICA 0x29. El BNO SECUNDARIO de este bus Wire vive en 0x28
+    // (ya NO en 0x29 — corrección 2026-06-15: no hay ningún BNO en 0x29), pero los ToF en
+    // 0x29 igual ensucian el bus si se enumeran a destiempo. Para un boot limpio:
     //   (1) dormir los ToF (LP low) -> bus limpio;
-    //   (2) iniciar los BNO (0x28 + 0x29, sin ToF en el bus);
+    //   (2) iniciar los BNO (ambos @ 0x28: primario en Wire2, secundario en Wire, sin ToF aún);
     //   (3) recien ahi enumerar los ToF (despertar de a uno -> 0x2A..0x2D).
-    // Bug anterior: el BNO se iniciaba con los ToF DESPIERTOS en 0x29 -> imu_R=N (o ambos)
+    // Bug anterior: el BNO se iniciaba con los ToF DESPIERTOS -> imu fallaba
     // + enumeracion ToF confundida -> min_obst=65535.
     // BOOT TIMING (TA-1, 2026-06-14, TASK-210): medir cuánto tarda cada init para
     // VALIDAR el ahorro de cargar el firmware de los ToF a 400 kHz. Se imprime al
@@ -340,9 +342,9 @@ void setup() {
     const uint32_t t_boot0 = millis();
     sensors_tof_predim_lp();  // (1) dormir ToF (LP low) -> bus limpio para el BNO
     const uint32_t t_imu0 = millis();
-    sensors_imu_init();       // (2) BNO 0x28 + 0x29 con los ToF dormidos
+    sensors_imu_init();       // (2) BNO(s) @ 0x28 (Wire2 + Wire) con los ToF dormidos
     const uint32_t t_imu_ms = millis() - t_imu0;
-    sensors_tof_scan_wire();  // DIAG 2026-06-02: con ToF dormidos, que BNO responde? 0x28? 0x29?
+    sensors_tof_scan_wire();  // DIAG 2026-06-02: con ToF dormidos, que hay en el bus Wire? (BNO @ 0x28)
     const uint32_t t_tof0 = millis();
     sensors_tof_init();       // (3) enumerar ToF a 0x2A..0x2D
     const uint32_t t_tof_ms = millis() - t_tof0;

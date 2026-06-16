@@ -160,6 +160,72 @@ inline T slot_read_latest(const SensorSlot<T>& s) {
     }
 }
 
+// slot_read_latest_capped(slot, out, max_retries) — read ACOTADO (con tope de reintentos).
+//
+// Por qué existe (fail-safe del consumidor en tiempo real)
+// ----------------------------------------------------------------------------------
+// slot_read_latest() de arriba gira en un for(;;) hasta lograr una copia coherente. Eso
+// es correcto cuando el productor es sano: una publicación dura un puñado de instrucciones,
+// así que el lector reintenta como mucho una vez y sale. PERO el consumidor real corre en
+// la ISR del envío del snapshot @100 Hz, y esa ISR NO se puede dar el lujo de girar para
+// SIEMPRE. Si un productor se colgó EN MEDIO de una publicación (dejó `seq` IMPAR y nunca
+// lo cerró — un cuelgue del DMA, una ISR que abortó, un torn write que no terminó), el
+// for(;;) de slot_read_latest() nunca sale → la ISR del snapshot se cuelga con él → el
+// CENTRAL deja de recibir el WorldSnapshot → el robot se queda ciego en pleno partido.
+// Eso viola la regla dura: el envío del snapshot NUNCA se frena por un sensor.
+//
+// Esta variante ACOTA los reintentos. Da hasta `max_retries` intentos de copiar coherente;
+// si tras ellos `seq` sigue impar (productor a medio publicar) o sigue cambiando bajo
+// nuestros pies (productor publicando en ráfaga más rápido que lo que copiamos), se RINDE:
+//   • devuelve false  → "el slot no está disponible en este tick",
+//   • NO toca `out`   → el caller conserva lo que ya tenía ahí (su sentinela / valor de
+//     fallback), nunca un dato a medio escribir. DEFAULT-TO-SAFE: ante la duda, el caller
+//     trata el slot como NO fresco y manda el sentinela, igual que si slot_is_fresh() diera
+//     false. Nunca propaga un Frankenstein.
+// Si en cambio logra una copia coherente (seq par e igual antes/después), la deja en `out`
+// y devuelve true.
+//
+// Contrato de los intentos (para que el conteo sea predecible y nunca-infinito):
+//   • Cada vuelta = una lectura de `seq` + (si es par) una copia + relectura de `seq`.
+//   • max_retries = cuántas vueltas FALLIDAS se toleran ANTES de rendirse. Hay como mucho
+//     (max_retries + 1) vueltas: el "+1" es el primer intento; cada reintento consume uno
+//     del tope. max_retries = 0 → UN solo intento, sin reintentos (apto para la ISR más
+//     estricta): si esa única pasada no es coherente, false de una.
+//   • El for está acotado por un contador → no hay camino que gire infinito, pase lo que
+//     pase con el productor. Ese es el punto entero de esta función.
+//
+// back-compat: slot_read_latest() (el for(;;)) queda intacto para los callers que SÍ pueden
+// esperar (un loop cooperativo fuera de ISR). Esta es la versión para el camino de tiempo
+// real / fail-safe.
+template <typename T>
+inline bool slot_read_latest_capped(const SensorSlot<T>& s, T& out,
+                                    uint32_t max_retries = 4u) {
+    // attempts = 1 (primer intento) + max_retries (reintentos tolerados). Acotado SIEMPRE.
+    // (max_retries+1 no puede desbordar en la práctica: max_retries es un conteo chico de
+    //  reintentos, no un millis(); aun así, si alguien pasara 0xFFFFFFFF, el lazo termina
+    //  por el contador igual — nunca es infinito.)
+    for (uint32_t attempt = 0u; attempt <= max_retries; ++attempt) {
+        const uint32_t before = s.seq;
+        // seq IMPAR → el productor está EN MEDIO de una publicación: el buffer que `seq`
+        // indica todavía no es coherente. No copiamos; gastamos un intento y reintentamos
+        // (en hardware sano, el productor cierra enseguida; si está colgado, se acaba el tope).
+        if (before & 1u) {
+            continue;
+        }
+        const uint32_t read_idx = (before >> 1) & 1u;
+        T tmp = s.buffer[read_idx];          // copia entera a un temporal (NO a `out` aún)
+        const uint32_t after = s.seq;
+        if (before == after) {
+            out = tmp;                       // coherente → recién ahora tocamos `out`
+            return true;
+        }
+        // seq cambió mientras copiábamos → el productor publicó en el medio → reintentar.
+    }
+    // Se agotó el tope sin una copia coherente. NO tocamos `out`. El caller trata el slot
+    // como no-fresco → sentinela. Never-ok forzado: jamás devolvemos un dato partido.
+    return false;
+}
+
 // slot_is_fresh(slot, now, timeout_ms) — ¿el dato de la pizarra es de AHORA?
 //
 // true SOLO si hubo al menos una publicación Y pasó MENOS que timeout_ms desde ella.

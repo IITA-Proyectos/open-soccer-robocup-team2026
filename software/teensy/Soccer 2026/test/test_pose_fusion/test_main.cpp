@@ -262,14 +262,21 @@ void test_tof_saltada_se_rechaza_por_gating(void) {
 }
 
 // ============================================================
-// test_perdida_temporal_de_tof_no_rompe
+// test_perdida_prolongada_de_tof_invalida  (INVERTIDO 2026-06-16, fix anti-free-run)
+// ------------------------------------------------------------
+// CAMBIO DE CONTRATO: antes este test (test_perdida_temporal_de_tof_no_rompe)
+// AFIRMABA EL BUG — sostenía que 100 ticks (=1000ms > tof_stale_ms=500) sin ToF
+// mantenían valid=true y confidence>=conf_min. Eso es exactamente el free-run:
+// la pose viejísima sobre el drift del OTOS reportada como fresca.
+// AHORA: pasado tof_stale_ms sin anclar, la salida se INVALIDA (valid=false,
+// confidence=0). Al volver el ToF re-ancla y valid vuelve true SIN re-seed.
 // ============================================================
-void test_perdida_temporal_de_tof_no_rompe(void) {
+void test_perdida_prolongada_de_tof_invalida(void) {
     PoseFusionState st;
     pose_fusion_reset(st);
     seed_at(st, 500, 500);
 
-    // 20 ticks con ToF+OTOS coherentes (pose estable ~500,500).
+    // 20 ticks con ToF+OTOS coherentes (pose estable ~500,500): válido y fresco.
     PoseFusionOutput out{};
     for (int i = 0; i < 20; ++i) {
         PoseFusionInputs in = make_inputs(500, 500, /*tof_valid=*/true,
@@ -280,20 +287,21 @@ void test_perdida_temporal_de_tof_no_rompe(void) {
     TEST_ASSERT_TRUE(out.valid);
     TEST_ASSERT_INT16_WITHIN(2, 500, out.x_mm);
 
-    // 100 ticks SIN ToF (solo OTOS fresca, delta 0).
+    // 100 ticks SIN ToF (solo OTOS fresca, delta 0) = 1000ms >> tof_stale_ms(500).
     for (int i = 0; i < 100; ++i) {
         PoseFusionInputs in = make_inputs(0, 0, /*tof_valid=*/false,
                                           500, 500, /*otos_fresh=*/true,
                                           /*heading=*/0, /*dt=*/10);
         out = pose_fusion_update(st, in, cfg);
-        // Durante el gap: valid sigue true y la pose se mantiene.
-        TEST_ASSERT_TRUE(out.valid);
+        // El ESTADO interno mantiene la pose (no se borra) → x_mm sigue ~500...
         TEST_ASSERT_INT16_WITHIN(2, 500, out.x_mm);
     }
-    // Confidence decae pero >= conf_min, nunca invalida.
-    TEST_ASSERT_TRUE(out.confidence >= cfg.conf_min);
+    // ...pero ya VENCIÓ por edad: la salida se reporta INVÁLIDA, conf=0.
+    TEST_ASSERT_FALSE(out.valid);
+    TEST_ASSERT_EQUAL_UINT8(0, out.confidence);
 
-    // ToF vuelve por 10 ticks: confidence sube de nuevo y bit1 set.
+    // ToF vuelve por 10 ticks: re-ancla SIN re-seed (initialized siguió true),
+    // confidence sube de nuevo, valid vuelve true y bit1 (corrección) se ve.
     bool saw_corr = false;
     for (int i = 0; i < 10; ++i) {
         PoseFusionInputs in = make_inputs(500, 500, /*tof_valid=*/true,
@@ -303,7 +311,124 @@ void test_perdida_temporal_de_tof_no_rompe(void) {
         if (out.source_flags & POSE_FUSION_FLAG_TOF_CORR) saw_corr = true;
     }
     TEST_ASSERT_TRUE(saw_corr);
+    TEST_ASSERT_TRUE(out.valid);                                  // re-validó
     TEST_ASSERT_TRUE(out.confidence >= cfg.conf_tof_anchor - 5);  // vuelve a ~90
+}
+
+// ============================================================
+// test_free_run_cortado — el tick EXACTO que cruza tof_stale_ms invalida; al
+// volver el ToF re-ancla SIN re-seed (initialized nunca se bajó).
+// ============================================================
+void test_free_run_cortado(void) {
+    PoseFusionState st;
+    pose_fusion_reset(st);
+    seed_at(st, 1000, 800);   // ancla; ms_since_tof_corr = 0
+    TEST_ASSERT_TRUE(st.initialized);
+
+    // OTOS-only, dt=10ms. Tras N ticks ms_since_tof_corr = 10*N.
+    // tof_stale_ms=500 → vence cuando 10*N > 500, i.e. N >= 51 (N=50 → 500, válido).
+    int16_t otos_x = 1000;
+    PoseFusionOutput out{};
+    // Hasta el tick 50 inclusive (ms_since = 500 EXACTO): todavía válido (corte estricto >).
+    for (int i = 1; i <= 50; ++i) {
+        otos_x += 1;
+        out = pose_fusion_update(st, make_inputs(0, 0, false, otos_x, 800, true, 0, 10), cfg);
+    }
+    TEST_ASSERT_EQUAL_UINT32(500, st.ms_since_tof_corr);
+    TEST_ASSERT_TRUE(out.valid);                 // 500 == tof_stale_ms → vivo
+    TEST_ASSERT_TRUE(out.confidence > 0);
+
+    // Tick 51 (ms_since = 510 > 500): CRUZA el corte → invalida.
+    otos_x += 1;
+    out = pose_fusion_update(st, make_inputs(0, 0, false, otos_x, 800, true, 0, 10), cfg);
+    TEST_ASSERT_EQUAL_UINT32(510, st.ms_since_tof_corr);
+    TEST_ASSERT_FALSE(out.valid);
+    TEST_ASSERT_EQUAL_UINT8(0, out.confidence);
+    // El estado interno NO se tocó: sigue inicializado y con la pose acumulada.
+    TEST_ASSERT_TRUE(st.initialized);
+
+    // Sigue OTOS-only un rato más: permanece inválido (no resucita solo).
+    for (int i = 0; i < 30; ++i) {
+        otos_x += 1;
+        out = pose_fusion_update(st, make_inputs(0, 0, false, otos_x, 800, true, 0, 10), cfg);
+        TEST_ASSERT_FALSE(out.valid);
+        TEST_ASSERT_EQUAL_UINT8(0, out.confidence);
+    }
+
+    // Vuelve el ToF coherente con la pose acumulada: re-ancla SIN re-seed.
+    // (Si re-seedeara, exigiría seed_min_samples lecturas antes de valid; acá basta 1
+    //  tick porque initialized siguió true → la corrección ancla de una.)
+    PoseFusionInputs back = make_inputs(static_cast<int16_t>(out.x_mm), 800, /*tof_valid=*/true,
+                                        otos_x, 800, /*otos_fresh=*/true, /*heading=*/0, /*dt=*/10);
+    out = pose_fusion_update(st, back, cfg);
+    TEST_ASSERT_TRUE(out.valid);                 // re-validó en UN tick (no re-seed)
+    TEST_ASSERT_EQUAL_UINT32(0, st.ms_since_tof_corr);
+    TEST_ASSERT_TRUE((out.source_flags & POSE_FUSION_FLAG_TOF_CORR) != 0);
+}
+
+// ============================================================
+// test_decay_no_es_expiracion — distinguir DECAY (suave) de EXPIRACIÓN (corte).
+// A 300ms sin ToF: valid sigue true, con 0 < conf < conf_otos_only (decayó pero no
+// venció). Recién a >500ms invalida. El decay por sí solo NUNCA invalida.
+// ============================================================
+void test_decay_no_es_expiracion(void) {
+    PoseFusionState st;
+    pose_fusion_reset(st);
+    seed_at(st, 1000, 800);
+
+    // 30 ticks OTOS-only (delta 0), dt=10ms → ms_since_tof_corr = 300ms.
+    PoseFusionOutput out{};
+    for (int i = 0; i < 30; ++i) {
+        out = pose_fusion_update(st, make_inputs(0, 0, false, 1000, 800, true, 0, 10), cfg);
+    }
+    TEST_ASSERT_EQUAL_UINT32(300, st.ms_since_tof_corr);
+    // A 300ms: NO venció (300 <= 500) → sigue VÁLIDO.
+    TEST_ASSERT_TRUE(out.valid);
+    // Pero el decay ya operó: conf bajó de conf_otos_only pero sigue > 0.
+    // decay = (300/100)*conf_decay_per_100ms = 3*5 = 15 → conf = 50-15 = 35.
+    TEST_ASSERT_TRUE(out.confidence > 0);
+    TEST_ASSERT_TRUE(out.confidence < cfg.conf_otos_only);   // decayó (35 < 50)
+    TEST_ASSERT_EQUAL_UINT8(35, out.confidence);
+
+    // Seguir hasta cruzar 500ms (20 ticks más → 500, +1 tick → 510): recién ahí invalida.
+    for (int i = 0; i < 20; ++i) {   // 300 -> 500 (exacto, todavía válido)
+        out = pose_fusion_update(st, make_inputs(0, 0, false, 1000, 800, true, 0, 10), cfg);
+    }
+    TEST_ASSERT_EQUAL_UINT32(500, st.ms_since_tof_corr);
+    TEST_ASSERT_TRUE(out.valid);                              // 500 == límite → vivo
+    out = pose_fusion_update(st, make_inputs(0, 0, false, 1000, 800, true, 0, 10), cfg);
+    TEST_ASSERT_EQUAL_UINT32(510, st.ms_since_tof_corr);
+    TEST_ASSERT_FALSE(out.valid);                             // 510 > 500 → vencido
+    TEST_ASSERT_EQUAL_UINT8(0, out.confidence);
+}
+
+// ============================================================
+// test_regresion_dentro_de_ventana — dentro de tof_stale_ms el comportamiento
+// VIEJO se mantiene (sin regresión): la salida sigue válida y con confidence>0
+// mientras NO se cruce el corte de edad.
+// ============================================================
+void test_regresion_dentro_de_ventana(void) {
+    PoseFusionState st;
+    pose_fusion_reset(st);
+    seed_at(st, 700, 600);
+
+    // 49 ticks OTOS-only (490ms < 500): TODO tick debe seguir válido y con conf>0,
+    // exactamente como antes del fix (la ventana corta no cambia).
+    PoseFusionOutput out{};
+    for (int i = 0; i < 49; ++i) {
+        out = pose_fusion_update(st, make_inputs(0, 0, false, 700, 600, true, 0, 10), cfg);
+        TEST_ASSERT_TRUE(out.valid);                 // nunca invalida dentro de ventana
+        TEST_ASSERT_TRUE(out.confidence > 0);
+        TEST_ASSERT_TRUE(out.confidence >= cfg.conf_min);
+        TEST_ASSERT_INT16_WITHIN(2, 700, out.x_mm);  // pose intacta
+    }
+    TEST_ASSERT_EQUAL_UINT32(490, st.ms_since_tof_corr);
+
+    // Un tick con ToF dentro de la ventana corrige y resetea la edad (sin sorpresas).
+    out = pose_fusion_update(st, make_inputs(700, 600, true, 700, 600, true, 0, 10), cfg);
+    TEST_ASSERT_TRUE(out.valid);
+    TEST_ASSERT_EQUAL_UINT32(0, st.ms_since_tof_corr);
+    TEST_ASSERT_TRUE(out.confidence >= cfg.conf_tof_anchor - 5);
 }
 
 // ============================================================
@@ -478,7 +603,10 @@ int main(void) {
     RUN_TEST(test_tof_corrige_drift_otos);
     RUN_TEST(test_correccion_es_suave_no_salta);
     RUN_TEST(test_tof_saltada_se_rechaza_por_gating);
-    RUN_TEST(test_perdida_temporal_de_tof_no_rompe);
+    RUN_TEST(test_perdida_prolongada_de_tof_invalida);
+    RUN_TEST(test_free_run_cortado);
+    RUN_TEST(test_decay_no_es_expiracion);
+    RUN_TEST(test_regresion_dentro_de_ventana);
     RUN_TEST(test_otos_no_fresca_mantiene_pose);
     RUN_TEST(test_otos_reset_clamp_no_teletransporta);
     RUN_TEST(test_heading_siempre_pass_through);

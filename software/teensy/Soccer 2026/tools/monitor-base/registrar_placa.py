@@ -29,13 +29,14 @@ if hasattr(sys.stdout, "reconfigure"):
 
 
 def _board_label(board: str) -> str:
-    return "TOP" if board == "top" else "BASE"
+    return {"top": "TOP", "down": "BASE", "central": "CENTRAL"}.get(board, board.upper())
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Registrar el Teensy conectado como robot/placa.")
     ap.add_argument("--robot", type=int, help="número de robot (1, 2, …)")
-    ap.add_argument("--board", choices=("top", "down"), help="placa: top (superior) o down (base)")
+    ap.add_argument("--board", choices=("top", "down", "central"),
+                    help="placa: top (superior), down (base) o central (cerebro)")
     ap.add_argument("--name", default=None, help="nombre lindo (default 'Robot N · TOP/BASE')")
     ap.add_argument("--list", action="store_true", help="listar lo registrado y salir")
     args = ap.parse_args()

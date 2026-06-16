@@ -22,6 +22,7 @@ from typing import Deque, List, Optional, Type
 
 from .panel import LogBuffer, Panel, PanelContext
 from .protocol import Frame as DownFrame
+from .protocol_central import CentralFrame
 from .protocol_top import TopFrame
 from .robot_registry import identify, load_registry
 from .safety import is_destructive_write
@@ -33,13 +34,18 @@ from .tooltips_text import tip
 HEARTBEAT_S = 2.0       # cada cuánto el log registra un latido de datos
 PHANTOM_MM = 500.0      # |camf.ball - camb.ball| para sospechar pelota fantasma
 
-BOARD_LONG = {"top": "PLACA SUPERIOR (TOP)", "down": "PLACA BASE (DOWN)", "any": "GENERAL"}
-BOARD_SHORT = {"top": "PLACA SUPERIOR", "down": "PLACA BASE"}
+BOARD_LONG = {"top": "PLACA SUPERIOR (TOP)", "down": "PLACA BASE (DOWN)",
+              "central": "PLACA CENTRAL", "any": "GENERAL"}
+BOARD_SHORT = {"top": "PLACA SUPERIOR", "down": "PLACA BASE", "central": "PLACA CENTRAL"}
 
 
 def board_of(f) -> str:
     """Qué placa produjo el frame (por su tipo)."""
-    return "down" if isinstance(f, DownFrame) else "top"
+    if isinstance(f, CentralFrame):
+        return "central"
+    if isinstance(f, DownFrame):
+        return "down"
+    return "top"
 
 
 def _registry() -> List[Type[Panel]]:
@@ -56,6 +62,8 @@ def _registry() -> List[Type[Panel]]:
             ("panel_tof_setup", "TofSetupPanel"),
             ("panel_base", "BasePanel"),          # placa BASE (DOWN)
             ("panel_arquero", "ArqueroPanel"),    # placa BASE (DOWN)
+            ("panel_central", "CentralPanel"),            # placa CENTRAL (cerebro)
+            ("panel_central_health", "CentralHealthPanel"),  # placa CENTRAL (salud enlaces)
             ("panel_logs", "LogsPanel"),
             ("panel_help", "HelpPanel"),
     ):
@@ -88,9 +96,9 @@ class MonitorShell:
         self._last_robot_serial = None
         # estado MULTI-PLACA: métricas, último frame e historia por placa.
         self.current_board: Optional[str] = None
-        self.last_by_board = {"top": None, "down": None}
+        self.last_by_board = {"top": None, "down": None, "central": None}
         self.metrics_by = {b: {"seq": -1, "rate": 0.0, "frames": 0, "dropped": 0, "last_t": None}
-                           for b in ("top", "down")}
+                           for b in ("top", "down", "central")}
         self._last_beat = 0.0
         self._anom: dict = {}        # estados previos para anomalías (por clave)
 
@@ -320,7 +328,7 @@ class MonitorShell:
                 d = ((cf.ball_x_mm - cb.ball_x_mm) ** 2 + (cf.ball_y_mm - cb.ball_y_mm) ** 2) ** 0.5
                 if d > PHANTOM_MM:
                     self.logbuf.add("warn", f"posible PELOTA FANTASMA (Δfront/back={d:.0f}mm)")
-        else:  # DOWN (placa base)
+        elif b == "down":  # DOWN (placa base)
             lv = f.line.valid
             if self._anom.get("lv") is not None and lv != self._anom["lv"]:
                 self.logbuf.add("ok" if lv else "warn",
@@ -329,6 +337,40 @@ class MonitorShell:
             if f.lifted and not self._anom.get("lifted"):
                 self.logbuf.add("warn", "robot LEVANTADO (base)")
             self._anom["lifted"] = f.lifted
+        elif b == "central":  # CENTRAL (cerebro)
+            # 1) PWM sin comando: hay PWM real en algún motor pero la FSM no pidió
+            #    nada (vx=vy=w=spin=0). Delata pisos pegados o un motor latigando
+            #    sin orden — flanco para no inundar el log.
+            cmd_zero = (f.cmd.vx == 0 and f.cmd.vy == 0 and f.cmd.w == 0
+                        and f.cmd.spin == 0)
+            pwm_active = any(p != 0 for p in f.pwm)
+            pwm_no_cmd = cmd_zero and pwm_active
+            if pwm_no_cmd and not self._anom.get("c_pwmnocmd"):
+                self.logbuf.add("warn", "PWM sin comando (motores con PWM pero la "
+                                        "FSM no pidió movimiento)")
+            self._anom["c_pwmnocmd"] = pwm_no_cmd
+            # 2) Snapshot viejo: el enlace TOP→CENTRAL dejó de estar fresco (la
+            #    CENTRAL navega con datos viejos del TOP).
+            tf = f.top.fresh
+            if self._anom.get("c_topfresh") is not None and tf != self._anom["c_topfresh"]:
+                self.logbuf.add("ok" if tf else "warn",
+                                "enlace TOP→CENTRAL recuperado" if tf
+                                else "enlace TOP→CENTRAL CAÍDO (snapshot viejo)")
+            self._anom["c_topfresh"] = tf
+            # 3) Heading congelado: OTOS fresco pero el yaw quedó CLAVADO en el mismo
+            #    valor varios frames (el bug del árbitro de deriva que arrastra al
+            #    primario sano). Cuento repeticiones del hdg exacto.
+            hdg = round(f.otos.hdg, 2)
+            if f.otos.fresh and self._anom.get("c_hdg") == hdg:
+                self._anom["c_hdgrep"] = self._anom.get("c_hdgrep", 0) + 1
+            else:
+                if self._anom.get("c_hdgrep", 0) >= 20 and f.otos.fresh:
+                    self.logbuf.add("ok", "heading OTOS se movió de nuevo")
+                self._anom["c_hdgrep"] = 0
+            if self._anom.get("c_hdgrep") == 20:   # avisar UNA vez al cruzar el umbral
+                self.logbuf.add("warn", f"heading OTOS CONGELADO (clavado en {hdg:+.1f}° "
+                                        f"hace 20 frames)")
+            self._anom["c_hdg"] = hdg
         now = time.time()
         if now - self._last_beat >= HEARTBEAT_S:
             self._last_beat = now
@@ -453,8 +495,10 @@ def smoke(frames: int = 60) -> int:
     simulador por cada vista (build + render reales) y destruye. 0 si OK."""
     import sys
     from .protocol import parse_line
+    from .protocol_central import parse_line_central
     from .protocol_top import parse_line_top
     from .simulator import Simulator
+    from .simulator_central import SimulatorCentral
     from .simulator_top import SimulatorTop
     from .sources import SimTopSource
     if hasattr(sys.stdout, "reconfigure"):
@@ -471,18 +515,22 @@ def smoke(frames: int = 60) -> int:
         root.destroy()
         return 1
     top_sim, down_sim = SimulatorTop(rate_hz=50.0), Simulator(rate_hz=50.0)
+    central_sim = SimulatorCentral(rate_hz=50.0)
     names = []
     rc = 0
     for p in shell.panels:
         names.append(f"{p.key}/{p.board}")
         shell._select(p.key)
         # Alimentar con frames de la placa que corresponde (ejercita el routing
-        # multi-placa + el hot-swap al alternar TOP/BASE).
-        down = (p.board == "down")
+        # multi-placa + el hot-swap al alternar TOP/BASE/CENTRAL).
         for _ in range(8):
             try:
-                line = down_sim.next_line() if down else top_sim.next_line()
-                shell._pump(parse_line(line) if down else parse_line_top(line))
+                if p.board == "down":
+                    shell._pump(parse_line(down_sim.next_line()))
+                elif p.board == "central":
+                    shell._pump(parse_line_central(central_sim.next_line()))
+                else:  # top + 'any' (logs/help) → frames del TOP
+                    shell._pump(parse_line_top(top_sim.next_line()))
             except Exception as e:  # noqa: BLE001
                 print(f"[smoke-monitor] FALLO en panel '{p.key}': {e}")
                 rc = 1

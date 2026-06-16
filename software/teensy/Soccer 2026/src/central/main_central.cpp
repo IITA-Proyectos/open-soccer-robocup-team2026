@@ -27,6 +27,7 @@
 #include "comm_top.h"
 #include "comm_down.h"
 #include "loop_monitor.h"   // supervisor de loop-time (PURO, host-testeable)
+#include "central_telemetry_serial.h"  // monitor USB (gateado -DCENTRAL_USB_MONITOR; no-op sin flag)
 #ifdef CENTRAL_BLACKBOX
 #include "blackbox.h"       // caja negra de corridas (gateada, envs *_bb)
 #endif
@@ -155,6 +156,17 @@ void apply_role_from_dipswitch() {
 
 }  // namespace
 
+#ifdef CENTRAL_USB_MONITOR
+// Accessors del supervisor de loop-time para el monitor USB (gateado). g_loop_monitor
+// vive en el anon-namespace de arriba (linkage interno, pero visible en este TU). Sin
+// el flag, NO se compilan → binario de competencia byte-idéntico. Definidos en
+// namespace iitasoccer para que linkeen con central_telemetry_serial.cpp.
+namespace iitasoccer {
+uint32_t central_loop_max_us() { return g_loop_monitor.max_us; }
+uint32_t central_loop_ema_us() { return static_cast<uint32_t>(g_loop_monitor.ema_us); }
+}  // namespace iitasoccer
+#endif
+
 void setup() {
     pinMode(PIN_LED_STATUS, OUTPUT);
     digitalWrite(PIN_LED_STATUS, LOW);
@@ -196,6 +208,13 @@ void setup() {
     comm_top_init();    // recibe WORLD_SNAPSHOT (Serial7, pin 28)
     comm_down_init();   // recibe LINE_URGENT (Serial1, pin 0)
     Serial.println("[CENTRAL] UARTs ARRIBA y ABAJO OK");
+
+#ifdef CENTRAL_USB_MONITOR
+    // Monitor USB DORMIDO (envs *_bb): tras los comm_*_init. Arranca en silencio;
+    // sólo despierta si la app habla por USB (STREAM ON/PING) → match-safe. Gateado:
+    // sin el flag, ni esta llamada ni el módulo existen (binario byte-idéntico).
+    central_telemetry_init();
+#endif
 
 #ifdef CENTRAL_ENABLE_WDT
     // WATCHDOG (R2): armar AL FINAL del setup, DESPUÉS de motors_init y los comm_*_init
@@ -247,21 +266,63 @@ void loop() {
     comm_top_tick();    // aplica WorldSnapshot al world_model
     comm_down_tick();   // aplica LineStatusV2 al world_model
 
-#ifdef CENTRAL_ENABLE_MANUAL_START
-    // === F3 — JUEZ DESDE LA PC (SOLO banco, gateado) ===
-    // Para cuando la app del juez no funciona (banco 2026-06-09). Con el monitor
-    // serie de la CENTRAL abierto (pio device monitor), desde el teclado de la PC:
-    //   ENTER o 'g'  ->  GO   (fuerza match_running=true; el arquero arranca su
-    //                          delay de 2 s y corre la secuencia completa)
-    //   's'          ->  STOP (suelta el override -> sin juez real la FSM vuelve a
-    //                          WAIT_START y los motores paran; re-acomodas el robot
-    //                          y mandas 'g' de nuevo = ciclo completo desde cero)
-    // Tambien: pulsador en pin 9 a GND = GO (si esta cableado).
+#if defined(CENTRAL_ENABLE_MANUAL_START) || defined(CENTRAL_USB_MONITOR)
+    // === Handler USB de la CENTRAL — juez desde la PC (g/s/ENTER) + caja negra (d/x)
+    //     + monitor (STREAM/PING). main_central.cpp es el ÚNICO dueño del Serial.
+    //
+    // F3 — JUEZ DESDE LA PC (SOLO banco, gateado por CENTRAL_ENABLE_MANUAL_START):
+    //   ENTER o 'g'  ->  GO   (fuerza match_running=true; arranca la secuencia)
+    //   's'          ->  STOP (suelta el override -> la FSM vuelve a WAIT_START)
     // En COMPETENCIA este flag NO se define: el GO/STOP real llega de la app del
     // juez por los pines 5/6 del TOP -> snapshot -> world_model_match_running().
     {
+#ifdef CENTRAL_ENABLE_MANUAL_START
         static bool g_manual_running = false;
         bool cmd_go = false, cmd_stop = false;
+#endif
+
+#ifdef CENTRAL_USB_MONITOR
+        // === TRAMPA DE LA 'S' resuelta ===
+        // La app manda "STREAM ON\n"/"PING\n": la 'S' de STREAM NO debe disparar STOP.
+        // Solución: bufferamos LÍNEAS completas y se las pasamos al parser del monitor
+        // ANTES de mirar los chars de control. Si la línea ERA un comando del monitor
+        // (PING/STREAM), central_telemetry_consume_line() la consume y devuelve true →
+        // sus chars NO se procesan como g/s/d/x. Una línea con control real ('g'/'s'/
+        // 'd'/'x', sola o con basura) NO es del monitor → se procesa igual que siempre.
+        static char s_line[64];
+        static int  s_line_len = 0;
+        while (Serial.available()) {
+            const int ci = Serial.read();
+            const char c = static_cast<char>(ci);
+            if (c == '\n' || c == '\r') {
+                const bool consumed = central_telemetry_consume_line(s_line, s_line_len);
+                if (!consumed) {
+                    // No era comando del monitor: aplicar la semántica de control de la
+                    // línea (juez + caja negra), igual que el handler char-por-char viejo.
+                    // ENTER pelado (línea vacía) = GO (manual-start), como antes.
+#ifdef CENTRAL_ENABLE_MANUAL_START
+                    if (s_line_len == 0) cmd_go = true;
+#endif
+                    for (int i = 0; i < s_line_len; ++i) {
+                        const char lc = s_line[i];
+#ifdef CENTRAL_ENABLE_MANUAL_START
+                        if (lc == 'g' || lc == 'G') cmd_go = true;
+                        else if (lc == 's' || lc == 'S') cmd_stop = true;
+#endif
+#ifdef CENTRAL_BLACKBOX
+                        if (lc == 'd' || lc == 'D') blackbox_dump();
+                        else if (lc == 'x' || lc == 'X') blackbox_reset();
+#endif
+                    }
+                }
+                s_line_len = 0;
+            } else if (s_line_len < static_cast<int>(sizeof(s_line))) {
+                s_line[s_line_len++] = c;
+            } else {
+                s_line_len = 0;   // línea demasiado larga (basura): descartar
+            }
+        }
+#else  // !CENTRAL_USB_MONITOR — handler char-por-char ORIGINAL (byte-idéntico)
         while (Serial.available()) {
             const int c = Serial.read();
             if (c == '\n' || c == '\r' || c == 'g' || c == 'G') cmd_go = true;
@@ -273,6 +334,9 @@ void loop() {
             else if (c == 'x' || c == 'X') blackbox_reset();
 #endif
         }
+#endif  // CENTRAL_USB_MONITOR
+
+#ifdef CENTRAL_ENABLE_MANUAL_START
         // Ruido de motor en el pin 9 solo puede dar GO espurio (no-op si ya corre);
         // el STOP es exclusivo del teclado -> no hay parada fantasma en pleno test.
 #ifdef CENTRAL_ENABLE_PHYSICAL_BUTTON
@@ -295,8 +359,9 @@ void loop() {
             world_model_set_force_match_running(true);
             Serial.println("[CENTRAL] *** GO manual (juez PC) — 's' para STOP ***");
         }
+#endif  // CENTRAL_ENABLE_MANUAL_START
     }
-#endif
+#endif  // CENTRAL_ENABLE_MANUAL_START || CENTRAL_USB_MONITOR
 
     // === FRENO DE BORDE (EMERGENCY_LINE) — tiene PRIORIDAD sobre la FSM ===
     // En simple: si la placa de ABAJO ve que el robot está por salirse de la
@@ -363,6 +428,9 @@ void loop() {
 #ifdef CENTRAL_BLACKBOX
             blackbox_tick(MotorCommand{});   // timeline completa aun sin snapshot
 #endif
+#ifdef CENTRAL_USB_MONITOR
+            central_telemetry_note_command(0, 0, 0, 0);   // SAFE_NO_TOP: comando = motors_stop
+#endif
         } else {
             MotorCommand cmd = strategy_tick();
 #ifdef CENTRAL_MOTOR_SLEW
@@ -386,6 +454,11 @@ void loop() {
             digitalWrite(PIN_LED_STATUS, HIGH);  // OK
 #ifdef CENTRAL_BLACKBOX
             blackbox_tick(cmd);              // graba lo decidido + lo aplicado
+#endif
+#ifdef CENTRAL_USB_MONITOR
+            // Cachea el comando APLICADO (post-slew) para el monitor: vx/vy/omega + spin.
+            central_telemetry_note_command(cmd.vx_mm_s, cmd.vy_mm_s,
+                                           cmd.omega_centideg_s, cmd.spin_pwm);
 #endif
         }
     }
@@ -465,4 +538,13 @@ void loop() {
         Serial.println(g_loop_monitor.ema_us, 0);
     }
 #endif  // CENTRAL_DEBUG_SERIAL
+
+#ifdef CENTRAL_USB_MONITOR
+    // === Monitor USB (envs *_bb) — al FINAL del loop ===
+    // No lee el Serial (main ya lo drenó arriba); sólo estampa la edad de los enlaces,
+    // aplica el auto-off de 3 s y emite el stream JSON Lines según el modo. DORMIDO por
+    // default → en partido (sin USB) no envía nada (match-safe). Gateado: sin el flag,
+    // ni esta llamada ni el módulo existen (binario de competencia byte-idéntico).
+    central_telemetry_tick();
+#endif
 }

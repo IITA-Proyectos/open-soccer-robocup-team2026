@@ -115,6 +115,18 @@ TOOLTIPS = {
     "logs.export": "Guarda el log en un archivo .txt (con fecha y hora) para revisarlo "
                    "o compartirlo después. No afecta al robot.",
 
+    # ── Cerebro / Salud (CENTRAL) ───────────────────────────────────────────
+    "central.fsm": "Qué está pensando el cerebro: el ROL (delantero o arquero), el ESTADO "
+                   "de su máquina de decisiones y si el árbitro dio PLAY. Es solo vista.",
+    "central.cmd": "El movimiento que la FSM PIDIÓ (antes de los pisos de motor): vx lateral, "
+                   "vy hacia el arco, w el giro, spin el impulso. Es lo que quiere hacer.",
+    "central.pwm": "El PWM REAL que sale a cada motor (lo que de verdad gira la rueda). Barra a "
+                   "la derecha = adelante, a la izquierda = atrás. Delata pisos o un motor sin orden.",
+    "central.otos": "El rumbo (heading) que la base le manda al cerebro. Si está viejo se grisea: "
+                    "el robot estaría orientándose con un dato no fresco. Es solo vista.",
+    "central.loop": "Cuánto tarda un ciclo del cerebro (µs). Si el peor caso se dispara, el robot "
+                    "reacciona tarde. Verde = al día; ámbar/rojo = el loop se está estirando.",
+
     # ── Barra superior (shell) ──────────────────────────────────────────────
     "shell.pause": "Congela la pantalla para mirar un instante. El robot sigue andando "
                    "igual; solo se pausa la app. Tocala de nuevo para reanudar.",

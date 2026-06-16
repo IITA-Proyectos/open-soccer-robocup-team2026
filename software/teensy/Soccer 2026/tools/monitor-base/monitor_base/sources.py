@@ -18,6 +18,7 @@ import time
 from typing import Callable, Iterable, Iterator, List, Optional
 
 from .protocol import Frame, ProtocolError, is_telemetry_line, parse_line
+from .protocol_central import parse_line_central
 from .protocol_top import parse_line_top
 from .simulator import Simulator
 from .simulator_top import SimulatorTop
@@ -114,11 +115,13 @@ def auto_parse(line: str):
     el monitor unificado para detectar la placa por los datos (hot-swap del USB):
     si mové el cable de la TOP a la base, las líneas cambian de forma y este parser
     elige el correcto sin reconfigurar nada."""
+    if '"central"' in line:
+        return parse_line_central(line)  # placa CENTRAL (cerebro): tiene "central":1
     if '"ring"' in line:
         return parse_line(line)        # placa BASE (DOWN): tiene ring/line/otos
     if '"cam"' in line:
         return parse_line_top(line)    # placa SUPERIOR (TOP): tiene cam/imu/tof/snap
-    raise ProtocolError("línea de telemetría no reconocida (ni TOP ni BASE)")
+    raise ProtocolError("línea de telemetría no reconocida (ni CENTRAL ni TOP ni BASE)")
 
 
 # ── Fuentes con hilo + cola ──────────────────────────────────────────────────
@@ -265,6 +268,31 @@ class SimTopSource(FrameSource):
             line = self._sim.next_line()
             try:
                 self._push(parse_line_top(line))
+            except ProtocolError as e:
+                self._push_error(str(e))
+            time.sleep(period)
+
+
+class SimCentralSource(FrameSource):
+    """Simulador de la placa CENTRAL (sin robot) — empuja CentralFrame."""
+
+    is_sim = True
+
+    def __init__(self, rate_hz: float = 20.0, **sim_kwargs):
+        super().__init__()
+        self.rate_hz = rate_hz
+        from .simulator_central import SimulatorCentral
+        self._sim = SimulatorCentral(rate_hz=rate_hz, **sim_kwargs)
+
+    def describe(self) -> str:
+        return "SIMULADOR (sin robot)"
+
+    def _run(self) -> None:
+        period = 1.0 / self.rate_hz
+        while not self._stop.is_set():
+            line = self._sim.next_line()
+            try:
+                self._push(parse_line_central(line))
             except ProtocolError as e:
                 self._push_error(str(e))
             time.sleep(period)

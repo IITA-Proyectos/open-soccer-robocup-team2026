@@ -19,12 +19,15 @@ import os
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-# serial USB (string, TAL CUAL lo da pyserial) → {robot:int, board:'top'|'down', name:str}.
-# Las 4 PLACAS DE COMPETENCIA, verificadas con `registrar_placa.py` el 2026-06-15
-# (serial leído del descriptor USB de cada Teensy). Placas nuevas/repuestos: la app
-# muestra el serial crudo de los desconocidos → registralos con `registrar_placa.py`
-# o en robot_registry.json (que extiende este seed). Aunque no estén nombradas, NO
-# se cruzan: cada serial cae a su propio archivo de config.
+# serial USB (string, TAL CUAL lo da pyserial) → {robot:int, board:str, name:str}.
+# board ∈ {'top','down','central'} (la CENTRAL = el cerebro, tercera placa). El
+# valor NO se valida acá (identify lo pasa tal cual) → registrar una CENTRAL es
+# `registrar_placa.py --robot N --board central` cuando se lea su serial USB.
+# Las 4 PLACAS DE COMPETENCIA top/down, verificadas con `registrar_placa.py` el
+# 2026-06-15 (serial leído del descriptor USB de cada Teensy). Las 2 CENTRAL aún no
+# se sembraron acá (faltan sus seriales reales — NO inventarlos): hasta entonces la
+# app las muestra por su serial crudo → registralas. Placas nuevas/repuestos igual:
+# aunque no estén nombradas, NO se cruzan (cada serial cae a su propio config).
 _SEED: Dict[str, dict] = {
     "19810740": {"robot": 1, "board": "top",  "name": "Robot 1 · TOP"},
     "19778780": {"robot": 1, "board": "down", "name": "Robot 1 · BASE"},

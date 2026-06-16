@@ -7,6 +7,11 @@
 //   PASO 2 — PREDICCIÓN: integrar el delta OTOS (con clamp anti-glitch).
 //   PASO 3 — CORRECCIÓN: tirón suave hacia el ToF si pasa el gating.
 //   PASO 4 — CONFIDENCE combinada (sube al anclar, decae en deriva pura).
+//   PASO 4.5 — EXPIRACIÓN POR EDAD (anti-free-run): si ms_since_tof_corr supera
+//              tof_stale_ms, la SALIDA se invalida (valid=false, confidence=0). El
+//              ESTADO interno (x/y/initialized) NO se toca → al volver el ToF re-ancla
+//              sin re-seed. El predict OTOS sigue corriendo internamente pero la pose
+//              YA NO se reporta como válida: dato viejo NO se disfraza de fresco.
 //   PASO 5 — salida + clamp a cancha (solo la SALIDA, no el estado interno).
 
 #include "pose_fusion.h"
@@ -57,8 +62,9 @@ PoseFusionConfig pose_fusion_default_config() {
     cfg.field_height_mm       = 2430;   // eje Y (arco-a-arco, lado largo)
     cfg.correction_gain_q8    = 26;    // K_real ~= 26/256 = 0.1016
     cfg.tof_jump_gate_mm      = 400;
-    // POSE-02: estos dos NO se leen hoy (el caller gatea la freshness; ver
-    // pose_fusion.h). Se setean para documentar el default cuando se cablee.
+    // otos_stale_ms: NO se lee acá (el caller gatea la freshness OTOS vía in.otos_fresh).
+    // tof_stale_ms: SÍ se consume (anti-free-run, PASO 4.5): edad máxima del último anclaje
+    // ToF antes de invalidar la salida.
     cfg.otos_stale_ms         = 60;
     cfg.tof_stale_ms          = 500;
     cfg.max_step_mm           = 80;
@@ -224,14 +230,32 @@ PoseFusionOutput pose_fusion_update(PoseFusionState& st,
         st.confidence = static_cast<uint8_t>(conf);
     }
 
+    // ---- PASO 4.5 — EXPIRACIÓN POR EDAD (anti-free-run) ----
+    // Tres conceptos ORTOGONALES no se mezclan:
+    //   • clamp de dt del delta OTOS (PASO 2) = anti-salto. No es esto.
+    //   • decay de confidence (PASO 4) = suave, baja hacia conf_min con el tiempo. No es esto.
+    //   • expiración por edad (acá) = corte DURO de validez. Es esto.
+    // Cuando falta el ToF, la pose free-runea sobre el drift del OTOS. El decay sostiene
+    // un piso conf_min y valid=true indefinidamente → dato VIEJO disfrazado de FRESCO.
+    // El fix: si el último anclaje ToF es más viejo que tof_stale_ms, la SALIDA se reporta
+    // INVÁLIDA (valid=false, confidence=0). El consumidor (navegación) debe tratar eso como
+    // "no tengo pose absoluta" y caer a su fallback — never-ok sobre dato rancio.
+    //
+    // IMPORTANTE: el ESTADO interno (x_mm_q0/y_mm_q0/initialized/otos_prev_*) NO se toca.
+    // El predict OTOS sigue integrándose internamente; solo NO se reporta válido. Al volver
+    // el ToF, la corrección re-ancla la pose acumulada (sin re-seed: initialized sigue true).
+    // Borde: ms_since_tof_corr == tof_stale_ms EXACTO todavía es válido (corte es estricto >,
+    // mismo criterio que tof_fresh_or_no_reading / slot_is_fresh: el límite cuenta como vivo).
+    bool expired = (st.ms_since_tof_corr > static_cast<uint32_t>(cfg.tof_stale_ms));
+
     // ---- PASO 5 — Salida + clamp ----
     // El clamp aplica a la SALIDA; el estado interno st.x/y NO se re-clampa
     // para no sesgar la integración cuando el robot bordea la pared.
     out.x_mm = static_cast<int16_t>(clampi(st.x_mm_q0, 0, cfg.field_width_mm));
     out.y_mm = static_cast<int16_t>(clampi(st.y_mm_q0, 0, cfg.field_height_mm));
     out.heading_centideg = st.heading_centideg;
-    out.confidence       = st.confidence;
-    out.valid            = st.initialized;
+    out.confidence       = expired ? static_cast<uint8_t>(0) : st.confidence;
+    out.valid            = st.initialized && !expired;
     return out;
 }
 

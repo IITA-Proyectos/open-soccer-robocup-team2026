@@ -163,6 +163,99 @@ void test_seq_is_even_after_each_publish(void) {
 }
 
 // ============================================================================
+// READ ACOTADO (slot_read_latest_capped): fail-safe del consumidor en tiempo real.
+// No gira para siempre si el productor dejó seq impar; ante la duda NO toca `out`.
+// ============================================================================
+
+// (b del contrato) Caso coherente → capped da true y deja en out el valor publicado.
+void test_capped_coherent_returns_true_and_value(void) {
+    SensorSlot<Ball> slot{};
+    Ball v = make_coherent(100, 5);   // {100, 205, 5}
+    slot_publish(slot, v, 1000);
+    Ball out{};
+    bool ok = slot_read_latest_capped(slot, out, /*max_retries*/ 4);
+    TEST_ASSERT_TRUE(ok);
+    TEST_ASSERT_TRUE(ball_eq(v, out));
+}
+
+// (a del contrato) seq IMPAR forzado a mano (productor colgado a medio publicar):
+// capped devuelve false tras max_retries, NO cuelga, y NO toca `out`.
+void test_capped_odd_seq_returns_false_and_leaves_out_untouched(void) {
+    SensorSlot<Ball> slot{};
+    slot_publish(slot, make_coherent(10, 4), 1000);   // una publicación completa (seq par)
+
+    // El productor ARRANCA otra publicación y se cuelga: deja seq IMPAR para siempre.
+    slot.seq = slot.seq + 1u;                          // → IMPAR, nunca lo cierra
+
+    // `out` lleva un valor centinela que el caller ya tenía; capped NO debe pisarlo.
+    Ball sentinel{ -1, -1, 200 };
+    Ball out = sentinel;
+    bool ok = slot_read_latest_capped(slot, out, /*max_retries*/ 4);
+    TEST_ASSERT_FALSE(ok);                             // se rindió, no colgó
+    TEST_ASSERT_TRUE(ball_eq(sentinel, out));          // out INTACTO (default-to-safe)
+}
+
+// (c del contrato) max_retries=0 sobre seq par coherente → true en UN solo intento.
+void test_capped_zero_retries_succeeds_on_coherent_slot(void) {
+    SensorSlot<Ball> slot{};
+    Ball v = make_coherent(42, 7);
+    slot_publish(slot, v, 1000);
+    Ball out{};
+    bool ok = slot_read_latest_capped(slot, out, /*max_retries*/ 0);
+    TEST_ASSERT_TRUE(ok);                              // un único intento alcanza
+    TEST_ASSERT_TRUE(ball_eq(v, out));
+}
+
+// max_retries=0 sobre seq IMPAR → false de una, sin reintentos, sin tocar out.
+void test_capped_zero_retries_on_odd_seq_fails_immediately(void) {
+    SensorSlot<Ball> slot{};
+    slot_publish(slot, make_coherent(3, 3), 1000);
+    slot.seq = slot.seq + 1u;                          // → IMPAR
+    Ball sentinel{ 7, 7, 7 };
+    Ball out = sentinel;
+    bool ok = slot_read_latest_capped(slot, out, /*max_retries*/ 0);
+    TEST_ASSERT_FALSE(ok);
+    TEST_ASSERT_TRUE(ball_eq(sentinel, out));          // out sin tocar
+}
+
+// Slot recién construido (zero-init, nunca publicado): seq=0 (par) → capped da true y
+// devuelve el valor inicial (ceros). Coherente con slot_read_latest del slot vacío.
+void test_capped_on_never_published_returns_initial_zero(void) {
+    SensorSlot<Ball> slot{};
+    Ball out{ 9, 9, 9 };
+    bool ok = slot_read_latest_capped(slot, out, /*max_retries*/ 4);
+    TEST_ASSERT_TRUE(ok);
+    TEST_ASSERT_TRUE(ball_eq(Ball{0, 0, 0}, out));     // pisó out con el inicial coherente
+}
+
+// Devuelve siempre la ÚLTIMA publicación, igual que slot_read_latest (no regresa atrás).
+void test_capped_returns_latest_after_multiple_publishes(void) {
+    SensorSlot<Ball> slot{};
+    slot_publish(slot, make_coherent(1, 1), 1000);
+    slot_publish(slot, make_coherent(2, 2), 1010);
+    slot_publish(slot, make_coherent(3, 3), 1020);
+    Ball out{};
+    bool ok = slot_read_latest_capped(slot, out, 4);
+    TEST_ASSERT_TRUE(ok);
+    TEST_ASSERT_TRUE(ball_eq(make_coherent(3, 3), out));
+}
+
+// Funciona con un escalar simple, no solo con structs.
+void test_capped_works_with_scalar_type(void) {
+    SensorSlot<uint16_t> dist{};
+    uint16_t out = 0xBEEF;
+    TEST_ASSERT_TRUE(slot_read_latest_capped(dist, out, 4));   // nunca publicado, par → true
+    TEST_ASSERT_EQUAL_UINT16(0, out);                          // valor inicial
+    slot_publish(dist, (uint16_t)1234, 1000);
+    TEST_ASSERT_TRUE(slot_read_latest_capped(dist, out, 4));
+    TEST_ASSERT_EQUAL_UINT16(1234, out);
+    // seq impar → false, out conserva 1234 (no lo pisa).
+    dist.seq = dist.seq + 1u;
+    TEST_ASSERT_FALSE(slot_read_latest_capped(dist, out, 4));
+    TEST_ASSERT_EQUAL_UINT16(1234, out);
+}
+
+// ============================================================================
 // FRESCURA: expira por timeout (wrap-safe)
 // ============================================================================
 
@@ -299,6 +392,14 @@ int main(int, char**) {
     RUN_TEST(test_every_read_is_coherent_across_many_publishes);
     RUN_TEST(test_no_torn_read_when_writer_mid_publish);
     RUN_TEST(test_seq_is_even_after_each_publish);
+    // Read acotado (fail-safe del consumidor en tiempo real).
+    RUN_TEST(test_capped_coherent_returns_true_and_value);
+    RUN_TEST(test_capped_odd_seq_returns_false_and_leaves_out_untouched);
+    RUN_TEST(test_capped_zero_retries_succeeds_on_coherent_slot);
+    RUN_TEST(test_capped_zero_retries_on_odd_seq_fails_immediately);
+    RUN_TEST(test_capped_on_never_published_returns_initial_zero);
+    RUN_TEST(test_capped_returns_latest_after_multiple_publishes);
+    RUN_TEST(test_capped_works_with_scalar_type);
     // Frescura por timeout (wrap-safe).
     RUN_TEST(test_fresh_right_after_publish);
     RUN_TEST(test_fresh_within_timeout);

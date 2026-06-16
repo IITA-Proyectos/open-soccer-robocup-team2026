@@ -337,6 +337,19 @@ nativo, pero ya no es el único camino. Ver
 - **Pendiente banco (TASK-213):** `pio run` + **analizador lógico** en Wire (read 2º BNO <10ms aislado) +
   medir ruido del ω + marco de Velocity2D + signos. `top_robot1/2/pri` byte-idénticos.
 
+### Avance 2026-06-16 — Centinela VERIFICADO en banco (R2) + programa BENDECIDO para ambos robots (TASK-213 ✅)
+- **TASK-213 cerrada por Gustavo (banco R2):** con `top_robot2_pri_xval` flasheado → primario en Wire2
+  trackea el giro sin congelarse; 2º BNO inicializa como centinela; `i2c-scan Wire` da **solo 0x28** (sin
+  0x29). El monitor (vista Salud) ahora muestra el 2º BNO como **"centinela @1Hz: X°"** en verde (antes "falla").
+- **Programa BENDECIDO para TOP, ambos robots:**
+  - **Competencia:** `top_robot2_pri_fastbno` (R2) / **`top_robot1_pri_fastbno`** (R1) — con telemetría DORMIDA.
+  - **Banco:** `top_robot2_pri_xval` / `top_robot1_pri_xval` — + centinela.
+- **R1 firmware-LISTO (mismo programa):** `Wire2.begin()` incondicional + centinela des-gateado de ROBOT2 +
+  envs `top_robot1_pri*` nuevos (sin `TOP_BNO_TOF_DECONFLICT` obsoleto → mismo path de centinela que R2). Los
+  6 envs (R1+R2) compilan. **Falta SOLO el boot-check físico de R1** (BNOs estaban desconectados) → **TASK-216**.
+- **Monitor:** feature "centinela + heading" host-tested (firmware 22/22, monitor 236/236). Banner de envs de
+  competencia vs banco en `platformio.ini` (regla: al TOP va el firmware de competencia con monitor dormido).
+
 ### Avance 2026-06-15 — TASK-022 (cámaras): tooling host del solver de homografía (acelera el banco, sin tocar hardware)
 - **El núcleo de TASK-022 es BANCO** (calibrar LAB/exposición bajo luz de Incheon, medir distancias con regla,
   fps@VGA) — Claude NO lo cierra. Un workflow (7 agentes + verificación) identificó lo **host-testeable/tooling**

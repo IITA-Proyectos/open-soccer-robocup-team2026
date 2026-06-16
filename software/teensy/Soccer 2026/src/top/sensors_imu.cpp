@@ -249,15 +249,14 @@ bool sensors_imu_init() {
                             // (diag_bno_tof_slow: yaw sigue el giro con los 4 ToF activos).
                             // 400 kHz solo servia con ToF-solo (quad_live) o BNO-solo
                             // (diag_bno_left). Costo: boot ~40 s (carga firmware de los 4 ToF).
-#if defined(ROBOT2) || defined(TOP_BNO1_ON_WIRE2)
-    // Bus Wire2 (pines 24/25 NATIVOS del Teensy 4.0, LPI2C4; SIN setSCL/setSDA —
-    // 24/25 son los default de Wire2, corrección 2026-06-09). Ahí vive SOLO un BNO
-    // (cero ToF -> cero contención; el motivo del freeze de R1 no existe en este
-    // bus). ROBOT2: su PRIMARIO. ROBOT1 con TOP_BNO1_ON_WIRE2: su BNO1 mudado
-    // (plan B del banco demo 2026-06-11). Clock conservador 100k.
+    // Bus Wire2 (pines 24/25 NATIVOS del Teensy 4.0, LPI2C4; SIN setSCL/setSDA — 24/25
+    // son los default de Wire2, corrección 2026-06-09). Ahí vive SOLO el BNO PRIMARIO
+    // (cero ToF -> cero contención). AMBOS robots usan Wire2 para el primario (arquitectura
+    // unificada 2026-06-15) → el begin va SIEMPRE. Antes estaba gateado a ROBOT2/
+    // TOP_BNO1_ON_WIRE2; sin esto, en `top_robot1` plano el primario de R1 en Wire2 no
+    // arrancaría (i2c_present_on(Wire2,...) sin bus iniciado). Clock conservador 100k.
     Wire2.begin();
     Wire2.setClock(100000);
-#endif
 
     imu_fusion_init(g_fusion);
     g_fcfg = imu_fusion_default_cfg();
@@ -312,9 +311,10 @@ bool sensors_imu_init() {
     // (Rama robot1 con sondeo 0x29 RETIRADA 2026-06-15: robot1 se unificó a la
     //  arquitectura de arriba — 2 BNO @ 0x28 en buses separados. Ya no hay BNO en 0x29.)
 
-#if defined(TOP_ENABLE_BNO_SENTINEL) && defined(ROBOT2)
+#if defined(TOP_ENABLE_BNO_SENTINEL)
     // CENTINELA (TASK-213): inicializar el 2º BNO (Wire) al boot para usarlo como
     // SEGUNDA OPINIÓN @1 Hz, AUNQUE g_ready[1] siga false (no entra a la fusión del
+    // control → byte-idéntico). AMBOS robots (R1 unificado 2026-06-15) — antes ROBOT2-solo.
     // control → byte-idéntico). Sin begin(), leerlo crudo daría basura (no está en modo
     // fusión). Los ToF están dormidos (predim) en este punto del setup → el begin del
     // secundario en Wire no choca. ⚠️ NO tocar g_ready[1].
@@ -522,7 +522,7 @@ float sensors_imu_sentinel_heading_deg() { return 0.0f; }
 
 // Paso del CENTINELA @1Hz. Lo llama el LOOP en la ventana bus-quiet (aislada de los reads
 // de ToF en Wire), para que el read del secundario NUNCA quede pegado a un getRangingData.
-#if defined(TOP_ENABLE_BNO_SENTINEL) && defined(TOP_ENABLE_HEADING_XVAL) && defined(ROBOT2)
+#if defined(TOP_ENABLE_BNO_SENTINEL) && defined(TOP_ENABLE_HEADING_XVAL)
 void sensors_imu_sentinel_step(uint32_t now_ms) {
     if (!g_sentinel_init_ok) return;
     xval_sentinel_timed_out(g_xval, g_xval_params, now_ms);   // re-arma si quedó colgado
@@ -547,7 +547,7 @@ void sensors_imu_sentinel_step(uint32_t now_ms) {
     xval_sentinel_done(g_xval, g_xval_params, now_ms);
 }
 #elif defined(TOP_ENABLE_BNO_SENTINEL)
-void sensors_imu_sentinel_step(uint32_t) {}   // sin XVAL/ROBOT2: no-op
+void sensors_imu_sentinel_step(uint32_t) {}   // centinela sin XVAL: no-op
 #endif
 
 }  // namespace iitasoccer

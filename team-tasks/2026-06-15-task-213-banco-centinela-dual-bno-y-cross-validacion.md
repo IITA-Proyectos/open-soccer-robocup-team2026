@@ -2,16 +2,35 @@
 id: TASK-213
 title: "Banco: cablear+validar el centinela dual-BNO @1Hz (ToF-pausa) + la cross-validación de salud del heading"
 date_created: 2026-06-15
+date_closed: 2026-06-16
 assigned: [equipo (firmware TOP)]
 priority: P2  # sube a P1 si el primario único se muestra poco confiable en banco
 pedido-por: Gustavo Viollaz (2026-06-15)
-status: glue-PROGRAMADO-2026-06-15  # módulos puros + GLUE Arduino ESCRITOS (gateados); falta `pio run` (compilar) + banco. Ver journal 2026-06-15-glue-cross-validacion-heading-completado.md
+status: VERIFICADO-EN-BANCO-2026-06-16  # ROBOT2: Gustavo validó en banco — primario Wire2 trackea sin freeze, 2º BNO inicializa como centinela y se ve "centinela @1Hz" en el monitor, scan I²C confirma 0x28 único (sin 0x29). Ver banner abajo. R1: mismo programa listo (envs top_robot1_pri*), boot-check de R1 en TASK-216.
 relacionada: TASK-212 (análisis), TASK-211 (freeze-detector INC-1 = Fase 0), TASK-022 (cámaras), TASK-014 (pulseIn), TASK-207
 tags: [firmware, top, bno055, imu, fusion-sensorial, centinela, otos, camaras, robustez]
 depends_on: []
 ---
 
 # TASK-213 — Centinela dual-BNO @1Hz + cross-validación (cablear + banco)
+
+> ✅ **VERIFICADO EN BANCO (ROBOT2, Gustavo 2026-06-16).** Cerrado por el humano con la placa
+> (regla 1). Evidencia del banco con `top_robot2_pri_xval` flasheado:
+> - **Primario (Wire2 24/25 @ 0x28):** boot `PRIMARIO OK`; el heading TRACKEA el giro suave
+>   (0 → -22 → +47 → ~1) y se clava al frenar, SIN congelarse → el bus propio Wire2 cumple.
+> - **Centinela (2º BNO, Wire @ 0x28):** `CENTINELA init OK`; el monitor (monitor-base, vista
+>   Salud) ahora lo muestra como **"BNO secundario (centinela) @1Hz: X°"** en verde (no "falla").
+> - **Arquitectura confirmada:** `[i2c-scan Wire, ToF dormidos] ACK en: 0x28` → único 0x28, **sin
+>   ningún BNO en 0x29** (la corrección del cableado, verificada físicamente).
+> - **Feature del monitor** (mostrar centinela + heading) PROGRAMADO + verificado: firmware
+>   `test_telemetry_top` 22/22 + monitor 236/236. Commit a785858 + el de cierre.
+>
+> **Lo que NO se hizo (queda como banco fino OPCIONAL, post-Incheon, NO bloqueante):** analizador
+> lógico en Wire durante la ventana de 1 Hz + medir piso de ruido del ω para fijar `tol_base`/
+> `consensus_k` con dato real. El centinela hoy aporta DIAGNÓSTICO (telemetría), sin failover.
+>
+> **ROBOT1:** el MISMO programa quedó listo (envs `top_robot1_pri*`, mismo path, sin deconflict);
+> falta el boot-check de R1 (sus BNO estaban desconectados) → **TASK-216**. Riesgo bajo: HW idéntico.
 
 ## Por qué existe
 

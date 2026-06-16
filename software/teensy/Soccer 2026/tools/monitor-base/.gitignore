@@ -4,3 +4,6 @@
 monitor_base/robot_registry.json
 monitor_base/tof_layout.json
 monitor_base/tof_layout_*.json
+
+# Grabaciones de sesion del monitor (--replay las consume). Artefacto local, no versionar.
+monitor-*.jsonl

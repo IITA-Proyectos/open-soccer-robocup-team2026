@@ -5,13 +5,26 @@ date_created: 2026-06-16
 assigned: [equipo (firmware TOP, robot1)]
 priority: P2  # robot1 hoy corre SIN gyro (BNOs desconectados); sube a P1 si R1 va a jugar con heading
 pedido-por: Gustavo Viollaz (2026-06-15: "los BNO quedaron en 0x28 en los dos robots")
-status: firmware-UNIFICADO-2026-06-15  # código escrito + COMPILA (top_robot1 SUCCESS); falta banco. Claude NO lo cierra (regla 1).
+status: firmware-LISTO-2026-06-16  # unificado + envs R1 creados (top_robot1_pri/_fastbno/_xval, SIN deconflict → mismo path de centinela que R2) + TODOS compilan. R2 validó el diseño con HW idéntico (TASK-213). FALTA SOLO el boot-check físico de R1 (BNOs estaban desconectados). Claude NO cierra HW (regla 1).
 relacionada: TASK-207 (BNO bus aparte Wire2), TASK-213 (centinela R2), TASK-042 (checklist R1 vuelta de reparación)
 tags: [firmware, top, bno055, robot1, i2c, hardware-real]
 depends_on: []
 ---
 
 # TASK-216 — Validar robot1 con el firmware BNO unificado
+
+> 🟡 **ACTUALIZACIÓN 2026-06-16 — R1 firmware-LISTO, falta solo el boot-check físico.**
+> Tras verificar el centinela en **R2** (TASK-213), Gustavo pidió dejar el MISMO programa para R1.
+> Hecho en firmware (todo compila):
+> - `Wire2.begin()` ahora es **incondicional** (antes gateado a ROBOT2/TOP_BNO1_ON_WIRE2): sin esto,
+>   el primario de R1 en Wire2 no arrancaba con `top_robot1` plano.
+> - El **centinela se des-gateó de `ROBOT2`** (R1 ya es idéntico): ahora compila/corre para ambos.
+> - **Envs nuevos de R1** (espejo de R2, SIN `-DTOP_BNO_TOF_DECONFLICT` obsoleto → R1 toma el path del
+>   centinela igual que R2): `top_robot1_pri`, `top_robot1_pri_fastbno` (⭐ competencia), `top_robot1_pri_xval` (banco). Los 3 compilan SUCCESS.
+>
+> **FALTA (equipo, regla 1 — Claude NO lo cierra):** reconectar los 2 BNO de R1 + flashear
+> `top_robot1_pri_xval` + giro → confirmar `PRIMARIO OK` + `CENTINELA init OK` + heading que sigue
+> el giro + monitor mostrando "centinela @1Hz". **Riesgo bajo: R2 ya validó el diseño con HW idéntico.**
 
 ## Por qué existe
 

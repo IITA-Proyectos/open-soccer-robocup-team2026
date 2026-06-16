@@ -134,7 +134,7 @@ class MonitorShell:
         self.pause_btn.pack(side="right", padx=4, pady=4)
 
         # Navegación lateral (con scroll por si hay muchas vistas).
-        self.nav = tk.Frame(r, bg=BG2, width=184)
+        self.nav = tk.Frame(r, bg=BG2, width=160)
         self.nav.grid(row=1, column=0, sticky="ns")
         self.nav.grid_propagate(False)
 

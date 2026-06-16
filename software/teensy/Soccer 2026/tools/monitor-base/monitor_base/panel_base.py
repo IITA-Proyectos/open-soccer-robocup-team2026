@@ -23,14 +23,15 @@ from .panel import Panel
 from .protocol import Frame
 from .sensor_health import SensorHealthTracker
 
-RING_PX = 460
+RING_PX = 400
 SENSOR_R = 11
 
 # Grilla de barras "cercanía al umbral" (8 columnas × 4 filas = 32 sensores).
 _BARS_COLS = 8
 _BARS_ROWS = 4
-_BARS_CW = 58   # ancho de celda px
+_BARS_CW = 50   # ancho de celda px
 _BARS_CH = 34   # alto de celda px
+_BARS_W = _BARS_COLS * _BARS_CW   # ancho total de la grilla (= ancho de la columna calib)
 
 # Umbral "naranja" de la grilla semáforo: por debajo de DEFAULT_MIN_MARGIN el
 # sensor es débil; por debajo de esto directamente NO separa verde/blanco.
@@ -70,7 +71,7 @@ class BasePanel(Panel):
         self._last_global_sent = 0
         self._last_persensor_sent = 0
 
-        main = ttk.Frame(parent, padding=8)
+        main = ttk.Frame(parent, padding=6)
         main.pack(fill="both", expand=True)
 
         # Izquierda: canvas del anillo.
@@ -82,30 +83,30 @@ class BasePanel(Panel):
         self.canvas.bind("<Button-1>", self._on_canvas_click)               # click → inspector
         self.canvas.bind("<Double-Button-1>", self._on_canvas_double_click) # doble → on/off
         ttk.Label(left, text="Anillo de 32 sensores — +Y = frente · CLICK = inspeccionar · DOBLE CLICK = habilitar/deshabilitar",
-                  foreground="#888").pack(pady=(4, 0))
+                  foreground="#888", wraplength=RING_PX, justify="left").pack(pady=(4, 0))
 
         # Derecha: paneles de texto.
         right = ttk.Frame(main)
-        right.grid(row=0, column=1, sticky="n", padx=(12, 0))
+        right.grid(row=0, column=1, sticky="n", padx=(8, 0))
 
         ttk.Label(right, text="LÍNEA → CENTRAL (LineStatusV2)").pack(anchor="w")
-        self.line_txt = tk.Text(right, width=42, height=12, font=("Consolas", 10),
+        self.line_txt = tk.Text(right, width=38, height=12, font=("Consolas", 10),
                                 bg="#0c0f12", fg="#d8e0e8", relief="flat")
         self.line_txt.pack(pady=(0, 8))
 
         ttk.Label(right, text="ODOMETRÍA (OTOS)").pack(anchor="w")
-        self.otos_txt = tk.Text(right, width=42, height=9, font=("Consolas", 10),
+        self.otos_txt = tk.Text(right, width=38, height=9, font=("Consolas", 10),
                                 bg="#0c0f12", fg="#d8e0e8", relief="flat")
         self.otos_txt.pack(pady=(0, 8))
 
         ttk.Label(right, text="SALUD DE SENSORES / CALIBRACIÓN").pack(anchor="w")
-        self.health_txt = tk.Text(right, width=42, height=7, font=("Consolas", 10),
+        self.health_txt = tk.Text(right, width=38, height=7, font=("Consolas", 10),
                                   bg="#0c0f12", fg="#f0c0c0", relief="flat")
         self.health_txt.pack()
 
         # Columna extra a la derecha: calibración guiada + semáforo de márgenes.
         calib_col = ttk.Frame(main)
-        calib_col.grid(row=0, column=2, sticky="n", padx=(12, 0))
+        calib_col.grid(row=0, column=2, sticky="n", padx=(8, 0))
         self._build_calib_panel(calib_col)
 
         self._compute_ring_transform()
@@ -117,15 +118,15 @@ class BasePanel(Panel):
         ttk.Label(parent, text="CALIBRAR (en orden)",
                   font=("Segoe UI", 11, "bold")).pack(anchor="w")
         for label, cmd in [
-                ("1· Capturar VERDE (robot sobre el verde)", "CAL CARPET"),
-                ("2· Capturar BLANCO (sensores sobre la línea/hoja)", "CAL WHITE"),
-                ("3· GUARDAR en el robot (calib + sensibilidad)", "CAL SAVE")]:
+                ("1· Capturar VERDE (sobre el verde)", "CAL CARPET"),
+                ("2· Capturar BLANCO (sobre la línea)", "CAL WHITE"),
+                ("3· GUARDAR (calib + sensibilidad)", "CAL SAVE")]:
             ttk.Button(parent, text=label,
                        command=lambda c=cmd: self._send(c)).pack(fill="x", pady=2)
 
         self.verdict_lbl = tk.Label(parent, text="esperando datos…",
                                     font=("Segoe UI", 11, "bold"),
-                                    bg="#222", fg="#ccc", wraplength=470,
+                                    bg="#222", fg="#ccc", wraplength=_BARS_W,
                                     justify="left", padx=6, pady=6)
         self.verdict_lbl.pack(fill="x", pady=(10, 2))
         self.valid_lbl = ttk.Label(parent, text="data_valid=?")
@@ -134,7 +135,7 @@ class BasePanel(Panel):
         # ── Sensibilidad GLOBAL al blanco ──
         ttk.Label(parent, text="Sensibilidad global al blanco "
                   "(+ = MENOS sensible / más estricto · 0 = normal)",
-                  foreground="#888").pack(anchor="w", pady=(10, 0))
+                  foreground="#888", wraplength=_BARS_W, justify="left").pack(anchor="w", pady=(10, 0))
         gframe = ttk.Frame(parent)
         gframe.pack(fill="x")
         self.global_sens_var = tk.IntVar(value=0)
@@ -148,7 +149,7 @@ class BasePanel(Panel):
         # ── Barras de cercanía al umbral por sensor ──
         ttk.Label(parent, text="Cercanía al umbral por sensor (barra a la DERECHA = ve "
                   "blanco · CLICK = inspeccionar · DOBLE = habilitar/deshabilitar)",
-                  foreground="#888").pack(anchor="w", pady=(8, 2))
+                  foreground="#888", wraplength=_BARS_W, justify="left").pack(anchor="w", pady=(8, 2))
         self._bars_canvas = tk.Canvas(
             parent, width=_BARS_COLS * _BARS_CW, height=_BARS_ROWS * _BARS_CH,
             bg="#101418", highlightthickness=0)

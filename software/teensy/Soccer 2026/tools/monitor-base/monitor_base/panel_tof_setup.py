@@ -15,6 +15,7 @@ acá sólo se dibuja, se clickea y se delega.
 """
 from __future__ import annotations
 
+import os
 import tkinter as tk
 from tkinter import filedialog, ttk
 from typing import Dict, Optional
@@ -80,7 +81,7 @@ class TofSetupPanel(Panel):
         ttk.Button(cfgrow, text="📂 Cargar .json", command=self._load).pack(side="left", padx=3)
         ttk.Button(cfgrow, text="⬇ Bajar a la placa (firmware)",
                    command=self._push_to_fw).pack(side="left", padx=12)
-        self.cfg_note = ttk.Label(cfgrow, style="Muted.TLabel", text=f"archivo: {self.cfg_path}")
+        self.cfg_note = ttk.Label(cfgrow, style="Muted.TLabel", text=f"archivo: {os.path.basename(self.cfg_path)}")
         self.cfg_note.pack(side="left", padx=8)
 
     # ── Cards ────────────────────────────────────────────────────────────────
@@ -236,7 +237,7 @@ class TofSetupPanel(Panel):
         try:
             self.cfg.save(path)
             self.cfg_path = path
-            self.cfg_note.configure(text=f"archivo: {self.cfg_path}")
+            self.cfg_note.configure(text=f"archivo: {os.path.basename(self.cfg_path)}")
             self.ctx.log("ok", f"Config ToF guardada en {path}")
         except Exception as e:  # noqa: BLE001
             self.ctx.log("bad", f"Config ToF: no pude guardar: {e}")
@@ -250,7 +251,7 @@ class TofSetupPanel(Panel):
         try:
             self.cfg = load_or_default(path)
             self.cfg_path = path
-            self.cfg_note.configure(text=f"archivo: {self.cfg_path}")
+            self.cfg_note.configure(text=f"archivo: {os.path.basename(self.cfg_path)}")
             for idx in range(4):
                 self._refresh_card_buttons(idx, self._cards[idx])
                 self._render_card(idx)

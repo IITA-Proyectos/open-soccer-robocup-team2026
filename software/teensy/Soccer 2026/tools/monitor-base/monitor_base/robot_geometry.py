@@ -62,3 +62,29 @@ def sensor_field_pos(g: SensorGeom, center_x: float, center_y: float,
     Para dibujar el origen del rayo en la ubicación REAL del sensor."""
     dx, dy = rotate_offset(g.off_x_mm, g.off_y_mm, heading_rad)
     return (center_x + dx, center_y + dy)
+
+
+# ── Diagrama top-down ESTÁTICO (marco del robot, heading=0) ─────────────────
+# Layout PURO (en px) para dibujar el robot a TAMAÑO REAL con cada sensor en su
+# posición física + la dirección de su rayo (bearing). En el marco PROPIO del robot
+# (heading=0) → NO usa el heading vivo, así que ESQUIVA el conflicto de convención
+# CCW/CW. Pantalla: +X (derecha) → +px ; +Y (frente) → ARRIBA (−py).
+def topdown_layout(canvas_w: float, canvas_h: float, margin_px: float = 16.0) -> dict:
+    reach_mm = ROBOT_RADIUS_MM + 60.0          # robot + holgura para el stub/etiqueta del rayo
+    span_px = min(canvas_w, canvas_h) - 2.0 * margin_px
+    scale = (span_px / (2.0 * reach_mm)) if (reach_mm > 0 and span_px > 0) else 1.0
+    cx, cy = canvas_w / 2.0, canvas_h / 2.0
+
+    def place(g: SensorGeom, kind: str) -> dict:
+        px = cx + g.off_x_mm * scale
+        py = cy - g.off_y_mm * scale           # Y invertido en pantalla
+        b = math.radians(g.bearing_deg)
+        # frente(b=0) → arriba (0,−1) ; derecha(b=90) → +x (1,0)
+        return {"label": g.label, "kind": kind, "px": px, "py": py,
+                "ray_dx": math.sin(b), "ray_dy": -math.cos(b), "height_mm": g.height_mm}
+
+    sensors = ([place(g, "tof") for g in TOF_GEOM]
+               + [place(g, "cam") for g in CAM_GEOM]
+               + [place(HCSR04_GEOM, "us")])
+    return {"scale": scale, "cx": cx, "cy": cy,
+            "robot_radius_px": ROBOT_RADIUS_MM * scale, "sensors": sensors}

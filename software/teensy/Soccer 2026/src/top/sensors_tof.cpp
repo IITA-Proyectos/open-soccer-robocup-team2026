@@ -35,6 +35,7 @@
 #include "top_eeprom_config.h"   // g_top_cfg.ultrasonic_en / tof[i].enabled (A2.1)
 
 // --- Modulos PUROS del rediseno sensorial no-bloqueante (host-testeados); glue Arduino abajo ---
+#include "tof_zone_mask.h"       // A2.2: mascara de zonas (anular superiores) — ungated, no-op por default
 #if defined(TOP_ENABLE_TOF_SCHED)
 #include "tof_schedule.h"        // turnero round-robin + SKIP del ToF caido (gateado)
 #endif
@@ -195,7 +196,7 @@ uint16_t read_hcsr04() {
 // Promedia las zonas validas del frame 4x4 del L7CX. status==5/6/9 son
 // "valid range" segun convencion ST. Devuelve TOF_NO_READING si NINGUNA
 // zona del frame es valida (sensor mirando al vacio, fuera de rango, etc).
-uint16_t mean_valid_zones(const VL53L7CX_ResultsData& r, uint8_t n_zones) {
+[[maybe_unused]] uint16_t mean_valid_zones(const VL53L7CX_ResultsData& r, uint8_t n_zones) {
     uint32_t sum = 0;
     uint16_t count = 0;
     for (uint8_t i = 0; i < n_zones; ++i) {
@@ -437,8 +438,15 @@ void sensors_tof_tick() {
         // getRangingData() OK = el sensor responde por I2C -> lectura FRESCA
         // (aunque mean sea NO_READING = "nada en rango", es una respuesta
         // valida y reciente, no un dato colgado). Sellamos la frescura.
-        g_distances_mm[i] = mean_valid_zones(g_tof_results, TOF_RESOLUTION_ZONES);
+        // A2.2 — MASCARA DE ZONAS: primero llenamos las zonas crudas, luego reducimos a una
+        // distancia aplicando la mascara del sensor (g_top_cfg.tof[i].zone_mask): las zonas
+        // marcadas 0 (ej. filas superiores que ven la estructura/techo) NO entran al promedio.
+        // Default mask=~0 -> promedia todas las validas = IDENTICO a mean_valid_zones (fail-safe
+        // byte-neutro). g_zones_mm queda CRUDO (la telemetria muestra las 16; el monitor pinta
+        // cuales estan anuladas). Costo: el mismo loop de 16 zonas que ya se recorria.
         fill_zones(g_tof_results, g_zones_mm[i], TOF_RESOLUTION_ZONES);
+        const uint64_t zmask = (i < TOP_CFG_NUM_TOF) ? g_top_cfg.tof[i].zone_mask : ~(uint64_t)0;
+        g_distances_mm[i] = tof_zone_masked_mean(g_zones_mm[i], TOF_RESOLUTION_ZONES, zmask, TOF_NO_READING);
         g_last_ok_ms[i]   = now;
         g_ever_ok[i]      = true;
     }
@@ -449,9 +457,13 @@ void sensors_tof_tick() {
     if (g_ready[TOF_FRONTAL_IDX]) {
         if (g_tof_frontal.isDataReady()) {
             if (g_tof_frontal.getRangingData(&g_tof_results)) {
-                g_distances_mm[TOF_FRONTAL_IDX] =
-                    mean_valid_zones(g_tof_results, TOF_RESOLUTION_ZONES);
+                // A2.2 mascara de zonas (ver nota en el path MULTI): zonas crudas -> masked_mean.
                 fill_zones(g_tof_results, g_zones_mm[TOF_FRONTAL_IDX], TOF_RESOLUTION_ZONES);
+                const uint64_t zmask = (TOF_FRONTAL_IDX < TOP_CFG_NUM_TOF)
+                                       ? g_top_cfg.tof[TOF_FRONTAL_IDX].zone_mask : ~(uint64_t)0;
+                g_distances_mm[TOF_FRONTAL_IDX] =
+                    tof_zone_masked_mean(g_zones_mm[TOF_FRONTAL_IDX], TOF_RESOLUTION_ZONES,
+                                         zmask, TOF_NO_READING);
                 g_last_ok_ms[TOF_FRONTAL_IDX] = millis();  // sello de frescura
                 g_ever_ok[TOF_FRONTAL_IDX]    = true;
             }

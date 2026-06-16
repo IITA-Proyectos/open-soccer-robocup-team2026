@@ -35,6 +35,7 @@
 #include "comm_central.h"        // comm_central_get_last_snapshot (gateado)
 #include "comm_down.h"           // OTOS + línea/escape que llega de la base (A1)
 #include "top_eeprom_config.h"   // g_top_cfg + save/load (A2.1: comandos de config)
+#include "tof_zone_mask.h"       // tof_zone_mask_set (A2.2: comandos TOF ZONE ON/OFF)
 #include "types.h"
 
 namespace iitasoccer {
@@ -309,6 +310,31 @@ void dispatch(const TtCommand& c) {
                 // requiere re-init de localización (no cableado) → efecto pleno tras
                 // CFG SAVE + power-cycle.
                 Serial.println(" (efecto pleno tras CFG SAVE + reinicio)");
+            } else { Serial.println("[TOP] ERROR: indice ToF fuera de rango"); }
+            break;
+
+        // A2.2 — MASCARA DE ZONAS. Muta g_top_cfg.tof[n].zone_mask, que sensors_tof lee EN VIVO
+        // cada tick -> efecto INMEDIATO (la zona anulada deja de contar en la distancia ya). CFG
+        // SAVE para que sobreviva el reboot. (≠ POS, que se aplica en boot.)
+        case TtCmd::TOF_ZONE_ON:
+        case TtCmd::TOF_ZONE_OFF:
+            if (c.arg >= 0 && c.arg < TOP_CFG_NUM_TOF && c.arg2 >= 0 && c.arg2 < 64) {
+                const bool on = (c.cmd == TtCmd::TOF_ZONE_ON);
+                g_top_cfg.tof[c.arg].zone_mask =
+                    tof_zone_mask_set(g_top_cfg.tof[c.arg].zone_mask, (uint8_t)c.arg2, on);
+                Serial.print("[TOP] TOF "); Serial.print(c.arg);
+                Serial.print(on ? " ZONE ON " : " ZONE OFF "); Serial.print(c.arg2);
+                Serial.println(" (efecto inmediato; CFG SAVE para persistir)");
+            } else { Serial.println("[TOP] ERROR: indice ToF/zona fuera de rango"); }
+            break;
+
+        case TtCmd::TOF_SET_ZONEMASK:
+            if (c.arg >= 0 && c.arg < TOP_CFG_NUM_TOF) {
+                // 16 zonas (4x4) -> mascara de 16 bits; zonas 16..63 (no existen) quedan en 0.
+                g_top_cfg.tof[c.arg].zone_mask = (uint64_t)((uint32_t)c.arg2 & 0xFFFFu);
+                Serial.print("[TOP] TOF "); Serial.print(c.arg);
+                Serial.print(" ZONEMASK 0x"); Serial.print((uint32_t)(c.arg2 & 0xFFFF), HEX);
+                Serial.println(" (efecto inmediato; CFG SAVE para persistir)");
             } else { Serial.println("[TOP] ERROR: indice ToF fuera de rango"); }
             break;
 

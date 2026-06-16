@@ -121,13 +121,46 @@ def test_load_or_default_missing_returns_default(tmp_path):
 def test_firmware_commands_marks_supported():
     cfg = TofLayout()
     cfg.position[0] = "RIGHT"
-    cfg.rotation_deg[0] = 90        # ROT = pendiente firmware
-    cfg.toggle_zone(0, 5)           # ZONE OFF = pendiente firmware
+    cfg.rotation_deg[0] = 90        # ROT = informativo (se pliega en ZONEMASK)
+    cfg.toggle_zone(0, 5)           # veto una zona → se refleja en ZONEMASK
     cmds = cfg.to_firmware_commands()
     by_text = {c.text: c for c in cmds}
     assert by_text["TOF 0 POS RIGHT"].supported_now is True
     assert by_text["CFG SAVE"].supported_now is True
-    assert by_text["TOF 0 ROT 90"].supported_now is False
-    assert by_text["TOF 0 ZONE 5 OFF"].supported_now is False
+    # ROT ya NO va al firmware (la orientación se pliega en la máscara cruda): informativo.
+    rot = [c for c in cmds if c.text.startswith("TOF 0 ROT 90")]
+    assert rot and rot[0].supported_now is False
+    # ZONEMASK ahora SÍ lo entiende el firmware y refleja la zona vetada.
+    zm = [c for c in cmds if c.text.startswith("TOF 0 ZONEMASK")]
+    assert len(zm) == 1 and zm[0].supported_now is True
+    val = int(zm[0].text.split()[3], 16)
+    assert bin(val).count("1") == 15        # exactamente una zona vetada → 15 bits en 1
     # Todos los comandos son FwCommand con texto no vacío.
     assert all(isinstance(c, FwCommand) and c.text for c in cmds)
+
+
+# ── Máscara CRUDA: paridad orientación+veto (regla del diseño: la app es la fuente
+#    de verdad de la composición; el firmware solo aplica el bit crudo) ──────────
+def test_raw_zone_mask_default_all_on():
+    assert TofLayout().raw_zone_mask(0) == 0xFFFF        # nada vetado → todas activas (no-op)
+
+
+def test_raw_zone_mask_top_row_no_rotation():
+    # Sin rotación display == crudo: vetar la fila superior (display 0..3) anula las
+    # zonas CRUDAS 0..3 → bits 0..3 en 0 → 0xFFF0.
+    cfg = TofLayout()
+    cfg.rotation_deg[0] = 0
+    for z in (0, 1, 2, 3):
+        cfg.zone_enabled[0][z] = False
+    assert cfg.raw_zone_mask(0) == 0xFFF0
+
+
+def test_raw_zone_mask_top_row_180_maps_to_bottom_raw():
+    # CASO CLAVE (ToF izquierdo montado a 180°): vetar la fila SUPERIOR en PANTALLA
+    # debe anular las zonas CRUDAS 12..15 (180°: display z ← crudo 15-z), NO las 0..3.
+    # Es lo que hace que "anular zonas superiores" funcione en el sensor rotado.
+    cfg = TofLayout()
+    cfg.rotation_deg[0] = 180
+    for z in (0, 1, 2, 3):
+        cfg.zone_enabled[0][z] = False
+    assert cfg.raw_zone_mask(0) == 0x0FFF                # crudas 12..15 anuladas

@@ -30,6 +30,7 @@
 #include "localization_runtime.h"  // fusión TOF+IMU → pose absoluta en cancha
 #include "types.h"
 #include "goal_polarity.h"         // autodetección color arco rival/propio
+#include "snapshot_emitter.h"      // emisor @100Hz desacoplado por timer (GATEADO -DTOP_ENABLE_SNAPSHOT_TIMER)
 
 // === Estimador de pose fusionada (B3 RT 2026-06-15, GATEADO off-by-default) ===
 // Cablea pose_fusion (complementario ToF+OTOS) + pose_filter (suavizado + gate de
@@ -126,7 +127,10 @@ inline void watchdog_feed() {
 }
 
 // Construye el WorldSnapshot a partir de todas las fuentes percibidas.
-WorldSnapshot build_snapshot() {
+// [[maybe_unused]]: con -DTOP_ENABLE_SNAPSHOT_TIMER el emit lo hace la ISR del timer
+// (snapshot_emitter), así que el loop NO llama build_snapshot() y queda sin uso bajo ese
+// flag. El atributo evita el -Wunused-function sin tocar el comportamiento por defecto.
+[[maybe_unused]] WorldSnapshot build_snapshot() {
     WorldSnapshot s{};
 
     // Pose propia — trilateración TOF+IMU del módulo localization (Sprint 1).
@@ -356,6 +360,12 @@ void setup() {
     comm_arbiter_init(); // Serial2 (7/8) ↔ placa COMM
     comm_central_init(); // Serial4 (16/17) → snapshot a CENTRAL
 
+#ifdef TOP_ENABLE_SNAPSHOT_TIMER
+    // Emisor desacoplado @100Hz por IntervalTimer (GATEADO, BANCO). Arma el timer DESPUES
+    // de comm_central_init (Serial4 listo). El WDT (abajo) sigue siendo del LOOP, no de la ISR.
+    iitasoccer::snapshot_emitter_init();
+#endif
+
     // WATCHDOG (P1-WDT): instalar AL FINAL del setup, DESPUES de todos los begin()
     // lentos (los 4 ToF cargan ~85 KB c/u por I2C -> boot ~40 s). Si lo armaramos
     // antes, esa carga legitima dispararia el WDT en pleno arranque. Una vez
@@ -471,11 +481,19 @@ void loop() {
     }
 
     // === Snapshot → CENTRAL ===
+#ifdef TOP_ENABLE_SNAPSHOT_TIMER
+    // GATEADO (BANCO): el EMIT lo hace la ISR del IntervalTimer @100Hz desde la pizarra
+    // (snapshot_emitter_init en setup). El loop solo PUBLICA los reads cacheados a los
+    // slots (single-writer). El emit-en-loop de abajo NO corre (lo reemplaza el timer).
+    // El build_snapshot() del loop queda sin usar bajo este flag (lo arma la ISR).
+    iitasoccer::snapshot_emitter_publish();
+#else
     if (g_since_snapshot >= 10) {  // 100 Hz
         g_since_snapshot = 0;
         WorldSnapshot snap = build_snapshot();
         comm_central_send_snapshot(snap);
     }
+#endif
 
 #if defined(TOP_DEBUG_TELEMETRY) || defined(TOP_USB_MONITOR)
     top_telemetry_tick();

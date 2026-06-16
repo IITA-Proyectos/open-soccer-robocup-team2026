@@ -200,6 +200,9 @@ enum class TtCmd : uint8_t {
     US_ON, US_OFF,         // "US ON|OFF"
     TOF_SET_ENABLED,       // "TOF <n> ON|OFF"            → arg=n, arg2=1/0
     TOF_SET_POS,           // "TOF <n> POS FRONT|BACK|RIGHT|LEFT" → arg=n, arg2=bearing_deg
+    TOF_ZONE_ON,           // "TOF <n> ZONE ON <idx>"     → arg=n, arg2=zona idx (A2.2: activar zona)
+    TOF_ZONE_OFF,          // "TOF <n> ZONE OFF <idx>"    → arg=n, arg2=zona idx (A2.2: anular zona)
+    TOF_SET_ZONEMASK,      // "TOF <n> ZONEMASK <hex>"    → arg=n, arg2=mascara 16-bit (1=usar,0=anular)
     CFG_SAVE,              // "CFG SAVE"  → persiste TopConfig en EEPROM
     CFG_LOAD,              // "CFG LOAD"  → recarga de EEPROM
     CFG_RESET,             // "CFG RESET" → defaults en RAM (no persiste)

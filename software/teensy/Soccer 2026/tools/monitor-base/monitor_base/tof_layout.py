@@ -101,7 +101,7 @@ class WallField:
     operador, NO verdades del firmware (el FOV real y el montaje están sin
     confirmar — TASK del IDE, parte B)."""
     wall_height_mm: float = 140.0       # alto de la pared de la cancha
-    mount_height_mm: float = 90.0       # alto del ToF sobre el piso
+    mount_height_mm: float = 170.0      # alto del ToF sobre el piso (~17 cm, Gustavo 2026-06-16; aprox — medir)
     tilt_down_deg: float = 0.0          # inclinación del boresight hacia ABAJO (+)
     vfov_deg: float = 60.0              # FOV vertical del ToF (4 filas)
     field_width_mm: int = 1820          # corto (lateral)
@@ -229,11 +229,33 @@ class TofLayout:
         with open(path, "r", encoding="utf-8") as f:
             return cls.from_dict(json.load(f))
 
-    # ── Bajada a firmware (cuando exista) ───────────────────────────────────
+    # ── Máscara en marco CRUDO (la que aplica el firmware) ──────────────────
+    def raw_zone_mask(self, idx: int) -> int:
+        """Máscara de zonas en MARCO CRUDO del sensor (lo que el firmware aplica a
+        g_zones_mm vía TopConfig::zone_mask), convertida desde el veto en marco
+        DISPLAY que ve y clickea el operador. Bit `raw` = 1 → zona CRUDA `raw` ACTIVA
+        (1=usar, 0=anular; misma convención que el firmware). Usa zone_source_map
+        (display→crudo) para que vetar la fila 'superior' en PANTALLA anule las zonas
+        CRUDAS correctas aun con el sensor rotado/espejado (ej. el ToF izquierdo a 180°).
+        Es la fuente-de-verdad de la composición orientación+veto del lado app; el
+        firmware solo aplica el bit crudo → test de paridad en tests/."""
+        src = zone_source_map(self.rotation_deg.get(idx, 0), self.flip.get(idx, "none"), self.grid_w)
+        mask_disp = self.zone_enabled.get(idx, [True] * N_ZONES)
+        bits = 0
+        for disp in range(len(src)):
+            raw = src[disp]
+            on = mask_disp[disp] if disp < len(mask_disp) else True
+            if on and 0 <= raw < 64:
+                bits |= (1 << raw)
+        return bits
+
+    # ── Bajada a firmware ───────────────────────────────────────────────────
     def to_firmware_commands(self) -> List["FwCommand"]:
-        """Genera los comandos para bajar esta config a la placa. Marca cuáles
-        ya entiende el firmware HOY (POS, sensor ON/OFF) y cuáles están
-        PENDIENTES del proceso de firmware en curso (ROT/FLIP/ZONE)."""
+        """Genera los comandos para bajar esta config a la placa. POS, sensor ON/OFF
+        y ZONEMASK ya los entiende el firmware HOY (A2.1 + A2.2 enmascarado). ROT/FLIP
+        NO van al firmware: la orientación se PLIEGA dentro de la máscara cruda
+        (raw_zone_mask) — el firmware solo aplica el bit crudo. Quedan como informativos
+        (supported_now=False) para documentar el montaje elegido."""
         cmds: List[FwCommand] = []
         for idx in range(N_TOF):
             cmds.append(FwCommand(f"TOF {idx} POS {self.position.get(idx, 'FRONT')}", supported_now=True))
@@ -241,14 +263,17 @@ class TofLayout:
                                   supported_now=True))
             rot = self.rotation_deg.get(idx, 0)
             if rot:
-                cmds.append(FwCommand(f"TOF {idx} ROT {rot}", supported_now=False))
+                cmds.append(FwCommand(f"TOF {idx} ROT {rot}  # informativo (plegado en ZONEMASK)",
+                                      supported_now=False))
             fl = self.flip.get(idx, "none")
             if fl != "none":
-                cmds.append(FwCommand(f"TOF {idx} FLIP {fl.upper()}", supported_now=False))
-            mask = self.zone_enabled.get(idx, [True] * N_ZONES)
-            for z, on in enumerate(mask):
-                if not on:
-                    cmds.append(FwCommand(f"TOF {idx} ZONE {z} OFF", supported_now=False))
+                cmds.append(FwCommand(f"TOF {idx} FLIP {fl.upper()}  # informativo (plegado en ZONEMASK)",
+                                      supported_now=False))
+            # Máscara de zonas en MARCO CRUDO (la orientación display→crudo ya está
+            # plegada) → atómica, un comando por sensor. 16 zonas = 16 bits = 4 hex.
+            # Default todo-ON => FFFF => no-op en el firmware (fail-safe).
+            raw_mask = self.raw_zone_mask(idx)
+            cmds.append(FwCommand(f"TOF {idx} ZONEMASK {raw_mask:04X}", supported_now=True))
         cmds.append(FwCommand("CFG SAVE", supported_now=True))
         return cmds
 

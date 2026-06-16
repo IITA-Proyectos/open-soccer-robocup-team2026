@@ -22,6 +22,7 @@ from typing import Dict, Optional
 
 from .panel import Panel
 from .protocol_top import TopFrame
+from .robot_geometry import topdown_layout
 from .shell_theme import BG, CARD, FG, MUTED, PANEL, UI_B
 from .tof_layout import (FLIPS, POSITIONS, ROTATIONS, TofLayout,
                          default_config_path, load_or_default)
@@ -69,6 +70,17 @@ class TofSetupPanel(Panel):
         for col, idx in enumerate(range(4)):
             self._cards[idx] = self._make_card(cards, col, idx)
 
+        # Diagrama top-down del robot a TAMAÑO REAL + ubicación real de cada sensor
+        # (marco PROPIO del robot, heading=0 → sin el conflicto de convención de heading).
+        # Estático: la geometría es fija (robot_geometry.py, espejo del firmware).
+        geo = ttk.LabelFrame(
+            parent, padding=6,
+            text="GEOMETRÍA — robot a tamaño real + ubicación real de los sensores (marco robot)")
+        geo.pack(fill="x", padx=6, pady=(0, 4))
+        geo_canvas = tk.Canvas(geo, width=240, height=240, bg=PANEL, highlightthickness=0)
+        geo_canvas.pack()
+        self._draw_topdown(geo_canvas)
+
         # Panel de pared + cancha.
         wall = ttk.LabelFrame(
             parent, padding=6,
@@ -91,6 +103,32 @@ class TofSetupPanel(Panel):
         attach_tooltip(push_b, tip("tofset.push"))
         self.cfg_note = ttk.Label(cfgrow, style="Muted.TLabel", text=f"archivo: {os.path.basename(self.cfg_path)}")
         self.cfg_note.pack(side="left", padx=8)
+
+    # ── Diagrama top-down (robot a tamaño real, marco propio) ────────────────
+    def _draw_topdown(self, canvas: tk.Canvas, w: int = 240, h: int = 240) -> None:
+        """Dibuja el robot a TAMAÑO REAL (Ø~17cm) con cada sensor en su posición física
+        + el rayo apuntando a su bearing, en el marco PROPIO del robot (heading=0). Estático
+        (la geometría es fija). El layout en px lo da topdown_layout (host-testeado)."""
+        canvas.delete("all")
+        lay = topdown_layout(float(w), float(h))
+        cx, cy, rr = lay["cx"], lay["cy"], lay["robot_radius_px"]
+        canvas.create_oval(cx - rr, cy - rr, cx + rr, cy + rr, outline=FG, width=2)  # cuerpo Ø real
+        canvas.create_oval(cx - 2, cy - 2, cx + 2, cy + 2, fill=FG, outline="")       # centro
+        canvas.create_text(cx, cy - rr - 9, text="FRENTE", fill=MUTED, font=("Segoe UI", 7))
+        kind_col = {"tof": "#4aa3ff", "cam": "#ffcd4a", "us": "#7ee07e"}
+        for s in lay["sensors"]:
+            px, py = s["px"], s["py"]
+            col = kind_col.get(s["kind"], FG)
+            ln = 18.0
+            canvas.create_line(px, py, px + s["ray_dx"] * ln, py + s["ray_dy"] * ln,
+                               fill=col, width=2, arrow="last")              # rayo hacia el bearing
+            canvas.create_oval(px - 3, py - 3, px + 3, py + 3, fill=col, outline="")  # sensor real
+            canvas.create_text(px, py + 9, text=s["label"].split()[0],
+                               fill=col, font=("Segoe UI", 6))
+        canvas.create_text(6, h - 16, anchor="w", fill=MUTED, font=("Segoe UI", 6),
+                           text="ToF h≈170 · cám h≈120 · US h≈100 mm (aprox — MEDIR)")
+        canvas.create_text(6, h - 6, anchor="w", fill=MUTED, font=("Segoe UI", 6),
+                           text="marco robot (sin heading) · azul ToF · amarillo cám · verde US")
 
     # ── Cards ────────────────────────────────────────────────────────────────
     def _make_card(self, parent: ttk.Frame, col: int, idx: int) -> dict:

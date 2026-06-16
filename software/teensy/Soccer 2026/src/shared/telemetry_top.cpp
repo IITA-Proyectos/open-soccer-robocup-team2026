@@ -452,6 +452,21 @@ TtCommand tt_parse_command(const char* s, int len) {
                 else if (tt_eq(tok[3], "LEFT"))  bearing = 270;
                 if (bearing >= 0) { out.cmd = TtCmd::TOF_SET_POS; out.arg = (int32_t)n; out.arg2 = bearing; }
             }
+            else if (tt_eq(tok[2], "ZONE") && nt >= 5) {     // TOF <n> ZONE ON|OFF <idx>  (A2.2)
+                char* e2 = nullptr;
+                const long z = strtol(tok[4], &e2, 10);
+                if (e2 && *e2 == '\0' && z >= 0 && z < 64) {
+                    if (tt_eq(tok[3], "ON"))       { out.cmd = TtCmd::TOF_ZONE_ON;  out.arg = (int32_t)n; out.arg2 = (int32_t)z; }
+                    else if (tt_eq(tok[3], "OFF")) { out.cmd = TtCmd::TOF_ZONE_OFF; out.arg = (int32_t)n; out.arg2 = (int32_t)z; }
+                }
+            }
+            else if (tt_eq(tok[2], "ZONEMASK") && nt >= 4) { // TOF <n> ZONEMASK <hex16>  (A2.2)
+                char* e2 = nullptr;
+                const long m = strtol(tok[3], &e2, 16);      // hex; 16 zonas => 16 bits
+                if (e2 && *e2 == '\0' && m >= 0) {
+                    out.cmd = TtCmd::TOF_SET_ZONEMASK; out.arg = (int32_t)n; out.arg2 = (int32_t)(m & 0xFFFFL);
+                }
+            }
         }
     } else if (tt_eq(tok[0], "CFG") && nt >= 2) {        // CFG SAVE|LOAD|RESET
         if (tt_eq(tok[1], "SAVE"))       out.cmd = TtCmd::CFG_SAVE;

@@ -101,7 +101,7 @@ class WallField:
     operador, NO verdades del firmware (el FOV real y el montaje están sin
     confirmar — TASK del IDE, parte B)."""
     wall_height_mm: float = 140.0       # alto de la pared de la cancha
-    mount_height_mm: float = 90.0       # alto del ToF sobre el piso
+    mount_height_mm: float = 170.0      # alto del ToF sobre el piso (~17 cm, Gustavo 2026-06-16; aprox — medir)
     tilt_down_deg: float = 0.0          # inclinación del boresight hacia ABAJO (+)
     vfov_deg: float = 60.0              # FOV vertical del ToF (4 filas)
     field_width_mm: int = 1820          # corto (lateral)

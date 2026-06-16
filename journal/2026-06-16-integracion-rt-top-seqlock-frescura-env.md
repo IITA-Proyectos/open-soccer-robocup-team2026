@@ -1,5 +1,5 @@
 ---
-title: "Integración RT del TOP — seqlock endurecido + frescura por-sensor + env RT (etapas 1/2/4)"
+title: "Integración RT del TOP — seqlock endurecido + frescura por-sensor + env RT (etapas 1/2/3/4)"
 date: 2026-06-16
 author: "Claude (Anthropic — Opus 4.8 1M), sesión con Gustavo"
 status: vivo
@@ -8,7 +8,7 @@ rama: feat/top-rt-wiring
 relacionada: IMPL-PIZARRA-Y-EMISOR-TOP-2026-06-16.md, ARQUITECTURA-SENSORIAL-TOP-NO-BLOQUEANTE.md, HANDOFF-INTEGRACION-RT.md, CONTRATO-DATOS-TOP.md
 ---
 
-# Integración RT del TOP — cableado de los faltantes (etapas 1/2/4)
+# Integración RT del TOP — cableado de los faltantes (etapas 1/2/3/4)
 
 ## Por qué (pedido de Gustavo)
 
@@ -60,14 +60,26 @@ módulos no-bloqueantes nuevos estaban **escritos pero sin cablear** (huérfanos
 - **Compilación Teensy (pio):** `top_robot2_pri_rt` SUCCESS, `top_robot2_pri_snaptimer`
   SUCCESS (barreras `dmb` compilan en ARM), `top_robot2_pri` (competencia) SUCCESS (byte-neutro).
 
+### Etapa 3 — HC-SR04 no-bloqueante + round-robin con skip del caído (commit `aa2af2d`)
+- `sensors_tof.cpp` (gateado `-DTOP_ENABLE_HCSR04_ASYNC`): cablea `hcsr04_async.h` — ISR de
+  ECHO (CHANGE) → `hcsr04_on_edge`; el tick dispara (`hcsr04_due` + pulso TRIG 10 µs +
+  `on_trig_sent`) y cosecha por `hcsr04_poll`. **Elimina el spike de 12 ms del `pulseIn`.** La
+  **race loop↔ISR** (que el borrador del workflow tenía sin resolver) se cierra con
+  `noInterrupts()` alrededor de TODO acceso del loop a la FSM (la FSM NO es volatile: la
+  sección crítica serializa la ISR de ECHO y actúa de barrera — sin el `const_cast`-sobre-
+  `volatile` del borrador). `read_hcsr04` bloqueante queda como `#elif` → competencia byte-idéntica.
+- `sensors_tof.cpp` (gateado `-DTOP_ENABLE_TOF_SCHED`): cablea `tof_schedule.h` — round-robin
+  que SALTEA el ToF caído; byte-equivalente con los 4 vivos.
+- `platformio.ini`: `top_robot2_pri_rt` ahora agrupa los **4** flags.
+- Verificado: `pio top_robot2_pri_rt` SUCCESS (glue Arduino) + `top_robot2_pri` SUCCESS
+  (byte-neutro). Módulos puros ya host-testeados (test_hcsr04_async, test_tof_schedule).
+
 ## Lo que NO se hizo / pendiente
 
-- **Etapa 3 (HC-SR04 async + tof_schedule):** NO cableada. El spec del workflow tenía una
-  **race real loop↔ISR** sin sección crítica (la FSM del HC-SR04 la tocan la ISR de ECHO y el
-  loop). Requiere `noInterrupts()`/snapshot atómico de la FSM antes de integrar. `hcsr04_async.h`
-  ya elimina el `pulseIn` de 12 ms; falta el glue seguro.
-- **bno_read_sm scheduler:** la cadencia real del BNO la fija `BNO_READ_INTERVAL_MS` (TOP_BNO_FAST),
-  no el gate de main_top → el scheduler es polish, no el lever. La latencia ya baja con `TOP_BNO_FAST`.
+- **bno_read_sm scheduler:** deliberadamente NO cableado. La cadencia real del BNO la fija
+  `BNO_READ_INTERVAL_MS` (que `TOP_BNO_FAST` ya pone en 10 ms), no el gate de main_top → el
+  scheduler sería *polish*, no acelera (lo confirmó la revisión adversarial). La latencia ya
+  baja con `TOP_BNO_FAST` (en el env rt). Queda como mejora futura (deconflict tested).
 
 ## ⚠️ Lo cierra el equipo en BANCO (regla #1 — nada de esto está validado en hardware)
 

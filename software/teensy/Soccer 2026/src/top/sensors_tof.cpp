@@ -34,6 +34,14 @@
 #include <Adafruit_VL53L7CX.h>
 #include "top_eeprom_config.h"   // g_top_cfg.ultrasonic_en / tof[i].enabled (A2.1)
 
+// --- Modulos PUROS del rediseno sensorial no-bloqueante (host-testeados); glue Arduino abajo ---
+#if defined(TOP_ENABLE_TOF_SCHED)
+#include "tof_schedule.h"        // turnero round-robin + SKIP del ToF caido (gateado)
+#endif
+#if defined(TOP_ENABLE_HCSR04_ASYNC) && defined(TOP_ENABLE_HCSR04)
+#include "hcsr04_async.h"        // FSM no-bloqueante del HC-SR04 (reemplaza el pulseIn de 12 ms)
+#endif
+
 namespace iitasoccer {
 
 namespace {
@@ -49,6 +57,30 @@ uint32_t g_last_ok_ms[NUM_TOF] = {0};
 bool     g_ever_ok[NUM_TOF]    = {false};
 uint16_t g_hcsr04_mm = TOF_NO_READING;
 uint32_t g_tick_count = 0;
+
+#if defined(TOP_ENABLE_TOF_SCHED)
+// Turnero round-robin (tof_schedule.h). Single-writer: SOLO el loop (sensors_tof_tick)
+// lo toca -> sin race. Byte-equivalente con los 4 ToF ready; saltea el caido.
+TofSchedState g_tof_sched;
+#endif
+
+#if defined(TOP_ENABLE_HCSR04_ASYNC) && defined(TOP_ENABLE_HCSR04)
+// FSM no-bloqueante del HC-SR04. La ISR de ECHO la ESCRIBE (hcsr04_on_edge); el loop la
+// LEE/AVANZA (due/on_trig_sent/poll). NO es volatile a proposito: TODO acceso del loop
+// va dentro de noInterrupts()/interrupts(), que (a) impiden que la ISR de ECHO corra
+// durante un RMW del loop y (b) son barreras de memoria (asm volatile memory) -> el loop
+// ve siempre el ultimo valor escrito por la ISR. La ISR es atomica (el NVIC no la re-entra
+// y ningun otro ISR toca g_hc_fsm). Asi se cierra la race loop<->ISR sin volatile/const_cast.
+Hcsr04Async    g_hc_fsm;
+Hcsr04AsyncCfg g_hc_cfg = hcsr04_async_default_cfg();
+
+// ISR de ECHO (enganchada a CHANGE = ambos flancos). Trabajo MINIMO: una transicion de
+// estado de la FSM, SIN bus I2C, SIN Serial, SIN bloqueo (regla load-bearing: las ISR
+// hacen lo minimo). Mide el ancho del eco (subida->bajada) para la distancia.
+void hcsr04_echo_isr() {
+    hcsr04_on_edge(g_hc_fsm, digitalRead(PIN_HCSR04_ECHO) == HIGH, micros());
+}
+#endif
 
 // ----- Sensor frontal (indice 0); los 4 ToF activos se enumeran en g_tof_multi -----
 // Ver bloque TOP_ENABLE_MULTI_TOF: 4 ToF 0x2A-0x2D via LP 9/10/11/12 (banco 2026-05-30).
@@ -142,8 +174,9 @@ constexpr uint32_t TOF_INIT_CLOCK_FAST_HZ = 1000000;
 // lee solo cada 3 ticks de ToF (~90 ms) en sensors_tof_tick(). Mejora futura: hacerlo NO
 // bloqueante (trigger + medir echo por interrupcion). Sin el flag, el modulo no toca los
 // pines ni llama a pulseIn y devuelve TOF_NO_READING.
-#ifdef TOP_ENABLE_HCSR04
-// HC-SR04 — lectura bloqueante con timeout acotado (~2 m) para no robar tanto al loop.
+#if defined(TOP_ENABLE_HCSR04) && !defined(TOP_ENABLE_HCSR04_ASYNC)
+// HC-SR04 — lectura BLOQUEANTE (default historico). Solo se compila cuando el async NO
+// esta activo; con -DTOP_ENABLE_HCSR04_ASYNC la reemplaza la FSM no-bloqueante (sin pulseIn).
 uint16_t read_hcsr04() {
     digitalWrite(PIN_HCSR04_TRIG, LOW);
     delayMicroseconds(2);
@@ -157,7 +190,7 @@ uint16_t read_hcsr04() {
     // Velocidad del sonido: 343 m/s = 0.343 mm/µs. Duracion es ida + vuelta.
     return static_cast<uint16_t>((duration_us * 343UL) / 2000UL);
 }
-#endif  // TOP_ENABLE_HCSR04
+#endif  // TOP_ENABLE_HCSR04 && !TOP_ENABLE_HCSR04_ASYNC
 
 // Promedia las zonas validas del frame 4x4 del L7CX. status==5/6/9 son
 // "valid range" segun convencion ST. Devuelve TOF_NO_READING si NINGUNA
@@ -233,7 +266,14 @@ bool sensors_tof_init() {
     // HC-SR04 frontal — solo si se reactivo explicitamente (ver nota arriba).
     // Pines 4/3 (libres); el conflicto de pin 7 ya no aplica.
     pinMode(PIN_HCSR04_TRIG, OUTPUT);
+    digitalWrite(PIN_HCSR04_TRIG, LOW);
     pinMode(PIN_HCSR04_ECHO, INPUT);
+#if defined(TOP_ENABLE_HCSR04_ASYNC)
+    // FSM no-bloqueante: enganchar la ISR de ECHO a AMBOS flancos (CHANGE). La FSM mide el
+    // ancho del eco sin que el loop espere. Se engancha al final del init (TRIG ya en LOW,
+    // g_hc_fsm en IDLE por .bss). La ISR no toca el bus -> no interfiere con la carga de ToF.
+    attachInterrupt(digitalPinToInterrupt(PIN_HCSR04_ECHO), hcsr04_echo_isr, CHANGE);
+#endif
 #endif
 
     for (int i = 0; i < NUM_TOF; ++i) {
@@ -301,6 +341,12 @@ bool sensors_tof_init() {
         if (!g_tof_multi[i].startRanging())                                 continue;
         g_ready[i] = true;              // queda despierto (retiene dir + rangea)
     }
+#if defined(TOP_ENABLE_TOF_SCHED)
+    // Sembrar el turnero con quien quedo VIVO. Un ToF que fallo el init (g_ready=false)
+    // queda fuera de la rotacion -> el turnero no le malgasta el tick (skip del caido).
+    for (int i = 0; i < NUM_TOF; ++i)
+        tof_sched_set_ready(g_tof_sched, static_cast<uint8_t>(i), g_ready[i]);
+#endif
     // TA-1 (2026-06-14, TASK-210): RESTAURAR el clock de runtime ANTES de que arranque el
     // loop. La carga de arriba corrió a TOF_INIT_CLOCK_HZ (400 kHz); el runtime DEBE volver
     // a 100 kHz o el yaw del BNO se congela al chocar con los reads de ToF. OBLIGATORIO.
@@ -373,10 +419,20 @@ void sensors_tof_tick() {
     // listo, y la frescura P1-TOF-STALE (250 ms) queda con margen 2×.
     // ⚠️ ROBOT1 hereda este cambio (mismo codigo) — A VERIFICAR en su banco al volver.
     const uint32_t now = millis();
+#if defined(TOP_ENABLE_TOF_SCHED)
+    // Turnero puro: UN ToF por tick SALTEANDO el caido. Con los 4 ready devuelve
+    // 0,1,2,3,0,... (byte-equivalente al s_rr de abajo). TOF_SCHED_NONE = 4 caidos ->
+    // no se lee ToF este tick (i_valid=false), sin colgarse.
+    const uint8_t i = tof_sched_next(g_tof_sched, now);
+    const bool i_valid = (i != TOF_SCHED_NONE);
+    if (i_valid) tof_sched_note_attempt(g_tof_sched, i, now);
+#else
     static uint8_t s_rr = 0;
     const uint8_t i = s_rr;
     s_rr = static_cast<uint8_t>((s_rr + 1) % NUM_TOF);
-    if (g_ready[i] && g_tof_multi[i].isDataReady() &&
+    const bool i_valid = true;
+#endif
+    if (i_valid && g_ready[i] && g_tof_multi[i].isDataReady() &&
         g_tof_multi[i].getRangingData(&g_tof_results)) {
         // getRangingData() OK = el sensor responde por I2C -> lectura FRESCA
         // (aunque mean sea NO_READING = "nada en rango", es una respuesta
@@ -407,10 +463,37 @@ void sensors_tof_tick() {
     }
 #endif  // TOP_ENABLE_MULTI_TOF
 
-#ifdef TOP_ENABLE_HCSR04
-    // HC-SR04 — lectura bloqueante. Corremos solo cada N ticks para no
-    // saturar el loop (cada lectura puede tomar hasta 25ms).
-    // HC-SR04 ACTIVO en top_robot1/2 (TRIG=4 / ECHO=3, sin conflicto con UARTs).
+#if defined(TOP_ENABLE_HCSR04) && defined(TOP_ENABLE_HCSR04_ASYNC)
+    // HC-SR04 NO-BLOQUEANTE: dispara cuando toca y cosecha el resultado por poll. CERO espera
+    // del eco en el loop (la ISR de ECHO mide el ancho) -> se elimina el spike de ~12 ms del
+    // pulseIn que atrasaba el uplink @100Hz. Acceso a la FSM bajo seccion critica
+    // (noInterrupts) porque la comparte la ISR de ECHO. A2.1: ultrasonido deshabilitado ->
+    // ni dispara ni hace poll -> NO_READING.
+    if (g_top_cfg.ultrasonic_en) {
+        bool do_trig;
+        noInterrupts();
+        do_trig = hcsr04_due(g_hc_fsm, micros(), g_hc_cfg);
+        interrupts();
+        if (do_trig) {
+            // Pulso de disparo: 10 us (NO el eco de 12 ms). Es lo unico "bloqueante" y es
+            // 1000x mas corto que el pulseIn que reemplaza.
+            digitalWrite(PIN_HCSR04_TRIG, HIGH);
+            delayMicroseconds(10);
+            digitalWrite(PIN_HCSR04_TRIG, LOW);
+            noInterrupts();
+            hcsr04_on_trig_sent(g_hc_fsm, micros());
+            interrupts();
+        }
+        noInterrupts();
+        g_hcsr04_mm = hcsr04_poll(g_hc_fsm, micros(), g_hc_cfg);  // distancia mm o NO_READING (timeout)
+        interrupts();
+    } else {
+        g_hcsr04_mm = TOF_NO_READING;
+    }
+#elif defined(TOP_ENABLE_HCSR04)
+    // HC-SR04 — lectura BLOQUEANTE (default historico). Corremos solo cada N ticks para no
+    // saturar el loop (pulseIn puede tomar hasta ~12 ms). HC-SR04 ACTIVO en top_robot1/2
+    // (TRIG=4 / ECHO=3, sin conflicto con UARTs).
     static uint32_t last_hc = 0;
     if (g_tick_count - last_hc >= 3) {
         // A2.1: si el ultrasonido está deshabilitado por config, NO_READING sin

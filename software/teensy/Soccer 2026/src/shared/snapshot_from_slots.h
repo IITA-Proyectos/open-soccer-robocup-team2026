@@ -163,9 +163,12 @@ struct SensorBlackboard {
 // inputs_from_slots — lee la pizarra y arma el SnapshotInputs para el ensamblador.
 //
 // `now` se lee UNA vez (parámetro) y juzga la frescura de TODOS los slots, para
-// consistencia temporal. Por cada slot: saca el valor con slot_read_latest() y
-// decide *_fresh con slot_is_fresh(slot, now, umbral_de_ese_slot). Un slot viejo
-// o nunca-publicado ⇒ *_fresh=false ⇒ el ensamblador lo colapsa a su sentinela.
+// consistencia temporal. Por cada slot: saca el valor con slot_read_latest_capped()
+// (lector ACOTADO — esta función corre EN LA ISR del emisor, que no puede girar para
+// siempre si un productor dejó seq impar) y decide *_fresh con slot_is_fresh(slot,
+// now, umbral_de_ese_slot). Si el lector acotado se rinde (slot atascado) ⇒ *_fresh
+// = false y el valor queda en su sentinela. Un slot viejo, nunca-publicado o atascado
+// ⇒ *_fresh=false ⇒ el ensamblador lo colapsa a su sentinela. DEFAULT-TO-SAFE.
 //
 // Los campos COMM pasan tal cual del blackboard (frescura aguas arriba).
 //
@@ -176,10 +179,21 @@ inline SnapshotInputs inputs_from_slots(const SensorBlackboard& bb,
                                         const SlotThresholds& th) {
     SnapshotInputs in{};   // value-init: todo 0/false (base segura)
 
+    // Reintentos máximos del lector ACOTADO. Esta función corre en la ISR del emisor
+    // (snapshot_emitter), que NO puede girar para siempre: si un productor quedó a medio
+    // publicar (seq IMPAR atascado por un torn-write o un cuelgue), slot_read_latest_capped
+    // se RINDE tras unos intentos, deja `v` en su value-init (= sentinela) y marcamos
+    // *_fresh=false → el ensamblador colapsa ese campo. DEFAULT-TO-SAFE: ante la duda,
+    // sentinela; NUNCA un dato partido NI un cuelgue de la ISR (la trampa que el reader
+    // for(;;) sin cota tenía). Pequeño a propósito: una publicación sana dura unas pocas
+    // instrucciones → 1-2 reintentos bastan.
+    constexpr uint32_t kMaxRetries = 2u;
+
     // --- PELOTA ---
     {
-        const BallObs v = slot_read_latest(bb.ball);
-        in.ball_fresh      = slot_is_fresh(bb.ball, now, th.ball_ms);
+        BallObs v{};
+        const bool ok = slot_read_latest_capped(bb.ball, v, kMaxRetries);
+        in.ball_fresh      = ok && slot_is_fresh(bb.ball, now, th.ball_ms);
         in.ball_visible    = v.visible;
         in.ball_x_mm       = v.x;
         in.ball_y_mm       = v.y;
@@ -190,8 +204,9 @@ inline SnapshotInputs inputs_from_slots(const SensorBlackboard& bb,
 
     // --- ARCO RIVAL ---
     {
-        const GoalObs v = slot_read_latest(bb.goal_opp);
-        in.goal_opp_fresh          = slot_is_fresh(bb.goal_opp, now, th.goal_ms);
+        GoalObs v{};
+        const bool ok = slot_read_latest_capped(bb.goal_opp, v, kMaxRetries);
+        in.goal_opp_fresh          = ok && slot_is_fresh(bb.goal_opp, now, th.goal_ms);
         in.goal_opp_visible        = v.visible;
         in.goal_opp_angle_centideg = v.ang;
         in.goal_opp_distance_mm    = v.dist;
@@ -199,8 +214,9 @@ inline SnapshotInputs inputs_from_slots(const SensorBlackboard& bb,
 
     // --- ARCO PROPIO ---
     {
-        const GoalObs v = slot_read_latest(bb.goal_own);
-        in.goal_own_fresh          = slot_is_fresh(bb.goal_own, now, th.goal_ms);
+        GoalObs v{};
+        const bool ok = slot_read_latest_capped(bb.goal_own, v, kMaxRetries);
+        in.goal_own_fresh          = ok && slot_is_fresh(bb.goal_own, now, th.goal_ms);
         in.goal_own_visible        = v.visible;
         in.goal_own_angle_centideg = v.ang;
         in.goal_own_distance_mm    = v.dist;
@@ -208,16 +224,18 @@ inline SnapshotInputs inputs_from_slots(const SensorBlackboard& bb,
 
     // --- RUMBO (heading) ---
     {
-        const HeadingObs v = slot_read_latest(bb.heading);
-        in.heading_fresh     = slot_is_fresh(bb.heading, now, th.heading_ms);
+        HeadingObs v{};
+        const bool ok = slot_read_latest_capped(bb.heading, v, kMaxRetries);
+        in.heading_fresh     = ok && slot_is_fresh(bb.heading, now, th.heading_ms);
         in.heading_valid_src = v.valid_src;
         in.heading_centideg  = v.centideg;
     }
 
     // --- POSE ---
     {
-        const PoseObs v = slot_read_latest(bb.pose);
-        in.pose_fresh     = slot_is_fresh(bb.pose, now, th.pose_ms);
+        PoseObs v{};
+        const bool ok = slot_read_latest_capped(bb.pose, v, kMaxRetries);
+        in.pose_fresh     = ok && slot_is_fresh(bb.pose, now, th.pose_ms);
         in.pose_valid_src = v.valid_src;
         in.pose_x_mm      = v.x;
         in.pose_y_mm      = v.y;
@@ -226,8 +244,9 @@ inline SnapshotInputs inputs_from_slots(const SensorBlackboard& bb,
 
     // --- OBSTÁCULO ---
     {
-        const ObstObs v = slot_read_latest(bb.obstacle);
-        in.obstacle_fresh  = slot_is_fresh(bb.obstacle, now, th.obstacle_ms);
+        ObstObs v{};
+        const bool ok = slot_read_latest_capped(bb.obstacle, v, kMaxRetries);
+        in.obstacle_fresh  = ok && slot_is_fresh(bb.obstacle, now, th.obstacle_ms);
         in.min_obstacle_mm = v.mm;
     }
 

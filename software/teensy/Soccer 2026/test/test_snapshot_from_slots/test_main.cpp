@@ -400,6 +400,40 @@ void test_custom_thresholds(void) {
     TEST_ASSERT_TRUE(in.ball_fresh);
 }
 
+// ============================================================================
+// (12) FAIL-SAFE de la ISR del emisor: un slot con seq IMPAR atascado (un
+//      productor que arrancó una publicación y nunca la cerró — torn-write o
+//      cuelgue) NO debe colgar inputs_from_slots (que corre EN LA ISR). El reader
+//      ACOTADO (slot_read_latest_capped) se rinde y ese slot sale NO-FRESCO
+//      (sentinela), SIN contaminar los demás. Esta es la cura del deadlock que el
+//      reader for(;;) sin cota tenía (auditoría RTOS 2026-06-16, hallazgo D1-1).
+// ============================================================================
+void test_stuck_odd_seq_slot_not_fresh_no_hang(void) {
+    SensorBlackboard bb{};
+    publish_all(bb, 1000);
+    const uint32_t now = 1010;              // todo recién publicado → fresco
+    // Simulo un productor que arrancó una publicación del HEADING y NUNCA la cerró:
+    // deja seq IMPAR. El reader for(;;) giraría para SIEMPRE (colgaría la ISR); el
+    // acotado se rinde tras kMaxRetries y devuelve sentinela.
+    bb.heading.seq = bb.heading.seq + 1u;   // → IMPAR ("escritura en curso" atascada)
+
+    const SnapshotInputs in = inputs_from_slots(bb, now, defaults());  // NO debe colgar
+
+    // El heading atascado salió NO-FRESCO (el acotado se rindió → sentinela).
+    TEST_ASSERT_FALSE(in.heading_fresh);
+    // Los demás slots, intactos y frescos.
+    TEST_ASSERT_TRUE(in.ball_fresh);
+    TEST_ASSERT_TRUE(in.goal_opp_fresh);
+    TEST_ASSERT_TRUE(in.pose_fresh);
+    TEST_ASSERT_TRUE(in.obstacle_fresh);
+
+    // El ensamblador limpia el bit heading_valid del slot atascado, deja vivo el resto.
+    const WorldSnapshot s = assemble_snapshot(in);
+    TEST_ASSERT_FALSE(s.flags & WS_FLAG_HEADING_VALID);
+    TEST_ASSERT_EQUAL_UINT8(1, s.ball_visible);
+    TEST_ASSERT_EQUAL_UINT16(350, s.min_obstacle_mm);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     // (1) fresco → dato pasa
@@ -427,5 +461,7 @@ int main(int, char**) {
     RUN_TEST(test_republish_refreshes);
     // (11) umbrales custom
     RUN_TEST(test_custom_thresholds);
+    // (12) fail-safe de la ISR: slot con seq impar atascado → no cuelga, sale sentinela
+    RUN_TEST(test_stuck_odd_seq_slot_not_fresh_no_hang);
     return UNITY_END();
 }

@@ -67,6 +67,25 @@
 #pragma once
 #include <stdint.h>
 
+// ----------------------------------------------------------------------------
+// BARRERA DE MEMORIA DEL SEQLOCK (IITA_SEQLOCK_FENCE)
+// ----------------------------------------------------------------------------
+// El seqlock es correcto por SINGLE-WRITER + lector wait-free, PERO en el
+// Cortex-M7 (Teensy 4.x) el store buffer / la ejecución fuera de orden pueden
+// hacer visible el store de `seq` (publicar) ANTES de que el store del buffer
+// termine → torn read. Hace falta una barrera de memoria entre el escribir el
+// buffer y el publicar `seq` (y, en el lector, entre leer `seq` y copiar el
+// buffer). En el M7 la barrera correcta es `dmb` con clobber `:::"memory"` (el
+// equivalente a CMSIS __DMB(), full-system 0xF) — NO el `dsb` pelado del
+// watchdog: el clobber también prohíbe que el compilador reordene/elimine los
+// accesos. En host (x86, tests single-thread) basta una barrera de compilador.
+// Pedido explícito del review adversarial del repo (HANDOFF-INTEGRACION-RT.md).
+#if defined(__arm__) || defined(__thumb__) || defined(__ARM_ARCH)
+#define IITA_SEQLOCK_FENCE() __asm__ __volatile__("dmb 0xF" ::: "memory")
+#else
+#define IITA_SEQLOCK_FENCE() __asm__ __volatile__("" ::: "memory")
+#endif
+
 namespace iitasoccer {
 
 // SensorSlot<T> — la pizarra para un dato de tipo T.
@@ -92,7 +111,12 @@ struct SensorSlot {
     //   • El valor / 2 (cuántas veces se publicó) no importa; lo que importa es si
     //     CAMBIÓ entre el antes y el después de la copia del lector. El bit 1 (seq>>1
     //     &1) selecciona cuál buffer es el recién publicado.
-    uint32_t seq{0};
+    // VOLATILE: el lector (la ISR del emisor) y el escritor (el loop) tocan `seq`
+    // desde contextos distintos; sin volatile el compilador puede cachear `seq` en
+    // un registro y plegar `before == after` a siempre-true (matando la detección
+    // de torn-read). volatile fuerza las relecturas reales; las barreras
+    // IITA_SEQLOCK_FENCE() ordenan los accesos al buffer respecto de `seq`.
+    volatile uint32_t seq{0};
 
     // millis() de la última publicación exitosa. Base de la frescura.
     uint32_t last_publish_ms{0};
@@ -118,12 +142,14 @@ template <typename T>
 inline void slot_publish(SensorSlot<T>& s, const T& value, uint32_t now) {
     const uint32_t start = s.seq;
     s.seq = start + 1;                 // → IMPAR: "escritura en curso"
+    IITA_SEQLOCK_FENCE();              // el store IMPAR se ve ANTES de tocar el buffer
     // Buffer a escribir = el OPUESTO al que quedará seleccionado tras publicar.
     // Tras ++seq final, seq = start+2; el buffer seleccionado por el lector será
     // ((start+2) >> 1) & 1. Para que ESE sea el que escribimos ahora, escribimos en
     // ((start+2) >> 1) & 1.
     const uint32_t write_idx = ((start + 2u) >> 1) & 1u;
     s.buffer[write_idx] = value;       // copia entera del dato nuevo
+    IITA_SEQLOCK_FENCE();              // el buffer ENTERO se ve ANTES del store PAR (publicar)
     s.seq = start + 2;                 // → PAR de nuevo: publicado
     s.last_publish_ms = now;
     s.published = true;
@@ -150,8 +176,10 @@ inline T slot_read_latest(const SensorSlot<T>& s) {
         if (before & 1u) {
             continue;
         }
+        IITA_SEQLOCK_FENCE();           // leer `before` ANTES de copiar el buffer
         const uint32_t read_idx = (before >> 1) & 1u;
         T out = s.buffer[read_idx];     // copia entera del dato
+        IITA_SEQLOCK_FENCE();           // copiar el buffer ANTES de releer `seq`
         const uint32_t after = s.seq;
         if (before == after) {
             return out;                 // nadie publicó en el medio → coherente
@@ -212,8 +240,10 @@ inline bool slot_read_latest_capped(const SensorSlot<T>& s, T& out,
         if (before & 1u) {
             continue;
         }
+        IITA_SEQLOCK_FENCE();                // leer `before` ANTES de copiar el buffer
         const uint32_t read_idx = (before >> 1) & 1u;
         T tmp = s.buffer[read_idx];          // copia entera a un temporal (NO a `out` aún)
+        IITA_SEQLOCK_FENCE();                // copiar el buffer ANTES de releer `seq`
         const uint32_t after = s.seq;
         if (before == after) {
             out = tmp;                       // coherente → recién ahora tocamos `out`

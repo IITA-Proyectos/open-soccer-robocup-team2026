@@ -337,6 +337,20 @@ nativo, pero ya no es el único camino. Ver
 - **Pendiente banco (TASK-213):** `pio run` + **analizador lógico** en Wire (read 2º BNO <10ms aislado) +
   medir ruido del ω + marco de Velocity2D + signos. `top_robot1/2/pri` byte-idénticos.
 
+### Avance 2026-06-16 — Reingeniería RT de la placa DOWN: diseño VALIDADO + PROGRAMADO (gateado, host-tested)
+- La definición funcional YA existía (`docs/firmware/ARQUITECTURA-LAZO-DOWN-RT.md`); se **validó
+  adversarialmente** (7 agentes) y se **programó** el glue gateado + los módulos puros. **NADA en banco**
+  (regla #1) → **TASK-309** lo cierra el equipo. Competencia `[env:down]` **byte-idéntica** (off-by-default).
+- **Módulos puros nuevos (79 tests host):** `adc_scan_plan.h`, `line_neighbors.h`, `line_reliable_gate.h`,
+  `rx_calib_defer.h`, `rx_byte_budget.h`, `down_blackboard.h` (reusa `sensor_slot.h`) + `line_early_escape.h` refinado.
+- **Glue gateado + compila:** F0 LoopMonitor (`-DDOWN_LOOP_MONITOR`), F1 ADC averaging-1+dual
+  (`-DDOWN_ADC_FAST`/`-DDOWN_ADC_DUAL`, 717→~126µs), F2 OTOS 400kHz+`getPosVelAcc` (`-DDOWN_OTOS_FAST_I2C`,
+  3-4ms→<0.6ms), F4 **lectura confiable + sellado fail-safe** (`-DDOWN_RELIABLE_GATE`), F5 RX harden
+  (`-DDOWN_RX_HARDEN`). F3/F6 = módulos puros (cableado POST-Incheon). Envs banco: `down_{loopmon,adcfast,
+  adcdual,otosfast,reliable,rxharden,rt_all}`.
+- **Verificación:** full host gate **84 envs / 1162 tests / 0 fails**; revisión adversarial del glue **limpia
+  (0 must-fix)**; `down_rt_all` prueba que las 5 fases coexisten. Detalle: journal `2026-06-16-reingenieria-rt-down-*`.
+
 ### Avance 2026-06-16 — Centinela VERIFICADO en banco (R2) + programa BENDECIDO para ambos robots (TASK-213 ✅)
 - **TASK-213 cerrada por Gustavo (banco R2):** con `top_robot2_pri_xval` flasheado → primario en Wire2
   trackea el giro sin congelarse; 2º BNO inicializa como centinela; `i2c-scan Wire` da **solo 0x28** (sin

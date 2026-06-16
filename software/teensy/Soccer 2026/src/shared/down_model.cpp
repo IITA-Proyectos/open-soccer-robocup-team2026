@@ -1,6 +1,9 @@
 #include "down_model.h"
 #include "sensor_geometry.h"   // TEMA 3 P1 — SENSOR_POS[32] geometría real
 #include <math.h>              // sqrtf, lroundf (WP-3-DOWN — cross_track/penetration mm)
+#ifdef DOWN_RELIABLE_GATE
+#include "line_reliable_gate.h"   // F4 (§6.4): compuerta de lectura confiable (PURO, host-tested)
+#endif
 namespace iitasoccer {
 
 // ============================================================================
@@ -282,6 +285,18 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
     LineStatusV2 s{};
     s.schema_version = LSV2_SCHEMA;
     s.data_valid = (sm_data_valid(lifted, suspect) && !any_mux_dead && !saturated) ? 1 : 0;
+#ifdef DOWN_RELIABLE_GATE
+    // F4 (§6.4-B/C): refinar data_valid con el piso de salud global + soporte mínimo del
+    // vector. Con cfg default (enabled=false, pisos 0) → data_valid == base (byte-idéntico);
+    // NUNCA más permisivo que base. `rg.seal_geometry` se consume abajo (sellado §6.4-A).
+    const RgResult rg = rg_evaluate(
+        RgInputs{ s.data_valid != 0,
+                  (int)sh_healthy_count(m.sensor_health, n),
+                  (int)g.sensors_on_line },
+        RgCfg{ cfg.reliable_min_healthy, cfg.reliable_min_sensors_for_vector,
+               cfg.reliable_gate_enabled });
+    s.data_valid = rg.data_valid ? 1 : 0;
+#endif
     // TEMA #25 (audit 2026-06-03) — line_present es PER-TICK, sin debounce
     // temporal sobre la señal AGREGADA. La única histéresis es per-sensor de
     // AMPLITUD (lf_hysteresis_on_white, band=±20 counts) + el filtro espacial
@@ -312,6 +327,19 @@ LineStatusV2 dm_update(DownModel& m, const DownModelCfg& cfg,
         s.line_angle_centideg=LSV2_NA_I16; s.escape_angle_centideg=LSV2_NA_I16;
         s.penetration_mm=LSV2_NA_U16; s.cross_track_mm=LSV2_NA_I16;
     }
+#ifdef DOWN_RELIABLE_GATE
+    // F4-A (§6.4-A): si la compuerta marcó NO-confiable, SELLAR la geometría a sentinela
+    // AHORA (post-poblado), aunque line_present=1 — defensa en profundidad: la FUENTE deja de
+    // mentir, no depende de que CENTRAL respete la regla. NO se tocan line_present ni
+    // sensors_on_line → el freno duro de CENTRAL (EV_IMMINENT_EXIT, sensors_on_line >=
+    // imminent_depth) sobrevive intacto. Bloque gateado → competencia byte-idéntica.
+    if (rg.seal_geometry) {
+        s.line_angle_centideg   = LSV2_NA_I16;
+        s.escape_angle_centideg = LSV2_NA_I16;
+        s.penetration_mm        = LSV2_NA_U16;
+        s.cross_track_mm        = LSV2_NA_I16;
+    }
+#endif
     uint8_t ev=0;
     if(g.line_present && g.sensors_on_line>=cfg.imminent_depth) ev|=EV_IMMINENT_EXIT;
     if(g.corner)   ev|=EV_CORNER;

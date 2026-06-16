@@ -37,6 +37,14 @@ bool comm_central_load_persisted_calib();
 // calib VIEJA hasta el reboot (bug TASK-306, fix 2026-06-12).
 void comm_central_invalidate_calib();
 
+#ifdef DOWN_RX_HARDEN
+// F5 (§8.1): ejecuta el calibrate DIFERIDO que encoló handle_frame (separar parseo de
+// ejecución: el handler RX sólo deja la nota en <5µs). Llamar desde el loop FUERA del path
+// RX, en un punto con el robot quieto/admin. Sin nota pendiente → retorna sin costo; con
+// nota → corre el trabajo BLOQUEANTE (~320ms + EEPROM). Gateado off-by-default.
+void comm_central_service_pending_calib();
+#endif
+
 // Estadísticas:
 uint32_t comm_central_get_frames_received();
 uint32_t comm_central_get_frames_sent();

@@ -26,6 +26,9 @@
 #include "otos.h"
 #include "comm_top.h"
 #include "comm_central.h"
+#ifdef DOWN_LOOP_MONITOR
+#include "loop_monitor.h"   // F0: supervisor de loop-time (PURO, host-tested) — WCET/EMA del loop DOWN
+#endif
 #ifdef DOWN_USB_MONITOR
 #include "down_telemetry_serial.h"
 #endif
@@ -40,6 +43,15 @@ elapsedMillis g_since_top_send;        // 100 Hz odometría a ARRIBA
 elapsedMillis g_since_central_send;    // 100-200 Hz línea a CENTRAL
 
 constexpr uint32_t LINE_URGENT_INTERVAL_MS = 5;  // 200 Hz hacia CENTRAL
+
+#ifdef DOWN_LOOP_MONITOR
+// F0 (banco, §10 fila F0): supervisor de loop-time. Mide el dt de la VUELTA COMPLETA de
+// loop() — INCLUYE el robo del I²C bloqueante del OTOS (~3-4 ms cada 10 ms). Es DISTINTO de
+// line_ring g_last_tick_us (que mide solo el barrido GPIO+ADC). Diagnóstico PURO: NO toma
+// acción (la protección ante cuelgue total es el WDOG1). El print vive en comm_central.cpp
+// bajo DOWN_DEBUG_SERIAL+DOWN_LOOP_MONITOR. Gateado off-by-default → competencia byte-idéntica.
+LoopMonitor g_down_loop_monitor{};
+#endif
 
 // ============================================================
 // R2 — WATCHDOG DE HARDWARE (WDOG1), GATEADO (default OFF)
@@ -83,6 +95,17 @@ inline void watchdog_feed() {
 #endif  // DOWN_ENABLE_WDT
 
 }  // namespace
+
+#if defined(DOWN_LOOP_MONITOR) && defined(DOWN_DEBUG_SERIAL)
+namespace iitasoccer {
+// Accessors para el print de comm_central.cpp (otro TU). Leen el global del namespace
+// anónimo de este archivo (visible a file-scope). Espejo de central_loop_max/ema_us.
+// Doble-gate IGUAL que su único consumidor (el print, DOWN_DEBUG_SERIAL && DOWN_LOOP_MONITOR):
+// así no quedan funciones sin uso si alguien encendiera DOWN_LOOP_MONITOR sin el debug serial.
+uint32_t down_loop_max_us() { return g_down_loop_monitor.max_us; }
+uint32_t down_loop_ema_us() { return static_cast<uint32_t>(g_down_loop_monitor.ema_us); }
+}  // namespace iitasoccer
+#endif
 
 void setup() {
     pinMode(PIN_LED_STATUS, OUTPUT);
@@ -159,6 +182,11 @@ void loop() {
     // WDOG1 resetea la placa a 1 s, recuperando el LINE_URGENT a CENTRAL.
     watchdog_feed();
 #endif
+#ifdef DOWN_LOOP_MONITOR
+    // F0: medir el dt de esta vuelta vs la anterior (WRAP-safe). Primera acción medible
+    // del loop. No toma acción — solo telemetría (lo lee el print de comm_central).
+    loop_monitor_update(g_down_loop_monitor, micros());
+#endif
 
     // RX: drenar ambos UARTs cada loop (no bloquea).
     comm_top_tick();          // comandos desde ARRIBA (legacy, low priority)
@@ -199,5 +227,12 @@ void loop() {
     // En modo USB_MONITOR (competencia) esto es: drenar RX (barato, ~0 si no hay
     // host) + stream SOLO si la app está activa (latido PING; ver el .cpp).
     down_telemetry_tick();
+#endif
+
+#ifdef DOWN_RX_HARDEN
+    // F5 (§8.1): ejecutar el calibrate DIFERIDO (si CENTRAL lo encoló) FUERA del path RX, al
+    // final del loop. Casi siempre no-op (sin nota pendiente); cuando hay, bloquea ~320ms —
+    // sólo en admin con el robot quieto. Así el tick RX (handle_frame) nunca bloquea el loop.
+    comm_central_service_pending_calib();
 #endif
 }

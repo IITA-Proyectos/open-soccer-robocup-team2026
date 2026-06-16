@@ -5,16 +5,29 @@
 #include "types.h"
 #include "down_tx.h"
 #include "telemetry_sat.h"
+#ifdef DOWN_RX_HARDEN
+#include "rx_byte_budget.h"   // F5 (§8.1): acota el WCET del tick RX ante un cable ruidoso
+#endif
 
 #include <Arduino.h>
 #include <string.h>
 
 namespace iitasoccer {
 
+#if defined(DOWN_RX_HARDEN) && !defined(DOWN_RX_MAX_BYTES_PER_TICK)
+// F5: techo de bytes a procesar por tick RX. Con 230400 baud llegan ~23 B/ms; a 1 kHz de loop
+// son ~23 B/vuelta típicos → 256 deja margen 10× para ráfagas legítimas pero le quita al ruido
+// el poder de monopolizar el loop. Override con -DDOWN_RX_MAX_BYTES_PER_TICK=N.
+#define DOWN_RX_MAX_BYTES_PER_TICK 256
+#endif
+
 namespace {
 
 FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
+#ifdef DOWN_RX_HARDEN
+RxByteBudget g_top_rx_budget{};   // presupuesto de bytes/tick del enlace TOP (Serial5)
+#endif
 
 void handle_frame(const Frame& f) {
     switch (f.type) {
@@ -41,11 +54,27 @@ void handle_frame(const Frame& f) {
 
 void comm_top_init() {
     Serial5.begin(UART_TOP_BAUD);
+#if defined(DOWN_RX_HARDEN) && defined(__IMXRT1062__)
+    // F5 (§8.1): colchón RX de 512 B (~22 ms de aire a 230400) para absorber el bloqueo del
+    // I²C del OTOS sin perder bytes. addMemoryForRead solo existe en el core IMXRT (Teensy 4).
+    static uint8_t s_top_rx_buf[512];
+    Serial5.addMemoryForRead(s_top_rx_buf, sizeof(s_top_rx_buf));
+#endif
+#ifdef DOWN_RX_HARDEN
+    rxbb_init(g_top_rx_budget, DOWN_RX_MAX_BYTES_PER_TICK);
+#endif
 }
 
 int comm_top_tick() {
     int processed = 0;
+#ifdef DOWN_RX_HARDEN
+    // F5: acotar el WCET del tick — como mucho DOWN_RX_MAX_BYTES_PER_TICK bytes; el resto
+    // espera al próximo tick (el FrameDecoder retoma/resincroniza solo, CRC16). Default-safe.
+    rxbb_reset(g_top_rx_budget);
+    while (Serial5.available() > 0 && rxbb_allow(g_top_rx_budget)) {
+#else
     while (Serial5.available() > 0) {
+#endif
         const uint8_t b = static_cast<uint8_t>(Serial5.read());
         if (g_decoder.feed(b)) {
             handle_frame(g_decoder.get_frame());

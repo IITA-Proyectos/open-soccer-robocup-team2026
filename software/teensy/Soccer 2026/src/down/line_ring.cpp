@@ -9,6 +9,10 @@
 #include "line_filters.h"
 
 #include <Arduino.h>
+#if defined(DOWN_ADC_FAST) && defined(DOWN_ADC_DUAL)
+#include <ADC.h>             // pedvide/ADC (viene en el core Teensy) — lectura dual-ADC sincronizada
+#include "adc_scan_plan.h"   // plan de apareo de muxes ADC1/ADC2 (PURO, host-tested)
+#endif
 
 namespace iitasoccer {
 
@@ -40,6 +44,14 @@ uint32_t g_last_sample_us = 0;   // TIMESTAMP (micros()) del último muestreo
 
 constexpr uint8_t IMMINENT_EXIT_DEPTH = 3;
 
+#if defined(DOWN_ADC_FAST) && defined(DOWN_ADC_DUAL)
+// F1 Capa 2 (§3.2 ARQUITECTURA-LAZO-DOWN-RT): objeto ADC del core (pedvide) para las
+// lecturas SINCRONIZADAS (ADC1+ADC2 a la vez) y el plan de apareo de muxes (puro). Se
+// construyen una sola vez en line_ring_init(). Gateado off-by-default → competencia byte-idéntica.
+ADC g_adc;
+AdcScanPlan g_scan_plan{};
+#endif
+
 void sample_all_sensors_hardware() {
     // Para cada uno de los 8 sensores lógicos por mux, calcular el canal real
     // del CD4051 según el scrambling de Enzo (MUX_CH_FOR_SENSOR), setear los
@@ -53,10 +65,32 @@ void sample_all_sensors_hardware() {
             digitalWrite(PIN_MUX_C[m], (ch & 0x04) ? HIGH : LOW);
         }
         delayMicroseconds(5);  // settle time CD4051
+#if defined(DOWN_ADC_FAST) && defined(DOWN_ADC_DUAL)
+        // F1 Capa 2: leer los muxes DE A PARES en paralelo (uno por ADC1, otro por ADC2).
+        // El plan (puro) conserva el orden lógico del barrido histórico → g_raw[] sale igual
+        // ordenado, sin re-mapear sensores. 2 lecturas dobles en vez de 4 simples.
+        for (int p = 0; p < g_scan_plan.n_pairs; ++p) {
+            const uint8_t ma = g_scan_plan.pairs[p][0];   // → ADC1 (result_adc0)
+            const uint8_t mb = g_scan_plan.pairs[p][1];   // → ADC2 (result_adc1)
+            g_adc.startSynchronizedSingleRead(PIN_MUX_OUT[ma], PIN_MUX_OUT[mb]);
+            const ADC::Sync_result r = g_adc.readSynchronizedSingle();
+            g_raw[ma * NUM_SENSORS_PER_MUX + i] = static_cast<uint16_t>(r.result_adc0);
+            g_raw[mb * NUM_SENSORS_PER_MUX + i] = static_cast<uint16_t>(r.result_adc1);
+        }
+        if (g_scan_plan.has_solo) {   // mux impar sobrante (placa degradada) → lectura simple
+            const uint8_t ms = g_scan_plan.solo_mux;
+            g_raw[ms * NUM_SENSORS_PER_MUX + i] =
+                static_cast<uint16_t>(g_adc.adc0->analogRead(PIN_MUX_OUT[ms]));
+        }
+#else
+        // Path histórico / F1 Capa 1: N analogRead secuenciales. Bajo DOWN_ADC_FAST (sin
+        // DUAL) el averaging baja a 1 (seteado en line_ring_init) → ~20.9µs → ~4.9µs por
+        // lectura sin cambiar la estructura del barrido. Sin el flag, averaging=4 (histórico).
         for (int m = 0; m < DOWN_NUM_MUXES_CONNECTED; ++m) {
             const uint8_t idx = m * NUM_SENSORS_PER_MUX + i;
             g_raw[idx] = static_cast<uint16_t>(analogRead(PIN_MUX_OUT[m]));
         }
+#endif
     }
 }
 
@@ -88,7 +122,26 @@ void line_ring_init() {
     }
     reset_filter_state();
 
+#if defined(DOWN_ADC_FAST) && defined(DOWN_ADC_DUAL)
+    // F1 Capa 2 (§3.2): la lectura va por el objeto ADC (pedvide/ADC) con config POR-ADC —
+    // NO se llaman las globales del core (serían redundantes y podrían confundir el delta del
+    // solo_mux vs los pares). El plan (puro) decide el apareo {0,1},{2,3} desde la cantidad de
+    // muxes (fail-safe ante placa degradada). averaging=1 = sin promedio HW; el ALS-PT19 ya se
+    // filtra temporalmente aguas abajo (line_filters / dm_update). Barrido ~717µs → ~126µs.
+    g_scan_plan = adc_plan_build(DOWN_NUM_MUXES_CONNECTED);
+    g_adc.adc0->setResolution(10);
+    g_adc.adc1->setResolution(10);
+    g_adc.adc0->setAveraging(1);
+    g_adc.adc1->setAveraging(1);
+#elif defined(DOWN_ADC_FAST)
+    // F1 Capa 1 (§3.2): averaging=1 (el default del core es 4) sobre el path analogRead() del
+    // core. Baja ~20.9µs → ~4.9µs por lectura (barrido ~717µs → ~205µs). El ruido sube √4=2×
+    // por lectura cruda pero el filtro temporal aguas abajo lo absorbe. Reversible con el flag.
+    analogReadResolution(10);
+    analogReadAveraging(1);
+#else
     analogReadResolution(10);  // 10-bit (0-1023). Teensy 4.0 soporta hasta 12-bit.
+#endif
 }
 
 void line_ring_tick() {

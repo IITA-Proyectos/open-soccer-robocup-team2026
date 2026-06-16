@@ -71,6 +71,14 @@ void otos_setup_units(QwiicOTOS& dev, bool calibrate_imu) {
 bool otos_init() {
     Wire.begin();
     Wire1.begin();
+#ifdef DOWN_OTOS_FAST_I2C
+    // F2 (banco, §7.2 ARQUITECTURA-LAZO-DOWN-RT): Qwiic Fast-mode 400 kHz (estándar
+    // Qwiic) → 4× menos tiempo de bus que los 100 kHz default. El OTOS lo soporta; si
+    // en banco diera errores I²C espurios a 400 kHz, bajar a 100 kHz (fail-safe: la
+    // salud por-OTOS ya degrada solo ante lecturas fallidas). Gateado off-by-default.
+    Wire.setClock(400000);
+    Wire1.setClock(400000);
+#endif
 
     oh_reset(g_left_health);
     oh_reset(g_right_health);
@@ -105,6 +113,16 @@ void otos_tick() {
     // de tratar ese OTOS como vivo.
     sfe_otos_pose2d_t pl{}, pr{}, vl{}, vr{};
     bool left_ok = false, right_ok = false;
+#ifdef DOWN_OTOS_FAST_I2C
+    // F2 (banco, §7.2): UNA transacción de 18 B (pos+vel+acc) por OTOS en vez de DOS
+    // (getPosition + getVelocity). Pasa de 4 transacciones I²C a 2; combinado con 400 kHz,
+    // ~8× menos bloqueo (~3-4 ms → ~0.4-0.6 ms, por debajo de 1 tick de línea). Fail-safe
+    // IDÉNTICO al de hoy: una lectura fallida deja {left,right}_ok=false → NO se propaga la
+    // pose (misma degradación, no hay teleport-al-origen). El `acc` se lee y se descarta.
+    sfe_otos_pose2d_t al{}, ar{};
+    if (g_left_health.alive)  left_ok  = (g_otos_left.getPosVelAcc(pl, vl, al)  == ksfTkErrOk);
+    if (g_right_health.alive) right_ok = (g_otos_right.getPosVelAcc(pr, vr, ar) == ksfTkErrOk);
+#else
     if (g_left_health.alive) {
         const bool p_ok = (g_otos_left.getPosition(pl) == ksfTkErrOk);
         const bool v_ok = (g_otos_left.getVelocity(vl) == ksfTkErrOk);
@@ -115,6 +133,7 @@ void otos_tick() {
         const bool v_ok = (g_otos_right.getVelocity(vr) == ksfTkErrOk);
         right_ok = p_ok && v_ok;
     }
+#endif
     const bool left_alive  = oh_update(g_left_health, left_ok);
     const bool right_alive = oh_update(g_right_health, right_ok);
 

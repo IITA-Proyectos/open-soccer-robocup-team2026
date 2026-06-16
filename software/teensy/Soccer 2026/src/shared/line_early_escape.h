@@ -34,6 +34,7 @@
 #pragma once
 #include <stdint.h>
 #include <math.h>
+#include "line_neighbors.h"   // LUT de VECINO FÍSICO (opcional, default nullptr)
 
 namespace iitasoccer {
 
@@ -78,6 +79,20 @@ struct LeeConfig {
     uint8_t  imminent_count  = LEE_IMMINENT_COUNT;
     uint8_t  lifted_num      = LEE_LIFTED_NUM;
     uint8_t  lifted_den      = LEE_LIFTED_DEN;
+
+    // LUT de VECINO FÍSICO (line_neighbors.h). DEFAULT nullptr → comportamiento
+    // backward-compatible EXACTO: el filtro espacial usa el vecino de ÍNDICE
+    // (i-1 / i+1 con wrap), idéntico a lf_spatial_filter. Los tests viejos del
+    // módulo NO la pasan, así que siguen verdes byte-idénticos.
+    //
+    // Con LUT provista, el filtro espacial cambia a vecino FÍSICO: un blanco es
+    // confiable solo si tiene al menos un vecino REALMENTE adyacente en el PCB
+    // (no su contiguo de índice, que en DOWN puede estar a 14 cm — ver
+    // line_neighbors.h). Esto corrige el falso "blanco aislado" del arquero
+    // sobre la línea de fondo. FAIL-SAFE: si la LUT está vacía/rota, el helper
+    // ln_has_white_neighbor devuelve false → ningún confiable → degrada al lado
+    // CONSERVADOR (no inventa evidencia), nunca a un falso positivo.
+    const LineNeighbors* neighbors = nullptr;
 };
 
 struct LeeResult {
@@ -153,16 +168,30 @@ inline LeeResult lee_compute(const uint16_t* raw,
     }
 
     // --- Paso 2: filtro espacial — un blanco aislado NO cuenta ---
-    // Un sensor confiable necesita un VECINO (i-1 o i+1 en el anillo cerrado)
-    // que también esté blanco. Así un único sensor loco que cruzó su umbral no
-    // dispara nada ni sesga el centroide. Mismo criterio que lf_spatial_filter
-    // (line_filters.h:68), con el wrap del anillo (sensor 0 vecino del n-1).
+    // Un sensor confiable necesita un VECINO también blanco. Así un único sensor
+    // loco que cruzó su umbral no dispara nada ni sesga el centroide.
+    //
+    // Dos modos, según cfg.neighbors:
+    //   (a) nullptr (DEFAULT, backward-compatible): vecino de ÍNDICE i-1 / i+1
+    //       con wrap del anillo (sensor 0 vecino del n-1). Mismo criterio que
+    //       lf_spatial_filter (line_filters.h:68). Es lo que corrían los 18
+    //       tests viejos → siguen byte-idénticos.
+    //   (b) LUT provista: vecino FÍSICO real (line_neighbors.h). En DOWN el
+    //       contiguo de índice puede estar a 14 cm; exigir adyacencia FÍSICA
+    //       evita descartar un blanco real cuyo único vecino-de-índice quedó
+    //       lejos (caso arquero sobre la línea de fondo). Ver line_neighbors.h.
     bool white_ok[LEE_MAX_SENSORS];
     for (int i = 0; i < n; ++i) {
         if (!white_raw[i]) { white_ok[i] = false; continue; }
-        const int prev = (i == 0) ? (n - 1) : (i - 1);
-        const int next = (i == n - 1) ? 0 : (i + 1);
-        white_ok[i] = (white_raw[prev] || white_raw[next]);
+        if (cfg.neighbors != nullptr) {
+            // Modo vecino FÍSICO: ¿algún vecino real está blanco?
+            white_ok[i] = ln_has_white_neighbor(cfg.neighbors, white_raw, i, n);
+        } else {
+            // Modo vecino de ÍNDICE (comportamiento histórico).
+            const int prev = (i == 0) ? (n - 1) : (i - 1);
+            const int next = (i == n - 1) ? 0 : (i + 1);
+            white_ok[i] = (white_raw[prev] || white_raw[next]);
+        }
     }
 
     // --- Paso 3: contar sanos y confiables; detectar lifted ---

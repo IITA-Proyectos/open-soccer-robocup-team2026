@@ -8,6 +8,10 @@
 #include "down_encode.h"
 #include "down_tx.h"
 #include "eeprom_calib.h"
+#ifdef DOWN_RX_HARDEN
+#include "rx_calib_defer.h"   // F5 (§8.1): difiere el calibrate bloqueante (~320ms) fuera del path RX
+#include "rx_byte_budget.h"   // F5 (§8.1): acota el WCET del tick RX ante un cable ruidoso
+#endif
 // (sensor_geometry.h ya no se incluye: el bloque debug que usaba SENSOR_POS para
 //  recalcular cross_track era código muerto y se borró — audit 2026-06-03 #9/#11.)
 
@@ -16,10 +20,27 @@
 
 namespace iitasoccer {
 
+#if defined(DOWN_DEBUG_SERIAL) && defined(DOWN_LOOP_MONITOR)
+// F0: accessors del supervisor de loop-time, definidos en main_down.cpp (otro TU).
+uint32_t down_loop_max_us();
+uint32_t down_loop_ema_us();
+#endif
+
+#if defined(DOWN_RX_HARDEN) && !defined(DOWN_RX_MAX_BYTES_PER_TICK)
+// F5: techo de bytes por tick RX (override con -DDOWN_RX_MAX_BYTES_PER_TICK=N). 256 deja
+// margen ~10× sobre el tráfico típico (~23 B/ms a 230400) sin dejar que el ruido monopolice el loop.
+#define DOWN_RX_MAX_BYTES_PER_TICK 256
+#endif
+
 namespace {
 
 FrameDecoder g_decoder;
 uint32_t g_frames_received = 0;
+#ifdef DOWN_RX_HARDEN
+// F5: buzón ÚLTIMO-GANA del calibrate diferido + presupuesto de bytes/tick del enlace CENTRAL.
+RxCalibDefer g_calib_defer{};
+RxByteBudget g_central_rx_budget{};
+#endif
 
 #ifdef DOWN_USB_MONITOR
 // Cache del último LineStatusV2 difundido a CENTRAL (exacto: el que viaja por el
@@ -90,6 +111,14 @@ void handle_frame(const Frame& f) {
             break;
         case MsgType::CENTRAL_CALIB_LINE:
             if (f.payload_len >= 1) {
+#ifdef DOWN_RX_HARDEN
+                // F5 (§8.1): NO calibrar en el path RX (line_ring_calibrate_* bloquea ~320ms +
+                // EEPROM → congelaría el muestreo de 1kHz y el freno de borde si por error
+                // llegara un 0x21 en vivo). Dejar la NOTA (buzón último-gana) y retornar en
+                // <5µs; el trabajo pesado corre en comm_central_service_pending_calib() desde
+                // el loop (robot quieto/admin). El kind = f.payload[0] (0=carpet, 1=white).
+                rxcd_request(g_calib_defer, f.payload[0]);
+#else
                 if (f.payload[0] == 0) {
                     // Paso 1 (carpet): re-derivar en el proximo send. Aun falta
                     // el blanco — todavia no persistimos (calib incompleta).
@@ -117,6 +146,7 @@ void handle_frame(const Frame& f) {
                         Serial.println("[DOWN] WARN: fallo guardar calib en EEPROM");
                     }
                 }
+#endif
             }
             break;
         default:
@@ -130,11 +160,51 @@ void handle_frame(const Frame& f) {
 void comm_central_init() {
     // Serial1 → conector U11 del schematic DOWN → CENTRAL.
     Serial1.begin(UART_TOP_BAUD);   // mismo baud que el otro UART, 230400.
+#if defined(DOWN_RX_HARDEN) && defined(__IMXRT1062__)
+    // F5 (§8.1): colchón RX de 512 B (~22 ms de aire a 230400) para absorber el bloqueo del
+    // I²C del OTOS sin perder un comando de CENTRAL. addMemoryForRead solo en el core IMXRT.
+    static uint8_t s_central_rx_buf[512];
+    Serial1.addMemoryForRead(s_central_rx_buf, sizeof(s_central_rx_buf));
+#endif
+#ifdef DOWN_RX_HARDEN
+    rxbb_init(g_central_rx_budget, DOWN_RX_MAX_BYTES_PER_TICK);
+#endif
 }
+
+#ifdef DOWN_RX_HARDEN
+// F5 (§8.1): ejecutar el calibrate DIFERIDO fuera del path RX. Lo llama el loop (main_down)
+// en un punto donde el robot está quieto/admin. rxcd_take consume la nota (último-gana) y
+// recién acá corre el trabajo BLOQUEANTE (~320ms + EEPROM). Si no hay nota, retorna sin costo.
+// Misma lógica que el handler histórico, sólo que disparada por el ejecutor, no por el RX.
+void comm_central_service_pending_calib() {
+    uint8_t kind = 0;
+    if (!rxcd_take(g_calib_defer, &kind)) return;   // buzón vacío: nada que hacer
+    if (kind == 0) {
+        line_ring_calibrate_carpet();
+        g_dm_init = false;
+    } else if (kind == 1) {
+        line_ring_calibrate_white();
+        derive_calib_from_line_ring();
+        if (ec_save_calibration(g_dm.calib, NUM_LINE_SENSORS, g_dm.global_sens)) {
+            Serial.println("[DOWN] calib persistida en EEPROM (diferida F5)");
+        } else {
+            Serial.println("[DOWN] WARN: fallo guardar calib en EEPROM (diferida F5)");
+        }
+    }
+}
+#endif
 
 int comm_central_tick() {
     int processed = 0;
+#ifdef DOWN_RX_HARDEN
+    // F5: acotar el WCET del tick — como mucho DOWN_RX_MAX_BYTES_PER_TICK bytes; el resto
+    // espera al próximo tick (el FrameDecoder retoma/resincroniza solo). Un cable ruidoso NO
+    // monopoliza el loop. Default-safe (presupuesto 0 → no procesa, nunca congela).
+    rxbb_reset(g_central_rx_budget);
+    while (Serial1.available() > 0 && rxbb_allow(g_central_rx_budget)) {
+#else
     while (Serial1.available() > 0) {
+#endif
         const uint8_t b = static_cast<uint8_t>(Serial1.read());
         if (g_decoder.feed(b)) {
             handle_frame(g_decoder.get_frame());
@@ -217,6 +287,16 @@ void comm_central_send_line_urgent() {
         Serial.print(" R=");          Serial.print(otos_is_right_ready() ? "ok" : "--");
         Serial.print("]  | tx_ok=");  Serial.print(down_tx_get_sent(0));
         Serial.print(" drop=");       Serial.print(down_tx_get_dropped(0));
+#if defined(DOWN_LOOP_MONITOR)
+        // F0: las DOS métricas del §3.1 juntas para el banco — WCET/EMA de la VUELTA de
+        // loop() (incluye el spike del OTOS bloqueante) + duración del barrido de línea.
+        Serial.print("  | loop_us(max/avg)=");
+        Serial.print(down_loop_max_us());
+        Serial.print("/");
+        Serial.print(down_loop_ema_us());
+        Serial.print(" scan_us=");
+        Serial.print(line_ring_get_last_tick_us());
+#endif
         Serial.println();
     }
 #endif

@@ -26,6 +26,16 @@ struct DownModelCfg {
     // (cualquier débil invalida todo) en TODO inicializador viejo — incluso
     // `DownModelCfg cfg;` sin llaves (los fixtures de tests hacen eso).
     int      max_weak_sensors = 0;
+#ifdef DOWN_RELIABLE_GATE
+    // F4 (§6.4, gateado -DDOWN_RELIABLE_GATE): compuerta de "LECTURA CONFIABLE". TRAILING +
+    // default in-class → los inicializadores POSICIONALES de g_dmcfg (comm_central.cpp) y los
+    // fixtures de test (DownModelCfg cfg; sin llaves) siguen válidos. Con estos defaults
+    // (gate de runtime OFF, pisos 0) el resultado degenera EXACTO al data_valid de hoy.
+    // Gateado por el #define → sin el flag NO existen (struct byte-idéntica en competencia).
+    int      reliable_min_healthy = 0;             // piso de sensores sanos (banco ≥24/32). 0 = eje OFF.
+    int      reliable_min_sensors_for_vector = 0;  // soporte mínimo del vector (banco 3). 0 = eje OFF.
+    bool     reliable_gate_enabled = false;        // master switch de la compuerta.
+#endif
 };
 struct DownModel {
     SensorCalib    calib[DM_MAX_SENSORS];

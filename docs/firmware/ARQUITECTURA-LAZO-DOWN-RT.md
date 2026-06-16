@@ -20,6 +20,22 @@ scope: src/down
 
 ---
 
+> **ESTADO DE IMPLEMENTACIÓN — 2026-06-16 (sesión RT DOWN).** El diseño de abajo pasó por
+> validación adversarial (7 agentes) + se PROGRAMÓ el glue gateado + los módulos puros, todo
+> host-tested + compilado (NO probado en banco — regla #1; lo cierra el equipo, **TASK-309**).
+> Competencia `[env:down]` byte-idéntica (todo off-by-default). Estado por fase:
+> - **F0** LoopMonitor cableado (`-DDOWN_LOOP_MONITOR`, env `down_loopmon`) — ✅ programado/compila.
+> - **F1** averaging-1 (`-DDOWN_ADC_FAST`) + dual-ADC (`-DDOWN_ADC_DUAL`) — ✅ + `adc_scan_plan.h` (puro, 10 tests).
+> - **F2** OTOS 400 kHz + `getPosVelAcc` (`-DDOWN_OTOS_FAST_I2C`) — ✅ programado/compila.
+> - **F4** lectura confiable + sellado fail-safe (`-DDOWN_RELIABLE_GATE`) — ✅ + `line_reliable_gate.h` (puro, 13 tests).
+> - **F5** RX harden: calib diferido + byte-budget + 512 B (`-DDOWN_RX_HARDEN`) — ✅ + `rx_calib_defer.h`/`rx_byte_budget.h` (puros, 11 tests).
+> - **F3** detección temprana — módulos puros listos (`line_neighbors.h` 13 + `line_early_escape.h` refinado 20); cableado a `dm_update` POST-Incheon (F4 gobierna el camino vivo).
+> - **F6** pizarra — `down_blackboard.h` (reusa `sensor_slot.h`, 12 tests); NO cableado al loop.
+> Envs de banco nuevos: `down_loopmon`, `down_adcfast`, `down_adcdual`, `down_otosfast`,
+> `down_reliable`, `down_rxharden`, `down_rt_all`. Revisión adversarial del glue: limpia (0 must-fix).
+
+---
+
 ## 1. Esencia en 1 frase
 
 **Leer los 32 sensores del anillo lo más rápido posible (dual-ADC + pipeline del
@@ -453,12 +469,15 @@ falta es hacerlo robusto:
 3. **Límite duro de parseo:** `MAX_RX_BYTES_PER_TICK` (ej. 256) por si un cable ruidoso
    inyecta basura — el `FrameDecoder` ya resincroniza solo (CRC16-CCITT).
 
-### 8.2. La PIZARRA (blackboard doble-buffer) — `sensor_slot.h` [NUEVO, no existe hoy]
+### 8.2. La PIZARRA (blackboard doble-buffer) — `sensor_slot.h` [REUSAR, ya existe]
 
-> **Estado real (grep verificado):** `sensor_slot.h` **NO existe como archivo** en ningún
-> lado. Solo aparece en docs de diseño (`ARQUITECTURA-LAZO-CENTRAL-RT.md`,
-> `FUENTES-DE-VERDAD.md`). El "patrón sensor_slot del TOP" que pide el prompt es el seqlock
-> DISEÑADO en ese doc, **aún no escrito**. Hay que acordar UNA firma común cross-placa.
+> **CORRECCIÓN 2026-06-16 (verificado):** `src/shared/sensor_slot.h` **SÍ EXISTE** y el TOP
+> (`snapshot_emitter.cpp`) ya lo usa. El "Estado real" anterior ("no existe") era un dato VIEJO.
+> Por eso F6 NO crea un seqlock nuevo: se entregó `src/down/down_blackboard.h`, un wrapper
+> delgado y gateado (`-DDOWN_BLACKBOARD`) que REUSA `SensorSlot<T>` de `sensor_slot.h` para los
+> slots del DOWN (`line`/`pose`/`vel`), con su test host (`test_down_blackboard`, 12 tests). Es
+> ANDAMIAJE: NO se cablea al loop en esta tanda (ver §8.2 deuda doble-buffer). Así se evita la
+> divergencia cross-placa (síndrome coach-fábrica): una sola firma de seqlock para las 3 placas.
 
 Hoy NO hay pizarra: el productor y el difusor están FUSIONADOS en una función síncrona
 (`comm_central_send_line_urgent`, `comm_central.cpp:148`): re-lee crudos → `dm_update` →

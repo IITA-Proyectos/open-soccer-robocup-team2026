@@ -94,6 +94,23 @@ ImuFreezeState g_freeze[IMU_FUSION_N];
 ImuFreezeCfg   g_freeze_cfg;
 #endif
 
+// ── Cross-validación de salud del heading (TASK-213, GATED OFF) ──────────────
+// Decide la salud del BNO primario contra datos independientes (OTOS+cámara+centinela).
+// Toda la decisión es PURA (imu_cross_validate.h, host-tested); acá solo se alimenta y
+// se expone. Con el flag OFF nada de esto se compila → binario byte-idéntico.
+#ifdef TOP_ENABLE_HEADING_XVAL
+XvalState  g_xval{};
+XvalParams g_xval_params = xval_default_params();
+float      g_pri_gyro_z_dps = 0.0f;      // cache del gyro_z del primario (in[0], cero I2C extra)
+float      g_pri_net_rot_deg_acc = 0.0f; // grados netos acumulados (gate de ventana del centinela)
+#endif
+#ifdef TOP_ENABLE_BNO_SENTINEL
+bool     g_sentinel_init_ok = false;     // el 2º BNO (Wire) se inicializó para el centinela
+float    g_sec_yaw_prev_deg = 0.0f;      // yaw del centinela de la ventana 1 Hz anterior
+uint32_t g_sec_window_prev_ms = 0;       // ts de la ventana anterior (para el dt real)
+bool     g_sec_seeded = false;
+#endif
+
 constexpr uint32_t INIT_TIMEOUT_MS = 3000;
 constexpr uint32_t STABILIZE_MS    = 1000;
 constexpr uint32_t GYRO_CALIB_MS   = 2000;
@@ -355,6 +372,22 @@ bool sensors_imu_init() {
     }
 #endif  // ROBOT2 / ROBOT1 (init por-BNO)
 
+#if defined(TOP_ENABLE_BNO_SENTINEL) && defined(ROBOT2)
+    // CENTINELA (TASK-213): inicializar el 2º BNO (Wire) al boot para usarlo como
+    // SEGUNDA OPINIÓN @1 Hz, AUNQUE g_ready[1] siga false (no entra a la fusión del
+    // control → byte-idéntico). Sin begin(), leerlo crudo daría basura (no está en modo
+    // fusión). Los ToF están dormidos (predim) en este punto del setup → el begin del
+    // secundario en Wire no choca. ⚠️ NO tocar g_ready[1].
+    if (i2c_present_on(Wire, g_addr[1])) {
+        g_sentinel_init_ok = init_one_bno(g_bno_secondary);
+        Serial.println(g_sentinel_init_ok
+            ? "[IMU] CENTINELA init OK (2do BNO en Wire; g_ready[1] sigue false para fusion)"
+            : "[IMU] CENTINELA init FAIL (sigo sin 2da opinion)");
+    } else {
+        Serial.println("[IMU] CENTINELA: 2do BNO (Wire 0x28) sin ACK -> sin 2da opinion.");
+    }
+#endif
+
     // EEPROM (Capa 2): restaurar perfil de calibración de cada chip si existe.
     for (int i = 0; i < IMU_FUSION_N; ++i) {
         if (g_ready[i] && ee_load_into_bno(i, *g_bno[i])) {
@@ -425,6 +458,23 @@ void sensors_imu_tick() {
 #endif
 
     imu_fusion_update(g_fusion, g_fcfg, g_scfg, in, dt_s);
+
+#ifdef TOP_ENABLE_HEADING_XVAL
+    // Cross-validación (TASK-213): cachear el gyro_z del primario (in[0], YA leído →
+    // CERO I²C extra), acumular la rotación NETA en GRADOS (gate de ventana del centinela),
+    // alimentar el veredicto del primario y correr xval_update UNA sola vez por tick.
+    g_pri_gyro_z_dps = in[0].gyro_z_dps;
+    g_pri_net_rot_deg_acc += in[0].gyro_z_dps * dt_s;
+#if defined(TOP_ENABLE_BNO_FREEZE_DETECT)
+    // INC-1 ya bajó present→false si el primario está congelado (sano-pero-clavado).
+    // Solo cuenta como "frozen" si ESTABA listo (no confundir con primario ausente al boot).
+    const bool inc1_frozen = g_ready[0] && (in[0].present == false);
+#else
+    const bool inc1_frozen = false;
+#endif
+    xval_feed_primary(g_xval, g_pri_gyro_z_dps, inc1_frozen, now);
+    xval_update(g_xval, g_xval_params, now);
+#endif
 
     // Pedidos de RESET del módulo: SOFT-RESYNC no bloqueante (re-cero del sensor
     // que driftó, alineado al más estable). NO hace begin() en el loop.
@@ -501,5 +551,58 @@ bool sensors_imu_right_ready() { return g_ready[1]; }
 // present->false en vivo, fused_valid cae a false y el snapshot deja de marcar
 // heading_valid -> CENTRAL deja de confiar en un heading muerto. (Audit 2026-06-05 R1.)
 bool sensors_imu_get_heading_valid() { return g_fusion.fused_valid; }
+
+// ── Cross-validación de salud del heading (TASK-213) — getters + paso del centinela ──
+#ifdef TOP_ENABLE_HEADING_XVAL
+uint8_t sensors_imu_xval_verdict()   { return static_cast<uint8_t>(xval_primary_verdict(g_xval)); }
+uint8_t sensors_imu_xval_score()     { return static_cast<uint8_t>(xval_primary_score(g_xval)); }
+uint8_t sensors_imu_xval_n_indep()   { return xval_n_indep_refs(g_xval); }
+float   sensors_imu_get_gyro_z_dps() { return g_pri_gyro_z_dps; }
+XvalState& sensors_imu_xval_state()  { return g_xval; }
+float sensors_imu_take_pri_net_rotation_deg() {
+    const float r = g_pri_net_rot_deg_acc; g_pri_net_rot_deg_acc = 0.0f; return r;
+}
+#else
+uint8_t sensors_imu_xval_verdict()   { return 0; }
+uint8_t sensors_imu_xval_score()     { return 0; }
+uint8_t sensors_imu_xval_n_indep()   { return 0; }
+float   sensors_imu_get_gyro_z_dps() { return 0.0f; }
+#endif
+
+#ifdef TOP_ENABLE_BNO_SENTINEL
+bool sensors_imu_sentinel_ready() { return g_sentinel_init_ok; }
+#else
+bool sensors_imu_sentinel_ready() { return false; }
+#endif
+
+// Paso del CENTINELA @1Hz. Lo llama el LOOP en la ventana bus-quiet (aislada de los reads
+// de ToF en Wire), para que el read del secundario NUNCA quede pegado a un getRangingData.
+#if defined(TOP_ENABLE_BNO_SENTINEL) && defined(TOP_ENABLE_HEADING_XVAL) && defined(ROBOT2)
+void sensors_imu_sentinel_step(uint32_t now_ms) {
+    if (!g_sentinel_init_ok) return;
+    xval_sentinel_timed_out(g_xval, g_xval_params, now_ms);   // re-arma si quedó colgado
+    if (!xval_sentinel_due(g_xval, now_ms)) return;           // todavía no toca la ventana 1 Hz
+    xval_sentinel_arm(g_xval, g_xval_params, now_ms);
+    // Lectura limpia del 2º BNO (Wire) — estamos en la ventana bus-quiet, sin ToF.
+    const float yaw_now = HEADING_SIGN * read_raw_yaw(g_bno_secondary);   // CCW+ como gyro_z
+    float w_sec_dps = 0.0f;
+    if (g_sec_seeded) {
+        float dt_s = (now_ms - g_sec_window_prev_ms) / 1000.0f;
+        if (dt_s < 0.05f) dt_s = 1.0f;                        // guarda anti-división
+        float d = yaw_now - g_sec_yaw_prev_deg;               // Δyaw envuelto a [-180,180]
+        while (d >  180.0f) d -= 360.0f;
+        while (d < -180.0f) d += 360.0f;
+        w_sec_dps = d / dt_s;
+    }
+    const float net_pri_deg = sensors_imu_take_pri_net_rotation_deg();
+    xval_feed_sentinel(g_xval, w_sec_dps, g_sentinel_init_ok, net_pri_deg, now_ms);
+    g_sec_yaw_prev_deg   = yaw_now;
+    g_sec_window_prev_ms = now_ms;
+    g_sec_seeded         = true;
+    xval_sentinel_done(g_xval, g_xval_params, now_ms);
+}
+#elif defined(TOP_ENABLE_BNO_SENTINEL)
+void sensors_imu_sentinel_step(uint32_t) {}   // sin XVAL/ROBOT2: no-op
+#endif
 
 }  // namespace iitasoccer

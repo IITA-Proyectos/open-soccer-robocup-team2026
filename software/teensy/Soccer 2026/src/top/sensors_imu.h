@@ -30,6 +30,9 @@
 
 #pragma once
 #include <stdint.h>
+#ifdef TOP_ENABLE_HEADING_XVAL
+#include "imu_cross_validate.h"   // a FILE SCOPE (el header tiene su propio namespace iitasoccer)
+#endif
 
 namespace iitasoccer {
 
@@ -72,5 +75,38 @@ bool sensors_imu_right_ready();
 // Refleja la fusión (false si ningún sensor utilizable en runtime), no el readiness
 // al boot. Byte-idéntico a (_left_ready||_right_ready) en operación normal. (Audit R1.)
 bool sensors_imu_get_heading_valid();
+
+// ── Cross-validación de salud del heading (TASK-213) ──────────────────────────
+// Getters de telemetría SIEMPRE presentes (firma sin tipos Arduino). Con el flag
+// TOP_ENABLE_HEADING_XVAL OFF, el cuerpo es un return 0/false trivial; como ningún
+// call-site los referencia (top_telemetry_serial los llama bajo el mismo #ifdef),
+// --gc-sections los descarta → binario de competencia byte-idéntico.
+uint8_t sensors_imu_xval_verdict();    // 0=SANO,1=SOSPECHA,2=MALO
+uint8_t sensors_imu_xval_score();      // 0..100
+uint8_t sensors_imu_xval_n_indep();    // refs independientes válidas
+bool    sensors_imu_sentinel_ready();  // el 2º BNO (centinela) se inicializó OK
+float   sensors_imu_get_gyro_z_dps();  // gyro_z del primario, ya leído este tick (CCW+)
+
+#ifdef TOP_ENABLE_HEADING_XVAL
+// Estado del cross-validador (lo alimentan el feed de main_top y el centinela de
+// sensors_tof; xval_update corre 1x/tick en sensors_imu_tick). XvalState viene del
+// include a file-scope de arriba.
+XvalState& sensors_imu_xval_state();
+// Rotación NETA acumulada del primario (GRADOS, NO deg/s) desde la última llamada;
+// la consume el read del centinela @1Hz como gate de ventana-evaluable. Resetea al leer.
+float sensors_imu_take_pri_net_rotation_deg();
+#endif
+
+#ifdef TOP_ENABLE_BNO_SENTINEL
+// Paso del CENTINELA @1Hz: lee el 2º BNO (Wire) y alimenta xval. Lo ejecuta el LOOP
+// en la MISMA ventana temporalmente aislada del read del primario (bus-quiet), para
+// que el read del secundario NUNCA quede pegado a un getRangingData de los ToF (la
+// contención es justo lo que congelaba el BNO). El read encapsula read_raw_yaw +
+// g_bno_secondary (file-static de sensors_imu.cpp); el scheduler+timeout son puros
+// (imu_cross_validate.h). No hace nada si todavía no toca la ventana 1Hz. ⚠️ BANCO:
+// confirmar con analizador lógico que el read del secundario es <10 ms y queda
+// aislado en el bus Wire (pre-req TASK-213). Requiere también TOP_ENABLE_HEADING_XVAL.
+void sensors_imu_sentinel_step(uint32_t now_ms);
+#endif
 
 }  // namespace iitasoccer

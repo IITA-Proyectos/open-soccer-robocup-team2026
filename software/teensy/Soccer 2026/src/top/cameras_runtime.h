@@ -16,6 +16,9 @@
 
 #pragma once
 #include <stdint.h>
+#ifdef TOP_ENABLE_HEADING_XVAL
+#include "goal_rate_tracker.h"   // a FILE SCOPE (el header tiene su propio namespace iitasoccer)
+#endif
 
 namespace iitasoccer {
 
@@ -88,5 +91,13 @@ uint32_t cameras_resyncs_total();        // pérdida de framing AGREGADA (front+
 // Aditivos, solo leen el parser; NO tocan el contrato de wire ni cameras.cpp/.h.
 uint32_t cameras_get_crc_errors_total();
 uint32_t cameras_resync_total();         // == cameras_resyncs_total()
+
+#ifdef TOP_ENABLE_HEADING_XVAL
+// Cross-validación del heading (TASK-213): tasa de rotación inferida del bearing del
+// arco. main_top lo llama con el bearing del arco RIVAL ya resuelto (la polaridad
+// opp/own se decide en main_top, no acá). El estado del tracker vive en el .cpp.
+// GoalRateResult viene del include a file-scope de arriba.
+GoalRateResult cameras_goal_rate_update(int16_t bearing_centideg, bool visible, uint32_t now_ms);
+#endif
 
 }  // namespace iitasoccer

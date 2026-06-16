@@ -55,7 +55,10 @@ struct XvalParams {
     float    otos_omega_sat_dps;  // |w_otos| ≥ esto → OTOS no confiable (satura, B.3). default 300
     float    min_net_rotation_dps;// ventana evaluable: |w_truth| debe superar esto. default 5
     uint8_t  consensus_k;         // K ventanas evaluables divergentes seguidas → MALO. default 3
-    uint32_t fresh_timeout_ms;    // una ref más vieja que esto deja de contar. default 300
+    uint32_t fresh_timeout_ms;    // una ref CONTINUA (OTOS/cámara) más vieja que esto deja de contar. default 300
+    uint32_t sentinel_fresh_timeout_ms; // el centinela se lee a 1 Hz → su frescura debe tolerar >1 s
+                                  // (con fresh_timeout_ms=300 < period=1000 la rama del centinela sería
+                                  // CÓDIGO MUERTO: nunca estaría "fresco" entre lecturas). default 1300.
     uint32_t cooldown_ms;         // tras latch MALO, no re-juzgar (anti-bucle). default 2000
     uint8_t  score_ema_num;       // EMA del score: score += (target-score)·num/den. default 1
     uint8_t  score_ema_den;       // default 4
@@ -71,6 +74,7 @@ inline XvalParams xval_default_params() {
     p.min_net_rotation_dps= 5.0f;
     p.consensus_k         = 3;
     p.fresh_timeout_ms    = 300;
+    p.sentinel_fresh_timeout_ms = 1300;
     p.cooldown_ms         = 2000;
     p.score_ema_num       = 1;
     p.score_ema_den       = 4;
@@ -185,7 +189,7 @@ inline void xval_update(XvalState& s, const XvalParams& p, uint32_t now_ms) {
     const bool otos_ok = s.otos_valid && fresh(s.otos_ms, now_ms, p.fresh_timeout_ms)
                          && absf(s.w_otos) < p.otos_omega_sat_dps;   // B.3: descartar saturado
     const bool cam_ok  = s.cam_valid  && fresh(s.cam_ms, now_ms, p.fresh_timeout_ms);
-    const bool sec_ok  = s.sec_present && fresh(s.sec_ms, now_ms, p.fresh_timeout_ms)
+    const bool sec_ok  = s.sec_present && fresh(s.sec_ms, now_ms, p.sentinel_fresh_timeout_ms)
                          && absf(s.sec_net_rotation) > p.min_net_rotation_dps;   // ventana evaluable (anti-aliasing 1 Hz)
     if (otos_ok) { refs[n++] = s.w_otos; n_indep++; }
     if (cam_ok)  { refs[n++] = s.w_cam;  n_indep++; }

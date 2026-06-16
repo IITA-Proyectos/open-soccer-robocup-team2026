@@ -153,6 +153,13 @@ struct TopTelemetryFrame {
     uint8_t  down_line_event_flags;
     uint8_t  down_line_quality;
     uint8_t  down_line_sample_age_ms;
+
+    // ── Cross-validación de salud del heading (TASK-213, aditivo "xval") ──
+    // Veredicto del BNO primario contra datos independientes (OTOS+cámara+centinela).
+    // Default 0 (SANO) si el flag TOP_ENABLE_HEADING_XVAL está OFF (nadie lo llena).
+    uint8_t  xval_verdict;   // 0=SANO, 1=SOSPECHA, 2=MALO (XvalVerdict)
+    uint8_t  xval_score;     // 0..100 (salud del primario, EMA)
+    uint8_t  xval_n_indep;   // refs independientes válidas (0/1/2) en la última ventana
 };
 
 // Inicializa un frame a ceros + schema + ToF en sentinel.

@@ -148,6 +148,10 @@ uint32_t          comm_down_pose_age_ms() {
 bool              comm_down_is_vel_fresh() { return fresh(g_vel_last_rx_ms); }
 const Velocity2D& comm_down_get_velocity() { return g_vel; }
 
+// Omega de la OTOS para la cross-validación (TASK-213). Read-only de g_vel.
+float comm_down_get_omega_dps() { return g_vel.omega_centideg_s / 100.0f; }
+bool  comm_down_omega_valid()   { return fresh(g_vel_last_rx_ms); }
+
 uint32_t comm_down_get_frames_received() { return g_frames_received; }
 uint32_t comm_down_get_crc_errors()      { return g_decoder.crc_errors(); }
 uint32_t comm_down_get_frames_lost()     { return g_seq.lost; }

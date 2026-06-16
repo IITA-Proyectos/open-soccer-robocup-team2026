@@ -12,6 +12,16 @@
 
 namespace iitasoccer {
 
+#ifdef TOP_ENABLE_HEADING_XVAL
+// Estado persistente del GoalRateTracker (cross-validación del heading, TASK-213).
+// Vive a nivel namespace (no en el anónimo) para que el wrapper de abajo lo use; el
+// tipo viene de goal_rate_tracker.h (incluido por cameras_runtime.h bajo este flag).
+namespace { GoalRateTracker g_goal_rate{}; const GoalRateParams g_goal_rate_params = goal_rate_default_params(); }
+GoalRateResult cameras_goal_rate_update(int16_t bearing_centideg, bool visible, uint32_t now_ms) {
+    return goal_rate_update(g_goal_rate, bearing_centideg, visible, now_ms, g_goal_rate_params);
+}
+#endif
+
 namespace {
 
 // === Constantes ===

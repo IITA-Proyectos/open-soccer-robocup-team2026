@@ -39,6 +39,11 @@ uint32_t         comm_down_pose_age_ms();
 
 bool             comm_down_is_vel_fresh();
 const Velocity2D& comm_down_get_velocity();
+// Omega (deg/s, CCW+) de la OTOS para la cross-validación del heading (TASK-213).
+// Read-only de g_vel (cero estado/I2C extra). En R2 sin OTOS, omega_valid()=false →
+// xval ignora la ref. ⚠️ BANCO: confirmar que omega_centideg_s es CCW+ como gyro_z.
+float            comm_down_get_omega_dps();
+bool             comm_down_omega_valid();
 
 // Estadísticas:
 uint32_t comm_down_get_frames_received();

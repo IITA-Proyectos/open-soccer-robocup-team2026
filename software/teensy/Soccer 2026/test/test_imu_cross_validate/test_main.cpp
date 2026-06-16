@@ -246,9 +246,28 @@ void test_two_indep_refs_disagree_never_malo(void) {
     TEST_ASSERT_EQUAL(2, (int)xval_n_indep_refs(s));
 }
 
+// El centinela se lee a 1 Hz → su frescura usa sentinel_fresh_timeout_ms (1300), NO el
+// fresh_timeout_ms de 300. Sin esto, entre lecturas el centinela quedaría stale y su rama
+// sería CÓDIGO MUERTO. A 1200 ms sigue contando; a 1400 ms (>1300) queda stale.
+void test_sentinel_fresco_a_cadencia_1hz(void) {
+    XvalParams p = xval_default_params();
+    XvalState s{}; xval_reset(s);
+    xval_feed_sentinel(s, 40.0f, /*present*/true, /*net_rotation*/40.0f, 1000);
+    xval_feed_primary(s, 0.0f, false, 2200);   // 1200 ms después
+    xval_update(s, p, 2200);
+    TEST_ASSERT_TRUE(xval_window_evaluable(s));   // centinela aún fresco → hay ref → ventana evaluable
+    TEST_ASSERT_NOT_EQUAL(vi(XvalVerdict::MALO), vi(xval_primary_verdict(s)));  // 2º BNO no veta
+    XvalState s2{}; xval_reset(s2);
+    xval_feed_sentinel(s2, 40.0f, true, 40.0f, 1000);
+    xval_feed_primary(s2, 0.0f, false, 2400);   // 1400 ms (> 1300) → stale
+    xval_update(s2, p, 2400);
+    TEST_ASSERT_FALSE(xval_window_evaluable(s2));  // sin refs → ventana no evaluable
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_healthy_agrees);
+    RUN_TEST(test_sentinel_fresco_a_cadencia_1hz);
     RUN_TEST(test_otos_single_ref_never_malo);
     RUN_TEST(test_two_indep_refs_disagree_never_malo);
     RUN_TEST(test_inc1_frozen_is_malo);

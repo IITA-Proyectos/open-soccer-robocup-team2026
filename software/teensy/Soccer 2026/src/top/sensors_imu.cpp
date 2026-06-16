@@ -547,7 +547,25 @@ void sensors_imu_sentinel_step(uint32_t now_ms) {
     xval_sentinel_done(g_xval, g_xval_params, now_ms);
 }
 #elif defined(TOP_ENABLE_BNO_SENTINEL)
-void sensors_imu_sentinel_step(uint32_t) {}   // centinela sin XVAL: no-op
+// Centinela SIN XVAL (salud pura): lee el 2º BNO (Wire) @1Hz SOLO para diagnóstico/monitor.
+// NO alimenta la fusión ni el heading — el robot sigue primary-only (g_ready[1]=false), así
+// que un secundario congelado NO puede arrastrar al primario (a diferencia del bug histórico
+// del soft-resync de la fusión, que era OTRO camino). El caller (main_top, rama R2) ya lo
+// llama SOLO en la ventana bus-quiet (>=TOP_BNO_TOF_GAP_MS desde el último read de ToF), así
+// que el read del secundario nunca queda pegado a un getRangingData del ToF en Wire. Throttle
+// interno @1Hz. Expone el yaw vía sensors_imu_sentinel_heading_deg() (telemetría imu_sentinel_*):
+// si NO cambia cuando el robot gira -> el secundario está congelado (el diagnóstico buscado).
+void sensors_imu_sentinel_step(uint32_t now_ms) {
+    if (!g_sentinel_init_ok) return;
+    static uint32_t s_last_ms = 0;
+    static bool     s_first   = true;
+    if (!s_first && (now_ms - s_last_ms) < 1000u) return;   // @1Hz (resta unsigned -> wrap-safe)
+    s_first   = false;
+    s_last_ms = now_ms;
+    // Lectura limpia del 2º BNO (Wire) en la ventana bus-quiet. CCW+ crudo: es otro chip con
+    // otro mount, NO comparte el cero de boot del primario (es solo para ver "vivo y cambiando").
+    g_sec_yaw_prev_deg = HEADING_SIGN * read_raw_yaw(g_bno_secondary);
+}
 #endif
 
 }  // namespace iitasoccer

@@ -33,6 +33,7 @@
 #include "atk_nogyro.h"     // helpers puros del delantero sin gyro (práctica R1)
 #include "pfm_heading.h"    // control PI+PFM de rumbo p/ zona muerta (banco María)
 #include "heading_rate.h"   // estimador de velocidad de giro p/ amortiguar (coach 2026-06-14)
+#include "clear_aim.h"      // despeje DIRECCIONAL del arquero (módulo PURO; cableado gateado GK_CLEAR_DIRECTIONAL)
 #ifdef CENTRAL_EEPROM_CALIB
 #include "central_eeprom_config.h"  // g_central_cfg: ganancias del PID de rumbo desde EEPROM
 #endif
@@ -1785,8 +1786,35 @@ MotorCommand goalkeeper_tick() {
             }
 
             if (dist > 1.0f) {
+#ifdef GK_CLEAR_DIRECTIONAL
+                // DESPEJE DIRECCIONAL (gateado, 2026-06-17, auditoría robustez P-C): empujar
+                // hacia la BANDA más lejana del arco propio (clear_aim, módulo PURO host-tested)
+                // en vez de DERECHO a la pelota → evita dejarla en el medio del área (autogol).
+                // FALLBACK EXACTO: si el arco propio NO es visible → valid=false → empuje derecho
+                // de hoy (byte-idéntico). ⚠️ goal_own_angle viene de la CÁMARA TRASERA, cuya
+                // confiabilidad para orientar está EN DUDA (la "J/U" del retroceso, 2026-06-09).
+                // Por eso esto va GATEADO: prender -DGK_CLEAR_DIRECTIONAL SOLO tras validar en
+                // banco que el ángulo del arco propio es confiable. Default OFF → conducta idéntica.
+                ClearAimIn cin;
+                cin.ball_x_mm               = static_cast<int16_t>(bx);
+                cin.ball_y_mm               = static_cast<int16_t>(by);
+                cin.goal_own_angle_centideg = static_cast<int16_t>(
+                    lroundf(world_model_get_goal_own_angle_deg() * 100.0f));
+                cin.goal_own_visible        = world_model_goal_own_visible();
+                const ClearAimOut co = clear_aim(cin);
+                if (co.valid) {
+                    // Empujar en el rumbo de despeje (marco robot): atan2(x,y) → x=sin, y=cos.
+                    const float push_rad = (co.push_heading_centideg / 100.0f) * (float)(M_PI / 180.0);
+                    cmd.vx_mm_s = static_cast<int16_t>(std::sin(push_rad) * GK_CLEAR_SPEED_MM_S);
+                    cmd.vy_mm_s = static_cast<int16_t>(std::cos(push_rad) * GK_CLEAR_SPEED_MM_S);
+                } else {
+                    cmd.vx_mm_s = static_cast<int16_t>(bx / dist * GK_CLEAR_SPEED_MM_S);
+                    cmd.vy_mm_s = static_cast<int16_t>(by / dist * GK_CLEAR_SPEED_MM_S);
+                }
+#else
                 cmd.vx_mm_s = static_cast<int16_t>(bx / dist * GK_CLEAR_SPEED_MM_S);
                 cmd.vy_mm_s = static_cast<int16_t>(by / dist * GK_CLEAR_SPEED_MM_S);
+#endif
             }
             // Heading hacia la pelota para que el despeje sea con el frente.
             // heading_valid gate (#schema v3): no orientar con heading=0 falso al

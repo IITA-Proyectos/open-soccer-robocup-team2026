@@ -78,6 +78,11 @@ El fallback protege "no veo el arco", NO "lo veo MAL" → podría empujar al eje
 **Veredicto auditor: ACEPTAR-CON-CAMBIOS** — cablear GATEADO (`#ifdef GK_CLEAR_DIRECTIONAL`, OFF por
 default) y prender SOLO tras validar en banco que `goal_own_angle` de la cámara trasera es confiable
 (deuda abierta desde 2026-06-09). Sin esa validación → queda fuera del binario, sin regresión.
+**→ CABLEADO 2026-06-17** (gateado `-DGK_CLEAR_DIRECTIONAL`, default OFF = byte-idéntico): en
+`GkState::CLEAR` (strategy.cpp) se llama `clear_aim` y, si el arco propio es visible, empuja hacia
+la banda; si no, fallback exacto al empuje derecho. Env de banco: `central_robot2_arquero_cleardir_bb`
+(con caja negra). `test_clear_aim` 13/13, competencia byte-idéntica. **Banco obligatorio antes de
+promover: confirmar que el ángulo del arco propio (cámara trasera) no manda a despejar al lado equivocado.**
 
 ### P-D — Pérdida silenciosa del freno de borde si DOWN muere (P1)
 **Qué.** `edge_now = imminent_exit && line_is_fresh()`. Si DOWN se cuelga, `line_is_fresh→false` → el

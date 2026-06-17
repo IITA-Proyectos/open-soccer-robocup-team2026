@@ -13,6 +13,16 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> **⚡ RUTA DE LATENCIA — banco del domingo (2026-06-17):** diagnóstico contra código de los
+> síntomas del banco (oscilación por latencia · línea tarda en detectarse · calibración de
+> potencias). **Hecho:** (1) env **`down_rt` NUEVO para R1** (faltaba; solo existía el de R2) —
+> suma `OTOS_FAST_I2C` porque en R1 el spike I²C del OTOS (3-4 ms) bloqueaba la lectura de luz
+> (`platformio.ini:1781`); trae barrido 717→126 µs + detección temprana F3. (2) **A2: quitado
+> `-DCENTRAL_DEBUG_SERIAL` de `central_robot1`** (R2 ya lo hizo) → menos jitter del loop. Ambos
+> compilan; NO tocan el binario de partido salvo el quick-win de R1. Ruta priorizada A→D en el
+> journal (A latencia · B calibración+PID · C pose/watchdog/xval · D consolidar pruebas). Banco:
+> TASK-111 (validar lazo RT ambos robots). Journal: `journal/2026-06-17-ruta-latencia-y-lazo-rt.md`.
+
 > **🎯 3 P0 DE COMPETENCIA RESUELTOS (firmware listo; banco = TASK-110) (2026-06-17):**
 > Del estado de situación de las 3 placas salieron 3 P0. Resueltos con criterio por riesgo:
 > **(P0.2) FLOOR_SCALE en el arquero R1** — `central_robot1` (rol GOALKEEPER por `-DROBOT1`,

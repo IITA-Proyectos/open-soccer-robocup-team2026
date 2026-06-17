@@ -6,8 +6,8 @@
   python -m monitor_base --replay grab.jsonl   # reproducir una grabación
   python -m monitor_base --selftest            # smoke headless (sin ventana)
 
-Para grabar mientras mirás: redirigí el Serial a archivo, o usá el botón de la
-GUI (futuro). Por ahora --replay consume archivos .jsonl ya grabados.
+Para grabar mientras mirás: usá el botón ⏺ grabar de la consola (o --record
+ARCHIVO.jsonl). Después --replay reproduce el .jsonl grabado.
 """
 from __future__ import annotations
 

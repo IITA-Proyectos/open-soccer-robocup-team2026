@@ -33,6 +33,9 @@
 #include "atk_nogyro.h"     // helpers puros del delantero sin gyro (práctica R1)
 #include "pfm_heading.h"    // control PI+PFM de rumbo p/ zona muerta (banco María)
 #include "heading_rate.h"   // estimador de velocidad de giro p/ amortiguar (coach 2026-06-14)
+#ifdef CENTRAL_EEPROM_CALIB
+#include "central_eeprom_config.h"  // g_central_cfg: ganancias del PID de rumbo desde EEPROM
+#endif
 
 #include <Arduino.h>
 #include <cmath>
@@ -1814,6 +1817,18 @@ void strategy_init() {
     g_goto_line_started_ms = 0;
     heading_pid_reset(g_heading_pid);
     lateral_pid_reset(g_lateral_pid_gk);
+#ifdef CENTRAL_EEPROM_CALIB
+    // Override de las ganancias del PID de rumbo (giroscopio) desde la calibración en EEPROM.
+    // Convención: 0 = "sin override" → ganancias COMPILADAS (pids.h). Si el equipo calibró
+    // (gkp != 0), se aplican las de EEPROM (×1000 → float). Default no-op: sin calibración
+    // válida → g_central_cfg.gyro_* = 0 → el PID queda IDÉNTICO al de hoy. (central_eeprom_init
+    // corre en setup ANTES de strategy_init, así que g_central_cfg ya está cargado.)
+    if (g_central_cfg.gyro_kp != 0) {
+        g_heading_pid.kp = g_central_cfg.gyro_kp / 1000.0f;
+        g_heading_pid.ki = g_central_cfg.gyro_ki / 1000.0f;
+        g_heading_pid.kd = g_central_cfg.gyro_kd / 1000.0f;
+    }
+#endif
 }
 
 MotorCommand strategy_tick() {

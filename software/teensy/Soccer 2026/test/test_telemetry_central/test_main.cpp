@@ -171,9 +171,39 @@ void test_tc_parse_unknown(void) {
     TEST_ASSERT_EQUAL(TcCmd::UNKNOWN, parse("g").cmd);
 }
 
+// ── ccfg: eco OPCIONAL de la calibración (2026-06-17) ──
+void test_tc_ccfg_emitted_when_has_ccfg(void) {
+    CentralTelemetryFrame f;
+    tc_frame_init(f);
+    f.has_ccfg = 1;
+    f.ccfg_min_pwm[0] = 70; f.ccfg_min_pwm[1] = 70; f.ccfg_min_pwm[2] = 107;
+    f.ccfg_eff[0] = 100;    f.ccfg_eff[1] = 100;    f.ccfg_eff[2] = 115;
+    f.ccfg_fwd_l = 120; f.ccfg_fwd_r = 118;
+    f.ccfg_gkp = 1500;  f.ccfg_gki = 10; f.ccfg_gkd = 300;
+    char buf[1024];
+    TEST_ASSERT_TRUE(tc_serialize_jsonl(buf, sizeof(buf), f) > 0);
+    TEST_ASSERT_NOT_NULL(strstr(buf, "\"ccfg\":{\"min_pwm\":[70,70,107],\"eff\":[100,100,115],"
+                                     "\"fwd_l\":120,\"fwd_r\":118,\"gkp\":1500,\"gki\":10,\"gkd\":300}"));
+    // sigue siendo JSON cerrado y terminado en \n
+    const int n = (int)strlen(buf);
+    TEST_ASSERT_EQUAL_CHAR('\n', buf[n - 1]);
+    TEST_ASSERT_EQUAL_CHAR('}', buf[n - 2]);
+}
+
+void test_tc_no_ccfg_when_flag_off(void) {
+    // Sin has_ccfg (default) → el sub-objeto NO se emite (frame normal).
+    CentralTelemetryFrame f;
+    tc_frame_init(f);
+    char buf[1024];
+    TEST_ASSERT_TRUE(tc_serialize_jsonl(buf, sizeof(buf), f) > 0);
+    TEST_ASSERT_NULL(strstr(buf, "ccfg"));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_tc_serialize_golden_exact);
+    RUN_TEST(test_tc_ccfg_emitted_when_has_ccfg);
+    RUN_TEST(test_tc_no_ccfg_when_flag_off);
     RUN_TEST(test_tc_sniff_key_and_v_present);
     RUN_TEST(test_tc_init_sets_schema_and_defaults);
     RUN_TEST(test_tc_role_atk);

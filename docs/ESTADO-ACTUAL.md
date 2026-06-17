@@ -32,11 +32,14 @@ tipo: indice-operacional
 > Comandos: `SET MINPWM/EFF <idx> <val>` · `SET FWDL/FWDR/GKP/GKI/GKD <val>` · `GET` · `SAVE`.
 > Gateado `-DCENTRAL_EEPROM_CALIB` (envs `central_robot{1,2}_arquero_calib`); **competencia
 > byte-idéntica** (central_robot1/2 sin el flag → usan los constexpr; EEPROM = override opcional,
-> CRC falla → defaults). **APLICA ya:** min_pwm+eff (strafe lateral). **Se guarda pero NO aplica
-> aún:** fwd_pwm (avance recto) + PID gyro (próximo incremento, tocan mixer/strategy). Falta
-> también el eco `ccfg` en el frame para el GET-refresh (el parser de la app ya lo soporta).
-> Verificado: 19 host + 4 envs SUCCESS + 323 Python. Journal:
-> `journal/2026-06-17-calibracion-eeprom-sin-reflashear-cableada.md`.
+> CRC falla → defaults). **APLICAN:** `min_pwm`+`eff` (strafe lateral) Y **`gyro_kp/ki/kd` (PID de
+> rumbo — perilla para matar la oscilación, cableada en `strategy_init`, default no-op).** El
+> **GET-refresh** ya anda: el firmware emite el sub-objeto `ccfg` en el frame → el panel ve los
+> valores del robot. **`fwd_pwm_l/r` queda RESERVADO** (no cableado): en el omni-3 un "PWM izq/der
+> separado" no mapea limpio (las delanteras empujan a 120°) → el avance derecho se calibra con
+> `eff` (open-loop) + PID gyro (closed-loop). Verificado: 19+12 host + 4 envs SUCCESS + 322 Python.
+> Journals: `2026-06-17-calibracion-eeprom-sin-reflashear-cableada.md` +
+> `2026-06-17-completar-calibracion-ccfg-pid-gyro.md`.
 
 > **🎯 3 P0 DE COMPETENCIA RESUELTOS (firmware listo; banco = TASK-110) (2026-06-17):**
 > Del estado de situación de las 3 placas salieron 3 P0. Resueltos con criterio por riesgo:

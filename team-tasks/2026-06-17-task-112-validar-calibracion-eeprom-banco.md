@@ -38,12 +38,21 @@ python -m monitor_base                                  # vista "Calibrar CENTRA
       `central_robot1`/`central_robot2` (competencia) para que la calibración sirva en partido.
       Sin eso, el binario de partido ignora la EEPROM (usa constexpr).
 
+## Calibrar el PID de rumbo (NUEVO 2026-06-17 — ya aplica)
+
+- [ ] Con el robot oscilando/serpenteando, ajustar `SET GKP/GKI/GKD` desde el panel y "Aplicar"
+      → confirmar EN VIVO que la oscilación baja (sin reflashear). Empezá bajando Kp si sobre-corrige.
+- [ ] Convención: ganancia ×1000 (kp=1.5 → escribir 1500). `gkp=0` = usar el PID compilado (default).
+- [ ] "GUARDAR" + power-cycle → confirmar que las ganancias persisten.
+
 ## Notas
 
-- `fwd_pwm` (avance recto) y `gyro_kp/ki/kd` (PID) ya se pueden editar/guardar en el panel,
-  pero su EFECTO todavía NO está cableado (se guardan en EEPROM, listos). Su cableado al mixer
-  de avance / `strategy.cpp` es el próximo incremento.
-- El "Leer del robot (GET)" todavía no refresca con los valores reales (falta que el firmware
-  emita el sub-objeto `ccfg` en el frame — próximo incremento). Por ahora el panel edita+guarda.
+- **`gyro_kp/ki/kd` (PID de rumbo) YA APLICA** (cableado en `strategy_init`, default no-op si 0).
+- **GET-refresh YA ANDA**: el firmware emite `ccfg` en el frame → "Leer del robot" muestra los
+  valores reales de la EEPROM.
+- **`fwd_pwm_l/r` (avance recto) NO está cableado y NO se va a cablear** como PWM izq/der separado:
+  en el omni de 3 ruedas no mapea limpio (las delanteras empujan a 120°, acopladas a la rotación).
+  El "avance derecho" se calibra con **`eff[3]`** (balance open-loop) + el **PID gyro** (corrección
+  activa). El campo `fwd_pwm` se guarda en EEPROM pero su efecto queda reservado.
 
 Journal: `journal/2026-06-17-calibracion-eeprom-sin-reflashear-cableada.md`.

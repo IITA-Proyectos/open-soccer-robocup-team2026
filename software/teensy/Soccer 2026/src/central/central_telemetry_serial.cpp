@@ -164,6 +164,20 @@ void fill_frame(CentralTelemetryFrame& f) {
     // ── Loop-time ──
     f.loop_max_us = central_loop_max_us();
     f.loop_ema_us = central_loop_ema_us();
+
+#ifdef CENTRAL_EEPROM_CALIB
+    // ── Eco de la calibración viva en EEPROM (refresca el panel "Calibrar CENTRAL") ──
+    f.has_ccfg = 1;
+    for (int i = 0; i < 3; ++i) {
+        f.ccfg_min_pwm[i] = g_central_cfg.min_pwm[i];
+        f.ccfg_eff[i]     = g_central_cfg.eff[i];
+    }
+    f.ccfg_fwd_l = g_central_cfg.fwd_pwm_l;
+    f.ccfg_fwd_r = g_central_cfg.fwd_pwm_r;
+    f.ccfg_gkp   = g_central_cfg.gyro_kp;
+    f.ccfg_gki   = g_central_cfg.gyro_ki;
+    f.ccfg_gkd   = g_central_cfg.gyro_kd;
+#endif
 }
 
 // Emite UN frame en JSON Lines (modo MÁQUINA, para la app).

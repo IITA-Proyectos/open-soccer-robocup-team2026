@@ -217,10 +217,11 @@ inline void watchdog_feed() {
     s.ball_x_mm       = cameras_get_ball_x_mm();
     s.ball_y_mm       = cameras_get_ball_y_mm();
     s.ball_confidence = cameras_get_ball_confidence();
-    // Velocidad de la pelota (mm/s, marco robot). Ahora viaja en el snapshot a
-    // CENTRAL (antes entraba 0 fijo). 0 = sin estimación válida.
-    // ⚠️ PENDIENTE: CENTRAL todavía NO la consume — falta getter en world_model
-    // + llamar bt_classify en strategy. El dato está listo para cablear.
+    // Velocidad de la pelota (mm/s, marco robot). Viaja en el snapshot a CENTRAL.
+    // 0 = sin estimación válida. ✅ CENTRAL SÍ la consume (corrección 2026-06-17): hay
+    // getter en world_model (world_model_get_ball_vx/vy_mm_s) y el arquero la usa en
+    // INTERCEPT vía ball_predict/bt_classify (strategy.cpp). El "PENDIENTE" anterior
+    // quedó SUPERADO — el cableado ya existe.
     s.ball_vx_mm_s    = cameras_get_ball_vx_mm_s();
     s.ball_vy_mm_s    = cameras_get_ball_vy_mm_s();
 

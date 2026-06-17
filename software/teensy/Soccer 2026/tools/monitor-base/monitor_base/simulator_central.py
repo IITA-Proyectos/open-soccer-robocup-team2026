@@ -117,6 +117,12 @@ class SimulatorCentral:
                 "max_us": 8000 + int(round(3000 * abs(math.sin(s * 0.02)))),
                 "ema_us": 2200 + int(round(400 * math.sin(s * 0.05))),
             },
+            # Eco de calibración (como el firmware con -DCENTRAL_EEPROM_CALIB) → ejercita el
+            # panel "Calibrar CENTRAL" en --sim-central, sin robot. Valores típicos R2.
+            "ccfg": {
+                "min_pwm": [70, 70, 107], "eff": [100, 100, 115],
+                "fwd_l": 120, "fwd_r": 118, "gkp": 1500, "gki": 10, "gkd": 300,
+            },
         }
         self.seq += 1
         self.t_ms += self.dt_ms

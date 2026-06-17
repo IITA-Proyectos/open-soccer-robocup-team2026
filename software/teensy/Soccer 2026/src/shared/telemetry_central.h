@@ -97,6 +97,19 @@ struct CentralTelemetryFrame {
     // ── Loop-time (supervisor R2) ──
     uint32_t loop_max_us;     // g_loop_monitor.max_us (peor vuelta vista)
     uint32_t loop_ema_us;     // g_loop_monitor.ema_us (promedio suave)
+
+    // ── Eco OPCIONAL de la calibración en EEPROM (sub-objeto "ccfg") ──
+    // 2026-06-17: el glue lo llena SOLO bajo -DCENTRAL_EEPROM_CALIB (desde g_central_cfg).
+    // Si has_ccfg=0 (default), el serializador NO emite el sub-objeto → frame idéntico.
+    // Sirve para que la app refresque el panel "Calibrar CENTRAL" con los valores del robot.
+    uint8_t  has_ccfg;        // 0 = no emitir "ccfg"
+    int16_t  ccfg_min_pwm[3]; // piso PWM por motor
+    int16_t  ccfg_eff[3];     // eficiencia ×100 por rueda
+    int16_t  ccfg_fwd_l;      // PWM avance recto izq
+    int16_t  ccfg_fwd_r;      // PWM avance recto der
+    int16_t  ccfg_gkp;        // PID giro kp ×1000
+    int16_t  ccfg_gki;        // ki ×1000
+    int16_t  ccfg_gkd;        // kd ×1000
 };
 
 // Inicializa un frame a ceros + schema. fsm_state queda nullptr (serializa como "").

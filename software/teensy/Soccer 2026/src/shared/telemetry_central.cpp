@@ -120,10 +120,28 @@ int tc_serialize_jsonl(char* buf, int cap, const CentralTelemetryFrame& f) {
         tc_fz(f.snap_goal_opp_angle_deg), (int)f.snap_goal_opp_distance_mm);
     if (off < 0) return -1;
 
-    // loop (supervisor de loop-time) + cierre
+    // loop (supervisor de loop-time) — SIN cerrar el objeto todavía.
     off = tc_append(buf, cap, off,
-        "\"loop\":{\"max_us\":%lu,\"ema_us\":%lu}}\n",
+        "\"loop\":{\"max_us\":%lu,\"ema_us\":%lu}",
         (unsigned long)f.loop_max_us, (unsigned long)f.loop_ema_us);
+    if (off < 0) return -1;
+
+    // ccfg (eco OPCIONAL de la calibración en EEPROM). Mismo formato que espera el parser
+    // de la app (protocol_central.CalibConfig). Solo si has_ccfg (el glue lo activa bajo
+    // -DCENTRAL_EEPROM_CALIB). Sin el flag → no se emite → frame byte-idéntico.
+    if (f.has_ccfg) {
+        off = tc_append(buf, cap, off,
+            ",\"ccfg\":{\"min_pwm\":[%d,%d,%d],\"eff\":[%d,%d,%d],"
+            "\"fwd_l\":%d,\"fwd_r\":%d,\"gkp\":%d,\"gki\":%d,\"gkd\":%d}",
+            (int)f.ccfg_min_pwm[0], (int)f.ccfg_min_pwm[1], (int)f.ccfg_min_pwm[2],
+            (int)f.ccfg_eff[0], (int)f.ccfg_eff[1], (int)f.ccfg_eff[2],
+            (int)f.ccfg_fwd_l, (int)f.ccfg_fwd_r,
+            (int)f.ccfg_gkp, (int)f.ccfg_gki, (int)f.ccfg_gkd);
+        if (off < 0) return -1;
+    }
+
+    // cierre del objeto raíz.
+    off = tc_append(buf, cap, off, "}\n");
     if (off < 0) return -1;
 
     return off;

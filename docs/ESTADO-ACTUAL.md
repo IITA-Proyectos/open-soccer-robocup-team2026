@@ -24,6 +24,17 @@ tipo: indice-operacional
 > Pendiente la otra mitad (CENTRAL consume el vector temprano, post-Incheon). Journal:
 > `journal/2026-06-16-f3-deteccion-temprana-vecino-fisico-cableada.md`.
 
+> **⭐ TOP DE COMPETENCIA = FIRMWARE COMPLETO/RÁPIDO (Gustavo 2026-06-16):** el env de competencia
+> `top_robot2_pri` (default) AHORA trae TODAS las mejoras RT (emisor ISR @100Hz + seqlock endurecido
+> + frescura por-sensor + BNO@100Hz + HC-SR04 no-bloqueante + round-robin skip + centinela + freeze-
+> detector). El stock anterior quedó como **`top_robot2_pri_anterior`** (FALLBACK "por las dudas").
+> `top_robot2_pri_rt` = alias. ⚠️ El RT **NO está validado en HW** → se valida USÁNDOLO en banco
+> (T1-T7 + make-or-break del freeze-detector: quieto 3-5 min sin falso-CONGELADO). Escape ante
+> cualquier problema = `top_robot2_pri_anterior`. **R1 PENDIENTE (TASK-217, requiere R1 a mano; R1 no
+> tiene BNO sano → flags de BNO no aplican igual).** Journal:
+> `journal/2026-06-16-top-competencia-firmware-completo-rt.md`. .hex listos:
+> `software/teensy/Soccer 2026/TOP_R2_competencia.hex` + `TOP_R2_anterior.hex`.
+
 > **📷 PRIORIDAD CON ELÍAS (Gustavo, 2026-06-15):** Elías calibró las 4 cámaras (homografía
 > per-cámara, 2026-06-14) pero los valores NO están en el repo versionado. **Apenas una sesión
 > esté trabajando con Elías (o él en banco/cámaras), pedirle PRIMERO —como prioritario— que

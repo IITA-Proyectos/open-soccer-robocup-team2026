@@ -23,7 +23,7 @@ tipo: indice-operacional
 | R1 | TOP | **`top_robot2_pri`** (sí, "robot2": vale para AMBAS TOP desde el recableado 2026-06-11) | `top_robot1*` = cableado VIEJO, NO flashear |
 | R1 | DOWN | `down` (a secas — CON OTOS) | `down_robot2` NO va en R1 |
 | **R2** | CENTRAL (delantero partido) | `central_robot2` | banco/demo: `central_robot2_demo_bb` |
-| R2 | CENTRAL (arquero) | `central_robot2_arquero` | banco: `_bb` / solo-patrulla: `_patrol_bb` |
+| R2 | CENTRAL (arquero) | **`central_robot2_arquero`** ⭐ (2026-06-16: quick-wins RT B+C APLICADOS — quitado `CENTRAL_DEBUG_SERIAL` + agregado `CENTRAL_TOP_RX_BIGBUF`) | banco: `_bb` / solo-patrulla: `_patrol_bb` · `.hex` listo: `software/teensy/Soccer 2026/CENTRAL_R2_arquero_competencia.hex` |
 | R2 | TOP | **`top_robot2_pri`** | `top_robot2_pri_sticky` = cámara pegajosa (promover tras validar) |
 | R2 | DOWN | `down_robot2` (sin OTOS) | |
 | ambos | DOWN (calibrar línea) | `diag_down_calibracion` (`c`→`b`→`v`→`s`, 32/32 margin ≥40) | al terminar, RE-flashear el down. ⚠️ **POSIBLE CAMINO MÁS CORTO sin reflashear:** el `down`/`down_robot2` de competencia lleva `-DDOWN_USB_MONITOR` → calibrar EN VIVO con la app `monitor-base`. El código lo soporta pero **3 docs se contradicen** (esta fila vs `platformio.ini` vs la guía `USO-MONITOREO-Y-TELEMETRIA.md`) → **TASK-307** lo resuelve/confirma en banco antes de fijar el flujo |

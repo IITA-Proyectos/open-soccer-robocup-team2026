@@ -372,6 +372,10 @@ nativo, pero ya no es el único camino. Ver
   adcdual,otosfast,reliable,rxharden,rt_all}`.
 - **Verificación:** full host gate **84 envs / 1162 tests / 0 fails**; revisión adversarial del glue **limpia
   (0 must-fix)**; `down_rt_all` prueba que las 5 fases coexisten. Detalle: journal `2026-06-16-reingenieria-rt-down-*`.
+- **Paralelismo (pedido Gustavo):** resumen ejecutivo de "qué falta para que la luz no espere al OTOS"
+  (3 lecturas / 2 envíos / 200 Hz) en [`docs/firmware/DOWN-PARALELISMO-RESUMEN-2026-06-16.md`](firmware/DOWN-PARALELISMO-RESUMEN-2026-06-16.md).
+  Veredicto: el MÍNIMO ("la luz no espera al OTOS") ya está programado (F1+F2, banco→TASK-309); el paralelo
+  real por DMA es 2027 (el core no da I²C-DMA). El TOP ya tiene el template (`snapshot_emitter`).
 
 ### Avance 2026-06-16 — Centinela VERIFICADO en banco (R2) + programa BENDECIDO para ambos robots (TASK-213 ✅)
 - **TASK-213 cerrada por Gustavo (banco R2):** con `top_robot2_pri_xval` flasheado → primario en Wire2

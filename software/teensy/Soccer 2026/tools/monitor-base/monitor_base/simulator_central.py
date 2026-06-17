@@ -99,6 +99,19 @@ class SimulatorCentral:
                 "goal_own_dist": 1800 + int(round(200 * math.cos(s * 0.04))),
                 "referee": 1 if match else 0,
                 "flags": (0x08 if match else 0) | 0x10,   # MATCH_RUNNING | HEADING_VALID
+                # Campos AMPLIADOS 2026-06-17. Simulamos un robot que se mueve por
+                # el medio-arco propio (Y ~ 500-800 mm) y oscila lateralmente; pose
+                # válida con confianza alta para ejercitar la vista de cancha.
+                "my_x": int(round(910 + 350 * math.sin(s * 0.04))),
+                "my_y": int(round(650 + 120 * math.cos(s * 0.06))),
+                "my_hdg": round(hdg, 2),
+                "hdg_valid": 1,
+                "my_conf": 80 if (s % 200) < 180 else 0,   # parpadea a 0 (sin ancla)
+                "ball_vx": int(round(ball_x * 0.5)) if ball_vis else 0,
+                "ball_vy": int(round(-50 * math.sin(s * 0.06))) if ball_vis else 0,
+                "goal_opp_vis": 1 if (s % 50) < 35 else 0,
+                "goal_opp_ang": round(-3.0 + 12.0 * math.sin(s * 0.05), 2),
+                "goal_opp_dist": 1700 + int(round(250 * math.sin(s * 0.03))),
             },
             "loop": {
                 "max_us": 8000 + int(round(3000 * abs(math.sin(s * 0.02)))),

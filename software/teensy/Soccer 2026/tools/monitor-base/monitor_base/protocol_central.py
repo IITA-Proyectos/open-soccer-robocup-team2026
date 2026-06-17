@@ -100,9 +100,18 @@ class Otos:
 
 @dataclass
 class Snap:
-    """Eco del WorldSnapshot que la CENTRAL consume (pelota relativa + arco propio
-    en polar + árbitro + flags). NO trae my_x/my_y: la pose del robot NO viaja en
-    este contrato (GAP del TOP); cualquier consumidor debe tratarla como 0/ausente."""
+    """Eco del WorldSnapshot que la CENTRAL consume.
+
+    2026-06-17: AMPLIADO con pose XY del robot (my_x/my_y/my_heading_deg/heading_valid/
+    my_pose_conf) + velocidad de la pelota (ball_vx/ball_vy) + arco rival
+    (goal_opp_*). El contrato JSON sigue siendo v=1: los campos nuevos son ADITIVOS
+    y se parsean con default 0/False si vienen de un firmware viejo (compat hacia atrás).
+
+    REGLA DE USO de la pose (my_x/my_y):
+      - Si my_pose_conf == 0  → el TOP NO ANCLA. NO usar my_x/my_y para dibujar.
+      - Si my_pose_conf > 0   → pose válida con confianza N. Usar (puede ser ruidosa).
+      - heading_valid puede ser True incluso con my_pose_conf=0 (el BNO funciona aunque
+        la trilateración ToF no haya anclado todavía)."""
     ball_vis: bool
     ball_x: int        # mm, relativo al robot
     ball_y: int        # mm, relativo al robot
@@ -110,6 +119,17 @@ class Snap:
     goal_own_dist: int    # mm
     referee: int
     flags: int
+    # Campos AMPLIADOS 2026-06-17 (defaults para retro-compat con firmware viejo):
+    my_x: int = 0            # mm, pose X robot en cancha. 0 = no ancla.
+    my_y: int = 0            # mm, pose Y robot en cancha
+    my_heading_deg: float = 0.0  # grados absolutos (válido si heading_valid)
+    heading_valid: bool = False
+    my_pose_conf: int = 0    # 0-100. 0 = pose desconocida (no dibujar robot en cancha)
+    ball_vx: int = 0         # mm/s, velocidad pelota en marco robot
+    ball_vy: int = 0
+    goal_opp_vis: bool = False
+    goal_opp_ang: float = 0.0    # grados (arco rival; válido si goal_opp_vis)
+    goal_opp_dist: int = 0       # mm
 
     @property
     def referee_name(self) -> str:
@@ -118,6 +138,12 @@ class Snap:
     @property
     def flag_names(self) -> List[str]:
         return decode_snap_flags(self.flags)
+
+    @property
+    def has_pose(self) -> bool:
+        """¿El TOP está anclando la pose? Filtro recomendado antes de dibujar el
+        robot en la cancha. Si False → my_x/my_y vienen 0 y no son una pose real."""
+        return self.my_pose_conf > 0
 
 
 @dataclass
@@ -193,12 +219,24 @@ def parse_obj_central(obj: dict, raw: str = "") -> CentralFrame:
         otos = Otos(fresh=bool(ot["fresh"]), hdg=float(ot["hdg"]))
 
         sn = obj["snap"]
+        # Campos AMPLIADOS 2026-06-17: parser tolerante con .get() para que el
+        # monitor siga abriendo frames de firmwares viejos que no los emiten.
         snap = Snap(
             ball_vis=bool(sn["ball_vis"]),
             ball_x=int(sn["ball_x"]), ball_y=int(sn["ball_y"]),
             goal_own_ang=float(sn["goal_own_ang"]),
             goal_own_dist=int(sn["goal_own_dist"]),
             referee=int(sn["referee"]), flags=int(sn["flags"]),
+            my_x=int(sn.get("my_x", 0)),
+            my_y=int(sn.get("my_y", 0)),
+            my_heading_deg=float(sn.get("my_hdg", 0.0)),
+            heading_valid=bool(sn.get("hdg_valid", 0)),
+            my_pose_conf=int(sn.get("my_conf", 0)),
+            ball_vx=int(sn.get("ball_vx", 0)),
+            ball_vy=int(sn.get("ball_vy", 0)),
+            goal_opp_vis=bool(sn.get("goal_opp_vis", 0)),
+            goal_opp_ang=float(sn.get("goal_opp_ang", 0.0)),
+            goal_opp_dist=int(sn.get("goal_opp_dist", 0)),
         )
 
         lp = obj["loop"]

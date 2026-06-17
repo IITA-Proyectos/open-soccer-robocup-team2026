@@ -201,12 +201,14 @@ inline void watchdog_feed() {
 
     // Heading: SIEMPRE del IMU, desacoplado de la validez de la POSICIÓN.
     // localization_compute() solo escribe pose.heading_centideg dentro del bloque
-    // valid (necesita un TOF de eje X y otro de eje Y a la vez); con el hardware
-    // actual (TOFs solo en el eje Y) la pose nunca es válida, así que
-    // pose.heading_centideg quedaba en 0 y el CENTRAL navegaba con heading=0 fijo.
-    // El robot SÍ conoce su orientación (2 BNO055), aunque no su posición. CENTRAL
-    // consume el heading sin gatearlo por confidence (ver world_model.cpp), por lo
-    // que enviarlo directo del IMU es seguro y estrictamente más correcto.
+    // valid (necesita ≥2 TOFs útiles, 1 por eje). HISTÓRICO: en mayo/junio el HW
+    // tenía solo 2 ToFs en eje Y → pose nunca válida. ESTADO 2026-06-17 (Gustavo):
+    // los 4 ToFs (frente/atrás/derecha/izquierda) están soldados y operativos en R1
+    // y R2 → cubren X+Y → localization PUEDE anclar. Encender la fusión completa con
+    // -DTOP_ENABLE_POSE_FUSION (env top_robot2_pri_posefusion). Banco pendiente:
+    // validar signo/eje OTOS vs cancha + ruido ToF + heading_valid sin falsos.
+    // El robot SÍ conoce su orientación (2 BNO055) AUNQUE la trilateración no haya
+    // anclado, por eso el heading del BNO se envía siempre, independiente de pose.
     s.my_heading_centideg = sensors_imu_get_heading_centideg();
 
     // Pelota — fusión front+back desde cameras_runtime (sección 7.2 de

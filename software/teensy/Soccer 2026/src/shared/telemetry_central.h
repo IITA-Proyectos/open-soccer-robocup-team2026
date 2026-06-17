@@ -70,13 +70,27 @@ struct CentralTelemetryFrame {
     float    otos_heading_deg;// world_model_get_otos_heading_deg
 
     // ── Eco del WorldSnapshot que la CENTRAL RECIBE del TOP ──
-    // ⚠ my_x/my_y del snapshot = 0 (GAP-002 del TOP: heading sí, pose no) → no se exponen acá.
+    // 2026-06-17: AMPLIADO con pose XY del robot + heading + heading_valid + confianza
+    // + arco RIVAL + velocidad de la pelota. Aditivo: el contrato JSON sigue siendo v=1
+    // (campos nuevos = ADITIVOS, no bumpean schema). Cuando TOP no ancla (pose_fusion
+    // OFF o ToF sin lecturas válidas), my_x/my_y vienen 0 y my_pose_confidence=0 → la
+    // app debe filtrar por confianza antes de dibujar la pose.
     uint8_t  snap_ball_visible;
     int16_t  snap_ball_x_mm;
     int16_t  snap_ball_y_mm;
-    uint8_t  snap_goal_own_visible;     // gatea ang/dist (no se serializa, solo informa)
+    int16_t  snap_ball_vx_mm_s;         // velocidad pelota (marco robot), mm/s
+    int16_t  snap_ball_vy_mm_s;
+    uint8_t  snap_goal_own_visible;     // gatea ang/dist del arco propio
     float    snap_goal_own_angle_deg;   // válido sólo si goal_own_visible
     int16_t  snap_goal_own_distance_mm; // válido sólo si goal_own_visible
+    uint8_t  snap_goal_opp_visible;     // gatea ang/dist del arco rival
+    float    snap_goal_opp_angle_deg;   // válido sólo si goal_opp_visible
+    int16_t  snap_goal_opp_distance_mm; // válido sólo si goal_opp_visible
+    int16_t  snap_my_x_mm;              // pose del robot (cancha). 0 si TOP no ancla
+    int16_t  snap_my_y_mm;
+    float    snap_my_heading_deg;       // heading absoluto. Válido si snap_heading_valid
+    uint8_t  snap_heading_valid;        // flag bit4 del WorldSnapshot
+    uint8_t  snap_my_pose_confidence;   // 0-100. 0 = pose desconocida (no dibujar)
     uint8_t  snap_referee_cmd;
     uint8_t  snap_flags;                // byte crudo de WorldSnapshot.flags
 

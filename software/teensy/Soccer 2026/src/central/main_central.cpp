@@ -281,30 +281,34 @@ void loop() {
         bool cmd_go = false, cmd_stop = false;
 #endif
 
-#ifdef CENTRAL_USB_MONITOR
-        // === TRAMPA DE LA 'S' resuelta ===
-        // La app manda "STREAM ON\n"/"PING\n": la 'S' de STREAM NO debe disparar STOP.
-        // Solución: bufferamos LÍNEAS completas y se las pasamos al parser del monitor
-        // ANTES de mirar los chars de control. Si la línea ERA un comando del monitor
-        // (PING/STREAM), central_telemetry_consume_line() la consume y devuelve true →
-        // sus chars NO se procesan como g/s/d/x. Una línea con control real ('g'/'s'/
-        // 'd'/'x', sola o con basura) NO es del monitor → se procesa igual que siempre.
+        // === TRAMPA DE LA 'S' resuelta (UNIFICADA 2026-06-17) ===
+        // La app de monitoreo manda "STREAM ON\n" al conectarse y "PING\n" cada ~1 s.
+        // Histórico: el path char-por-char trataba cualquier '\n'/'\r' como GO ("ENTER
+        // pelado = GO" del juez-PC). Resultado: cada PING\n arrancaba el robot solo.
+        // Y la 'S' de STREAM disparaba STOP. Antes el fix vivía SOLO bajo
+        // CENTRAL_USB_MONITOR; ahora bufferamos líneas SIEMPRE y aplicamos una regla
+        // simple, sin dependencia del parser del monitor:
+        //   línea vacía  ('\n' pelado)        -> GO  (manual-start)
+        //   línea de 1 char  (g/s/d/x + LF)   -> comando
+        //   línea de >1 char (STREAM ON/PING) -> IGNORAR (texto del monitor o basura)
+        // En envs con CENTRAL_USB_MONITOR despachamos PING/STREAM al parser del monitor
+        // ANTES (y la consume_line ya filtra STREAM/PING/UNKNOWN según corresponda).
         static char s_line[64];
         static int  s_line_len = 0;
         while (Serial.available()) {
             const int ci = Serial.read();
             const char c = static_cast<char>(ci);
             if (c == '\n' || c == '\r') {
-                const bool consumed = central_telemetry_consume_line(s_line, s_line_len);
+                bool consumed = false;
+#ifdef CENTRAL_USB_MONITOR
+                consumed = central_telemetry_consume_line(s_line, s_line_len);
+#endif
                 if (!consumed) {
-                    // No era comando del monitor: aplicar la semántica de control de la
-                    // línea (juez + caja negra), igual que el handler char-por-char viejo.
-                    // ENTER pelado (línea vacía) = GO (manual-start), como antes.
 #ifdef CENTRAL_ENABLE_MANUAL_START
                     if (s_line_len == 0) cmd_go = true;
 #endif
-                    for (int i = 0; i < s_line_len; ++i) {
-                        const char lc = s_line[i];
+                    if (s_line_len == 1) {
+                        const char lc = s_line[0];
 #ifdef CENTRAL_ENABLE_MANUAL_START
                         if (lc == 'g' || lc == 'G') cmd_go = true;
                         else if (lc == 's' || lc == 'S') cmd_stop = true;
@@ -314,6 +318,7 @@ void loop() {
                         else if (lc == 'x' || lc == 'X') blackbox_reset();
 #endif
                     }
+                    // s_line_len > 1 y no consumida -> texto del monitor / basura: ignorar.
                 }
                 s_line_len = 0;
             } else if (s_line_len < static_cast<int>(sizeof(s_line))) {
@@ -322,19 +327,6 @@ void loop() {
                 s_line_len = 0;   // línea demasiado larga (basura): descartar
             }
         }
-#else  // !CENTRAL_USB_MONITOR — handler char-por-char ORIGINAL (byte-idéntico)
-        while (Serial.available()) {
-            const int c = Serial.read();
-            if (c == '\n' || c == '\r' || c == 'g' || c == 'G') cmd_go = true;
-            else if (c == 's' || c == 'S')                      cmd_stop = true;
-#ifdef CENTRAL_BLACKBOX
-            // Caja negra (envs *_bb): 'd' = volcar CSV ahora · 'x' = borrar/re-armar.
-            // (El volcado AUTOMÁTICO ocurre solo en cada RUN→STOP.)
-            else if (c == 'd' || c == 'D') blackbox_dump();
-            else if (c == 'x' || c == 'X') blackbox_reset();
-#endif
-        }
-#endif  // CENTRAL_USB_MONITOR
 
 #ifdef CENTRAL_ENABLE_MANUAL_START
         // Ruido de motor en el pin 9 solo puede dar GO espurio (no-op si ya corre);

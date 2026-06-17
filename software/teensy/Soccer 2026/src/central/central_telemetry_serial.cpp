@@ -135,12 +135,25 @@ void fill_frame(CentralTelemetryFrame& f) {
     f.otos_heading_deg = world_model_get_otos_heading_deg();
 
     // ── Eco del WorldSnapshot recibido del TOP ──
+    // 2026-06-17: AMPLIADO con pose XY + heading + confianza + arco rival + ball_v.
+    // Si TOP no llena (pose_fusion OFF o ToF sin lecturas), viajan 0/false; la app
+    // gatea por my_pose_confidence antes de dibujar el robot en cancha.
     f.snap_ball_visible       = world_model_ball_visible() ? 1 : 0;
     f.snap_ball_x_mm          = static_cast<int16_t>(world_model_get_ball_x_mm());
     f.snap_ball_y_mm          = static_cast<int16_t>(world_model_get_ball_y_mm());
+    f.snap_ball_vx_mm_s       = world_model_get_ball_vx_mm_s();
+    f.snap_ball_vy_mm_s       = world_model_get_ball_vy_mm_s();
     f.snap_goal_own_visible   = world_model_goal_own_visible() ? 1 : 0;
     f.snap_goal_own_angle_deg = world_model_get_goal_own_angle_deg();
     f.snap_goal_own_distance_mm = static_cast<int16_t>(world_model_get_goal_own_distance_mm());
+    f.snap_goal_opp_visible   = world_model_goal_opp_visible() ? 1 : 0;
+    f.snap_goal_opp_angle_deg = world_model_get_goal_opp_angle_deg();
+    f.snap_goal_opp_distance_mm = static_cast<int16_t>(world_model_get_goal_opp_distance_mm());
+    f.snap_my_x_mm            = static_cast<int16_t>(world_model_get_my_x_mm());
+    f.snap_my_y_mm            = static_cast<int16_t>(world_model_get_my_y_mm());
+    f.snap_my_heading_deg     = world_model_get_my_heading_deg();
+    f.snap_heading_valid      = world_model_heading_valid() ? 1 : 0;
+    f.snap_my_pose_confidence = world_model_get_my_pose_confidence();
     f.snap_referee_cmd        = world_model_referee_cmd();
     f.snap_flags              = snapshot_flags_byte();
 

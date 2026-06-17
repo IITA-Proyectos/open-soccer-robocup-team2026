@@ -53,7 +53,10 @@ static const char* GOLDEN =
     "\"top\":{\"rxB\":4096,\"fr\":372,\"crc\":1,\"rsy\":0,\"badsz\":0,\"fresh\":1,\"age\":4},"
     "\"down\":{\"rx\":355,\"crc\":2,\"lost\":1,\"rsy\":0,\"badsch\":0,\"line_fresh\":1,\"valid\":1,\"ev\":1,\"age\":3},"
     "\"otos\":{\"fresh\":1,\"hdg\":42.50},"
-    "\"snap\":{\"ball_vis\":1,\"ball_x\":-118,\"ball_y\":338,\"goal_own_ang\":178.50,\"goal_own_dist\":1800,\"referee\":1,\"flags\":24},"
+    "\"snap\":{\"ball_vis\":1,\"ball_x\":-118,\"ball_y\":338,\"goal_own_ang\":178.50,\"goal_own_dist\":1800,\"referee\":1,\"flags\":24,"
+    "\"my_x\":0,\"my_y\":0,\"my_hdg\":0.00,\"hdg_valid\":0,\"my_conf\":0,"
+    "\"ball_vx\":0,\"ball_vy\":0,"
+    "\"goal_opp_vis\":0,\"goal_opp_ang\":0.00,\"goal_opp_dist\":0},"
     "\"loop\":{\"max_us\":9500,\"ema_us\":2200}}\n";
 
 void test_tc_serialize_golden_exact(void) {

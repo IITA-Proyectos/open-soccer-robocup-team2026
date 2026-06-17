@@ -90,19 +90,13 @@ class CentralHealthPanel(Panel):
         self.loop_lbl.pack()
         attach_tooltip(self.loop_lbl, tip("central.loop"))
 
-        # Fila 4: eco del snapshot.
-        ttk.Label(body, text="ECO DEL SNAPSHOT (pelota / arco / árbitro)",
+        # Fila 4: eco del snapshot (2026-06-17: AMPLIADO con pose XY + heading_valid
+        # + pose_conf + ball_v + arco rival, ahora que el contrato los transmite).
+        ttk.Label(body, text="ECO DEL SNAPSHOT (pose / pelota / arcos / árbitro)",
                   style="Muted.TLabel").grid(row=4, column=0, columnspan=2, sticky="w")
-        self.snap_txt = tk.Text(body, width=52, height=7, font=("Consolas", 10),
+        self.snap_txt = tk.Text(body, width=58, height=11, font=("Consolas", 10),
                                 bg=PANEL, fg=FG, relief="flat", highlightthickness=0)
         self.snap_txt.grid(row=5, column=0, columnspan=2, sticky="we", pady=(0, 6))
-
-        # Aviso honesto del GAP de pose.
-        tk.Label(body, bg=BG, fg=MUTED, anchor="w", justify="left",
-                 font=("Segoe UI", 9), wraplength=480,
-                 text=("Nota: la pose my_x / my_y del robot NO viaja en este contrato "
-                       "(GAP del TOP). Por eso acá no se muestra una posición en cancha: "
-                       "sería 0,0 falso.")).grid(row=6, column=0, columnspan=2, sticky="we")
 
     def _make_link_tile(self, parent: ttk.Frame, col: int, title: str) -> dict:
         frame = tk.Frame(parent, bd=1, relief="solid", padx=8, pady=6,
@@ -168,7 +162,7 @@ class CentralHealthPanel(Panel):
             self._top_tile,
             Status.OK if tfresh else Status.NODATA,
             (f"fresco={'SÍ' if tfresh else 'no'}   edad={getattr(top, 'age', 0)} ms\n"
-             f"frames={getattr(top, 'fr', 0)}  crc={getattr(top, 'crc', 0)}  "
+             f"frames={getattr(top, 'fr', 0)}  crc={getattr(top, 'crc', 0)}\n"
              f"resync={getattr(top, 'rsy', 0)}  badsz={getattr(top, 'badsz', 0)}\n"
              f"rxB={getattr(top, 'rxB', 0)}"))
 
@@ -185,10 +179,10 @@ class CentralHealthPanel(Panel):
             st = Status.NODATA
         self._set_tile(
             self._down_tile, st,
-            (f"fresco={'SÍ' if dfresh else 'no'}   válido={'SÍ' if dvalid else 'NO'}"
-             f"   edad={getattr(down, 'age', 0)} ms\n"
+            (f"fresco={'SÍ' if dfresh else 'no'}   válido={'SÍ' if dvalid else 'NO'}\n"
+             f"edad={getattr(down, 'age', 0)} ms\n"
              # lost y crc SEPARADOS (no sumar): naturalezas distintas.
-             f"rx={getattr(down, 'rx', 0)}  crc={getattr(down, 'crc', 0)}  "
+             f"rx={getattr(down, 'rx', 0)}  crc={getattr(down, 'crc', 0)}\n"
              f"lost={getattr(down, 'lost', 0)}  resync={getattr(down, 'rsy', 0)}\n"
              f"badsch={getattr(down, 'badsch', 0)}  ev=0x{getattr(down, 'ev', 0):02x}"))
 
@@ -229,23 +223,53 @@ class CentralHealthPanel(Panel):
 
     def _render_snap(self, f: CentralFrame) -> None:
         snap = getattr(f, "snap", None)
+        # — pelota (relativa al robot) —
         ball_vis = bool(getattr(snap, "ball_vis", False))
         bx = getattr(snap, "ball_x", 0)
         by = getattr(snap, "ball_y", 0)
+        bvx = getattr(snap, "ball_vx", 0)
+        bvy = getattr(snap, "ball_vy", 0)
+        # — arco propio (polar) —
         gang = getattr(snap, "goal_own_ang", 0.0)
         gdist = getattr(snap, "goal_own_dist", 0)
+        # — arco rival (polar) AMPLIADO 2026-06-17 —
+        goal_opp_vis = bool(getattr(snap, "goal_opp_vis", False))
+        goang = getattr(snap, "goal_opp_ang", 0.0)
+        godist = getattr(snap, "goal_opp_dist", 0)
+        # — pose absoluta del robot AMPLIADA 2026-06-17 —
+        # has_pose=True solo si my_pose_conf > 0 (TOP anclando).
+        has_pose = bool(getattr(snap, "has_pose", False))
+        my_x = getattr(snap, "my_x", 0)
+        my_y = getattr(snap, "my_y", 0)
+        my_hdg = getattr(snap, "my_heading_deg", 0.0)
+        hdg_valid = bool(getattr(snap, "heading_valid", False))
+        conf = getattr(snap, "my_pose_conf", 0)
+        # — árbitro / flags —
         ref = int(getattr(snap, "referee", 0) or 0)
         flags = int(getattr(snap, "flags", 0) or 0)
         ref_name = REFEREE.get(ref, f"?{ref}")
         names = decode_snap_flags(flags)
-        ball = (f"x={bx:+5d} y={by:+5d} mm (rel.)" if ball_vis else "no la ve")
+
+        # Pose: si conf=0 el TOP NO ANCLA → no mostramos coords (sería 0,0 falso).
+        if has_pose:
+            pose_line = f"x={my_x:+5d} y={my_y:+5d} mm   conf={conf}/100"
+        else:
+            pose_line = f"NO ANCLA (conf=0) — pose desconocida"
+        hdg_line = (f"hdg={my_hdg:+6.1f}°   valid={'SÍ' if hdg_valid else 'NO'}")
+        ball = (f"x={bx:+5d} y={by:+5d} mm (rel.)   v=({bvx:+4d},{bvy:+4d}) mm/s"
+                if ball_vis else "no la ve")
+        gopp = (f"{goang:+.1f}°   {godist} mm" if goal_opp_vis else "no lo ve")
+
         self._set_text(self.snap_txt,
+            f"pose robot    : {pose_line}\n"
+            f"heading       : {hdg_line}\n"
             f"pelota        : {ball}\n"
             f"arco propio   : {gang:+.1f}°   {gdist} mm\n"
+            f"arco rival    : {gopp}\n"
             f"árbitro       : {ref_name}\n"
             f"flags         : {', '.join(names) if names else '—'}\n"
             f"\n"
-            f"(pelota relativa al robot — la pose absoluta no viaja, ver nota abajo)\n")
+            f"(pose en marco CANCHA; pelota y arcos relativos al ROBOT)\n")
 
     # ── Helpers ───────────────────────────────────────────────────────────────
     def _set_text(self, widget: tk.Text, text: str) -> None:

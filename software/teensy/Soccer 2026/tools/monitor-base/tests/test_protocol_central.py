@@ -71,6 +71,59 @@ def test_bool_fields_coerced():
     assert f.snap.ball_vis is True
 
 
+# ── Campos AMPLIADOS 2026-06-17: pose XY + heading + ball_v + goal_opp ─────────
+# El parser DEBE ser tolerante: si vienen del firmware nuevo, los parsea; si no
+# vienen (firmware viejo), default 0/False. has_pose=True solo con conf > 0.
+
+def test_extended_fields_default_when_missing():
+    """Firmware viejo (sin campos nuevos) → defaults seguros."""
+    f = parse_obj_central(_v1_obj())
+    assert f.snap.my_x == 0 and f.snap.my_y == 0
+    assert f.snap.my_heading_deg == pytest.approx(0.0)
+    assert f.snap.heading_valid is False
+    assert f.snap.my_pose_conf == 0
+    assert f.snap.has_pose is False   # conf=0 ⇒ "no dibujar el robot"
+    assert f.snap.ball_vx == 0 and f.snap.ball_vy == 0
+    assert f.snap.goal_opp_vis is False
+    assert f.snap.goal_opp_ang == pytest.approx(0.0)
+    assert f.snap.goal_opp_dist == 0
+
+
+def test_extended_fields_parsed_when_present():
+    """Firmware nuevo emite pose XY + heading_valid + conf + ball_v + goal_opp."""
+    f = parse_obj_central(_v1_obj(snap={
+        "my_x": 910, "my_y": 1230, "my_hdg": 87.5, "hdg_valid": 1, "my_conf": 80,
+        "ball_vx": 150, "ball_vy": -75,
+        "goal_opp_vis": 1, "goal_opp_ang": -3.2, "goal_opp_dist": 1820,
+    }))
+    assert f.snap.my_x == 910 and f.snap.my_y == 1230
+    assert f.snap.my_heading_deg == pytest.approx(87.5)
+    assert f.snap.heading_valid is True
+    assert f.snap.my_pose_conf == 80
+    assert f.snap.has_pose is True   # conf>0 ⇒ "dibujar el robot"
+    assert f.snap.ball_vx == 150 and f.snap.ball_vy == -75
+    assert f.snap.goal_opp_vis is True
+    assert f.snap.goal_opp_ang == pytest.approx(-3.2)
+    assert f.snap.goal_opp_dist == 1820
+
+
+def test_extended_pose_invalid_when_conf_zero():
+    """conf=0 ⇒ has_pose=False AUNQUE my_x/y vengan != 0 (firmware buggy)."""
+    f = parse_obj_central(_v1_obj(snap={"my_x": 999, "my_y": 999, "my_conf": 0}))
+    assert f.snap.has_pose is False
+
+
+def test_extended_heading_valid_independent_from_pose_conf():
+    """El heading puede ser válido (BNO ok) AUNQUE la pose XY no haya anclado."""
+    f = parse_obj_central(_v1_obj(snap={
+        "my_x": 0, "my_y": 0, "my_conf": 0,   # pose NO anclada
+        "hdg_valid": 1, "my_hdg": 45.0,        # heading SÍ válido
+    }))
+    assert f.snap.has_pose is False
+    assert f.snap.heading_valid is True
+    assert f.snap.my_heading_deg == pytest.approx(45.0)
+
+
 # ── Golden del contrato ───────────────────────────────────────────────────────
 
 def test_golden_central_parses(golden_central_line):

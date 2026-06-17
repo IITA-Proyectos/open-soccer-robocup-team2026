@@ -13,6 +13,42 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> **📡 MONITOR CENTRAL — POSE XY DEL TOP + CANCHA GRÁFICA + Hz + FIX FORMATO (2026-06-17, host-tested):**
+> Ampliado el contrato JSON CENTRAL→app con **10 campos nuevos en `snap`**: pose XY del robot
+> (`my_x`, `my_y`, `my_hdg`, `hdg_valid`, `my_conf`), velocidad de la pelota (`ball_vx/vy`) y arco
+> rival (`goal_opp_*`). Aditivo (schema sigue v=1; parser Python tolerante con `.get()`).
+> **`Snap.has_pose` (Python)** = True solo si `my_conf > 0` → la app NO dibuja la pose cuando el
+> TOP no ancla (honesto, sin 0,0 falsos). El glue `central_telemetry_serial.cpp` lee de
+> `world_model_get_my_x/y/heading/pose_confidence + goal_opp_* + ball_v*` (todos getters ya
+> existentes en `world_model.h`). **Hito que desbloquea esto:** Gustavo confirma que los 4 ToFs
+> (frente/atrás/derecha/izquierda) ya están soldados y operativos en R1 y R2 → `localization`
+> puede anclar → comentario obsoleto `main_top.cpp:204-205` ("TOFs solo en eje Y") corregido.
+> **Pose en vivo:** flashear `top_robot2_pri_posefusion` (env existente, gateado); CENTRAL no
+> cambia. Banco TASK-210/211 cierra signo OTOS + ruido ToF + freeze-detector antes de prender
+> en competencia. **Nuevo en monitor-base:** `panel_central_field` (cancha gráfica con robot
+> orientado + pelota + arcos + vector cmd + trail; honesto si pose=0), `central_field_geometry`
+> (puro 14 tests), `rate_meter`/`BoardRateMeters` (Hz por placa + Hz de cambio, puro 20 tests;
+> NO cableado a GUI todavía). `panel_central_health` ampliado con pose nueva + arreglo de
+> formato (`\n` entre contadores en tiles TOP/DOWN — fix del "mal formateado" del usuario).
+> **Firmware byte-idéntico en competencia** (`central_robot1`/`central_robot2`: FLASH 31692 sin
+> cambio; todo extra está bajo `#ifdef CENTRAL_USB_MONITOR`). **Tests:** 288 Python passed,
+> 10/10 host tests `test_telemetry_central` con GOLDEN actualizado byte-exacto.
+> Journal: `journal/2026-06-17-monitor-central-pose-xy-y-mejoras.md`.
+
+> **🛠️ TRAMPA DE LA 'S' — FIX DE RAÍZ + MONITOR UNIFORME EN PRÁCTICA (2026-06-17, banco Gustavo):**
+> El path char-por-char del USB handler de `main_central.cpp` trataba CUALQUIER `\n`/`\r`
+> como GO (legacy "ENTER pelado = GO" del juez-PC). La app `monitor-base` manda
+> `STREAM ON\n`+`PING\n` cada 1 s → el `\n` arrancaba el robot solo. Unificación de los
+> 2 paths (USB_MONITOR ON/OFF) bajo una sola regla: línea vacía→GO, 1 char→comando,
+> >1 char→IGNORAR. **Validado en banco: el robot ya no arranca solo al conectar la app**
+> (env `central_robot2_arquero_strafe_cam_bb`). Además se agregó `-DCENTRAL_USB_MONITOR`
+> a 9 envs base de práctica R1/R2 (`_arquero_*`, `_slow`, `_demo`, `_delantero_practica*`,
+> etc.) — antes solo lo tenían los `_demo_bb`. **Competencia byte-idéntica**: ni
+> `central_robot1` ni `central_robot2` se tocaron; el cambio del handler está dentro de
+> `#if MANUAL_START || USB_MONITOR` (falso en competencia). Pendiente equipo: validar los
+> 6 chequeos del plan en los otros envs cuando los reflashee. Journal:
+> `journal/2026-06-17-fix-trampa-s-monitor-y-envs-monitor-uniformes.md`.
+
 > **🧠 CENTRAL RT — AUDITORÍA + CIERRE PROGRAMADO (2026-06-16, Gustavo):** doc 2 páginas
 > [`docs/firmware/CENTRAL-RT-ESTADO-Y-CIERRE-2026-06-16.md`](firmware/CENTRAL-RT-ESTADO-Y-CIERRE-2026-06-16.md)
 > verifica contra `main_central.cpp` HEAD `8d284ae`: el RX **ya es no-bloqueante** (ISR del core

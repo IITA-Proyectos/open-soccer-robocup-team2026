@@ -97,14 +97,27 @@ int tc_serialize_jsonl(char* buf, int cap, const CentralTelemetryFrame& f) {
         (unsigned)(f.otos_fresh ? 1 : 0), tc_fz(f.otos_heading_deg));
     if (off < 0) return -1;
 
-    // snap (eco del WorldSnapshot recibido del TOP)
+    // snap (eco del WorldSnapshot recibido del TOP).
+    // 2026-06-17: AMPLIADO ADITIVO con pose XY + heading_valid + pose_conf + arco rival
+    // + ball_v. Campos nuevos al final del objeto para retro-compat (parsers v1 viejos
+    // siguen leyendo los originales). Schema sigue v=1.
     off = tc_append(buf, cap, off,
         "\"snap\":{\"ball_vis\":%u,\"ball_x\":%d,\"ball_y\":%d,"
-        "\"goal_own_ang\":%.2f,\"goal_own_dist\":%d,\"referee\":%u,\"flags\":%u},",
+        "\"goal_own_ang\":%.2f,\"goal_own_dist\":%d,\"referee\":%u,\"flags\":%u,"
+        "\"my_x\":%d,\"my_y\":%d,\"my_hdg\":%.2f,\"hdg_valid\":%u,\"my_conf\":%u,"
+        "\"ball_vx\":%d,\"ball_vy\":%d,"
+        "\"goal_opp_vis\":%u,\"goal_opp_ang\":%.2f,\"goal_opp_dist\":%d},",
         (unsigned)(f.snap_ball_visible ? 1 : 0),
         (int)f.snap_ball_x_mm, (int)f.snap_ball_y_mm,
         tc_fz(f.snap_goal_own_angle_deg), (int)f.snap_goal_own_distance_mm,
-        (unsigned)f.snap_referee_cmd, (unsigned)f.snap_flags);
+        (unsigned)f.snap_referee_cmd, (unsigned)f.snap_flags,
+        (int)f.snap_my_x_mm, (int)f.snap_my_y_mm,
+        tc_fz(f.snap_my_heading_deg),
+        (unsigned)(f.snap_heading_valid ? 1 : 0),
+        (unsigned)f.snap_my_pose_confidence,
+        (int)f.snap_ball_vx_mm_s, (int)f.snap_ball_vy_mm_s,
+        (unsigned)(f.snap_goal_opp_visible ? 1 : 0),
+        tc_fz(f.snap_goal_opp_angle_deg), (int)f.snap_goal_opp_distance_mm);
     if (off < 0) return -1;
 
     // loop (supervisor de loop-time) + cierre

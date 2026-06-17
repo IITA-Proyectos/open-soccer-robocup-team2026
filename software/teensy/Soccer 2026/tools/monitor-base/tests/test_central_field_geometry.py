@@ -13,6 +13,7 @@ import math
 import pytest
 
 from monitor_base.central_field_geometry import (
+    ball_velocity_vector_in_field,
     cmd_vector_in_field,
     polar_to_field,
     rotate_robot_frame_to_field,
@@ -128,5 +129,40 @@ def test_cmd_vector_heading_90_ccw_rotates():
 
 def test_cmd_vector_zero_command_zero_vector():
     dx, dy = cmd_vector_in_field(robot_heading_deg=45.0, cmd_vx=0.0, cmd_vy=0.0)
+    assert abs(dx) < EPS
+    assert abs(dy) < EPS
+
+
+# ── ball_velocity_vector_in_field ───────────────────────────────────────────
+def test_ball_velocity_heading_zero_is_identity_scaled():
+    # Pelota moviéndose al frente del robot (vy=+200 mm/s) con heading=0 →
+    # +Y cancha, escalado por scale (0.15 px/mm/s) → 30 px, bajo el clamp.
+    dx, dy = ball_velocity_vector_in_field(robot_heading_deg=0.0, ball_vx=0.0,
+                                           ball_vy=200.0, scale=0.15)
+    assert abs(dx - 0.0) < EPS
+    assert abs(dy - 30.0) < EPS
+
+
+def test_ball_velocity_heading_90_ccw_rotates():
+    # vy=+200 con heading=90° CCW → apunta a -X cancha (escalado, bajo clamp).
+    dx, dy = ball_velocity_vector_in_field(robot_heading_deg=90.0, ball_vx=0.0,
+                                           ball_vy=200.0, scale=0.15)
+    assert abs(dx - (-30.0)) < EPS
+    assert abs(dy - 0.0) < EPS
+
+
+def test_ball_velocity_clamps_to_max_len_preserving_direction():
+    # Velocidad enorme (5000 mm/s al frente) con scale 0.15 → 750 px sin clamp.
+    # Con max_len=90 debe recortarse a 90 px, dirección intacta (+Y cancha).
+    dx, dy = ball_velocity_vector_in_field(robot_heading_deg=0.0, ball_vx=0.0,
+                                           ball_vy=5000.0, scale=0.15,
+                                           max_len=90.0)
+    assert abs(math.hypot(dx, dy) - 90.0) < 1e-3
+    assert dy > 0.0 and abs(dx) < EPS
+
+
+def test_ball_velocity_zero_velocity_zero_vector():
+    dx, dy = ball_velocity_vector_in_field(robot_heading_deg=33.0, ball_vx=0.0,
+                                           ball_vy=0.0)
     assert abs(dx) < EPS
     assert abs(dy) < EPS

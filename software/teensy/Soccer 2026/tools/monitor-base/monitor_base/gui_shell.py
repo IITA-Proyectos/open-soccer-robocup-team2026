@@ -65,6 +65,8 @@ def _registry() -> List[Type[Panel]]:
             ("panel_central", "CentralPanel"),            # placa CENTRAL (cerebro)
             ("panel_central_field", "CentralFieldPanel"), # placa CENTRAL (cancha XY)
             ("panel_central_health", "CentralHealthPanel"),  # placa CENTRAL (salud enlaces)
+            ("panel_central_rates", "CentralRatesPanel"),    # placa CENTRAL (Hz por enlace)
+            ("panel_central_timeline", "CentralTimelinePanel"),  # placa CENTRAL (histórico)
             ("panel_logs", "LogsPanel"),
             ("panel_help", "HelpPanel"),
     ):

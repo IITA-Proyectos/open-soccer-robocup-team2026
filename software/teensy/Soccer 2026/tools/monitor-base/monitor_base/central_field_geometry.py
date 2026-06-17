@@ -78,3 +78,32 @@ def cmd_vector_in_field(robot_heading_deg: float, cmd_vx: float, cmd_vy: float,
     """
     dx, dy = rotate_robot_frame_to_field(cmd_vx, cmd_vy, robot_heading_deg)
     return dx * scale, dy * scale
+
+
+def ball_velocity_vector_in_field(robot_heading_deg: float, ball_vx: float,
+                                  ball_vy: float, scale: float = 0.15,
+                                  max_len: float = 90.0) -> Tuple[float, float]:
+    """Velocidad de la PELOTA (vx, vy en marco ROBOT, mm/s) llevada al marco
+    cancha y escalada para dibujarla como flecha desde la pelota.
+
+    Igual que `cmd_vector_in_field` pero para la velocidad de la pelota: el
+    `ball_vx`/`ball_vy` del CentralFrame.snap está en marco ROBOT (vx=lateral
+    derecha+, vy=frente+) — ver protocol_central. Se rota al marco cancha (CCW+
+    por el heading del robot) y se escala a px de dibujo.
+
+    `scale` está en px por mm/s. La longitud resultante se CLAMPEA a `max_len`
+    px (preservando la dirección) para que pelotas muy rápidas no dibujen una
+    flecha que cruce toda la cancha.
+
+    Devuelve (dx, dy) en píxeles de marco cancha (sin la inversión de Y de
+    pantalla — eso lo aplica el panel al pintar).
+    """
+    dx, dy = rotate_robot_frame_to_field(ball_vx, ball_vy, robot_heading_deg)
+    dx *= scale
+    dy *= scale
+    length = math.hypot(dx, dy)
+    if length > max_len and length > 0.0:
+        k = max_len / length
+        dx *= k
+        dy *= k
+    return dx, dy

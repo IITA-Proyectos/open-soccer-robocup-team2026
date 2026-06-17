@@ -1,6 +1,7 @@
 """Entrypoint de la app de base. Uso:
 
-  python -m monitor_base --sim                 # simulador (sin robot)
+  python -m monitor_base --sim                 # simulador placa TOP (sin robot)
+  python -m monitor_base --sim-central         # simulador placa CENTRAL (sin robot)
   python -m monitor_base --port COM5           # Teensy real por USB
   python -m monitor_base --replay grab.jsonl   # reproducir una grabación
   python -m monitor_base --selftest            # smoke headless (sin ventana)
@@ -21,7 +22,11 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         description="Monitor/calibración de la placa base (DOWN) — IITA Soccer.")
     src = p.add_mutually_exclusive_group()
     src.add_argument("--sim", action="store_true",
-                     help="usar el simulador (sin robot) [default]")
+                     help="usar el simulador de la placa TOP (sin robot) [default]")
+    src.add_argument("--sim-central", action="store_true",
+                     help="usar el simulador de la placa CENTRAL (sin robot): "
+                          "ejercita los paneles Cerebro / Salud CENTRAL / Cancha / "
+                          "Timeline / Hz con pose XY + pelota + arcos sintéticos")
     src.add_argument("--port", metavar="COMx",
                      help="puerto serie del Teensy (COM5, /dev/ttyACM0, o 'auto' para detectarlo)")
     src.add_argument("--replay", metavar="ARCHIVO.jsonl",
@@ -81,8 +86,8 @@ def _wants_shell(args: argparse.Namespace) -> bool:
 
 
 def _build_source(args: argparse.Namespace):
-    from .sources import (ReplaySource, SerialSource, SimSource, SimTopSource,
-                          auto_parse)
+    from .sources import (ReplaySource, SerialSource, SimCentralSource, SimSource,
+                          SimTopSource, auto_parse)
     if _wants_shell(args):
         # Fuente MULTI-PLACA: sniffea TOP vs BASE por línea (hot-swap del USB).
         if args.port:
@@ -90,6 +95,8 @@ def _build_source(args: argparse.Namespace):
         if args.replay:
             return ReplaySource(args.replay, rate_hz=args.rate,
                                 loop=not args.no_loop, parser=auto_parse)
+        if args.sim_central:
+            return SimCentralSource(rate_hz=args.rate)   # sim de la placa CENTRAL
         if args.sim:
             return SimTopSource(rate_hz=args.rate)   # el sim es de la placa TOP
         # Sin flag de fuente: AUTODETECTAR el Teensy y sniffear qué placa es.

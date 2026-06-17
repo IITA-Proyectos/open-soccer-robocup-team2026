@@ -32,6 +32,7 @@ from tkinter import ttk
 from typing import Tuple
 
 from .central_field_geometry import (
+    ball_velocity_vector_in_field,
     polar_to_field,
     rotate_robot_frame_to_field,
 )
@@ -65,6 +66,7 @@ _TRAIL_ROBOT = "#2bd27a"
 _BALL_FILL = "#ff8c2a"
 _BALL_OUTLINE = "#ffd"
 _CMD_VEC = "#ffd166"        # vector de comando (ámbar claro)
+_BALL_VEL = "#ff9d3a"       # flecha de velocidad de la pelota (naranja)
 _GOAL_OWN_MARKER = "#7aa9ff"
 _GOAL_OPP_MARKER = "#ffe27a"
 _INFO_BG = "#0c0f12"
@@ -81,6 +83,14 @@ _DIAL_NEEDLE_INVALID = "#7d8896"
 # Vector de comando: factor para que se vea sin tapar todo. 1 mm/s ≈ 0.18 px en
 # una cancha de 560 px de alto / 2430 mm → un comando de 400 mm/s sale ~70 px.
 _CMD_SCALE = 0.18
+
+# Flecha de velocidad de la pelota: 0.15 px por mm/s (un poco menor que el
+# comando para distinguirlas), clampeada a 90 px para que pelotas rápidas no
+# crucen la cancha. Por debajo de _BALL_VEL_MIN mm/s la pelota se considera
+# quieta y NO se dibuja flecha (evita ruido visual por jitter de medición).
+_BALL_VEL_SCALE = 0.15
+_BALL_VEL_MAX_PX = 90.0
+_BALL_VEL_MIN = 30.0
 
 
 class CentralFieldPanel(Panel):
@@ -221,6 +231,13 @@ class CentralFieldPanel(Panel):
                 float(snap.ball_x), float(snap.ball_y), r_hdg)
             bx, by = rx_mm + dx, ry_mm + dy
             self._draw_ball(bx, by)
+            # Flecha de velocidad de la pelota (marco robot → cancha, igual que
+            # la posición). Se dibuja DESDE la pelota; sale tanto con pose real
+            # como con la pose ficticia=centro (consistente con la posición).
+            self._draw_ball_velocity(
+                bx, by, r_hdg,
+                float(getattr(snap, "ball_vx", 0.0)),
+                float(getattr(snap, "ball_vy", 0.0)))
 
         # Arcos (proyección polar desde el robot — lo que ve la CENTRAL).
         goal_own_dist = float(getattr(snap, "goal_own_dist", 0))
@@ -271,6 +288,26 @@ class CentralFieldPanel(Panel):
         px, py = self._fpx(x_mm, y_mm)
         draw_ball_glyph(self.canvas, px, py, _BALL_FILL, _BALL_OUTLINE,
                         _FIELD_BG, tag="dyn")
+
+    def _draw_ball_velocity(self, ball_x_mm: float, ball_y_mm: float,
+                            heading_deg: float, ball_vx: float,
+                            ball_vy: float) -> None:
+        # Umbral de "pelota quieta": si la velocidad medida es < _BALL_VEL_MIN
+        # mm/s no dibujamos flecha (jitter de medición = ruido visual).
+        if math.hypot(ball_vx, ball_vy) < _BALL_VEL_MIN:
+            return
+        # Velocidad en marco robot → marco cancha (px), escalada y clampeada.
+        dxp, dyp = ball_velocity_vector_in_field(
+            heading_deg, ball_vx, ball_vy,
+            scale=_BALL_VEL_SCALE, max_len=_BALL_VEL_MAX_PX)
+        px0, py0 = self._fpx(ball_x_mm, ball_y_mm)
+        # Y de pantalla INVERTIDO respecto a la cancha (Y=0 abajo): +Y cancha
+        # → -Y pantalla (igual que _draw_cmd_vector).
+        px1 = px0 + dxp
+        py1 = py0 - dyp
+        self.canvas.create_line(px0, py0, px1, py1, fill=_BALL_VEL,
+                                width=3, arrow="last", arrowshape=(9, 11, 4),
+                                tags="dyn")
 
     def _draw_goal_marker(self, x_mm: float, y_mm: float, color: str,
                           letter: str) -> None:

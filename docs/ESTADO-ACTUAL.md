@@ -1,7 +1,7 @@
 ---
 title: "Estado actual del robot — vivo, 1 página"
 date: 2026-05-29
-last-updated-by: "Claude (sesión 2026-06-16 — F3 detección temprana de línea por vecino físico CABLEADA en dm_update, gateada -DDOWN_EARLY_EVIDENCE, host-tested; banco pendiente TASK-309)"
+last-updated-by: "Claude (sesión 2026-06-16 — CENTRAL RT auditada + reflex.h PURO host-tested 13/13 + doc estado/cierre 2 páginas; sin cambio de binario de competencia)"
 status: vivo
 tipo: indice-operacional
 ---
@@ -12,6 +12,23 @@ tipo: indice-operacional
 > obligatoria** (después de `git pull`). Si lo que estás por hacer contradice
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
+
+> **🧠 CENTRAL RT — AUDITORÍA + CIERRE PROGRAMADO (2026-06-16, Gustavo):** doc 2 páginas
+> [`docs/firmware/CENTRAL-RT-ESTADO-Y-CIERRE-2026-06-16.md`](firmware/CENTRAL-RT-ESTADO-Y-CIERRE-2026-06-16.md)
+> verifica contra `main_central.cpp` HEAD `8d284ae`: el RX **ya es no-bloqueante** (ISR del core
+> + drenado cooperativo `comm_*_tick`); `loop_monitor`, freno de borde con anti-latch 350 ms,
+> WDOG1, DOWN RX 512B vivos; `motor_slew` (Capa 2) + **monitor USB DORMIDO** (FASE 1) cableados
+> gateados; trampa de la 'S' resuelta por buffer de líneas. Único bloqueo ACTIVO conocido:
+> `CENTRAL_DEBUG_SERIAL` definido en envs de competencia (~30 prints USB cada 500 ms) — quita
+> es flip de banco (P0). Sprint B del monitor en `monitor-base` (3a placa) **ya estaba completo**
+> (235/236 pytest verde; 1 fail = tk.tcl mal instalado, no regresión). **Nuevo este día:** módulo
+> PURO `src/shared/reflex.h` (Capa 1 = STOP árbitro preempta > BRAKE_EDGE anti-latch > NONE,
+> espejo exacto de `main_central.cpp:388-415`) + 13 tests host (incluye regresión del deadlock
+> 5 s de María). **NO cableado** (gate previsto `-DCENTRAL_REFLEX_LAYER` post-Incheon). Suite
+> firmware host: **91 suites, 1214 tests, 0 fails** (con el nuevo). **Pendiente equipo (banco):**
+> T1-T7 de TASK-106 (monitor USB), flip `CENTRAL_DEBUG_SERIAL` y `CENTRAL_TOP_RX_BIGBUF` en
+> competencia, titrar `motor_slew`, confirmar `motors_brake` = freno activo. Journal:
+> `journal/2026-06-16-central-rt-cierre-reflex-puro.md`.
 
 > **⚡ DOWN F3 — DETECCIÓN TEMPRANA DE LÍNEA CABLEADA (2026-06-16, gateada):** sobre la reingeniería
 > RT de DOWN (commit `9d6acc7`), se cableó **F3** en `dm_update`: une a `validated[]` los blancos con

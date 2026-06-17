@@ -41,6 +41,18 @@ tipo: indice-operacional
 > Journals: `2026-06-17-calibracion-eeprom-sin-reflashear-cableada.md` +
 > `2026-06-17-completar-calibracion-ccfg-pid-gyro.md`.
 
+> **🛡️ AUDITORÍA DE ROBUSTEZ + 3 MEJORAS PRE-INCHEON APLICADAS (2026-06-17):** revisión adversarial
+> de los binarios de competencia (4 agentes detección → multi-ángulo → auditor independiente). Doc:
+> `research/completed/2026-06-17-auditoria-robustez-programas-competencia.md`. Contratos/CRC/fail-safe
+> TOP-muerto verificados OK. Aplicadas las 3 del ranking (cierre = banco): **#2** delay del arquero
+> `GK_START_DELAY_MS` 2000→200 (arco no queda 2 s descubierto en cada saque); **#3** `-DCENTRAL_TOP_RX_BIGBUF`
+> en `central_robot1` (R1 descartaba snapshots por ring chico — el TOP de R1 ya estaba OK, usa
+> top_robot2_pri; corrección de un hallazgo del agente); **#1** watchdog: creado `down_robot2_wdt`
+> (paridad; los 4 `*_wdt` listos) — **NO promovido al binario base** (banco PRIMERO: 30 min sin reset
+> + hang-test). Pendiente "si sobra banco": cablear `clear_aim` (guarda anti-autogol, módulo ya
+> existe+testeado, gateado + validar arco trasero). 8 envs SUCCESS + strategy 39/39. Journal:
+> `journal/2026-06-17-mejoras-robustez-pre-incheon-aplicadas.md`.
+
 > **🎯 3 P0 DE COMPETENCIA RESUELTOS (firmware listo; banco = TASK-110) (2026-06-17):**
 > Del estado de situación de las 3 placas salieron 3 P0. Resueltos con criterio por riesgo:
 > **(P0.2) FLOOR_SCALE en el arquero R1** — `central_robot1` (rol GOALKEEPER por `-DROBOT1`,

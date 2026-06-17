@@ -256,8 +256,14 @@ constexpr float GK_LINE_RETREAT_SPEED         = 420.0f;   // era 250 (bajo piso 
 // → los pisos lo respetan → sale derecho. Orden de Gustavo: recto atrás. VX=0.
 // DELAY DE ARRANQUE (banco 2026-06-09, pedido de Gustavo: "no me da el tiempo para
 // acomodarlo"): tras el START del árbitro el arquero espera esto antes de moverse —
-// da tiempo a posicionarlo/soltarlo. 🔧 Para COMPETENCIA bajar a 0 (debe salir ya).
-constexpr uint32_t GK_START_DELAY_MS      = 2000;
+// da tiempo a posicionarlo/soltarlo.
+// 🔧 2026-06-17 (auditoría robustez): bajado 2000 → 200 para COMPETENCIA. Con 2000 el arco
+// quedaba descubierto 2 s en CADA saque. NO se pone 0 estricto a propósito: ~200 ms le da
+// margen a que el PRIMER snapshot tras el GO traiga heading_valid (lo usa el gyro-hold del
+// retroceso a la línea). Banco: confirmar que el arquero arranca ~al instante del GO y el
+// retroceso sale derecho. (En banco, para acomodar a mano, usar un env *_bb con el viejo 2000
+// o el juez-PC.)
+constexpr uint32_t GK_START_DELAY_MS      = 200;
 
 constexpr int16_t GK_GOTO_LINE_VX_RIGHT   = 0;     // recto atrás (era 180 diagonal → círculos)
 // 420 mm/s: PWM crudo delanteras ~93 > piso 70 → fiel + rápido (era 180: "MUY LENTO").

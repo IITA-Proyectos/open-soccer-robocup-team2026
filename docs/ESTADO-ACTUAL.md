@@ -13,6 +13,18 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> **🎯 3 P0 DE COMPETENCIA RESUELTOS (firmware listo; banco = TASK-110) (2026-06-17):**
+> Del estado de situación de las 3 placas salieron 3 P0. Resueltos con criterio por riesgo:
+> **(P0.2) FLOOR_SCALE en el arquero R1** — `central_robot1` (rol GOALKEEPER por `-DROBOT1`,
+> verificado en `main_central.cpp:146`) corría SIN `FLOOR_SCALE`, pero el arquero v3.3 se
+> validó CON él (sin él "pierde el frente"). Se agregó al env de competencia = corrección
+> hacia lo validado. **(P0.1) Watchdog CENTRAL** — se creó `central_robot2_wdt` (paridad con
+> el de R1); NO se metió al default (reset espurio en partido = catastrófico) → validar 30 min
+> + hang test y promover. **(P0.3) Pose XY** — se creó `top_robot1_pri_posefusion` (R1 limpio,
+> paridad con R2); NO al default (pose mal anclada > sin pose) → validar signo OTOS (TASK-210/211).
+> 6 envs compilan SUCCESS. Checklists de banco en `team-tasks/2026-06-17-task-110`. Journal:
+> `journal/2026-06-17-resolucion-3-p0-competencia.md`.
+
 > **🤖 CONFIGURACIÓN DE HARDWARE PARA INCHEON 2026 — CONFIRMADA (Gustavo, 2026-06-17):**
 > Esta es la config FÍSICA real de los 2 robots que van a Incheon. Es la **FUENTE DE VERDAD
 > del estado de hardware**; cualquier banner/doc previo que diga otra cosa (en particular

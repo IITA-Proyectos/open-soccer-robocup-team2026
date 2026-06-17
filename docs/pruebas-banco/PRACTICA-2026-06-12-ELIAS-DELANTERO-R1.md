@@ -1,5 +1,10 @@
 # PRÁCTICA 2026-06-12 — Elías: DELANTERO con ODOMETRÍA en ROBOT1
 
+> 🔄 **ACTUALIZACIÓN 2026-06-17 (Gustavo):** R1 ahora tiene los 2 BNO reconectados y funcionando
+> → **R1 ya juega CON gyro.** El modo "delantero SIN giroscopio" de esta práctica es un **FALLBACK**,
+> NO el plan de Incheon. El plan de Incheon es R1 con gyro (BNO sano + OTOS). Mantener este guion como
+> respaldo si el gyro falla.
+
 > **Tu misión de hoy (2 horas):** que el robot 1 juegue de DELANTERO **sin
 > giroscopio**: busca la pelota girando, se acerca, **la rodea** hasta dejarla
 > alineada con el arco rival, y cuando está alineada **empuja con fuerza en

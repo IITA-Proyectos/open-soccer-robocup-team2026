@@ -18,8 +18,8 @@ tipo: indice-operacional
 
 | Robot | Placa | Env VIGENTE | Nota |
 |---|---|---|---|
-| **R1** | CENTRAL (partido, arquero) | ⚠️ **decisión pendiente** — hoy usar `central_robot1_arquero_demo` (o `_bb` con caja negra) | `central_robot1` "a secas" corre el clamp viejo SIN floor_scale (síntomas del banco 2026-06-09); crear `central_robot1_match` está en el backlog |
-| R1 | CENTRAL (práctica delantero) | `central_robot1_delantero_practica_bb` (+`_obst_bb` = 2ª instancia anti-choque) | Sin gyro: eje por OTOS |
+| **R1** | CENTRAL (partido, arquero) | ⚠️ **decisión pendiente** — hoy usar `central_robot1_arquero_demo` (o `_bb` con caja negra) | `central_robot1` "a secas" corre el clamp viejo SIN floor_scale (síntomas del banco 2026-06-09); crear `central_robot1_match` está en el backlog. **2026-06-17: R1 juega CON gyro (BNO reconectados, igual que R2)** — el env de competencia de R1 NO usa `ATK_OTOS_NOGYRO`. Estado HW: ver banner config Incheon en `docs/ESTADO-ACTUAL.md` |
+| R1 | CENTRAL (práctica delantero) | `central_robot1_delantero_practica_bb` (+`_obst_bb` = 2ª instancia anti-choque) | ⚠️ 2026-06-17: este env (`ATK_OTOS_NOGYRO`, eje por OTOS) es **FALLBACK histórico, NO competencia**. R1 ahora juega CON gyro (BNO reconectados, igual que R2) → el env de competencia de R1 es CON gyro. Estado HW: ver banner config Incheon en `docs/ESTADO-ACTUAL.md` |
 | R1 | TOP | **`top_robot2_pri`** (sí, "robot2": vale para AMBAS TOP desde el recableado 2026-06-11) | `top_robot1*` = cableado VIEJO, NO flashear |
 | R1 | DOWN | `down` (a secas — CON OTOS) | `down_robot2` NO va en R1 |
 | **R2** | CENTRAL (delantero partido) | `central_robot2` | banco/demo: `central_robot2_demo_bb` |

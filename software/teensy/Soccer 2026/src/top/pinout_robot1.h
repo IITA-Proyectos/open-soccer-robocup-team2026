@@ -1,5 +1,10 @@
 // pinout_robot1.h — Pinout específico del ROBOT 1 (arquero).
 //
+// ⚠️ CONFIG INCHEON 2026-06-17 (Gustavo): R1 = 2× BNO055 (primario en bus/dir I²C
+//    propio a alta velocidad + centinela en el MISMO bus que los ToF a 1 Hz) + OTOS
+//    (R1 SÍ lleva los 2 OTOS en su DOWN) + 4× ToF + HC-SR04 + módulo de juez +
+//    2× cámaras OpenMV + luz de la DOWN. R1 juega CON gyro. (R2 = igual pero SIN OTOS.)
+//
 // Hardware: placa TOP rev 1.0 + bodge XSHUT manual de Enzo.
 // Sensores instalados al 2026-05-29 (post-bodge): TOF frontal + trasero.
 // Laterales pendientes de soldar.

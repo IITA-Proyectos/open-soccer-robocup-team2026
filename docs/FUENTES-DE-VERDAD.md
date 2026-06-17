@@ -101,7 +101,8 @@ tipo: indice
    (corrección 2026-06-09: el bus de 24/25 es `Wire2`/LPI2C4, no `Wire1`; ahí va el BNO
    PRIMARIO, solo, sin ToF — TASK-207. **Arquitectura BNO canónica (corrección 2026-06-15):
    AMBOS robots, 2 BNO @ 0x28 en buses separados — primario Wire2 / secundario Wire; NO hay
-   ningún BNO en 0x29. Fuente: `src/top/sensors_imu.h` + `src/top/pinout_common.h`.**)
+   ningún BNO en 0x29. Fuente: `src/top/sensors_imu.h` + `src/top/pinout_common.h`.**
+   **⚠️ HW Incheon (2026-06-17): config confirmada — AMBOS robots con 2× BNO funcionando (R1 vuelve a jugar CON gyro). Odometría OTOS es SOLO R1 (R2 no tiene). Banner canónico de config de sensores por robot: `docs/ESTADO-ACTUAL.md` (2026-06-17).**)
    y habilita localización 2D por trilateración. Pines/direcciones reales
    ya en `pinout_robot1.h`/`pinout_robot2.h` (`PIN_TOF_XSHUT={9,10,11,12}`,
    `NUM_TOF_ACTIVE=4`). **Lección**: las direcciones I²C de los VL53L7CX

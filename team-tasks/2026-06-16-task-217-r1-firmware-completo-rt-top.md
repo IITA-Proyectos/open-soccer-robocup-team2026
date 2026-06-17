@@ -11,6 +11,10 @@ related: [journal/2026-06-16-top-competencia-firmware-completo-rt.md, platformio
 
 # TASK-217 — Firmware completo (RT) al TOP de ROBOT1
 
+> 🔄 **ACTUALIZACIÓN 2026-06-17 (Gustavo):** R1 ya tiene BNO sano (los 2 reconectados) → los flags
+> de BNO (`TOP_BNO_FAST`, freeze-detect, centinela) ahora **SON válidos para R1**. Falta flashear
+> el firmware completo RT y validar en banco. Sigue **ABIERTA**.
+
 ## Contexto
 El 2026-06-16 el TOP de **ROBOT2** pasó a correr el firmware COMPLETO/rápido (env
 `top_robot2_pri` ahora trae todas las mejoras RT; `top_robot2_pri_anterior` = fallback). R1

@@ -12,6 +12,11 @@ depends_on: []
 
 # TASK-207 — BNO de ROBOT1 a bus I²C aparte (Wire2)
 
+> ### 🔄 ACTUALIZACIÓN 2026-06-17 (Gustavo)
+> R1 tiene los 2 BNO reconectados y funcionando (principal en bus propio + centinela 1 Hz en bus ToF).
+> Arquitectura cumplida; falta solo confirmar comportamiento de juego con gyro en banco.
+> **NO cerrada hasta validación de banco.**
+
 > ### ✅ 2026-06-09 — LA ARQUITECTURA QUEDÓ VALIDADA EN BANCO (en ROBOT2)
 > Gustavo corrió **`top_robot2` (PRODUCCIÓN)** con el firmware nuevo (commit `0f503f2`,
 > `sensors_imu.cpp` gateado `ROBOT2`: BNO PRIMARIO en `Wire2` 24/25 + SECUNDARIO en `Wire`):

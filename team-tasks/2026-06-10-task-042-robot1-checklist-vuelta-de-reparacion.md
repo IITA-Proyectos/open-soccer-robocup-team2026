@@ -13,6 +13,10 @@ depends_on: [reparación física de robot1 (sin TASK — trackear acá)]
 
 # TASK-042 — Robot1 al volver de reparación: qué re-validar ANTES de confiar en él
 
+> 🔄 **ACTUALIZACIÓN 2026-06-17 (Gustavo):** BNO de R1 reconectados y funcionando. Confirmar en banco
+> que los 4 ToF de R1 enumeran (había nota vieja de "ToF derecho no enumera") y que el motion con gyro
+> anda. Sigue **ABIERTA** para esos checks.
+
 ## Por qué importa (P1)
 
 Robot1 es el **segundo cuerpo** para jugar 2v2 en Incheon y está en reparación

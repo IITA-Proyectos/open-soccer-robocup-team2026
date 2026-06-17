@@ -13,6 +13,9 @@ depends_on: []
 
 # TASK-216 — Validar robot1 con el firmware BNO unificado
 
+> 🔄 **ACTUALIZACIÓN 2026-06-17 (Gustavo):** los 2 BNO de R1 están reconectados y funcionando.
+> Falta el boot-check / validación de comportamiento con gyro en banco. Sigue **ABIERTA** para esa validación.
+
 > 🟡 **ACTUALIZACIÓN 2026-06-16 — R1 firmware-LISTO, falta solo el boot-check físico.**
 > Tras verificar el centinela en **R2** (TASK-213), Gustavo pidió dejar el MISMO programa para R1.
 > Hecho en firmware (todo compila):

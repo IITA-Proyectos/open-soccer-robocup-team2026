@@ -26,7 +26,7 @@ El robot 2026 distribuye su inteligencia en **3 placas especializadas** conectad
 │   "Veo el mundo"       │         │   "Decido qué hacer"   │         │   "Toco el suelo"      │
 ├────────────────────────┤         ├────────────────────────┤         ├────────────────────────┤
 │ • 2 cámaras OpenMV     │         │ • FSM principal        │         │ • 32 sensores luz      │
-│ • 2 IMU BNO055         │         │ • Motores 3-omni + PID │         │ • 2 OTOS odométricos   │
+│ • 2 IMU BNO055         │         │ • Motores 3-omni + PID │         │ • 2 OTOS odométr. (R1) │
 │ • 4 ToF + 1 ultrasonido│         │ • Dribbler (sin kicker)│         │ • Measurement línea    │
 │ • Árbitro GPIO 5/6     │         │ • Coordinación partner │         │ • Detección bordes     │
 │ • Fusión sensor → pose │         │ • Watchdog global      │         │                        │
@@ -177,7 +177,7 @@ Margen amplio para integrar EKF de pose o filtros Kalman de pelota en 2027.
 | Anillo de sensores de línea | 32 sensores ALS-PT19 con LEDs activos pareados, multiplexados via 4 chips CD4051 (cada mux con sus propios A/B/C = 12 pines SEL, 4 salidas analógicas a A0/A1/A8/A9 en paralelo, INH a GND). Lectura completa de los 32 sensores en ~80 µs. Ver `hardware/electronics/down-board-pack/01-pinout-y-posiciones.md`. |
 | Cálculo del ángulo de línea | Algoritmo de centroide angular: cada sensor i está en posición física θ_i = i × 11.25°. Los sensores que ven blanco contribuyen un vector unitario en su ángulo. La línea detectada = atan2 de la suma. |
 | Detección de "salida inminente" | Si N sensores adyacentes ven blanco simultáneamente, flag `imminent_exit` enviado por bus directo al CENTRAL para frenar en < 15 ms. |
-| Odometría óptica | 2 sensores SparkFun OTOS montados a cada costado del robot (uno a la izquierda, uno a la derecha del centro). Lectura I2C en 2 buses separados (Wire + Wire1). |
+| Odometría óptica | 2 sensores SparkFun OTOS montados a cada costado del robot (uno a la izquierda, uno a la derecha del centro). Lectura I2C en 2 buses separados (Wire + Wire1). **⚠️ HW Incheon (2026-06-17): OTOS es SOLO R1. R2 NO tiene OTOS.** (estado HW: ver banner config Incheon en `docs/ESTADO-ACTUAL.md`, 2026-06-17) |
 | Análisis diferencial OTOS | Detecta slip lateral comparando velocidad de los dos OTOS. Si difieren mucho en X, hay patinazo (típicamente al patear o chocar). Reporta `slip_estimate` al CENTRAL como dato de calidad. |
 | Pose odométrica local | Fusiona los 2 OTOS en una pose central (x, y, heading) que ARRIBA usa para su fusión sensorial completa. |
 | Reporte de measurement | Entrega al CENTRAL la medición física cruda de la línea (ángulo + profundidad signed, en mm). Si el robot está pisando blanco, profundidad > 0; si está afuera del blanco, profundidad = 0. Es la *measurement* del control PID lateral — el PID en sí corre en CENTRAL. |
@@ -325,6 +325,8 @@ Con dos unidades en posiciones físicas diferentes, ARRIBA puede:
 
 Costo: dos chips de ~$15 USD cada uno. Beneficio: confiabilidad muy superior.
 
+> **⚠️ HW Incheon (2026-06-17): la redundancia 2× BNO055 aplica a AMBOS robots (R1 y R2), todo funcionando.** R1 vuelve a jugar CON gyro (los BNO fueron reconectados), igual que R2 — queda superada cualquier nota previa que sugería que R1 jugaba sin gyro. La config: BNO PRIMARIO en su bus/dirección I²C propio a alta velocidad + BNO CENTINELA en el MISMO bus que los ToF a 1 Hz. (estado HW: ver banner config Incheon en `docs/ESTADO-ACTUAL.md`, 2026-06-17)
+
 **Buses separados + primario/secundario (corrección 2026-06-09).** Los 2 BNO055 van en
 **buses I²C distintos** (ambos 0x28): el **PRIMARIO** está solo en `Wire2` (LPI2C4, pines
 24/25) y el **SECUNDARIO** comparte `Wire` (18/19) con los 4 ToF. El primario es la fuente
@@ -333,9 +335,11 @@ que congela el yaw** (el BNO que comparte bus con los ToF es el que se congela).
 los pines 24/25 es **`Wire2`**, no `Wire1` — el repo confundía 24/25 con Wire1 hasta el i2c
 scan del 2026-06-09 (commit 9da8e9e). *Fix de fondo de ROBOT1:* hoy tiene 1 BNO en `Wire`
 (con los ToF) = posición secundaria; conviene agregarle un BNO en `Wire2` solo, como
-primario.
+primario. **⚠️ SUPERADO 2026-06-17: R1 ya tiene los 2× BNO reconectados y funcionando (juega CON gyro, igual que R2)** — este "fix de fondo" quedó hecho (estado HW: ver banner config Incheon en `docs/ESTADO-ACTUAL.md`, 2026-06-17).
 
 ### ¿Por qué dos OTOS en ABAJO?
+
+> **⚠️ HW Incheon (2026-06-17): la odometría OTOS la lleva SOLO R1. R2 NO tiene OTOS** y juega sin esta capa (estado HW: ver banner config Incheon en `docs/ESTADO-ACTUAL.md`, 2026-06-17). El razonamiento de abajo describe el diseño completo de la placa ABAJO, válido para el cuerpo R1.
 
 Los SparkFun OTOS son sensores ópticos de odometría — leen el movimiento del suelo como un mouse óptico de alta gama. Un solo OTOS en el centro daría pose, pero no detecta slip lateral.
 

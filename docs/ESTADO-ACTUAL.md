@@ -13,6 +13,42 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> **🤖 CONFIGURACIÓN DE HARDWARE PARA INCHEON 2026 — CONFIRMADA (Gustavo, 2026-06-17):**
+> Esta es la config FÍSICA real de los 2 robots que van a Incheon. Es la **FUENTE DE VERDAD
+> del estado de hardware**; cualquier banner/doc previo que diga otra cosa (en particular
+> "BNOs de R1 desconectados / R1 sin gyro") quedó **SUPERADO** por este banner.
+>
+> **AMBOS robots (R1 y R2) — todo funcionando:**
+> - **2× BNO055**: PRINCIPAL en su propia dirección/bus I²C a ALTA velocidad + CENTINELA en
+>   el MISMO bus I²C que los ToF, a **1 Hz** (lento, para no pelear el bus con los ToF).
+> - **4× ToF** (frente/atrás/izquierda/derecha → cubren ejes X **e** Y).
+> - **HC-SR04 ultrasonido**, **módulo de juez** (árbitro GPIO START/STOP), **2× cámaras
+>   OpenMV**, **sensores de luz de la placa DOWN** — todos operativos.
+> **SOLO ROBOT1:** sensores de odometría **OTOS** (R2 **NO** tiene OTOS).
+>
+> **Implicancia (decisión Gustavo 2026-06-17): R1 ahora juega CON gyro (BNO), igual que R2.**
+> El flag `ATK_OTOS_NOGYRO` (env `central_robot1_delantero_practica`) queda como **FALLBACK
+> histórico** (era para cuando R1 tenía los BNO desconectados) — NO es el binario de
+> competencia de R1. ⚠️ El cambio de comportamiento (R1 con gyro) **lo valida el equipo en
+> banco** antes de Incheon; Claude documenta, no cierra TASKs de hardware. TASKs 207/216/217
+> actualizadas a "hardware reconectado, falta confirmar juego con gyro en banco" (NO cerradas).
+> **R2 ya estaba bien documentado** (2 BNO + 4 ToF + US + juez + 2 cámaras + luz, sin OTOS) —
+> no cambia. Journal: `journal/2026-06-17-config-hardware-incheon-confirmada.md`.
+
+> **📊 MONITOR CENTRAL — P2 COMPLETOS: TIMELINE + Hz + VEL-PELOTA + CLI (2026-06-17, host-tested):**
+> Sobre la base del banner de abajo, cerrados los 4 P2 pendientes (workflow paralelo, 3 subagentes
+> sobre archivos disjuntos + integración por la sesión principal): **(1)** `panel_central_timeline`
+> (`CentralTimelinePanel`) — histórico de señales (match/pose/heading/pelota/línea/enlaces +
+> sparklines loop/my_x/my_y + flapping); módulo puro `central_timeline.py`. **(2)** `panel_central_rates`
+> (`CentralRatesPanel`) — Hz de llegada por enlace (TOP→C, DOWN→C, telemetría C) + Hz de cambio
+> (pelota/pose/FSM/línea) + alerta de flapping de heading_valid; consume `rate_meter.BoardRateMeters`.
+> **(3)** flecha de velocidad de la pelota en `panel_central_field` (naranja, ≥30 mm/s; función pura
+> `ball_velocity_vector_in_field`). **(4)** CLI **`--sim-central`** (rutea a `SimCentralSource` ya
+> existente) → `python -m monitor_base --sim-central` abre los 5 paneles central sin robot. Los 5
+> paneles (`CentralPanel/Field/Health/Rates/Timeline`) registrados en `gui_shell._registry()`.
+> **320 tests Python passed** (+32). Firmware NO tocado. Banco visual (mirar que se ven bien) lo
+> cierra el equipo. Journal: `journal/2026-06-17-monitor-central-p2-timeline-rates-ballvel-cli.md`.
+
 > **📡 MONITOR CENTRAL — POSE XY DEL TOP + CANCHA GRÁFICA + Hz + FIX FORMATO (2026-06-17, host-tested):**
 > Ampliado el contrato JSON CENTRAL→app con **10 campos nuevos en `snap`**: pose XY del robot
 > (`my_x`, `my_y`, `my_hdg`, `hdg_valid`, `my_conf`), velocidad de la pelota (`ball_vx/vy`) y arco

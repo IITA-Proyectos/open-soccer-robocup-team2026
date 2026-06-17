@@ -1,5 +1,10 @@
 // atk_nogyro.h — helpers PUROS del delantero SIN GIROSCOPIO (práctica R1, 2026-06-12).
 //
+// ⚠️ 2026-06-17: R1 RECONECTÓ los 2 BNO (Gustavo) → R1 juega CON gyro. Este módulo
+//    queda como FALLBACK por si el BNO falla; ya NO describe el estado normal de R1.
+//    El "Contexto" de abajo (R1 sin BNO) quedó SUPERADO — se conserva como historia.
+//    Ver ESTADO-ACTUAL.md banner config Incheon.
+//
 // Contexto: ROBOT1 corre sin BNO (los 2 quedaron desconectados tras el recableado
 // del 2026-06-11) pero SÍ tiene odometría de piso (2 OTOS en DOWN, broadcast
 // Capa 1 ya mergeado). Estos helpers le dan al delantero lo que el gyro le daba:

@@ -1,5 +1,10 @@
 // pinout_robot2.h — Pinout específico del ROBOT 2 (delantero).
 //
+// ⚠️ CONFIG INCHEON 2026-06-17 (Gustavo): R2 = 2× BNO055 (primario en bus/dir I²C
+//    propio a alta velocidad + centinela en el MISMO bus que los ToF a 1 Hz) + 4× ToF
+//    + HC-SR04 + módulo de juez + 2× cámaras OpenMV + luz de la DOWN. R2 juega CON gyro.
+//    R2 NO lleva OTOS (su DOWN va con NUM_OTOS=0). (R1 = igual pero SÍ con OTOS.)
+//
 // Hardware: placa TOP rev 1.0 + bodge XSHUT manual de Enzo. Los pines
 // del bodge pueden ser DISTINTOS a R1 — cada robot tiene su construcción
 // manual. Confirmar con Enzo qué pines usó.

@@ -7,6 +7,9 @@
 #ifdef CENTRAL_FLOOR_SCALE
 #include "motor_floor_scale.h" // piso por ESCALADO UNIFORME + eficiencia (módulo PURO)
 #endif
+#ifdef CENTRAL_EEPROM_CALIB
+#include "central_eeprom_config.h"  // g_cfg_min_pwm / g_cfg_eff = override de EEPROM (calibración sin reflashear)
+#endif
 #include <Arduino.h>
 
 namespace iitasoccer {
@@ -168,8 +171,14 @@ void motors_apply_command(const MotorCommand& cmd) {
     {
         FloorScaleCfg fscfg;
         for (int i = 0; i < 3; ++i) {
+#ifdef CENTRAL_EEPROM_CALIB
+            // Override de la calibración en EEPROM (igual a los constexpr si no hay blob válido).
+            fscfg.floor_pwm[i] = g_cfg_min_pwm[i];
+            fscfg.eff_x100[i]  = g_cfg_eff[i];
+#else
             fscfg.floor_pwm[i] = MOTOR_MIN_PWM[i];
             fscfg.eff_x100[i]  = MOTOR_EFF_X100[i];
+#endif
         }
         fscfg.noise_thresh = MOTOR_PWM_NOISE_THRESH;
         fscfg.burn_cap     = 150;   // límite térmico motores 5V @ 7,4V
@@ -185,7 +194,11 @@ void motors_apply_command(const MotorCommand& cmd) {
         // eleva al piso de ESA rueda — las delanteras oblicuas necesitan más que la trasera
         // (si la trasera lleva el mismo piso se adelanta y hace ROTAR el robot en el strafe).
         // DEFAULT {0,0,0} (ROBOT2) → no-op → binario neutro.
+#ifdef CENTRAL_EEPROM_CALIB
+        pwm = apply_pwm_floor(pwm, g_cfg_min_pwm[i], MOTOR_PWM_NOISE_THRESH);
+#else
         pwm = apply_pwm_floor(pwm, MOTOR_MIN_PWM[i], MOTOR_PWM_NOISE_THRESH);
+#endif
 #endif
 #ifdef CENTRAL_REAR_BRAKE_LEAD
         // Freno anticipado: con el cut activo la TRASERA (idx 2) corta a 0 mientras las

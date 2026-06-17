@@ -28,6 +28,7 @@
 #include "comm_down.h"
 #include "loop_monitor.h"   // supervisor de loop-time (PURO, host-testeable)
 #include "central_telemetry_serial.h"  // monitor USB (gateado -DCENTRAL_USB_MONITOR; no-op sin flag)
+#include "central_eeprom_config.h"     // calibración persistente (gateado -DCENTRAL_EEPROM_CALIB; no-op sin flag)
 #ifdef CENTRAL_BLACKBOX
 #include "blackbox.h"       // caja negra de corridas (gateada, envs *_bb)
 #endif
@@ -185,6 +186,13 @@ void setup() {
     Serial.println("=========================================");
 
     apply_role_from_dipswitch();
+
+#ifdef CENTRAL_EEPROM_CALIB
+    // Carga la calibración de movimiento (pisos/eff/avance/PID) desde EEPROM ANTES de los
+    // motores: si hay un blob válido, los motores arrancan con los valores calibrados; si
+    // no, con los constexpr de config_central.h. Sin el flag, no-op (competencia idéntica).
+    central_eeprom_init();
+#endif
 
     motors_init();
     Serial.println("[CENTRAL] motors init OK");

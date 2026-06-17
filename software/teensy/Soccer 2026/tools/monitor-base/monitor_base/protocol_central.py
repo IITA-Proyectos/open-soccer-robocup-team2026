@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 from .protocol import ProtocolError  # reusa la misma excepción del monitor
 
@@ -154,6 +154,29 @@ class Loop:
 
 
 @dataclass
+class CalibConfig:
+    """Eco de la calibración de movimiento que la CENTRAL tiene EN EEPROM.
+
+    Espejo del módulo src/shared/central_config.h. El firmware (cuando se flashea
+    con el flag de calibración) emite este sub-objeto en respuesta a `GET`. Es
+    OPCIONAL en el frame: firmware sin calibración → CentralFrame.ccfg = None.
+
+    Unidades / rangos (los MISMOS que valida el firmware):
+      • min_pwm[0..2] : piso de PWM por motor (0=del-izq, 1=del-der, 2=trasera). 0..149
+      • eff[0..2]     : eficiencia ×100 por rueda. 50..200 (100 = 1.0×)
+      • fwd_l / fwd_r : PWM de rueda izq/der en avance recto. 0..149
+      • gkp/gki/gkd   : PID de rumbo con giroscopio, ×1000 (kp=1.5 → 1500). 0..32000
+    """
+    min_pwm: List[int]    # [m0, m1, m2]
+    eff: List[int]        # [w0, w1, w2] ×100
+    fwd_l: int
+    fwd_r: int
+    gkp: int              # ×1000
+    gki: int              # ×1000
+    gkd: int              # ×1000
+
+
+@dataclass
 class CentralFrame:
     """Un frame de telemetría completo de la placa CENTRAL (una línea JSON)."""
     v: int
@@ -167,6 +190,9 @@ class CentralFrame:
     otos: Otos
     snap: Snap
     loop: Loop
+    # OPCIONAL: eco de la calibración en EEPROM (sub-objeto "ccfg"). None si el
+    # firmware no lo emite (no fue flasheado con el flag de calibración, o es viejo).
+    ccfg: Optional[CalibConfig] = None
     raw_json: str = field(default="", repr=False)
 
 
@@ -242,10 +268,28 @@ def parse_obj_central(obj: dict, raw: str = "") -> CentralFrame:
         lp = obj["loop"]
         loop = Loop(max_us=int(lp["max_us"]), ema_us=int(lp["ema_us"]))
 
+        # OPCIONAL "ccfg": eco de la calibración en EEPROM. Igual que los campos de
+        # pose 2026-06-17, se parsea con .get() para ser retrocompatible: un frame
+        # sin "ccfg" deja ccfg=None (no rompe firmwares viejos ni los que no fueron
+        # flasheados con el flag de calibración).
+        ccfg = None
+        cc = obj.get("ccfg")
+        if isinstance(cc, dict):
+            mp = [int(x) for x in cc.get("min_pwm", [0, 0, 0])]
+            ef = [int(x) for x in cc.get("eff", [100, 100, 100])]
+            ccfg = CalibConfig(
+                min_pwm=mp, eff=ef,
+                fwd_l=int(cc.get("fwd_l", 0)),
+                fwd_r=int(cc.get("fwd_r", 0)),
+                gkp=int(cc.get("gkp", 0)),
+                gki=int(cc.get("gki", 0)),
+                gkd=int(cc.get("gkd", 0)),
+            )
+
         return CentralFrame(
             v=v, seq=int(obj["seq"]), t_ms=int(obj["t_ms"]),
             fsm=fsm, cmd=cmd, pwm=pwm, top=top, down=down,
-            otos=otos, snap=snap, loop=loop, raw_json=raw,
+            otos=otos, snap=snap, loop=loop, ccfg=ccfg, raw_json=raw,
         )
     except ProtocolError:
         raise

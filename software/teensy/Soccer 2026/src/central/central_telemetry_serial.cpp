@@ -38,6 +38,10 @@
 #include "comm_down.h"           // salud del enlace DOWN->CENTRAL
 #include "loop_monitor.h"        // LoopMonitor (g_loop_monitor)
 #include "types.h"
+#ifdef CENTRAL_EEPROM_CALIB
+#include "central_config.h"          // cc_parse_command (comandos de calibración SET/GET/SAVE)
+#include "central_eeprom_config.h"   // central_eeprom_apply_set / central_eeprom_save
+#endif
 
 namespace iitasoccer {
 
@@ -260,6 +264,20 @@ bool central_telemetry_consume_line(const char* line, int len) {
         dispatch(c);
         return false;
     }
+#ifdef CENTRAL_EEPROM_CALIB
+    // Comandos de CALIBRACIÓN (SET/GET/SAVE). Se prueban ANTES de devolver "no consumida":
+    // si la línea es un comando de calibración VÁLIDO, lo aplicamos y la consumimos (así su
+    // texto no cae en el handler g/s/d/x de main como control del robot).
+    {
+        const CcCommand cc = cc_parse_command(line, len);
+        if (cc.valid) {
+            if      (cc.cmd == CcCmd::SET)  central_eeprom_apply_set(cc.param, cc.idx, cc.value);
+            else if (cc.cmd == CcCmd::SAVE) central_eeprom_save();
+            else if (cc.cmd == CcCmd::GET)  emit_frame();  // (el eco "ccfg" en el frame = incremento siguiente)
+            return true;
+        }
+    }
+#endif
     // c.cmd == UNKNOWN: texto no-comando (incluye líneas con g/s/d/x). NO lo
     // consumimos: main lo procesa char-por-char (control real del robot).
     return false;

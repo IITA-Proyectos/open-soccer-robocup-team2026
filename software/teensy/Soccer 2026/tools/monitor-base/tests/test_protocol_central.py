@@ -7,7 +7,7 @@ import pytest
 
 from monitor_base.protocol import ProtocolError
 from monitor_base.protocol_central import (
-    SCHEMA_VERSION_CENTRAL, CentralFrame, decode_snap_flags,
+    SCHEMA_VERSION_CENTRAL, CalibConfig, CentralFrame, decode_snap_flags,
     is_central_line, parse_line_central, parse_obj_central,
 )
 
@@ -122,6 +122,55 @@ def test_extended_heading_valid_independent_from_pose_conf():
     assert f.snap.has_pose is False
     assert f.snap.heading_valid is True
     assert f.snap.my_heading_deg == pytest.approx(45.0)
+
+
+# ── Sub-objeto OPCIONAL "ccfg": eco de la calibración en EEPROM ────────────────
+# Retrocompatible (igual que los campos de pose 2026-06-17): ausente → None;
+# presente → CalibConfig con los valores del robot.
+
+def test_ccfg_absent_is_none():
+    """Firmware sin calibración (o sin flag) → ccfg = None, no rompe el parser."""
+    f = parse_obj_central(_v1_obj())
+    assert f.ccfg is None
+
+
+def test_ccfg_present_parsed():
+    """Firmware con calibración emite "ccfg" → CalibConfig con valores exactos."""
+    f = parse_obj_central(_v1_obj(ccfg={
+        "min_pwm": [70, 70, 107], "eff": [100, 100, 115],
+        "fwd_l": 120, "fwd_r": 118, "gkp": 1500, "gki": 10, "gkd": 300,
+    }))
+    assert isinstance(f.ccfg, CalibConfig)
+    assert f.ccfg.min_pwm == [70, 70, 107]
+    assert f.ccfg.eff == [100, 100, 115]
+    assert f.ccfg.fwd_l == 120 and f.ccfg.fwd_r == 118
+    assert f.ccfg.gkp == 1500 and f.ccfg.gki == 10 and f.ccfg.gkd == 300
+
+
+def test_ccfg_partial_uses_defaults():
+    """ccfg incompleto (campos faltantes) → defaults seguros, no explota."""
+    f = parse_obj_central(_v1_obj(ccfg={"min_pwm": [60, 60, 90]}))
+    assert isinstance(f.ccfg, CalibConfig)
+    assert f.ccfg.min_pwm == [60, 60, 90]
+    assert f.ccfg.eff == [100, 100, 100]   # default
+    assert f.ccfg.fwd_l == 0 and f.ccfg.gkp == 0
+
+
+def test_ccfg_from_json_line():
+    """El parseo end-to-end desde una línea JSON con ccfg."""
+    line = parse_line_central(
+        '{"central":1,"v":1,"seq":5,"t_ms":100,'
+        '"fsm":{"role":"ATK","state":"IDLE","match":0},'
+        '"cmd":{"vx":0,"vy":0,"w":0,"spin":0},"pwm":[0,0,0],'
+        '"top":{"rxB":0,"fr":0,"crc":0,"rsy":0,"badsz":0,"fresh":1,"age":0},'
+        '"down":{"rx":0,"crc":0,"lost":0,"rsy":0,"badsch":0,"line_fresh":1,'
+        '"valid":1,"ev":0,"age":0},"otos":{"fresh":1,"hdg":0.0},'
+        '"snap":{"ball_vis":0,"ball_x":0,"ball_y":0,"goal_own_ang":0.0,'
+        '"goal_own_dist":0,"referee":0,"flags":0},"loop":{"max_us":0,"ema_us":0},'
+        '"ccfg":{"min_pwm":[70,70,107],"eff":[100,100,115],"fwd_l":120,'
+        '"fwd_r":118,"gkp":1500,"gki":10,"gkd":300}}')
+    assert line.ccfg is not None
+    assert line.ccfg.min_pwm == [70, 70, 107] and line.ccfg.gkp == 1500
 
 
 # ── Golden del contrato ───────────────────────────────────────────────────────

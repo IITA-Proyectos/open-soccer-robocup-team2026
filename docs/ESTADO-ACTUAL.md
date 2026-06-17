@@ -23,6 +23,21 @@ tipo: indice-operacional
 > journal (A latencia · B calibración+PID · C pose/watchdog/xval · D consolidar pruebas). Banco:
 > TASK-111 (validar lazo RT ambos robots). Journal: `journal/2026-06-17-ruta-latencia-y-lazo-rt.md`.
 
+> **🎛️ CALIBRACIÓN POR EEPROM SIN REFLASHEAR — CABLEADA end-to-end (2026-06-17, banco=TASK-112):**
+> Se puede tunear las potencias de la CENTRAL desde el monitor USB y guardarlas en EEPROM, sin
+> reflashear. Núcleo puro `src/shared/central_config` (commit `585cd40`, 19 tests) + glue
+> `src/central/central_eeprom_config` (load/save, offset 0, patrón top_eeprom_config) + cableado
+> en `motors_zircon` (min_pwm/eff salen de EEPROM bajo el flag) + dispatch SET/GET/SAVE en
+> `central_telemetry_serial` + panel **"Calibrar CENTRAL"** (`CentralCalibPanel`) en la app.
+> Comandos: `SET MINPWM/EFF <idx> <val>` · `SET FWDL/FWDR/GKP/GKI/GKD <val>` · `GET` · `SAVE`.
+> Gateado `-DCENTRAL_EEPROM_CALIB` (envs `central_robot{1,2}_arquero_calib`); **competencia
+> byte-idéntica** (central_robot1/2 sin el flag → usan los constexpr; EEPROM = override opcional,
+> CRC falla → defaults). **APLICA ya:** min_pwm+eff (strafe lateral). **Se guarda pero NO aplica
+> aún:** fwd_pwm (avance recto) + PID gyro (próximo incremento, tocan mixer/strategy). Falta
+> también el eco `ccfg` en el frame para el GET-refresh (el parser de la app ya lo soporta).
+> Verificado: 19 host + 4 envs SUCCESS + 323 Python. Journal:
+> `journal/2026-06-17-calibracion-eeprom-sin-reflashear-cableada.md`.
+
 > **🎯 3 P0 DE COMPETENCIA RESUELTOS (firmware listo; banco = TASK-110) (2026-06-17):**
 > Del estado de situación de las 3 placas salieron 3 P0. Resueltos con criterio por riesgo:
 > **(P0.2) FLOOR_SCALE en el arquero R1** — `central_robot1` (rol GOALKEEPER por `-DROBOT1`,

@@ -63,6 +63,10 @@ void motors_set_rear_trim(int delta_pwm);
 // delanteras (oblicuas, mas rozamiento) -> sin esto el robot cruza adelante en el transitorio.
 // Multiplica el PWM de la trasera: preserva el signo (reduce magnitud en ambos sentidos). 1.0 = sin cambio.
 void motors_set_rear_scale(float scale);
+// ESCALA DE LAS DELANTERAS (Gustavo 2026-06-18): el caller la SUBE (>1.0) durante el escape para que
+// las delanteras (oblicuas, cerca de su piso a 0.5*vx) empujen mas y la huida salga RECTA, sumando
+// potencia lateral por las ruedas con holgura (no la trasera, que satura/diagonaliza). 1.0 = sin cambio.
+void motors_set_front_scale(float scale);
 #endif
 
 }  // namespace iitasoccer

@@ -58,6 +58,9 @@ int g_rear_trim = 0;
 // Escala de la trasera (Gustavo 2026-06-18): el caller la baja (<1.0) al arrancar el escape para
 // compensar que la trasera arranca antes (menos rozamiento). Multiplica -> preserva el signo. 1.0 = no-op.
 float g_rear_scale = 1.0f;
+// Escala de las DELANTERAS (Gustavo 2026-06-18): el caller la SUBE (>1.0) en el escape para que las
+// delanteras (a 0.5*vx quedan cerca de su piso) empujen mas y la huida salga RECTA. 1.0 = no-op.
+float g_front_scale = 1.0f;
 #endif
 
 #ifdef CENTRAL_MOTOR_KICKSTART
@@ -216,6 +219,14 @@ void motors_apply_command(const MotorCommand& cmd) {
         if (i == 2 && g_rear_cut) pwm = 0;
 #endif
 #ifdef CENTRAL_REAR_TRIM
+        // Escala de las DELANTERAS (idx 0,1): el caller la SUBE (>1.0) durante el escape para que las
+        // delanteras (oblicuas, mas rozamiento; a 0.5*vx quedan cerca de su piso) empujen mas y la huida
+        // salga RECTA sin saturar la trasera (que es la que diagonaliza). Multiplica -> preserva el signo.
+        if ((i == 0 || i == 1) && g_front_scale != 1.0f && pwm != 0) {
+            pwm = (int)(pwm * g_front_scale);
+            if (pwm >  150) pwm =  150;
+            if (pwm < -150) pwm = -150;
+        }
         // Escala de la trasera (Gustavo 2026-06-18): el caller la baja al ARRANCAR el escape para
         // compensar que la trasera (menos rozamiento) acelera antes. Multiplica -> preserva el signo.
         if (i == 2 && g_rear_scale != 1.0f && pwm != 0) {
@@ -298,6 +309,7 @@ void motors_set_rear_cut(bool cut) { g_rear_cut = cut; }
 #ifdef CENTRAL_REAR_TRIM
 void motors_set_rear_trim(int delta_pwm) { g_rear_trim = delta_pwm; }
 void motors_set_rear_scale(float scale)  { g_rear_scale = scale; }
+void motors_set_front_scale(float scale) { g_front_scale = scale; }
 #endif
 
 }  // namespace iitasoccer

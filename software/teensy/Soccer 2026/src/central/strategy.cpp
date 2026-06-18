@@ -439,6 +439,9 @@ constexpr int      GK_LINE_ESCAPE_SPEED_MM_S = 470;    // TUNEO YA DOCUMENTADO (
 // DESACTIVADA (1.0). Se deja la perilla por si el banco mostrara un transitorio residual a 470.
 constexpr float    GK_ESCAPE_REAR_SCALE     = 1.00f;   // 1.0 = sin cambio (desactivada; el diagonal era velocidad>470, no friccion)
 constexpr uint32_t GK_ESCAPE_REAR_SCALE_MS  = 250;     // (sin efecto mientras GK_ESCAPE_REAR_SCALE = 1.0)
+constexpr float    GK_ESCAPE_FRONT_SCALE    = 1.30f;   // 2026-06-18 (Gustavo): EXTRA a las DELANTERAS en el escape. A 0.5*vx
+                                                       // quedan cerca de su piso -> subirlas suma empuje lateral por las ruedas
+                                                       // con holgura y la huida sale RECTA, sin saturar la trasera. Tunear en banco.
 #ifdef GK_Y_HOLD
 // Control LENTO de PROFUNDIDAD (Y de cancha) — diseño Gustavo 2026-06-18. Lo usa gk_pingpong_tick:
 // mezcla un vy chico al strafe (diagonal) para no derivar hacia adelante. Off por defecto.
@@ -1220,6 +1223,7 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
 #ifdef CENTRAL_REAR_TRIM
             motors_set_rear_trim(0);
             motors_set_rear_scale((now_ms - escape_start_ms < GK_ESCAPE_REAR_SCALE_MS) ? GK_ESCAPE_REAR_SCALE : 1.0f);
+            motors_set_front_scale(GK_ESCAPE_FRONT_SCALE);   // delanteras con EXTRA -> huida recta y mas despegue
 #endif
             return cmd;
         }
@@ -1254,6 +1258,7 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
 #ifdef CENTRAL_REAR_TRIM
             motors_set_rear_trim(0);
             motors_set_rear_scale(GK_ESCAPE_REAR_SCALE);   // arranque del escape -> trasera reducida (transitorio)
+            motors_set_front_scale(GK_ESCAPE_FRONT_SCALE);   // delanteras con EXTRA -> huida recta y mas despegue
 #endif
             return cmd;
         }
@@ -1297,6 +1302,7 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
     static bool  target_captured = false;          // captura el rumbo de ARRANQUE de la patrulla 1 sola vez
     static float hold_target_deg = GK_GYRO_HOLD_TARGET_DEG;
     motors_set_rear_scale(1.0f);   // fuera del transitorio del escape: trasera a potencia plena durante la patrulla
+    motors_set_front_scale(1.0f);  // fuera del escape: delanteras sin extra
     if (hv) {
         if (!target_captured) {
             hold_target_deg = world_model_get_my_heading_deg();  // mantiene el rumbo con que lo pusiste, NO un cero absoluto

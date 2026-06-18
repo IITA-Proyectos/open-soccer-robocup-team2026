@@ -20,4 +20,12 @@ uint32_t comm_top_get_bytes_received();  // DIAG: bytes crudos en Serial7 (link 
 uint32_t comm_top_get_resync_events();   // DIAG: resyncs del decoder (byte-slip/ruido, #25)
 uint32_t comm_top_get_snapshot_size_rejects();  // CC-01 DIAG: WorldSnapshot con tamano != schema (deploy v2/v3)
 
+#ifdef CENTRAL_TOP_LINK_SEQ
+// DIAG (desactivado por defecto): frames del enlace TOP->CENTRAL perdidos, contados por
+// los HUECOS del numero de secuencia (SEQ) que el TOP estampa en cada snapshot. Sin esto,
+// perder snapshots (buffer lleno / ruido) se ve IGUAL que "sin enlace". Lo lee el diag de
+// banco; en el binario de competencia la bandera no se define -> sin cambio. Banco: TASK-220.
+uint32_t comm_top_get_frames_lost();
+#endif
+
 }  // namespace iitasoccer

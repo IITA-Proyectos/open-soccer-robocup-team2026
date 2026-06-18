@@ -348,6 +348,13 @@ bool sensors_tof_init() {
         if (!g_tof_multi[i].setAddress(TOF_I2C_ADDR_ASSIGNED[i]))           continue;
         g_tof_multi[i].setResolution(TOF_RESOLUTION_ZONES);
         g_tof_multi[i].setRangingFrequency(TOF_RANGING_FREQ_HZ);
+#ifdef TOP_ENABLE_TOF_CONTINUOUS
+        // Modo CONTINUO en vez del autonomo por defecto (banco, desactivado por defecto):
+        // segun el manual ST (UM3038) achica el bloque de resultados por lectura I2C ->
+        // cada getRangingData() ocupa menos el bus -> menos jitter del loop. Con la bandera
+        // apagada (competencia) queda el modo autonomo de hoy = sin cambio. Banco: TASK-219.
+        g_tof_multi[i].setRangingMode(VL53L7CX_RANGING_MODE_CONTINUOUS);
+#endif
         if (!g_tof_multi[i].startRanging())                                 continue;
         g_ready[i] = true;              // queda despierto (retiene dir + rangea)
     }
@@ -390,6 +397,9 @@ bool sensors_tof_init() {
     }
     Wire.setClock(TOF_RUN_CLOCK_HZ);   // carga OK → volver a 100 kHz para el runtime (TA-1).
                                        // La config de abajo (set*/startRanging) es chica: a 100 kHz no pesa.
+#ifdef TOP_ENABLE_TOF_CONTINUOUS
+    g_tof_frontal.setRangingMode(VL53L7CX_RANGING_MODE_CONTINUOUS);  // banco (ver multi-ToF arriba)
+#endif
     if (!g_tof_frontal.setResolution(TOF_RESOLUTION_ZONES) ||
         !g_tof_frontal.setRangingFrequency(TOF_RANGING_FREQ_HZ) ||
         !g_tof_frontal.startRanging()) {

@@ -15,10 +15,26 @@ uint32_t g_frames_received = 0;
 uint32_t g_bytes_received = 0;  // DIAG: bytes crudos leidos de Serial7 (link TOP->CENTRAL)
 uint32_t g_snapshot_size_rejects = 0;  // CC-01: WorldSnapshot con tamano != schema (deploy v2/v3 desfasado)
 
+#ifdef CENTRAL_TOP_LINK_SEQ
+// Salud del enlace TOP->CENTRAL por SEQ (P1, desactivado por defecto): el TOP numera cada
+// snapshot (top/comm_central.cpp: f.seq = g_send_seq++). Si la CENTRAL ve un salto en el SEQ,
+// perdio esos frames (buffer RX lleno / ruido). Aritmetica uint8 = wrap-safe en el rollover.
+uint32_t g_frames_lost = 0;
+uint8_t  g_last_seq    = 0;
+bool     g_seq_primed  = false;
+#endif
+
 constexpr long UART_BAUD = 230400;
 
 void handle_frame(const Frame& f) {
     g_frames_received++;
+#ifdef CENTRAL_TOP_LINK_SEQ
+    if (g_seq_primed) {
+        g_frames_lost += static_cast<uint8_t>(f.seq - g_last_seq - 1);  // huecos desde el ultimo
+    }
+    g_last_seq   = f.seq;
+    g_seq_primed = true;
+#endif
     if (f.type == MsgType::WORLD_SNAPSHOT) {
         if (f.payload_len == sizeof(WorldSnapshot)) {
             WorldSnapshot snap{};
@@ -80,5 +96,9 @@ uint32_t comm_top_get_crc_errors()      { return g_decoder.crc_errors(); }
 uint32_t comm_top_get_bytes_received()  { return g_bytes_received; }
 uint32_t comm_top_get_resync_events()   { return g_decoder.resync_events(); }
 uint32_t comm_top_get_snapshot_size_rejects() { return g_snapshot_size_rejects; }
+
+#ifdef CENTRAL_TOP_LINK_SEQ
+uint32_t comm_top_get_frames_lost() { return g_frames_lost; }
+#endif
 
 }  // namespace iitasoccer

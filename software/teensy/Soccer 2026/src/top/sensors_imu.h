@@ -56,6 +56,18 @@ float sensors_imu_get_right_heading_deg();
 // Wrapper conveniente para modulos que prefieren enteros (ej. localization).
 int16_t sensors_imu_get_heading_centideg();
 
+#ifdef TOP_ENABLE_HEADING_PREDICT
+// Heading EXTRAPOLADO (predict step) para TRANSMITIR a la CENTRAL: el heading
+// fusionado + ω·Δt (ω medida por el gyro, Δt = edad del fusionado), con cap y
+// deadband (src/shared/heading_predict.h). Descuenta la latencia/staleness entre
+// muestras del BNO. Lo alimenta sensors_imu_tick() con el gyro YA leído (cero I²C
+// extra). Solo lo usan los sitios de TRANSMISIÓN del snapshot (main_top /
+// snapshot_emitter), NO el detector de freeze ni localization (esos siguen con el
+// heading CRUDO, que necesita igualdad exacta). Gateado off-by-default →
+// competencia byte-idéntica. Banco: TASK-218. Convención = igual que el crudo.
+int16_t sensors_imu_get_heading_centideg_predicted();
+#endif
+
 // Diferencia entre los 2 IMUs (sanity check). > 5° indica problema.
 float sensors_imu_get_disagreement_deg();
 

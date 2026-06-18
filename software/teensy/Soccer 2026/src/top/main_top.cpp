@@ -209,7 +209,13 @@ inline void watchdog_feed() {
     // validar signo/eje OTOS vs cancha + ruido ToF + heading_valid sin falsos.
     // El robot SÍ conoce su orientación (2 BNO055) AUNQUE la trilateración no haya
     // anclado, por eso el heading del BNO se envía siempre, independiente de pose.
+#ifdef TOP_ENABLE_HEADING_PREDICT
+    // Predict step (GATED OFF): transmitir el heading EXTRAPOLADO (crudo + ω·Δt,
+    // capado) en vez del último quieto → descuenta la latencia entre muestras del BNO.
+    s.my_heading_centideg = sensors_imu_get_heading_centideg_predicted();
+#else
     s.my_heading_centideg = sensors_imu_get_heading_centideg();
+#endif
 
     // Pelota — fusión front+back desde cameras_runtime (sección 7.2 de
     // FIRMWARE-PLACA-ARRIBA.md). Coords relativas al robot en mm.

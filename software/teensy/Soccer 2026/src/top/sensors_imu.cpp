@@ -33,6 +33,9 @@
 #ifdef TOP_ENABLE_BNO_FREEZE_DETECT
 #include "imu_freeze.h"   // detector de BNO congelado (GATED OFF por default)
 #endif
+#ifdef TOP_ENABLE_HEADING_PREDICT
+#include "heading_predict.h"   // extrapolación de rumbo para transmitir (GATED OFF)
+#endif
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -84,6 +87,14 @@ uint32_t g_calib_check_ctr = 0;
 // heading que ya se leyó este tick. Ver src/shared/imu_freeze.h.
 ImuFreezeState g_freeze[IMU_FUSION_N];
 ImuFreezeCfg   g_freeze_cfg;
+#endif
+
+#ifdef TOP_ENABLE_HEADING_PREDICT
+// Estado del predictor de rumbo (extrapolación lineal). Lo alimenta el tick con el
+// heading fusionado + la ω del primario; lo leen los sitios de transmisión. PURO →
+// host-tested (test_heading_predict). Con el flag OFF nada se compila → byte-idéntico.
+HeadingPredictState g_hpredict{};
+HeadingPredictCfg   g_hpredict_cfg = heading_predict_default_cfg();
 #endif
 
 // ── Cross-validación de salud del heading (TASK-213, GATED OFF) ──────────────
@@ -399,6 +410,15 @@ void sensors_imu_tick() {
 
     imu_fusion_update(g_fusion, g_fcfg, g_scfg, in, dt_s);
 
+#ifdef TOP_ENABLE_HEADING_PREDICT
+    // Extrapolación de rumbo (predict step): alimentar con el heading FUSIONADO recién
+    // calculado + la ω del primario YA leída este tick (in[0].gyro_z_dps → CERO I²C
+    // extra). El valor extrapolado lo consumen los sitios de TRANSMISIÓN del snapshot
+    // (main_top / snapshot_emitter); el heading CRUDO sigue intacto para freeze/localiz.
+    heading_predict_on_sample(g_hpredict, sensors_imu_get_heading_centideg(),
+                              in[0].gyro_z_dps, sensors_imu_get_heading_valid(), now);
+#endif
+
 #ifdef TOP_ENABLE_HEADING_XVAL
     // Cross-validación (TASK-213): cachear el gyro_z del primario (in[0], YA leído →
     // CERO I²C extra), acumular la rotación NETA en GRADOS (gate de ventana del centinela),
@@ -459,6 +479,15 @@ int16_t sensors_imu_get_heading_centideg() {
     return static_cast<int16_t>(sensors_imu_get_heading_deg() * 100.0f);
 }
 
+#ifdef TOP_ENABLE_HEADING_PREDICT
+int16_t sensors_imu_get_heading_centideg_predicted() {
+    // Extrapola al instante ACTUAL (transmisión) usando la última ω medida y la edad
+    // del ancla. Cap + deadband adentro (heading_predict.h). millis() aquí está OK
+    // (contexto loop, no ISR).
+    return heading_predict_value(g_hpredict, millis(), g_hpredict_cfg);
+}
+#endif
+
 float sensors_imu_get_disagreement_deg() { return g_fusion.disagreement_deg; }
 
 void sensors_imu_recalibrate_zero() {
@@ -468,6 +497,9 @@ void sensors_imu_recalibrate_zero() {
     imu_fusion_init(g_fusion);  // limpia estado de fusión (drift, glitch, etc)
 #ifdef TOP_ENABLE_BNO_FREEZE_DETECT
     for (int i = 0; i < IMU_FUSION_N; ++i) imu_freeze_reset(g_freeze[i]);
+#endif
+#ifdef TOP_ENABLE_HEADING_PREDICT
+    heading_predict_reset(g_hpredict);  // re-cero cambia el heading a propósito → no extrapolar el salto
 #endif
     g_last_tick_ms = millis();
 }

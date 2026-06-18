@@ -100,7 +100,12 @@ void snapshot_emitter_publish() {
 
     // HEADING (SIEMPRE del IMU; el bit de validez lo decide assemble desde valid_src).
     HeadingObs ho{};
+#ifdef TOP_ENABLE_HEADING_PREDICT
+    // Predict step (GATED OFF): heading EXTRAPOLADO (crudo + ω·Δt, capado).
+    ho.centideg  = sensors_imu_get_heading_centideg_predicted();
+#else
     ho.centideg  = static_cast<int16_t>(sensors_imu_get_heading_centideg());
+#endif
     ho.valid_src = sensors_imu_get_heading_valid();
     // Ratchet: mata el "heading congelado-pero-válido" — si el IMU deja de reportar
     // válido en vivo, el slot envejece y assemble limpia bit4 heading_valid.

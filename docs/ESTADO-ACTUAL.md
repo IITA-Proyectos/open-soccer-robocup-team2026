@@ -13,6 +13,34 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> **🔧 TRES MEJORAS DE LAS RECOMENDACIONES P0/P1 (2026-06-18, desactivadas por defecto):** pedido
+> Gustavo "poner en marcha las 4". **R2 (predicción de pose XY) ya estaba** (`pose_fusion` cableado,
+> entorno `top_robot2_pri_posefusion`) — no se reinventó. Las otras 3, todas desactivadas por defecto
+> (competencia sin cambio): **(A1)** se resolvió la contradicción del comentario del temporizador del
+> snapshot — `top_robot2_pri` SÍ trae `-DTOP_ENABLE_SNAPSHOT_TIMER` (decisión 2026-06-16, se valida
+> usándolo), el binario SIN temporizador es `top_robot2_pri_anterior`; **no se cambió binario, solo el
+> comentario**. **(A3)** modo CONTINUO de los ToF (`-DTOP_ENABLE_TOF_CONTINUOUS`, entorno
+> `top_robot2_pri_tofcont`) — bloque I²C más chico por lectura → menos jitter; banco TASK-219.
+> **(A4)** contador de frames perdidos del enlace TOP→CENTRAL en `src/central/comm_top.cpp` (huecos de
+> SEQ; `-DCENTRAL_TOP_LINK_SEQ`, apagado) — infraestructura lista; el banco ya lo cubre `diag_central_rx_all`;
+> verlo EN VIVO en el monitor = TASK-220 (toca contrato de telemetría + Python + golden → coordinar con el
+> worker de la placa base). Compila: TOP+CENTRAL competencia byte-idénticos (CENTRAL `data` 7352 sin cambio,
+> +48 B code solo con la bandera). Journal: `journal/2026-06-18-mejoras-rt-snaptimer-tof-continuo-enlace-top.md`.
+
+> **🧭 PREDICCIÓN DE RUMBO (predict step) CABLEADA GATEADA (2026-06-17, banco=TASK-218):**
+> Pedido Gustavo: en vez de transmitir a la CENTRAL el último heading "quieto", transmitir
+> `heading_crudo + ω·Δt` (extrapolación lineal con la ω MEDIDA del gyro). Módulo PURO
+> `src/shared/heading_predict.h` (host-tested `test_heading_predict` 14/14) con las 3 reglas:
+> ω medida + **CAP `max_extrap_ms`~60 ms** (≪ `SNAPSHOT_TIMEOUT_MS`=500, hallazgo P0) + deadband +
+> re-anclaje. Cableado gateado `-DTOP_ENABLE_HEADING_PREDICT` en `sensors_imu` + los 2 sitios de TX
+> (`main_top` build_snapshot + `snapshot_emitter`); el heading CRUDO queda intacto para `imu_freeze`/
+> `localization`. Env `top_robot2_pri_hpredict`. **Competencia BYTE-IDÉNTICA** (flag OFF: `top_robot2_pri`
+> FLASH data 102584 sin cambio; +384 B code solo con el flag). Sinergia: puentea el freeze del BNO
+> (heading congelado + gyro vivo) acotado por el cap. **NO validado en HW** → banco TASK-218 (A/B de la
+> medialuna del arquero). NO se tocó pelota (ya usa `ball_predict`) ni señales de seguridad. Doc:
+> `research/completed/2026-06-17-extrapolacion-predict-step.md`. Journal:
+> `journal/2026-06-17-prediccion-rumbo-predict-step-cableada.md`.
+
 > **🎯 ZONAS DE ToF — ROTACIÓN FIRMWARE-DUEÑO + REDUCTOR ROBUSTO + FIX PARSER + SCROLL MONITOR
 > (2026-06-17, detrás de un flag, apagado por defecto = byte-idéntico):** el procesamiento de zonas
 > del ToF pasa al firmware del TOP. (1) `tof_zone_mask_orient.h` (puro, host 7/0): rota/espeja la

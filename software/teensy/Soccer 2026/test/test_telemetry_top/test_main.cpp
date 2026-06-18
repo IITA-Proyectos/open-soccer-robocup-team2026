@@ -300,6 +300,46 @@ void test_tt_parse_config_commands(void) {
     TEST_ASSERT_EQUAL(TtCmd::UNKNOWN, parse("CFG NOPE").cmd);
 }
 
+// Fix verificado (2026-06-17): TT_TOK_MAX paso de 4 a 5, asi "TOF <n> ZONE ON|OFF <idx>"
+// (5 tokens) ya alcanza su rama (antes el tokenizer cortaba en 4 y caia a UNKNOWN). Ademas se
+// agregaron "TOF <n> ROT 0|90|180|270" y "TOF <n> FLIP NONE|H|V" (4 tokens) para que la rotacion
+// sea responsabilidad del FIRMWARE (la aplica con -DTOP_ENABLE_TOF_ROT; el valor persiste en
+// EEPROM con CFG SAVE).
+void test_tt_parse_tof_zone_rot_flip(void) {
+    // ZONEMASK (4 tokens) sigue funcionando.
+    TtCommand m = parse("TOF 0 ZONEMASK 00FF");
+    TEST_ASSERT_EQUAL(TtCmd::TOF_SET_ZONEMASK, m.cmd);
+    TEST_ASSERT_EQUAL_INT32(0, m.arg);
+    TEST_ASSERT_EQUAL_INT32(0x00FF, m.arg2);
+
+    // ZONE ON/OFF (5 tokens) ahora SI parsea (el bug de TT_TOK_MAX=4 quedo arreglado).
+    TtCommand zoff = parse("TOF 0 ZONE OFF 3");
+    TEST_ASSERT_EQUAL(TtCmd::TOF_ZONE_OFF, zoff.cmd);
+    TEST_ASSERT_EQUAL_INT32(0, zoff.arg);
+    TEST_ASSERT_EQUAL_INT32(3, zoff.arg2);
+    TtCommand zon = parse("TOF 1 ZONE ON 5");
+    TEST_ASSERT_EQUAL(TtCmd::TOF_ZONE_ON, zon.cmd);
+    TEST_ASSERT_EQUAL_INT32(1, zon.arg);
+    TEST_ASSERT_EQUAL_INT32(5, zon.arg2);
+
+    // ROT (4 tokens): 0/90/180/270 validos; otro valor -> UNKNOWN.
+    TtCommand rot = parse("TOF 2 ROT 270");
+    TEST_ASSERT_EQUAL(TtCmd::TOF_SET_ROT, rot.cmd);
+    TEST_ASSERT_EQUAL_INT32(2, rot.arg);
+    TEST_ASSERT_EQUAL_INT32(270, rot.arg2);
+    TEST_ASSERT_EQUAL(TtCmd::TOF_SET_ROT, parse("TOF 0 ROT 0").cmd);
+    TEST_ASSERT_EQUAL(TtCmd::UNKNOWN, parse("TOF 0 ROT 45").cmd);
+
+    // FLIP (4 tokens): NONE/H/V -> 0/1/2; otro -> UNKNOWN.
+    TEST_ASSERT_EQUAL_INT32(0, parse("TOF 0 FLIP NONE").arg2);
+    TEST_ASSERT_EQUAL_INT32(1, parse("TOF 1 FLIP H").arg2);
+    TtCommand fv = parse("TOF 3 FLIP V");
+    TEST_ASSERT_EQUAL(TtCmd::TOF_SET_FLIP, fv.cmd);
+    TEST_ASSERT_EQUAL_INT32(3, fv.arg);
+    TEST_ASSERT_EQUAL_INT32(2, fv.arg2);
+    TEST_ASSERT_EQUAL(TtCmd::UNKNOWN, parse("TOF 0 FLIP DIAG").cmd);
+}
+
 // xval (TASK-213): default 0 al init + round-trip de los 3 campos en el JSON.
 void test_tt_xval_fields(void) {
     TopTelemetryFrame f;
@@ -353,6 +393,7 @@ int main(int, char**) {
     RUN_TEST(test_tt_parse_rate);
     RUN_TEST(test_tt_parse_imu);
     RUN_TEST(test_tt_parse_config_commands);
+    RUN_TEST(test_tt_parse_tof_zone_rot_flip);
     RUN_TEST(test_tt_parse_unknown);
     return UNITY_END();
 }

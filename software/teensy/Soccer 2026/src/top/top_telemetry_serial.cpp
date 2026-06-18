@@ -338,6 +338,28 @@ void dispatch(const TtCommand& c) {
             } else { Serial.println("[TOP] ERROR: indice ToF fuera de rango"); }
             break;
 
+        // A2.2 — ROTACION/FLIP por-ToF: el FIRMWARE es el dueno de la rotacion. Estos comandos
+        // SOLO guardan el valor en g_top_cfg (persiste con CFG SAVE). Se APLICAN a la mascara
+        // recien con -DTOP_ENABLE_TOF_ROT (sensors_tof.cpp); sin ese flag el valor queda guardado
+        // pero no se aplica (la app sigue plegando) -> sin doble rotacion.
+        case TtCmd::TOF_SET_ROT:
+            if (c.arg >= 0 && c.arg < TOP_CFG_NUM_TOF) {
+                g_top_cfg.tof[c.arg].zone_rotation_deg = (int16_t)c.arg2;
+                Serial.print("[TOP] TOF "); Serial.print(c.arg);
+                Serial.print(" ROT "); Serial.print(c.arg2);
+                Serial.println(" (aplica con -DTOP_ENABLE_TOF_ROT; CFG SAVE para persistir)");
+            } else { Serial.println("[TOP] ERROR: indice ToF fuera de rango"); }
+            break;
+
+        case TtCmd::TOF_SET_FLIP:
+            if (c.arg >= 0 && c.arg < TOP_CFG_NUM_TOF) {
+                g_top_cfg.tof[c.arg].flip = (uint8_t)(c.arg2 & 0x3);
+                Serial.print("[TOP] TOF "); Serial.print(c.arg);
+                Serial.print(" FLIP "); Serial.print(c.arg2);
+                Serial.println(" (aplica con -DTOP_ENABLE_TOF_ROT; CFG SAVE para persistir)");
+            } else { Serial.println("[TOP] ERROR: indice ToF fuera de rango"); }
+            break;
+
         case TtCmd::CFG_SAVE:
             if (top_config_save(g_top_cfg)) Serial.println("[TOP] config guardada en EEPROM");
             else                            Serial.println("[TOP] ERROR: no se pudo guardar config");

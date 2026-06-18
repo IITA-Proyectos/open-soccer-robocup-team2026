@@ -139,6 +139,29 @@ def test_firmware_commands_marks_supported():
     assert all(isinstance(c, FwCommand) and c.text for c in cmds)
 
 
+def test_firmware_commands_firmware_owns_rotation(monkeypatch):
+    # Modo FIRMWARE-DUEÑO (placa con -DTOP_ENABLE_TOF_ROT): la app manda ROT/FLIP REALES
+    # (supported_now=True) y la ZONEMASK en marco CANÓNICO (sin plegar); el firmware la rota
+    # canónico→crudo con la misma convención (tof_zone_mask_orient). Es el único acople
+    # app↔firmware. Default (False) ya está cubierto por test_firmware_commands_marks_supported.
+    import monitor_base.tof_layout as tl
+    monkeypatch.setattr(tl, "FIRMWARE_OWNS_ROTATION", True)
+    cfg = TofLayout()
+    cfg.rotation_deg[0] = 90
+    for z in (0, 1, 2, 3):          # veto la fila SUPERIOR del display (zonas 0..3)
+        cfg.zone_enabled[0][z] = False
+    cmds = cfg.to_firmware_commands()
+    by_text = {c.text: c for c in cmds}
+    # ROT/FLIP ahora SÍ van al firmware (reales, no informativos).
+    assert by_text["TOF 0 ROT 90"].supported_now is True
+    assert by_text["TOF 0 FLIP NONE"].supported_now is True
+    # ZONEMASK en marco CANÓNICO (sin plegar): fila superior vetada → bits 0..3 en 0 → 0xFFF0.
+    # (El firmware la rota; no la pliega la app.)
+    zm = [c for c in cmds if c.text.startswith("TOF 0 ZONEMASK")]
+    assert len(zm) == 1 and zm[0].supported_now is True
+    assert int(zm[0].text.split()[3], 16) == 0xFFF0
+
+
 # ── Máscara CRUDA: paridad orientación+veto (regla del diseño: la app es la fuente
 #    de verdad de la composición; el firmware solo aplica el bit crudo) ──────────
 def test_raw_zone_mask_default_all_on():

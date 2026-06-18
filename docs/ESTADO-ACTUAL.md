@@ -13,6 +13,24 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> **🎯 ZONAS DE ToF — ROTACIÓN FIRMWARE-DUEÑO + REDUCTOR ROBUSTO + FIX PARSER + SCROLL MONITOR
+> (2026-06-17, detrás de un flag, apagado por defecto = byte-idéntico):** el procesamiento de zonas
+> del ToF pasa al firmware del TOP. (1) `tof_zone_mask_orient.h` (puro, host 7/0): rota/espeja la
+> máscara de zonas canónico→crudo con la MISMA convención que la app; cableado tras
+> `-DTOP_ENABLE_TOF_ROT` + comandos `TOF n ROT/FLIP` que persisten en EEPROM (`CFG SAVE`).
+> (2) `tof_zone_masked_robust` en `tof_zone_mask.h` (puro, host 8/0): descarta rayos > cancha y
+> outliers bajos (rebote en robot) ANTES de promediar; tras `-DTOP_ENABLE_TOF_ROBUST`. (3) Fix
+> parser `TT_TOK_MAX` 4→5 (`TOF n ZONE ON/OFF <idx>` antes inalcanzable; cambia SOLO el manejo de
+> comandos del monitor —dormido en partido—, conducta de cancha igual). (4) App
+> `tof_layout.FIRMWARE_OWNS_ROTATION` (default False=histórico; True para placas con el flag de rot).
+> (5) `panel.py`: scroll vertical en TODOS los paneles del monitor (los botones de Config ToF ya no
+> se cortan). Envs banco: `top_robot2_pri_{tofrot,tofrobust,zonas}` (compilan SUCCESS). **Para R2
+> ARQUERO:** TOP=`top_robot2_pri_zonas`, CENTRAL=`central_robot2_arquero`, DOWN=`down_robot2_rt`
+> (la rotación/robusto es de la placa TOP; el arquero es de la CENTRAL). ⚠️ NADA validado en banco
+> (regla #1): lo cierra el equipo. Diseño:
+> `docs/superpowers/specs/2026-06-17-localizacion-tof-pose-xy-design.md`. Journal:
+> `journal/2026-06-17-zonas-tof-rotacion-robusto-parser-scroll.md`.
+
 > **⚡ RUTA DE LATENCIA — banco del domingo (2026-06-17):** diagnóstico contra código de los
 > síntomas del banco (oscilación por latencia · línea tarda en detectarse · calibración de
 > potencias). **Hecho:** (1) env **`down_rt` NUEVO para R1** (faltaba; solo existía el de R2) —

@@ -73,4 +73,54 @@ inline uint64_t tof_zone_mask_set(uint64_t mask, uint8_t idx, bool enabled) {
     return enabled ? (mask | bit) : (mask & ~bit);
 }
 
+// tof_zone_masked_robust — reducción ROBUSTA de las zonas a una distancia (alternativa a
+// tof_zone_masked_mean). Además del veto por máscara, descarta dos clases de rayo malo antes
+// de promediar:
+//   (1) zonas con valor > field_max_mm  → el rayo salió de la cancha (sobre la pared, por la
+//       boca del arco) o no retornó (clamp a rango máximo). field_max_mm = la dimensión más
+//       larga de la cancha. (field_max_mm == 0 desactiva este filtro.)
+//   (2) zonas SUSTANCIALMENTE MENORES que el resto → rayo que rebotó en otro robot (da corto)
+//       o ruido bajo. Criterio: < low_keep_pct % de la MEDIANA de las zonas válidas (mediana =
+//       robusta a outliers). (low_keep_pct == 0 desactiva este filtro; 70 = descarta < 70% de
+//       la mediana.) Con < 3 zonas válidas NO se rechazan outliers (no hay estadística) y se
+//       promedian las válidas. Devuelve el promedio de los sobrevivientes, o `no_reading` si no
+//       queda ninguna. PURO, host-testeable. Con field_max_mm=0 y low_keep_pct=0 ≡ masked_mean.
+inline uint16_t tof_zone_masked_robust(const uint16_t* zones_mm, uint8_t n, uint64_t mask,
+                                       uint16_t no_reading, uint16_t field_max_mm,
+                                       uint8_t low_keep_pct) {
+    if (zones_mm == nullptr) return no_reading;
+    uint16_t vals[64];
+    int cnt = 0;
+    const uint8_t lim = (n < 64u) ? n : 64u;
+    for (uint8_t i = 0; i < lim; ++i) {
+        if (!((mask >> i) & 1ull)) continue;                   // zona anulada por la máscara (veto)
+        const uint16_t d = zones_mm[i];
+        if (d == no_reading) continue;                         // zona sin lectura válida
+        if (field_max_mm != 0u && d > field_max_mm) continue;  // (1) fuera de cancha / sin retorno
+        vals[cnt++] = d;
+    }
+    if (cnt == 0) return no_reading;                           // nada útil → sin lectura
+    if (cnt < 3 || low_keep_pct == 0u) {                       // pocas zonas o filtro bajo apagado
+        uint32_t s = 0;
+        for (int i = 0; i < cnt; ++i) s += vals[i];
+        return static_cast<uint16_t>(s / cnt);
+    }
+    // mediana por insertion sort (cnt ≤ 64, barato)
+    for (int i = 1; i < cnt; ++i) {
+        const uint16_t v = vals[i];
+        int j = i - 1;
+        while (j >= 0 && vals[j] > v) { vals[j + 1] = vals[j]; --j; }
+        vals[j + 1] = v;
+    }
+    const uint16_t median = vals[cnt / 2];
+    const uint16_t low_thresh = static_cast<uint16_t>((uint32_t)median * low_keep_pct / 100u);
+    uint32_t s = 0;
+    int k = 0;
+    for (int i = 0; i < cnt; ++i) {                            // (2) descarta los sustancialmente menores
+        if (vals[i] >= low_thresh) { s += vals[i]; ++k; }
+    }
+    if (k == 0) return median;                                 // imposible (la mediana siempre pasa), defensivo
+    return static_cast<uint16_t>(s / k);
+}
+
 }  // namespace iitasoccer

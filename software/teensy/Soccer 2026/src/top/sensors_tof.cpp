@@ -36,6 +36,15 @@
 
 // --- Modulos PUROS del rediseno sensorial no-bloqueante (host-testeados); glue Arduino abajo ---
 #include "tof_zone_mask.h"       // A2.2: mascara de zonas (anular superiores) — ungated, no-op por default
+#include "tof_zone_mask_orient.h" // A2.2: rotacion/flip de la mascara (firmware dueno de la rotacion; tras -DTOP_ENABLE_TOF_ROT)
+
+// Umbrales del reductor ROBUSTO (TOP_ENABLE_TOF_ROBUST), -D-overrideables:
+#ifndef TOF_ROBUST_FIELD_MAX_MM
+#define TOF_ROBUST_FIELD_MAX_MM 2430   // dimension mas larga de la cancha (mm): > esto = rayo fuera/sin retorno
+#endif
+#ifndef TOF_ROBUST_LOW_KEEP_PCT
+#define TOF_ROBUST_LOW_KEEP_PCT 70     // descarta zonas < 70% de la mediana (rebote en otro robot)
+#endif
 #if defined(TOP_ENABLE_TOF_SCHED)
 #include "tof_schedule.h"        // turnero round-robin + SKIP del ToF caido (gateado)
 #endif
@@ -445,8 +454,26 @@ void sensors_tof_tick() {
         // byte-neutro). g_zones_mm queda CRUDO (la telemetria muestra las 16; el monitor pinta
         // cuales estan anuladas). Costo: el mismo loop de 16 zonas que ya se recorria.
         fill_zones(g_tof_results, g_zones_mm[i], TOF_RESOLUTION_ZONES);
-        const uint64_t zmask = (i < TOP_CFG_NUM_TOF) ? g_top_cfg.tof[i].zone_mask : ~(uint64_t)0;
+        uint64_t zmask = (i < TOP_CFG_NUM_TOF) ? g_top_cfg.tof[i].zone_mask : ~(uint64_t)0;
+#if defined(TOP_ENABLE_TOF_ROT)
+        // FIRMWARE dueno de la rotacion (A2.2): la mascara llega en marco CANONICO (la app deja
+        // de plegar) y aca se rota al marco CRUDO del sensor segun su rot/flip de EEPROM, asi el
+        // veto cae en las zonas fisicas correctas. Con el flag apagado (competencia) este bloque
+        // desaparece -> binario byte-identico y la app sigue plegando (sin doble rotacion).
+        if (i < TOP_CFG_NUM_TOF) {
+            zmask = tof_zone_mask_orient((uint16_t)zmask,
+                                         g_top_cfg.tof[i].zone_rotation_deg, g_top_cfg.tof[i].flip);
+        }
+#endif
+#if defined(TOP_ENABLE_TOF_ROBUST)
+        // Reduccion ROBUSTA (A2.2): descarta rayos fuera de cancha (> field_max) y outliers bajos
+        // (rebote en otro robot). Apagado por defecto -> usa masked_mean = byte-identico.
+        g_distances_mm[i] = tof_zone_masked_robust(g_zones_mm[i], TOF_RESOLUTION_ZONES, zmask,
+                                                   TOF_NO_READING, TOF_ROBUST_FIELD_MAX_MM,
+                                                   TOF_ROBUST_LOW_KEEP_PCT);
+#else
         g_distances_mm[i] = tof_zone_masked_mean(g_zones_mm[i], TOF_RESOLUTION_ZONES, zmask, TOF_NO_READING);
+#endif
         g_last_ok_ms[i]   = now;
         g_ever_ok[i]      = true;
     }
@@ -459,11 +486,24 @@ void sensors_tof_tick() {
             if (g_tof_frontal.getRangingData(&g_tof_results)) {
                 // A2.2 mascara de zonas (ver nota en el path MULTI): zonas crudas -> masked_mean.
                 fill_zones(g_tof_results, g_zones_mm[TOF_FRONTAL_IDX], TOF_RESOLUTION_ZONES);
-                const uint64_t zmask = (TOF_FRONTAL_IDX < TOP_CFG_NUM_TOF)
+                uint64_t zmask = (TOF_FRONTAL_IDX < TOP_CFG_NUM_TOF)
                                        ? g_top_cfg.tof[TOF_FRONTAL_IDX].zone_mask : ~(uint64_t)0;
+#if defined(TOP_ENABLE_TOF_ROT)
+                if (TOF_FRONTAL_IDX < TOP_CFG_NUM_TOF) {
+                    zmask = tof_zone_mask_orient((uint16_t)zmask,
+                                                 g_top_cfg.tof[TOF_FRONTAL_IDX].zone_rotation_deg,
+                                                 g_top_cfg.tof[TOF_FRONTAL_IDX].flip);
+                }
+#endif
+#if defined(TOP_ENABLE_TOF_ROBUST)
+                g_distances_mm[TOF_FRONTAL_IDX] =
+                    tof_zone_masked_robust(g_zones_mm[TOF_FRONTAL_IDX], TOF_RESOLUTION_ZONES, zmask,
+                                           TOF_NO_READING, TOF_ROBUST_FIELD_MAX_MM, TOF_ROBUST_LOW_KEEP_PCT);
+#else
                 g_distances_mm[TOF_FRONTAL_IDX] =
                     tof_zone_masked_mean(g_zones_mm[TOF_FRONTAL_IDX], TOF_RESOLUTION_ZONES,
                                          zmask, TOF_NO_READING);
+#endif
                 g_last_ok_ms[TOF_FRONTAL_IDX] = millis();  // sello de frescura
                 g_ever_ok[TOF_FRONTAL_IDX]    = true;
             }

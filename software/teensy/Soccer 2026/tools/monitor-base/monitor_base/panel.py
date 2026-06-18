@@ -38,8 +38,47 @@ class Panel:
 
     def __init__(self, parent: tk.Widget, ctx: PanelContext):
         self.ctx = ctx
+        # Contenedor EXTERNO (lo que ubica el shell). Adentro, un área SCROLLEABLE: si el panel es
+        # más alto que la ventana, aparece la barra (y anda la rueda del mouse) en vez de que los
+        # widgets de abajo se corten (p.ej. los botones de Config ToF). Cuando el contenido entra,
+        # el frame interno se estira a la ventana → los paneles que llenan/expanden se ven igual.
         self.container = tk.Frame(parent, bg=BG)
-        self.build(self.container)
+        inner = self._build_scroll_area(self.container)
+        self.build(inner)
+
+    def _build_scroll_area(self, outer: tk.Frame) -> tk.Frame:
+        """Envuelve el contenido del panel en un canvas con barra vertical. Devuelve el frame
+        INTERNO donde el panel arma sus widgets. Genérico para todos los paneles."""
+        canvas = tk.Canvas(outer, bg=BG, highlightthickness=0, bd=0)
+        vbar = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=vbar.set)
+        vbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        inner = tk.Frame(canvas, bg=BG)
+        win = canvas.create_window((0, 0), window=inner, anchor="nw")
+
+        def _sync(_event=None) -> None:
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            cw = max(canvas.winfo_width(), 1)
+            ch = max(canvas.winfo_height(), 1)
+            # ancho = el del canvas (relleno horizontal); alto = max(contenido, ventana): así los
+            # paneles que expanden llenan, y la barra aparece SOLO si el contenido no entra.
+            canvas.itemconfigure(win, width=cw, height=max(inner.winfo_reqheight(), ch))
+
+        inner.bind("<Configure>", _sync)
+        canvas.bind("<Configure>", _sync)
+
+        # Rueda del mouse (Windows: delta ±120). Scrollea sólo si el contenido NO entra; si entra,
+        # deja pasar el evento (para no robarle la rueda a un Text/Listbox del panel).
+        def _wheel(event) -> Optional[str]:
+            if inner.winfo_reqheight() > canvas.winfo_height() + 1:
+                canvas.yview_scroll(int(-event.delta / 120), "units")
+                return "break"
+            return None
+
+        canvas.bind("<Enter>", lambda _e: canvas.bind_all("<MouseWheel>", _wheel))
+        canvas.bind("<Leave>", lambda _e: canvas.unbind_all("<MouseWheel>"))
+        return inner
 
     def build(self, parent: tk.Frame) -> None:
         raise NotImplementedError

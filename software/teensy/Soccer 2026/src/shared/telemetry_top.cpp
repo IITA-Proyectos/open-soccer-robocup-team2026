@@ -376,7 +376,8 @@ int tt_format_human(char* buf, int cap, const TopTelemetryFrame& f) {
 // ── Parser de comandos ───────────────────────────────────────────────────────
 namespace {
 
-constexpr int TT_TOK_MAX = 4;   // A2.1: "TOF <n> POS LEFT" son 4 tokens
+constexpr int TT_TOK_MAX = 5;   // "TOF <n> ZONE ON|OFF <idx>" son 5 tokens (el resto son <=4);
+                                // +1 slot = +TT_TOK_LEN B de stack. Antes en 4 esa rama era inalcanzable.
 constexpr int TT_TOK_LEN = 12;
 
 int tt_tokenize(const char* s, int len, char tok[TT_TOK_MAX][TT_TOK_LEN]) {
@@ -466,6 +467,20 @@ TtCommand tt_parse_command(const char* s, int len) {
                 if (e2 && *e2 == '\0' && m >= 0) {
                     out.cmd = TtCmd::TOF_SET_ZONEMASK; out.arg = (int32_t)n; out.arg2 = (int32_t)(m & 0xFFFFL);
                 }
+            }
+            else if (tt_eq(tok[2], "ROT") && nt >= 4) {      // TOF <n> ROT 0|90|180|270  (A2.2)
+                char* e2 = nullptr;
+                const long deg = strtol(tok[3], &e2, 10);
+                if (e2 && *e2 == '\0' && (deg == 0 || deg == 90 || deg == 180 || deg == 270)) {
+                    out.cmd = TtCmd::TOF_SET_ROT; out.arg = (int32_t)n; out.arg2 = (int32_t)deg;
+                }
+            }
+            else if (tt_eq(tok[2], "FLIP") && nt >= 4) {     // TOF <n> FLIP NONE|H|V  (A2.2)
+                int32_t fl = -1;
+                if (tt_eq(tok[3], "NONE"))   fl = 0;
+                else if (tt_eq(tok[3], "H")) fl = 1;         // espejo X (bit0)
+                else if (tt_eq(tok[3], "V")) fl = 2;         // espejo Y (bit1)
+                if (fl >= 0) { out.cmd = TtCmd::TOF_SET_FLIP; out.arg = (int32_t)n; out.arg2 = fl; }
             }
         }
     } else if (tt_eq(tok[0], "CFG") && nt >= 2) {        // CFG SAVE|LOAD|RESET

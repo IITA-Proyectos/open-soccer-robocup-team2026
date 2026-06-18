@@ -43,6 +43,15 @@ DEFAULT_POSITION = {0: "FRONT", 1: "BACK", 2: "RIGHT", 3: "LEFT"}
 DEFAULT_ROTATION = {0: 0, 1: 0, 2: 0, 3: 180}
 
 
+# Si True, el FIRMWARE (compilado con -DTOP_ENABLE_TOF_ROT, ej. env top_robot2_pri_tofrot) es el
+# DUENO de la rotacion: la app manda ROT/FLIP reales + la mascara en marco CANONICO (sin plegar) y
+# el firmware la rota canonico->crudo con la MISMA convencion (tof_zone_mask_orient). Default False =
+# comportamiento historico (la app pliega la rotacion dentro de la mascara cruda). ⚠️ Poner True
+# SOLO cuando la placa corre firmware con TOP_ENABLE_TOF_ROT; si no, el veto cae en zonas equivocadas
+# (doble o cero rotacion). Es el unico acople app<->firmware: van juntos.
+FIRMWARE_OWNS_ROTATION = False
+
+
 # ── Permutación de zonas por rotación + espejo ──────────────────────────────
 def _rc(idx: int, w: int) -> Tuple[int, int]:
     return divmod(idx, w)
@@ -249,31 +258,53 @@ class TofLayout:
                 bits |= (1 << raw)
         return bits
 
+    def canonical_zone_mask(self, idx: int) -> int:
+        """Máscara en marco CANÓNICO (= DISPLAY, lo que ve el operador), SIN plegar: bit
+        `disp` = 1 si la zona de display `disp` está ACTIVA. Es lo que se manda cuando el
+        FIRMWARE es el dueño de la rotación (FIRMWARE_OWNS_ROTATION=True): el firmware la rota
+        canónico→crudo con la MISMA convención (tof_zone_mask_orient) → una sola rotación."""
+        mask_disp = self.zone_enabled.get(idx, [True] * N_ZONES)
+        bits = 0
+        for disp in range(min(len(mask_disp), 64)):
+            if mask_disp[disp]:
+                bits |= (1 << disp)
+        return bits
+
     # ── Bajada a firmware ───────────────────────────────────────────────────
     def to_firmware_commands(self) -> List["FwCommand"]:
-        """Genera los comandos para bajar esta config a la placa. POS, sensor ON/OFF
-        y ZONEMASK ya los entiende el firmware HOY (A2.1 + A2.2 enmascarado). ROT/FLIP
-        NO van al firmware: la orientación se PLIEGA dentro de la máscara cruda
-        (raw_zone_mask) — el firmware solo aplica el bit crudo. Quedan como informativos
-        (supported_now=False) para documentar el montaje elegido."""
+        """Genera los comandos para bajar esta config a la placa. POS, sensor ON/OFF y
+        ZONEMASK los entiende el firmware. Dos modos según FIRMWARE_OWNS_ROTATION:
+
+        - False (default, firmware de competencia): la orientación se PLIEGA dentro de la
+          máscara CRUDA (raw_zone_mask); ROT/FLIP van informativos (supported_now=False) — el
+          firmware solo aplica el bit crudo. Comportamiento histórico.
+        - True (firmware con -DTOP_ENABLE_TOF_ROT): el FIRMWARE es el dueño de la rotación →
+          se mandan ROT/FLIP REALES (supported_now=True) y la ZONEMASK va en marco CANÓNICO
+          (sin plegar); el firmware rota canónico→crudo con la misma convención. Una sola
+          rotación. ⚠️ usar SOLO con firmware que aplique la rotación."""
         cmds: List[FwCommand] = []
         for idx in range(N_TOF):
             cmds.append(FwCommand(f"TOF {idx} POS {self.position.get(idx, 'FRONT')}", supported_now=True))
             cmds.append(FwCommand(f"TOF {idx} {'ON' if self.sensor_enabled.get(idx, True) else 'OFF'}",
                                   supported_now=True))
             rot = self.rotation_deg.get(idx, 0)
-            if rot:
-                cmds.append(FwCommand(f"TOF {idx} ROT {rot}  # informativo (plegado en ZONEMASK)",
-                                      supported_now=False))
             fl = self.flip.get(idx, "none")
-            if fl != "none":
-                cmds.append(FwCommand(f"TOF {idx} FLIP {fl.upper()}  # informativo (plegado en ZONEMASK)",
-                                      supported_now=False))
-            # Máscara de zonas en MARCO CRUDO (la orientación display→crudo ya está
-            # plegada) → atómica, un comando por sensor. 16 zonas = 16 bits = 4 hex.
-            # Default todo-ON => FFFF => no-op en el firmware (fail-safe).
-            raw_mask = self.raw_zone_mask(idx)
-            cmds.append(FwCommand(f"TOF {idx} ZONEMASK {raw_mask:04X}", supported_now=True))
+            if FIRMWARE_OWNS_ROTATION:
+                # El firmware aplica la rotación: ROT/FLIP reales + máscara CANÓNICA (sin plegar).
+                cmds.append(FwCommand(f"TOF {idx} ROT {rot}", supported_now=True))
+                cmds.append(FwCommand(f"TOF {idx} FLIP {fl.upper()}", supported_now=True))
+                mask = self.canonical_zone_mask(idx)
+            else:
+                # La app pliega la orientación dentro de la máscara CRUDA; ROT/FLIP informativos.
+                if rot:
+                    cmds.append(FwCommand(f"TOF {idx} ROT {rot}  # informativo (plegado en ZONEMASK)",
+                                          supported_now=False))
+                if fl != "none":
+                    cmds.append(FwCommand(f"TOF {idx} FLIP {fl.upper()}  # informativo (plegado en ZONEMASK)",
+                                          supported_now=False))
+                mask = self.raw_zone_mask(idx)
+            # 16 zonas = 16 bits = 4 hex. Default todo-ON => FFFF => no-op en el firmware (fail-safe).
+            cmds.append(FwCommand(f"TOF {idx} ZONEMASK {mask:04X}", supported_now=True))
         cmds.append(FwCommand("CFG SAVE", supported_now=True))
         return cmds
 

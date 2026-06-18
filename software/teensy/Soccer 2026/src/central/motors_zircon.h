@@ -50,4 +50,14 @@ int16_t motors_get_applied_pwm(int motor_idx);
 void motors_set_rear_cut(bool cut);
 #endif
 
+#ifdef CENTRAL_REAR_TRIM
+// TRIM DE RUMBO POR LA RUEDA TRASERA (Cambio 1, Gustavo 2026-06-17). El caller (FSM del
+// arquero) computa una PEQUEÑA corrección de PWM con un PI sobre el heading del TOP y la
+// pasa acá; motors_apply_command la SUMA a la trasera (idx 2) DESPUÉS del floor-scale —
+// donde la trasera ya está sobre su piso (107→~150), con holgura — para corregir el rumbo
+// sin desbordar las delanteras (que a baja velocidad están pegadas a su piso). delta=0 →
+// no-op. Gateado: sin -DCENTRAL_REAR_TRIM esta API no existe (binario idéntico).
+void motors_set_rear_trim(int delta_pwm);
+#endif
+
 }  // namespace iitasoccer

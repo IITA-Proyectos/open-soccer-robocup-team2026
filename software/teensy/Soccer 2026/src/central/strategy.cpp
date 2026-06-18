@@ -34,6 +34,10 @@
 #include "pfm_heading.h"    // control PI+PFM de rumbo p/ zona muerta (banco María)
 #include "heading_rate.h"   // estimador de velocidad de giro p/ amortiguar (coach 2026-06-14)
 #include "clear_aim.h"      // despeje DIRECCIONAL del arquero (módulo PURO; cableado gateado GK_CLEAR_DIRECTIONAL)
+#if defined(GK_STRAFE_PID) || defined(GK_PINGPONG)
+#include "gk_strafe_hold.h" // PI de rumbo → trim de la rueda trasera (PURO, host-tested)
+#include "motors_zircon.h"  // Cambio 1: motors_set_rear_trim (actuador; requiere -DCENTRAL_REAR_TRIM)
+#endif
 #ifdef CENTRAL_EEPROM_CALIB
 #include "central_eeprom_config.h"  // g_central_cfg: ganancias del PID de rumbo desde EEPROM
 #endif
@@ -137,6 +141,10 @@ uint32_t g_gk_start_seen_ms      = 0;  // 1er tick con match=GO (para el delay d
 // centro = la x del robot al ENTRAR a patrullar (recién posicionado contra su línea,
 // frente a su arco) → la ventana queda centrada en el puesto REAL, sin calibración.
 float g_gk_patrol_x_center = -1.0f;    // <0 = sin capturar → usa GK_PATROL_X_CENTER_MM
+#ifdef GK_STRAFE_PID
+uint32_t g_gk_escape_until_ms = 0;    // Cambio 2: fin del escape de línea bloqueado (0 = inactivo)
+int      g_gk_escape_dir      = 0;    // sentido del escape (opuesto a la línea tocada)
+#endif
 
 // === PIDs ===
 HeadingPID g_heading_pid;
@@ -387,6 +395,40 @@ constexpr float GK_GYRO_HOLD_TARGET_DEG       = 0.0f;
 constexpr uint32_t GK_PATROL_SEG_MS        = 1200; // duración del tramo de strafe
 constexpr uint32_t GK_PATROL_STOP_MS       = 300;  // freno entre tramos (mide rumbo quieto)
 constexpr uint32_t GK_PATROL_BOUNCE_COOLDOWN_MS = 800; // 1 rebote por toque de línea
+// DEBUG de banco: modo PULSADO del strafe de patrulla para OBSERVAR el rebote a velocidad
+// MEDIA baja. Bajar GK_PATROL_SPEED_MM_S NO frena (el piso PWM {70,70,107}+FLOOR_SCALE la clava
+// — ver línea 246); en cambio pulsar (mover ON ms, parar OFF ms) baja la velocidad MEDIA sin
+// tocar la instantánea: media ~ SPEED·ON/(ON+OFF). Detrás de -DGK_PATROL_PULSE (apagado por
+// defecto → competencia byte-idéntica). SOLO banco; el rebote se sigue evaluando aun en la pausa.
+#ifndef GK_PATROL_PULSE_ON_MS
+#define GK_PATROL_PULSE_ON_MS  120u   // ms de strafe por pulso
+#endif
+#ifndef GK_PATROL_PULSE_OFF_MS
+#define GK_PATROL_PULSE_OFF_MS 300u   // ms de pausa (media ~200·120/420 ≈ 57 mm/s; subir OFF = más lento)
+#endif
+
+#if defined(GK_STRAFE_PID) || defined(GK_PINGPONG)
+// ── CAMBIOS 1 y 2 del arquero (Gustavo 2026-06-17), detrás de -DGK_STRAFE_PID (off por
+// defecto → patrulla v3.3 byte-idéntica). Requiere -DCENTRAL_REAR_TRIM en el actuador. ──
+// CAMBIO 1: strafe CONTINUO con heading-hold por modulación de la rueda TRASERA (PI sobre
+//   el heading del TOP, target 0). El impulso fuerte (pulso de reorientación) queda SOLO
+//   para cuando el rumbo se sale de la banda de control. Valores de ARRANQUE → tunear banco.
+// CAMBIO 2: al tocar línea, escape OPUESTO a MÁXIMA potencia, estado BLOQUEADO 2 s (no
+//   cambia por pelota/línea/pose; SÍ lo frena el STOP del árbitro), retoma al salir de la línea.
+#ifndef GK_REAR_TRIM_SIGN
+#define GK_REAR_TRIM_SIGN (+1)   // signo trim→giro: CONFIRMAR EN BANCO (si corrige al revés, poner -1)
+#endif
+constexpr float    GK_STRAFE_KP             = 2.0f;    // PWM por grado de error de rumbo
+constexpr float    GK_STRAFE_KI             = 1.0f;    // PWM por grado·s (cancela la deriva ~80°/s)
+constexpr float    GK_STRAFE_DEADBAND_DEG   = 2.0f;    // zona muerta (no pelear el ruido del heading)
+constexpr float    GK_STRAFE_BAND_DEG       = 18.0f;   // fuera de esto → impulso fuerte (pulso)
+constexpr int      GK_STRAFE_TRIM_MAX_PWM   = 30;      // pequeña modulación de la trasera
+constexpr float    GK_STRAFE_I_MAX_PWM      = 18.0f;   // anti-windup del término I
+constexpr uint32_t GK_LINE_ESCAPE_MS        = 4000;    // TOPE DURO del escape (4 s de seguridad)
+constexpr uint32_t GK_LINE_ESCAPE_MIN_MS    = 700;     // mínimo a comprometer antes de poder cortar
+constexpr int      GK_LINE_ESCAPE_SPEED_MM_S = 700;    // ⚠️ ya SATURA: a >~590 la trasera llega al cap
+                                                       // de 150 PWM (quemado). Más mm/s NO da más potencia.
+#endif
 constexpr uint8_t  GK_PATROL_MAX_SEGS_SAME_DIR  = 3;   // fail-safe sin línea ni pose
 constexpr float    GK_REORIENT_ENTER_DEG   = 35.0f;// error que dispara re-orientación
 constexpr float    GK_REORIENT_EXIT_DEG    = 25.0f;// CORTE EN VIVO del pulso (anticipa la inercia)
@@ -1109,6 +1151,95 @@ MotorCommand attacker_tick() {
 
 // === FSM Arquero ===
 
+#ifdef GK_PINGPONG
+// ── PATRULLA SIMPLE izquierda<->derecha (pedido Gustavo 2026-06-18) ──────────────────────
+// La maquina v3.3 (MOVE/STOP/PULSO/SETTLE/REACQ) hacia CHURN: ante rumbo fuera de banda se
+// DETENIA a reorientar (PULSO) y despues RETROCEDIA (REACQ) -> el sintoma del banco "se
+// detiene antes de la linea y va para atras". Esta version es MINIMA y depurable:
+//   - strafe CONTINUO hacia un lado (arranca a la IZQUIERDA);
+//   - al TOCAR la linea (clasificada en MARCO CANCHA, ignora la de fondo) -> escape al OPUESTO
+//     a maxima potencia 2 s, bloqueado;
+//   - NO usa la pelota, NO retrocede, NO se detiene a media patrulla, NO vuelve a GOTO_LINE.
+//   - rumbo opcional por trim CONTINUO de la trasera (solo si -DCENTRAL_REAR_TRIM; nunca frena).
+// Sin -DCENTRAL_REAR_TRIM = strafe PURO (omega=0), que el banco valido como derecho/estable a
+// 200 mm/s. El STOP del arbitro la corta en goalkeeper_tick (no se llama si !match_running).
+MotorCommand gk_pingpong_tick(uint32_t now_ms) {
+    MotorCommand cmd{};
+    static int      direction       = -1;   // arranca a la IZQUIERDA (-X). +1 = derecha.
+    static uint32_t bounce_gate_ms  = 0;
+    static uint32_t escape_until_ms = 0;   // tope DURO (cap de 4 s)
+    static uint32_t escape_min_ms   = 0;   // mínimo a comprometer (sale aunque deje de ver línea)
+    static int      escape_dir      = 0;
+    const bool hv = world_model_heading_valid();
+
+    // ESCAPE bloqueado: opuesto al sentido que traia, MAXIMA potencia, HASTA SALIR de la linea.
+    // Sigue mientras (no cumplio el minimo de compromiso) O (todavia ve linea y no llego al tope
+    // de 4 s). Asi: no se queda pegado (empuja hasta salir, hasta 4 s) y no cruza la cancha cuando
+    // logra salir (corta apenas la deja de ver, pasado el minimo). El STOP del arbitro lo corta afuera.
+    if (escape_until_ms != 0) {
+        if (now_ms < escape_min_ms || (world_model_line_detected() && now_ms < escape_until_ms)) {
+            cmd.vx_mm_s = clamp_velocity_mm_s(escape_dir * GK_LINE_ESCAPE_SPEED_MM_S);
+            g_state_name = "GK_PP_ESCAPE";
+#ifdef CENTRAL_REAR_TRIM
+            motors_set_rear_trim(0);
+#endif
+            return cmd;
+        }
+        escape_until_ms = 0;
+        direction = escape_dir;   // seguir en el sentido del escape
+    }
+
+    // TOQUE de linea LATERAL (marco cancha: ignora la linea de FONDO) -> escape opuesto 2 s.
+    if (line_data_fresh() && world_model_line_detected() &&
+        (now_ms - bounce_gate_ms) >= GK_PATROL_BOUNCE_COOLDOWN_MS) {
+        const float la = world_model_get_line_angle_deg();
+        bool behind;
+        if (hv) {
+            float lf = la + world_model_get_my_heading_deg();   // a marco cancha
+            while (lf > 180.0f)  lf -= 360.0f;
+            while (lf < -180.0f) lf += 360.0f;
+            behind = (lf > 135.0f || lf < -135.0f);
+        } else {
+            behind = (la > 135.0f || la < -135.0f);
+        }
+        if (!behind) {
+            escape_dir      = -direction;                 // SIEMPRE el opuesto al que traia
+            escape_min_ms   = now_ms + GK_LINE_ESCAPE_MIN_MS;
+            escape_until_ms = now_ms + GK_LINE_ESCAPE_MS;
+            direction       = escape_dir;
+            bounce_gate_ms  = now_ms;
+            g_state_name    = "GK_PP_ESCAPE";
+            return cmd;   // el proximo tick sirve el escape
+        }
+    }
+
+    // STRAFE continuo. Rumbo opcional por trim de la trasera (NUNCA frena).
+    cmd.vx_mm_s = clamp_velocity_mm_s(direction * GK_PATROL_SPEED_MM_S);
+    cmd.vy_mm_s = 0;
+    cmd.omega_centideg_s = 0;
+    g_state_name = "GK_PP_MOVE";
+#ifdef CENTRAL_REAR_TRIM
+    static uint32_t last_pid_ms = 0;
+    static GkStrafeHoldState hold{0.0f};
+    if (hv) {
+        float err = GK_GYRO_HOLD_TARGET_DEG - world_model_get_my_heading_deg();
+        while (err > 180.0f)  err -= 360.0f;
+        while (err < -180.0f) err += 360.0f;
+        float dt = (last_pid_ms == 0) ? 0.0f : (now_ms - last_pid_ms) * 0.001f;
+        if (dt > 0.2f) dt = 0.2f;
+        last_pid_ms = now_ms;
+        const GkStrafeHoldCfg hc{GK_STRAFE_KP, GK_STRAFE_KI, GK_STRAFE_DEADBAND_DEG,
+                                 GK_STRAFE_BAND_DEG, GK_STRAFE_TRIM_MAX_PWM, GK_STRAFE_I_MAX_PWM};
+        const GkStrafeHoldOut ho = gk_strafe_hold_step(hold, hc, err, dt);
+        motors_set_rear_trim(GK_REAR_TRIM_SIGN * ho.trim_pwm);   // ignora out_of_band: NUNCA frena
+    } else {
+        motors_set_rear_trim(0);
+    }
+#endif
+    return cmd;
+}
+#endif  // GK_PINGPONG
+
 MotorCommand goalkeeper_tick() {
     MotorCommand cmd{};
     const uint32_t now_ms = millis();
@@ -1401,8 +1532,38 @@ MotorCommand goalkeeper_tick() {
 #endif  // GK_SIMPLE_STRAFE
 
     if (!world_model_match_running()) {
+#ifdef GK_STRAFE_PID
+        g_gk_escape_until_ms = 0;   // el STOP del árbitro cancela el escape (límite duro)
+#endif
         transition_gk(GkState::WAIT_START);
-    } else if (world_model_imminent_exit() && line_data_fresh()) {
+    }
+#ifdef GK_STRAFE_PID
+    // CAMBIO 2 — ESCAPE DE LÍNEA BLOQUEADO: mientras dure (2 s) o el robot siga tocando la
+    // línea, hace SOLO el escape opuesto a máxima potencia y NO cambia de estado (pelota/
+    // pose/borde se ignoran). Va ANTES de la rama de borde → tiene prioridad sobre
+    // imminent_exit. El STOP del árbitro (rama de arriba) sí lo cancela.
+    else if (g_gk_state == GkState::PATROL && g_gk_escape_until_ms != 0 &&
+             ((now_ms < g_gk_escape_until_ms) || world_model_line_detected())) {
+        cmd.vx_mm_s = clamp_velocity_mm_s(g_gk_escape_dir * GK_LINE_ESCAPE_SPEED_MM_S);
+        cmd.vy_mm_s = 0;
+        cmd.omega_centideg_s = 0;
+#ifdef CENTRAL_REAR_TRIM
+        motors_set_rear_trim(0);
+#endif
+        g_state_name = "GK_LINE_ESCAPE";
+        return cmd;
+    } else if (g_gk_state == GkState::PATROL && g_gk_escape_until_ms != 0) {
+        g_gk_escape_until_ms = 0;   // terminó: pasaron 2 s Y salió de la línea → retomar patrulla
+    }
+#endif
+#ifdef GK_PINGPONG
+    else if (g_gk_state == GkState::PATROL) {
+        // FSM SIMPLE izq<->der: bypasea la patrulla v3.3 Y el re-trigger de borde→GOTO_LINE
+        // (lo que hacia "va para atras"). El freno de borde duro sigue en main_central.
+        return gk_pingpong_tick(now_ms);
+    }
+#endif
+    else if (world_model_imminent_exit() && line_data_fresh()) {
         // ANTI-FLAPPING (banco 2026-06-09, causa #1): el arquero PISA su línea por
         // diseño → un roce de patrulla NO puede disparar la huida. LINE_AVOID solo
         // entra si imminent_exit PERSISTE (debounce) y pasó el cooldown desde la
@@ -1432,6 +1593,9 @@ MotorCommand goalkeeper_tick() {
         g_gk_imminent_since_ms = 0;   // imminent se apagó → re-armar el debounce
     }
 
+#if (defined(GK_STRAFE_PID) || defined(GK_PINGPONG)) && defined(CENTRAL_REAR_TRIM)
+    motors_set_rear_trim(0);   // default por tick; el MOVE continuo lo re-setea si corresponde
+#endif
     switch (g_gk_state) {
         case GkState::WAIT_START: {   // ESPERAR — quieto; tras el GO se va a acomodar
             g_state_name = "GK_WAIT_START";
@@ -1536,6 +1700,10 @@ MotorCommand goalkeeper_tick() {
             static uint8_t  same_dir_segs  = 0;   // tramos seguidos en el mismo sentido (v3.2)
             static uint32_t bounce_gate_ms = 0;   // cooldown del rebote por línea (v3.2)
             static uint8_t  reacq_dry      = 0;   // re-enganches SEGUIDOS sin hallar línea (guard)
+#ifdef GK_STRAFE_PID
+            static GkStrafeHoldState g_strafe_hold{0.0f};  // estado del PI de rumbo (Cambio 1)
+            static uint32_t last_pid_ms = 0;               // marca para el dt del PI
+#endif
             if (pphase_t0 == 0) pphase_t0 = now_ms;
 
             // El panel muestra la SUB-FASE (diagnóstico banco 2026-06-10): con solo
@@ -1569,16 +1737,100 @@ MotorCommand goalkeeper_tick() {
                     if (line_data_fresh() && world_model_line_detected() &&
                         (now_ms - bounce_gate_ms) >= GK_PATROL_BOUNCE_COOLDOWN_MS) {
                         const float la = world_model_get_line_angle_deg();
+#ifdef GK_STRAFE_PID
+                        // ROOT CAUSE del "no escapa de lado / choca la pared" (arq. senior 2026-06-18):
+                        // clasificar atrás/lateral en MARCO CANCHA, no en marco robot. Si el robot está
+                        // rotado, su línea de FONDO aparece girada y en marco robot caía fuera de ±135 →
+                        // se confundía con una lateral → escapaba para el lado equivocado. Mismo fix ya
+                        // VALIDADO en el path GK_SIMPLE_STRAFE (banco María 2026-06-14). Sin rumbo válido
+                        // → marco robot (mejor que nada). 🔧 si rebota sobre su propia línea de atrás,
+                        // cambiar el + por - (signo del término de rumbo).
+                        bool la_behind;
+                        if (hv) {
+                            float la_field = la + world_model_get_my_heading_deg();
+                            while (la_field > 180.0f)  la_field -= 360.0f;
+                            while (la_field < -180.0f) la_field += 360.0f;
+                            la_behind = (la_field > 135.0f || la_field < -135.0f);
+                        } else {
+                            la_behind = (la > 135.0f || la < -135.0f);
+                        }
+#else
                         const bool  la_behind = (la > 135.0f || la < -135.0f);
+#endif
                         if (!la_behind) {
+#ifdef GK_STRAFE_PID
+                            // CAMBIO 2: en vez de invertir suave, disparar el ESCAPE BLOQUEADO
+                            // (a máxima potencia, 2 s; lo sirve el router desde el próximo tick).
+                            // SENTIDO = SIEMPRE el OPUESTO al que venía (−direction). NO se usa
+                            // el ángulo de línea del sensor (su signo es ambiguo en la esquina y
+                            // hacía "escapar" para el mismo lado → contra la pared). Pedido Gustavo.
+                            g_gk_escape_dir      = -direction;
+                            g_gk_escape_until_ms = now_ms + GK_LINE_ESCAPE_MS;
+                            direction            = g_gk_escape_dir;
+                            bounce_gate_ms       = now_ms;
+                            same_dir_segs        = 0;
+                            break;
+#else
                             direction      = (la >= 0.0f) ? -1 : +1;  // alejarse de la línea
                             bounce_gate_ms = now_ms;
                             same_dir_segs  = 0;
                             pphase = 1; pphase_t0 = now_ms;  // frenar y arrancar al otro lado
                             break;
+#endif
                         }
                     }
+#ifdef GK_STRAFE_PID
+                    // ── CAMBIO 1: strafe CONTINUO + heading-hold por la rueda TRASERA ──
                     cmd.vx_mm_s = clamp_velocity_mm_s(direction * GK_PATROL_SPEED_MM_S);
+                    cmd.vy_mm_s = 0;
+                    cmd.omega_centideg_s = 0;   // el rumbo NO se corrige con ω: lo hace la trasera
+                    {
+                        float dt_s = (last_pid_ms == 0) ? 0.0f : (now_ms - last_pid_ms) * 0.001f;
+                        if (dt_s > 0.2f) dt_s = 0.2f;   // clamp jitter / primer tick
+                        last_pid_ms = now_ms;
+                        if (hv) {
+                            const GkStrafeHoldCfg hc{GK_STRAFE_KP, GK_STRAFE_KI,
+                                GK_STRAFE_DEADBAND_DEG, GK_STRAFE_BAND_DEG,
+                                GK_STRAFE_TRIM_MAX_PWM, GK_STRAFE_I_MAX_PWM};
+                            const GkStrafeHoldOut ho =
+                                gk_strafe_hold_step(g_strafe_hold, hc, hdg_err, dt_s);
+                            if (ho.out_of_band) {
+                                // Se fue de la zona de control → IMPULSO fuerte: reorientar
+                                // PARADO con el pulso validado; después vuelve al MOVE continuo.
+#ifdef CENTRAL_REAR_TRIM
+                                motors_set_rear_trim(0);
+#endif
+                                gk_strafe_hold_reset(g_strafe_hold);
+                                pulse_count = 0;
+                                pphase = 2; pphase_t0 = now_ms;
+                                break;
+                            }
+#ifdef CENTRAL_REAR_TRIM
+                            motors_set_rear_trim(GK_REAR_TRIM_SIGN * ho.trim_pwm);
+#endif
+                        }
+                    }
+                    // Límite por pose: al borde del arco, INVERTIR el sentido y seguir continuo.
+                    if (gk_pose_ok()) {
+                        const float x = world_model_get_my_x_mm();
+                        if ((x > xc + GK_PATROL_X_HALF_RANGE_MM && direction > 0) ||
+                            (x < xc - GK_PATROL_X_HALF_RANGE_MM && direction < 0)) {
+                            direction = -direction;
+                            gk_strafe_hold_reset(g_strafe_hold);
+                        }
+                    }
+                    // (sin break: cae al break compartido al final del case)
+#else
+                    cmd.vx_mm_s = clamp_velocity_mm_s(direction * GK_PATROL_SPEED_MM_S);
+#ifdef GK_PATROL_PULSE
+                    // DEBUG: duty-cycle temporal → baja la velocidad MEDIA para ver el rebote.
+                    // Durante la pausa vx=0 (quieto); el rebote por línea de arriba se sigue
+                    // evaluando igual. NO cambia la velocidad instantánea (el piso PWM manda).
+                    if (((now_ms - pphase_t0) % (GK_PATROL_PULSE_ON_MS + GK_PATROL_PULSE_OFF_MS))
+                            >= GK_PATROL_PULSE_ON_MS) {
+                        cmd.vx_mm_s = 0;
+                    }
+#endif
                     cmd.vy_mm_s = 0;
                     // ω=0 A PROPÓSITO (v3.1): mezclar corrección de giro con el strafe
                     // DEGENERA en estos motores — en el strafe las delanteras van chicas
@@ -1598,6 +1850,7 @@ MotorCommand goalkeeper_tick() {
                         }
                     }
                     if (seg_end) { pphase = 1; pphase_t0 = now_ms; }
+#endif
                     break;
                 }
                 case 1: {   // STOP: frenar, medir rumbo quieto, decidir
@@ -1690,7 +1943,11 @@ MotorCommand goalkeeper_tick() {
             // (Banco 2026-06-09: con -DGK_IGNORE_BALL la patrulla NO sale a la pelota
             //  — env central_robot2_arquero_patrol. La pelota visible secuestraba el
             //  test: PATROL→CLEAR→INTERCEPT en loop y el rumbo quedaba a ±90°.)
-            if (world_model_ball_visible()) {
+            if (world_model_ball_visible()
+#ifdef GK_STRAFE_PID
+                && g_gk_escape_until_ms == 0   // no abandonar el escape bloqueado por ver la pelota
+#endif
+               ) {
                 transition_gk(GkState::INTERCEPT);
             }
 #endif

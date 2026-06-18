@@ -187,7 +187,11 @@ void emit_frame() {
     f.seq = g_seq++;
     static char buf[640];   // frame v1 ~360 B; margen holgado
     const int n = tc_serialize_jsonl(buf, sizeof(buf), f);
-    if (n > 0) {
+    // NO bloquear el lazo de control si el host está lento: si no entra en el buffer USB,
+    // SE DROPEA el frame (control > telemetría). Sin esto, un host (la app monitor, que va
+    // a ~9 Hz) que deja de leer cuelga el Serial.write → los motores quedan con el último
+    // PWM → "movimientos raros". Mismo criterio que down_tx. En partido no hay host → no-op.
+    if (n > 0 && Serial.availableForWrite() >= n) {
         Serial.write(reinterpret_cast<const uint8_t*>(buf), n);
     }
 }
@@ -214,7 +218,10 @@ void emit_human() {
         (unsigned long)f.loop_max_us, (unsigned long)f.loop_ema_us);
     if (n > 0) {
         if (n >= (int)sizeof(buf)) n = (int)sizeof(buf) - 1;
-        Serial.write(reinterpret_cast<const uint8_t*>(buf), n);
+        // No bloquear el control si el host está lento: dropear si no entra (igual que emit_frame).
+        if (Serial.availableForWrite() >= n) {
+            Serial.write(reinterpret_cast<const uint8_t*>(buf), n);
+        }
     }
 }
 

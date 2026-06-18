@@ -51,6 +51,12 @@ uint32_t g_kick_start_ms[3] = { 0, 0, 0 };
 bool g_rear_cut = false;
 #endif
 
+#ifdef CENTRAL_REAR_TRIM
+// Trim de rumbo de la trasera (heading-hold del arquero en strafe continuo). El caller
+// (FSM) lo setea cada tick; se SUMA a la trasera post-floor-scale. Default 0 = no-op.
+int g_rear_trim = 0;
+#endif
+
 #ifdef CENTRAL_MOTOR_KICKSTART
 constexpr int KICKSTART_WINDOW_MS  = 40;   // ventana del impulso (2025: 40 ms)
 // IMPULSO FIJO (banco robot2 2026-06-09, decisión de Gustavo): el ×1.8 multiplicativo
@@ -206,6 +212,15 @@ void motors_apply_command(const MotorCommand& cmd) {
         // impulso → el próximo arranque de la trasera vuelve a pegar el golpe inicial.
         if (i == 2 && g_rear_cut) pwm = 0;
 #endif
+#ifdef CENTRAL_REAR_TRIM
+        // Trim de rumbo (Cambio 1): suma la pequeña corrección del PI a la trasera (idx 2)
+        // YA escalada, solo si está moviéndose (pwm!=0). Cap térmico 150 (no quemar).
+        if (i == 2 && g_rear_trim != 0 && pwm != 0) {
+            pwm += g_rear_trim;
+            if (pwm >  150) pwm =  150;
+            if (pwm < -150) pwm = -150;
+        }
+#endif
 #ifdef CENTRAL_MOTOR_KICKSTART
         // Impulso inicial: boost 1.8× por 40 ms SOLO en la transición parado→comando
         // de esta rueda (ver bloque de estado arriba). Actúa sobre el PWM final (post
@@ -270,6 +285,10 @@ void motors_set_one(int motor_idx, int pwm_signed) {
 
 #ifdef CENTRAL_REAR_BRAKE_LEAD
 void motors_set_rear_cut(bool cut) { g_rear_cut = cut; }
+#endif
+
+#ifdef CENTRAL_REAR_TRIM
+void motors_set_rear_trim(int delta_pwm) { g_rear_trim = delta_pwm; }
 #endif
 
 }  // namespace iitasoccer

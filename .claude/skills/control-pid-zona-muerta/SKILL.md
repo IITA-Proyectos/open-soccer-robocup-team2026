@@ -54,5 +54,25 @@ clamp 120°/s kp=3 → oscilación ±140° y trompo. AMBOS extremos confirmados 
 - **Tunear sin identificar la planta**: medí PRIMERO la perturbación (deriva con lazo
   abierto) y el mínimo físico del actuador — esos 2 números dimensionan todo.
 
+## Valores YA validados del arquero (NO re-tunear a ciegas)
+
+Antes de tocar el lazo de rumbo del arquero, leé los docs canónicos — esto ya está medido:
+
+- **Heading-hold por trim de la TRASERA** (strafe continuo, `strategy.cpp`): `GK_STRAFE_KP=2.0`,
+  `KI=1.0`, `deadband=2°`, `band=18°`, `trim_max=30 PWM`, `i_max=18`; `GK_REAR_TRIM_SIGN=-1` (R2,
+  confirmado banco 2026-06-18 — OJO: un signo invertido TAMBIÉN queda estable, pero a 180° del
+  objetivo; se discrimina con captura de rumbo inicial). **Trim traslacional: tope ±19 mm/s** (arriba
+  la trasera se dispara a su piso 107 = patada lateral).
+- **PFM clásico** (correcciones por debajo del piso): `kp=2.0, ki=0.4, deadband 5°, 100°/s, ventana 160 ms`.
+- **La latencia del heading YA está al máximo de mitigación (verificado en código 2026-06-18):** el BNO
+  se lee a **100 Hz** en `top_robot2_pri` (`-DTOP_BNO_FAST` + `-DTOP_BNO_PRIMARY_ONLY` horneados desde
+  2026-06-16 → `BNO_READ_INTERVAL_MS=10`), y `top_robot2_pri_hpredict` suma predicción (extrapola con el
+  gyro) ENCIMA. `top_robot2_pri_fastbno` es REDUNDANTE con el base. ⚠️ El doc CONTROL-ARQUERO-LATERAL
+  (2026-06-14) todavía dice "BNO 20 Hz / fix = fastbno" — **DESACTUALIZADO**, el código ya lo hornea.
+  Si AÚN oscila con 100 Hz+predicción, NO es latencia: bajar `GK_STRAFE_KI` (1.0→0.5) y/o esperar el
+  warm-up del BNO (la deriva inicial del giro es calibración del sensor, no rate).
+- **Docs canónicos:** lazo + latencias → `docs/firmware/CONTROL-ARQUERO-LATERAL-Y-LATENCIAS.md` (ojo:
+  su afirmación de "BNO 20 Hz" quedó vieja); todas las perillas con rango → `docs/firmware/GUIA-DE-TUNING-CENTRAL.md`.
+
 **REQUIRED BACKGROUND:** la planta concreta de este robot está en la skill
 `dinamica-omni-3-ruedas` (pisos, deriva parásita medida, regímenes de velocidad).

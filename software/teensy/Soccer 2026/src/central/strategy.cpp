@@ -419,8 +419,8 @@ constexpr uint32_t GK_PATROL_BOUNCE_COOLDOWN_MS = 800; // 1 rebote por toque de 
 #define GK_REAR_TRIM_SIGN (-1)   // R2: CONFIRMADO EN BANCO 2026-06-18 (con +1 divergía al arco OPUESTO).
                                  // Es físico del robot; R1 puede diferir → overridear con -DGK_REAR_TRIM_SIGN=+1 en su env.
 #endif
-constexpr float    GK_STRAFE_KP             = 2.0f;    // PWM por grado de error de rumbo
-constexpr float    GK_STRAFE_KI             = 1.0f;    // PWM por grado·s (cancela la deriva ~80°/s)
+constexpr float    GK_STRAFE_KP             = 3.0f;    // PWM por grado de error de rumbo (2026-06-18: 2.0->3.0 +50%; coincide con HeadingPID 3.0 validado)
+constexpr float    GK_STRAFE_KI             = 0.5f;    // PWM por grado·s (2026-06-18: 1.0->0.5, baja el hunting integral de ~3 s; la latencia ya esta al maximo)
 constexpr float    GK_STRAFE_DEADBAND_DEG   = 2.0f;    // zona muerta (no pelear el ruido del heading)
 constexpr float    GK_STRAFE_BAND_DEG       = 18.0f;   // fuera de esto → impulso fuerte (pulso)
 constexpr int      GK_STRAFE_TRIM_MAX_PWM   = 30;      // pequeña modulación de la trasera
@@ -429,17 +429,26 @@ constexpr uint32_t GK_LINE_ESCAPE_MS        = 4000;    // TOPE DURO del escape (
 constexpr uint32_t GK_LINE_ESCAPE_MIN_MS    = 500;     // mínimo a comprometer antes de poder cortar
 constexpr uint32_t GK_LINE_ESCAPE_POST_CLEAR_MS = 400; // ⬅ seguir empujando ESTE tiempo DESPUES de dejar de
                                                        // ver linea, para despegarse del borde antes de retomar strafe
-constexpr int      GK_LINE_ESCAPE_SPEED_MM_S = 590;    // ⚠️ TECHO util: a >~590 la trasera llega al cap de 150
-                                                       // PWM (quemado). Mas mm/s NO da mas empuje (clampea igual).
+constexpr int      GK_LINE_ESCAPE_SPEED_MM_S = 470;    // TUNEO YA DOCUMENTADO (docs/firmware/GUIA-DE-TUNING-CENTRAL.md +
+                                                       // MOTION-CONTROL-ACTUAL.md, banco Maria): ARRIBA de ~470 la trasera
+                                                       // SATURA -> la huida sale DIAGONAL. La distancia se saca con TIEMPO
+                                                       // (subir GK_LINE_ESCAPE_*_MS), NO con velocidad. El escape 'simple'
+                                                       // temporizado usa 470 x 1700 ms; aca el ping-pong usa 470 + 'hasta-salir' + post-clear.
+// El "transitorio de arranque" (la trasera arranca antes por menos rozamiento) se manifiesta como esta MISMA diagonal de
+// saturacion: con la velocidad en 470 (debajo de saturacion) el strafe sale RECTO, asi que la escala de arranque queda
+// DESACTIVADA (1.0). Se deja la perilla por si el banco mostrara un transitorio residual a 470.
+constexpr float    GK_ESCAPE_REAR_SCALE     = 1.00f;   // 1.0 = sin cambio (desactivada; el diagonal era velocidad>470, no friccion)
+constexpr uint32_t GK_ESCAPE_REAR_SCALE_MS  = 250;     // (sin efecto mientras GK_ESCAPE_REAR_SCALE = 1.0)
 #ifdef GK_Y_HOLD
 // Control LENTO de PROFUNDIDAD (Y de cancha) — diseño Gustavo 2026-06-18. Lo usa gk_pingpong_tick:
 // mezcla un vy chico al strafe (diagonal) para no derivar hacia adelante. Off por defecto.
 constexpr float   GK_Y_HOLD_TARGET_MM   = 500.0f; // Y objetivo (mm, unidades de la pose del TOP). CONFIRMAR contra el
                                                   // monitor: parar el robot donde se lo quiere y leer 'y' = ese target.
 constexpr uint8_t GK_Y_HOLD_MIN_CONF    = 60;     // confianza MINIMA del TOP para usar/promediar la Y (si no, vy=0)
-constexpr float   GK_Y_HOLD_DEADBAND_MM = 60.0f;  // zona muerta: no corregir derivas chicas
-constexpr float   GK_Y_HOLD_KP          = 0.10f;  // mm/s por mm de error: a 200 mm -> 20 mm/s (tope)
-constexpr float   GK_Y_HOLD_VY_MAX_MM_S = 20.0f;  // tope del vy: ~limite medido (±19) antes de disparar la trasera
+constexpr float   GK_Y_HOLD_DEADBAND_MM = 40.0f;  // 2026-06-18: bajado 60->40 (mas autoridad: corrige derivas mas chicas)
+constexpr float   GK_Y_HOLD_KP          = 0.20f;  // 2026-06-18: subido 0.10->0.20 (mas autoridad): a 150 mm -> 30 mm/s (tope)
+constexpr float   GK_Y_HOLD_VY_MAX_MM_S = 19.0f;  // TOPE DOCUMENTADO ±19 mm/s (GUIA-DE-TUNING-CENTRAL: arriba la trasera se
+                                                  // dispara a 107 = patada lateral brusca). El 30 que probe estaba por ENCIMA de lo validado.
 constexpr float   GK_Y_HOLD_EMA_ALPHA   = 0.05f;  // promedio LENTO del Y (el tick corre ~100 Hz): mas chico = mas suave
 #endif
 #endif
@@ -1185,6 +1194,7 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
     static uint32_t escape_min_ms   = 0;   // mínimo a comprometer (sale aunque deje de ver línea)
     static int      escape_dir      = 0;
     static uint32_t escape_lost_ms  = 0;   // primer tick SIN línea durante el escape (0 = aún ve línea)
+    static uint32_t escape_start_ms = 0;   // instante de arranque del escape (compensa el transitorio de la trasera)
     const bool hv = world_model_heading_valid();
 
     // ESCAPE bloqueado: opuesto al sentido que traia, MAXIMA potencia. Empuja HASTA SALIR de la linea
@@ -1209,6 +1219,7 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
             g_state_name = "GK_PP_ESCAPE";
 #ifdef CENTRAL_REAR_TRIM
             motors_set_rear_trim(0);
+            motors_set_rear_scale((now_ms - escape_start_ms < GK_ESCAPE_REAR_SCALE_MS) ? GK_ESCAPE_REAR_SCALE : 1.0f);
 #endif
             return cmd;
         }
@@ -1235,12 +1246,14 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
             escape_min_ms   = now_ms + GK_LINE_ESCAPE_MIN_MS;
             escape_until_ms = now_ms + GK_LINE_ESCAPE_MS;
             escape_lost_ms  = 0;
+            escape_start_ms = now_ms;
             direction       = escape_dir;
             bounce_gate_ms  = now_ms;
             cmd.vx_mm_s     = clamp_velocity_mm_s(escape_dir * GK_LINE_ESCAPE_SPEED_MM_S);  // reaccionar YA, MISMO tick
             g_state_name    = "GK_PP_ESCAPE";
 #ifdef CENTRAL_REAR_TRIM
             motors_set_rear_trim(0);
+            motors_set_rear_scale(GK_ESCAPE_REAR_SCALE);   // arranque del escape -> trasera reducida (transitorio)
 #endif
             return cmd;
         }
@@ -1283,6 +1296,7 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
     static GkStrafeHoldState hold{0.0f};
     static bool  target_captured = false;          // captura el rumbo de ARRANQUE de la patrulla 1 sola vez
     static float hold_target_deg = GK_GYRO_HOLD_TARGET_DEG;
+    motors_set_rear_scale(1.0f);   // fuera del transitorio del escape: trasera a potencia plena durante la patrulla
     if (hv) {
         if (!target_captured) {
             hold_target_deg = world_model_get_my_heading_deg();  // mantiene el rumbo con que lo pusiste, NO un cero absoluto

@@ -58,6 +58,11 @@ void motors_set_rear_cut(bool cut);
 // sin desbordar las delanteras (que a baja velocidad están pegadas a su piso). delta=0 →
 // no-op. Gateado: sin -DCENTRAL_REAR_TRIM esta API no existe (binario idéntico).
 void motors_set_rear_trim(int delta_pwm);
+// ESCALA DE LA TRASERA (Gustavo 2026-06-18): el caller la baja (<1.0) al ARRANCAR el escape para
+// compensar que la trasera, alineada al movimiento, tiene menos rozamiento y acelera ANTES que las
+// delanteras (oblicuas, mas rozamiento) -> sin esto el robot cruza adelante en el transitorio.
+// Multiplica el PWM de la trasera: preserva el signo (reduce magnitud en ambos sentidos). 1.0 = sin cambio.
+void motors_set_rear_scale(float scale);
 #endif
 
 }  // namespace iitasoccer

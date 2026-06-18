@@ -55,6 +55,9 @@ bool g_rear_cut = false;
 // Trim de rumbo de la trasera (heading-hold del arquero en strafe continuo). El caller
 // (FSM) lo setea cada tick; se SUMA a la trasera post-floor-scale. Default 0 = no-op.
 int g_rear_trim = 0;
+// Escala de la trasera (Gustavo 2026-06-18): el caller la baja (<1.0) al arrancar el escape para
+// compensar que la trasera arranca antes (menos rozamiento). Multiplica -> preserva el signo. 1.0 = no-op.
+float g_rear_scale = 1.0f;
 #endif
 
 #ifdef CENTRAL_MOTOR_KICKSTART
@@ -213,6 +216,11 @@ void motors_apply_command(const MotorCommand& cmd) {
         if (i == 2 && g_rear_cut) pwm = 0;
 #endif
 #ifdef CENTRAL_REAR_TRIM
+        // Escala de la trasera (Gustavo 2026-06-18): el caller la baja al ARRANCAR el escape para
+        // compensar que la trasera (menos rozamiento) acelera antes. Multiplica -> preserva el signo.
+        if (i == 2 && g_rear_scale != 1.0f && pwm != 0) {
+            pwm = (int)(pwm * g_rear_scale);
+        }
         // Trim de rumbo (Cambio 1): suma la pequeña corrección del PI a la trasera (idx 2)
         // YA escalada, solo si está moviéndose (pwm!=0). Cap térmico 150 (no quemar).
         if (i == 2 && g_rear_trim != 0 && pwm != 0) {
@@ -289,6 +297,7 @@ void motors_set_rear_cut(bool cut) { g_rear_cut = cut; }
 
 #ifdef CENTRAL_REAR_TRIM
 void motors_set_rear_trim(int delta_pwm) { g_rear_trim = delta_pwm; }
+void motors_set_rear_scale(float scale)  { g_rear_scale = scale; }
 #endif
 
 }  // namespace iitasoccer

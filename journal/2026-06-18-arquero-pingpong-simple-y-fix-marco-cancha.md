@@ -145,3 +145,28 @@ Los 2 PENDIENTES de arriba se atacaron en banco con Gustavo. Estado:
 - Validar en banco el Y-hold (que se quede en Y≈500 sin derivar; confirmar el signo de la corrección Y).
 - Tunear la oscilación de ~3 s del heading (`GK_STRAFE_KI` + heading-predict en el TOP).
 - Probar R1 (puede tener otro `GK_REAR_TRIM_SIGN`).
+
+---
+
+# Continuación 2026-06-18 (noche) — prior-art: corregir valores re-derivados + referenciar la guía canónica
+
+Gustavo marcó (con razón) que varios de estos tuneos YA estaban hechos y documentados. Búsqueda
+exhaustiva del repo (workflow de 7 agentes) → doc canónico **`docs/firmware/GUIA-DE-TUNING-CENTRAL.md`**
+(+ `MOTION-CONTROL-ACTUAL.md`, `CONTROL-ARQUERO-LATERAL-Y-LATENCIAS.md`). Correcciones a lo re-derivado mal:
+
+- **Escape: 590 → 470 mm/s.** Arriba de ~470 la trasera satura → huida DIAGONAL (el síntoma reportado).
+  La distancia se saca con TIEMPO, no velocidad (María: 600→…→1700 ms). Desactivé la escala de trasera
+  al arranque (`GK_ESCAPE_REAR_SCALE=1.0`): el "diagonal" era esa misma saturación, no fricción de arranque.
+- **Y-hold vy: 30 → 19 mm/s** (tope físico documentado; arriba la trasera se dispara a 107 = patada).
+- **Heading-hold: `GK_STRAFE_KP` 2.0 → 3.0** (coincide con el HeadingPID validado), **`GK_STRAFE_KI` 1.0 → 0.5**
+  (baja el hunting integral de ~3 s). La latencia ya está al máximo: el BNO se lee a **100 Hz** en
+  `top_robot2_pri` (`-DTOP_BNO_FAST` horneado 2026-06-16) + `hpredict` → la oscilación NO era latencia.
+- **Kickstart vigente `{145,145,150}`** (el código manda): corregí skill `dinamica-omni-3-ruedas` y
+  `FUENTES-DE-VERDAD.md` que aún decían `{130,130,140}`.
+
+Referencias agregadas en lectura obligatoria: skills `dinamica-omni-3-ruedas` y `control-pid-zona-muerta`
++ `FUENTES-DE-VERDAD.md` ahora apuntan a la guía canónica y cargan los lemas (escape ≤470, ±19, kickstart,
+burn cap 150, noise 5). Inconsistencia marcada (código manda): `CONTROL-ARQUERO-LATERAL-Y-LATENCIAS.md`
+(2026-06-14) dice "BNO 20 Hz / fix=fastbno" → desactualizado, el código ya lee a 100 Hz (`fastbno` redundante).
+
+**Pendiente de banco:** validar KP=3/KI=0.5 (oscilación), escape 470 (que salga recto y despegue), Y-hold ±19.

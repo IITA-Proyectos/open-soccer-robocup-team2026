@@ -85,3 +85,63 @@ de 150 PWM = límite de quemado de los motores 5 V @ 7,4 V); más mm/s no da má
 - `src/central/{motors_zircon.h,motors_zircon.cpp,strategy.cpp,central_telemetry_serial.cpp}`
 - `platformio.ini` (3 envs de banco del arquero)
 - `docs/firmware/FSM-ARQUERO-ESTADOS.md`, este journal.
+
+---
+
+# Continuación 2026-06-18 (tarde) — heading-hold con signo confirmado + control de profundidad (Y)
+
+Los 2 PENDIENTES de arriba se atacaron en banco con Gustavo. Estado:
+
+## 1. Heading-hold por trim de la rueda trasera — ANDA, signo CONFIRMADO
+
+- Env `central_robot2_arquero_pingpong_trim` (= pingpong + `-DCENTRAL_REAR_TRIM`).
+- **Camino del signo (importante, para no repetir el error):** primero el robot describía una
+  "media luna" y se estabilizaba mirando al arco OPUESTO. Diagnóstico equivocado inicial: creí que
+  el signo estaba bien porque "controlaba". El error de razonamiento: **un lazo angular con el signo
+  invertido también queda estable, pero en el rumbo a 180° del objetivo** (el antípoda es su
+  equilibrio estable). Para discriminar se metió **captura del rumbo inicial** (el objetivo deja de
+  ser un cero absoluto y pasa a ser el rumbo con que se lo coloca): como aun así divergía al opuesto,
+  quedó probado que el signo estaba invertido. Fix: **`GK_REAR_TRIM_SIGN = -1`**, confirmado en banco.
+  Se promovió `-1` al **default de `strategy.cpp`** (vale para todo env de R2; R1 puede diferir y se
+  overridea con `-DGK_REAR_TRIM_SIGN=+1` en su env). Con `-1` + captura de rumbo, sostiene la
+  orientación con la que se lo coloca (mira al amarillo y se queda).
+- **Oscilación de ~3 s** (idas y vueltas) sigue presente: es el KI alto + latencia del heading (~250 ms),
+  pendiente de tunear (bajar `GK_STRAFE_KI` 1.0→0.5 + heading-predict en el TOP). NO se tocó todavía.
+
+## 2. Salida de línea — mejorada en banco
+
+- **Margen post-salida** (`GK_LINE_ESCAPE_POST_CLEAR_MS = 400`): el escape ya no corta justo en el
+  borde; empuja un toque más DESPUÉS de dejar de ver línea, para despegarse y no re-tocarla. Gustavo:
+  "la salida quedó bien".
+- **Reacción en el MISMO tick** (antes esperaba un tick): sirve el escape apenas detecta la línea.
+- Velocidad de escape a **590** (techo útil; arriba la trasera satura en 150 PWM). Subir el número NO
+  da más empuje. El "se sale de la cancha" restante se atribuye a la deriva hacia adelante (ver #3).
+
+## 3. Control de PROFUNDIDAD (Y) — diseño Gustavo, COMPILA, FALTA validar en banco
+
+- Env nuevo `central_robot2_arquero_pingpong_trim_yhold` (= trim + `-DGK_Y_HOLD`).
+- **Causa de la deriva hacia adelante:** el heading-hold modula la rueda TRASERA, que es la que mueve
+  en Y → corregir rumbo induce deriva en Y. 
+- **Solución (idea de Gustavo):** mezclar un `vy` chico al strafe (pequeña diagonal hacia el fondo)
+  para mantener Y ≈ objetivo. Usa la **Y de la pose del TOP** (`world_model_get_my_y_mm`),
+  **condicionada a confianza ≥ 60** (si la localización no es confiable, `vy=0` y degrada a la
+  patrulla del trim). EMA lenta (α=0.05, el tick corre ~100 Hz) + zona muerta 60 mm + `vy ≤ 20 mm/s`
+  (límite medido antes de disparar la trasera por su piso). Correcciones lentas para no pelear con el
+  heading-hold (más rápido). **Objetivo Y = 500** (validado contra el monitor por Gustavo: cerca del
+  centro, un poco atrás = "defensor adelantado").
+- **Fuentes de sensor evaluadas:** ToF traseros NO llegan a la CENTRAL (habría que cablear TOP→CENTRAL);
+  `cross_track` solo sirve pegado a una línea. Por eso se fue por la Y de la pose del TOP.
+- ⚠️ **NO validado en HW**: depende de que la localización XY del TOP dé Y/confianza sanos. Verificar
+  primero en el monitor de la CENTRAL.
+
+## 4. Observabilidad — pose en el monitor de la CENTRAL
+
+- `central_telemetry_serial.cpp`: la línea de texto del monitor de la CENTRAL ahora imprime
+  `pose x.. y.. conf.. hv..` (lo que la CENTRAL **recibe** del TOP). Antes solo salía en el frame
+  binario para la app. Sirve para comparar TOP-calcula vs CENTRAL-recibe y para fijar el target de Y.
+  Match-safe (solo emite con un humano en el monitor; se dropea si el buffer está lleno).
+
+## Pendiente
+- Validar en banco el Y-hold (que se quede en Y≈500 sin derivar; confirmar el signo de la corrección Y).
+- Tunear la oscilación de ~3 s del heading (`GK_STRAFE_KI` + heading-predict en el TOP).
+- Probar R1 (puede tener otro `GK_REAR_TRIM_SIGN`).

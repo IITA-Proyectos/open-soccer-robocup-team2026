@@ -202,15 +202,17 @@ void emit_human() {
     CentralTelemetryFrame f;
     fill_frame(f);
     f.seq = g_seq++;
-    char buf[256];
+    char buf[320];
     int n = snprintf(buf, sizeof(buf),
         "[CENTRAL] seq %lu %s %s match=%s | cmd vx%d vy%d w%d spin%d | "
-        "pwm[%d,%d,%d] | top[fr%lu crc%lu %s] down[rx%lu crc%lu lost%lu %s] | "
+        "pwm[%d,%d,%d] | pose x%d y%d conf%d hv%d | "
+        "top[fr%lu crc%lu %s] down[rx%lu crc%lu lost%lu %s] | "
         "otos %s loop_us(max/avg)=%lu/%lu\n",
         (unsigned long)f.seq, f.fsm_role ? "ATK" : "GK",
         f.fsm_state ? f.fsm_state : "?", f.fsm_match ? "RUN" : "STOP",
         (int)f.cmd_vx_mm_s, (int)f.cmd_vy_mm_s, (int)f.cmd_w_cd_s, (int)f.cmd_spin_pwm,
         (int)f.pwm[0], (int)f.pwm[1], (int)f.pwm[2],
+        (int)f.snap_my_x_mm, (int)f.snap_my_y_mm, (int)f.snap_my_pose_confidence, (int)f.snap_heading_valid,
         (unsigned long)f.top_frames, (unsigned long)f.top_crc, f.top_fresh ? "FRESH" : "STALE",
         (unsigned long)f.down_frames, (unsigned long)f.down_crc, (unsigned long)f.down_lost,
         f.down_line_fresh ? "FRESH" : "STALE",

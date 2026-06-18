@@ -416,7 +416,8 @@ constexpr uint32_t GK_PATROL_BOUNCE_COOLDOWN_MS = 800; // 1 rebote por toque de 
 // CAMBIO 2: al tocar línea, escape OPUESTO a MÁXIMA potencia, estado BLOQUEADO 2 s (no
 //   cambia por pelota/línea/pose; SÍ lo frena el STOP del árbitro), retoma al salir de la línea.
 #ifndef GK_REAR_TRIM_SIGN
-#define GK_REAR_TRIM_SIGN (+1)   // signo trim→giro: CONFIRMAR EN BANCO (si corrige al revés, poner -1)
+#define GK_REAR_TRIM_SIGN (-1)   // R2: CONFIRMADO EN BANCO 2026-06-18 (con +1 divergía al arco OPUESTO).
+                                 // Es físico del robot; R1 puede diferir → overridear con -DGK_REAR_TRIM_SIGN=+1 en su env.
 #endif
 constexpr float    GK_STRAFE_KP             = 2.0f;    // PWM por grado de error de rumbo
 constexpr float    GK_STRAFE_KI             = 1.0f;    // PWM por grado·s (cancela la deriva ~80°/s)
@@ -425,9 +426,22 @@ constexpr float    GK_STRAFE_BAND_DEG       = 18.0f;   // fuera de esto → impu
 constexpr int      GK_STRAFE_TRIM_MAX_PWM   = 30;      // pequeña modulación de la trasera
 constexpr float    GK_STRAFE_I_MAX_PWM      = 18.0f;   // anti-windup del término I
 constexpr uint32_t GK_LINE_ESCAPE_MS        = 4000;    // TOPE DURO del escape (4 s de seguridad)
-constexpr uint32_t GK_LINE_ESCAPE_MIN_MS    = 700;     // mínimo a comprometer antes de poder cortar
-constexpr int      GK_LINE_ESCAPE_SPEED_MM_S = 700;    // ⚠️ ya SATURA: a >~590 la trasera llega al cap
-                                                       // de 150 PWM (quemado). Más mm/s NO da más potencia.
+constexpr uint32_t GK_LINE_ESCAPE_MIN_MS    = 500;     // mínimo a comprometer antes de poder cortar
+constexpr uint32_t GK_LINE_ESCAPE_POST_CLEAR_MS = 400; // ⬅ seguir empujando ESTE tiempo DESPUES de dejar de
+                                                       // ver linea, para despegarse del borde antes de retomar strafe
+constexpr int      GK_LINE_ESCAPE_SPEED_MM_S = 590;    // ⚠️ TECHO util: a >~590 la trasera llega al cap de 150
+                                                       // PWM (quemado). Mas mm/s NO da mas empuje (clampea igual).
+#ifdef GK_Y_HOLD
+// Control LENTO de PROFUNDIDAD (Y de cancha) — diseño Gustavo 2026-06-18. Lo usa gk_pingpong_tick:
+// mezcla un vy chico al strafe (diagonal) para no derivar hacia adelante. Off por defecto.
+constexpr float   GK_Y_HOLD_TARGET_MM   = 500.0f; // Y objetivo (mm, unidades de la pose del TOP). CONFIRMAR contra el
+                                                  // monitor: parar el robot donde se lo quiere y leer 'y' = ese target.
+constexpr uint8_t GK_Y_HOLD_MIN_CONF    = 60;     // confianza MINIMA del TOP para usar/promediar la Y (si no, vy=0)
+constexpr float   GK_Y_HOLD_DEADBAND_MM = 60.0f;  // zona muerta: no corregir derivas chicas
+constexpr float   GK_Y_HOLD_KP          = 0.10f;  // mm/s por mm de error: a 200 mm -> 20 mm/s (tope)
+constexpr float   GK_Y_HOLD_VY_MAX_MM_S = 20.0f;  // tope del vy: ~limite medido (±19) antes de disparar la trasera
+constexpr float   GK_Y_HOLD_EMA_ALPHA   = 0.05f;  // promedio LENTO del Y (el tick corre ~100 Hz): mas chico = mas suave
+#endif
 #endif
 constexpr uint8_t  GK_PATROL_MAX_SEGS_SAME_DIR  = 3;   // fail-safe sin línea ni pose
 constexpr float    GK_REORIENT_ENTER_DEG   = 35.0f;// error que dispara re-orientación
@@ -1170,14 +1184,27 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
     static uint32_t escape_until_ms = 0;   // tope DURO (cap de 4 s)
     static uint32_t escape_min_ms   = 0;   // mínimo a comprometer (sale aunque deje de ver línea)
     static int      escape_dir      = 0;
+    static uint32_t escape_lost_ms  = 0;   // primer tick SIN línea durante el escape (0 = aún ve línea)
     const bool hv = world_model_heading_valid();
 
-    // ESCAPE bloqueado: opuesto al sentido que traia, MAXIMA potencia, HASTA SALIR de la linea.
-    // Sigue mientras (no cumplio el minimo de compromiso) O (todavia ve linea y no llego al tope
-    // de 4 s). Asi: no se queda pegado (empuja hasta salir, hasta 4 s) y no cruza la cancha cuando
-    // logra salir (corta apenas la deja de ver, pasado el minimo). El STOP del arbitro lo corta afuera.
+    // ESCAPE bloqueado: opuesto al sentido que traia, MAXIMA potencia. Empuja HASTA SALIR de la linea
+    // y un MARGEN extra (GK_LINE_ESCAPE_POST_CLEAR_MS) DESPUES de dejar de verla, para despegarse del
+    // borde y NO re-tocarla al retomar el strafe. Compromiso minimo GK_LINE_ESCAPE_MIN_MS; tope duro 4 s.
+    // El STOP del arbitro lo corta afuera.
     if (escape_until_ms != 0) {
-        if (now_ms < escape_min_ms || (world_model_line_detected() && now_ms < escape_until_ms)) {
+        const bool line_now = world_model_line_detected();
+        if (line_now) {
+            escape_lost_ms = 0;                              // sigue sobre la linea: resetear el contador de "ya sali"
+        } else if (escape_lost_ms == 0 && now_ms >= escape_min_ms) {
+            escape_lost_ms = now_ms;                         // primer tick sin linea (pasado el minimo): arranca el margen
+        }
+        const bool keep =
+            (now_ms < escape_min_ms) ||                                      // compromiso minimo
+            (line_now && now_ms < escape_until_ms) ||                        // todavia sobre la linea (tope 4 s)
+            (escape_lost_ms != 0 &&                                          // MARGEN post-salida: despegarse del borde
+             (now_ms - escape_lost_ms) < GK_LINE_ESCAPE_POST_CLEAR_MS &&
+             now_ms < escape_until_ms);
+        if (keep) {
             cmd.vx_mm_s = clamp_velocity_mm_s(escape_dir * GK_LINE_ESCAPE_SPEED_MM_S);
             g_state_name = "GK_PP_ESCAPE";
 #ifdef CENTRAL_REAR_TRIM
@@ -1186,6 +1213,7 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
             return cmd;
         }
         escape_until_ms = 0;
+        escape_lost_ms  = 0;
         direction = escape_dir;   // seguir en el sentido del escape
     }
 
@@ -1206,10 +1234,15 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
             escape_dir      = -direction;                 // SIEMPRE el opuesto al que traia
             escape_min_ms   = now_ms + GK_LINE_ESCAPE_MIN_MS;
             escape_until_ms = now_ms + GK_LINE_ESCAPE_MS;
+            escape_lost_ms  = 0;
             direction       = escape_dir;
             bounce_gate_ms  = now_ms;
+            cmd.vx_mm_s     = clamp_velocity_mm_s(escape_dir * GK_LINE_ESCAPE_SPEED_MM_S);  // reaccionar YA, MISMO tick
             g_state_name    = "GK_PP_ESCAPE";
-            return cmd;   // el proximo tick sirve el escape
+#ifdef CENTRAL_REAR_TRIM
+            motors_set_rear_trim(0);
+#endif
+            return cmd;
         }
     }
 
@@ -1218,11 +1251,44 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
     cmd.vy_mm_s = 0;
     cmd.omega_centideg_s = 0;
     g_state_name = "GK_PP_MOVE";
+#ifdef GK_Y_HOLD
+    // Control LENTO de PROFUNDIDAD (Y de cancha): mantener Y ~ GK_Y_HOLD_TARGET_MM mezclando un vy
+    // CHICO al strafe (pequeña diagonal hacia el fondo) para frenar la deriva hacia adelante. Condicionado
+    // a la confianza de pose del TOP; si la localizacion no es confiable, vy=0 (degrada a strafe puro).
+    // EMA + deadband + clamp + ganancia baja = correccion LENTA que NO pelea con el heading-hold (mas
+    // rapido, por la trasera). +Y = frente (arco rival): si esta ADELANTE del objetivo (ey>0) tira
+    // hacia atras (vy<0). Asume el robot mirando al campo (rumbo holdeado), asi robot-Y ~ cancha-Y.
+    {
+        const uint8_t conf = world_model_get_my_pose_confidence();
+        static bool  y_ema_init = false;
+        static float y_ema      = 0.0f;
+        if (conf >= GK_Y_HOLD_MIN_CONF) {
+            const float y_now = world_model_get_my_y_mm();
+            if (!y_ema_init) { y_ema = y_now; y_ema_init = true; }
+            else             { y_ema += GK_Y_HOLD_EMA_ALPHA * (y_now - y_ema); }
+            const float ey = y_ema - GK_Y_HOLD_TARGET_MM;
+            if (ey > GK_Y_HOLD_DEADBAND_MM || ey < -GK_Y_HOLD_DEADBAND_MM) {
+                float vy = -GK_Y_HOLD_KP * ey;
+                if (vy >  GK_Y_HOLD_VY_MAX_MM_S) vy =  GK_Y_HOLD_VY_MAX_MM_S;
+                if (vy < -GK_Y_HOLD_VY_MAX_MM_S) vy = -GK_Y_HOLD_VY_MAX_MM_S;
+                cmd.vy_mm_s = clamp_velocity_mm_s(vy);
+            }
+        } else {
+            y_ema_init = false;   // pose perdida: re-anclar el promedio cuando vuelva
+        }
+    }
+#endif
 #ifdef CENTRAL_REAR_TRIM
     static uint32_t last_pid_ms = 0;
     static GkStrafeHoldState hold{0.0f};
+    static bool  target_captured = false;          // captura el rumbo de ARRANQUE de la patrulla 1 sola vez
+    static float hold_target_deg = GK_GYRO_HOLD_TARGET_DEG;
     if (hv) {
-        float err = GK_GYRO_HOLD_TARGET_DEG - world_model_get_my_heading_deg();
+        if (!target_captured) {
+            hold_target_deg = world_model_get_my_heading_deg();  // mantiene el rumbo con que lo pusiste, NO un cero absoluto
+            target_captured = true;
+        }
+        float err = hold_target_deg - world_model_get_my_heading_deg();
         while (err > 180.0f)  err -= 360.0f;
         while (err < -180.0f) err += 360.0f;
         float dt = (last_pid_ms == 0) ? 0.0f : (now_ms - last_pid_ms) * 0.001f;

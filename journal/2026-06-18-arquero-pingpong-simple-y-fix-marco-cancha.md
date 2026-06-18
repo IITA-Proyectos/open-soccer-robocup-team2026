@@ -170,3 +170,9 @@ burn cap 150, noise 5). Inconsistencia marcada (código manda): `CONTROL-ARQUERO
 (2026-06-14) dice "BNO 20 Hz / fix=fastbno" → desactualizado, el código ya lee a 100 Hz (`fastbno` redundante).
 
 **Pendiente de banco:** validar KP=3/KI=0.5 (oscilación), escape 470 (que salga recto y despegue), Y-hold ±19.
+
+**2026-06-18 (banco, post-prior-art):** con KP=3/KI=0.5 la oscilación prácticamente desapareció. Quedaba
+(a) deriva diagonal hacia adelante + a veces toca pared, (b) no se centraba. Pedido de Gustavo, SIMPLE y
+SIN pulsar: **patrulla 200→140 mm/s** (−30%; control total aunque lento, ya probado que el strafe puro lo
+banca) y **`GK_ESCAPE_FRONT_SCALE` 1.30→1.45** (más empuje SOLO en las delanteras durante el escape, para
+enderezar la huida sin tocar la trasera que ya está al cap a 470; el burn_cap 150 lo limita). Falta validar.

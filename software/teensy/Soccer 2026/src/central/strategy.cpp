@@ -251,7 +251,7 @@ constexpr float GK_PATROL_OSCILLATE_PERIOD_MS = 2000.0f;
 // Con la patrulla ahora siendo strafe PURO (vy=0), comandar bajo es SEGURO: los pisos
 // la clavan en la mezcla {70,70,107} — exactamente la del diag de strafe que ya se vio
 // andar derecha y moderada. 🔧 Para competencia se puede subir (420 = fiel pleno).
-constexpr float GK_PATROL_SPEED_MM_S          = 200.0f;
+constexpr float GK_PATROL_SPEED_MM_S          = 140.0f;   // 2026-06-18: 200->140 (-30%, SIN pulsar; Gustavo: control total aunque lento, ya probado)
 constexpr float GK_INTERCEPT_KP_VS_BALL_X     = 4.0f;
 constexpr float GK_LATERAL_SETPOINT_DEPTH     = 1.0f;
 constexpr float GK_LINE_RETREAT_SPEED         = 420.0f;   // era 250 (bajo piso → dirección basura)
@@ -439,7 +439,7 @@ constexpr int      GK_LINE_ESCAPE_SPEED_MM_S = 470;    // TUNEO YA DOCUMENTADO (
 // DESACTIVADA (1.0). Se deja la perilla por si el banco mostrara un transitorio residual a 470.
 constexpr float    GK_ESCAPE_REAR_SCALE     = 1.00f;   // 1.0 = sin cambio (desactivada; el diagonal era velocidad>470, no friccion)
 constexpr uint32_t GK_ESCAPE_REAR_SCALE_MS  = 250;     // (sin efecto mientras GK_ESCAPE_REAR_SCALE = 1.0)
-constexpr float    GK_ESCAPE_FRONT_SCALE    = 1.30f;   // 2026-06-18 (Gustavo): EXTRA a las DELANTERAS en el escape. A 0.5*vx
+constexpr float    GK_ESCAPE_FRONT_SCALE    = 1.45f;   // 2026-06-18 (Gustavo): EXTRA a las DELANTERAS en el escape (1.30->1.45; cap 150 lo limita). A 0.5*vx
                                                        // quedan cerca de su piso -> subirlas suma empuje lateral por las ruedas
                                                        // con holgura y la huida sale RECTA, sin saturar la trasera. Tunear en banco.
 #ifdef GK_Y_HOLD

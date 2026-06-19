@@ -21,6 +21,7 @@
 #include "config_top.h"
 #include "sensors_tof.h"
 #include "sensors_imu.h"
+#include "keeper_xy_walls.h"     // estimador XY heading-free del arquero (flag TOP_KEEPER_XY_WALLS)
 #include "top_eeprom_config.h"   // g_top_cfg.tof[i].mount_bearing_deg (A2.1 ubicación)
 #include <Arduino.h>
 
@@ -31,6 +32,57 @@ namespace {
 LocalizationConfig g_config;
 LocalizationPose   g_last_pose;
 bool               g_initialized = false;
+
+#ifdef TOP_KEEPER_XY_WALLS
+// --- Estimador XY HEADING-FREE del arquero (ver src/shared/keeper_xy_walls.h) ---
+// Tunables de banco (si hace falta, ajustar y reflashear):
+constexpr uint8_t  KEEPER_TRIM_PCT       = 35;    // recorte simétrico de la mediana
+constexpr uint16_t KEEPER_WALL_REACH_MM  = 1000;  // pared reducida más lejos = no confiable
+constexpr uint16_t KEEPER_XY_CONSISTENCY = 200;   // x_izq≈x_der dentro de esto -> promedio
+constexpr uint16_t KEEPER_XY_SYMMETRIC   = 150;   // |d_izq-d_der| chico e inconsistente -> ambiguo
+
+// Lee las 16 zonas crudas de los ToF izquierdo/derecho/trasero, las reduce por
+// mediana+recorte (robusto a piso, por-encima y picos), y arma la pose XY
+// asumiendo que el arquero mira al frente. Heading del snapshot lo sigue
+// poniendo el BNO (esta pose solo escribe x/y/valid).
+LocalizationPose compute_keeper_xy_pose() {
+    uint16_t zl[16], zr[16], zb[16];
+    for (uint8_t k = 0; k < 16; ++k) {
+        zl[k] = sensors_tof_get_zone_mm(3, k);  // [3] = izquierda
+        zr[k] = sensors_tof_get_zone_mm(2, k);  // [2] = derecha
+        zb[k] = sensors_tof_get_zone_mm(1, k);  // [1] = atrás (pared propia)
+    }
+
+    KeeperWallDist d;
+    d.left_mm  = sensors_tof_is_ready(3)
+        ? keeper_wall_dist_mm(zl, 16, TOF_NO_READING, KEEPER_TRIM_PCT) : KEEPER_TOF_NO_READING;
+    d.right_mm = sensors_tof_is_ready(2)
+        ? keeper_wall_dist_mm(zr, 16, TOF_NO_READING, KEEPER_TRIM_PCT) : KEEPER_TOF_NO_READING;
+    d.back_mm  = sensors_tof_is_ready(1)
+        ? keeper_wall_dist_mm(zb, 16, TOF_NO_READING, KEEPER_TRIM_PCT) : KEEPER_TOF_NO_READING;
+
+    KeeperXYConfig c;
+    c.field_width_mm = FIELD_WIDTH_MM;
+    c.tof_offset_mm  = TOF_OFFSET_MM;
+    c.wall_reach_mm  = KEEPER_WALL_REACH_MM;
+    c.consistency_mm = KEEPER_XY_CONSISTENCY;
+    c.symmetric_mm   = KEEPER_XY_SYMMETRIC;
+    const KeeperXY r = keeper_xy_from_walls(d, c);
+
+    LocalizationPose p{};
+    // X desconocida -> centro de cancha (no dispara el X-bound del arquero).
+    p.x_mm = r.x_valid ? r.x_mm : (int16_t)(FIELD_WIDTH_MM / 2);
+    p.y_mm = r.y_mm;
+    // La conf la maneja la Y (profundidad): eje confiable en la zona de fondo.
+    p.valid = r.y_valid;
+    p.heading_centideg = 0;
+    p.source_flags = (uint8_t)(
+        (d.left_mm  != KEEPER_TOF_NO_READING ? 0x08 : 0) |
+        (d.right_mm != KEEPER_TOF_NO_READING ? 0x04 : 0) |
+        (d.back_mm  != KEEPER_TOF_NO_READING ? 0x02 : 0));
+    return p;
+}
+#endif  // TOP_KEEPER_XY_WALLS
 
 }  // namespace
 
@@ -74,6 +126,13 @@ void localization_runtime_init() {
 
 void localization_runtime_tick() {
     if (!g_initialized) return;
+
+#ifdef TOP_KEEPER_XY_WALLS
+    // Modo ARQUERO heading-free: la pose XY sale de las paredes (izq/der/atrás),
+    // sin BNO. Reemplaza la trilateración clásica. (Default OFF -> byte-idéntico.)
+    g_last_pose = compute_keeper_xy_pose();
+    return;
+#endif
 
     // Armar inputs leyendo de los modulos de sensores.
     LocalizationInputs in{};

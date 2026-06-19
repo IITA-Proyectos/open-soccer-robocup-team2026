@@ -458,6 +458,12 @@ constexpr int GK_PWM_ESCAPE_REAR = 150;   // ESCAPE (toca linea) — trasera (MA
 //           de PWM (no el control). Si DESAPARECE -> era el control. Mismo binario salvo esto.
 //   true  = programa completo (los dos controles). Volver a true para seguir tuneando con control.
 constexpr bool GK_CONTROLS_ENABLED = true;    // 2026-06-18: REACTIVADO (BNO heading-hold). false = strafe crudo para validar
+// ── LATERAL ACOTADO POR POSE (zona central frente al arco; NO de arco a arco) — pedido Gustavo 2026-06-18 ──
+//   true = invierte el sentido cuando la X de la pose del TOP (calculada con los ToF por trilateracion) llega
+//          al borde de la banda (+-GK_PATROL_X_HALF_RANGE_MM del centro CAPTURADO al arrancar). Gateado por
+//          confianza (>=GK_POSE_CONF_MIN=40); si la pose NO es confiable, NO actua -> queda el rebote por
+//          linea (fallback de hoy). Banda = +-35 cm (GK_PATROL_X_HALF_RANGE_MM=350); tuneable.
+constexpr bool GK_PATROL_XBOUND = true;       // false = patrulla de arco a arco por linea (como antes)
 
 // (OBSOLETO — el ping-pong ya NO usa estas escalas/coeficientes; quedan inertes)
 constexpr float    GK_ESCAPE_REAR_SCALE     = 1.00f;   // 1.0 = sin cambio (desactivada; el diagonal era velocidad>470, no friccion)
@@ -1291,6 +1297,23 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
                               escape_dir * GK_PWM_ESCAPE_FR,
                               -escape_dir * GK_PWM_ESCAPE_REAR);
             return cmd;
+        }
+    }
+
+    // LATERAL ACOTADO POR POSE: invertir el sentido en el borde de la banda (zona central frente al arco)
+    // ANTES de llegar a la pared/linea -> NO va de arco a arco. Usa la X de la pose del TOP (trilateracion
+    // de ToF). Centro = X capturada al arrancar (robusto a offset de la localizacion). Gateado por confianza;
+    // sin pose confiable NO hace nada (queda el rebote por linea de mas abajo). Cooldown anti-chatter.
+    if (GK_PATROL_XBOUND && world_model_get_my_pose_confidence() >= GK_POSE_CONF_MIN &&
+        (now_ms - bounce_gate_ms) >= GK_PATROL_BOUNCE_COOLDOWN_MS) {
+        static bool  xc_captured = false;
+        static float xc = 0.0f;
+        const float x = world_model_get_my_x_mm();
+        if (!xc_captured) { xc = x; xc_captured = true; }   // centro = X de arranque (frente a su arco)
+        if (x > xc + GK_PATROL_X_HALF_RANGE_MM && direction > 0) {
+            direction = -1; bounce_gate_ms = now_ms;        // paso el borde DERECHO -> ir a la izquierda
+        } else if (x < xc - GK_PATROL_X_HALF_RANGE_MM && direction < 0) {
+            direction = +1; bounce_gate_ms = now_ms;        // paso el borde IZQUIERDO -> ir a la derecha
         }
     }
 

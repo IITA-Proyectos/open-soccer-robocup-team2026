@@ -69,4 +69,13 @@ void motors_set_rear_scale(float scale);
 void motors_set_front_scale(float scale);
 #endif
 
+#ifdef GK_PINGPONG
+// MANEJO DIRECTO POR RUEDA (Gustavo 2026-06-18) — patrulla/escape del arquero ping-pong.
+// Pasa el PWM CRUDO de cada rueda (m1=delantera izq, m2=delantera der, m3=trasera; -150..150).
+// El proximo motors_apply_command los escribe DIRECTO: sin mixer, sin pisos, sin coeficientes;
+// solo kickstart (romper inercia) + (si -DCENTRAL_REAR_TRIM) el trim de rumbo en la trasera.
+// One-shot por tick (si la FSM no lo llama, ese tick va por el mixer normal).
+void motors_drive_raw3(int m1, int m2, int m3);
+#endif
+
 }  // namespace iitasoccer

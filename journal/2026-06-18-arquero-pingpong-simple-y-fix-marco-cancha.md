@@ -176,3 +176,34 @@ burn cap 150, noise 5). Inconsistencia marcada (código manda): `CONTROL-ARQUERO
 SIN pulsar: **patrulla 200→140 mm/s** (−30%; control total aunque lento, ya probado que el strafe puro lo
 banca) y **`GK_ESCAPE_FRONT_SCALE` 1.30→1.45** (más empuje SOLO en las delanteras durante el escape, para
 enderezar la huida sin tocar la trasera que ya está al cap a 470; el burn_cap 150 lo limita). Falta validar.
+
+---
+
+# Continuación 2026-06-18 (noche 2) — MANEJO DIRECTO por PWM (cortar con coeficientes) + params decentes
+
+Tras varias iteraciones de coeficientes (front_scale/rear_scale sobre el mixer+pisos) el comportamiento se
+volvió impredecible y Gustavo (con razón) pidió **un solo lugar con la potencia PWM de cada rueda, sin
+coeficientes**. Se rehízo el manejo del ping-pong:
+
+- **`motors_drive_raw3(m1,m2,m3)`** (motors_zircon, gateado `-DGK_PINGPONG`): escribe el PWM CRUDO de cada
+  rueda — sin mixer, sin pisos, sin escalas — pasando solo por kickstart (romper inercia) y, en la trasera,
+  el trim de rumbo. Mismo patrón que el `spin_pwm` ya existente. One-shot (se consume en un apply; si la FSM
+  no lo setea, va el mixer normal → competencia byte-idéntica, no tiene `GK_PINGPONG`).
+- **Bloque único `POTENCIAS DEL ARQUERO`** en strategy.cpp: 6 enteros PWM (patrulla FL/FR/REAR + escape
+  FL/FR/REAR). `gk_pingpong_tick` maneja patrulla y escape con `motors_drive_raw3`. Signo del strafe:
+  delanteras igual, trasera opuesta (`-direction`).
+- **Switch `GK_CONTROLS_ENABLED`**: aísla los controles DENTRO del mismo programa (`_trim_yhold`) — false =
+  apaga trim de giróscopo + Y-hold (strafe crudo), true = completo. Sirvió para el A/B: con controles OFF la
+  medialuna SEGUÍA → se confirmó que era la **relación de velocidades**, no el control.
+- **OJO (deuda):** el control de **posición Y (profundidad) quedó INERTE** — escribe `cmd.vy` pero
+  `motors_drive_raw3` ignora el `cmd`. Por eso el arquero "se va alejando del arco" (deriva de profundidad
+  sin corregir). Pendiente: **cablear el Y-hold como sesgo de PWM** sobre el manejo directo.
+
+## Parámetros DECENTES de arranque (banco Gustavo 2026-06-18 — env `central_robot2_arquero_pingpong_trim_yhold`)
+
+- **Patrulla (PWM por rueda):** FL=59, FR=59, REAR=107. (Se tuneó 70→60→58→59 hasta strafe ~derecho.)
+- **Escape (PWM por rueda):** FL=90, FR=90, REAR=150 (trasera al máx).
+- **Heading-hold (BNO):** `GK_STRAFE_KP=4.0` (subido 3→4, anda mejor), KI=0.5, deadband 2°, band 18°,
+  trim_max 30, i_max 18, `GK_REAR_TRIM_SIGN=-1`, objetivo = **rumbo capturado al arranque** (no cero absoluto).
+- Validación Gustavo: "anda" — estable, strafe ~derecho, heading firme con KP=4. Queda la deriva de
+  profundidad (Y) por cablear.

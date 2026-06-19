@@ -419,7 +419,7 @@ constexpr uint32_t GK_PATROL_BOUNCE_COOLDOWN_MS = 800; // 1 rebote por toque de 
 #define GK_REAR_TRIM_SIGN (-1)   // R2: CONFIRMADO EN BANCO 2026-06-18 (con +1 divergía al arco OPUESTO).
                                  // Es físico del robot; R1 puede diferir → overridear con -DGK_REAR_TRIM_SIGN=+1 en su env.
 #endif
-constexpr float    GK_STRAFE_KP             = 3.0f;    // PWM por grado de error de rumbo (2026-06-18: 2.0->3.0 +50%; coincide con HeadingPID 3.0 validado)
+constexpr float    GK_STRAFE_KP             = 4.0f;    // PWM por grado de error de rumbo (2026-06-18: 3.0->4.0 a pedido, probar en banco)
 constexpr float    GK_STRAFE_KI             = 0.5f;    // PWM por grado·s (2026-06-18: 1.0->0.5, baja el hunting integral de ~3 s; la latencia ya esta al maximo)
 constexpr float    GK_STRAFE_DEADBAND_DEG   = 2.0f;    // zona muerta (no pelear el ruido del heading)
 constexpr float    GK_STRAFE_BAND_DEG       = 18.0f;   // fuera de esto → impulso fuerte (pulso)
@@ -437,11 +437,40 @@ constexpr int      GK_LINE_ESCAPE_SPEED_MM_S = 470;    // TUNEO YA DOCUMENTADO (
 // El "transitorio de arranque" (la trasera arranca antes por menos rozamiento) se manifiesta como esta MISMA diagonal de
 // saturacion: con la velocidad en 470 (debajo de saturacion) el strafe sale RECTO, asi que la escala de arranque queda
 // DESACTIVADA (1.0). Se deja la perilla por si el banco mostrara un transitorio residual a 470.
+// ╔════════════════════════════════════════════════════════════════════════════════╗
+// ║  POTENCIAS DEL ARQUERO — PWM POR RUEDA (0..150). ⭐ TUNEAR TODO ACA ⭐            ║
+// ║  Manejo DIRECTO (motors_drive_raw3): estos numeros van CRUDOS al motor — sin     ║
+// ║  mixer, sin pisos, sin coeficientes. Solo se les suma el kickstart inicial y, en ║
+// ║  la trasera durante la PATRULLA, el trim de rumbo del heading-hold.              ║
+// ║  FL = delantera izq (M1) · FR = delantera der (M2) · REAR = trasera (M3)         ║
+// ║  Si en banco STRAFEA torcido o GIRA en vez de ir derecho, decime que rueda y     ║
+// ║  ajustamos su numero (o el signo si una va al reves).                            ║
+// ╚════════════════════════════════════════════════════════════════════════════════╝
+constexpr int GK_PWM_PATROL_FL   = 59;    // PATRULLA lateral — delantera izquierda (2026-06-18: 70->60->58->59)
+constexpr int GK_PWM_PATROL_FR   = 59;    // PATRULLA lateral — delantera derecha  (2026-06-18: 70->60->58->59)
+constexpr int GK_PWM_PATROL_REAR = 107;   // PATRULLA lateral — trasera (2026-06-18: 107)
+constexpr int GK_PWM_ESCAPE_FL   = 90;    // ESCAPE (toca linea) — delantera izquierda (2026-06-18: 110->90)
+constexpr int GK_PWM_ESCAPE_FR   = 90;    // ESCAPE (toca linea) — delantera derecha  (2026-06-18: 110->90)
+constexpr int GK_PWM_ESCAPE_REAR = 150;   // ESCAPE (toca linea) — trasera (MAX; 150 = tope de quemado)
+// ── AISLAR LOS CONTROLES (MISMO programa, un switch) — validar de donde viene la medialuna ──
+//   false = APAGA el trim de giroscopo Y el control de posicion Y -> strafe CRUDO con LAS MISMAS
+//           velocidades de arriba, sin ninguna correccion. Si la medialuna SIGUE -> es la relacion
+//           de PWM (no el control). Si DESAPARECE -> era el control. Mismo binario salvo esto.
+//   true  = programa completo (los dos controles). Volver a true para seguir tuneando con control.
+constexpr bool GK_CONTROLS_ENABLED = true;    // 2026-06-18: REACTIVADO (BNO heading-hold). false = strafe crudo para validar
+
+// (OBSOLETO — el ping-pong ya NO usa estas escalas/coeficientes; quedan inertes)
 constexpr float    GK_ESCAPE_REAR_SCALE     = 1.00f;   // 1.0 = sin cambio (desactivada; el diagonal era velocidad>470, no friccion)
 constexpr uint32_t GK_ESCAPE_REAR_SCALE_MS  = 250;     // (sin efecto mientras GK_ESCAPE_REAR_SCALE = 1.0)
-constexpr float    GK_ESCAPE_FRONT_SCALE    = 1.45f;   // 2026-06-18 (Gustavo): EXTRA a las DELANTERAS en el escape (1.30->1.45; cap 150 lo limita). A 0.5*vx
+constexpr float    GK_ESCAPE_FRONT_SCALE    = 1.70f;   // 2026-06-18 (Gustavo): EXTRA a las DELANTERAS en el escape (subido 1.45->1.70 = mas potencia de salida; cap 150 lo limita, hay margen). A 0.5*vx
                                                        // quedan cerca de su piso -> subirlas suma empuje lateral por las ruedas
                                                        // con holgura y la huida sale RECTA, sin saturar la trasera. Tunear en banco.
+constexpr float    GK_PATROL_FRONT_SCALE   = 0.85f;   // 2026-06-18 (Gustavo): DELANTERAS en PATRULLA. 0.85*70 ~= 60 PWM (recto, entre 0.70->49 que iba ADELANTE y 1.0->70 que iba ATRAS). A 140 mm/s
+                                                      // (regimen cuantizado) la trasera queda lenta y las delanteras la pasan ->
+                                                      // medialuna HACIA ATRAS; bajar las delanteras las empareja. Las ruedas YA giran
+                                                      // en patrulla, asi que por friccion cinetica sostienen marcha bajo su piso de
+                                                      // ARRANQUE (70) sin trabarse. Knob (solo PATRULLA): mas medialuna atras -> bajar;
+                                                      // si curva adelante -> subir hacia 1.0.
 #ifdef GK_Y_HOLD
 // Control LENTO de PROFUNDIDAD (Y de cancha) — diseño Gustavo 2026-06-18. Lo usa gk_pingpong_tick:
 // mezcla un vy chico al strafe (diagonal) para no derivar hacia adelante. Off por defecto.
@@ -1218,14 +1247,15 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
              (now_ms - escape_lost_ms) < GK_LINE_ESCAPE_POST_CLEAR_MS &&
              now_ms < escape_until_ms);
         if (keep) {
-            cmd.vx_mm_s = clamp_velocity_mm_s(escape_dir * GK_LINE_ESCAPE_SPEED_MM_S);
             g_state_name = "GK_PP_ESCAPE";
 #ifdef CENTRAL_REAR_TRIM
-            motors_set_rear_trim(0);
-            motors_set_rear_scale((now_ms - escape_start_ms < GK_ESCAPE_REAR_SCALE_MS) ? GK_ESCAPE_REAR_SCALE : 1.0f);
-            motors_set_front_scale(GK_ESCAPE_FRONT_SCALE);   // delanteras con EXTRA -> huida recta y mas despegue
+            motors_set_rear_trim(0);   // sin heading-hold durante el escape
 #endif
-            return cmd;
+            // Manejo DIRECTO: huida al OPUESTO. Signo strafe: delanteras igual, trasera opuesta.
+            motors_drive_raw3(escape_dir * GK_PWM_ESCAPE_FL,
+                              escape_dir * GK_PWM_ESCAPE_FR,
+                              -escape_dir * GK_PWM_ESCAPE_REAR);
+            return cmd;   // cmd vacio: el manejo directo ya escribio los motores
         }
         escape_until_ms = 0;
         escape_lost_ms  = 0;
@@ -1253,13 +1283,13 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
             escape_start_ms = now_ms;
             direction       = escape_dir;
             bounce_gate_ms  = now_ms;
-            cmd.vx_mm_s     = clamp_velocity_mm_s(escape_dir * GK_LINE_ESCAPE_SPEED_MM_S);  // reaccionar YA, MISMO tick
             g_state_name    = "GK_PP_ESCAPE";
 #ifdef CENTRAL_REAR_TRIM
-            motors_set_rear_trim(0);
-            motors_set_rear_scale(GK_ESCAPE_REAR_SCALE);   // arranque del escape -> trasera reducida (transitorio)
-            motors_set_front_scale(GK_ESCAPE_FRONT_SCALE);   // delanteras con EXTRA -> huida recta y mas despegue
+            motors_set_rear_trim(0);   // sin heading-hold durante el escape
 #endif
+            motors_drive_raw3(escape_dir * GK_PWM_ESCAPE_FL,        // reaccionar YA, MISMO tick (directo)
+                              escape_dir * GK_PWM_ESCAPE_FR,
+                              -escape_dir * GK_PWM_ESCAPE_REAR);
             return cmd;
         }
     }
@@ -1280,7 +1310,7 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
         const uint8_t conf = world_model_get_my_pose_confidence();
         static bool  y_ema_init = false;
         static float y_ema      = 0.0f;
-        if (conf >= GK_Y_HOLD_MIN_CONF) {
+        if (GK_CONTROLS_ENABLED && conf >= GK_Y_HOLD_MIN_CONF) {   // GK_CONTROLS_ENABLED=false -> sin control de posicion (igual ya era inerte en modo directo)
             const float y_now = world_model_get_my_y_mm();
             if (!y_ema_init) { y_ema = y_now; y_ema_init = true; }
             else             { y_ema += GK_Y_HOLD_EMA_ALPHA * (y_now - y_ema); }
@@ -1301,9 +1331,7 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
     static GkStrafeHoldState hold{0.0f};
     static bool  target_captured = false;          // captura el rumbo de ARRANQUE de la patrulla 1 sola vez
     static float hold_target_deg = GK_GYRO_HOLD_TARGET_DEG;
-    motors_set_rear_scale(1.0f);   // fuera del transitorio del escape: trasera a potencia plena durante la patrulla
-    motors_set_front_scale(1.0f);  // fuera del escape: delanteras sin extra
-    if (hv) {
+    if (GK_CONTROLS_ENABLED && hv) {   // GK_CONTROLS_ENABLED=false -> trim=0 (else) = trasera SIN correccion de rumbo = strafe crudo
         if (!target_captured) {
             hold_target_deg = world_model_get_my_heading_deg();  // mantiene el rumbo con que lo pusiste, NO un cero absoluto
             target_captured = true;
@@ -1322,6 +1350,11 @@ MotorCommand gk_pingpong_tick(uint32_t now_ms) {
         motors_set_rear_trim(0);
     }
 #endif
+    // Manejo DIRECTO de la PATRULLA: PWM crudo por rueda (delanteras igual, trasera opuesta).
+    // El trim de rumbo (calculado arriba) se SUMA a la trasera dentro de motors_drive_raw3.
+    motors_drive_raw3(direction * GK_PWM_PATROL_FL,
+                      direction * GK_PWM_PATROL_FR,
+                      -direction * GK_PWM_PATROL_REAR);
     return cmd;
 }
 #endif  // GK_PINGPONG

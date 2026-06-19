@@ -63,6 +63,14 @@ float g_rear_scale = 1.0f;
 float g_front_scale = 1.0f;
 #endif
 
+#ifdef GK_PINGPONG
+// MANEJO DIRECTO POR RUEDA (Gustavo 2026-06-18): la FSM del arquero ping-pong pasa el PWM CRUDO
+// de cada rueda (FL, FR, REAR); el proximo motors_apply_command los escribe DIRECTO (sin mixer,
+// sin pisos, sin coeficientes; solo kickstart + trim de rumbo). One-shot (se consume en un apply).
+int  g_raw3[3]     = {0, 0, 0};
+bool g_raw3_active = false;
+#endif
+
 #ifdef CENTRAL_MOTOR_KICKSTART
 constexpr int KICKSTART_WINDOW_MS  = 40;   // ventana del impulso (2025: 40 ms)
 // IMPULSO FIJO (banco robot2 2026-06-09, decisión de Gustavo): el ×1.8 multiplicativo
@@ -141,6 +149,34 @@ void motors_apply_command(const MotorCommand& cmd) {
         }
         return;
     }
+
+#ifdef GK_PINGPONG
+    // MANEJO DIRECTO POR RUEDA (arquero ping-pong): si la FSM seteo los 3 PWM crudos, se aplican
+    // DIRECTO — sin mixer, sin pisos, sin coeficientes — pasando solo por kickstart (romper inercia)
+    // y, en la trasera, el trim de rumbo. One-shot: se consume aca (si no se seteo, sigue el mixer).
+    if (g_raw3_active) {
+        g_raw3_active = false;
+        for (int i = 0; i < 3; ++i) {
+            int pwm = g_raw3[i];
+#ifdef CENTRAL_REAR_TRIM
+            if (i == 2 && g_rear_trim != 0 && pwm != 0) pwm += g_rear_trim;   // heading-hold a la trasera
+#endif
+            if (pwm >  150) pwm =  150;   // cap termico (no quemar)
+            if (pwm < -150) pwm = -150;
+#ifdef CENTRAL_MOTOR_KICKSTART
+            const uint32_t kick_now = millis();
+            if (pwm == 0) { g_kick_active[i] = false; }
+            else {
+                if (!g_kick_active[i]) { g_kick_active[i] = true; g_kick_start_ms[i] = kick_now; }
+                pwm = motor_kickstart_pwm(pwm, static_cast<int>(kick_now - g_kick_start_ms[i]),
+                                          KICKSTART_WINDOW_MS, KICKSTART_FACTOR_X10, KICKSTART_PWM_CAP[i]);
+            }
+#endif
+            apply_pwm_to_motor(i, pwm);
+        }
+        return;
+    }
+#endif
 
     // SLOW-MO DE BANCO (gateado): escala TODO el comando (vx/vy/omega) para poder OBSERVAR
     // la conducta del arquero sin que sea brusco. Cae sobre la velocidad antes de la
@@ -310,6 +346,10 @@ void motors_set_rear_cut(bool cut) { g_rear_cut = cut; }
 void motors_set_rear_trim(int delta_pwm) { g_rear_trim = delta_pwm; }
 void motors_set_rear_scale(float scale)  { g_rear_scale = scale; }
 void motors_set_front_scale(float scale) { g_front_scale = scale; }
+#endif
+
+#ifdef GK_PINGPONG
+void motors_drive_raw3(int m1, int m2, int m3) { g_raw3[0] = m1; g_raw3[1] = m2; g_raw3[2] = m3; g_raw3_active = true; }
 #endif
 
 }  // namespace iitasoccer

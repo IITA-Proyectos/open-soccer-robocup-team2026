@@ -41,7 +41,7 @@ sensor.skip_frames(time=2000)
 
 clock = time.clock()
 
-h = 18.7
+h = 8.0
 r = 13.5/(2*math.pi)
 
 naranja_threshold = (30, 61, 39, 70, 20, 50)

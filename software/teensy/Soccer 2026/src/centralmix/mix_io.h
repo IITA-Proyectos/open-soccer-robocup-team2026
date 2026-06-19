@@ -1,0 +1,83 @@
+// mix_io.h — VARIABLES PLANAS estilo 2025 que alimentan la FSM de centralmix.
+//
+// CONTRATO. Reemplaza el "world model" por un bloque de variables planas
+// (como las globales sueltas del delantero 2025: haypelota, anguloPelota, error,
+// Xp/Yp, etc.), pero POBLADAS desde los datos de TOP/DOWN por mix_comm.
+//
+// FLUJO:
+//   mix_comm_tick()  → decodifica frames TOP (WORLD_SNAPSHOT) y DOWN (LineStatusV2,
+//                      Pose2D/Velocity2D) y ESCRIBE estos campos.
+//   mix_fsm_tick()   → LEE estos campos (nunca toca Serial ni world_model).
+//
+// MARCO DE REFERENCIA DE LA PELOTA (fijado por contrato, NO el del 2025):
+//   +X = derecha del robot,  +Y = adelante del robot.  Unidades: mm.
+//   angulo_pelota_deg = atan2(ball_x_mm, ball_y_mm) en grados:
+//       0°   = pelota justo adelante
+//       >0   = pelota a la DERECHA
+//       <0   = pelota a la IZQUIERDA
+//   (Convención elegida para que |angulo_pelota_deg| < tolerancia_apuntado
+//    signifique "apuntando a la pelota", igual que el 2025 usaba |anguloPelota|.)
+//   ⚠️ El 2025 codificaba distinto (atan2(Yp,Xp) con Xp lateral). NO copiar esa
+//   fórmula: en centralmix el ángulo lo calcula mix_comm con la convención de
+//   ARRIBA. Los implementadores de la FSM consumen angulo_pelota_deg ya calculado.
+//
+// ⚠️ NO TESTEADO EN HARDWARE. Contrato de datos; el cableado real lo cierra banco.
+
+#pragma once
+#include <stdint.h>
+
+namespace iitasoccer {
+namespace mix {
+
+struct MixIO {
+    // ---- Pelota (marco robot: +X=derecha, +Y=adelante; mm) ----
+    float ball_x_mm = 0.0f;        // + = derecha
+    float ball_y_mm = 0.0f;        // + = adelante
+    bool  ball_visible = false;    // ¿la cámara ve la pelota? (haypelota 2025)
+    float angulo_pelota_deg = 0.0f; // atan2(ball_x_mm, ball_y_mm) en °, calculado por mix_comm
+
+    // ---- Arcos (ángulo en ° marco robot; distancia en mm) ----
+    bool  goal_yellow_visible = false;
+    bool  goal_blue_visible   = false;
+    float goal_yellow_angle = 0.0f;  // ° (mismo signo que angulo_pelota_deg: + derecha)
+    float goal_yellow_dist  = 0.0f;  // mm
+    float goal_blue_angle   = 0.0f;  // °
+    float goal_blue_dist    = 0.0f;  // mm
+
+    // ---- Heading / rumbo ----
+    float heading_deg = 0.0f;        // heading ACTUAL de la fuente seleccionada (BNO por
+                                     // default; OTOS con -DMIX_HEADING_OTOS), en grados.
+    bool  heading_valid = false;     // ¿el heading de la fuente es confiable?
+    float heading_error_deg = 0.0f;  // heading_deg - heading_inicial, normalizado a [-180,180].
+                                     // Equivale al 'error' del control de rumbo 2025.
+    float otos_heading_deg = 0.0f;   // heading CRUDO del OTOS (DOWN), SIEMPRE disponible para
+                                     // diagnóstico / A-B aunque la fuente activa sea BNO.
+
+    // ---- Línea (de DOWN; ver mix_config umbrales) ----
+    bool    line_present = false;    // ¿hay línea presente? (con histéresis de DOWN)
+    float   line_angle_deg = 0.0f;   // ángulo de la línea en ° (0 = frente)
+    uint8_t line_depth = 0;          // profundidad / # sensores sobre la línea (0..32)
+
+    // ---- Árbitro / partido ----
+    bool match_running = false;      // ¿partido en curso? (referee START). La FSM solo
+                                     // debe MOVERSE si match_running == true.
+
+    // ---- Timers que la FSM expone (millis) ----
+    // (En el 2025 eran globales sueltas: millis_inicio_estado, millis_inicio_centrando,
+    //  millis_pelota. Se exponen acá para que mix_comm pueda sellar el timestamp de la
+    //  última vez que se vio la pelota sin acoplarse a la FSM.)
+    unsigned long t_last_ball_seen_ms = 0;  // millis_pelota: última vez con ball_visible=true.
+                                            // Lo SELLA mix_comm al recibir pelota válida.
+
+    // Frescura de enlaces (rx-watchdog liviano; lo mantiene mix_comm).
+    unsigned long t_last_top_frame_ms  = 0; // último WORLD_SNAPSHOT aplicado
+    unsigned long t_last_down_frame_ms = 0; // último frame DOWN aplicado
+    bool top_link_fresh  = false;           // ¿llegó snapshot de TOP recientemente?
+    bool down_link_fresh = false;           // ¿llegó frame de DOWN recientemente?
+};
+
+// Instancia global única (estilo 2025: estado compartido por variables globales).
+extern MixIO g_io;
+
+}  // namespace mix
+}  // namespace iitasoccer

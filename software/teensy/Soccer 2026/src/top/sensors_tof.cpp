@@ -321,6 +321,11 @@ bool sensors_tof_init() {
     tof_set_all_lp(LP_SLEEP_LEVEL);
     delay(LP_SETTLE_MS);
     for (int i = 0; i < NUM_TOF; ++i) {
+#ifdef TOF_ONLY_INDEX
+        // DIAG (bisección 2026-06-20): inicializar/rangear SOLO el ToF #TOF_ONLY_INDEX,
+        // los demás quedan dormidos (LP low). Default (sin el flag) = competencia idéntica.
+        if (i != (TOF_ONLY_INDEX)) { digitalWrite(PIN_TOF_XSHUT[i], LP_SLEEP_LEVEL); continue; }
+#endif
         digitalWrite(PIN_TOF_XSHUT[i], LP_WAKE_LEVEL);
         delay(LP_SETTLE_MS);
         if (!tof_i2c_acks(VL53L7CX_DEFAULT_ADDRESS)) {

@@ -359,7 +359,9 @@ void setup() {
     const uint32_t t_imu_ms = millis() - t_imu0;
     sensors_tof_scan_wire();  // DIAG 2026-06-02: con ToF dormidos, que hay en el bus Wire? (BNO @ 0x28)
     const uint32_t t_tof0 = millis();
+#ifndef DIAG_NO_TOF
     sensors_tof_init();       // (3) enumerar ToF a 0x2A..0x2D
+#endif
     const uint32_t t_tof_ms = millis() - t_tof0;
     // OJO: el robot DEBE apuntar al arco rival (+Y) al boot — esta llamada
     // calibra bno_offset_centideg leyendo el heading actual.
@@ -445,7 +447,9 @@ void loop() {
     static uint32_t s_last_tof_end_ms = 0;
     if (g_since_tof_tick >= TOF_TICK_INTERVAL_MS) {
         g_since_tof_tick = 0;
+#ifndef DIAG_NO_TOF
         sensors_tof_tick();
+#endif
         s_last_tof_end_ms = millis();
     }
     const bool bus_quiet =
@@ -478,7 +482,9 @@ void loop() {
     }
     if (g_since_tof_tick >= TOF_TICK_INTERVAL_MS) {
         g_since_tof_tick = 0;
+#ifndef DIAG_NO_TOF
         sensors_tof_tick();
+#endif
 #ifdef TOP_ENABLE_BNO_SENTINEL
         s_last_tof_end_ms2 = millis();   // marca el fin del read de ToF para la ventana bus-quiet
 #endif

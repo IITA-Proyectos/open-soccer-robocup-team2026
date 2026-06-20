@@ -97,6 +97,40 @@ constexpr int MIX_PATAD_M1 = 250;  // patadM1
 constexpr int MIX_PATAD_M2 = 170;  // patadM2
 
 // ============================================================
+// Candidato de ÓRBITA 2026 para centrar_*  (detrás de flag, APAGADO por defecto).
+//
+// PROBLEMA: el centrar_*() actual (port 2025) decodifica a CASI PURO STRAFE en la
+// geometría de ruedas 2026 (vx≈±64, ω·R≈±8) → orbita mal: la pelota se escapa de
+// costado. Verificado por análisis de cinemática (decode contra
+// src/shared/kinematics.cpp; workflow 2026-06-19, 6 agentes, 0 refutaciones fatales).
+//
+// CANDIDATO: rebalancea a rotación-dominante MANTENIENDO la misma dirección de
+// órbita (horario = strafe-IZQ + giro CW) y supera los pisos físicos {70,70,107}.
+// Valores DIRECTOS de PWM por rueda (centralmix es mixer-free): delanteras (M1,M2)
+// = MIX_CENTRAR_FRONT, trasera (M3) = MIX_CENTRAR_REAR (signo opuesto a las delanteras).
+// Default [80,80,170] → vx≈-60 (strafe IZQ), ω·R≈+110 (CW), ratio ω/strafe≈1.83.
+//
+// ⚠️ TRADE-OFF DE 3 VÍAS (no hay óptimo libre): piso delantero (≥70) vs ratio de
+// órbita ideal (≈R/d≈1.0) vs TECHO TÉRMICO (~150 PWM sostenido; motores brushed
+// 5V@7.4V se queman >~70%). Una órbita geométricamente perfecta (ratio≈1.0) forzaría
+// la trasera a ≥200 (quema). Por eso el default sobre-rota un poco (la corrección
+// APUNTAR_PELOTA del FSM recoge la deriva residual). Trasera=170 ya está algo sobre
+// el techo → usar órbitas CORTAS y vigilar temperatura.
+//
+// BENCH-TUNING (Elías): MEDIR d (distancia centro-pelota) y ajustar SOLO estas 2:
+//   - pelota deriva hacia ADENTRO del giro → sobra rotación → BAJAR MIX_CENTRAR_REAR.
+//   - pelota se va de COSTADO (afuera)     → falta rotación → SUBIR MIX_CENTRAR_REAR.
+//   - si la trasera calienta → bajar REAR hacia 150 (acepta más sobre-rotación).
+//
+// ⚠️ NO TESTEADO EN HARDWARE. El sentido físico de R1 (izq/der, CW/CCW) se CONFIRMA en
+// banco (config_central.h marca el +180 de traslación R1 "A VERIFICAR"). Si orbita al
+// revés: intercambiar etiquetas horario↔antihorario en el FSM, NO tocar los signos acá.
+// Se habilita con -DMIX_CENTRAR_ORBIT_2026 en build_flags (ver platformio.ini).
+// ============================================================
+constexpr int MIX_CENTRAR_FRONT = 80;   // M1,M2 (delanteras) — ≥70 (piso físico)
+constexpr int MIX_CENTRAR_REAR  = 170;  // M3 (trasera) — ≥107 (piso); ojo techo térmico ~150
+
+// ============================================================
 // Heading — control de rumbo del 2025 (error = currentYaw - initialYaw, kp=0.3).
 // SELECTOR de fuente de heading:
 //   - DEFAULT: BNO055 (como el 2025).

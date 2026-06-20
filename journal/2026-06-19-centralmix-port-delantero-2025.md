@@ -68,3 +68,34 @@ GitHub, sin commitear) y lo dejó andando ("estrategia funciona"). Se sincroniza
    remapeo cíclico que los retrocesos (misma raíz: geometría 2026). No se tocaron.
 3. Gate de profundidad vs detección de línea (ver arriba) — reconciliar mi experimento
    (gate fuera, quedó en stash local de soccer-main, NO subido) con la versión de Elías.
+
+## Update PM 2 — limpieza de retroceder + candidato de órbita para centrar (flag OFF)
+Pedido de Gustavo tras el sync de Elías. Tres cosas:
+1. **Stash de mi experimento (gate-fuera + debug) DESCARTADO** (`git stash drop`). Vamos con
+   la versión de Elías. Zip de Elías borrado de Downloads.
+2. **Comentarios de `retroceder1/2/3` limpiados** (`mix_motors.cpp`): saqué el código muerto
+   y los comentarios desfasados; puse el decode correcto verificado contra el FSM
+   (retroceder1←línea izq→escapa der+adel; retroceder2←línea frente→atrás; retroceder3←línea
+   der→izq+adel). Solo comentarios, sin cambio de lógica.
+3. **Candidato de ÓRBITA para `centrar_horario/antihorario` detrás del flag
+   `MIX_CENTRAR_ORBIT_2026` (APAGADO por defecto)** → `central_robot1_mix` default = comportamiento
+   actual intacto; con el flag = candidato rotación-dominante. Parametrizado por
+   `MIX_CENTRAR_FRONT`/`MIX_CENTRAR_REAR` en `mix_config.h` (Elías tunea sin tocar código).
+   Validación en banco → [TASK-114](../team-tasks/2026-06-19-task-114-validar-centrar-orbita-2026-banco.md).
+
+**Diagnóstico (verificado por workflow 6-agentes, 0 refutaciones fatales):** el `centrar_*`
+del port 2025 decodifica a **casi puro strafe** (vx≈±64, ω·R≈±8) en la geometría 2026 → no
+orbita. El fix **NO es el transform de retroceder** (eso fue un remapeo semántico línea→escape,
+`transfers=false` confirmado: una rotación global de ruedas rompería `avanzar`, que anda).
+`centrar` tiene otra causa raíz: le falta rotación acoplada al strafe → se rebalancea.
+
+**Trade-off de 3 vías que surfaceó la verificación (real, no resoluble desde el escritorio):**
+piso delantero (≥70) vs ratio de órbita ideal (≈R/d≈1.0) vs **techo térmico ~150 PWM sostenido**
+(quema de motores). Una órbita perfecta (ratio≈1.0) forzaría la trasera a ≥200 (quema). El
+default elegido [80,80,170] (ratio≈1.83) **sobre-rota un poco** a propósito, por seguridad
+térmica; la corrección `APUNTAR_PELOTA` del FSM recoge la deriva. **Hay que MEDIR d en banco**
+y ajustar `MIX_CENTRAR_REAR`. Compila OK con flag ON y OFF (`pio run -e central_robot1_mix`).
+
+**Temas abiertos:** `impulso_centrando_*` (en `mix_fsm.cpp`) tienen el mismo defecto
+(casi-puro-strafe) y su emparejamiento nombre↔dirección parece cruzado vs los `centrar_*` —
+si el candidato se aprueba, rebalancearlos igual y revisar el emparejamiento (ver TASK-114).

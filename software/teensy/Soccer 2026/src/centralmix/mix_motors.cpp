@@ -128,29 +128,37 @@ void avanzar() {
     mix_set_motor(2, 0);     // M3: PWM=0, INA3=1, INB3=0 → magnitud 0 = frenado
 }
 
-// retroceder1() 2025: M1=0(INB1=1), M2=100(INB2=1), M3=100(INA3=1).
+// ------------------------------------------------------------
+// Retrocesos / escape de línea blanca (los llama el FSM: DETECTA_LINEA_1/2/3).
+// Valores RE-TUNEADOS por Elías en banco (2026-06-19, commit e83d43c): con el
+// pinout/geometría R1 el mapeo línea→escape del port 2025 quedaba cruzado;
+// Elías reasignó los patrones probando el robot. Decode (geometría {330,210,90},
+// +X=derecha, +Y=adelante) verificado contra las transiciones del FSM:
+//   retroceder1 ← DETECTA_LINEA_1 (línea a la IZQUIERDA) → escapa DERECHA+adelante
+//   retroceder2 ← DETECTA_LINEA_2 (línea al FRENTE)       → escapa hacia ATRÁS
+//   retroceder3 ← DETECTA_LINEA_3 (línea a la DERECHA)    → escapa IZQUIERDA+adelante
+// (Convención de sentido por rueda: ver mix_set_motor arriba.)
+// ------------------------------------------------------------
+
+// retroceder1 — línea a la izquierda → escapa a la derecha+adelante. (banco Elías)
 void retroceder1() {
-    //mix_set_motor(0, 0);     // M1: PWM=0, INA1=0, INB1=1 → magnitud 0 = frenado
-    //mix_set_motor(1, -50);  // M2: INA2=0, INB2=1
-    //mix_set_motor(2, +50);  // M3: INA3=1, INB3=0
-
-    mix_set_motor(0, +100);     // M1: PWM=0, INA1=0, INB1=1 → magnitud 0 = frenado
-    mix_set_motor(1, 0);  // M2: INA2=0, INB2=1
-    mix_set_motor(2, -100);  // M3: INA3=1, INB3=0
+    mix_set_motor(0, +100);
+    mix_set_motor(1, 0);
+    mix_set_motor(2, -100);
 }
 
-// retroceder2() 2025: M1=100(INA1=1), M2=0(INA2=1), M3=100(INB3=1).
+// retroceder2 — línea al frente → escapa hacia atrás. (banco Elías)
 void retroceder2() {
-    mix_set_motor(0, -100);  // M1: INA1=1, INB1=0
-    mix_set_motor(1, +100);     // M2: PWM=0, INA2=1, INB2=0 → magnitud 0 = frenado
-    mix_set_motor(2, 0);  // M3: INA3=0, INB3=1
+    mix_set_motor(0, -100);
+    mix_set_motor(1, +100);
+    mix_set_motor(2, 0);
 }
 
-// retroceder3() 2025: M1=100(INB1=1), M2=100(INA2=1), M3=0(INB3=1).
+// retroceder3 — línea a la derecha → escapa a la izquierda+adelante. (banco Elías)
 void retroceder3() {
-    mix_set_motor(0, 0);  // M1: INA1=0, INB1=1
-    mix_set_motor(1, -100);  // M2: INA2=1, INB2=0
-    mix_set_motor(2, +100);     // M3: PWM=0, INA3=0, INB3=1 → magnitud 0 = frenado
+    mix_set_motor(0, 0);
+    mix_set_motor(1, -100);
+    mix_set_motor(2, +100);
 }
 
 // ============================================================
@@ -213,22 +221,38 @@ void retroceder_patear() {
 // Velocidades a c (MIX_C): M1/M2 = 60*c = 24, M3 = 180*c = 72.
 // ============================================================
 
-// CENTRANDO_horario 2025: M1=60*c(INB1=1), M2=60*c(INB2=1), M3=180*c(INA3=1).
+// CENTRANDO_horario: orbita la pelota en sentido horario (strafe-IZQ + giro CW).
+// DEFAULT (sin flag) = port 2025 [-24,-24,+72]: casi puro strafe → orbita mal en R1.
+// Con -DMIX_CENTRAR_ORBIT_2026 = candidato rebalanceado a rotación-dominante
+// [+FRONT,+FRONT,+REAR] (ver mix_config.h MIX_CENTRAR_FRONT/REAR + el trade-off).
+// Detrás del flag para que Elías lo valide en banco antes de dar el OK.
 void centrar_horario() {
+#ifdef MIX_CENTRAR_ORBIT_2026
+    mix_set_motor(0, +MIX_CENTRAR_FRONT);  // M1 delantera-IZQ
+    mix_set_motor(1, +MIX_CENTRAR_FRONT);  // M2 delantera-DER
+    mix_set_motor(2, +MIX_CENTRAR_REAR);   // M3 trasera (rotación-dominante)
+#else
     const int mag_fr = (int)(60.0f  * MIX_C);  // 24 (ruedas delanteras M1/M2)
     const int mag_re = (int)(180.0f * MIX_C);  // 72 (rueda trasera M3)
     mix_set_motor(0, -mag_fr);  // M1: INA1=0, INB1=1
     mix_set_motor(1, -mag_fr);  // M2: INA2=0, INB2=1
     mix_set_motor(2, +mag_re);  // M3: INA3=1, INB3=0
+#endif
 }
 
-// CENTRANDO_antihorario 2025: M1=60*c(INA1=1), M2=60*c(INA2=1), M3=180*c(INB3=1).
+// CENTRANDO_antihorario: espejo exacto del horario (strafe-DER + giro CCW).
 void centrar_antihorario() {
+#ifdef MIX_CENTRAR_ORBIT_2026
+    mix_set_motor(0, -MIX_CENTRAR_FRONT);  // espejo: niega las 3 ruedas
+    mix_set_motor(1, -MIX_CENTRAR_FRONT);
+    mix_set_motor(2, -MIX_CENTRAR_REAR);
+#else
     const int mag_fr = (int)(60.0f  * MIX_C);  // 24
     const int mag_re = (int)(180.0f * MIX_C);  // 72
     mix_set_motor(0, +mag_fr);  // M1: INA1=1, INB1=0
     mix_set_motor(1, +mag_fr);  // M2: INA2=1, INB2=0
     mix_set_motor(2, -mag_re);  // M3: INA3=0, INB3=1
+#endif
 }
 
 }  // namespace mix

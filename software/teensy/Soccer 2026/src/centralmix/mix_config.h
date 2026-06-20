@@ -71,8 +71,8 @@ constexpr uint8_t MIX_LINE_DEPTH_TRIGGER = 1;  // ≥1 sensor en blanco = línea
 //   ic = velocidad impulso centrando
 // (ROBOT2 2025: c=0.4, ic=0.55)
 // ============================================================
-constexpr float MIX_G  = 0.3f;   // girando
-constexpr float MIX_A  = 0.4f;   // apuntando pelota
+constexpr float MIX_G  = 0.4f;   // girando
+constexpr float MIX_A  = 0.3f;   // apuntando pelota
 constexpr float MIX_C  = 0.4f;   // centrando (2025 ROBOT2)
 constexpr float MIX_IC = 0.55f;  // impulso centrando (2025 ROBOT2)
 constexpr float MIX_PD = 1.0f;   // avances proporcionales (2025 'pd')
@@ -80,17 +80,17 @@ constexpr float MIX_PD = 1.0f;   // avances proporcionales (2025 'pd')
 // ============================================================
 // Tolerancias 2025 (en mm para cercanía/centrado; en grados para apuntado).
 // ============================================================
-constexpr float MIX_TOL_CENTRADO = 30.0f;  // tolerancia_centrado
-constexpr float MIX_TOL_CERCANIA = 50.0f;  // tolerancia_cercania
-constexpr float MIX_TOL_APUNTADO = 15.0f;  // tolerancia_apuntado (grados)
+constexpr float MIX_TOL_CENTRADO = 60.0f;  // tolerancia_centrado
+constexpr float MIX_TOL_CERCANIA = 100.0f;  // tolerancia_cercania
+constexpr float MIX_TOL_APUNTADO = 30.0f;  // tolerancia_apuntado (grados)
 
 // ============================================================
 // Kicker / patada — port 1:1 del 2025 (el "kicker" es empuje por inercia, sin
 // solenoide físico; el robot acelera hacia adelante con rampa).
 // ============================================================
 constexpr int MIX_KICK_VEL_FINAL    = 240;  // velocidadFinalPateo
-constexpr int MIX_KICK_PASO         = 5;    // pasoPateo (incremento de PWM)
-constexpr int MIX_KICK_INTERVALO_MS = 20;   // intervaloPateo (ms entre incrementos)
+constexpr int MIX_KICK_PASO         = 20;    // pasoPateo (incremento de PWM)
+constexpr int MIX_KICK_INTERVALO_MS = 10;   // intervaloPateo (ms entre incrementos)
 
 // Retroceso de patada (PWM crudo por motor) — port 1:1 del 2025.
 constexpr int MIX_PATAD_M1 = 250;  // patadM1

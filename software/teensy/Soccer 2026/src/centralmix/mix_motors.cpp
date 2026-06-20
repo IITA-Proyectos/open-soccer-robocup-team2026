@@ -130,23 +130,27 @@ void avanzar() {
 
 // retroceder1() 2025: M1=0(INB1=1), M2=100(INB2=1), M3=100(INA3=1).
 void retroceder1() {
-    mix_set_motor(0, 0);     // M1: PWM=0, INA1=0, INB1=1 → magnitud 0 = frenado
-    mix_set_motor(1, -100);  // M2: INA2=0, INB2=1
-    mix_set_motor(2, +100);  // M3: INA3=1, INB3=0
+    //mix_set_motor(0, 0);     // M1: PWM=0, INA1=0, INB1=1 → magnitud 0 = frenado
+    //mix_set_motor(1, -50);  // M2: INA2=0, INB2=1
+    //mix_set_motor(2, +50);  // M3: INA3=1, INB3=0
+
+    mix_set_motor(0, +100);     // M1: PWM=0, INA1=0, INB1=1 → magnitud 0 = frenado
+    mix_set_motor(1, 0);  // M2: INA2=0, INB2=1
+    mix_set_motor(2, -100);  // M3: INA3=1, INB3=0
 }
 
 // retroceder2() 2025: M1=100(INA1=1), M2=0(INA2=1), M3=100(INB3=1).
 void retroceder2() {
-    mix_set_motor(0, +100);  // M1: INA1=1, INB1=0
-    mix_set_motor(1, 0);     // M2: PWM=0, INA2=1, INB2=0 → magnitud 0 = frenado
-    mix_set_motor(2, -100);  // M3: INA3=0, INB3=1
+    mix_set_motor(0, -100);  // M1: INA1=1, INB1=0
+    mix_set_motor(1, +100);     // M2: PWM=0, INA2=1, INB2=0 → magnitud 0 = frenado
+    mix_set_motor(2, 0);  // M3: INA3=0, INB3=1
 }
 
 // retroceder3() 2025: M1=100(INB1=1), M2=100(INA2=1), M3=0(INB3=1).
 void retroceder3() {
-    mix_set_motor(0, -100);  // M1: INA1=0, INB1=1
-    mix_set_motor(1, +100);  // M2: INA2=1, INB2=0
-    mix_set_motor(2, 0);     // M3: PWM=0, INA3=0, INB3=1 → magnitud 0 = frenado
+    mix_set_motor(0, 0);  // M1: INA1=0, INB1=1
+    mix_set_motor(1, -100);  // M2: INA2=1, INB2=0
+    mix_set_motor(2, +100);     // M3: PWM=0, INA3=0, INB3=1 → magnitud 0 = frenado
 }
 
 // ============================================================

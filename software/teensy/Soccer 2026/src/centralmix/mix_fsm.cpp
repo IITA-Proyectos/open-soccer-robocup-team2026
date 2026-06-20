@@ -115,7 +115,7 @@ static inline float dist_pelota_mm() {
 // comparado contra su blanco. Acá la línea llega como line_present/line_angle_deg
 // (0 = frente; signo según convención de mix_io). Se reconstruye el branch de 3 vías
 // por sector angular. SECTORES (±30°) = elección 2026 → RE-TUNEAR. <RE-TUNEO 2025→2026>
-static constexpr float kLineSectorDeg = 30.0f;  // semiancho del sector "frente"
+static constexpr float kLineSectorDeg = 120.0f;  // semiancho del sector "frente"
 
 static inline bool linea_presente() {
     // OR de los 3 sensores del 2025 → presencia de línea (con histéresis de DOWN).
@@ -123,15 +123,15 @@ static inline bool linea_presente() {
 }
 // s1 (izquierdo): línea a la izquierda  (angulo < -sector)   <RE-TUNEO 2025→2026>
 static inline bool linea_s1() {
-    return linea_presente() && (g_io.line_angle_deg < -kLineSectorDeg);
+    return linea_presente() && (g_io.line_angle_deg < -60.0f);
 }
 // s2 (centro): línea al frente          (|angulo| <= sector) <RE-TUNEO 2025→2026>
 static inline bool linea_s2() {
-    return linea_presente() && (fabsf(g_io.line_angle_deg) <= kLineSectorDeg);
+    return linea_presente() && (fabsf(g_io.line_angle_deg) <= 60.0f);
 }
 // s3 (derecho): línea a la derecha      (angulo > +sector)   <RE-TUNEO 2025→2026>
 static inline bool linea_s3() {
-    return linea_presente() && (g_io.line_angle_deg > kLineSectorDeg);
+    return linea_presente() && (g_io.line_angle_deg > 60.0f);
 }
 
 // ============================================================

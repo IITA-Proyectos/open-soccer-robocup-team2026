@@ -43,3 +43,28 @@ Construido con 2 workflows (entender + scaffold). Detalle de contratos: headers 
 Es una PRUEBA paralela, no reemplaza nada. Si en banco anda → se sigue por acá; si no → se
 continúa con el stack actual (`src/central/` + `strategy.cpp`). Cero riesgo para lo de hoy
 (build aislado). Ver [[project-iita-soccer-2026-strategy]].
+
+## Update PM — sync del tuning de banco de Elías (commit e83d43c)
+Elías corrió centralmix en R1 (delantero), lo ajustó en banco en su copia local (zip de
+GitHub, sin commitear) y lo dejó andando ("estrategia funciona"). Se sincronizaron a `main`
+**solo sus 3 archivos con cambios reales** (verificado byte-a-byte ignorando fin-de-línea;
+`main_centralmix.cpp` del zip era idéntico salvo CRLF; `platformio.ini` sin cambios):
+
+- **mix_fsm.cpp** — `kLineSectorDeg` 30→120 y sectores s1/s2/s3 a ±60°. Resuelve el pendiente
+  #3 (clasificación de línea por ángulo) en banco. **OJO:** mantuvo el gate de profundidad en
+  `linea_presente()` — el que yo había SACADO en la copia de soccer-main. Que la línea de
+  Elías ande CON el gate sugiere que mi hipótesis previa ("el gate impedía detectar") no era
+  la causa raíz, o probábamos builds distintos. **Tema a analizar, no cerrado.**
+- **mix_config.h** — tuning: MIX_G 0.3→0.4, MIX_A 0.4→0.3, TOL_CENTRADO 30→60, TOL_CERCANIA
+  50→100, TOL_APUNTADO 15→30°, kick PASO 5→20 / INTERVALO 20→10 ms.
+- **mix_motors.cpp** — remapeo (rotación cíclica) de `retroceder1/2/3`. Avanza el pendiente #1
+  (sentido por rueda) para los retrocesos: las primitivas giro+traslación estaban mal mapeadas
+  en la geometría 2026; Elías las corrigió probando el robot.
+
+**Temas abiertos tras el sync:**
+1. Comentarios inline de `retroceder*` quedaron desfasados del código (dicen "PWM=0/frenado"
+   sobre líneas que ahora son ±100). Subidos verbatim para no alterar el trabajo de Elías.
+2. `centrar_horario/antihorario` e `impulso_centrando_*` probablemente necesiten el MISMO
+   remapeo cíclico que los retrocesos (misma raíz: geometría 2026). No se tocaron.
+3. Gate de profundidad vs detección de línea (ver arriba) — reconciliar mi experimento
+   (gate fuera, quedó en stash local de soccer-main, NO subido) con la versión de Elías.

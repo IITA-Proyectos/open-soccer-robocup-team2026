@@ -13,6 +13,19 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> **📚 TRES SKILLS NUEVAS — ToF, cinemática omni-3, cámaras N6 (2026-06-21, doc-only, sin tocar firmware):**
+> Workflow de investigación paralela (web best-practices + lectura de código anclada) + plantilla de oro
+> `bno055-imu-heading-robocup`. Las 3 en `.claude/skills/`, cada una COMPLEMENTA (no duplica) las que cita:
+> **(1) `tof-vl53l7cx-lectura-calibracion-posicionamiento`** — el sensor multizona (status, modos, coexistencia
+> BNO+ToF, pose por paredes), ancla a `sensors_tof.cpp`/`localization.*`/`tof_zone_mask*.h`. **(2) `cinematica-omni-3-120`**
+> — la matriz/teoría (`v_i=-vx·sinθ+vy·cosθ+ω·R`, el `+180`, la trampa `OMEGA_SIGN`), ancla a `kinematics.*`/`config_central.h`/`motors_zircon.cpp`.
+> **(3) `openmv-n6-camara-vision-robocup`** — visión por color N6, contrato v2 cámara→TOP, calibración; **REEMPLAZA a
+> `openmv-vision-tuning`** (que decía "H7"/cyan-magenta — banner de desactualización agregado). **NO se tocó código de
+> firmware** → binarios de competencia byte-idénticos (trivial: solo markdown en `.claude/skills/` + docs). Inconsistencias
+> doc verificadas y marcadas (no homogeneizadas): ToF "stub" en `CONTRATO-DATOS-TOP.md`, grilla "8×8" en `CONVENCION-EJES`,
+> y 3 sets de thresholds LAB + `h=95` vs `18.7` en cámaras → cerrar en banco. Filas en `FUENTES-DE-VERDAD.md`. Journal:
+> `journal/2026-06-21-skills-tof-omni-camaras-n6.md`.
+
 > **🔧 TRES MEJORAS DE LAS RECOMENDACIONES P0/P1 (2026-06-18, desactivadas por defecto):** pedido
 > Gustavo "poner en marcha las 4". **R2 (predicción de pose XY) ya estaba** (`pose_fusion` cableado,
 > entorno `top_robot2_pri_posefusion`) — no se reinventó. Las otras 3, todas desactivadas por defecto

@@ -6,6 +6,15 @@ description: Use when calibrating or troubleshooting OpenMV cameras (H7 / H7 Plu
 # OpenMV Vision Tuning — Calibración de Cámaras para Soccer
 
 > **Status: outline only — content pending iteration with real cameras.**
+>
+> ⚠️ **DESACTUALIZADA respecto al hardware real (2026-06-21).** Esta skill describe **OpenMV H7 /
+> H7 Plus**, pelota **IR pasiva** y arcos **cyan/magenta**. El robot que va a Incheon usa **OpenMV
+> N6** (SoC STM32N657, sensor PAG7936 global shutter), detecta la pelota **naranja por color LAB**
+> y arcos **amarillo/azul** (verificado contra `src/top/cameras.h`, `hardware/electronics/camaras-openmv/main.py`).
+> Para todo lo operativo N6-específico (pipeline `find_blobs` LAB, exposición/WB, homografía,
+> contrato v2 cámara→TOP, fusión front+back, NPU/ML) usá la skill **`openmv-n6-camara-vision-robocup`**,
+> que reemplaza a ésta y está anclada al código vivo. Esta skill queda como knowledge-base genérico
+> de tuning de visión hasta que se reescriba/deprecie formalmente.
 
 ## When to use
 

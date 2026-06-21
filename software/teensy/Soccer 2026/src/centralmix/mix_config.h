@@ -72,7 +72,7 @@ constexpr uint8_t MIX_LINE_DEPTH_TRIGGER = 1;  // ≥1 sensor en blanco = línea
 // (ROBOT2 2025: c=0.4, ic=0.55)
 // ============================================================
 constexpr float MIX_G  = 0.4f;   // girando
-constexpr float MIX_A  = 0.3f;   // apuntando pelota
+constexpr float MIX_A  = 0.4f;   // apuntando pelota
 constexpr float MIX_C  = 0.4f;   // centrando (2025 ROBOT2)
 constexpr float MIX_IC = 0.55f;  // impulso centrando (2025 ROBOT2)
 constexpr float MIX_PD = 1.0f;   // avances proporcionales (2025 'pd')
@@ -81,7 +81,7 @@ constexpr float MIX_PD = 1.0f;   // avances proporcionales (2025 'pd')
 // Tolerancias 2025 (en mm para cercanía/centrado; en grados para apuntado).
 // ============================================================
 constexpr float MIX_TOL_CENTRADO = 60.0f;  // tolerancia_centrado
-constexpr float MIX_TOL_CERCANIA = 100.0f;  // tolerancia_cercania
+constexpr float MIX_TOL_CERCANIA = 120.0f;  // tolerancia_cercania
 constexpr float MIX_TOL_APUNTADO = 30.0f;  // tolerancia_apuntado (grados)
 
 // ============================================================
@@ -131,22 +131,58 @@ constexpr int MIX_CENTRAR_FRONT = 80;   // M1,M2 (delanteras) — ≥70 (piso f�
 constexpr int MIX_CENTRAR_REAR  = 170;  // M3 (trasera) — ≥107 (piso); ojo techo térmico ~150
 
 // ============================================================
+// KICKOFF / arranque — PRIMER estado del FSM (coach 2026-06-21, SIN flag: KICKOFF_SEEK es
+// el arranque de TODAS las builds del centralmix). Pedido de Elías: al arrancar, si VE
+// la pelota va hacia ella; si NO la ve, da un IMPULSO FUERTE y CORTO de MEDIALUNA (arco)
+// para despegarse hacia el centro, y después cae a la búsqueda por giro (GIRANDO).
+//
+// La medialuna se arma por SUPERPOSICIÓN de las 2 bases que YA existen (en un omni las
+// velocidades de rueda SUMAN linealmente, así que esto SÍ da un arco, no el casi-strafe
+// del centrar_*):
+//   AVANCE (base avanzar(): M1=+F, M2=-F, M3=0)  +  GIRO (base girar(): M1=M2=M3=+T)
+//   ⇒  M1 = +F + dir·T ,  M2 = -F + dir·T ,  M3 = dir·T     (ver kickoff_medialuna()).
+// F = cuánto AVANZA · T = cuánta CURVA · dir = lado (±1). FUERTE = F alto; CORTO = ARC_MS
+// chico → térmicamente seguro aunque el PWM sea alto, porque dura poco.
+//
+// ⚠️ NO TESTEADO EN HARDWARE. En banco se confirma: (1) que curva para el lado correcto
+// (si no, invertir MIX_KICKOFF_ARC_DIR); (2) F/T/duración; (3) que "hacia el centro" tenga
+// sentido para tu lado de saque (sin pose absoluta el lado es FIJO → setearlo acá).
+// ============================================================
+constexpr int MIX_KICKOFF_ARC_FWD  = 140;  // F: componente de AVANCE (fuerte; > piso ~70)
+constexpr int MIX_KICKOFF_ARC_TURN = 70;   // T: componente de GIRO/curvatura de la medialuna
+constexpr int MIX_KICKOFF_ARC_DIR  = +1;   // lado de la curva (+1 / -1) — confirmar en banco
+constexpr int MIX_KICKOFF_ARC_MS   = 250;  // duración del impulso (CORTO), en ms
+
+// ============================================================
 // Heading — control de rumbo del 2025 (error = currentYaw - initialYaw, kp=0.3).
-// SELECTOR de fuente de heading:
-//   - DEFAULT: BNO055 (como el 2025).
-//   - Con -DMIX_HEADING_OTOS: usa el heading del OTOS (otos_heading_deg de DOWN).
-// mix_comm debe poblar mix_io.heading_deg desde la fuente elegida y dejar SIEMPRE
+// SELECTOR de fuente de heading (TRES modos, mutuamente excluyentes):
+//   - DEFAULT (sin flag): BNO055 LOCAL en la CENTRAL (Wire @ 0x28), como el 2025.
+//       ⚠️ R1 2026 NO tiene BNO local (los 2 BNO viven en el TOP) → este modo NO sirve
+//       para R1: el read local falla y deja heading_valid=false. Sólo úsalo en una placa
+//       que REALMENTE tenga un BNO en su propio bus.
+//   - Con -DMIX_HEADING_SNAPSHOT: heading = BNO del TOP que llega por el WorldSnapshot
+//       (Serial7), SIN tocar ningún BNO local. ESTE es el modo para R1 2026 (BNO del TOP
+//       arreglado + heading validado en banco 2026-06-21; ver src/top/sensors_imu.cpp:279).
+//   - Con -DMIX_HEADING_OTOS: heading = OTOS (otos_heading_deg de DOWN). Fallback SIN gyro
+//       (era para cuando el BNO de R1 estaba "muerto"; hoy el BNO anda → preferí SNAPSHOT).
+// mix_comm puebla mix_io.heading_deg desde la fuente elegida y deja SIEMPRE
 // otos_heading_deg crudo disponible para diagnóstico/A-B.
+// (SNAPSHOT y OTOS son excluyentes; mix_comm.cpp lo verifica con un #error.)
 // ============================================================
 constexpr float MIX_HEADING_KP = 0.3f;  // kp del control de rumbo 2025
 
-#ifdef MIX_HEADING_OTOS
-constexpr bool MIX_HEADING_SOURCE_IS_OTOS = true;
+#if defined(MIX_HEADING_OTOS)
+constexpr bool MIX_HEADING_SOURCE_IS_OTOS     = true;
+constexpr bool MIX_HEADING_SOURCE_IS_SNAPSHOT = false;
+#elif defined(MIX_HEADING_SNAPSHOT)
+constexpr bool MIX_HEADING_SOURCE_IS_OTOS     = false;
+constexpr bool MIX_HEADING_SOURCE_IS_SNAPSHOT = true;   // BNO del TOP vía snapshot
 #else
-constexpr bool MIX_HEADING_SOURCE_IS_OTOS = false;  // DEFAULT: BNO
+constexpr bool MIX_HEADING_SOURCE_IS_OTOS     = false;
+constexpr bool MIX_HEADING_SOURCE_IS_SNAPSHOT = false;  // DEFAULT: BNO LOCAL (Wire@0x28)
 #endif
 
-// BNO055 (solo relevante si la fuente es BNO).
+// BNO055 LOCAL (solo relevante en el modo por defecto = BNO local en la CENTRAL).
 constexpr int MIX_BNO055_I2C_ADDR = 0x28;
 
 // ============================================================

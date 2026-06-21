@@ -12,7 +12,10 @@
 - Todo vive en `src/centralmix/` (carpeta nueva) y en el namespace `iitasoccer::mix`.
 - Env propio `central_robot1_mix` con `build_src_filter = +<centralmix/> +<shared/>`
   → **NO compila `src/central/`** ni ningún otro env. Aditivo puro.
-- Flashear:  `pio run -e central_robot1_mix -t upload`
+- Flashear (R1 **CON gyro** — recomendado, BNO del TOP por snapshot):
+  `pio run -e central_robot1_mix_bno -t upload`
+- Flashear (BNO LOCAL en la CENTRAL — **no aplica a R1**, no tiene BNO local):
+  `pio run -e central_robot1_mix -t upload`
 - Volver a lo actual:  cualquier env de competencia de siempre (`central_robot1`, etc.).
 
 ## Flujo de datos (autocontenido, SIN world_model)
@@ -24,7 +27,9 @@ DOWN (Serial1) ┴─ mix_comm ─► g_io ───►┤
 - `mix_io.h` — `struct MixIO g_io`: las **variables planas** estilo 2025 (pelota x/y +
   ángulo, arcos, heading + error, línea, match_running, OTOS). Es "lo disponible".
 - `mix_comm.cpp` — único que toca Serial. Lee TOP/DOWN, decodifica con `shared/proto`,
-  llena `g_io`. Heading: BNO por default; OTOS con `-DMIX_HEADING_OTOS`.
+  llena `g_io`. Heading (3 modos): **BNO LOCAL** en la CENTRAL por default (⚠️ R1 no tiene
+  → no usar en R1); **BNO del TOP por snapshot** con `-DMIX_HEADING_SNAPSHOT` (env
+  `central_robot1_mix_bno`, el de R1 con gyro); **OTOS** con `-DMIX_HEADING_OTOS` (sin gyro).
 - `mix_fsm.cpp` — port FIEL del switch de 24 estados del 2025; lee `g_io`, llama motores.
 - `mix_motors.cpp` — primitivas directas 2025 (`girar/avanzar/centrar/patear/...`) sobre
   los pines R1 actuales (M1=2/5/3, M2=8/7/6, M3=11/12/4), sin mixer.
@@ -39,7 +44,10 @@ DOWN (Serial1) ┴─ mix_comm ─► g_io ───►┤
    angular (±30°) del dato de DOWN. Re-tunear el sector.
 4. **Arco rival** — hardcodeado AMARILLO (como 2025). Invertir con `-DMIX_ATTACK_BLUE`.
    Confirmar a qué arco ataca R1 antes del partido.
-5. **Heading source** — confirmar si R1 usa el BNO del TOP (vía snapshot) o uno local.
+5. **Heading source** — ✅ RESUELTO (coach 2026-06-21): R1 NO tiene BNO local → usa el
+   **BNO del TOP por snapshot** (env `central_robot1_mix_bno`, `-DMIX_HEADING_SNAPSHOT`).
+   El BNO del TOP de R1 quedó andando + validado en banco 2026-06-21 (fix `bno_left_en`).
+   Falta validar el delantero COMPLETO con ese heading en banco → TASK-115.
 6. **`match_running`** — se agregó el gate GO/STOP del árbitro (el 2025 no lo tenía).
 
 Detalle de cada decisión: comentarios en los headers + journal 2026-06-19.

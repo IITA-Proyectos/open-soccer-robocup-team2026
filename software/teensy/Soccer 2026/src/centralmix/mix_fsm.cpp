@@ -68,7 +68,7 @@ namespace mix {
 //   millis_pelota del 2025  ==  g_io.t_last_ball_seen_ms  (lo sella mix_comm).
 //   Acá quedan millis_inicio_estado y millis_inicio_centrando (locales a la FSM).
 // ============================================================
-static Estado estado = Estado::AVANCE_INICIO;
+static Estado estado = Estado::IMPULSO_INICIAL_GIRANDO;  // placeholder; mix_fsm_init() lo fija
 static unsigned long millis_inicio_estado    = 0;
 static unsigned long millis_inicio_centrando = 0;
 
@@ -83,7 +83,7 @@ static float heading_inicial_deg = 0.0f;
 // (ARCO_CONTRINCANTE = hayarco_amarillo; Ycontrincante = Yam). Se mantiene AMARILLO
 // pero se deja la perilla a la vista para parametrizar a futuro. <PARAMETRIZAR>
 // ============================================================
-static constexpr bool kArcoRivalEsAmarillo = true;  // 2025: arco rival = AMARILLO
+static constexpr bool kArcoRivalEsAmarillo = false;  // 2025: arco rival = AMARILLO
 
 static inline bool arco_rival_visible() {
     return kArcoRivalEsAmarillo ? g_io.goal_yellow_visible : g_io.goal_blue_visible;
@@ -148,9 +148,9 @@ static inline bool linea_s3() {
 // IMPULSO_INICIAL_GIRANDO: girar con 150 en los 3 (sentido de girar()).
 static inline void impulso_inicial_girando() {
     // 2025: PWM=150, INA=0/INB=1 en los 3 → sentido positivo a 150.
-    mix_set_motor(0, +150);
-    mix_set_motor(1, +150);
-    mix_set_motor(2, +150);
+    mix_set_motor(0, -150);
+    mix_set_motor(1, -150);
+    mix_set_motor(2, -150);
 }
 
 // APUNTAR_PELOTA*: rotar a 100*a según signo de angulo_pelota_deg.
@@ -186,11 +186,12 @@ static inline void impulso_centrando_horario() {
 }
 
 // ============================================================
-// mix_fsm_init — port de la parte de setup() relevante a la FSM.
-//   2025: estado = AVANCE_INICIO; sella millis_inicio_estado; captura initialYaw.
+// mix_fsm_init — setup de la FSM. El PRIMER estado es SIEMPRE KICKOFF_SEEK (arranque
+// del partido). AVANCE_INICIO se QUITÓ 2026-06-21 (pedido Elías). Ningún otro estado
+// transiciona a KICKOFF_SEEK → la maniobra de arranque se ejecuta UNA sola vez.
 // ============================================================
 void mix_fsm_init() {
-    estado = Estado::AVANCE_INICIO;
+    estado = Estado::KICKOFF_SEEK;   // PRIMER estado: arranque (seek pelota / medialuna)
     millis_inicio_estado    = millis();
     millis_inicio_centrando = millis();
 
@@ -223,12 +224,29 @@ void mix_fsm_tick() {
 
     switch (estado) {
         // ----------------------------------------------------
-        case Estado::AVANCE_INICIO:
-            avanzar_patear();
-            if (millis() - millis_inicio_estado >= 700) {
+        // KICKOFF_SEEK (AGREGADO 2026): PRIMER estado = arranque del partido. Se ejecuta
+        // UNA sola vez (ningún otro estado vuelve a él).
+        //   ve la pelota → APUNTAR_PELOTA (va hacia ella);
+        //   NO la ve     → impulso FUERTE y CORTO de medialuna → luego GIRANDO;
+        //   línea        → escape DETECTA_LINEA_* de siempre (no salir de cancha).
+        // ----------------------------------------------------
+        case Estado::KICKOFF_SEEK:
+            if (haypelota) {
                 parar();
                 millis_inicio_estado = millis();
-                estado = Estado::IMPULSO_INICIAL_GIRANDO;
+                estado = Estado::APUNTAR_PELOTA;
+                break;
+            }
+            // línea → escape de siempre (prioridad sobre la medialuna)
+            if (linea_s1()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_1; break; }
+            if (linea_s2()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_2; break; }
+            if (linea_s3()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_3; break; }
+            // no ve pelota → impulso FUERTE y CORTO de medialuna hacia el centro
+            kickoff_medialuna(MIX_KICKOFF_ARC_DIR);
+            if (millis() - millis_inicio_estado >= (unsigned long)MIX_KICKOFF_ARC_MS) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::GIRANDO;   // tras el impulso, búsqueda por giro de siempre
             }
             break;
 
@@ -241,19 +259,20 @@ void mix_fsm_tick() {
         // ----------------------------------------------------
         case Estado::IMPULSO_INICIAL_GIRANDO:
             // girar con más potencia (150) — 2025 inline.
-            impulso_inicial_girando();
-
-            if (millis() - millis_inicio_estado >= 70) {
-                millis_inicio_estado = millis();
-                estado = Estado::GIRANDO;
-            }
-
+            
             if (haypelota) {
                 parar();
                 if (millis() - millis_inicio_estado >= 1000) {  // esperar 1s por la inercia
                     estado = Estado::APUNTAR_PELOTA;
                     millis_inicio_estado = millis();
                 }
+            }
+            
+            impulso_inicial_girando();
+
+            if (millis() - millis_inicio_estado >= 50) {
+                millis_inicio_estado = millis();
+                estado = Estado::GIRANDO;
             }
 
             if (linea_s1()) {  // s1 >= blanco1
@@ -274,7 +293,7 @@ void mix_fsm_tick() {
         case Estado::GIRANDO:
             if (haypelota) {
                 parar();
-                if (millis() - millis_inicio_estado >= 700) {  // esperar 700ms por la inercia
+                if (millis() - millis_inicio_estado >= 300) {  // esperar 700ms por la inercia
                     estado = Estado::APUNTAR_PELOTA;
                     millis_inicio_estado = millis();
                 }
@@ -584,37 +603,52 @@ void mix_fsm_tick() {
         // ----------------------------------------------------
         case Estado::PATEANDO_corto_pausa_inicial:
             parar();
-            if (millis() - millis_inicio_estado >= 500) {
+            if (millis() - millis_inicio_estado >= 100) {
                 estado = Estado::PATEANDO_corto_adelante;
                 millis_inicio_estado = millis();
             }
+
             break;
 
         // ----------------------------------------------------
         case Estado::PATEANDO_corto_adelante:
             avanzar_patear();
-            if (millis() - millis_inicio_estado >= 200) {
+            if (millis() - millis_inicio_estado >= 300) {
                 parar();
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_corto_pausa;
             }
+
             break;
 
         // ----------------------------------------------------
         case Estado::PATEANDO_corto_pausa:
             parar();
-            if (millis() - millis_inicio_estado >= 500) {
+            if (millis() - millis_inicio_estado >= 100) {
                 estado = Estado::PATEANDO_corto_atras;
                 millis_inicio_estado = millis();
             }
+
             break;
 
         // ----------------------------------------------------
         case Estado::PATEANDO_corto_atras:
             retroceder_patear();
-            if (millis() - millis_inicio_estado >= 300) {
+            if (millis() - millis_inicio_estado >= 500) {
                 parar();
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;
+                millis_inicio_estado = millis();
+            }
+            if (linea_s1()) {
+                estado = Estado::DETECTA_LINEA_1;
+                millis_inicio_estado = millis();
+            }
+            if (linea_s2()) {
+                estado = Estado::DETECTA_LINEA_2;
+                millis_inicio_estado = millis();
+            }
+            if (linea_s3()) {
+                estado = Estado::DETECTA_LINEA_3;
                 millis_inicio_estado = millis();
             }
             break;

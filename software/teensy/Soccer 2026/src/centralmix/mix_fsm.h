@@ -5,14 +5,12 @@
 // pobladas por mix_comm desde TOP/DOWN) en vez de las globales seriales crudas, y
 // ACTUANDO con las primitivas directas de mix_motors.h. NO usa world_model.
 //
-// ⚠️ DISCREPANCIA DE CONTEO (marcada, no silenciada): la tarea pide "28 estados".
-// El enum REAL del 2025 (la fuente que manda, delantero-sin-zirconLib.cpp líneas
-// 130-139) declara 24 estados nombrados — los 24 que están abajo, verbatim. NO hay
-// 28: no inventé 4 estados para llegar al número. Si el equipo quiere 4 estados
-// extra (p.ej. ESPERA_INICIO/STOP por match_running, o separar PRIMER_IMPULSO de
-// IMPULSO), se agregan como decisión explícita; este contrato refleja el 2025 tal
-// cual. (PRIMER_IMPULSO_INICIAL_GIRANDO está en el enum 2025 pero NO tiene case en
-// el switch — es un estado declarado-pero-muerto; lo conservo por fidelidad.)
+// FIDELIDAD vs 2025: el enum era 1:1 con el delantero 2025 (delantero-sin-zirconLib.cpp
+// líneas 130-139). DESVÍOS 2026 (pedido Elías, marcados, no silenciados):
+//   - Se QUITÓ AVANCE_INICIO (el avance de 700 ms al arranque) — 2026-06-21.
+//   - Se AGREGÓ KICKOFF_SEEK como PRIMER estado (arranque del partido).
+// (PRIMER_IMPULSO_INICIAL_GIRANDO sigue en el enum por fidelidad 2025 pero NO tiene case
+// en el switch — estado declarado-pero-muerto, igual que el 2025.)
 //
 // ⚠️ NO TESTEADO EN HARDWARE.
 
@@ -21,9 +19,9 @@
 namespace iitasoccer {
 namespace mix {
 
-// Los 24 estados del delantero 2025, en el MISMO orden del enum original.
+// Estados del delantero (base 2025). El arranque es KICKOFF_SEEK (abajo); AVANCE_INICIO
+// se quitó 2026-06-21. El resto conserva el orden/nombre del enum 2025.
 enum class Estado {
-    AVANCE_INICIO,
     PRIMER_IMPULSO_INICIAL_GIRANDO,   // declarado en 2025 pero SIN case en el switch (muerto)
     IMPULSO_INICIAL_GIRANDO,
     GIRANDO,
@@ -47,10 +45,14 @@ enum class Estado {
     DETECTA_LINEA_1,
     DETECTA_LINEA_2,
     DETECTA_LINEA_3,
+    // --- AGREGADO 2026 (coach): PRIMER estado = arranque del partido (sin flag). ---
+    // Ve la pelota → va hacia ella; no la ve → impulso fuerte y corto de medialuna
+    // hacia el centro → después GIRANDO. Se ejecuta UNA vez (ningún estado vuelve a él).
+    KICKOFF_SEEK,
 };
 
-// Inicializa la FSM: estado = AVANCE_INICIO, sella los timers (millis()). Llamar en
-// setup() DESPUÉS de mix_comm_init() y mix_motors_init().
+// Inicializa la FSM: estado = KICKOFF_SEEK (primer estado), sella timers (millis()). Llamar
+// en setup() DESPUÉS de mix_comm_init() y mix_motors_init().
 void mix_fsm_init();
 
 // Avanza un paso de la FSM: lee g_io, ejecuta el case del estado actual con las

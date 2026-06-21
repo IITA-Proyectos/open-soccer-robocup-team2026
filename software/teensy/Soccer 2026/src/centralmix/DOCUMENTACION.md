@@ -20,7 +20,8 @@ scope: software/teensy/Soccer 2026/src/centralmix/
 |---|---|
 | Estructura de carpeta + 10 archivos | ✅ creada (`src/centralmix/`) |
 | Env de compilación `central_robot1_mix` | ✅ en `platformio.ini` (aditivo, no toca nada) |
-| **Compila** | ✅ `pio run -e central_robot1_mix` → SUCCESS, FLASH ~23,5 KB |
+| Env `central_robot1_mix_bno` (R1 con gyro, BNO del TOP) | ✅ en `platformio.ini` (aditivo) — ⏳ **compilar (no lo hizo Claude: shell rota)** + banco TASK-115 |
+| **Compila** | ✅ `pio run -e central_robot1_mix` → SUCCESS, FLASH ~23,5 KB (variante base, 2026-06-19) |
 | Aislamiento (no afecta lo actual) | ✅ `build_src_filter = +<centralmix/> +<shared/>` (NO compila `src/central/`) |
 | FSM 2025 portada (24 estados) | ✅ código escrito (port fiel) |
 | Manejo directo de motores | ✅ código escrito (pines R1) |
@@ -79,15 +80,15 @@ y el resto (FSM + motores) es **autocontenido estilo 2025**, leyendo `g_io`.
 | `README.md` | Guía corta + comando de flasheo. |
 | `DOCUMENTACION.md` | Este archivo. |
 
-## 5. La máquina de estados (24 estados, port fiel del 2025)
+## 5. La máquina de estados (arranque KICKOFF_SEEK 2026 + estados del 2025)
 
-Flujo del delantero (buscar → apuntar → acercar → orbitar → patear):
+Flujo del delantero (arranque → buscar → apuntar → acercar → orbitar → patear):
 
 ```
                  (!match_running ⇒ parar)        ◄── regla nueva (árbitro RCJ), va ANTES de todo
-   AVANCE_INICIO ─700ms→ IMPULSO_INICIAL_GIRANDO ─70ms→ GIRANDO ──9s & |error|≤50→ AVANZANDO_POR_TIEMPO
-        │ (ve pelota tras inercia)                         │ (ve pelota)
-        └──────────────► APUNTAR_PELOTA ◄─────────────────┘
+   KICKOFF_SEEK ──(no ve pelota: medialuna fuerte y corta)──→ GIRANDO ──9s & |error|≤50→ AVANZANDO_POR_TIEMPO
+        │ (ve pelota; PRIMER estado, se ejecuta 1 sola vez)       │ (ve pelota)
+        └──────────────► APUNTAR_PELOTA ◄────────────────────────┘
                               │ |áng|<15
                               ▼
                           AVANZANDO ──pelota & cerca→ CENTRANDO_horario/antihorario  (orbita la pelota)
@@ -139,12 +140,14 @@ Flujo del delantero (buscar → apuntar → acercar → orbitar → patear):
 
 ## 8. Decisiones de diseño (y por qué)
 
-- **Heading por BNO por default, OTOS opcional** (`-DMIX_HEADING_OTOS`). ⚠️ El `mix_comm`
-  quedó leyendo el **BNO local del CENTRAL** (Wire@0x28). Pero en 2026 el rumbo
-  "oficial" viene del **BNO del TOP por el snapshot**. **Decisión pendiente**: confirmar
-  si la placa CENTRAL de R1 tiene BNO propio, o cambiar `mix_comm` a usar el heading del
-  snapshot. (El BNO del TOP de R1 estaba muerto el 2026-06-19; se cambia esa tarde — ver
-  journal `2026-06-19-arquero-pose-xy-heading-free-paredes.md`.)
+- **Heading: 3 modos** (✅ resuelto 2026-06-21). El default es **BNO LOCAL del CENTRAL**
+  (Wire@0x28) — pero **R1 NO tiene BNO local**, así que NO sirve para R1. El rumbo "oficial"
+  2026 viene del **BNO del TOP por el snapshot**: modo nuevo `-DMIX_HEADING_SNAPSHOT` (env
+  **`central_robot1_mix_bno`**), que NO toca ningún BNO local. Tercer modo: `-DMIX_HEADING_OTOS`
+  (OTOS, sin gyro). Para R1 con gyro → `central_robot1_mix_bno`. El BNO del TOP de R1 quedó
+  andando + validado en banco 2026-06-21 (fix del flag `bno_left_en`, ver journal
+  `2026-06-21-bno-heading-fix-config-flag-no-era-tof.md`). Falta validar el delantero completo
+  con ese heading en banco → TASK-115.
 - **`match_running` agregado.** El 2025 arrancaba solo; en RCJ el robot **no se mueve
   hasta el START del árbitro**. Es la única regla nueva sobre la lógica 2025.
 - **Manejo directo de motores (no el mixer 2026).** Pedido explícito: que sea como el
@@ -155,11 +158,13 @@ Flujo del delantero (buscar → apuntar → acercar → orbitar → patear):
 ## 9. Cómo compilar, flashear y volver atrás
 
 ```bash
-# Compilar:
-pio run -e central_robot1_mix
-# Flashear a la CENTRAL de R1:
+# Compilar (R1 CON gyro — BNO del TOP por snapshot; recomendado para R1):
+pio run -e central_robot1_mix_bno
+# Flashear a la CENTRAL de R1 (con gyro):
+pio run -e central_robot1_mix_bno -t upload
+# Variante BNO LOCAL en la CENTRAL (NO aplica a R1, no tiene BNO local):
 pio run -e central_robot1_mix -t upload
-# Heading por OTOS en vez de BNO:
+# Variante SIN gyro (heading por OTOS):
 #   agregar -DMIX_HEADING_OTOS al build_flags del env (o PLATFORMIO_BUILD_FLAGS)
 # VOLVER al delantero/arquero actual (descarta centralmix):
 pio run -e central_robot1_delantero_practica -t upload    # delantero actual

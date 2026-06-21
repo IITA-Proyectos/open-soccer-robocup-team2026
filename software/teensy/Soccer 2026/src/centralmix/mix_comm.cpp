@@ -11,12 +11,19 @@
 //   - BNO055 (lectura cruda, Wire @ 0x28, VECTOR_EULER.x()): src/diag/diag_bno_tof.cpp.
 //   - Mapeo a g_io y convención de ángulo: mix_io.h / mix_comm.h (contrato).
 //
-// HEADING:
-//   - DEFAULT (BNO): mix_comm inicializa el BNO055 en Wire @ MIX_BNO055_I2C_ADDR,
-//     captura heading_inicial en init y lee el yaw en cada tick. heading_deg = yaw.
+// HEADING (tres modos excluyentes; ver mix_config.h):
+//   - DEFAULT (BNO LOCAL): mix_comm inicializa un BNO055 en Wire @ MIX_BNO055_I2C_ADDR
+//     (en la propia CENTRAL), captura heading_inicial en init y lee el yaw en cada tick.
+//     ⚠️ R1 2026 NO tiene BNO local (los 2 BNO viven en el TOP) → este modo NO sirve
+//     para R1: el begin() del BNO local falla y read_bno_heading() deja heading_valid=false.
+//   - Con -DMIX_HEADING_SNAPSHOT: heading = BNO del TOP que viene en el WorldSnapshot
+//     (my_heading_centideg + flag heading_valid bit4). NO se inicializa ni se lee ningún
+//     BNO local; heading_inicial se sella con el PRIMER heading válido del snapshot.
+//     ESTE es el modo correcto para R1 2026 (BNO del TOP arreglado + validado en banco
+//     2026-06-21; ver src/top/sensors_imu.cpp:279 y journal 2026-06-21-bno-heading-fix).
 //   - Con -DMIX_HEADING_OTOS: heading_deg = otos_heading_deg (del Pose2D de DOWN);
 //     heading_inicial se captura del PRIMER Pose2D recibido. NO se toca el BNO.
-//   En ambos casos otos_heading_deg queda SIEMPRE disponible (crudo OTOS) para A-B.
+//   En los tres casos otos_heading_deg queda SIEMPRE disponible (crudo OTOS) para A-B.
 //
 // heading_error_deg lo CALCULA mix_comm (= wrap180(heading_deg - heading_inicial)),
 // como pide el contrato de mix_io.h (== 'error' del control de rumbo 2025). Se hace
@@ -48,7 +55,20 @@
 #include <string.h>       // memcpy
 #include <math.h>         // atan2f, fmodf
 
-#ifndef MIX_HEADING_OTOS
+// --- Resolución del modo de heading (EXACTAMENTE uno de tres) -----------------
+//   -DMIX_HEADING_OTOS      → heading del OTOS (Pose2D de DOWN).
+//   -DMIX_HEADING_SNAPSHOT  → heading del BNO del TOP vía WorldSnapshot (Serial7),
+//                             SIN BNO local en la CENTRAL.
+//   (ninguno de los dos)    → BNO LOCAL en Wire@0x28 (comportamiento 2025).
+// Sólo en el modo por defecto se compila/inicializa/lee el BNO local.
+#if defined(MIX_HEADING_OTOS) && defined(MIX_HEADING_SNAPSHOT)
+#error "centralmix: MIX_HEADING_OTOS y MIX_HEADING_SNAPSHOT son mutuamente excluyentes (elegí UNA fuente de heading)"
+#endif
+#if !defined(MIX_HEADING_OTOS) && !defined(MIX_HEADING_SNAPSHOT)
+#define MIX_HEADING_LOCAL_BNO 1
+#endif
+
+#ifdef MIX_HEADING_LOCAL_BNO
 #include <Wire.h>
 #include <Adafruit_BNO055.h>
 #endif
@@ -84,8 +104,8 @@ constexpr unsigned long MIX_LINK_TIMEOUT_MS = 500;
 float g_heading_inicial = 0.0f;
 bool  g_heading_inicial_set = false;
 
-#ifndef MIX_HEADING_OTOS
-// BNO055 en Wire @ 0x28 (PRIMARIO del CENTRAL en 2025; igual que diag_bno_tof.cpp).
+#ifdef MIX_HEADING_LOCAL_BNO
+// BNO055 LOCAL en Wire @ 0x28 (PRIMARIO del CENTRAL en 2025; igual que diag_bno_tof.cpp).
 // IMUPLUS = giroscopio relativo sin fusión magnética (mismo modo que los diag).
 Adafruit_BNO055 g_bno(55, MIX_BNO055_I2C_ADDR, &Wire);
 bool g_bno_ok = false;
@@ -158,11 +178,11 @@ void apply_top_snapshot(const WorldSnapshot& s) {
     g_io.goal_blue_dist      = own_vis ? own_dist : 0.0f;
 #endif
 
-    // --- Heading desde el snapshot (BNO del TOP) — sólo si la fuente activa es BNO ---
-    // El BNO REAL lo lee mix_comm en este mismo tick (ver mix_comm_tick); igual el
-    // snapshot trae el heading fusionado del TOP + el flag de validez (bit4). Si la
-    // fuente es BNO usamos el del snapshot como heading_deg (es lo que pide el
-    // contrato: "heading_deg = del snapshot (BNO) por defecto").
+    // --- Heading desde el snapshot (BNO del TOP) — activo salvo en modo OTOS ---
+    // El snapshot trae el heading fusionado del TOP + el flag de validez (bit4 de flags).
+    //   · modo SNAPSHOT: ESTA es la ÚNICA fuente de heading (no hay BNO local en R1).
+    //   · modo BNO LOCAL (default 2025): es el respaldo; el read del BNO local en
+    //     mix_comm_tick() lo sobreescribe si ese chip local responde.
 #ifndef MIX_HEADING_OTOS
     const bool snap_heading_valid = (s.flags & 0x10) != 0;  // bit4 = heading_valid
     const float snap_heading = s.my_heading_centideg / 100.0f;
@@ -246,8 +266,8 @@ void update_link_freshness() {
         ((now - g_io.t_last_down_frame_ms) < MIX_LINK_TIMEOUT_MS);
 }
 
-#ifndef MIX_HEADING_OTOS
-// Lee el BNO crudo en cada tick (fuente activa = BNO). Es el respaldo directo si el
+#ifdef MIX_HEADING_LOCAL_BNO
+// Lee el BNO LOCAL crudo en cada tick (modo BNO local). Es el respaldo directo si el
 // snapshot del TOP no trae heading válido. yaw del Euler = heading (igual diag).
 void read_bno_heading() {
     if (!g_bno_ok) { g_io.heading_valid = false; return; }
@@ -276,8 +296,8 @@ void mix_comm_init() {
     g_top_decoder.reset();
     g_down_decoder.reset();
 
-#ifndef MIX_HEADING_OTOS
-    // --- BNO055 (fuente de heading por default) ---
+#ifdef MIX_HEADING_LOCAL_BNO
+    // --- BNO055 LOCAL (fuente de heading sólo en el modo por defecto) ---
     Wire.begin();
     Wire.setClock(400000);
     uint8_t tr = 0;
@@ -296,8 +316,8 @@ void mix_comm_init() {
         g_io.heading_error_deg = 0.0f;
     }
 #endif
-    // (Con MIX_HEADING_OTOS no se toca el BNO: heading_inicial se sella con el primer
-    //  Pose2D que llegue de DOWN.)
+    // (En modo SNAPSHOT u OTOS no se toca ningún BNO local: heading_inicial se sella
+    //  con el primer heading válido del snapshot del TOP / del primer Pose2D de DOWN.)
 }
 
 void mix_comm_tick() {
@@ -317,8 +337,8 @@ void mix_comm_tick() {
         }
     }
 
-#ifndef MIX_HEADING_OTOS
-    // Fuente activa = BNO: leer el yaw en este tick (respaldo del snapshot).
+#ifdef MIX_HEADING_LOCAL_BNO
+    // Modo BNO local: leer el yaw en este tick (respaldo del snapshot).
     read_bno_heading();
 #endif
 

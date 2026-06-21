@@ -26,6 +26,25 @@ tipo: indice-operacional
 > banco con Y-hold/pose). Analizado con workflow paralelo (5 lectores + síntesis, validó la
 > implementación contra el código). Journal: `journal/2026-06-21-arqueromix-port-arquero-2025.md`.
 
+> **⚽ DELANTERO "MIX" CON GYRO — heading del BNO del TOP por snapshot (2026-06-21, aditivo, gateado):**
+> El port del delantero 2025 (`src/centralmix/`) ya puede usar el BNO **ahora que el de R1 anda**
+> (banner del BNO más abajo). Hallazgo: el modo "BNO" del centralmix leía un **BNO LOCAL en la
+> CENTRAL** que **R1 NO tiene** (los 2 BNO viven en el TOP) → `heading_valid` quedaba false. El BNO
+> bueno (el del TOP) llega por el WorldSnapshot. Modo nuevo **`-DMIX_HEADING_SNAPSHOT`** = heading del
+> BNO del TOP sin tocar BNO local; env nuevo **`central_robot1_mix_bno`** (= `central_robot1_mix` +
+> el flag). Cierra el **pendiente #5** de centralmix. **NADA existente cambia de binario** (puro
+> aditivo + flag). ⚠️ **Sin compilar por Claude** (shell de la máquina rota: `TEMP`/KMSpico) y **sin
+> banco** → el equipo compila + valida = **TASK-115**. Cableado R1 delantero con gyro: TOP
+> `top_robot1_pri_rt` + CENTRAL `central_robot1_mix_bno`. Escape sin gyro: `-DMIX_HEADING_OTOS`.
+> Journal: `journal/2026-06-21-centralmix-bno-del-top-snapshot.md`.
+> **+ ESTADO DE ARRANQUE (kickoff):** `KICKOFF_SEEK` es el **PRIMER estado** del FSM del centralmix
+> (sin flag; se ejecuta 1 sola vez al inicio del partido, ningún estado vuelve a él). **Reemplaza al
+> `AVANCE_INICIO` 2025** (avance de 700 ms), que se **quitó** por pedido de Elías. Al empezar: ve la
+> pelota → va; no la ve → **impulso fuerte y corto de medialuna** (arco = avance+giro superpuestos, NO
+> el `centrar_*` casi-strafe) hacia el centro → luego búsqueda por giro. Tuneable `mix_config.h`
+> (`MIX_KICKOFF_ARC_*`). Va en TODAS las builds del centralmix → flashear `central_robot1_mix_bno`.
+> Sin compilar/banco → **TASK-116**. Journal: `journal/2026-06-21-centralmix-kickoff-medialuna.md`.
+
 > **📚 TRES SKILLS NUEVAS — ToF, cinemática omni-3, cámaras N6 (2026-06-21, doc-only, sin tocar firmware):**
 > Workflow de investigación paralela (web best-practices + lectura de código anclada) + plantilla de oro
 > `bno055-imu-heading-robocup`. Las 3 en `.claude/skills/`, cada una COMPLEMENTA (no duplica) las que cita:

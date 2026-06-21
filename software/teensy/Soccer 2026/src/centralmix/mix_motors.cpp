@@ -255,5 +255,20 @@ void centrar_antihorario() {
 #endif
 }
 
+// ============================================================
+// Medialuna de arranque (KICKOFF_SEEK). ARCO = AVANCE (base avanzar(): M1=+F, M2=-F,
+// M3=0) + GIRO (base girar(): M1=M2=M3=+T), SUPERPUESTOS (en el omni las velocidades de
+// rueda suman → esto sí da un arco, a diferencia del centrar_* que sale casi-strafe).
+// dir = +1/-1 → lado de la curva. mix_set_motor clampea cada rueda a MIX_MAX_PWM.
+// ⚠️ Sentido/curvatura A CONFIRMAR EN BANCO (igual que el resto de las primitivas).
+// ============================================================
+void kickoff_medialuna(int dir) {
+    const int F = MIX_KICKOFF_ARC_FWD;
+    const int T = (dir >= 0 ? +MIX_KICKOFF_ARC_TURN : -MIX_KICKOFF_ARC_TURN);
+    mix_set_motor(0, +F + T);   // M1 = avance(+F) + giro(T)
+    mix_set_motor(1, -F + T);   // M2 = avance(-F) + giro(T)
+    mix_set_motor(2,  0 + T);   // M3 = giro(T) — la trasera aporta la curvatura
+}
+
 }  // namespace mix
 }  // namespace iitasoccer

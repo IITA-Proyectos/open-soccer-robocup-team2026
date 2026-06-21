@@ -88,10 +88,14 @@ constexpr int AMIX_IMP_INI_REAR  = 110;  // M3 (era 153)
 // ============================================================
 // avanzar(): M1=100, M2=100(sentido opuesto), M3=0. (L152-154)
 constexpr int AMIX_AVANZAR = 100;
-// avanzar_patear() (arquero): PWM FIJO inmediato (sin rampa), M1=patadM1, M2=patadM2, M3=0.
-//   BAJADO 2026-06-21 (pedido Virginia: despeje con menos potencia). 2025: 250/150.
-constexpr int AMIX_PATAD_M1 = 180;   // patadM1 (era 250) — subir si no llega a despejar
-constexpr int AMIX_PATAD_M2 = 120;   // patadM2 (era 150)
+// avanzar_patear() (arquero): RAMPA DE ACELERACIÓN como el DELANTERO (centralmix), pedido Virginia
+// 2026-06-21 (el despeje fijo asimétrico "no apuntaba bien" → veraba). Sube la velocidad de a pasos
+// desde 0 hasta VEL_FINAL → el golpe arranca suave y sale parejo. Patrón SIMÉTRICO M1=+vel, M2=-vel,
+// M3=0 = avance RECTO al frente (a diferencia del 250/150 asimétrico del 2025 que torcía).
+// Misma receta que el delantero (mix_config.h KICK_*). Potencia moderada (pedido previo de bajarla).
+constexpr int AMIX_KICK_VEL_FINAL    = 180;  // velocidad PICO del golpe — subir si no llega a despejar
+constexpr int AMIX_KICK_PASO         = 20;   // incremento de PWM por escalón de la rampa
+constexpr int AMIX_KICK_INTERVALO_MS = 10;   // ms entre escalones (rampa 0→180 en ~90 ms)
 // PATEANDO_atras_arquero (inline 2025, L1186-1188): retroceso recto M1=ATRAS, M2=ATRAS, M3=0.
 constexpr int AMIX_ATRAS = 120;      // retroceso del despeje (era 150) — bajado con el resto
 
@@ -155,17 +159,14 @@ constexpr bool AMIX_HEADING_SOURCE_IS_OTOS = false;  // DEFAULT: heading del TOP
 #endif
 
 // SIGNO de la corrección de rumbo de la patrulla (las 3 bandas de error en ad/aiproporcional).
-// ⚠️ 2026-06-21 (banco Virginia): el arquero ROTABA hasta dar 180° mientras strafeaba (quedaba
-// mirando nuestro arco). El strafe lateral anda bien → es DERIVA DE RUMBO: la corrección de las
-// 3 bandas está al revés para este robot (igual idea que OMEGA_SIGN del mixer 2026) o no tiene
-// heading válido para corregir. PERILLA: si el arquero se da vuelta mientras patrulla, flashear
-// con -DARQMIX_FLIP_HEADING (invierte el signo → la corrección empuja al otro lado). REQUIERE
-// que el TOP mande heading_valid=1; si no, no hay corrección y el strafe deriva igual (confirmar
-// el heading en el monitor). Default +1 = comportamiento actual.
-#ifdef ARQMIX_FLIP_HEADING
-constexpr float AMIX_HEADING_CORRECT_SIGN = -1.0f;
+// ✅ VALIDADO EN BANCO (Virginia 2026-06-21): el signo CORRECTO para este robot es -1 (con +1 el
+// arquero se daba vuelta 180° mientras patrullaba; con -1 queda derecho). Es el DEFAULT.
+// El flag -DARQMIX_HEADING_SIGN_OLD vuelve al +1 viejo (NO usar salvo diagnóstico). Requiere
+// heading válido del TOP para que la corrección actúe.
+#ifdef ARQMIX_HEADING_SIGN_OLD
+constexpr float AMIX_HEADING_CORRECT_SIGN = +1.0f;  // viejo (daba 180°) — solo fallback/diagnóstico
 #else
-constexpr float AMIX_HEADING_CORRECT_SIGN = +1.0f;
+constexpr float AMIX_HEADING_CORRECT_SIGN = -1.0f;  // ✅ CORRECTO (banco Virginia 2026-06-21)
 #endif
 
 }  // namespace arqmix

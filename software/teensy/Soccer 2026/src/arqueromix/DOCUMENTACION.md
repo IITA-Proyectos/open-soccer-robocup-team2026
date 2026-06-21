@@ -223,9 +223,9 @@ omni-3 en strafe abierto **rota solo** (yaw parásito — ver skill `dinamica-om
 dar 180°. Cambios:
 - **Arranque más suave:** `impulso_inicial` bajado (M1/M2 90→70, M3 153→110) para que no dé un
   tirón al iniciar (153 además rozaba el techo térmico).
-- **Perilla para dar vuelta la corrección:** flag `-DARQMIX_FLIP_HEADING` (env
-  `central_robot2_arqueromix_flip`). Si el arquero se da vuelta mientras patrulla, flashear ese
-  env → la corrección empuja al otro lado.
+- **Perilla para dar vuelta la corrección:** ✅ **RESUELTO 2026-06-21** — el signo correcto es **-1**
+  y YA es el DEFAULT del programa base (ver §15). El env `_flip` se removió (ya no hace falta;
+  el fallback al signo viejo queda como `-DARQMIX_HEADING_SIGN_OLD`, solo diagnóstico).
 - ⚠️ **La corrección SOLO funciona con heading válido del TOP.** Confirmar en el monitor que
   `heading_valid=1` (TOP `top_robot2_pri` con el BNO sano). Si el heading no llega, NINGÚN signo
   corrige y el strafe deriva igual → ahí el tema es el heading del TOP, no esta perilla.
@@ -240,6 +240,25 @@ dar 180°. Cambios:
    no está llegando válido (revisar el monitor) o el strafe deriva sin corrección posible.
 3. Con el arquero ya derecho, recién ahí se puede verificar el seguimiento izq/der de la pelota
    (lo que no se pudo por quedar al revés).
+
+## 15. Banco 2026-06-21 (cierre) — signo de rumbo VALIDADO + pateo con rampa
+
+**(1) Signo de rumbo — VALIDADO.** Virginia confirmó en banco que la versión con la corrección
+INVERTIDA (signo -1) deja el arquero **derecho** (sin la vuelta de 180°). Ese signo quedó como el
+**DEFAULT del programa base** (`AMIX_HEADING_CORRECT_SIGN = -1`). Se removió el env `_flip`: ahora
+se flashea directo `central_robot2_arqueromix`. (Fallback al signo viejo: `-DARQMIX_HEADING_SIGN_OLD`.)
+
+**(2) Pateo con RAMPA (como el delantero).** Virginia: "encuentra bien la pelota pero no apunta como
+corresponde" → copiar la patada del delantero (con rampa de aceleración). El pateo del arquero
+pasó de **PWM fijo asimétrico** (180/120, que veraba → no apuntaba) a una **rampa simétrica** igual
+a la del delantero (`centralmix`): sube de 0 a `AMIX_KICK_VEL_FINAL` (180) de a `AMIX_KICK_PASO`
+(20) cada `AMIX_KICK_INTERVALO_MS` (10 ms) → llega al pico en ~90 ms. Patrón `M1=+vel, M2=-vel, M3=0`
+= avance **RECTO** al frente (por eso ahora "apunta"). La rampa se resetea en `parar()` → cada
+despeje arranca de 0. Implementado en `amix_motors.cpp::avanzar_patear` (port de la del delantero).
+
+**Tunear el despeje:** si no llega a despejar, subir `AMIX_KICK_VEL_FINAL` (180→210…). Si sigue sin
+apuntar bien (patea de costado), achicar `AMIX_TOL_KICK_DEG` (30°→20°) para que solo dispare con la
+pelota más al frente. Todo en `amix_config.h`.
 
 ## 9. Cómo compilar, flashear y volver atrás
 

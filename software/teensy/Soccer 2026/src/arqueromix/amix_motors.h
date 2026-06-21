@@ -46,8 +46,9 @@ void impulso_inicial_mov();
 // Avance recto (M1=+100, M2=-100, M3=0). (L152-154)
 void avanzar();
 
-// Patada del arquero: PWM FIJO inmediato (sin rampa, a diferencia del delantero):
-//   M1=+patadM1(250), M2=-patadM2(150), M3=0. (L174-178)
+// Patada del arquero: RAMPA DE ACELERACIÓN (como el delantero centralmix, pedido Virginia
+// 2026-06-21): sube de 0 a AMIX_KICK_VEL_FINAL de a pasos. M1=+vel, M2=-vel (SIMÉTRICO = recto
+// al frente → "apunta" bien). NO bloqueante; se resetea en parar()/init.
 void avanzar_patear();
 
 // Retroceso recto de la secuencia de despeje (inline 2025, L1186-1188):

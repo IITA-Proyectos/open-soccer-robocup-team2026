@@ -23,6 +23,12 @@ static const int kINA[3] = { AMIX_PIN_INA1, AMIX_PIN_INA2, AMIX_PIN_INA3 };
 static const int kINB[3] = { AMIX_PIN_INB1, AMIX_PIN_INB2, AMIX_PIN_INB3 };
 static const int kPWM[3] = { AMIX_PIN_PWM1, AMIX_PIN_PWM2, AMIX_PIN_PWM3 };
 
+// Estado de la RAMPA del golpe de despeje (port de la del delantero centralmix). Estáticos de
+// archivo. s_kick_active se resetea en parar()/init → cada despeje arranca de 0 y rampa completa.
+static int           s_kick_vel     = 0;
+static unsigned long s_kick_prev_ms = 0;
+static bool          s_kick_active  = false;
+
 void amix_motors_init() {
     for (int idx = 0; idx < 3; ++idx) {
         pinMode(kINA[idx], OUTPUT);
@@ -34,6 +40,7 @@ void amix_motors_init() {
         digitalWrite(kINB[idx], LOW);
         analogWrite(kPWM[idx], 0);
     }
+    s_kick_vel = 0; s_kick_prev_ms = 0; s_kick_active = false;
 }
 
 void amix_set_motor(int idx, int pwm_signed) {
@@ -55,6 +62,7 @@ void amix_set_motor(int idx, int pwm_signed) {
 }
 
 void parar() {
+    s_kick_active = false;   // cierra la rampa del golpe → el próximo despeje arranca de 0
     amix_set_motor(0, 0);
     amix_set_motor(1, 0);
     amix_set_motor(2, 0);
@@ -121,12 +129,29 @@ void avanzar() {
     amix_set_motor(2, 0);
 }
 
-// avanzar_patear() 2025 (L174-178), arquero = PWM FIJO inmediato (sin rampa):
-//   M1=+patadM1(250), M2=-patadM2(150), M3=0.
+// avanzar_patear() — RAMPA DE ACELERACIÓN (port de la del delantero centralmix), pedido Virginia
+// 2026-06-21. NO bloqueante: cada AMIX_KICK_INTERVALO_MS sube s_kick_vel en AMIX_KICK_PASO hasta
+// AMIX_KICK_VEL_FINAL y aplica M1=+vel, M2=-vel (SIMÉTRICO = recto al frente, así "apunta" bien),
+// M3=0. Se llama repetidamente desde PATEANDO_adelante. La rampa se resetea en parar()/init →
+// cada golpe arranca de 0 y hace la rampa completa (no como el 2025, que iba a tope inmediato).
 void avanzar_patear() {
-    amix_set_motor(0, +AMIX_PATAD_M1);
-    amix_set_motor(1, -AMIX_PATAD_M2);
-    amix_set_motor(2, 0);
+    if (!s_kick_active) {           // (re)entrada a la rampa → arrancar de 0
+        s_kick_active  = true;
+        s_kick_vel     = 0;
+        s_kick_prev_ms = millis();
+    }
+    const unsigned long now = millis();
+    if (now - s_kick_prev_ms >= (unsigned long)AMIX_KICK_INTERVALO_MS) {
+        s_kick_prev_ms = now;
+        if (s_kick_vel < AMIX_KICK_VEL_FINAL) {
+            s_kick_vel += AMIX_KICK_PASO;
+            if (s_kick_vel > AMIX_KICK_VEL_FINAL) s_kick_vel = AMIX_KICK_VEL_FINAL;
+        }
+        amix_set_motor(0, +s_kick_vel);  // M1
+        amix_set_motor(1, -s_kick_vel);  // M2 (sentido opuesto = avance RECTO)
+        amix_set_motor(2, 0);            // M3
+    }
+    // Entre escalones NO se reescriben los motores (mantienen el último PWM) — igual que el delantero.
 }
 
 // PATEANDO_atras_arquero inline 2025 (L1186-1188): M1=-150, M2=+150, M3=0 (recto atrás).

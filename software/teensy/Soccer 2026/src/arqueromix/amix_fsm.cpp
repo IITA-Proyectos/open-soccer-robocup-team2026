@@ -152,6 +152,15 @@ void amix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::moverce_derecha:               // L1030-1076 (FIX cámara por ÁNGULO 2026-06-21)
+            // SAFETY ÁREA CHICA (pedido Virginia 2026-06-21): si DOWN detecta blanco (la línea del área,
+            // típicamente porque derivó hacia ATRÁS metiéndose al arco) → NO seguir metiéndose: re-hace el
+            // HOMING que ya funcionaba (retrocede hasta blanco → avanza a ciegas → reanuda patrulla por cámara).
+            if (AMIX_REHOME_ON_LINE && AMIX_PATRULLA_POR_ARCO && linea()) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::inicio_retroceder;  // re-home, luego vuelve a leer la cámara del arco
+                break;
+            }
             adproporcional(pd, error);              // strafe derecha + corrección rumbo
             if (haypelota) {
                 if (ball_para_despejar()) {         // cerca + al frente → DESPEJA
@@ -192,6 +201,13 @@ void amix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::moverce_izquierda:             // L1078-1124 (espejo, FIX cámara por ÁNGULO)
+            // SAFETY ÁREA CHICA (espejo): blanco detectado → re-home (no meterse al arco) → reanuda cámara.
+            if (AMIX_REHOME_ON_LINE && AMIX_PATRULLA_POR_ARCO && linea()) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::inicio_retroceder;
+                break;
+            }
             aiproporcional(pd, error);
             if (haypelota) {
                 if (ball_para_despejar()) {

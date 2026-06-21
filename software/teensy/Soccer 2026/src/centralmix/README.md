@@ -42,8 +42,9 @@ DOWN (Serial1) ┴─ mix_comm ─► g_io ───►┤
    cámara 2025 (píxeles); ahora son mm/grados. Re-tunear (`MIX_TOL_*` en `mix_config.h`).
 3. **Línea 3-sensores → 1-ángulo** — los 3 `DETECTA_LINEA_*` del 2025 se mapean por sector
    angular (±30°) del dato de DOWN. Re-tunear el sector.
-4. **Arco rival** — hardcodeado AMARILLO (como 2025). Invertir con `-DMIX_ATTACK_BLUE`.
-   Confirmar a qué arco ataca R1 antes del partido.
+4. **Arco rival = `goal_opp`** (POR ROL, sin color). La polaridad propio/rival la resuelve la
+   placa TOP (`goal_polarity`); el delantero apunta al arco que el TOP marca como rival. Ya no
+   hay `-DMIX_ATTACK_BLUE` ni color en la CENTRAL. Confirmar en banco que el TOP da `goal_opp` bien.
 5. **Heading source** — ✅ RESUELTO (coach 2026-06-21): R1 NO tiene BNO local → usa el
    **BNO del TOP por snapshot** (env `central_robot1_mix_bno`, `-DMIX_HEADING_SNAPSHOT`).
    El BNO del TOP de R1 quedó andando + validado en banco 2026-06-21 (fix `bno_left_en`).

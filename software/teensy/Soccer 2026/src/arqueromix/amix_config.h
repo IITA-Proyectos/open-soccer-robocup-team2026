@@ -157,6 +157,12 @@ constexpr float AMIX_TOL_CERCANIA_MM  = 250.0f; // DESPEJA si la distancia eucl�
 // ⚠️ SAFETY a 50 s TEMPORAL (pedido Virginia, para observar el retroceso): después bajar a ~4 s.
 constexpr unsigned long AMIX_T_INICIO_RETRO_SAFETY = 50000; // TEMP 50 s (era 4000) — bajar luego
 constexpr unsigned long AMIX_T_INICIO_AVANCE       = 400;   // avanzar un poco tras ver la línea (SIN leer sensores) — tunable
+// VELOCIDAD del avance del homing (el movimiento a ciegas tras detectar la línea). Banco Virginia
+// 2026-06-21: "anda de golpe / fuerte" → SOLO se baja la velocidad (90→75... acá 75). MISMO sentido y
+// MISMOS 400 ms que el base; lo ÚNICO distinto vs avanzar() es el PWM. 75 queda apenas sobre el piso
+// de las delanteras (70): si STUTTEA/no arranca, subir hacia 85; bajar más NO lo hace más suave (zona
+// muerta → tironea). Si aún va "de golpe" el tema es el arranque sin rampa, no el PWM (avisar).
+constexpr int AMIX_INICIO_AVANCE_PWM = 75;
 // Retroceso del homing: primitiva DEDICADA con PWM propio (no acoplada al despeje) y dirección
 // flippable. retroceder_inicio() = M1=-PWM, M2=+PWM (= patrón patear_atras = hacia ATRÁS) × SIGN.
 // ⚠️ Si al GO el robot va hacia ADELANTE en vez de atrás → flashear con -DARQMIX_FLIP_INICIO_RETRO.
@@ -187,6 +193,39 @@ constexpr unsigned long AMIX_T_ATRAS_SAFETY  = 4000;  // tope de seguridad del r
 // llega como line_present/line_depth (amix_io, de DOWN). line_depth>=TRIGGER = tocando.
 // ============================================================
 constexpr uint8_t AMIX_LINE_DEPTH_TRIGGER = 1;  // ≥1 sensor en blanco = línea presente
+
+// ============================================================
+// PATRULLA POR ARCO PROPIO (cámara trasera) — pedido Virginia 2026-06-21.
+// ----------------------------------------------------------------------------------
+// La patrulla deja de rebotar contra la LÍNEA y rebota cuando el ARCO PROPIO (que la cámara trasera
+// ve por detrás, vía snapshot del TOP) llega a cierto ÁNGULO = el arquero llegó al BORDE de su arco
+// → se va al otro lado (misma lógica de rebote + commit que la línea).
+//
+// GEOMETRÍA: el arco propio está DETRÁS del arquero (mira al campo) → goal_own_angle ≈ ±180° cuando
+// está CENTRADO en su arco. El "desvío" se mide respecto de 180°: rear_dev = wrap180(goal_own_angle−180):
+// ≈0 centrado, crece hacia un lado al correrse. Borde = |rear_dev| ≥ AMIX_TOL_ARCO_OWN_DEG.
+//
+// ⚠️ DECISIÓN VIRGINIA: REEMPLAZA la línea en la patrulla (la línea sigue SOLO para el homing y el
+// retroceso del despeje). RIESGO ACEPTADO: si la cámara NO ve el arco propio (goal_own_visible=0) no
+// hay rebote → el arquero podría irse del arco. goal_own NO está validado en banco + depende de la
+// calibración LAB de las cámaras. Fallback: -DARQMIX_PATRULLA_LINEA vuelve al rebote por LÍNEA.
+// ============================================================
+#ifdef ARQMIX_PATRULLA_LINEA
+constexpr bool AMIX_PATRULLA_POR_ARCO = false;  // fallback: patrulla rebota por LÍNEA (viejo)
+#else
+constexpr bool AMIX_PATRULLA_POR_ARCO = true;   // DEFAULT: patrulla rebota por ÁNGULO del arco propio
+#endif
+// Umbral de "borde del arco": cuánto desvío del arco propio respecto de "directamente atrás" (180°)
+// cuenta como borde. Más CHICO = patrulla más ANGOSTA (rebota antes); más GRANDE = más ancha. EL knob
+// principal de esta función → ajustar en banco mirando dónde rebota. <RE-TUNE EN BANCO>
+constexpr float AMIX_TOL_ARCO_OWN_DEG = 30.0f;
+// SENTIDO del desvío (qué lado del arco es cuál). Si el arquero rebota en el borde EQUIVOCADO (o no
+// rebota donde debe), invertir con -DARQMIX_FLIP_ARCO_OWN.
+#ifdef ARQMIX_FLIP_ARCO_OWN
+constexpr float AMIX_ARCO_OWN_SIGN = -1.0f;
+#else
+constexpr float AMIX_ARCO_OWN_SIGN = +1.0f;
+#endif
 
 // ============================================================
 // Comunicación — enlaces TOP (Serial7) y DOWN (Serial1), 230400 (= comm_top/comm_down).

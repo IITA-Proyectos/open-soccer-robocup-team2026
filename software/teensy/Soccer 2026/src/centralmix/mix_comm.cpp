@@ -30,14 +30,12 @@
 // acá y no en la FSM porque heading_inicial pertenece al dominio de "fuente de
 // heading" (BNO vs OTOS) que ya vive en esta capa; así la FSM consume el error listo.
 //
-// COLOR DEL ARCO RIVAL (goal_opp → yellow/blue):
-//   El WorldSnapshot trae goal_opp (rival) y goal_own (propio) por ROL, no por color.
-//   Hay que mapearlos a goal_yellow_* / goal_blue_*. Convención del repo
-//   (src/central/strategy.h:41 "ARCO_CONTRINCANTE hardcoded a amarillo"): rival =
-//   AMARILLO por default. Acá se respeta y se deja GATEADO con -DMIX_ATTACK_BLUE
-//   (default OFF) para poder invertir la polaridad de campo sin tocar código.
-//     - default            : goal_opp → yellow,  goal_own → blue
-//     - con MIX_ATTACK_BLUE : goal_opp → blue,    goal_own → yellow
+// ARCOS POR ROL (goal_opp / goal_own), SIN color:
+//   El WorldSnapshot trae goal_opp (rival) y goal_own (propio) por ROL, YA resueltos por la
+//   placa TOP (goal_polarity: "el arco al frente del robot es el rival", fijado al arranque por
+//   un latch). La placa CENTRAL NUNCA pregunta por color (amarillo/azul) ni invierte polaridad:
+//   se copian DIRECTO a g_io.goal_opp_* / goal_own_*. (Se eliminó el viejo mapeo a yellow/blue y
+//   el flag -DMIX_ATTACK_BLUE: la polaridad es responsabilidad ÚNICA del TOP.)
 //
 // ⚠️ NO TESTEADO EN HARDWARE.
 
@@ -153,32 +151,16 @@ void apply_top_snapshot(const WorldSnapshot& s) {
         g_io.t_last_ball_seen_ms = now;
     }
 
-    // --- Arcos: goal_opp (rival) / goal_own (propio) → yellow/blue por polaridad ---
-    // Sentinela del schema: visible=0 ⇒ angle/dist NO válidos (no leerlos).
-    const bool opp_vis = (s.goal_opp_visible != 0);
-    const bool own_vis = (s.goal_own_visible != 0);
-    const float opp_ang  = s.goal_opp_angle_centideg / 100.0f;
-    const float opp_dist = static_cast<float>(s.goal_opp_distance_mm);
-    const float own_ang  = s.goal_own_angle_centideg / 100.0f;
-    const float own_dist = static_cast<float>(s.goal_own_distance_mm);
-
-#ifdef MIX_ATTACK_BLUE
-    // Rival = AZUL.
-    g_io.goal_blue_visible   = opp_vis;
-    g_io.goal_blue_angle     = opp_vis ? opp_ang  : 0.0f;
-    g_io.goal_blue_dist      = opp_vis ? opp_dist : 0.0f;
-    g_io.goal_yellow_visible = own_vis;
-    g_io.goal_yellow_angle   = own_vis ? own_ang  : 0.0f;
-    g_io.goal_yellow_dist    = own_vis ? own_dist : 0.0f;
-#else
-    // DEFAULT del repo: rival = AMARILLO (strategy.h:41).
-    g_io.goal_yellow_visible = opp_vis;
-    g_io.goal_yellow_angle   = opp_vis ? opp_ang  : 0.0f;
-    g_io.goal_yellow_dist    = opp_vis ? opp_dist : 0.0f;
-    g_io.goal_blue_visible   = own_vis;
-    g_io.goal_blue_angle     = own_vis ? own_ang  : 0.0f;
-    g_io.goal_blue_dist      = own_vis ? own_dist : 0.0f;
-#endif
+    // --- Arcos por ROL (opp=RIVAL / own=PROPIO): copia DIRECTA del snapshot, SIN color ---
+    // La decisión "qué arco es el rival y cuál el propio" YA la tomó la placa TOP (goal_polarity).
+    // El delantero NO mira color (amarillo/azul) NI invierte nada: consume goal_opp/goal_own ya
+    // resueltos. Sentinela del schema: visible=0 ⇒ angle/dist NO válidos (no leerlos).
+    g_io.goal_opp_visible = (s.goal_opp_visible != 0);
+    g_io.goal_opp_angle   = g_io.goal_opp_visible ? (s.goal_opp_angle_centideg / 100.0f) : 0.0f;
+    g_io.goal_opp_dist    = g_io.goal_opp_visible ? static_cast<float>(s.goal_opp_distance_mm) : 0.0f;
+    g_io.goal_own_visible = (s.goal_own_visible != 0);
+    g_io.goal_own_angle   = g_io.goal_own_visible ? (s.goal_own_angle_centideg / 100.0f) : 0.0f;
+    g_io.goal_own_dist    = g_io.goal_own_visible ? static_cast<float>(s.goal_own_distance_mm) : 0.0f;
 
     // --- Heading desde el snapshot (BNO del TOP) — activo salvo en modo OTOS ---
     // El snapshot trae el heading fusionado del TOP + el flag de validez (bit4 de flags).

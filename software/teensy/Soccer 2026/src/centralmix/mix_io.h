@@ -36,13 +36,18 @@ struct MixIO {
     bool  ball_visible = false;    // ¿la cámara ve la pelota? (haypelota 2025)
     float angulo_pelota_deg = 0.0f; // atan2(ball_x_cm, ball_y_cm) en °, calculado por mix_comm
 
-    // ---- Arcos (ángulo en ° marco robot; distancia en mm) ----
-    bool  goal_yellow_visible = false;
-    bool  goal_blue_visible   = false;
-    float goal_yellow_angle = 0.0f;  // ° (mismo signo que angulo_pelota_deg: + derecha)
-    float goal_yellow_dist  = 0.0f;  // mm
-    float goal_blue_angle   = 0.0f;  // °
-    float goal_blue_dist    = 0.0f;  // mm
+    // ---- Arcos por ROL, NO por color (ángulo ° marco robot, +=derecha; distancia mm) ----
+    // ⚠️ La placa CENTRAL (este programa) NUNCA pregunta por COLOR (amarillo/azul). La placa TOP
+    // ya resolvió cuál arco es el RIVAL (opp = al que se patea) y cuál el PROPIO (own), con el
+    // módulo goal_polarity ("el arco al FRENTE del robot es el rival", fijado al arranque por un
+    // latch). Acá sólo se consume ese rol: el delantero apunta el pateo al goal_opp por su ÁNGULO,
+    // sin saber ni preguntar el color.
+    bool  goal_opp_visible = false;  // ¿el TOP ve el arco RIVAL (al que patear)?
+    float goal_opp_angle   = 0.0f;   // ° al arco rival: 0=frente, +=derecha. Válido sólo si visible
+    float goal_opp_dist    = 0.0f;   // mm al arco rival
+    bool  goal_own_visible = false;  // ¿el TOP ve el arco PROPIO? (disponible; la FSM hoy no lo usa)
+    float goal_own_angle   = 0.0f;   // ° al arco propio
+    float goal_own_dist    = 0.0f;   // mm al arco propio
 
     // ---- Heading / rumbo ----
     float heading_deg = 0.0f;        // heading ACTUAL de la fuente seleccionada (BNO por

@@ -279,8 +279,11 @@ moverce_derecha    → recién ACÁ empieza a patrullar
   propio `AMIX_INICIO_RETRO_PWM=100` y dirección flippable) hasta que `linea()` da true (DOWN ve el
   blanco del área). Safety `AMIX_T_INICIO_RETRO_SAFETY` = **50 s TEMPORAL** (banco Virginia, para
   observar el retroceso; bajar a ~4 s cuando ande).
-- **`inicio_avanzar`**: llama `avanzar()` durante `AMIX_T_INICIO_AVANCE=400 ms`, **sin chequear la
-  línea** a propósito (para despegarse del blanco antes de patrullar). Después → `moverce_derecha`.
+- **`inicio_avanzar`**: llama `avanzar_inicio()` durante `AMIX_T_INICIO_AVANCE=400 ms`, **sin chequear
+  la línea** a propósito (para despegarse del blanco antes de patrullar). Después → `moverce_derecha`.
+  `avanzar_inicio()` = igual a `avanzar()` pero a **velocidad propia** `AMIX_INICIO_AVANCE_PWM=75`
+  (banco Virginia 2026-06-21: ese avance iba "de golpe" → se bajó SOLO la velocidad; mismo sentido y
+  mismos 400 ms; no toca el `avanzar()=100` del despeje).
 - El `match_running` (árbitro) gobierna: el homing arranca con el **GO**. ✅ **El sentido del
   retroceso quedó VALIDADO con el env BASE** (banco Virginia 2026-06-21: va para atrás bien, no
   hizo falta `_retroflip`).
@@ -296,8 +299,10 @@ directo a `inicio_avanzar` (avanza); (b) el **retroceso está invertido** en est
 Si con ambos arranca yendo adelante apenas detecta línea, es (a) (arranca sobre el blanco).
 
 **Tunear:** `AMIX_T_INICIO_AVANCE` (400 ms) = cuánto se despega de la línea antes de patrullar.
-`AMIX_INICIO_RETRO_PWM` (100) = velocidad PROPIA del retroceso de inicio (ya no comparte con el
-despeje). `AMIX_T_INICIO_RETRO_SAFETY` = 50 s TEMPORAL — bajar a ~4 s cuando el arranque ande.
+`AMIX_INICIO_AVANCE_PWM` (75) = VELOCIDAD del avance del homing (subir hacia 85 si stuttea/no arranca;
+NO bajar de 70 = piso de las delanteras). `AMIX_INICIO_RETRO_PWM` (100) = velocidad PROPIA del retroceso
+de inicio (ya no comparte con el despeje). `AMIX_T_INICIO_RETRO_SAFETY` = 50 s TEMPORAL — bajar a ~4 s
+cuando el arranque ande.
 Motores: TODO se mueve con PWM (`analogWrite` vía `amix_set_motor`); el retroceso va a PWM 100/255.
 
 ## 17. Salida de la LÍNEA LATERAL — movimiento a ciegas + no volver (banco Virginia 2026-06-21)
@@ -338,6 +343,44 @@ MISMA línea y rebotaba para el lado contrario = **de vuelta a la línea**. Fixe
 - **Tiempos revisados:** cada estado usa su propio timer (`millis_inicio_estado` al entrar), el
   commit es `millis() < s_commit_until_ms`. NO se encontró bug de tiempo; el problema era la
   dirección del rebote, no los tiempos.
+
+### 17.2 La patrulla rebota por el ARCO PROPIO, no por la línea (pedido Virginia 2026-06-21)
+
+**Cambio pedido (decisión Virginia: REEMPLAZAR la línea en la patrulla).** En vez de rebotar contra
+la **línea**, la patrulla rebota cuando el **ARCO PROPIO** (que la cámara trasera ve por detrás, vía
+snapshot del TOP) llega a cierto **ángulo** = el arquero llegó al **borde de su arco** → se va al otro
+lado. Misma mecánica de rebote (reúsa los estados `salir_linea_*` + el commit), sólo cambia **qué lo
+dispara**.
+
+**Geometría.** El arco propio está DETRÁS del arquero (mira al campo) → `goal_own_angle ≈ ±180°` cuando
+está CENTRADO en su arco. El "desvío" se mide respecto de 180°: `rear_goal_dev = wrap180(goal_own_angle
+− 180) × SIGN` (≈0 centrado, crece hacia un lado al correrse). **Borde** = `|rear_goal_dev| ≥
+AMIX_TOL_ARCO_OWN_DEG`. Helpers `borde_arco_der()` / `borde_arco_izq()` en `amix_fsm.cpp` (sólo
+disparan con `goal_own_visible`).
+
+**FALLBACK A LÍNEA cuando la cámara NO ve el arco (fix 2026-06-21).** En `moverce_*`, el borde es:
+`en_borde = goal_own_visible ? borde_arco_*() : linea()`. Es decir: **rebota por el ARCO cuando la
+cámara lo ve** (pedido Virginia) **y por la LÍNEA cuando no lo ve**. Así la patrulla **SIEMPRE rebota**
+y nunca se va de largo. (Antes, en modo puro-arco, si la cámara no veía el arco NO rebotaba nada → el
+arquero se iba caminando y PARECÍA que el programa no estaba cargado; este fix lo resuelve.) Para
+diagnosticar dónde está rebotando: si rebota **angosto** (al borde del arco) está usando la cámara; si
+rebota **ancho** (recién en las líneas de la cancha) la cámara no ve el arco y está en fallback.
+
+**⚠️ Notas.** `goal_own` NO está validado en banco; depende de la **calibración LAB** de las cámaras N6
+y de que el robot **arranque mirando a la cancha** (si arranca girado, la polaridad del TOP queda
+invertida y el seguimiento del arco se rompe). Fallbacks por flag: `-DARQMIX_PATRULLA_LINEA` = patrulla
+SÓLO por línea (ignora el arco). El homing y el retroceso del despeje usan la línea siempre.
+
+**Tunear:** `AMIX_TOL_ARCO_OWN_DEG` (30°) = umbral de "borde" (más chico = patrulla más angosta, rebota
+antes; más grande = más ancha) — EL knob principal. `AMIX_ARCO_OWN_SIGN` (signo del desvío): si rebota
+en el borde EQUIVOCADO o no rebota, invertir con `-DARQMIX_FLIP_ARCO_OWN`.
+
+**Cómo verificar (Virginia):** flashear `central_robot2_arqueromix`. Con `match_running` en GO y el
+arquero centrado en su arco, debería patrullar de lado a lado y **rebotar al llegar a cada borde del
+arco** (sin tocar la línea). (1) ¿Rebota donde corresponde el borde del arco? Ajustá `AMIX_TOL_ARCO_OWN_DEG`.
+(2) ¿Rebota al revés / no rebota? Probá `-DARQMIX_FLIP_ARCO_OWN`. (3) ¿Se va de largo sin rebotar? La
+cámara no está viendo el arco (`goal_own_visible=0`) → es el riesgo conocido; volvé a la línea con
+`-DARQMIX_PATRULLA_LINEA` o validamos la cámara primero.
 
 ## 18. Despeje DIRIGIDO al arco rival + arcos por ROL, no por color (pedido Gustavo 2026-06-21)
 

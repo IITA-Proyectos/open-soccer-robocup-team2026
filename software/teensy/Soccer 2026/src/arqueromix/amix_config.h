@@ -68,10 +68,13 @@ constexpr int AMIX_AI_REAR_EPOS      = 40;   // aiproporcional  (izquierda) M3
 constexpr int AMIX_PROP_M1_ENEG      = 40;   // "motor derecho" (idx0=M1) 2025
 constexpr int AMIX_PROP_M2_ENEG      = 65;   // "motor izquierdo" (idx1=M2) 2025
 constexpr int AMIX_AD_REAR_ENEG      = 40;   // adproporcional M3
-constexpr int AMIX_AI_REAR_ENEG      = 100;  // aiproporcional  M3
+constexpr int AMIX_AI_REAR_ENEG      = 75;   // aiproporcional M3 — BAJADO 100→75 (banco Virginia 2026-06-21): mata la asimetría que hacía SOBREPASAR a la IZQUIERDA (era 2.5× la derecha=40; ahora 1.875×). Si ahora se pasa a la DERECHA, subir 75→85.
 
-// `pd` (factor proporcional): 1.0 sin pelota (patrulla base), 1.5 con pelota desviada.
-constexpr float AMIX_PD_BASE = 1.0f;
+// `pd` (factor proporcional): patrulla base, ×1.5 con pelota desviada.
+// BAJADO 1.0→0.85 (banco Virginia 2026-06-21): patrulla más LENTA (-15%) sin caer en zona muerta (el
+// patrón de PWM se escala parejo). ⚠️ NO bajar de 0.80 o las delanteras (piso ~70) stallean → si a
+// 0.85 se traba/espasmódico, SUBIR a 0.90 (no bajar).
+constexpr float AMIX_PD_BASE = 0.85f;
 constexpr float AMIX_PD_BALL = 1.5f;
 // pd FUERTE para la SALIDA de línea a ciegas (banco Virginia 2026-06-21: necesitaba más impulso
 // para despegarse bien de la línea lateral). Subir si todavía no se despega; bajar si se pasa.
@@ -182,7 +185,7 @@ constexpr int AMIX_INICIO_RETRO_SIGN = +1;
 // movimiento A CIEGAS (sin leer sensores) hacia el lado opuesto —igual idea que el avance del
 // homing—, y después patrulla para el otro lado SIN volver enseguida (commit). Evita que se
 // "enganche" oscilando en la línea.
-constexpr unsigned long AMIX_T_SALIR_LINEA     = 450;  // duración del movimiento a ciegas al salir de la línea lateral (≈ el avance del homing)
+constexpr unsigned long AMIX_T_SALIR_LINEA     = 350;  // BAJADO 450→350 (banco Virginia 2026-06-21): rebote más CORTO → menos SOBREPASO. Si ahora NO se despega de la línea, volver a 400.
 constexpr unsigned long AMIX_T_PATRULLA_COMMIT = 1000; // tras salir, ignora el LADO de la pelota este tiempo (no vuelve enseguida hacia la línea)
 constexpr unsigned long AMIX_T_PAT_PAUSA_INI = 200;   // PATEANDO_pausa_inicial_arquero
 constexpr unsigned long AMIX_T_PAT_ADELANTE  = 450;   // PATEANDO_adelante_arquero
@@ -224,8 +227,8 @@ constexpr bool AMIX_PATRULLA_POR_ARCO = true;   // DEFAULT: patrulla rebota por 
 // Umbral de "borde del arco": cuánto desvío del arco propio respecto de "directamente atrás" (180°)
 // cuenta como borde. Más CHICO = patrulla más ANGOSTA (rebota antes, más centrada al arco); más GRANDE
 // = más ancha. EL knob principal del recorrido lateral → ajustar en banco mirando dónde rebota.
-// BAJADO 30→20 (banco Virginia 2026-06-21): patrulla más ANGOSTA, más centrada frente al arco. <RE-TUNE>
-constexpr float AMIX_TOL_ARCO_OWN_DEG = 20.0f;
+// BAJADO 30→20→15 (banco Virginia 2026-06-21): patrulla más ANGOSTA, más centrada frente al arco. <RE-TUNE>
+constexpr float AMIX_TOL_ARCO_OWN_DEG = 15.0f;
 // SENTIDO del desvío (qué lado del arco es cuál). Si el arquero rebota en el borde EQUIVOCADO (o no
 // rebota donde debe), invertir con -DARQMIX_FLIP_ARCO_OWN.
 #ifdef ARQMIX_FLIP_ARCO_OWN

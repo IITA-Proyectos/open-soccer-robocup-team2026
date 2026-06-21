@@ -111,9 +111,11 @@ void amix_fsm_tick() {
             }
             break;
 
-        case Estado::inicio_avanzar:                // avanzar un poco SIN leer los sensores
-            avanzar();                               // a ciegas: NO se chequea linea() acá a propósito
-            if (millis() - millis_inicio_estado >= AMIX_T_INICIO_AVANCE) {  // ~400 ms
+        case Estado::inicio_avanzar:                // avanzar un IMPULSO BREVE SIN leer los sensores
+            avanzar_inicio();                        // primitiva dedicada (PWM propio, suave): impulso
+                                                     // momentáneo a ciegas para despegarse de la línea
+                                                     // SIN torcerse (no se chequea linea() acá a propósito)
+            if (millis() - millis_inicio_estado >= AMIX_T_INICIO_AVANCE) {  // ~200 ms (era 400)
                 millis_inicio_estado = millis();
                 estado = Estado::moverce_derecha;    // recién ahora empieza a patrullar
             }

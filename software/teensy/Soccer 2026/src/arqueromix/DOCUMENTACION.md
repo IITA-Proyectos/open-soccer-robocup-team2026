@@ -269,7 +269,7 @@ su arco** primero. Secuencia nueva (reemplaza al `impulso_inicial` viejo):
 inicio_retroceder  → va HACIA ATRÁS (hacia el arco propio) hasta DETECTAR la línea del área chica
         │ (line_present de DOWN)        [safety: si nunca la ve, sale tras 4 s]
         ▼
-inicio_avanzar     → avanza un poco A CIEGAS (NO lee los sensores) durante ~400 ms
+inicio_avanzar     → IMPULSO BREVE a ciegas (NO lee los sensores) ~200 ms — despegarse SIN torcerse
         │
         ▼
 moverce_derecha    → recién ACÁ empieza a patrullar
@@ -279,8 +279,13 @@ moverce_derecha    → recién ACÁ empieza a patrullar
   propio `AMIX_INICIO_RETRO_PWM=100` y dirección flippable) hasta que `linea()` da true (DOWN ve el
   blanco del área). Safety `AMIX_T_INICIO_RETRO_SAFETY` = **50 s TEMPORAL** (banco Virginia, para
   observar el retroceso; bajar a ~4 s cuando ande).
-- **`inicio_avanzar`**: llama `avanzar()` durante `AMIX_T_INICIO_AVANCE=400 ms`, **sin chequear la
-  línea** a propósito (para despegarse del blanco antes de patrullar). Después → `moverce_derecha`.
+- **`inicio_avanzar`**: llama `avanzar_inicio()` (primitiva DEDICADA con PWM propio
+  `AMIX_INICIO_AVANCE_PWM=90`, más suave que el `avanzar()=100` del despeje) durante
+  `AMIX_T_INICIO_AVANCE=200 ms`, **sin chequear la línea** a propósito (para despegarse del blanco
+  antes de patrullar). Después → `moverce_derecha`. **FIX 2026-06-21 (banco Virginia):** antes era
+  `avanzar()` a PWM 100 sostenido **400 ms** → el omni-3 acumulaba deriva de yaw y el robot se iba
+  **chueco** rozando de nuevo la línea del área. Ahora es un **impulso breve** (la potencia se tiene
+  "solo un momento") → no le da tiempo a torcerse.
 - El `match_running` (árbitro) gobierna: el homing arranca con el **GO**. ✅ **El sentido del
   retroceso quedó VALIDADO con el env BASE** (banco Virginia 2026-06-21: va para atrás bien, no
   hizo falta `_retroflip`).
@@ -295,9 +300,11 @@ directo a `inicio_avanzar` (avanza); (b) el **retroceso está invertido** en est
 `central_robot2_arqueromix_retroflip` (`-DARQMIX_FLIP_INICIO_RETRO`) → si ahora va para atrás, era (b).
 Si con ambos arranca yendo adelante apenas detecta línea, es (a) (arranca sobre el blanco).
 
-**Tunear:** `AMIX_T_INICIO_AVANCE` (400 ms) = cuánto se despega de la línea antes de patrullar.
-`AMIX_INICIO_RETRO_PWM` (100) = velocidad PROPIA del retroceso de inicio (ya no comparte con el
-despeje). `AMIX_T_INICIO_RETRO_SAFETY` = 50 s TEMPORAL — bajar a ~4 s cuando el arranque ande.
+**Tunear:** `AMIX_T_INICIO_AVANCE` (200 ms) = cuánto dura el impulso de despegue (subir si NO se
+despega de la línea y la re-detecta al patrullar; bajar si se aleja de más). `AMIX_INICIO_AVANCE_PWM`
+(90) = potencia del impulso de despegue (NO bajar a 70 = piso de las delanteras → más chueco; subir
+hacia 100 si no arranca). `AMIX_INICIO_RETRO_PWM` (100) = velocidad PROPIA del retroceso de inicio (ya
+no comparte con el despeje). `AMIX_T_INICIO_RETRO_SAFETY` = 50 s TEMPORAL — bajar a ~4 s cuando el arranque ande.
 Motores: TODO se mueve con PWM (`analogWrite` vía `amix_set_motor`); el retroceso va a PWM 100/255.
 
 ## 17. Salida de la LÍNEA LATERAL — movimiento a ciegas + no volver (banco Virginia 2026-06-21)

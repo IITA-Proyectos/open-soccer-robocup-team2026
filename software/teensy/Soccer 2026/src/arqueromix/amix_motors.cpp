@@ -129,6 +129,15 @@ void avanzar() {
     amix_set_motor(2, 0);
 }
 
+// avanzar_inicio() — avance del HOMING (despegarse de la línea del área). Mismo patrón recto que
+// avanzar() (M1=+, M2=-, M3=0) pero con PWM PROPIO (AMIX_INICIO_AVANCE_PWM, más suave) para que sea
+// un impulso breve y prolijo. Desacoplado de avanzar() (que el despeje sigue usando a 100).
+void avanzar_inicio() {
+    amix_set_motor(0, +AMIX_INICIO_AVANCE_PWM);
+    amix_set_motor(1, -AMIX_INICIO_AVANCE_PWM);
+    amix_set_motor(2, 0);
+}
+
 // avanzar_patear() — RAMPA DE ACELERACIÓN (port de la del delantero centralmix), pedido Virginia
 // 2026-06-21. NO bloqueante: cada AMIX_KICK_INTERVALO_MS sube s_kick_vel en AMIX_KICK_PASO hasta
 // AMIX_KICK_VEL_FINAL y aplica M1=+vel, M2=-vel (SIMÉTRICO = recto al frente, así "apunta" bien),

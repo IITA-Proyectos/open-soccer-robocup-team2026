@@ -222,15 +222,33 @@ constexpr bool AMIX_PATRULLA_POR_ARCO = false;  // fallback: patrulla rebota por
 constexpr bool AMIX_PATRULLA_POR_ARCO = true;   // DEFAULT: patrulla rebota por ÁNGULO del arco propio
 #endif
 // Umbral de "borde del arco": cuánto desvío del arco propio respecto de "directamente atrás" (180°)
-// cuenta como borde. Más CHICO = patrulla más ANGOSTA (rebota antes); más GRANDE = más ancha. EL knob
-// principal de esta función → ajustar en banco mirando dónde rebota. <RE-TUNE EN BANCO>
-constexpr float AMIX_TOL_ARCO_OWN_DEG = 30.0f;
+// cuenta como borde. Más CHICO = patrulla más ANGOSTA (rebota antes, más centrada al arco); más GRANDE
+// = más ancha. EL knob principal del recorrido lateral → ajustar en banco mirando dónde rebota.
+// BAJADO 30→20 (banco Virginia 2026-06-21): patrulla más ANGOSTA, más centrada frente al arco. <RE-TUNE>
+constexpr float AMIX_TOL_ARCO_OWN_DEG = 20.0f;
 // SENTIDO del desvío (qué lado del arco es cuál). Si el arquero rebota en el borde EQUIVOCADO (o no
 // rebota donde debe), invertir con -DARQMIX_FLIP_ARCO_OWN.
 #ifdef ARQMIX_FLIP_ARCO_OWN
 constexpr float AMIX_ARCO_OWN_SIGN = -1.0f;
 #else
 constexpr float AMIX_ARCO_OWN_SIGN = +1.0f;
+#endif
+
+// ============================================================
+// PROFUNDIDAD por LÍNEA — que NO se meta al área chica (banco Virginia 2026-06-21).
+// ----------------------------------------------------------------------------------
+// El arquero deriva hacia ATRÁS (hacia su arco) durante la patrulla y se mete al área. La CÁMARA NO
+// sirve para medir distancia/profundidad (verificado: pierde el arco JUSTO cuando está cerca). La
+// señal CONFIABLE de profundidad es la LÍNEA del área (DOWN). Regla: si el arquero VE el arco (la
+// patrulla ya cubre lo lateral por el ÁNGULO del arco, NO necesita la línea para rebotar de lado) Y
+// detecta la línea → derivó hacia atrás → AVANZA al frente para salir del área (reúsa el estado
+// inicio_avanzar, que avanza recto al frente hasta despegar de la línea). Cuando NO ve el arco, la
+// línea se usa para el rebote LATERAL (fallback) y este control de profundidad NO actúa.
+// -DARQMIX_NO_PROFUNDIDAD lo apaga.
+#ifdef ARQMIX_NO_PROFUNDIDAD
+constexpr bool AMIX_PROFUNDIDAD_POR_LINEA = false;
+#else
+constexpr bool AMIX_PROFUNDIDAD_POR_LINEA = true;
 #endif
 
 // ============================================================

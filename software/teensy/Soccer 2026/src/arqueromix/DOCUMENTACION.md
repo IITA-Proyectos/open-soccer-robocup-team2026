@@ -386,6 +386,38 @@ arco** (sin tocar la línea). (1) ¿Rebota donde corresponde el borde del arco? 
 cámara no está viendo el arco (`goal_own_visible=0`) → es el riesgo conocido; volvé a la línea con
 `-DARQMIX_PATRULLA_LINEA` o validamos la cámara primero.
 
+### 17.3 Patrulla más angosta + PROFUNDIDAD por línea (no meterse al área) — banco Virginia 2026-06-21
+
+**Problema:** el arquero se mete al **área chica** (deriva hacia ATRÁS, hacia su arco) durante la patrulla.
+Decisión de Virginia (confirmada): el problema es de **profundidad** (adelante-atrás), NO lateral. Y la
+**cámara NO sirve para distancia** (verificado por workflow: pierde el arco JUSTO cuando está cerca —
+desenfoque/fuera de FOV/timeout, ~20-30% confiable). → La señal **confiable de profundidad es la LÍNEA**.
+
+**Dos cambios:**
+1. **Recorrido lateral más angosto:** `AMIX_TOL_ARCO_OWN_DEG` 30°→**20°** → la patrulla queda más
+   centrada frente al arco (rebota antes). Esto usa la cámara para lo LATERAL (ángulo), que sí es confiable.
+2. **Control de PROFUNDIDAD por línea** (`AMIX_PROFUNDIDAD_POR_LINEA`, default ON): en `moverce_*`, si el
+   arquero **VE el arco** (la patrulla ya cubre lo lateral por el ángulo, NO usa la línea para rebotar de
+   lado) **Y** detecta la **línea** → derivó hacia atrás → pasa a **`inicio_avanzar`** = avanza recto al
+   frente HASTA despegar de la línea → vuelve a patrullar. Reúsa el estado del homing. Cuando NO ve el
+   arco, la línea sigue siendo el rebote LATERAL (fallback) y este control NO actúa. Apagar:
+   `-DARQMIX_NO_PROFUNDIDAD`.
+
+**Por qué es confiable:** el control de profundidad es 100% línea (sin cámara). La regla "si ve arco, la
+línea es profundidad; si no ve arco, la línea es rebote lateral" evita el conflicto: con el arco visible
+lo lateral lo resuelve el ángulo, así que la línea queda libre para profundidad. El avance va RECTO al
+frente = hacia el campo, lejos del fondo = saca del área.
+
+**⚠️ Límite honesto:** cuando NO ve el arco (cámara perdida), NO hay control de profundidad (la línea se
+usa para lo lateral). En ese modo degradado el arquero puede derivar atrás. Es el costo de no tener una
+señal de profundidad independiente de la cámara/línea-lateral. Con el arco visible (caso normal) sí protege.
+
+**Cómo verificar (Virginia):** flashear. (1) ¿La patrulla quedó más angosta/centrada? Ajustá
+`AMIX_TOL_ARCO_OWN_DEG`. (2) Empujá el arquero hacia atrás (al área) mientras ve el arco: al detectar la
+línea del fondo debe **avanzar al frente y salir**, no quedarse adentro. (3) Si avanza de más / oscila
+adelante-atrás, es el `inicio_avanzar` (mismo knob `AMIX_T_INICIO_AVANCE_*`). (4) Apagar todo esto:
+`-DARQMIX_NO_PROFUNDIDAD`.
+
 ## 18. Despeje DIRIGIDO al arco rival + arcos por ROL, no por color (pedido Gustavo 2026-06-21)
 
 **Cambio pedido.** Que (1) la determinación de cuál arco es el PROPIO y cuál el RIVAL viva en la

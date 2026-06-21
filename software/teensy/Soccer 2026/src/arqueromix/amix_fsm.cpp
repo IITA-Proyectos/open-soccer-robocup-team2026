@@ -181,9 +181,17 @@ void amix_fsm_tick() {
             }
             // --- BORDE de la patrulla: por ARCO PROPIO (default Virginia) o por LÍNEA (fallback) ---
             if (AMIX_PATRULLA_POR_ARCO) {
-                // BORDE: por ARCO si la cámara lo VE (pedido Virginia: rebota al llegar al borde del arco);
-                // por LÍNEA si NO lo ve (fallback robusto → SIEMPRE patrulla, no se va de largo cuando la
-                // cámara pierde el arco). Gateado por el commit. Borde derecho → rebota a la IZQUIERDA.
+                // PROFUNDIDAD (no meterse al área): si VE el arco (lo LATERAL lo cubre el ángulo, NO la
+                // línea) Y detecta la línea del fondo → derivó hacia ATRÁS → AVANZA al frente para salir
+                // del área. La línea es la señal CONFIABLE de profundidad (la cámara no sirve para distancia).
+                if (AMIX_PROFUNDIDAD_POR_LINEA && g_aio.goal_own_visible && linea()) {
+                    parar();
+                    millis_inicio_estado = millis();
+                    estado = Estado::inicio_avanzar;    // avanza recto al frente HASTA despegar → vuelve a patrullar
+                    break;
+                }
+                // BORDE LATERAL: por ARCO si la cámara lo VE (rebota al llegar al borde del arco); por
+                // LÍNEA si NO lo ve (fallback → siempre patrulla). Gateado por commit. Borde der → rebota IZQ.
                 const bool en_borde = g_aio.goal_own_visible ? borde_arco_der() : linea();
                 if (millis() >= s_commit_until_ms && en_borde) {
                     parar();
@@ -222,8 +230,15 @@ void amix_fsm_tick() {
             }
             // --- BORDE de la patrulla: por ARCO PROPIO (default Virginia) o por LÍNEA (fallback) ---
             if (AMIX_PATRULLA_POR_ARCO) {
-                // BORDE: por ARCO si lo VE; por LÍNEA si NO (fallback robusto → siempre patrulla).
-                // Borde izquierdo → rebota a la DERECHA. Gateado por commit.
+                // PROFUNDIDAD (espejo): VE el arco Y detecta la línea del fondo → derivó atrás → AVANZA
+                // al frente para salir del área (la línea es la señal confiable de profundidad).
+                if (AMIX_PROFUNDIDAD_POR_LINEA && g_aio.goal_own_visible && linea()) {
+                    parar();
+                    millis_inicio_estado = millis();
+                    estado = Estado::inicio_avanzar;    // avanza recto al frente HASTA despegar → vuelve a patrullar
+                    break;
+                }
+                // BORDE LATERAL: por ARCO si lo VE; por LÍNEA si NO (fallback). Borde izq → rebota DER.
                 const bool en_borde = g_aio.goal_own_visible ? borde_arco_izq() : linea();
                 if (millis() >= s_commit_until_ms && en_borde) {
                     parar();

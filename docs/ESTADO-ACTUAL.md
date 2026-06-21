@@ -40,7 +40,7 @@ tipo: indice-operacional
 > **+ ESTADO DE ARRANQUE (kickoff):** `KICKOFF_SEEK` es el **PRIMER estado** del FSM del centralmix
 > (sin flag; se ejecuta 1 sola vez al inicio del partido, ningún estado vuelve a él). **Reemplaza al
 > `AVANCE_INICIO` 2025** (avance de 700 ms), que se **quitó** por pedido de Elías. Al empezar: ve la
-> pelota → va; no la ve → **impulso fuerte y corto de medialuna** (arco = avance+giro superpuestos, NO
+> pelota → va; no la ve → **impulso fuerte y corto de medialuna** (combinación directa de PWM por rueda, NO
 > el `centrar_*` casi-strafe) hacia el centro → luego búsqueda por giro. Tuneable `mix_config.h`
 > (`MIX_KICKOFF_ARC_*`). Va en TODAS las builds del centralmix → flashear `central_robot1_mix_bno`.
 > Sin compilar/banco → **TASK-116**. Journal: `journal/2026-06-21-centralmix-kickoff-medialuna.md`.

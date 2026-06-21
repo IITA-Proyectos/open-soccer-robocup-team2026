@@ -17,24 +17,22 @@ Estado **`KICKOFF_SEEK`** como **primer estado** del FSM del centralmix (sin fla
 - Entrada: `mix_fsm_init` arranca SIEMPRE en `KICKOFF_SEEK`. Como ningún otro estado transiciona
   a él, la maniobra de arranque se ejecuta una sola vez. (El viejo `AVANCE_INICIO` se eliminó.)
 
-## La medialuna, sin inventar cinemática dudosa
-El journal 2026-06-19 ya marcó que `centrar_*` decodifica a **casi-puro-strafe** (orbita mal).
-Para NO caer en eso, la medialuna se arma por **superposición de las 2 bases que YA existen**
-(en un omni las velocidades de rueda suman linealmente):
+## La medialuna = combinación directa de PWM por rueda (simple, como impulso_inicial)
+A pedido de Elías (más fácil de tunear), `kickoff_medialuna()` es una combinación DIRECTA de
+PWM por motor, estilo `impulso_inicial_girando()`: cada rueda con su valor, el signo da el
+sentido. (Antes era una superposición avance+giro con F/T/dir; se simplificó a 3 valores.)
 ```
-AVANCE (base avanzar(): M1=+F, M2=-F, M3=0)  +  GIRO (base girar(): M1=M2=M3=+T)
-⇒  M1 = +F + dir·T ,  M2 = -F + dir·T ,  M3 = dir·T
+M1 = MIX_KICKOFF_M1 ;  M2 = MIX_KICKOFF_M2 ;  M3 = MIX_KICKOFF_M3      (en mix_config.h)
 ```
-`kickoff_medialuna(dir)` en `mix_motors.cpp`. Tuneables en `mix_config.h`:
-`MIX_KICKOFF_ARC_FWD` (F=avance, 140), `MIX_KICKOFF_ARC_TURN` (T=curva, 70),
-`MIX_KICKOFF_ARC_DIR` (lado ±1), `MIX_KICKOFF_ARC_MS` (duración corta, 250 ms).
-"Fuerte" = F alto; "corto" = ARC_MS chico → térmicamente seguro aunque el PWM sea alto.
+Default `{210, -70, 70}` (= lo que daba la superposición vieja, ahora seteable por rueda).
+Tuneables: `MIX_KICKOFF_M1/M2/M3` (PWM con signo) + `MIX_KICKOFF_ARC_MS` (duración, 250 ms).
+"Fuerte" = valores altos; "corto" = ARC_MS chico → térmicamente seguro aunque el PWM sea alto.
 
 ## Límite honesto (coach)
-El centralmix **no tiene pose absoluta** → "hacia el centro" es dead-reckoning: el lado de la
-curva es FIJO (`MIX_KICKOFF_ARC_DIR`), hay que setearlo para tu lado de saque en banco. Si curva
-para el lado equivocado, se invierte ese flag (no se tocan los signos de la primitiva). Mejora
-futura fácil: sesgar `dir` según el arco rival que vea la cámara, o alejarse de la línea que ve DOWN.
+El centralmix **no tiene pose absoluta** → "hacia el centro" es dead-reckoning: el arco es FIJO
+(los 3 valores `MIX_KICKOFF_M1/M2/M3`), hay que setearlos para tu lado de saque en banco. Si curva
+para el lado equivocado, se invierten los signos. Mejora futura fácil: elegir el arco según el
+arco rival que vea la cámara, o alejarse de la línea que ve DOWN.
 
 Semántica de "inicio": hoy el kickoff ocurre **una vez** tras el boot (cuando llega el GO del
 árbitro estando en `KICKOFF_SEEK`); NO se re-dispara en cada STOP→GO (kickoff tras gol). Eso es
@@ -45,7 +43,7 @@ una mejora aparte (resetear a `KICKOFF_SEEK` en el flanco STOP→GO) — anotada
   `central_robot1_mix_bno`): ahora empiezan en `KICKOFF_SEEK` (medialuna) en vez del
   `AVANCE_INICIO` 2025 (avance 700 ms), que se eliminó. NO afecta a `src/central/` ni a ningún
   env de competencia (el centralmix es su propio build aislado).
-- Tocado: `mix_config.h` (4 constantes), `mix_motors.{h,cpp}` (`kickoff_medialuna`),
+- Tocado: `mix_config.h` (3 PWM por rueda + duración), `mix_motors.{h,cpp}` (`kickoff_medialuna`),
   `mix_fsm.{h,cpp}` (KICKOFF_SEEK como 1er estado + quitar AVANCE_INICIO), `platformio.ini`
   (comentario; NO hay env nuevo — el kickoff va en `central_robot1_mix_bno`).
 

@@ -23,8 +23,8 @@ BNO ande (TASK-115).
 2. **Ruedas al aire, robot en soporte, dar GO del árbitro SIN pelota a la vista:** debe ejecutar
    `kickoff_medialuna` — un arco corto (~250 ms) — y después pasar a girar (GIRANDO). Ver el
    sentido: ¿la medialuna **curva hacia el lado del centro** de la cancha?
-   - Si curva al revés → invertir **`MIX_KICKOFF_ARC_DIR`** en `mix_config.h` (no tocar la primitiva).
-   - Muy cerrada / muy abierta → ajustar **`MIX_KICKOFF_ARC_TURN`** (curva) vs **`_FWD`** (avance).
+   - Si curva al revés → invertir los signos de **`MIX_KICKOFF_M1/M2/M3`** en `mix_config.h`.
+   - Muy cerrada/abierta o torcida → ajustar cada **`MIX_KICKOFF_M1/M2/M3`** (PWM por rueda).
    - Muy corta / muy larga → **`MIX_KICKOFF_ARC_MS`**.
 3. **Con pelota a la vista al arrancar:** debe ir directo a apuntar/perseguir (APUNTAR_PELOTA), NO
    hacer la medialuna.

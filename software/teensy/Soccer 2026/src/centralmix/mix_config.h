@@ -81,7 +81,7 @@ constexpr float MIX_PD = 1.0f;   // avances proporcionales (2025 'pd')
 // Tolerancias 2025 (en mm para cercanía/centrado; en grados para apuntado).
 // ============================================================
 constexpr float MIX_TOL_CENTRADO = 60.0f;  // tolerancia_centrado
-constexpr float MIX_TOL_CERCANIA = 120.0f;  // tolerancia_cercania
+constexpr float MIX_TOL_CERCANIA = 20.0f;  // tolerancia_cercania
 constexpr float MIX_TOL_APUNTADO = 30.0f;  // tolerancia_apuntado (grados)
 
 // ============================================================
@@ -136,22 +136,21 @@ constexpr int MIX_CENTRAR_REAR  = 170;  // M3 (trasera) — ≥107 (piso); ojo t
 // la pelota va hacia ella; si NO la ve, da un IMPULSO FUERTE y CORTO de MEDIALUNA (arco)
 // para despegarse hacia el centro, y después cae a la búsqueda por giro (GIRANDO).
 //
-// La medialuna se arma por SUPERPOSICIÓN de las 2 bases que YA existen (en un omni las
-// velocidades de rueda SUMAN linealmente, así que esto SÍ da un arco, no el casi-strafe
-// del centrar_*):
-//   AVANCE (base avanzar(): M1=+F, M2=-F, M3=0)  +  GIRO (base girar(): M1=M2=M3=+T)
-//   ⇒  M1 = +F + dir·T ,  M2 = -F + dir·T ,  M3 = dir·T     (ver kickoff_medialuna()).
-// F = cuánto AVANZA · T = cuánta CURVA · dir = lado (±1). FUERTE = F alto; CORTO = ARC_MS
-// chico → térmicamente seguro aunque el PWM sea alto, porque dura poco.
+// La medialuna es una COMBINACIÓN DIRECTA de PWM por rueda (estilo impulso_inicial_girando):
+// cada motor con su valor de abajo; el SIGNO da el sentido. Fácil de tunear: subís/bajás cada
+// rueda en banco hasta que el arco salga bien. FUERTE = valores altos; CORTO = ARC_MS chico
+// → térmicamente seguro aunque el PWM sea alto, porque dura poco.
+//   M1 = delantera IZQ · M2 = delantera DER · M3 = trasera     (ver kickoff_medialuna()).
+// Default {210,-70,70} = avance dominante en M1 + curvatura por M2/M3 (arco hacia adelante).
 //
-// ⚠️ NO TESTEADO EN HARDWARE. En banco se confirma: (1) que curva para el lado correcto
-// (si no, invertir MIX_KICKOFF_ARC_DIR); (2) F/T/duración; (3) que "hacia el centro" tenga
-// sentido para tu lado de saque (sin pose absoluta el lado es FIJO → setearlo acá).
+// ⚠️ NO TESTEADO EN HARDWARE. En banco se confirma: (1) que curve para el lado correcto
+// (si no, invertí los signos); (2) los 3 valores + duración; (3) que "hacia el centro" tenga
+// sentido para tu lado de saque (sin pose absoluta el arco es FIJO → setearlo acá).
 // ============================================================
-constexpr int MIX_KICKOFF_ARC_FWD  = 140;  // F: componente de AVANCE (fuerte; > piso ~70)
-constexpr int MIX_KICKOFF_ARC_TURN = 70;   // T: componente de GIRO/curvatura de la medialuna
-constexpr int MIX_KICKOFF_ARC_DIR  = +1;   // lado de la curva (+1 / -1) — confirmar en banco
-constexpr int MIX_KICKOFF_ARC_MS   = 250;  // duración del impulso (CORTO), en ms
+constexpr int MIX_KICKOFF_M1     = 210;  // M1 delantera IZQ — PWM con signo (sentido)
+constexpr int MIX_KICKOFF_M2     = -70;  // M2 delantera DER
+constexpr int MIX_KICKOFF_M3     = 70;   // M3 trasera
+constexpr int MIX_KICKOFF_ARC_MS = 250;  // duración del impulso (CORTO), en ms
 
 // ============================================================
 // Heading — control de rumbo del 2025 (error = currentYaw - initialYaw, kp=0.3).

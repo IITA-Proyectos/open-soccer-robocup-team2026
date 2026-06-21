@@ -52,10 +52,10 @@ void retroceder_patear();  // retroceso de patada con PWM crudo MIX_PATAD_M1 / M
 void centrar_horario();      // orbita en sentido horario   (CENTRANDO_horario)
 void centrar_antihorario();  // orbita en sentido antihorario (CENTRANDO_antihorario)
 
-// Medialuna de arranque (KICKOFF): impulso FUERTE y CORTO en ARCO = avance + giro
-// superpuestos. dir = +1/-1 elige el lado de la curva. Usa MIX_KICKOFF_ARC_* de
-// mix_config. Lo llama el estado KICKOFF_SEEK del FSM (primer estado / arranque).
-void kickoff_medialuna(int dir);
+// Medialuna de arranque (KICKOFF): impulso FUERTE y CORTO = combinación DIRECTA de PWM por
+// rueda (estilo impulso_inicial_girando), valores MIX_KICKOFF_M1/M2/M3 de mix_config.
+// Lo llama el estado KICKOFF_SEEK del FSM (primer estado / arranque).
+void kickoff_medialuna();
 
 }  // namespace mix
 }  // namespace iitasoccer

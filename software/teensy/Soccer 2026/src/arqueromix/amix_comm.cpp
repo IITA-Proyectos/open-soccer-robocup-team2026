@@ -76,6 +76,11 @@ void apply_top_snapshot(const WorldSnapshot& s) {
     g_aio.ball_x_mm   = static_cast<float>(s.ball_x_mm);   // lateral (era Yp 2025)
     g_aio.ball_y_mm   = static_cast<float>(s.ball_y_mm);   // profundidad (era Xp 2025)
     g_aio.ball_visible = (s.ball_visible != 0);
+    // Ángulo a la pelota (IGUAL que centralmix/mix_comm): atan2(X, Y) → 0=adelante,
+    // >0=derecha, <0=izquierda. OJO X primero. Robusto a la escala sin calibrar; el FSM
+    // del arquero sigue la pelota por este ángulo en vez de mm crudos.
+    g_aio.angulo_pelota_deg =
+        atan2f(g_aio.ball_x_mm, g_aio.ball_y_mm) * 180.0f / static_cast<float>(M_PI);
     if (g_aio.ball_visible) {
         g_aio.t_last_ball_seen_ms = now;
     }

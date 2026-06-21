@@ -5,10 +5,13 @@
 // se AGREGAN: el gate del árbitro y un timeout de seguridad al retroceso.
 //
 // MAPEOS QUE REQUIRIERON DECISIÓN (marcados <RE-TUNE> / <RE-VERIFY SIGN>):
-//   - "Xp <= tolerancia_cercania(140)" (cerca)  → ball_y_mm <= AMIX_TOL_CERCANIA_MM (mm). <RE-TUNE>
-//   - "abs(Yp) <= 3" (centrada lateral)         → |ball_x_mm| <= AMIX_TOL_CENTRADO_MM.  <RE-TUNE>
-//   - "abs(Yp) >= 5" (desviada)                 → |ball_x_mm| >= AMIX_TOL_DESVIO_MM.     <RE-TUNE>
-//   - "Yp < 0 → derecha, Yp >= 0 → izquierda"   → ball_x_mm > 0 → derecha. <RE-VERIFY SIGN>
+//   FIX 2026-06-21 (banco Virginia: la cámara veía la pelota pero el robot NO se movía):
+//   el seguimiento de la pelota pasa a ser POR ÁNGULO (atan2), como centralmix usa la cámara,
+//   en vez de mm crudos (que caían en banda muerta para la escala sin calibrar → parar()).
+//   - "Xp<=140 && abs(Yp)<=3" (cerca+centrada → patea) → dist_pelota_mm()<=CERCANIA_MM &&
+//        |angulo_pelota_deg|<=KICK_DEG (ángulo + distancia euclídea). <RE-TUNE distancia>
+//   - "abs(Yp)>=5" (desviada → seguir) → |angulo_pelota_deg| > CENTRADO_DEG → strafe al lado.
+//   - lado: "Yp<0→der" → angulo_pelota_deg>0 → derecha. <RE-VERIFY SIGN>
 //   - "s1>=blanco1 || s2>=blanco2" (borde) y "s1||s2||s3" (volví a la línea)
 //        → ambos = line_present (DOWN agrega los 32 sensores en una señal). <SIMPLIFICACIÓN>
 //
@@ -38,19 +41,25 @@ static float pd = AMIX_PD_BASE;
 static inline bool linea() {
     return g_aio.line_present && (g_aio.line_depth >= AMIX_LINE_DEPTH_TRIGGER);
 }
-// Pelota cerca Y centrada → dispara el despeje. (2025: Xp<=140 && abs(Yp)<=3) <RE-TUNE>
-static inline bool ball_cerca_centrada() {
+// Distancia euclídea robot→pelota (mm) — como dist_pelota_mm() de centralmix.
+static inline float dist_pelota_mm() {
+    return sqrtf(g_aio.ball_x_mm * g_aio.ball_x_mm + g_aio.ball_y_mm * g_aio.ball_y_mm);
+}
+// ¿Pelota cerca Y razonablemente al frente → DESPEJAR? (por ÁNGULO + distancia, NO mm crudos).
+// FIX 2026-06-21: el 2025 usaba Xp<=140 && abs(Yp)<=3 en píxeles; con mm crudos caía en banda
+// muerta y el robot se congelaba. Ahora: distancia euclídea + ángulo de despeje. <RE-TUNE distancia>
+static inline bool ball_para_despejar() {
     return g_aio.ball_visible &&
-           (g_aio.ball_y_mm <= AMIX_TOL_CERCANIA_MM) &&
-           (fabsf(g_aio.ball_x_mm) <= AMIX_TOL_CENTRADO_MM);
+           (dist_pelota_mm() <= AMIX_TOL_CERCANIA_MM) &&
+           (fabsf(g_aio.angulo_pelota_deg) <= AMIX_TOL_KICK_DEG);
 }
-// Pelota desviada lateralmente. (2025: abs(Yp)>=5) <RE-TUNE>
-static inline bool ball_desviada() {
-    return g_aio.ball_visible && (fabsf(g_aio.ball_x_mm) >= AMIX_TOL_DESVIO_MM);
+// ¿Pelota ALINEADA al frente (banda muerta ANGULAR angosta → mantener posición)?
+static inline bool ball_alineada() {
+    return fabsf(g_aio.angulo_pelota_deg) <= AMIX_TOL_CENTRADO_DEG;
 }
-// ¿La pelota está a la DERECHA? (2025: Yp<0→der). ball_x_mm>0 = derecha. <RE-VERIFY SIGN>
+// ¿La pelota está a la DERECHA? por el SIGNO del ÁNGULO (ang>0 = derecha). <RE-VERIFY SIGN>
 static inline bool ball_a_la_derecha() {
-    return g_aio.ball_x_mm > 0.0f;
+    return g_aio.angulo_pelota_deg > 0.0f;
 }
 
 void amix_fsm_init() {
@@ -80,19 +89,19 @@ void amix_fsm_tick() {
             break;
 
         // ----------------------------------------------------
-        case Estado::moverce_derecha:               // L1030-1076
+        case Estado::moverce_derecha:               // L1030-1076 (FIX cámara por ÁNGULO 2026-06-21)
             adproporcional(pd, error);              // strafe derecha + corrección rumbo
             if (haypelota) {
-                if (ball_cerca_centrada()) {        // Xp<=140 && abs(Yp)<=3 → PATEA
+                if (ball_para_despejar()) {         // cerca + al frente → DESPEJA
                     parar();
                     millis_inicio_estado = millis();
                     estado = Estado::PATEANDO_pausa_inicial;
-                } else if (ball_desviada()) {       // abs(Yp)>=5 → elige lado
+                } else if (!ball_alineada()) {      // off-center → SIGUE la pelota (por ángulo)
                     pd = AMIX_PD_BALL;              // 1.5
                     estado = ball_a_la_derecha() ? Estado::moverce_derecha
                                                   : Estado::moverce_izquierda;
                 } else {
-                    parar();                         // banda muerta (3<abs<5 o centrada lejos)
+                    parar();                         // alineada y lejos → mantener posición (banda angosta)
                 }
             } else {
                 pd = AMIX_PD_BASE;                   // sin pelota: patrulla base
@@ -105,14 +114,14 @@ void amix_fsm_tick() {
             break;
 
         // ----------------------------------------------------
-        case Estado::moverce_izquierda:             // L1078-1124 (espejo)
+        case Estado::moverce_izquierda:             // L1078-1124 (espejo, FIX cámara por ÁNGULO)
             aiproporcional(pd, error);
             if (haypelota) {
-                if (ball_cerca_centrada()) {
+                if (ball_para_despejar()) {
                     parar();
                     millis_inicio_estado = millis();
                     estado = Estado::PATEANDO_pausa_inicial;
-                } else if (ball_desviada()) {
+                } else if (!ball_alineada()) {
                     pd = AMIX_PD_BALL;
                     estado = ball_a_la_derecha() ? Estado::moverce_derecha
                                                   : Estado::moverce_izquierda;

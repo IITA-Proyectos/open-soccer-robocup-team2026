@@ -94,16 +94,26 @@ constexpr int AMIX_PATAD_M2 = 150;   // patadM2 (R1=150; R2 2025 usaba 200 → t
 constexpr int AMIX_ATRAS = 150;
 
 // ============================================================
-// Tolerancias de la pelota — ⚠️ UNIDADES CAMBIADAS 2025(cámara)→2026(mm). RE-TUNEAR.
-// En 2025 (cámara local): Xp = profundidad/distancia (chico=cerca), Yp = lateral.
-// En 2026 (snapshot TOP, marco +X=derecha, +Y=adelante, mm):
-//   ball_y_mm  ≈ profundidad (lo que era Xp)  →  "cerca" = ball_y_mm pequeño.
-//   ball_x_mm  ≈ lateral     (lo que era Yp)  →  "centrada" = |ball_x_mm| pequeño.
-// ⚠️ El SIGNO lateral (a qué lado mover) y los valores en mm se CONFIRMAN en banco.
+// Tolerancias de la pelota — POR ÁNGULO (como centralmix usa la cámara). FIX 2026-06-21.
+// ----------------------------------------------------------------------------------
+// PROBLEMA que arregla (banco Virginia): con umbrales en mm (CENTRADO=30/DESVIO=50/
+// CERCANIA=140) la pelota caía en la BANDA MUERTA para la escala REAL del snapshot
+// (CAMERA_UNIT_TO_MM=10 sin calibrar) → el FSM hacía parar() → la cámara veía la pelota
+// pero el robot NO se movía (freeze).
+// FIX: el arquero SIGUE la pelota por su ÁNGULO (g_aio.angulo_pelota_deg = atan2(x,y)),
+// que NO depende de la escala — igual que el delantero (centralmix). La banda muerta
+// angular es ANGOSTA → el arquero trackea cualquier pelota off-center.
+//   angulo_pelota_deg: 0=frente, >0=derecha, <0=izquierda.
 // ============================================================
-constexpr float AMIX_TOL_CERCANIA_MM = 140.0f; // patea si profundidad <= esto (era Xp<=140) <RE-TUNE>
-constexpr float AMIX_TOL_CENTRADO_MM = 30.0f;  // "centrada": |lateral| <= esto (era |Yp|<=3) <RE-TUNE>
-constexpr float AMIX_TOL_DESVIO_MM   = 50.0f;  // "desviada": |lateral| >= esto (era |Yp|>=5) <RE-TUNE>
+constexpr float AMIX_TOL_CENTRADO_DEG = 8.0f;   // |áng| <= esto → ALINEADO (mantiene posición).
+                                                // |áng| > esto  → SIGUE la pelota (strafe a su lado).
+constexpr float AMIX_TOL_KICK_DEG     = 30.0f;  // para DESPEJAR: la pelota debe estar dentro de
+                                                // este ángulo (más amplio que CENTRADO) Y cerca.
+constexpr float AMIX_TOL_CERCANIA_MM  = 250.0f; // DESPEJA si la distancia euclídea a la pelota
+                                                // (sqrt(x²+y²)) <= esto. ⚠️ EL knob de tuning
+                                                // principal (la escala del snapshot está sin
+                                                // calibrar): subir si nunca despeja, bajar si
+                                                // despeja de lejos. <RE-TUNE EN BANCO>
 
 // ============================================================
 // Tiempos / timeouts del ARQUERO (FIEL §3.5) — ms. Iguales 2025.

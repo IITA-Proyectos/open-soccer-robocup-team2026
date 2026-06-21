@@ -27,6 +27,10 @@ struct AmixIO {
     float ball_x_mm = 0.0f;          // + = derecha (lateral; era Yp 2025)
     float ball_y_mm = 0.0f;          // + = adelante (profundidad; era Xp 2025)
     bool  ball_visible = false;      // ¿la cámara (TOP) ve la pelota? (haypelota 2025)
+    float angulo_pelota_deg = 0.0f;  // atan2(ball_x_mm, ball_y_mm) en °: 0=frente, >0=derecha,
+                                     // <0=izquierda. Lo calcula amix_comm (IGUAL que centralmix).
+                                     // El arquero SIGUE la pelota por este ángulo (robusto a la
+                                     // escala sin calibrar del snapshot), NO por mm crudos.
 
     // ---- Arcos (ángulo ° marco robot, +=derecha; distancia mm) ----
     bool  goal_yellow_visible = false;

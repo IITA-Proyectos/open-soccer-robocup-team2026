@@ -25,9 +25,11 @@ Ver journal `2026-06-21-arqueromix-port-arquero-2025.md` + `src/arqueromix/DOCUM
    El heading viene del **snapshot del TOP** (NO BNO local) — confirmar que llega válido.
 3. **Signo lateral de la pelota:** poner la pelota a la derecha del arquero y ver que va a la
    derecha. Si va al revés → invertir `ball_a_la_derecha()` en `amix_fsm.cpp`.
-4. **Re-tuneo píxeles→mm** (mirando la telemetría de la pelota): `AMIX_TOL_CERCANIA_MM` (cuándo
-   patea por profundidad), `AMIX_TOL_CENTRADO_MM` (cuándo la considera centrada), `AMIX_TOL_DESVIO_MM`
-   (cuándo corrige lado). Estaban en píxeles 2025 (140/3/5), ahora son mm.
+4. **Seguimiento por ÁNGULO (FIX 2026-06-21).** El seguimiento de la pelota ya NO usa mm crudos
+   (causaban freeze: la cámara veía la pelota y el robot no se movía); usa `angulo_pelota_deg`
+   como el delantero (centralmix). Tunear en `amix_config.h`: `AMIX_TOL_CENTRADO_DEG` (8°, banda
+   muerta angular), `AMIX_TOL_KICK_DEG` (30°), y **`AMIX_TOL_CERCANIA_MM`** (250, distancia para
+   despejar = EL knob principal, escala sin calibrar → subir si nunca despeja). Ver DOCUMENTACION §13.
 5. **Línea desde DOWN:** confirmar que `line_present` se prende al tocar la línea lateral del
    arco (rebote) y al volver tras el retroceso. El 2025 distinguía s1/s2/s3; acá es una señal
    agregada de DOWN. Si hace falta el "qué lado", refinar por `line_angle_deg` (como centralmix).

@@ -120,9 +120,8 @@ moverce_derecha ◄──────────────► moverce_izquier
 | Dato | El arquero 2025 lo leía de… | En arqueromix viene de… | Adaptación |
 |---|---|---|---|
 | ¿Ve pelota? | `Xp != 0` (cámara local) | `ball_visible` (snapshot TOP) | directo |
-| Profundidad pelota | `Xp` (cámara, píxeles) | `ball_y_mm` (snapshot, mm) | `cerca = ball_y_mm ≤ CERCANIA`. ⚠️ unidades distintas → RE-TUNEAR |
-| Lateral pelota | `Yp` (cámara, píxeles) | `ball_x_mm` (snapshot, mm) | `centrada = |ball_x_mm| ≤ CENTRADO`. ⚠️ RE-TUNEAR |
-| ¿A qué lado? | signo de `Yp` (`Yp<0`→der) | signo de `ball_x_mm` | `ball_x_mm>0`→derecha. ⚠️ RE-VERIFICAR SIGNO |
+| Seguir la pelota | signo+magnitud de `Yp` (píxeles) | **`angulo_pelota_deg = atan2(x,y)`** | **FIX 2026-06-21:** se sigue por ÁNGULO (como centralmix), robusto a la escala. `|áng|>CENTRADO_DEG(8°)`→strafe al lado; `áng>0`→derecha. ⚠️ RE-VERIFICAR SIGNO |
+| Cerca para despejar | `Xp<=140` (cámara) | `dist=√(x²+y²) ≤ CERCANIA_MM` **+ `|áng|≤KICK_DEG`** | distancia euclídea + ángulo. ⚠️ `CERCANIA_MM` (250) es el knob de tuning (escala sin calibrar) → RE-TUNEAR |
 | Rumbo (`error`) | **BNO local** del arquero | **heading del snapshot TOP** | `error = heading − heading_inicial`; sin BNO local |
 | Línea (3 sensores) | `s1/s2/s3` analógicos locales | **DOWN** (`line_present/depth`) | 3 sensores → una señal de DOWN. ⚠️ pierde el "qué lado", RE-TUNEAR |
 | Árbitro | (no tenía) | `match_running` (snapshot) | **nuevo** gate GO/STOP |
@@ -136,9 +135,11 @@ moverce_derecha ◄──────────────► moverce_izquier
    ruedas al aire** antes de la FSM (`amix_set_motor` suelto por índice).
 2. **Signo lateral de la pelota.** `ball_x_mm>0`→derecha es la elección intuitiva; si el
    arquero va para el lado contrario de la pelota, invertir en `ball_a_la_derecha()`.
-3. **Re-tuneo píxeles→mm.** `AMIX_TOL_CERCANIA_MM` (140), `_CENTRADO_MM` (30), `_DESVIO_MM`
-   (50) eran coordenadas de cámara; ahora son mm. **Re-tunear los tres en banco** mirando
-   la telemetría de la pelota.
+3. **Seguimiento por ÁNGULO (FIX 2026-06-21).** El seguimiento de la pelota es por
+   `angulo_pelota_deg` (robusto a la escala), no por mm. Tunables: `AMIX_TOL_CENTRADO_DEG`
+   (8° — banda muerta angular: más chico = sigue más agresivo), `AMIX_TOL_KICK_DEG` (30° —
+   ángulo para despejar) y **`AMIX_TOL_CERCANIA_MM`** (250 — distancia para despejar, EL knob
+   principal porque la escala del snapshot está sin calibrar: subir si nunca despeja). Ver §13.
 4. **Heading del TOP.** Confirmar que `g_aio.heading_deg`/`heading_valid` llegan sanos del
    snapshot (mirar el monitor). Si el heading no es confiable, la patrulla usa la banda
    centrada (no corrige rumbo) — degrada, no rompe.
@@ -178,6 +179,34 @@ paredes y escape acotado). Si en banco se quiere paridad, el camino es **ampliar
 `apply_down_line`** con `cross_track_mm`/`cross_track_valid` (helper `lsv2_cross_track_mm` ya
 existe en `line_view.h`) e `imminent_exit` — trabajo concreto, no opcional, para esa paridad.
 Decisión del equipo tras validar el port base (TASK-114).
+
+## 13. FIX 2026-06-21 — seguimiento por ángulo (la cámara veía la pelota pero no se movía)
+
+**Síntoma (banco Virginia):** los motores andaban bien y la cámara detectaba la pelota (su LED
+prendía), pero el arquero **no hacía ningún movimiento** para seguirla ni despejarla.
+
+**Causa raíz (comparando con cómo usa la cámara el delantero `centralmix`):** el FSM decidía con
+`ball_x_mm`/`ball_y_mm` **crudos en mm** y umbrales en mm (CENTRADO=30, DESVIO=50, CERCANIA=140).
+Pero la escala del snapshot está **sin calibrar** (`CAMERA_UNIT_TO_MM=10` en el TOP), así que una
+pelota más o menos al frente caía en la **banda muerta** (ni "cerca+centrada" ni "desviada") → el
+FSM ejecutaba `parar()`, que pisaba la patrulla → **el robot se congelaba justo al ver la pelota.**
+`centralmix` no tiene este problema porque sigue la pelota por su **ÁNGULO** (`atan2`), que NO
+depende de la escala.
+
+**Fix (igual que centralmix):** `amix_comm` ahora calcula `angulo_pelota_deg = atan2(ball_x, ball_y)`
+y el FSM **sigue la pelota por ángulo**: si `|áng| > 8°` strafe hacia su lado (la sigue); si está
+alineada y lejos, mantiene posición; despeja si `dist ≤ CERCANIA_MM` y `|áng| ≤ 30°`. La banda
+muerta angular es angosta → trackea cualquier pelota off-center. Compila SUCCESS.
+
+**Cómo verificar en banco (Virginia):**
+1. Con el robot quieto y `match_running` en GO, mové la pelota a la **derecha** → el arquero debe
+   strafear a la derecha; a la **izquierda** → a la izquierda. (Si va al revés → invertir
+   `ball_a_la_derecha()` o revisar el signo del strafe.)
+2. Acercá la pelota al frente → al quedar cerca debe arrancar la **secuencia de despeje**. Si nunca
+   despeja, **subí `AMIX_TOL_CERCANIA_MM`** (250→400…) mirando la telemetría; si despeja de muy
+   lejos, bajalo.
+3. Si querés que siga la pelota más agresivo (menos zona de "quieto"), bajá `AMIX_TOL_CENTRADO_DEG`
+   (8°→5°). Tunables todos en `amix_config.h`.
 
 ## 9. Cómo compilar, flashear y volver atrás
 

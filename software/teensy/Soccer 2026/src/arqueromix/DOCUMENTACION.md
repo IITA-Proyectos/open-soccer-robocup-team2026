@@ -300,6 +300,31 @@ Si con ambos arranca yendo adelante apenas detecta línea, es (a) (arranca sobre
 despeje). `AMIX_T_INICIO_RETRO_SAFETY` = 50 s TEMPORAL — bajar a ~4 s cuando el arranque ande.
 Motores: TODO se mueve con PWM (`analogWrite` vía `amix_set_motor`); el retroceso va a PWM 100/255.
 
+## 17. Salida de la LÍNEA LATERAL — movimiento a ciegas + no volver (banco Virginia 2026-06-21)
+
+**Problema:** patrullando hacia un costado, al llegar a la línea lateral el arquero se quedaba
+**enganchado** (oscilaba en la línea): el rebote no la despegaba del todo, o la pelota la tiraba de
+vuelta hacia la línea.
+
+**Fix (lo mismo que hace el homing al ver el blanco):** al tocar la línea lateral, hace un
+**movimiento A CIEGAS** (sin leer ningún sensor) hacia el lado OPUESTO durante `AMIX_T_SALIR_LINEA`
+(≈450 ms, parecido al avance del homing), y después **patrulla para el otro lado SIN volver
+enseguida** a la línea que dejó.
+
+Estados nuevos (reemplazan a `impulso_der/izq`):
+- **`salir_linea_izq`** (tocó la línea de la DERECHA): strafe IZQUIERDA a ciegas → `moverce_izquierda`.
+- **`salir_linea_der`** (tocó la línea de la IZQUIERDA): strafe DERECHA a ciegas → `moverce_derecha`.
+
+**"No vuelve a la derecha" (commit):** al terminar la salida, se arma una ventana `s_commit_until_ms
+= now + AMIX_T_PATRULLA_COMMIT` (≈1 s). Durante esa ventana, la patrulla **ignora el lado de la
+pelota** (no flipea de dirección) → no se vuelve a meter en la línea que acaba de dejar. El despeje
+(pelota cerca+centrada) y el rebote de la OTRA línea siguen activos. Pasada la ventana, vuelve a
+seguir la pelota normal.
+
+**Tunear:** `AMIX_T_SALIR_LINEA` (450 ms) = cuánto se aleja de la línea a ciegas (subir si sigue
+enganchándose). `AMIX_T_PATRULLA_COMMIT` (1000 ms) = cuánto patrulla el otro lado antes de volver a
+mirar la pelota (subir si vuelve muy rápido hacia la línea).
+
 ## 9. Cómo compilar, flashear y volver atrás
 
 ```bash

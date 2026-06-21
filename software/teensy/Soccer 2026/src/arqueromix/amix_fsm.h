@@ -29,8 +29,8 @@ enum class Estado : uint8_t {
     inicio_avanzar,              // tras ver la línea: avanzar un poco SIN leer los sensores
     moverce_derecha,             // patrulla strafe derecha (adproporcional)
     moverce_izquierda,           // patrulla strafe izquierda (aiproporcional)
-    impulso_derecha,             // anti-traba del borde: empuja derecha 350 ms
-    impulso_izquierda,           // anti-traba del borde: empuja izquierda 350 ms
+    salir_linea_der,             // tocó línea IZQ → sale a la DERECHA a ciegas (sin sensores) y patrulla der
+    salir_linea_izq,             // tocó línea DER → sale a la IZQUIERDA a ciegas (sin sensores) y patrulla izq
     PATEANDO_pausa_inicial,      // despeje: pausa 200 ms (deja pasar la inercia)
     PATEANDO_adelante,           // despeje: golpe de avance 450 ms (avanzar_patear)
     PATEANDO_pausa,              // despeje: pausa 1000 ms

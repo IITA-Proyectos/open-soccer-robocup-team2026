@@ -40,6 +40,11 @@ static float pd = AMIX_PD_BASE;
 // no se reiniciaba entre STOP y GO sin apagar la batería).
 static bool s_was_running = false;
 
+// Ventana de "commit" tras salir de una línea lateral: hasta este millis, la patrulla IGNORA el
+// lado de la pelota (no flipea de dirección) → "no vuelve enseguida" hacia la línea que acaba de
+// dejar (banco Virginia 2026-06-21). 0 = sin commit.
+static unsigned long s_commit_until_ms = 0;
+
 // ---- Helpers de lectura (reemplazan las globales seriales/analógicas 2025) ----
 
 // Línea presente (== OR de los 3 sensores 2025; el DOWN ya agrega los 32).
@@ -86,6 +91,7 @@ void amix_fsm_tick() {
         estado = Estado::inicio_retroceder;
         millis_inicio_estado = millis();
         pd = AMIX_PD_BASE;
+        s_commit_until_ms = 0;
     }
 
     const float error = g_aio.heading_error_deg;   // == 'error' 2025 (ya wrapeado)
@@ -121,6 +127,8 @@ void amix_fsm_tick() {
                     parar();
                     millis_inicio_estado = millis();
                     estado = Estado::PATEANDO_pausa_inicial;
+                } else if (millis() < s_commit_until_ms) {
+                    pd = AMIX_PD_BASE;               // recién salió de una línea: seguir patrullando ESTE lado (no volver)
                 } else if (!ball_alineada()) {      // off-center → SIGUE la pelota (por ángulo)
                     pd = AMIX_PD_BALL;              // 1.5
                     estado = ball_a_la_derecha() ? Estado::moverce_derecha
@@ -131,10 +139,10 @@ void amix_fsm_tick() {
             } else {
                 pd = AMIX_PD_BASE;                   // sin pelota: patrulla base
             }
-            if (linea()) {                           // borde → rebote al lado opuesto
+            if (linea()) {                           // borde → SALIR a ciegas al lado opuesto
                 parar();
                 millis_inicio_estado = millis();
-                estado = Estado::impulso_izquierda;
+                estado = Estado::salir_linea_izq;
             }
             break;
 
@@ -146,6 +154,8 @@ void amix_fsm_tick() {
                     parar();
                     millis_inicio_estado = millis();
                     estado = Estado::PATEANDO_pausa_inicial;
+                } else if (millis() < s_commit_until_ms) {
+                    pd = AMIX_PD_BASE;               // recién salió de una línea: seguir patrullando ESTE lado (no volver)
                 } else if (!ball_alineada()) {
                     pd = AMIX_PD_BALL;
                     estado = ball_a_la_derecha() ? Estado::moverce_derecha
@@ -156,26 +166,28 @@ void amix_fsm_tick() {
             } else {
                 pd = AMIX_PD_BASE;
             }
-            if (linea()) {
+            if (linea()) {                           // borde → SALIR a ciegas al lado opuesto
                 parar();
                 millis_inicio_estado = millis();
-                estado = Estado::impulso_derecha;
+                estado = Estado::salir_linea_der;
             }
             break;
 
         // ----------------------------------------------------
-        case Estado::impulso_derecha:               // L1126-1136 anti-traba
-            adproporcional(pd, error);
-            if (millis() - millis_inicio_estado >= AMIX_T_IMP_LATERAL) {  // 350 ms
+        case Estado::salir_linea_der:               // tocó línea IZQ → sale a la DERECHA a ciegas
+            adproporcional(pd, error);               // strafe derecha — A CIEGAS (no se lee ningún sensor acá)
+            if (millis() - millis_inicio_estado >= AMIX_T_SALIR_LINEA) {  // ~450 ms (≈ avance del homing)
+                s_commit_until_ms = millis() + AMIX_T_PATRULLA_COMMIT;    // no volver enseguida hacia la línea
                 millis_inicio_estado = millis();
                 estado = Estado::moverce_derecha;
             }
             break;
 
         // ----------------------------------------------------
-        case Estado::impulso_izquierda:             // L1138-1148 anti-traba (espejo)
-            aiproporcional(pd, error);
-            if (millis() - millis_inicio_estado >= AMIX_T_IMP_LATERAL) {  // 350 ms
+        case Estado::salir_linea_izq:               // tocó línea DER → sale a la IZQUIERDA a ciegas (espejo)
+            aiproporcional(pd, error);               // strafe izquierda — A CIEGAS
+            if (millis() - millis_inicio_estado >= AMIX_T_SALIR_LINEA) {
+                s_commit_until_ms = millis() + AMIX_T_PATRULLA_COMMIT;
                 millis_inicio_estado = millis();
                 estado = Estado::moverce_izquierda;
             }

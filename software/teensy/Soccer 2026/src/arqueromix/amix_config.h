@@ -138,7 +138,12 @@ constexpr int AMIX_INICIO_RETRO_SIGN = -1;  // invierte la dirección del retroc
 #else
 constexpr int AMIX_INICIO_RETRO_SIGN = +1;
 #endif
-constexpr unsigned long AMIX_T_IMP_LATERAL   = 350;   // impulso_der/izq (anti-traba borde)
+// Salida de línea LATERAL (banco Virginia 2026-06-21): al tocar la línea de un costado, hace un
+// movimiento A CIEGAS (sin leer sensores) hacia el lado opuesto —igual idea que el avance del
+// homing—, y después patrulla para el otro lado SIN volver enseguida (commit). Evita que se
+// "enganche" oscilando en la línea.
+constexpr unsigned long AMIX_T_SALIR_LINEA     = 450;  // duración del movimiento a ciegas al salir de la línea lateral (≈ el avance del homing)
+constexpr unsigned long AMIX_T_PATRULLA_COMMIT = 1000; // tras salir, ignora el LADO de la pelota este tiempo (no vuelve enseguida hacia la línea)
 constexpr unsigned long AMIX_T_PAT_PAUSA_INI = 200;   // PATEANDO_pausa_inicial_arquero
 constexpr unsigned long AMIX_T_PAT_ADELANTE  = 450;   // PATEANDO_adelante_arquero
 constexpr unsigned long AMIX_T_PAT_PAUSA     = 1000;  // PATEANDO_pausa_arquero

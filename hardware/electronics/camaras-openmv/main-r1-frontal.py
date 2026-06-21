@@ -162,8 +162,6 @@ while(True):
     # Tapar las esquinas triangulares de arriba (falsos positivos fuera de cancha).
     enmascarar_esquinas(img)
     
-    img.draw_line(img.width() // 2, 0, img.width() // 2, img.height(), color=(255, 255, 255), thickness=1)
-    
     roi = (0, 0, img.width(), int(img.height() * 0.97))
 
     naranja_blobs = img.find_blobs([naranja_threshold], roi=roi, pixels_threshold=7, area_threshold=7, merge=True)
@@ -186,6 +184,8 @@ while(True):
     Xam, Yam = procesar_blob(amarillo_blobs, (0, 255, 0))
     Xaz, Yaz = procesar_blob(azul_blobs, (0, 0, 255))
 
+    #img.draw_line(img.width() // 2, 0, img.width() // 2, img.height(), color=(255, 255, 255), thickness=1)
+        
     data = [HEADER1, Xp, Yp,
             HEADER2, Xam, Yam,
             HEADER3, Xaz, Yaz]
@@ -202,12 +202,12 @@ while(True):
         print("RECAL pelota -> cx=%d  cy=%d" % (b.cx(), b.cy()))
 
     # ----- DEBUG: pelota ya corregida (para verificar que la Y matchee la real) -----
-    if DEBUG_PRINT:
-        Xp_real, Yp_real = decodificar_coordenada(Xp, Yp)
-        if Xp_real is None:
-            print("Pelota: NO DETECTADA")
-        else:
-            print("Pelota -> X=%d cm  Y=%d cm" % (Xp_real, Yp_real))
+    #if DEBUG_PRINT:
+    #   Xp_real, Yp_real = decodificar_coordenada(Xp, Yp)
+    #    if Xp_real is None:
+    #        print("Pelota: NO DETECTADA")
+    #    else:
+    #        print("Pelota -> X=%d cm  Y=%d cm" % (Xp_real, Yp_real))
 
     #print("Enviando:", list(packet))
 

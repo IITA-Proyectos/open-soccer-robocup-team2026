@@ -68,7 +68,7 @@ constexpr int AMIX_AI_REAR_EPOS      = 40;   // aiproporcional  (izquierda) M3
 constexpr int AMIX_PROP_M1_ENEG      = 40;   // "motor derecho" (idx0=M1) 2025
 constexpr int AMIX_PROP_M2_ENEG      = 65;   // "motor izquierdo" (idx1=M2) 2025
 constexpr int AMIX_AD_REAR_ENEG      = 40;   // adproporcional M3
-constexpr int AMIX_AI_REAR_ENEG      = 65;   // aiproporcional M3 — BAJADO 100→75→65 (banco Virginia 2026-06-21): mata la asimetría que hacía SOBREPASAR a la IZQUIERDA (vs derecha=40; ahora 1.625×). Si ahora se pasa a la DERECHA, subir 65→70; si SIGUE a la izquierda, el tema es heading, no esta constante.
+constexpr int AMIX_AI_REAR_ENEG      = 75;   // aiproporcional M3 — REVERTIDO a 75 (banco Virginia 2026-06-21: la versión 65 + sesgo forward hacía MEDIALUNA a la izquierda → se volvió al estado anterior que andaba mejor). 100→75. (1.875× la derecha=40.)
 
 // `pd` (factor proporcional): patrulla base, ×1.5 con pelota desviada.
 // BAJADO 1.0→0.85 (banco Virginia 2026-06-21): patrulla más LENTA (-15%) sin caer en zona muerta (el
@@ -87,10 +87,13 @@ constexpr float AMIX_PD_SALIR = 1.9f;
 // ad/aiproporcional → vale en patrulla y en el rebote (ayuda a no quedar atrás). 0 = off.
 // ⚠️ A VALIDAR EN BANCO: subir si sigue derivando atrás; bajar si se va para adelante / se sale del arco.
 // -DARQMIX_NO_FORWARD_BIAS lo apaga.
-#ifdef ARQMIX_NO_FORWARD_BIAS
-constexpr int AMIX_FORWARD_BIAS_PWM = 0;
+// ⚠️ REVERTIDO A OFF por default (banco Virginia 2026-06-21): con el sesgo en 10 el arquero hacía una
+// MEDIALUNA a la izquierda (combinado con el rumbo sin corregir bien). Queda como OPT-IN: prender con
+// -DARQMIX_FORWARD_BIAS si se quiere experimentar la "tendencia a avanzar".
+#ifdef ARQMIX_FORWARD_BIAS
+constexpr int AMIX_FORWARD_BIAS_PWM = 10;   // ~3-4% de empuje neto al frente (experimental)
 #else
-constexpr int AMIX_FORWARD_BIAS_PWM = 10;   // ~3-4% de empuje neto al frente (conservador)
+constexpr int AMIX_FORWARD_BIAS_PWM = 0;    // DEFAULT OFF (= comportamiento "de antes", sin medialuna)
 #endif
 
 // ============================================================
@@ -177,7 +180,7 @@ constexpr unsigned long AMIX_T_INICIO_RETRO_SAFETY = 50000; // TEMP 50 s (era 40
 // NO termina por reloj — avanza el impulso MÍNIMO y sale recién cuando YA NO PISA la línea (no ve
 // blanco), con un TOPE de seguridad para no quedarse trabado si la línea nunca se "apaga". El avance es
 // recto al frente (hacia el campo, lejos del fondo) → es la dirección que lo SACA del área.
-constexpr unsigned long AMIX_T_INICIO_AVANCE_MIN    = 500;   // 400→500 (banco Virginia 2026-06-21): adelantarse MÁS al tocar la línea de fondo → arranca más lejos del fondo, no se mete al área/corner. Sube si todavía queda cerca del fondo.
+constexpr unsigned long AMIX_T_INICIO_AVANCE_MIN    = 400;   // REVERTIDO a 400 (volvió al estado que andaba mejor; era 500). Impulso mínimo del avance de salida de la línea. Sube si parpadea la línea / queda cerca del fondo.
 constexpr unsigned long AMIX_T_INICIO_AVANCE_SAFETY = 1200;  // TOPE de seguridad: si a los 1200 ms sigue viendo línea, patrulla igual
 // VELOCIDAD del avance del homing (el movimiento a ciegas tras detectar la línea). Banco Virginia
 // 2026-06-21: "anda de golpe / fuerte" → SOLO se baja la velocidad (90→75... acá 75). MISMO sentido y
@@ -198,7 +201,7 @@ constexpr int AMIX_INICIO_RETRO_SIGN = +1;
 // movimiento A CIEGAS (sin leer sensores) hacia el lado opuesto —igual idea que el avance del
 // homing—, y después patrulla para el otro lado SIN volver enseguida (commit). Evita que se
 // "enganche" oscilando en la línea.
-constexpr unsigned long AMIX_T_SALIR_LINEA     = 380;  // 450→350→380 (banco Virginia 2026-06-21): balance entre NO sobrepasar (corto) y NO quedar PEGADO al rebotar (largo). Si todavía se pega, subir a 400; si sobrepasa, bajar a 360.
+constexpr unsigned long AMIX_T_SALIR_LINEA     = 350;  // REVERTIDO a 350 (volvió al estado que andaba mejor; era 380). Si se PEGA al rebotar, subir a 400; si SOBREPASA, bajar.
 constexpr unsigned long AMIX_T_PATRULLA_COMMIT = 1000; // tras salir, ignora el LADO de la pelota este tiempo (no vuelve enseguida hacia la línea)
 constexpr unsigned long AMIX_T_PAT_PAUSA_INI = 200;   // PATEANDO_pausa_inicial_arquero
 constexpr unsigned long AMIX_T_PAT_ADELANTE  = 450;   // PATEANDO_adelante_arquero

@@ -129,12 +129,14 @@ void avanzar() {
     amix_set_motor(2, 0);
 }
 
-// avanzar_inicio() — avance del HOMING (despegarse de la línea del área). Mismo patrón recto que
-// avanzar() (M1=+, M2=-, M3=0) pero con PWM PROPIO (AMIX_INICIO_AVANCE_PWM, más suave) para que sea
-// un impulso breve y prolijo. Desacoplado de avanzar() (que el despeje sigue usando a 100).
+// avanzar_inicio() — avance del HOMING (despegarse de la línea del área). PWM PROPIO
+// (AMIX_INICIO_AVANCE_PWM, suave) y SENTIDO flippable (AMIX_INICIO_AVANCE_SIGN) — banco Virginia
+// 2026-06-21: iba con mucha fuerza y para el lado contrario → se bajó el PWM y se invirtió el signo.
+// Impulso breve y a ciegas. Desacoplado de avanzar() (que el despeje sigue usando a 100).
 void avanzar_inicio() {
-    amix_set_motor(0, +AMIX_INICIO_AVANCE_PWM);
-    amix_set_motor(1, -AMIX_INICIO_AVANCE_PWM);
+    const int p = AMIX_INICIO_AVANCE_PWM * AMIX_INICIO_AVANCE_SIGN;
+    amix_set_motor(0, +p);
+    amix_set_motor(1, -p);
     amix_set_motor(2, 0);
 }
 

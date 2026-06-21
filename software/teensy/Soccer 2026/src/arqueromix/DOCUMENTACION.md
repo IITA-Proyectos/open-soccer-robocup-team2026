@@ -454,6 +454,31 @@ trasera; avanzar = M1+, M2−):
 
 Todo es tuneo de constantes salvo el sesgo forward (2 líneas en `ad/aiproporcional`). Reversible.
 
+> **REVERT 2026-06-21:** el combo de arriba (AI_REAR 65 + sesgo forward 10 + T_SALIR 380 + AVANCE 500)
+> hacía una **MEDIALUNA a la izquierda** → se volvió al estado anterior que andaba mejor: `AI_REAR_ENEG=75`,
+> `T_SALIR_LINEA=350`, `T_INICIO_AVANCE_MIN=400`, y **sesgo forward OFF por default**
+> (`AMIX_FORWARD_BIAS_PWM=0`; opt-in con `-DARQMIX_FORWARD_BIAS`). El mecanismo del sesgo queda dormido.
+
+### 17.5 MODO QUIETO — versión de prueba (env `central_robot2_arqueromix_quieto`, pedido Virginia 2026-06-21)
+
+Versión de prueba donde el arquero **NO patrulla**: hace el homing igual y después se queda **QUIETO**
+esperando la pelota. Es la patrulla, **simplificada**.
+
+- **Comportamiento:** homing igual → quieto esperando → si ve la pelota LEJOS y DESCENTRADA, se mueve
+  lateral para **enfrentarla** (mismo seguimiento por ángulo) → si está ALINEADA y lejos, **quieto** →
+  si está CERCA, **patea** (igual que el default). El rebote por arco/línea y la profundidad por línea
+  **siguen activos** (seguridades: si derivó, vuelve a su lugar).
+- **Implementación (mínima, sin estados nuevos):** flag `AMIX_QUIETO` (`-DARQMIX_QUIETO`). En `moverce_*`
+  el strafe del tope se **gatea**: en quieto solo strafea si está siguiendo una pelota descentrada
+  (`haypelota && fuera de commit && !ball_alineada && !ball_para_despejar`); si no, queda quieto (por el
+  `parar()` de las ramas de pelota). Todo lo demás (homing, seguir, patear, rebote, profundidad) se REUSA.
+- **Default byte-idéntico:** sin el flag, `AMIX_QUIETO=false` → el `||` corta y el strafe corre siempre
+  como antes. La patrulla normal (`central_robot2_arqueromix`) NO cambia.
+- **Env:** `pio run -e central_robot2_arqueromix_quieto -t upload`. Combinable con `_retroflip`/`_giroflip`
+  si hace falta (agregar el flag al build_flags).
+- ⚠️ Riesgo a mirar en banco: si la pelota PARPADEA (visible/no), podría temblar entre seguir y quieto
+  (arranque-frenado del omni). Si pasa, se agrega una persistencia corta de pelota (knob de 3 líneas).
+
 ## 18. Despeje DIRIGIDO al arco rival + arcos por ROL, no por color (pedido Gustavo 2026-06-21)
 
 **Cambio pedido.** Que (1) la determinación de cuál arco es el PROPIO y cuál el RIVAL viva en la

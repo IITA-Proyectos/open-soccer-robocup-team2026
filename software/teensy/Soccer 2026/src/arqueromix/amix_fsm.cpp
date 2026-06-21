@@ -161,7 +161,14 @@ void amix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::moverce_derecha:               // L1030-1076 (FIX cámara por ÁNGULO 2026-06-21)
-            adproporcional(pd, error);              // strafe derecha + corrección rumbo
+            // MODO QUIETO: strafea SOLO si está siguiendo una pelota DESCENTRADA (lejos+off-center,
+            // fuera de commit, que no sea para patear). Si no hay pelota / está alineada / en commit →
+            // NO strafea → queda QUIETO (por el parar() de las ramas de abajo). Patrulla normal (default,
+            // AMIX_QUIETO=false): el `||` corta y strafea SIEMPRE = byte-idéntico a antes.
+            if (!AMIX_QUIETO ||
+                (haypelota && millis() >= s_commit_until_ms && !ball_alineada() && !ball_para_despejar())) {
+                adproporcional(pd, error);          // strafe derecha + corrección rumbo
+            }
             if (haypelota) {
                 if (ball_para_despejar()) {         // cerca + al frente → DESPEJA
                     parar();
@@ -210,7 +217,11 @@ void amix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::moverce_izquierda:             // L1078-1124 (espejo, FIX cámara por ÁNGULO)
-            aiproporcional(pd, error);
+            // MODO QUIETO (espejo): strafea SOLO si sigue una pelota descentrada; si no, queda quieto.
+            if (!AMIX_QUIETO ||
+                (haypelota && millis() >= s_commit_until_ms && !ball_alineada() && !ball_para_despejar())) {
+                aiproporcional(pd, error);
+            }
             if (haypelota) {
                 if (ball_para_despejar()) {
                     parar();

@@ -220,6 +220,20 @@ constexpr unsigned long AMIX_T_ATRAS_SAFETY  = 4000;  // tope de seguridad del r
 constexpr uint8_t AMIX_LINE_DEPTH_TRIGGER = 1;  // ≥1 sensor en blanco = línea presente
 
 // ============================================================
+// MODO QUIETO (-DARQMIX_QUIETO) — versión de prueba, pedido Virginia 2026-06-21.
+// ----------------------------------------------------------------------------------
+// El arquero hace el HOMING igual, pero entre despejes NO patrulla de lado a lado: queda QUIETO
+// esperando la pelota. Si la ve LEJOS y DESCENTRADA, se mueve lateral para enfrentarla (mismo
+// seguimiento por ÁNGULO que la patrulla). Si está ALINEADA y lejos → quieto. Si está CERCA → patea
+// (igual que hoy). El rebote por arco/línea y la profundidad por línea SIGUEN activos (seguridades:
+// si derivó, vuelve a su lugar). Default OFF → patrulla normal byte-idéntica.
+#ifdef ARQMIX_QUIETO
+constexpr bool AMIX_QUIETO = true;
+#else
+constexpr bool AMIX_QUIETO = false;
+#endif
+
+// ============================================================
 // PATRULLA POR ARCO PROPIO (cámara trasera) — pedido Virginia 2026-06-21.
 // ----------------------------------------------------------------------------------
 // La patrulla deja de rebotar contra la LÍNEA y rebota cuando el ARCO PROPIO (que la cámara trasera

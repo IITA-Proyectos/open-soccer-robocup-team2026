@@ -63,12 +63,13 @@ void parar() {
 // aiproporcional() 2025 (L186-209): fronts (M1,M2) sentido NEGATIVO (INA=0/INB=1),
 // rear (M3) POSITIVO (INA=1/INB=0). Magnitudes por banda de `error`.
 void aiproporcional(float pd, float error) {
+    const float e = error * AMIX_HEADING_CORRECT_SIGN;  // signo de corrección flippable (banco Virginia)
     int m0, m1, m2;
-    if (error > -1.0f && error < 1.0f) {            // banda centrada
+    if (e > -1.0f && e < 1.0f) {                     // banda centrada
         m0 = -(int)(pd * AMIX_PROP_FRONT_CENTER);
         m1 = -(int)(pd * AMIX_PROP_FRONT_CENTER);
         m2 = +(int)(pd * AMIX_PROP_REAR_CENTER);
-    } else if (error > 0.0f) {                       // error > 0
+    } else if (e > 0.0f) {                           // error > 0
         m0 = -(int)(pd * AMIX_PROP_FRONT_EPOS);
         m1 = -(int)(pd * AMIX_PROP_FRONT_EPOS);
         m2 = +(int)(pd * AMIX_AI_REAR_EPOS);
@@ -85,12 +86,13 @@ void aiproporcional(float pd, float error) {
 // adproporcional() 2025 (L210-233): fronts (M1,M2) sentido POSITIVO (INA=1/INB=0),
 // rear (M3) NEGATIVO (INA=0/INB=1). Espejo de aiproporcional salvo magnitud del rear.
 void adproporcional(float pd, float error) {
+    const float e = error * AMIX_HEADING_CORRECT_SIGN;  // signo de corrección flippable (banco Virginia)
     int m0, m1, m2;
-    if (error > -1.0f && error < 1.0f) {            // banda centrada
+    if (e > -1.0f && e < 1.0f) {                     // banda centrada
         m0 = +(int)(pd * AMIX_PROP_FRONT_CENTER);
         m1 = +(int)(pd * AMIX_PROP_FRONT_CENTER);
         m2 = -(int)(pd * AMIX_PROP_REAR_CENTER);
-    } else if (error > 0.0f) {                       // error > 0
+    } else if (e > 0.0f) {                           // error > 0
         m0 = +(int)(pd * AMIX_PROP_FRONT_EPOS);
         m1 = +(int)(pd * AMIX_PROP_FRONT_EPOS);
         m2 = -(int)(pd * AMIX_AD_REAR_EPOS);

@@ -77,10 +77,11 @@ constexpr float AMIX_PD_BALL = 1.5f;
 // ============================================================
 // Impulso inicial / anti-traba del borde (FIEL §2, L1018-1020 + impulso_*).
 // ============================================================
-// impulso_inicial (arquero, estado inicial): strafe fuerte 40 ms.
-//   M1=1.8*50=90, M2=1.8*50=90, M3=1.8*85=153 (mismo sentido fronts, opuesto rear).
-constexpr int AMIX_IMP_INI_FRONT = 90;   // M1, M2
-constexpr int AMIX_IMP_INI_REAR  = 153;  // M3 (⚠️ >150 = roza el techo térmico; transitorio 40 ms tolerable)
+// impulso_inicial (arquero, estado inicial): strafe corto 40 ms para despegarse.
+//   2025: M1=M2=90, M3=153. BAJADO 2026-06-21 (banco Virginia): el arranque daba un tirón
+//   fuerte; 153 rozaba el techo térmico. Más suave para que el inicio sea prolijo y verificable.
+constexpr int AMIX_IMP_INI_FRONT = 70;   // M1, M2 (era 90)
+constexpr int AMIX_IMP_INI_REAR  = 110;  // M3 (era 153)
 
 // ============================================================
 // Avance / despeje (FIEL §2/§5).
@@ -88,10 +89,11 @@ constexpr int AMIX_IMP_INI_REAR  = 153;  // M3 (⚠️ >150 = roza el techo tér
 // avanzar(): M1=100, M2=100(sentido opuesto), M3=0. (L152-154)
 constexpr int AMIX_AVANZAR = 100;
 // avanzar_patear() (arquero): PWM FIJO inmediato (sin rampa), M1=patadM1, M2=patadM2, M3=0.
-constexpr int AMIX_PATAD_M1 = 250;   // patadM1 (R1=R2)
-constexpr int AMIX_PATAD_M2 = 150;   // patadM2 (R1=150; R2 2025 usaba 200 → tunable)
-// PATEANDO_atras_arquero (inline 2025, L1186-1188): retroceso recto M1=150, M2=150, M3=0.
-constexpr int AMIX_ATRAS = 150;
+//   BAJADO 2026-06-21 (pedido Virginia: despeje con menos potencia). 2025: 250/150.
+constexpr int AMIX_PATAD_M1 = 180;   // patadM1 (era 250) — subir si no llega a despejar
+constexpr int AMIX_PATAD_M2 = 120;   // patadM2 (era 150)
+// PATEANDO_atras_arquero (inline 2025, L1186-1188): retroceso recto M1=ATRAS, M2=ATRAS, M3=0.
+constexpr int AMIX_ATRAS = 120;      // retroceso del despeje (era 150) — bajado con el resto
 
 // ============================================================
 // Tolerancias de la pelota — POR ÁNGULO (como centralmix usa la cámara). FIX 2026-06-21.
@@ -150,6 +152,20 @@ constexpr long AMIX_UART_BAUD = 230400;
 constexpr bool AMIX_HEADING_SOURCE_IS_OTOS = true;
 #else
 constexpr bool AMIX_HEADING_SOURCE_IS_OTOS = false;  // DEFAULT: heading del TOP (snapshot)
+#endif
+
+// SIGNO de la corrección de rumbo de la patrulla (las 3 bandas de error en ad/aiproporcional).
+// ⚠️ 2026-06-21 (banco Virginia): el arquero ROTABA hasta dar 180° mientras strafeaba (quedaba
+// mirando nuestro arco). El strafe lateral anda bien → es DERIVA DE RUMBO: la corrección de las
+// 3 bandas está al revés para este robot (igual idea que OMEGA_SIGN del mixer 2026) o no tiene
+// heading válido para corregir. PERILLA: si el arquero se da vuelta mientras patrulla, flashear
+// con -DARQMIX_FLIP_HEADING (invierte el signo → la corrección empuja al otro lado). REQUIERE
+// que el TOP mande heading_valid=1; si no, no hay corrección y el strafe deriva igual (confirmar
+// el heading en el monitor). Default +1 = comportamiento actual.
+#ifdef ARQMIX_FLIP_HEADING
+constexpr float AMIX_HEADING_CORRECT_SIGN = -1.0f;
+#else
+constexpr float AMIX_HEADING_CORRECT_SIGN = +1.0f;
 #endif
 
 }  // namespace arqmix

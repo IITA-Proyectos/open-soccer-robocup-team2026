@@ -208,6 +208,39 @@ muerta angular es angosta → trackea cualquier pelota off-center. Compila SUCCE
 3. Si querés que siga la pelota más agresivo (menos zona de "quieto"), bajá `AMIX_TOL_CENTRADO_DEG`
    (8°→5°). Tunables todos en `amix_config.h`.
 
+## 14. Banco 2026-06-21 (Virginia) — la vuelta de 180° al inicio + potencia del despeje
+
+**Reporte:** con el fix de la cámara el arquero YA reacciona a la pelota, pero (a) al arrancar
+**da una vuelta de 180°** y queda con la cámara frontal mirando NUESTRO arco (no el del rival),
+y como queda al revés no se pudo verificar si seguía la pelota para el lado correcto; (b) el
+despeje pega con demasiada potencia.
+
+**(a) El 180° = DERIVA DE RUMBO (yaw parásito del strafe).** El strafe lateral anda bien, pero el
+omni-3 en strafe abierto **rota solo** (yaw parásito — ver skill `dinamica-omni-3-ruedas`). El
+2025 lo contrarrestaba con la corrección de rumbo de 3 bandas (modula la rueda trasera según el
+`error` de heading). En este robot esa corrección o está **al revés** (mismo tipo de bug que el
+`OMEGA_SIGN` del mixer 2026) o **no tiene heading válido** para corregir → el robot deriva hasta
+dar 180°. Cambios:
+- **Arranque más suave:** `impulso_inicial` bajado (M1/M2 90→70, M3 153→110) para que no dé un
+  tirón al iniciar (153 además rozaba el techo térmico).
+- **Perilla para dar vuelta la corrección:** flag `-DARQMIX_FLIP_HEADING` (env
+  `central_robot2_arqueromix_flip`). Si el arquero se da vuelta mientras patrulla, flashear ese
+  env → la corrección empuja al otro lado.
+- ⚠️ **La corrección SOLO funciona con heading válido del TOP.** Confirmar en el monitor que
+  `heading_valid=1` (TOP `top_robot2_pri` con el BNO sano). Si el heading no llega, NINGÚN signo
+  corrige y el strafe deriva igual → ahí el tema es el heading del TOP, no esta perilla.
+
+**(b) Potencia del despeje bajada** (pedido Virginia): `AMIX_PATAD_M1` 250→180, `AMIX_PATAD_M2`
+150→120, `AMIX_ATRAS` (retroceso) 150→120. Si queda corto y no despeja, subir `PATAD_M1`.
+
+**Cómo verificar (Virginia):**
+1. Flashear `central_robot2_arqueromix`. Mirar al arrancar: ¿sigue dando 180°?
+2. Si SÍ se da vuelta → flashear `central_robot2_arqueromix_flip` y comparar. Si con el flip
+   queda derecho → era el signo (lo dejamos así). Si con AMBOS se da vuelta → el heading del TOP
+   no está llegando válido (revisar el monitor) o el strafe deriva sin corrección posible.
+3. Con el arquero ya derecho, recién ahí se puede verificar el seguimiento izq/der de la pelota
+   (lo que no se pudo por quedar al revés).
+
 ## 9. Cómo compilar, flashear y volver atrás
 
 ```bash

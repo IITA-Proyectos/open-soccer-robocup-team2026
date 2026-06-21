@@ -46,11 +46,6 @@ void impulso_inicial_mov();
 // Avance recto (M1=+100, M2=-100, M3=0). (L152-154)
 void avanzar();
 
-// Avance del HOMING de inicio (despegarse de la línea del área antes de patrullar). Primitiva
-// DEDICADA con PWM propio (AMIX_INICIO_AVANCE_PWM), separada de avanzar() para que sea un IMPULSO
-// breve y suave (no acumula deriva de yaw → no se va chueco) sin tocar el avance del despeje.
-void avanzar_inicio();
-
 // Patada del arquero: RAMPA DE ACELERACIÓN (como el delantero centralmix, pedido Virginia
 // 2026-06-21): sube de 0 a AMIX_KICK_VEL_FINAL de a pasos. M1=+vel, M2=-vel (SIMÉTRICO = recto
 // al frente → "apunta" bien). NO bloqueante; se resetea en parar()/init.

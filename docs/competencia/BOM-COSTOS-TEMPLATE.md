@@ -34,7 +34,7 @@
 
 > Nota fila 6 (Zircon) y 5 (Teensy 4.1): **reusados** del robot campeón 2025. Robomov **no** vende la placa Zircon suelta (solo el kit completo USD 529); el ~150–250 es estimación — confirmar por contacto directo (Discord/email Robomov).
 > Nota fila 9 (motor) y 10 (rueda): **confirmar con el equipo** qué motor usan (TT barato vs Pololu HP) y si son nuevos o reusados; la rueda Nexus necesita un **cubo/acople** al eje de 3 mm (sumar ~USD 2.5 c/u).
-> Nota fila 11 (BNO055): el robot monta 2 pero 1 (0x29) está fallada → hoy corre con 1 sano. Prever 1–2 repuestos.
+> Nota fila 11 (BNO055): el robot monta **2 BNO055, ambos @ 0x28 en buses separados** (primario Wire2 24/25 sin ToF; secundario Wire 18/19 con ToF). **Ambos sanos** (corrección 2026-06-15; heading validado en banco 2026-06-21). NO hay ningún BNO en 0x29 (0x29 es solo la dir de fábrica de los ToF). Prever 2–4 repuestos para Incheon.
 
 ---
 

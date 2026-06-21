@@ -1,5 +1,12 @@
 # TEST-CARDS de banco — Placa TOP (Teensy 4.0)
 
+> ✅ **ACTUALIZACIÓN 2026-06-21 (PISA al banner 06-11 de abajo):** R1 quedó UNIFICADO a la
+> arquitectura de R2 (firmware 2026-06-15) y su heading fue VALIDADO en banco (06-21): el flash
+> de COMPETENCIA de R1 es **`top_robot1_pri_fastbno`** (NO `top_robot2_pri`); los envs
+> `top_robot1*` YA NO son "cableado viejo". **R1 juega CON gyro** (ambos BNO sanos; el "hdg=0.0"
+> previo era el flag `bno_left_en=0`, ya fijado en firmware). Las cards que piden `hdg` trackeando
+> SÍ aplican a R1. Ver `docs/ESTADO-ACTUAL.md` (banner 06-21) y `journal/2026-06-21-*`.
+
 > ⚠️ **ACTUALIZACIÓN 2026-06-11 (recableado de R1 — PISA a las cards de IMU de abajo):**
 > desde el recableado, **AMBAS TOP usan la arquitectura primario-en-Wire2** (BNO de control
 > en Wire2 pines 24/25; el bus Wire 18/19 queda para ToFs + secundario si lo hay) → **el env
@@ -9,7 +16,7 @@
 > Las cards TOP-2 (env `top_robot1_bnofreeze`), TOP-4 (`diag_bno_left`, lee 0x28 en Wire) y
 > TOP-5 (`top_robot1`) quedan para HW viejo / re-test de BNOs en banco — no para los robots.
 
-> Cerebro sensorial del robot. Lee 1 BNO055 (0x28) + 4 ToF VL53L7CX + HC-SR04 + 2 camaras
+> Cerebro sensorial del robot. Lee 2 BNO055 (0x28, buses separados) + 4 ToF VL53L7CX + HC-SR04 + 2 camaras
 > OpenMV + arbitro GPIO, fusiona pose y manda `WorldSnapshot` a CENTRAL.
 >
 > **Como usar estas cards (loop banco <-> IA):**

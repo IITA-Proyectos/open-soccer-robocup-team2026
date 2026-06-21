@@ -24,7 +24,7 @@ que lee los 4 ToF a la vez con la lib y el pinout actuales.
 
 | Archivo | Qué hacía | Por qué está cerrado |
 |---|---|---|
-| `diag_top_bno.cpp` | Verificar 2 BNO055 (LEFT en `Wire`, RIGHT en `Wire1` REMAP pines 24/25) + sentido de giro | Arquitectura vieja: tras el recableado (2026-05-31) **ambos BNO viven en `Wire`** y el derecho (0x29) es la **unidad FALLADA** (el robot corre con 1 solo BNO). El dual-bus 24/25 ya no existe. |
+| `diag_top_bno.cpp` | Verificar 2 BNO055 (LEFT en `Wire`, RIGHT en `Wire1` REMAP pines 24/25) + sentido de giro | Arquitectura SUPERADA. La actual (unificada 2026-06-15): 2 BNO @ 0x28 en buses SEPARADOS — primario en `Wire2` (24/25, sin ToF), secundario en `Wire` (18/19, con ToF); **ambos sanos**, NO hay BNO en 0x29. Ver `src/top/sensors_imu.cpp`. |
 
 **Verificar los BNO en banco hoy** → **`diag_bno_dual_live`** (fusión de los 2, degrada a 1) o
 **`diag_bno_left`** (solo el 0x28 vivo, incluye sentido de giro / signo). Ambos VIGENTES, con `[env]`.

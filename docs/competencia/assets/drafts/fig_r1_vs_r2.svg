@@ -60,9 +60,9 @@
   <g>
     <rect x="446" y="372" width="476" height="170" rx="10" fill="#F4F8FC" stroke="#1D4E89" stroke-width="2"/>
     <text x="468" y="416" font-size="31" font-weight="700" fill="#222">Recableado 06-11 a arq. R2</text>
-    <text x="468" y="452" font-size="28" fill="#333">PERO 06-12 BNO DESCONECTADOS</text>
-    <text x="468" y="488" font-size="28" fill="#333">&#8594; corre SIN gyro, usa los 2 OTOS</text>
-    <text x="468" y="524" font-size="27" fill="#C8102E">BNO-R 0x29 MUERTO / quemado</text>
+    <text x="468" y="452" font-size="28" fill="#333">06-21: BNO reconectados, heading OK</text>
+    <text x="468" y="488" font-size="28" fill="#333">&#8594; CON gyro (primario) + 2 OTOS</text>
+    <text x="468" y="524" font-size="27" fill="#2E7D32">BNO-R (secundario 0x28, Wire): sano</text>
   </g>
   <g>
     <rect x="938" y="372" width="454" height="170" rx="10" fill="#FFFBF7" stroke="#E8731A" stroke-width="2"/>
@@ -143,9 +143,9 @@
     <rect x="732" y="1158" width="660" height="118" rx="12" fill="#F4F5F7" stroke="#9aa1ab" stroke-width="2" stroke-dasharray="8 6"/>
     <text x="754" y="1198" font-size="29" font-weight="800" fill="#4b5563">Medido vs asumido (*)</text>
     <text x="754" y="1234" font-size="27" fill="#444">MEDIDO: OTOS por env &#183; motores R2=R1 &#183; roles por flag.</text>
-    <text x="754" y="1264" font-size="27" fill="#444">ASUMIDO*: ranging ToF de R2 sin confirmar &#183; R1 sin gyro estable.</text>
+    <text x="754" y="1264" font-size="27" fill="#444">ASUMIDO*: ranging ToF de R2 sin confirmar &#183; R1 con gyro (validado banco 2026-06-21).</text>
   </g>
 
-  <text x="48" y="1316" font-size="27" fill="#666">Fig. &#8212; R1: OTOS, sin gyro, arquero  &#183;  R2: BNO, sin OTOS, delantero  &#183;  motores y kicker iguales.</text>
+  <text x="48" y="1316" font-size="27" fill="#666">Fig. &#8212; R1: OTOS + gyro (BNO), arquero  &#183;  R2: BNO, sin OTOS, delantero  &#183;  motores y kicker iguales.</text>
   <text x="48" y="1348" font-size="27" fill="#666">Diagrama original del equipo &#8212; CC BY 4.0  &#183;  Fuente: pinout_robot1/2.h, pinout_common.h, config_central.h, strategy.cpp, ESTADO.</text>
 </svg>

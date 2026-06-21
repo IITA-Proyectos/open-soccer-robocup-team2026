@@ -229,13 +229,16 @@ bool init_one_bno(Adafruit_BNO055& bno) {
     Serial.println("[IMU] reloj BNO: CRISTAL EXTERNO (default)");
 #else
     Serial.println("[IMU] reloj BNO: OSCILADOR INTERNO (TOP_BNO_INTERNAL_OSC, banco)");
-    // OSCILADOR INTERNO (banco 2026-06-10, robot1): el BNO-L de R1 quedó con el
-    // yaw CONGELADO tras un golpe (ackea I²C pero hdg clavado en -160.2 girándolo
-    // a mano). Modo de falla conocido del BNO055: el golpe daña el cristal externo
-    // de 32 kHz → el reloj de la fusión muere → salidas congeladas con chip vivo.
-    // Con este flag NO se conmuta al cristal externo (queda el oscilador interno,
-    // levemente más drift) — si el cristal era el problema, el sensor revive.
-    // Solo en envs *_oscint de banco hasta validar.
+    // OSCILADOR INTERNO — HIPÓTESIS REFUTADA (banco 2026-06-10 → 2026-06-21, robot1).
+    // En su momento se sospechó que un golpe dañó el cristal externo de 32 kHz (falla
+    // conocida del BNO055: reloj de fusión muerto → salidas congeladas con chip vivo) y
+    // este flag arranca con el OSCILADOR INTERNO para descartarlo. NO era el cristal: el
+    // chip y el cristal están SANOS. El "heading=0.0" del PRIMARIO era un flag de config
+    // (bno_left_en=0 en EEPROM) que lo excluía de la fusión — ver el FIX 2026-06-21 más
+    // abajo y journal/2026-06-21-bno-heading-fix-config-flag-no-era-tof.md. El freeze del
+    // SECUNDARIO sí era real, pero por contención I²C en el bus Wire compartido con los ToF
+    // (no por el cristal). El flag se conserva solo como recurso por si apareciera una
+    // falla de cristal REAL en otra unidad. Solo en envs *_oscint de banco.
 #endif
     delay(STABILIZE_MS);
     const uint32_t calib_start = millis();
@@ -312,6 +315,9 @@ bool sensors_imu_init() {
     // detectar freeze ANTES de arbitrar deriva), los envs *_pri corren SOLO el
     // primario de Wire2 (bus propio, nunca se congeló) — sin redundancia, sin
     // sensor muerto que pueda ganar nada.
+    // (Nota 2026-06-21: el secundario NO es un chip muerto — es SANO pero vive en el bus
+    //  compartido con los ToF, donde la contención lo congela; por eso queda de centinela,
+    //  fuera de la fusión. La defensa real para volver al dual-BNO es el detector de freeze.)
     g_ready[1] = false;
     Serial.println("[IMU] SECUNDARIO DESHABILITADO (TOP_BNO_PRIMARY_ONLY - primario-solo)");
 #else

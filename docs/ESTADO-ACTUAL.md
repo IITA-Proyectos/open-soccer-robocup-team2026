@@ -111,6 +111,23 @@ tipo: indice-operacional
 > 6 envs compilan SUCCESS. Checklists de banco en `team-tasks/2026-06-17-task-110`. Journal:
 > `journal/2026-06-17-resolucion-3-p0-competencia.md`.
 
+> **✅ BNO DE R1 — HEADING CONFIRMADO EN BANCO (2026-06-21): la causa era un FLAG, no el HW.**
+> Refina (no contradice) el banner de hardware 2026-06-17 de abajo. Reconectar los BNO (HW)
+> era necesario pero NO suficiente: un flag stale en EEPROM (`bno_left_en=0`, de un `BNO_L_OFF`
+> de una sesión vieja) dejaba al PRIMARIO fuera de la fusión → `fused_heading=0.0` SIEMPRE, con
+> el chip sano. Fix en firmware (`sensors_imu.cpp:284`, fuerza `enabled=true`). **Validación en
+> banco 2026-06-21** con `top_robot1_pri_rt` (ToF RANGEANDO): `hdg` sigue el giro (reposo −15.6
+> → girado 101.4). Conclusiones:
+> - **Ambos BNO de R1 están SANOS** (incluido el secundario — NO está quemado; es el centinela
+>   @1 Hz en el bus `Wire` compartido con los ToF, fuera de la fusión por contención de bus).
+> - El **PRIMARIO** (`Wire2`, bus propio) anda **con los 4 ToF activos** → la hipótesis "el
+>   rangeo de los ToF congela el BNO" (TASK-223) era **PISTA FALSA** para el primario (vive
+>   aparte; los ToF no lo tocan). El freeze histórico SÍ era real, pero del **secundario** en el
+>   bus compartido (contención I²C, journal 2026-06-08) — por eso queda de centinela.
+> - El cierre formal de TASK-216/223 lo hace el equipo en banco. Journal:
+>   `journal/2026-06-21-bno-heading-fix-config-flag-no-era-tof.md`. Skill nueva:
+>   `.claude/skills/bno055-imu-heading-robocup/`.
+
 > **🤖 CONFIGURACIÓN DE HARDWARE PARA INCHEON 2026 — CONFIRMADA (Gustavo, 2026-06-17):**
 > Esta es la config FÍSICA real de los 2 robots que van a Incheon. Es la **FUENTE DE VERDAD
 > del estado de hardware**; cualquier banner/doc previo que diga otra cosa (en particular
@@ -263,7 +280,7 @@ tipo: indice-operacional
 > **Virginia + R2 = ARQUERO INTEGRAL** (FSM v3.3 existente + debut de INTERCEPT/CLEAR con pelota):
 > envs nuevos `central_robot2_arquero_patrol_bb` / `central_robot2_arquero_bb` (solo agregan caja
 > negra). Guion: [`docs/pruebas-banco/PRACTICA-2026-06-12-VIRGINIA-ARQUERO-R2.md`](pruebas-banco/PRACTICA-2026-06-12-VIRGINIA-ARQUERO-R2.md).
-> **Elías + R1 = DELANTERO SIN GYRO por OTOS** (BNOs de R1 desconectados; sus 2 OTOS reemplazan
+> **Elías + R1 = DELANTERO SIN GYRO por OTOS** *(⚠️ histórico de la práctica 06-12 = modo failover deliberado; hoy 2026-06-21 R1 juega CON gyro — ver banner arriba)* (BNOs de R1 desconectados para esa prueba; sus 2 OTOS reemplazan
 > al gyro): env `central_robot1_delantero_practica_bb` (+`_obst_bb` 2ª instancia anti-choque
 > HC-SR04/ToF a 250 mm). Flags nuevos TODOS off-by-default (`ATK_OTOS_NOGYRO`,
 > `ATK_SEARCH_SPIN_ONLY`, `ATK_OBSTACLE_STOP_MM`, `CENTRAL_FORCE_ROLE_ATTACKER`) → resto de envs
@@ -315,9 +332,10 @@ tipo: indice-operacional
 >   validado (scan I²C 0x28 en Wire2 ✓). **ACTUALIZACIÓN 2026-06-15: los envs `top_robot1*`
 >   se UNIFICARON en firmware a esta arquitectura (2 BNO @ 0x28, buses separados) — ya NO son
 >   "cableado viejo"; sirven igual que `top_robot2_pri` para el R1 recableado. Falta validar en
->   banco (TASK-216).** **⚠️ BNOs de R1 hoy DESCONECTADOS**
->   (uno congelaba y el soft-resync arrastraba al sano) → **R1 corre SIN gyro**
->   (test del giro pendiente de reconectar BNO).
+>   banco (TASK-216).** **⚠️ [SUPERADO 2026-06-21 — ver banner arriba: BNO reconectados,
+>   heading validado, R1 CON gyro]** ~~BNOs de R1 hoy DESCONECTADOS (uno congelaba y el
+>   soft-resync arrastraba al sano) → R1 corre SIN gyro~~ (la causa real del "hdg=0.0" era el
+>   flag `bno_left_en=0`, no un freeze de chip — ya fijado en `sensors_imu.cpp:284`).
 >   El BNO "muerto" original → re-test en bus propio (posible repuesto gratis). Cada CENTRAL
 >   con su env per-robot; desde el recableado 2026-06-11 el M2 de R1 quedó DERECHO →
 >   `MOTOR_INVERT={+1,+1,+1}` en ambos (`8d5fc90`, validado piso).

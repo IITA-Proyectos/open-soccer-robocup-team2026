@@ -106,6 +106,7 @@ tipo: indice
    AMBOS robots, 2 BNO @ 0x28 en buses separados — primario Wire2 / secundario Wire; NO hay
    ningún BNO en 0x29. Fuente: `src/top/sensors_imu.h` + `src/top/pinout_common.h`.**
    **⚠️ HW Incheon (2026-06-17): config confirmada — AMBOS robots con 2× BNO funcionando (R1 vuelve a jugar CON gyro). Odometría OTOS es SOLO R1 (R2 no tiene). Banner canónico de config de sensores por robot: `docs/ESTADO-ACTUAL.md` (2026-06-17).**)
+   **✅ Heading de R1 VALIDADO en banco (2026-06-21):** el "heading=0.0" previo era el flag `bno_left_en=0` en EEPROM (no el chip, no los ToF), ya fijado en `sensors_imu.cpp:284`; con `top_robot1_pri_rt` (ToF rangeando) el `hdg` sigue el giro. La hipótesis "los ToF congelan el BNO" (TASK-223) quedó como pista falsa para el primario (vive en `Wire2`, aparte). Fuente: `journal/2026-06-21-bno-heading-fix-config-flag-no-era-tof.md`.
    y habilita localización 2D por trilateración. Pines/direcciones reales
    ya en `pinout_robot1.h`/`pinout_robot2.h` (`PIN_TOF_XSHUT={9,10,11,12}`,
    `NUM_TOF_ACTIVE=4`). **Lección**: las direcciones I²C de los VL53L7CX

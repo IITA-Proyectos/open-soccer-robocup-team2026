@@ -107,7 +107,7 @@ flowchart LR
 > - **WorldSnapshot v3 = 31 B, tipo `0x60`, @100 Hz**; cable real **TOP `Serial4` pin17 (TX4) → CENTRAL `Serial7` pin28 (RX7)** (mapeo corregido 2026-06-02: es `Serial4`, no `Serial7` del lado TOP).
 > - **DOWN difunde** `LineStatusV2` (`0x10`, 16 B), `Pose2D` (`0x11`, 7 B) y `Velocity2D` (`0x12`, 7 B) a CENTRAL (`Serial1` pin1→pin0, validado en banco) **y** a TOP (`Serial5` pin20→TOP `Serial1` pin0, aún sin cablear; en TOP se cachean, todavía no se consumen).
 > - **Árbitro = nivel GPIO**, NO UART: pines 5/6 con `INPUT_PULLDOWN`, `match_running = pin5 OR pin6` (en PLAY el COMM sube **un solo** pin → AND no servía; OR sí; fail-safe = cable suelto → ambos 0 → STOP). TASK-039, banco 2026-06-02.
-> - **I2C del TOP a 100 kHz con el BNO leído @20 Hz**: a 400k, o a 100k leyendo el BNO fuerte, el read del BNO choca con los ToF y el **yaw se congela**. Robot corre **1 BNO (0x28) + 4 ToF** estables (el BNO 0x29 derecho está muerto).
+> - **I2C del TOP a 100 kHz**: a 400 kHz el read del BNO **secundario** (en `Wire`, junto a los ToF) choca con los ToF y el yaw se congela; a 100 kHz coexisten. El **primario** vive aparte en `Wire2` (sin ToF) → no sufre contención. Robot corre **2 BNO (ambos 0x28, buses separados) + 4 ToF**; ambos BNO sanos (heading validado en banco 2026-06-21). NO hay ningún BNO en 0x29.
 > - **CENTRAL no fusiona** (toma el heading del snapshot del TOP) y **no tiene BNO**.
 > - **OTOS dependen de batería** → el refinamiento drive-straight es opcional y con fallback exacto al comportamiento sin OTOS.
 

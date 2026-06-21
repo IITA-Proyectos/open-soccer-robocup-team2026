@@ -162,11 +162,11 @@
   <g>
     <rect x="48" y="824" width="424" height="208" rx="12" fill="#FFF6EE" stroke="#E8731A" stroke-width="3"/>
     <text x="70" y="864" font-size="29" font-weight="800" fill="#a8500d">HOY en ROBOT 1</text>
-    <text x="70" y="900" font-size="28" fill="#333">BNO DESCONECTADOS: sin gyro</text>
-    <text x="70" y="932" font-size="28" fill="#333">&#8594; usa el yaw de los 2 OTOS</text>
-    <text x="70" y="966" font-size="28" fill="#C8102E">BNO-R 0x29 muerto / quemado</text>
+    <text x="70" y="900" font-size="28" fill="#333">2 BNO sanos: primario heading + centinela</text>
+    <text x="70" y="932" font-size="28" fill="#333">&#8594; gyro del primario + yaw de los 2 OTOS</text>
+    <text x="70" y="966" font-size="28" fill="#2E7D32">BNO secundario (Wire 0x28): centinela @1Hz</text>
     <text x="70" y="1000" font-size="27" fill="#a8500d">* signo del yaw OTOS sin validar en banco</text>
-    <text x="70" y="1026" font-size="27" fill="#666">(riesgo #1 con R1 sin gyro)</text>
+    <text x="70" y="1026" font-size="27" fill="#666">(heading validado en banco 2026-06-21)</text>
   </g>
 
   <!-- =====================================================================

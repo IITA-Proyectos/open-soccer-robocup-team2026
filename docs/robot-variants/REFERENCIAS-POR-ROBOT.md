@@ -98,10 +98,12 @@ quedó RECABLEADO DERECHO en la reparación 2026-06-10/11.
 
 Archivos: `src/top/sensors_imu.cpp/.h`, `src/top/pinout_common.h`. **HARDCODED-COMÚN** (ningún `#if ROBOT`).
 
-> ⚠️ **R1 recableado 2026-06-11 a arq. R2**: primario `Wire2` (24/25) + secundario `Wire`
-> (hoy ambos BNO de R1 DESCONECTADOS → R1 corre sin gyro). La columna "valor actual (ROBOT1)"
-> de abajo describe el **cableado viejo** de R1 (ambos BNO en `Wire`, ambos 0x28) — para la TOP
-> de R1 recableada vale lo de la columna ROBOT2 (env `top_robot2_pri`).
+> ⚠️ **R1 recableado 2026-06-11 a arq. R2**: primario `Wire2` (24/25) + secundario `Wire`.
+> **Actualización 2026-06-21: ambos BNO de R1 RECONECTADOS y heading VALIDADO en banco** (R1
+> juega CON gyro; el "heading=0.0" previo era el flag `bno_left_en=0` en EEPROM, ya fijado en
+> firmware — ver `journal/2026-06-21-bno-heading-fix-config-flag-no-era-tof.md`). La columna
+> "valor actual (ROBOT1)" de abajo describe el **cableado viejo** de R1 (ambos BNO en `Wire`,
+> ambos 0x28) — para la TOP de R1 recableada vale lo de la columna ROBOT2 (env `top_robot2_pri`).
 >
 > ⚠️ **Corrección 2026-06-15 (confirmada por Gustavo en banco, AMBOS robots):** la arquitectura
 > BNO es la MISMA en R1 y R2 → 2× BNO055 **ambos en 0x28**, en buses SEPARADOS (PRIMARIO en `Wire2`
@@ -111,7 +113,7 @@ Archivos: `src/top/sensors_imu.cpp/.h`, `src/top/pinout_common.h`. **HARDCODED-C
 
 | Referencia | archivo:línea | valor actual (ROBOT1) | per-robot? | cómo se selecciona | nota ROBOT2 |
 |---|---|---|---|---|---|
-| Nº de BNO | `sensors_imu.cpp:43-46`, `imu_fusion.h` `IMU_FUSION_N` | 2 slots (LEFT+RIGHT), hoy 1 sano | **HARDCODED-COMÚN** | ninguno | R2 tiene 2 BNO **funcionales** (uno por bus). |
+| Nº de BNO | `sensors_imu.cpp:43-46`, `imu_fusion.h` `IMU_FUSION_N` | 2 slots, **ambos sanos** (primario = heading; secundario = centinela) | **HARDCODED-COMÚN** | ninguno | R2 tiene 2 BNO **funcionales** (uno por bus). |
 | **Bus de cada BNO** | `sensors_imu.cpp:43-44` | **AMBOS en `&Wire`** (18/19) | **HARDCODED-COMÚN** | ninguno | ⚠️ **MISMATCH (AMBOS robots, corrección 2026-06-15)**: R1 y R2 tienen el **PRIMARIO** en **`Wire2`** (LPI2C4, pines 24/25, back-pad bajo el Teensy; cables soldados por debajo), solo en su bus y SIN ToF → sin contención; y el **SECUNDARIO** en **`Wire`** (18/19), junto a los 4 ToF. ✅ **RESUELTO 2026-06-15**: el firmware ya instancia el PRIMARIO en `Wire2` y el SECUNDARIO en `Wire` (unificado en `sensors_imu.cpp`, R1+R2). Falta validar R1 en banco (TASK-216). |
 | Direcciones BNO | `pinout_common.h:26-27` | ambos 0x28 | **HARDCODED-COMÚN** | ninguno | ✅ **RESUELTO 2026-06-15**: los 2 BNO comparten la **MISMA base 0x28** (no se distinguen por dirección; se distinguen por BUS). NO existe ningún BNO en 0x29 — el viejo esquema "0x28 vs 0x29 mismo bus / ADR puenteado a 3V3" fue un ERROR ya corregido en hardware. (0x29 sigue siendo la dirección de FÁBRICA de los ToF VL53L7CX — ver §4 — y eso NO se toca.) |
 | Detección / readiness | `sensors_imu.cpp` `g_ready[]` (init por ACK en cada bus) | init unificado en 0x28 (sin sondeo 0x29) | **HARDCODED-COMÚN** | ninguno | ✅ **RESUELTO 2026-06-15**: la rama de sondeo 0x29 se ELIMINÓ. Ambos BNO se inician en 0x28 — PRIMARIO en `Wire2`, SECUNDARIO en `Wire` — cada uno con guarda de ACK en su bus. NO hay BNO en 0x29. |

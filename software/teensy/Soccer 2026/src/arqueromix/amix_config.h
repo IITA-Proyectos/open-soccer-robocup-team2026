@@ -166,9 +166,19 @@ constexpr unsigned long AMIX_T_INICIO_AVANCE       = 200;   // ERA 400 — impul
 // ⚠️ Si al GO el robot va hacia ADELANTE en vez de atrás → flashear con -DARQMIX_FLIP_INICIO_RETRO.
 constexpr int AMIX_INICIO_RETRO_PWM = 100;  // PWM del retroceso de inicio (controlado, no a tope)
 // PWM del AVANCE del homing — primitiva DEDICADA avanzar_inicio() (NO el avanzar() del despeje, que
-// queda en 100). 90 = suave pero CON margen sobre el piso de las delanteras (MOTOR_MIN_PWM=70): NO
-// bajar a 70 o quedan en zona muerta y se irían MÁS chuecas. Subir si no se despega de la línea.
-constexpr int AMIX_INICIO_AVANCE_PWM = 90;
+// queda en 100). BAJADO 90→75 (banco Virginia 2026-06-21: "va con demasiada fuerza"). 75 queda
+// apenas sobre el piso de las delanteras (MOTOR_MIN_PWM=70): si NO arranca/se queda, subir hacia 85;
+// NO bajar a 70 (zona muerta).
+constexpr int AMIX_INICIO_AVANCE_PWM = 75;
+// SENTIDO del avance del homing. Banco Virginia 2026-06-21: el movimiento a ciegas iba para el LADO
+// CONTRARIO → se INVIERTE por default. ⚠️ Al invertir queda en el MISMO sentido que el retroceso de
+// inicio: confirmar en banco que igual se DESPEGA de la línea. -DARQMIX_FLIP_INICIO_AVANCE vuelve al
+// sentido viejo (diagnóstico).
+#ifdef ARQMIX_FLIP_INICIO_AVANCE
+constexpr int AMIX_INICIO_AVANCE_SIGN = +1;  // sentido VIEJO (iba al lado contrario) — solo diagnóstico
+#else
+constexpr int AMIX_INICIO_AVANCE_SIGN = -1;  // ✅ sentido CORREGIDO (banco Virginia 2026-06-21)
+#endif
 #ifdef ARQMIX_FLIP_INICIO_RETRO
 constexpr int AMIX_INICIO_RETRO_SIGN = -1;  // invierte la dirección del retroceso de inicio
 #else

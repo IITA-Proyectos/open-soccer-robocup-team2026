@@ -377,26 +377,6 @@ arco** (sin tocar la línea). (1) ¿Rebota donde corresponde el borde del arco? 
 cámara no está viendo el arco (`goal_own_visible=0`) → es el riesgo conocido; volvé a la línea con
 `-DARQMIX_PATRULLA_LINEA` o validamos la cámara primero.
 
-### 17.3 RE-HOMING al detectar la línea del área chica en la patrulla (pedido Virginia 2026-06-21)
-
-**Cambio pedido.** Si durante la patrulla (por cámara) el arquero **detecta blanco con DOWN** — la
-línea del **ÁREA CHICA**, típicamente porque derivó hacia ATRÁS metiéndose al arco — **no se sigue
-metiendo**: re-hace el **HOMING que ya funcionaba** (retrocede hasta blanco → avanza a ciegas →
-reanuda la patrulla por cámara del arco).
-
-**Implementación.** Al inicio de `moverce_derecha`/`moverce_izquierda`, si `AMIX_REHOME_ON_LINE &&
-AMIX_PATRULLA_POR_ARCO && linea()` → `parar()` + `estado = inicio_retroceder`. Reúsa la secuencia de
-homing TAL CUAL (`inicio_retroceder` → `inicio_avanzar` → vuelve a `moverce_derecha`). `-DARQMIX_NO_REHOME_LINE`
-lo desactiva. (Sólo aplica en patrulla-por-arco; en el fallback por línea, la línea YA es el rebote.)
-
-**⚠️ Riesgo a vigilar en banco.** Al re-homing entra a `inicio_retroceder`, que arranca yendo HACIA
-ATRÁS hasta ver blanco. Si está sólidamente sobre la línea, detecta blanco en ~1 tick y avanza (bien).
-Pero si la detección de línea PARPADEA justo al entrar, podría retroceder de más (metiéndose al arco)
-hasta el safety `AMIX_T_INICIO_RETRO_SAFETY` (hoy 50 s TEMPORAL — bajarlo es prioritario). **Si en
-banco ves que al tocar la línea retrocede DEMASIADO hacia el arco**, la alternativa es ir directo a
-`inicio_avanzar` (avanzar a ciegas para SALIR de la línea, sin retroceder) — decímelo y lo cambio (es
-un renglón). Por ahora se respeta tu pedido literal (reusar el homing completo).
-
 ## 18. Despeje DIRIGIDO al arco rival + arcos por ROL, no por color (pedido Gustavo 2026-06-21)
 
 **Cambio pedido.** Que (1) la determinación de cuál arco es el PROPIO y cuál el RIVAL viva en la

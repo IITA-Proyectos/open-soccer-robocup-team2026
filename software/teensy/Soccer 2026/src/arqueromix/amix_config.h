@@ -226,16 +226,6 @@ constexpr float AMIX_ARCO_OWN_SIGN = -1.0f;
 #else
 constexpr float AMIX_ARCO_OWN_SIGN = +1.0f;
 #endif
-// RE-HOMING al detectar la línea del ÁREA CHICA durante la patrulla (pedido Virginia 2026-06-21):
-// si el arquero detecta blanco (línea del área) — típicamente porque derivó hacia ATRÁS, metiéndose
-// al arco — NO se sigue metiendo: re-hace el HOMING que YA funcionaba (retrocede hasta blanco →
-// avanza a ciegas → reanuda la patrulla por cámara del arco). Sólo aplica en patrulla-por-arco
-// (en el fallback por línea, la línea ya es el rebote). -DARQMIX_NO_REHOME_LINE lo desactiva.
-#ifdef ARQMIX_NO_REHOME_LINE
-constexpr bool AMIX_REHOME_ON_LINE = false;
-#else
-constexpr bool AMIX_REHOME_ON_LINE = true;
-#endif
 
 // ============================================================
 // Comunicación — enlaces TOP (Serial7) y DOWN (Serial1), 230400 (= comm_top/comm_down).

@@ -232,12 +232,6 @@ void mix_fsm_tick() {
         //   línea        → escape DETECTA_LINEA_* de siempre (no salir de cancha).
         // ----------------------------------------------------
         case Estado::KICKOFF_SEEK:
-            if (haypelota) {
-                parar();
-                millis_inicio_estado = millis();
-                estado = Estado::APUNTAR_PELOTA;
-                break;
-            }
             // línea → escape de siempre (prioridad sobre la medialuna)
             if (linea_s1()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_1; break; }
             if (linea_s2()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_2; break; }

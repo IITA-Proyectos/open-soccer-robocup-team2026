@@ -161,5 +161,15 @@ void patear_atras() {
     amix_set_motor(2, 0);
 }
 
+// retroceder_inicio() — retroceso del HOMING de inicio. Mismo patrón que patear_atras
+// (M1=-, M2=+ = hacia ATRÁS) pero con PWM propio y signo flippable. Si al GO el robot va hacia
+// ADELANTE en vez de atrás, -DARQMIX_FLIP_INICIO_RETRO invierte el sentido.
+void retroceder_inicio() {
+    const int p = AMIX_INICIO_RETRO_PWM * AMIX_INICIO_RETRO_SIGN;
+    amix_set_motor(0, -p);
+    amix_set_motor(1, +p);
+    amix_set_motor(2, 0);
+}
+
 }  // namespace arqmix
 }  // namespace iitasoccer

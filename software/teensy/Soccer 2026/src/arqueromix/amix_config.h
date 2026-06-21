@@ -126,8 +126,18 @@ constexpr float AMIX_TOL_CERCANIA_MM  = 250.0f; // DESPEJA si la distancia eucl�
 // ============================================================
 // INICIO — homing al área chica (banco Virginia 2026-06-21): retrocede hasta ver la línea del
 // área, avanza un poco a ciegas, y recién ahí patrulla.
-constexpr unsigned long AMIX_T_INICIO_RETRO_SAFETY = 4000; // tope de seguridad del retroceso si NUNCA ve la línea
-constexpr unsigned long AMIX_T_INICIO_AVANCE       = 400;  // avanzar un poco tras ver la línea (SIN leer sensores) — tunable
+// ⚠️ SAFETY a 50 s TEMPORAL (pedido Virginia, para observar el retroceso): después bajar a ~4 s.
+constexpr unsigned long AMIX_T_INICIO_RETRO_SAFETY = 50000; // TEMP 50 s (era 4000) — bajar luego
+constexpr unsigned long AMIX_T_INICIO_AVANCE       = 400;   // avanzar un poco tras ver la línea (SIN leer sensores) — tunable
+// Retroceso del homing: primitiva DEDICADA con PWM propio (no acoplada al despeje) y dirección
+// flippable. retroceder_inicio() = M1=-PWM, M2=+PWM (= patrón patear_atras = hacia ATRÁS) × SIGN.
+// ⚠️ Si al GO el robot va hacia ADELANTE en vez de atrás → flashear con -DARQMIX_FLIP_INICIO_RETRO.
+constexpr int AMIX_INICIO_RETRO_PWM = 100;  // PWM del retroceso de inicio (controlado, no a tope)
+#ifdef ARQMIX_FLIP_INICIO_RETRO
+constexpr int AMIX_INICIO_RETRO_SIGN = -1;  // invierte la dirección del retroceso de inicio
+#else
+constexpr int AMIX_INICIO_RETRO_SIGN = +1;
+#endif
 constexpr unsigned long AMIX_T_IMP_LATERAL   = 350;   // impulso_der/izq (anti-traba borde)
 constexpr unsigned long AMIX_T_PAT_PAUSA_INI = 200;   // PATEANDO_pausa_inicial_arquero
 constexpr unsigned long AMIX_T_PAT_ADELANTE  = 450;   // PATEANDO_adelante_arquero

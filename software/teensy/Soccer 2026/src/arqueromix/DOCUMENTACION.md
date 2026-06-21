@@ -275,17 +275,24 @@ inicio_avanzar     → avanza un poco A CIEGAS (NO lee los sensores) durante ~40
 moverce_derecha    → recién ACÁ empieza a patrullar
 ```
 
-- **`inicio_retroceder`** (`amix_fsm.cpp`): llama `patear_atras()` (retroceso recto) hasta que
-  `linea()` da true (DOWN ve el blanco del área). Safety `AMIX_T_INICIO_RETRO_SAFETY=4000 ms` para
-  no quedarse retrocediendo contra la pared si nunca ve la línea.
+- **`inicio_retroceder`** (`amix_fsm.cpp`): llama `retroceder_inicio()` (primitiva DEDICADA con PWM
+  propio `AMIX_INICIO_RETRO_PWM=100` y dirección flippable) hasta que `linea()` da true (DOWN ve el
+  blanco del área). Safety `AMIX_T_INICIO_RETRO_SAFETY` = **50 s TEMPORAL** (banco Virginia, para
+  observar el retroceso; bajar a ~4 s cuando ande).
 - **`inicio_avanzar`**: llama `avanzar()` durante `AMIX_T_INICIO_AVANCE=400 ms`, **sin chequear la
   línea** a propósito (para despegarse del blanco antes de patrullar). Después → `moverce_derecha`.
 - El `match_running` (árbitro) sigue gobernando: el homing arranca recién con el **GO**.
 
-**Tunear:** `AMIX_T_INICIO_AVANCE` (400 ms) = cuánto se despega de la línea antes de patrullar (subir
-si queda muy pegado a la línea, bajar si se aleja de más). La velocidad del retroceso es la misma
-del despeje (`AMIX_ATRAS`); si retrocede muy rápido y se pasa de la línea, bajar `AMIX_ATRAS` o
-avisame y le pongo una velocidad propia al homing.
+⚠️ **Si al GO el robot va hacia ADELANTE en vez de atrás** (banco Virginia 2026-06-21): dos causas
+posibles — (a) arranca **sobre una línea** → `line_present` ya es true → saltea el retroceso y pasa
+directo a `inicio_avanzar` (avanza); (b) el **retroceso está invertido** en este robot. Test: flashear
+`central_robot2_arqueromix_retroflip` (`-DARQMIX_FLIP_INICIO_RETRO`) → si ahora va para atrás, era (b).
+Si con ambos arranca yendo adelante apenas detecta línea, es (a) (arranca sobre el blanco).
+
+**Tunear:** `AMIX_T_INICIO_AVANCE` (400 ms) = cuánto se despega de la línea antes de patrullar.
+`AMIX_INICIO_RETRO_PWM` (100) = velocidad PROPIA del retroceso de inicio (ya no comparte con el
+despeje). `AMIX_T_INICIO_RETRO_SAFETY` = 50 s TEMPORAL — bajar a ~4 s cuando el arranque ande.
+Motores: TODO se mueve con PWM (`analogWrite` vía `amix_set_motor`); el retroceso va a PWM 100/255.
 
 ## 9. Cómo compilar, flashear y volver atrás
 

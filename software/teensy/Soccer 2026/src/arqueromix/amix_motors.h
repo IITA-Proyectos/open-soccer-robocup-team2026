@@ -55,5 +55,10 @@ void avanzar_patear();
 //   M1=-150, M2=+150, M3=0 (= opuesto de avanzar).
 void patear_atras();
 
+// Retroceso del HOMING de inicio (ir hacia el arco propio a buscar la línea del área). Primitiva
+// DEDICADA con PWM propio (AMIX_INICIO_RETRO_PWM) y dirección flippable (AMIX_INICIO_RETRO_SIGN),
+// para no acoplarse al retroceso del despeje y poder darle vuelta el sentido sin tocar el resto.
+void retroceder_inicio();
+
 }  // namespace arqmix
 }  // namespace iitasoccer

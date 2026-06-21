@@ -82,7 +82,7 @@ void amix_fsm_tick() {
         // ----------------------------------------------------
         // --- INICIO: homing al área chica (banco Virginia 2026-06-21) ---
         case Estado::inicio_retroceder:             // ir HACIA ATRÁS hasta detectar la línea del área
-            patear_atras();                          // retroceso recto (hacia el arco propio)
+            retroceder_inicio();                     // retroceso dedicado (PWM propio, sentido flippable)
             // Sale al ver la línea (blanco del área chica). Safety: si NUNCA la ve, avanza igual
             // tras AMIX_T_INICIO_RETRO_SAFETY para no quedarse retrocediendo contra la pared.
             if (linea() || (millis() - millis_inicio_estado >= AMIX_T_INICIO_RETRO_SAFETY)) {

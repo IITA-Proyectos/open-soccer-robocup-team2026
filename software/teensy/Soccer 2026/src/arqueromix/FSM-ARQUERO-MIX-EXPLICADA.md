@@ -6,7 +6,7 @@ audiencia: "Quien vaya a MODIFICAR la FSM del arquero (Virginia, Elías, alumnos
 author: "Claude Opus 4.8 (Anthropic), vía Claude Code"
 requested-by: "Gustavo Viollaz (@gviollaz)"
 tipo: documento-explicativo
-fidelidad: "Escrito leyendo el código real al 2026-06-21 (commit 2558427). Verificado con pasada adversarial."
+fidelidad: "Verificado contra el código vigente al 2026-06-21 (incluye homing que sale al despegar de la línea, control de PROFUNDIDAD por línea y patrulla angosta). Re-verificado con pasada adversarial."
 ---
 
 # El ARQUERO MIX, explicado para poder modificarlo
@@ -153,6 +153,10 @@ pwm_con_signo)` maneja un motor (signo = sentido). Las primitivas:
 > **La corrección de rumbo** (en `ad/aiproporcional`): mira `error` (cuánto se desvió del rumbo de arranque)
 > y modula la rueda trasera en 3 bandas para **enderezar** mientras strafea. El signo correcto (`-1`) está
 > **validado en banco**; con `+1` el arquero se daba vuelta 180°. **Solo funciona si hay rumbo válido del TOP.**
+>
+> **El sesgo hacia adelante** (también en `ad/aiproporcional`): además del strafe, suman un micro-empuje
+> RECTO al frente (`AMIX_FORWARD_BIAS_PWM`, suma a M1 / resta a M2 con signo FIJO) para que el arquero **no
+> derive hacia atrás** y se meta al área. Vale en patrulla y en el rebote. Se apaga con `-DARQMIX_NO_FORWARD_BIAS`.
 
 ---
 
@@ -167,20 +171,22 @@ siguiendo la pelota), **DESPEJE** (sacar la pelota). El flujo:
 
 ```
         ┌──────────────────── al GO (árbitro) o flanco STOP→GO ────────────────────┐
-        ▼                                                                          
-  inicio_retroceder ──ve la línea (o safety 50s)──► inicio_avanzar ──(400ms)──► moverce_derecha
-        (va atrás)                                   (avanza a ciegas, lento)             │
-                                                                                          ▼
-     ── PATRULLA (ir y venir, siguiendo la pelota) ──────────────────────────────────────
-        moverce_derecha ──borde──► salir_linea_izq ──(450ms ciego)──► moverce_izquierda
-             ▲                                                              │
-             └────────── salir_linea_der ◄──(450ms ciego)──── borde ◄───────┘
-        (entre moverce_derecha ↔ moverce_izquierda también se salta DIRECTO según el lado de la pelota)
-     ─────────────────────────────────────────────────────────────────────────────────────
+        ▼
+  inicio_retroceder ──ve la línea (o safety)──► inicio_avanzar ──despegó de la línea (o safety)──► moverce_derecha
+        (retrocede)                             (avanza RECTO al frente hasta NO pisar la línea)         │
+                                                       ▲                                                 ▼
+     ── PATRULLA (ir y venir, siguiendo la pelota) ────┼──────────────────────────────────────────────
+        moverce_derecha ──borde lateral──► salir_linea_izq ──(380ms ciego)──► moverce_izquierda
+             ▲                                                                      │
+             └────────────── salir_linea_der ◄──(380ms ciego)──── borde lateral ◄───┘
+        · entre moverce_der ↔ izq también se salta DIRECTO según el lado de la pelota
+        · PROFUNDIDAD: si VE el arco propio Y pisa la línea del fondo (= derivó ATRÁS) → vuelve a
+          inicio_avanzar (la flecha ▲) para AVANZAR al frente y salir del área
+     ──────────────────────────────────────────────────────────────────────────────────────
                                   │ pelota CERCA + AL FRENTE (desde cualquier moverce_*)
                                   ▼
-        PATEANDO_pausa_inicial ─(200ms)─► ALINEAR_arco_opp ─(apuntó/timeout)─► PATEANDO_adelante
-                                          (gira al arco rival)                  (golpe 450ms)
+        PATEANDO_pausa_inicial ─(200ms)─► ALINEAR_arco_opp ─(apuntó/no ve/timeout)─► PATEANDO_adelante
+                                          (gira al arco rival)                        (golpe rampa 450ms)
                                                                                      │
         moverce_derecha ◄─(1000ms)─ avanzar_despues_de_patear ◄─(línea/4s)─ PATEANDO_atras ◄─(1000ms)─ PATEANDO_pausa
 ```
@@ -191,10 +197,12 @@ Idea: al arrancar, **acomodarse en el arco** antes de patrullar.
 - **`inicio_retroceder`** (`amix_fsm.cpp:133-142`): `retroceder_inicio()` (va hacia atrás) hasta que
   `linea()` detecta el blanco del área. Red de seguridad: si nunca la ve, sale igual tras
   `AMIX_T_INICIO_RETRO_SAFETY` (**hoy 50 s temporal**, para observar; baja a ~4 s cuando ande). → `inicio_avanzar`.
-- **`inicio_avanzar`**: `avanzar_inicio()` (avance lento, recto al frente) para SALIR de la línea del
-  área. **FIX 2026-06-21:** ya no termina por reloj fijo — sale cuando cumplió el impulso mínimo
-  (`AMIX_T_INICIO_AVANCE_MIN`=400 ms) **Y** ya no pisa la línea (`!linea()`), o por tope de seguridad
-  (`AMIX_T_INICIO_AVANCE_SAFETY`=1200 ms). Así no arranca a patrullar pisando el área. → `moverce_derecha`.
+- **`inicio_avanzar`**: `avanzar_inicio()` (avance lento, PWM 75, recto al frente) para SALIR de la línea
+  del área. **No termina por reloj fijo:** sale cuando cumplió el impulso mínimo
+  (`AMIX_T_INICIO_AVANCE_MIN` = 500 ms) **Y** ya no pisa la línea (`!linea()`), o por tope de seguridad
+  (`AMIX_T_INICIO_AVANCE_SAFETY` = 1200 ms). Así el arquero **nunca arranca a patrullar pisando el área
+  chica**. → `moverce_derecha`. *(Este mismo estado se REUTILIZA durante la patrulla para el control de
+  profundidad — ver abajo.)*
 
 ### Fase PATRULLA — `moverce_derecha`, `moverce_izquierda`, `salir_linea_der`, `salir_linea_izq`
 
@@ -202,28 +210,35 @@ Esta es la fase principal: el arquero **va y viene** delante del arco, **siguien
 **rebotando** en los bordes. `moverce_derecha` y `moverce_izquierda` son **espejo** (una strafe a la derecha
 con `adproporcional`, la otra a la izquierda con `aiproporcional`). En cada una se decide **dos cosas**:
 
-**(1) Qué hacer con la pelota** (`amix_fsm.cpp:156-172`, idéntico espejo en :197-213):
+**(1) Qué hacer con la pelota** (en `moverce_derecha`, espejo en `moverce_izquierda`):
 - **¿Cerca y al frente?** (`ball_para_despejar()` = distancia ≤ 250 mm **y** |ángulo| ≤ 30°) → arranca el
   **DESPEJE** (va a `PATEANDO_pausa_inicial`).
 - **¿Recién salió de un borde?** (ventana "commit") → sigue patrullando **este** lado, no vuelve.
 - **¿Pelota desviada?** (no alineada, |ángulo| > 8°) → **sigue la pelota**: se va al estado del lado donde
   está (`ball_a_la_derecha()` → derecha o izquierda), con más fuerza (`pd=1.5`).
 - **¿Alineada pero lejos?** → `parar()` (mantiene posición; banda muerta angosta).
-- **¿Sin pelota?** → patrulla base (`pd=1.0`).
+- **¿Sin pelota?** → patrulla base (`pd=0.85`).
 
-**(2) Cuándo rebotar en el borde** (`:173-191`, espejo en :214-231) — **acá está el cambio reciente de
-Virginia**:
+**(2) Cuándo rebotar en el borde LATERAL** (en `moverce_derecha`/`moverce_izquierda`):
 - **Por DEFAULT (`AMIX_PATRULLA_POR_ARCO = true`):** el borde se detecta por el **ÁNGULO del arco propio**
   (la cámara trasera lo ve por el snapshot). Cuando el arco propio se desvía de "directamente atrás" (180°)
-  más que `AMIX_TOL_ARCO_OWN_DEG` (30°), **llegó al borde** → rebota al otro lado. **Si la cámara NO ve el
-  arco propio**, cae al **fallback de LÍNEA** (`linea()`). Helpers: `rear_goal_dev()`, `borde_arco_der/izq()`
-  (`:93-103`).
+  más que `AMIX_TOL_ARCO_OWN_DEG` (**15°**, patrulla angosta y centrada al arco), **llegó al borde** → rebota
+  al otro lado. **Si la cámara NO ve el arco propio**, cae al **fallback de LÍNEA** (`linea()`). Helpers:
+  `rear_goal_dev()`, `borde_arco_der/izq()`.
 - **Con `-DARQMIX_PATRULLA_LINEA`:** vuelve al esquema viejo — rebota **solo** por la línea.
 - El rebote va a `salir_linea_izq` (desde la derecha) o `salir_linea_der` (desde la izquierda), y está
   **gateado por el commit** (no rebota dos veces seguidas).
 
-**`salir_linea_der` / `salir_linea_izq`** (`:235-252`): salen al lado opuesto **a ciegas** (sin leer
-sensores) y con fuerza (`pd=1.9`) durante `AMIX_T_SALIR_LINEA` (450 ms), y arman la ventana **commit**
+**(3) Control de PROFUNDIDAD — no meterse al área** (default `AMIX_PROFUNDIDAD_POR_LINEA = true`): el arquero
+puede **derivar hacia atrás** (hacia su arco) mientras patrulla y meterse en el área chica. La cámara **no
+sirve para medir profundidad** (pierde el arco justo cuando está cerca); la señal confiable es la **línea**
+del fondo (DOWN). Regla: **si VE el arco propio Y pisa la línea** → derivó atrás → vuelve a `inicio_avanzar`
+(avanza recto al frente **hasta despegar** de la línea) y retoma la patrulla. *(El lado lateral ya lo cubre
+el ángulo del arco, por eso este control solo actúa cuando VE el arco; si no lo ve, la línea se usa para el
+rebote lateral, fallback.)* Se apaga con `-DARQMIX_NO_PROFUNDIDAD`.
+
+**`salir_linea_der` / `salir_linea_izq`**: salen al lado opuesto **a ciegas** (sin leer sensores) y con
+fuerza (`pd=1.9`) durante `AMIX_T_SALIR_LINEA` (**380 ms**), y arman la ventana **commit**
 (`AMIX_T_PATRULLA_COMMIT` = 1 s) para **no volver enseguida** a la línea que dejaron. Después vuelven a
 `moverce_*` del lado nuevo.
 
@@ -259,10 +274,14 @@ Todo en `amix_config.h`. Las más importantes:
 | `AMIX_TOL_KICK_DEG` | 30° | ángulo máximo de la pelota para despejar |
 | `AMIX_TOL_CERCANIA_MM` | 250 | distancia para despejar (**knob principal**, escala sin calibrar) |
 | `AMIX_TOL_ARCO_OPP_DEG` | 12° | cuán fino apunta al arco rival antes de patear |
-| `AMIX_TOL_ARCO_OWN_DEG` | 30° | ancho de la patrulla (desvío del arco propio = borde) |
+| `AMIX_TOL_ARCO_OWN_DEG` | **15°** | ancho de la patrulla (desvío del arco propio = borde); más chico = más angosta/centrada |
 | `AMIX_T_ALINEAR_OPP` | 300 ms | tope de giro al apuntar (conservador) |
+| `AMIX_T_INICIO_AVANCE_MIN / _SAFETY` | 500 / 1200 ms | impulso mínimo del homing / tope si la línea no se "apaga" |
+| `AMIX_PROFUNDIDAD_POR_LINEA` | true | control de profundidad: si ve el arco Y pisa la línea → avanza a salir del área |
+| `AMIX_T_SALIR_LINEA` | 380 ms | duración de la salida lateral a ciegas |
 | `AMIX_T_INICIO_RETRO_SAFETY` | **50 s (temporal)** | safety del homing — **bajar a ~4 s** |
-| `AMIX_PD_BASE / BALL / SALIR` | 1.0 / 1.5 / 1.9 | fuerza de la patrulla / siguiendo pelota / saliendo de línea |
+| `AMIX_PD_BASE / BALL / SALIR` | 0.85 / 1.5 / 1.9 | fuerza de la patrulla / siguiendo pelota / saliendo de línea |
+| `AMIX_FORWARD_BIAS_PWM` | 10 | micro-empuje al frente en la patrulla (que no derive atrás al área) |
 | `AMIX_KICK_VEL_FINAL` | 180 | potencia pico del golpe |
 
 **Perillas de compilación (flags `-D…`)** — cambian comportamiento sin editar código:
@@ -273,6 +292,8 @@ Todo en `amix_config.h`. Las más importantes:
 | `ARQMIX_FLIP_INICIO_RETRO` | invierte el sentido del retroceso del homing | si va para adelante al GO |
 | `ARQMIX_FLIP_GIRO_ALINEAR` | invierte el giro de alineación al arco | si gira al lado contrario (env `_giroflip`) |
 | `ARQMIX_PATRULLA_LINEA` | patrulla rebota por LÍNEA (esquema viejo) | fallback si el arco propio falla |
+| `ARQMIX_NO_PROFUNDIDAD` | apaga el control de profundidad por línea | si molesta en banco |
+| `ARQMIX_NO_FORWARD_BIAS` | apaga el sesgo de empuje al frente | si se va para adelante / sale del arco |
 | `ARQMIX_FLIP_ARCO_OWN` | invierte el lado del borde del arco propio | si rebota en el borde equivocado |
 | `ARQMIX_HEADING_OTOS` | rumbo del OTOS (DOWN) en vez del TOP | A/B de banco |
 

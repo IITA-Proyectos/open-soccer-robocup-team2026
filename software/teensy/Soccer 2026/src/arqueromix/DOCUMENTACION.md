@@ -260,6 +260,33 @@ despeje arranca de 0. Implementado en `amix_motors.cpp::avanzar_patear` (port de
 apuntar bien (patea de costado), achicar `AMIX_TOL_KICK_DEG` (30°→20°) para que solo dispare con la
 pelota más al frente. Todo en `amix_config.h`.
 
+## 16. Inicio del programa — HOMING al área chica (banco Virginia 2026-06-21)
+
+**Cambio pedido:** en vez de empezar a patrullar directo, al arrancar el arquero **se posiciona en
+su arco** primero. Secuencia nueva (reemplaza al `impulso_inicial` viejo):
+
+```
+inicio_retroceder  → va HACIA ATRÁS (hacia el arco propio) hasta DETECTAR la línea del área chica
+        │ (line_present de DOWN)        [safety: si nunca la ve, sale tras 4 s]
+        ▼
+inicio_avanzar     → avanza un poco A CIEGAS (NO lee los sensores) durante ~400 ms
+        │
+        ▼
+moverce_derecha    → recién ACÁ empieza a patrullar
+```
+
+- **`inicio_retroceder`** (`amix_fsm.cpp`): llama `patear_atras()` (retroceso recto) hasta que
+  `linea()` da true (DOWN ve el blanco del área). Safety `AMIX_T_INICIO_RETRO_SAFETY=4000 ms` para
+  no quedarse retrocediendo contra la pared si nunca ve la línea.
+- **`inicio_avanzar`**: llama `avanzar()` durante `AMIX_T_INICIO_AVANCE=400 ms`, **sin chequear la
+  línea** a propósito (para despegarse del blanco antes de patrullar). Después → `moverce_derecha`.
+- El `match_running` (árbitro) sigue gobernando: el homing arranca recién con el **GO**.
+
+**Tunear:** `AMIX_T_INICIO_AVANCE` (400 ms) = cuánto se despega de la línea antes de patrullar (subir
+si queda muy pegado a la línea, bajar si se aleja de más). La velocidad del retroceso es la misma
+del despeje (`AMIX_ATRAS`); si retrocede muy rápido y se pasa de la línea, bajar `AMIX_ATRAS` o
+avisame y le pongo una velocidad propia al homing.
+
 ## 9. Cómo compilar, flashear y volver atrás
 
 ```bash

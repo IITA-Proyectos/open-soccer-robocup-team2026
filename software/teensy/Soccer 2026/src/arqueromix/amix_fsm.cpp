@@ -29,7 +29,7 @@ namespace iitasoccer {
 namespace arqmix {
 
 // Estado + timers (eran globales sueltas en el 2025).
-static Estado estado = Estado::impulso_inicial;
+static Estado estado = Estado::inicio_retroceder;
 static unsigned long millis_inicio_estado = 0;
 // `pd` (factor proporcional): el 2025 lo seteaba en moverce_* y lo usaba adproporcional/
 // aiproporcional en el MISMO tick (con valor del tick anterior). Se replica el lag.
@@ -63,7 +63,7 @@ static inline bool ball_a_la_derecha() {
 }
 
 void amix_fsm_init() {
-    estado = Estado::impulso_inicial;
+    estado = Estado::inicio_retroceder;   // homing al área chica antes de patrullar
     millis_inicio_estado = millis();
     pd = AMIX_PD_BASE;
 }
@@ -80,11 +80,23 @@ void amix_fsm_tick() {
 
     switch (estado) {
         // ----------------------------------------------------
-        case Estado::impulso_inicial:               // L1016-1028
-            impulso_inicial_mov();                  // strafe fuerte (M1=M2=90, M3=153)
-            if (millis() - millis_inicio_estado >= AMIX_T_IMP_INICIAL) {  // 40 ms
+        // --- INICIO: homing al área chica (banco Virginia 2026-06-21) ---
+        case Estado::inicio_retroceder:             // ir HACIA ATRÁS hasta detectar la línea del área
+            patear_atras();                          // retroceso recto (hacia el arco propio)
+            // Sale al ver la línea (blanco del área chica). Safety: si NUNCA la ve, avanza igual
+            // tras AMIX_T_INICIO_RETRO_SAFETY para no quedarse retrocediendo contra la pared.
+            if (linea() || (millis() - millis_inicio_estado >= AMIX_T_INICIO_RETRO_SAFETY)) {
+                parar();
                 millis_inicio_estado = millis();
-                estado = Estado::moverce_derecha;
+                estado = Estado::inicio_avanzar;
+            }
+            break;
+
+        case Estado::inicio_avanzar:                // avanzar un poco SIN leer los sensores
+            avanzar();                               // a ciegas: NO se chequea linea() acá a propósito
+            if (millis() - millis_inicio_estado >= AMIX_T_INICIO_AVANCE) {  // ~400 ms
+                millis_inicio_estado = millis();
+                estado = Estado::moverce_derecha;    // recién ahora empieza a patrullar
             }
             break;
 

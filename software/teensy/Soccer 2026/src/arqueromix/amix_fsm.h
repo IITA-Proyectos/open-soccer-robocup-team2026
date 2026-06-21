@@ -21,8 +21,12 @@ namespace iitasoccer {
 namespace arqmix {
 
 // Estados REALES del arquero 2025 (nombres = los del flujo, FIEL §2).
+// INICIO modificado 2026-06-21 (banco Virginia): en vez de patrullar directo, el arquero hace
+// HOMING al área chica — retrocede hasta ver la línea del área, avanza un poco a ciegas, y recién
+// ahí patrulla. Así arranca siempre posicionado en su arco.
 enum class Estado : uint8_t {
-    impulso_inicial,             // estado INICIAL: strafe fuerte 40 ms
+    inicio_retroceder,           // estado INICIAL: ir hacia atrás hasta detectar la línea del área
+    inicio_avanzar,              // tras ver la línea: avanzar un poco SIN leer los sensores
     moverce_derecha,             // patrulla strafe derecha (adproporcional)
     moverce_izquierda,           // patrulla strafe izquierda (aiproporcional)
     impulso_derecha,             // anti-traba del borde: empuja derecha 350 ms

@@ -124,7 +124,10 @@ constexpr float AMIX_TOL_CERCANIA_MM  = 250.0f; // DESPEJA si la distancia eucl�
 // ============================================================
 // Tiempos / timeouts del ARQUERO (FIEL §3.5) — ms. Iguales 2025.
 // ============================================================
-constexpr unsigned long AMIX_T_IMP_INICIAL   = 40;    // impulso_inicial → patrulla
+// INICIO — homing al área chica (banco Virginia 2026-06-21): retrocede hasta ver la línea del
+// área, avanza un poco a ciegas, y recién ahí patrulla.
+constexpr unsigned long AMIX_T_INICIO_RETRO_SAFETY = 4000; // tope de seguridad del retroceso si NUNCA ve la línea
+constexpr unsigned long AMIX_T_INICIO_AVANCE       = 400;  // avanzar un poco tras ver la línea (SIN leer sensores) — tunable
 constexpr unsigned long AMIX_T_IMP_LATERAL   = 350;   // impulso_der/izq (anti-traba borde)
 constexpr unsigned long AMIX_T_PAT_PAUSA_INI = 200;   // PATEANDO_pausa_inicial_arquero
 constexpr unsigned long AMIX_T_PAT_ADELANTE  = 450;   // PATEANDO_adelante_arquero

@@ -73,6 +73,9 @@ constexpr int AMIX_AI_REAR_ENEG      = 100;  // aiproporcional  M3
 // `pd` (factor proporcional): 1.0 sin pelota (patrulla base), 1.5 con pelota desviada.
 constexpr float AMIX_PD_BASE = 1.0f;
 constexpr float AMIX_PD_BALL = 1.5f;
+// pd FUERTE para la SALIDA de línea a ciegas (banco Virginia 2026-06-21: necesitaba más impulso
+// para despegarse bien de la línea lateral). Subir si todavía no se despega; bajar si se pasa.
+constexpr float AMIX_PD_SALIR = 1.9f;
 
 // ============================================================
 // Impulso inicial / anti-traba del borde (FIEL §2, L1018-1020 + impulso_*).

@@ -325,6 +325,20 @@ seguir la pelota normal.
 enganchándose). `AMIX_T_PATRULLA_COMMIT` (1000 ms) = cuánto patrulla el otro lado antes de volver a
 mirar la pelota (subir si vuelve muy rápido hacia la línea).
 
+### 17.1 Refuerzo 2026-06-21 (banco Virginia: "a veces toca, sale y vuelve a meterse")
+
+Dos causas: (1) la salida no tenía suficiente impulso para despegarse; (2) como el DOWN NO distingue
+QUÉ línea es (da una sola señal), si la salida no despejaba del todo, el `moverce` re-detectaba la
+MISMA línea y rebotaba para el lado contrario = **de vuelta a la línea**. Fixes:
+- **Más impulso en la salida:** la salida a ciegas usa `AMIX_PD_SALIR=1.9` (más fuerte que la
+  patrulla `pd=1.0`). Subir si todavía no se despega.
+- **Rebote inteligente durante el commit:** mientras está en commit (recién salió), si vuelve a ver
+  línea es la MISMA que dejó → **sigue saliendo para el mismo lado** (no rebota de vuelta). Pasado el
+  commit, el rebote es normal (lado opuesto). Así no se mete de nuevo en la línea que recién dejó.
+- **Tiempos revisados:** cada estado usa su propio timer (`millis_inicio_estado` al entrar), el
+  commit es `millis() < s_commit_until_ms`. NO se encontró bug de tiempo; el problema era la
+  dirección del rebote, no los tiempos.
+
 ## 9. Cómo compilar, flashear y volver atrás
 
 ```bash

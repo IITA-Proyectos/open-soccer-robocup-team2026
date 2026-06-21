@@ -139,10 +139,13 @@ void amix_fsm_tick() {
             } else {
                 pd = AMIX_PD_BASE;                   // sin pelota: patrulla base
             }
-            if (linea()) {                           // borde → SALIR a ciegas al lado opuesto
+            if (linea()) {                           // borde → SALIR a ciegas
                 parar();
                 millis_inicio_estado = millis();
-                estado = Estado::salir_linea_izq;
+                // En COMMIT (recién salió de la línea IZQ): si vuelve a ver línea es la MISMA, NO
+                // cleared → seguir saliendo a la DERECHA (no meterse de vuelta). Normal: rebote a la IZQ.
+                estado = (millis() < s_commit_until_ms) ? Estado::salir_linea_der
+                                                        : Estado::salir_linea_izq;
             }
             break;
 
@@ -166,16 +169,19 @@ void amix_fsm_tick() {
             } else {
                 pd = AMIX_PD_BASE;
             }
-            if (linea()) {                           // borde → SALIR a ciegas al lado opuesto
+            if (linea()) {                           // borde → SALIR a ciegas
                 parar();
                 millis_inicio_estado = millis();
-                estado = Estado::salir_linea_der;
+                // En COMMIT (recién salió de la línea DER): si vuelve a ver línea es la MISMA →
+                // seguir saliendo a la IZQUIERDA (no meterse de vuelta). Normal: rebote a la DER.
+                estado = (millis() < s_commit_until_ms) ? Estado::salir_linea_izq
+                                                        : Estado::salir_linea_der;
             }
             break;
 
         // ----------------------------------------------------
         case Estado::salir_linea_der:               // tocó línea IZQ → sale a la DERECHA a ciegas
-            adproporcional(pd, error);               // strafe derecha — A CIEGAS (no se lee ningún sensor acá)
+            adproporcional(AMIX_PD_SALIR, error);    // strafe derecha FUERTE — A CIEGAS (no se lee ningún sensor acá)
             if (millis() - millis_inicio_estado >= AMIX_T_SALIR_LINEA) {  // ~450 ms (≈ avance del homing)
                 s_commit_until_ms = millis() + AMIX_T_PATRULLA_COMMIT;    // no volver enseguida hacia la línea
                 millis_inicio_estado = millis();
@@ -185,7 +191,7 @@ void amix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::salir_linea_izq:               // tocó línea DER → sale a la IZQUIERDA a ciegas (espejo)
-            aiproporcional(pd, error);               // strafe izquierda — A CIEGAS
+            aiproporcional(AMIX_PD_SALIR, error);    // strafe izquierda FUERTE — A CIEGAS
             if (millis() - millis_inicio_estado >= AMIX_T_SALIR_LINEA) {
                 s_commit_until_ms = millis() + AMIX_T_PATRULLA_COMMIT;
                 millis_inicio_estado = millis();

@@ -447,7 +447,7 @@ void loop() {
     static uint32_t s_last_tof_end_ms = 0;
     if (g_since_tof_tick >= TOF_TICK_INTERVAL_MS) {
         g_since_tof_tick = 0;
-#ifndef DIAG_NO_TOF
+#if !defined(DIAG_NO_TOF) && !defined(TOP_TOF_NO_RANGE)
         sensors_tof_tick();
 #endif
         s_last_tof_end_ms = millis();
@@ -482,7 +482,7 @@ void loop() {
     }
     if (g_since_tof_tick >= TOF_TICK_INTERVAL_MS) {
         g_since_tof_tick = 0;
-#ifndef DIAG_NO_TOF
+#if !defined(DIAG_NO_TOF) && !defined(TOP_TOF_NO_RANGE)
         sensors_tof_tick();
 #endif
 #ifdef TOP_ENABLE_BNO_SENTINEL

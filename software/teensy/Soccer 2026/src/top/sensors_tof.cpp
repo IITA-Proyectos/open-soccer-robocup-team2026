@@ -360,8 +360,13 @@ bool sensors_tof_init() {
         // apagada (competencia) queda el modo autonomo de hoy = sin cambio. Banco: TASK-219.
         g_tof_multi[i].setRangingMode(VL53L7CX_RANGING_MODE_CONTINUOUS);
 #endif
+#ifndef TOP_TOF_NO_RANGE
         if (!g_tof_multi[i].startRanging())                                 continue;
-        g_ready[i] = true;              // queda despierto (retiene dir + rangea)
+#endif
+        // TOP_TOF_NO_RANGE (diag, default OFF): el ToF queda ENUMERADO/configurado pero
+        // SIN arrancar el ranging -> sin pulsos de VCSEL -> NO congela el BNO (TASK-223).
+        // Permite probar "todo menos los ToF" SIN colgar el boot (el init corre completo).
+        g_ready[i] = true;              // queda despierto (retiene dir + rangea, salvo TOP_TOF_NO_RANGE)
     }
 #if defined(TOP_ENABLE_TOF_SCHED)
     // Sembrar el turnero con quien quedo VIVO. Un ToF que fallo el init (g_ready=false)

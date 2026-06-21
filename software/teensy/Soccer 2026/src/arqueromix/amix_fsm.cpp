@@ -119,7 +119,8 @@ void amix_fsm_tick() {
             break;
 
         case Estado::inicio_avanzar:                // avanzar un poco SIN leer los sensores
-            avanzar();                               // a ciegas: NO se chequea linea() acá a propósito
+            avanzar_inicio();                        // a ciegas, a VELOCIDAD propia (más baja que avanzar):
+                                                     // NO se chequea linea() acá a propósito
             if (millis() - millis_inicio_estado >= AMIX_T_INICIO_AVANCE) {  // ~400 ms
                 millis_inicio_estado = millis();
                 estado = Estado::moverce_derecha;    // recién ahora empieza a patrullar

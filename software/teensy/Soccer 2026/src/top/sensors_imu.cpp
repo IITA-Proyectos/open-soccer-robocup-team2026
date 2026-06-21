@@ -276,7 +276,12 @@ bool sensors_imu_init() {
     // (imu_fusion lo marca DEAD, peso 0 — imu_fusion.cpp:102). bno_left = idx0
     // (primario), bno_right = idx1 (secundario). Apply mínimo: NO toca el begin()
     // ni el orden crítico de init; solo el peso en la fusión. Default = todo on.
-    g_scfg[0].enabled = g_top_cfg.bno_left_en;
+    // FIX 2026-06-21: el EEPROM tenía bno_left_en=0 (primario DESHABILITADO, seguro por un
+    // BNO_L_OFF de una sesión vieja) → la fusión lo trataba como DEAD → fused_heading=0.0
+    // SIEMPRE (no era freeze del chip ni los ToF: el firmware ignoraba el primario). El
+    // primario es la ÚNICA fuente de rumbo en primary-only: NUNCA debe quedar deshabilitado
+    // por config. Se fuerza habilitado.
+    g_scfg[0].enabled = true;   // era g_top_cfg.bno_left_en
     g_scfg[1].enabled = g_top_cfg.bno_right_en;
 
 #ifdef TOP_ENABLE_BNO_FREEZE_DETECT
@@ -409,6 +414,16 @@ void sensors_imu_tick() {
 #endif
 
     imu_fusion_update(g_fusion, g_fcfg, g_scfg, in, dt_s);
+#ifdef TOP_DBG_BNO
+    // DIAG (default OFF): ver dónde se congela — lectura cruda (in0_hdg) vs fusión (fused/s0).
+    { static uint32_t s_dbg = 0; if (millis() - s_dbg > 300) { s_dbg = millis();
+        Serial.print("[DBG] RAW_eul="); Serial.print(read_raw_yaw(*g_bno[0]), 1);
+        Serial.print(" off="); Serial.print(g_offset[0], 1);
+        Serial.print(" in0="); Serial.print(in[0].heading_deg, 1);
+        Serial.print(" fused="); Serial.print(g_fusion.fused_heading_deg, 1);
+        Serial.print(" pres="); Serial.print(in[0].present ? 1 : 0);
+        Serial.print(" calg="); Serial.println(in[0].calib_gyro); } }
+#endif
 
 #ifdef TOP_ENABLE_HEADING_PREDICT
     // Extrapolación de rumbo (predict step): alimentar con el heading FUSIONADO recién

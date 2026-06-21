@@ -3,7 +3,12 @@
 - **Asignado:** Enzo (revisión de conexiones/eléctrica en la Zircon)
 - **Placa / rango:** TOP (200-299)
 - **Prioridad:** **P1** (heading del delantero; hay mitigación temporal con OTOS — ver abajo).
-- **Estado:** PENDIENTE (banco/hardware). **Solo el equipo lo cierra.**
+- **Estado:** ⚠️ **PROBABLE PISTA FALSA — cerrar (corrección 2026-06-21).** La causa real del
+  "heading no anda" era un flag de config (`bno_left_en=0` en EEPROM), NO acople eléctrico de
+  los ToF. Con el fix (primario forzado habilitado) el BNO da heading vivo **con los ToF
+  rangeando** (banco 2026-06-21: hdg −15.6 en reposo → 101.4 girado). Ver
+  [journal 2026-06-21](../journal/2026-06-21-bno-heading-fix-config-flag-no-era-tof.md). NO
+  invertir tiempo de hardware en esto salvo que reaparezca un freeze independiente del flag.
 - **Relacionada:** [TASK-207](2026-06-08-task-207-bno-bus-i2c-aparte-wire2.md) (mover BNO a Wire2: atacó la contención I2C, pero la causa real es ELÉCTRICA, no el bus).
 - **Diagnóstico completo:** [journal 2026-06-20](../journal/2026-06-20-r1-top-bno-freeze-causa-raiz-tof-ranging.md).
 

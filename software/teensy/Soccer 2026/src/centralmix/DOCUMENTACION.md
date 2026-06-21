@@ -117,7 +117,7 @@ Flujo del delantero (arranque → buscar → apuntar → acercar → orbitar →
 |---|---|---|---|
 | Pelota posición | cámara UART, **píxeles** (`Xp/Yp`) | snapshot TOP, **mm** (`ball_x/y_mm`) | unidades distintas; `angulo_pelota_deg = atan2(x,y)·180/π` |
 | ¿Ve pelota? | `Xp != 0` | `ball_visible` (snapshot) | directo |
-| Arcos | cámara (`Xam/Yam`…) | snapshot (`goal_yellow/blue_*`) | `goal_opp`→amarillo (rival), invertible `-DMIX_ATTACK_BLUE` |
+| Arcos | cámara (`Xam/Yam`…) | snapshot (`goal_opp_*`/`goal_own_*`) | **por ROL, sin color**: el delantero apunta a `goal_opp` (rival, ya resuelto por el TOP) |
 | Rumbo (`error`) | **BNO local** del delantero | **BNO del TOP** (snapshot) o OTOS | `heading_error_deg`; ⚠️ ver §8 |
 | Línea | **3 sensores analógicos** locales | **DOWN** (`line_present/angle/depth`) | 3 sensores → 1 ángulo por **sector ±30°** |
 | Árbitro | (no tenía) | `match_running` (snapshot) | **nuevo** gate GO/STOP |
@@ -134,8 +134,9 @@ Flujo del delantero (arranque → buscar → apuntar → acercar → orbitar →
    ahora es grados del ángulo al arco. **Re-tunear ambos en banco.**
 3. **Línea 3-sensores→1-ángulo.** Los `DETECTA_LINEA_1/2/3` se eligen por sector angular
    (±30°) del dato único de DOWN. Re-tunear el semiancho.
-4. **Arco rival** hardcodeado AMARILLO (como 2025). Confirmar a qué arco ataca R1
-   (`-DMIX_ATTACK_BLUE` invierte).
+4. **Arco rival = `goal_opp`** (POR ROL, resuelto por el TOP con `goal_polarity`). El delantero
+   ya NO mira color ni necesita `-DMIX_ATTACK_BLUE`: apunta al arco que el TOP marca como rival.
+   En banco, confirmar que el TOP entrega `goal_opp` correcto (arranca mirando a la cancha).
 5. **Comm.** Confirmar que `g_io` se puebla con datos reales de TOP/DOWN (telemetría).
 
 ## 8. Decisiones de diseño (y por qué)

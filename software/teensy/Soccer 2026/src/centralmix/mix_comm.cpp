@@ -136,15 +136,17 @@ inline void seal_heading_inicial_if_needed(float heading_now) {
 void apply_top_snapshot(const WorldSnapshot& s) {
     const unsigned long now = millis();
 
-    // --- Pelota (marco robot: +X der, +Y adel; mm) ---
-    g_io.ball_x_mm   = static_cast<float>(s.ball_x_mm);
-    g_io.ball_y_mm   = static_cast<float>(s.ball_y_mm);
+    // --- Pelota (marco robot: +X der, +Y adel; cm = dato CRUDO de la cámara) ---
+    // La cámara manda cm; el TOP los escala x10 a mm en el snapshot (CAMERA_UNIT_TO_MM=10).
+    // Acá DESHACEMOS ese x10 (÷10) para volver al cm crudo de la cámara (pedido de Elías).
+    g_io.ball_x_cm   = static_cast<float>(s.ball_x_mm) / 10.0f;
+    g_io.ball_y_cm   = static_cast<float>(s.ball_y_mm) / 10.0f;
     g_io.ball_visible = (s.ball_visible != 0);
 
     // angulo_pelota_deg = atan2(X, Y) (OJO: X primero) → 0=adelante, >0=derecha,
-    // <0=izquierda. Convención FIJADA por contrato (mix_io.h), NO la fórmula 2025.
+    // <0=izquierda. (El ángulo NO depende de la escala: cm o mm dan el mismo ángulo.)
     g_io.angulo_pelota_deg =
-        atan2f(g_io.ball_x_mm, g_io.ball_y_mm) * 180.0f / static_cast<float>(M_PI);
+        atan2f(g_io.ball_x_cm, g_io.ball_y_cm) * 180.0f / static_cast<float>(M_PI);
 
     // Sella el timestamp de "última vez que se vio la pelota" (== millis_pelota 2025).
     if (g_io.ball_visible) {

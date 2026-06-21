@@ -10,8 +10,8 @@
 //   mix_fsm_tick()   → LEE estos campos (nunca toca Serial ni world_model).
 //
 // MARCO DE REFERENCIA DE LA PELOTA (fijado por contrato, NO el del 2025):
-//   +X = derecha del robot,  +Y = adelante del robot.  Unidades: mm.
-//   angulo_pelota_deg = atan2(ball_x_mm, ball_y_mm) en grados:
+//   +X = derecha del robot,  +Y = adelante del robot.  Unidades: cm (CRUDO de la cámara).
+//   angulo_pelota_deg = atan2(ball_x_cm, ball_y_cm) en grados:
 //       0°   = pelota justo adelante
 //       >0   = pelota a la DERECHA
 //       <0   = pelota a la IZQUIERDA
@@ -30,11 +30,11 @@ namespace iitasoccer {
 namespace mix {
 
 struct MixIO {
-    // ---- Pelota (marco robot: +X=derecha, +Y=adelante; mm) ----
-    float ball_x_mm = 0.0f;        // + = derecha
-    float ball_y_mm = 0.0f;        // + = adelante
+    // ---- Pelota (marco robot: +X=derecha, +Y=adelante; cm = dato CRUDO de la cámara) ----
+    float ball_x_cm = 0.0f;        // + = derecha (cm; mix_comm divide /10 el mm del snapshot)
+    float ball_y_cm = 0.0f;        // + = adelante (cm)
     bool  ball_visible = false;    // ¿la cámara ve la pelota? (haypelota 2025)
-    float angulo_pelota_deg = 0.0f; // atan2(ball_x_mm, ball_y_mm) en °, calculado por mix_comm
+    float angulo_pelota_deg = 0.0f; // atan2(ball_x_cm, ball_y_cm) en °, calculado por mix_comm
 
     // ---- Arcos (ángulo en ° marco robot; distancia en mm) ----
     bool  goal_yellow_visible = false;

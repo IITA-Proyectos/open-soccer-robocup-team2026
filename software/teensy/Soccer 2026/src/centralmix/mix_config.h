@@ -78,11 +78,12 @@ constexpr float MIX_IC = 0.55f;  // impulso centrando (2025 ROBOT2)
 constexpr float MIX_PD = 1.0f;   // avances proporcionales (2025 'pd')
 
 // ============================================================
-// Tolerancias 2025 (en mm para cercanía/centrado; en grados para apuntado).
+// Tolerancias: CERCANIA en cm (distancia a la pelota = dato CRUDO de la cámara);
+// CENTRADO y APUNTADO en GRADOS (ángulos). Re-tunear CERCANIA en cm en banco.
 // ============================================================
-constexpr float MIX_TOL_CENTRADO = 60.0f;  // tolerancia_centrado
-constexpr float MIX_TOL_CERCANIA = 20.0f;  // tolerancia_cercania
-constexpr float MIX_TOL_APUNTADO = 30.0f;  // tolerancia_apuntado (grados)
+constexpr float MIX_TOL_CENTRADO = 60.0f;  // ° |ángulo al arco rival| para "centrado" (NO es mm)
+constexpr float MIX_TOL_CERCANIA = 20.0f;  // cm: dist a la pelota para "cerca" (re-tunear en cm)
+constexpr float MIX_TOL_APUNTADO = 30.0f;  // ° |ángulo a la pelota| para "apuntando"
 
 // ============================================================
 // Kicker / patada — port 1:1 del 2025 (el "kicker" es empuje por inercia, sin

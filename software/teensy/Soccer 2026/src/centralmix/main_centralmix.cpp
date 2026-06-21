@@ -24,7 +24,10 @@
 #include "mix_motors.h"
 #include "mix_fsm.h"
 
+#include <math.h>   // sqrtf (debug de distancia)
+
 void setup() {
+    Serial.begin(115200);   // USB: debug de la pelota recibida (monitor serie de la CENTRAL)
     iitasoccer::mix::mix_comm_init();
     iitasoccer::mix::mix_motors_init();
     iitasoccer::mix::mix_fsm_init();
@@ -33,5 +36,21 @@ void setup() {
 void loop() {
     iitasoccer::mix::mix_comm_tick();
     iitasoccer::mix::mix_fsm_tick();
+
+    // --- DEBUG TEMPORAL: imprimir la pelota que se RECIBE del TOP, cada 200 ms ---
+    // Para confirmar si llega bien el dato. Abrir el monitor serie USB de la CENTRAL.
+    // (Se puede sacar/gatear después; no afecta la conducta, solo imprime por USB.)
+    static unsigned long t_dbg = 0;
+    if (millis() - t_dbg >= 200) {
+        t_dbg = millis();
+        const iitasoccer::mix::MixIO& io = iitasoccer::mix::g_io;
+        const float dist_cm = sqrtf(io.ball_x_cm * io.ball_x_cm + io.ball_y_cm * io.ball_y_cm);
+        Serial.print("TOPlink=");      Serial.print(io.top_link_fresh ? "OK " : "-- ");
+        Serial.print("pelota vis=");   Serial.print(io.ball_visible ? 1 : 0);
+        Serial.print(" x=");           Serial.print(io.ball_x_cm, 1);
+        Serial.print(" y=");           Serial.print(io.ball_y_cm, 1);
+        Serial.print(" dist=");        Serial.print(dist_cm, 1);
+        Serial.println(" cm");
+    }
 }
  

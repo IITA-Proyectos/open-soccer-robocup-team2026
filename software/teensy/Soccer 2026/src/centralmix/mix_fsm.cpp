@@ -20,12 +20,12 @@
 //
 // MAPEOS QUE REQUIRIERON DECISIÓN (marcados con  // <RE-TUNEO 2025→2026>):
 //   1) `Xp <= tolerancia_cercania` (50): en 2025 Xp era la coordenada LATERAL cruda
-//      de la pelota (0..~100, codificada). En el marco nuevo (+X=der, +Y=adel, en mm)
+//      de la pelota (0..~100, codificada). En el marco nuevo (+X=der, +Y=adel, en cm)
 //      "estar cerca" = distancia al robot pequeña. Se mapea a:
-//          dist_pelota_mm() <= MIX_TOL_CERCANIA  (valor 2025 = 50, UNIDADES DISTINTAS:
-//          2025 era cuenta codificada, acá es mm → RE-TUNEAR en banco).
+//          dist_pelota_cm() <= MIX_TOL_CERCANIA  (valor 2025 = 50, UNIDADES DISTINTAS:
+//          2025 era cuenta codificada, acá es cm → RE-TUNEAR en banco).
 //      Su negación `Xp >= tolerancia_cercania` (en APUNTAR_PELOTA_horario/antihorario)
-//      se mapea a dist_pelota_mm() >= MIX_TOL_CERCANIA, igual que el 2025.
+//      se mapea a dist_pelota_cm() >= MIX_TOL_CERCANIA, igual que el 2025.
 //   2) `abs(Yp - Ycontrincante) <= tolerancia_centrado` (30): en 2025 era "la pelota
 //      está alineada con el arco rival en el eje vertical de la cámara". En el marco
 //      nuevo el dato equivalente es el ÁNGULO al arco rival (goal_yellow_angle, arco
@@ -104,10 +104,9 @@ static inline float wrap180(float a) {
     return a;
 }
 
-// Distancia robot→pelota (mm). En el 2025 la cercanía se medía sobre Xp (lateral
-// crudo); acá se usa la distancia euclídea del marco nuevo. <RE-TUNEO 2025→2026>
-static inline float dist_pelota_mm() {
-    return sqrtf(g_io.ball_x_mm * g_io.ball_x_mm + g_io.ball_y_mm * g_io.ball_y_mm);
+// Distancia robot→pelota (cm, dato CRUDO de la cámara). Euclídea sobre ball_x/y_cm.
+static inline float dist_pelota_cm() {
+    return sqrtf(g_io.ball_x_cm * g_io.ball_x_cm + g_io.ball_y_cm * g_io.ball_y_cm);
 }
 
 // ---- Reconstrucción de los 3 "sensores de línea" del 2025 desde DOWN ----
@@ -388,7 +387,7 @@ void mix_fsm_tick() {
 
             // si ya está lo suficientemente cerca de la pelota
             // 2025: haypelota && (Xp <= tolerancia_cercania) <RE-TUNEO 2025→2026>
-            if (haypelota && (dist_pelota_mm() <= MIX_TOL_CERCANIA)) {
+            if (haypelota && (dist_pelota_cm() <= MIX_TOL_CERCANIA)) {
                 millis_inicio_centrando = millis();
                 millis_inicio_estado = millis();
                 estado = Estado::CENTRANDO_horario;
@@ -555,7 +554,7 @@ void mix_fsm_tick() {
             }
 
             // 2025: haypelota && (Xp >= tolerancia_cercania) 🛑 <RE-TUNEO 2025→2026>
-            if (haypelota && (dist_pelota_mm() >= MIX_TOL_CERCANIA)) {
+            if (haypelota && (dist_pelota_cm() >= MIX_TOL_CERCANIA)) {
                 millis_inicio_estado = millis();
                 estado = Estado::APUNTAR_PELOTA;
             }
@@ -582,7 +581,7 @@ void mix_fsm_tick() {
             }
 
             // 2025: haypelota && (Xp >= tolerancia_cercania) 🛑 <RE-TUNEO 2025→2026>
-            if (haypelota && (dist_pelota_mm() >= MIX_TOL_CERCANIA)) {
+            if (haypelota && (dist_pelota_cm() >= MIX_TOL_CERCANIA)) {
                 millis_inicio_estado = millis();
                 estado = Estado::APUNTAR_PELOTA;
             }

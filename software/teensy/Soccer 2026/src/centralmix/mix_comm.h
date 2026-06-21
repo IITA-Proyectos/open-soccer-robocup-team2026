@@ -10,9 +10,9 @@
 // (ver comm_top.cpp / comm_down.cpp). NO usa world_model.
 //
 // Mapeo a g_io que mix_comm DEBE hacer (resumen para el implementador):
-//   WorldSnapshot.ball_x_mm/ball_y_mm → g_io.ball_x_mm/ball_y_mm   (+X der, +Y adel)
+//   WorldSnapshot.ball_x_mm/ball_y_mm (mm) → g_io.ball_x_cm/ball_y_cm (÷10 = cm crudo cámara)
 //   WorldSnapshot.ball_visible        → g_io.ball_visible (+ sella t_last_ball_seen_ms)
-//   angulo_pelota_deg = atan2(ball_x_mm, ball_y_mm)*180/PI
+//   angulo_pelota_deg = atan2(ball_x_cm, ball_y_cm)*180/PI
 //   goal_opp/goal_own (centideg/mm)   → goal_yellow_* / goal_blue_* (según color rival)
 //   my_heading_centideg / flags bit4  → heading_deg / heading_valid (si fuente = BNO)
 //   Pose2D.heading_centideg (DOWN)    → otos_heading_deg (y heading_deg si MIX_HEADING_OTOS)

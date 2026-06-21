@@ -356,15 +356,20 @@ dispara**.
 está CENTRADO en su arco. El "desvío" se mide respecto de 180°: `rear_goal_dev = wrap180(goal_own_angle
 − 180) × SIGN` (≈0 centrado, crece hacia un lado al correrse). **Borde** = `|rear_goal_dev| ≥
 AMIX_TOL_ARCO_OWN_DEG`. Helpers `borde_arco_der()` / `borde_arco_izq()` en `amix_fsm.cpp` (sólo
-disparan con `goal_own_visible`). En `moverce_derecha`/`moverce_izquierda`, el `if (linea())` se
-reemplazó por el chequeo del borde del arco (gateado por el commit, igual que antes).
+disparan con `goal_own_visible`).
 
-**⚠️ RIESGO ACEPTADO (Virginia).** La línea queda FUERA de la patrulla (sigue SOLO para el homing y el
-retroceso del despeje). Si la cámara **NO ve el arco propio** (`goal_own_visible=0`) **no hay rebote**
-→ el arquero podría irse caminando del arco. Además `goal_own` **NO está validado en banco** y depende
-de la **calibración LAB** de las cámaras N6 + de que el robot **arranque mirando a la cancha** (si no,
-la polaridad del TOP puede quedar invertida). **Esto puede andar lindo o casi no hacer nada hasta que
-se valide `goal_own` en banco.** Fallback completo: `-DARQMIX_PATRULLA_LINEA` vuelve al rebote por línea.
+**FALLBACK A LÍNEA cuando la cámara NO ve el arco (fix 2026-06-21).** En `moverce_*`, el borde es:
+`en_borde = goal_own_visible ? borde_arco_*() : linea()`. Es decir: **rebota por el ARCO cuando la
+cámara lo ve** (pedido Virginia) **y por la LÍNEA cuando no lo ve**. Así la patrulla **SIEMPRE rebota**
+y nunca se va de largo. (Antes, en modo puro-arco, si la cámara no veía el arco NO rebotaba nada → el
+arquero se iba caminando y PARECÍA que el programa no estaba cargado; este fix lo resuelve.) Para
+diagnosticar dónde está rebotando: si rebota **angosto** (al borde del arco) está usando la cámara; si
+rebota **ancho** (recién en las líneas de la cancha) la cámara no ve el arco y está en fallback.
+
+**⚠️ Notas.** `goal_own` NO está validado en banco; depende de la **calibración LAB** de las cámaras N6
+y de que el robot **arranque mirando a la cancha** (si arranca girado, la polaridad del TOP queda
+invertida y el seguimiento del arco se rompe). Fallbacks por flag: `-DARQMIX_PATRULLA_LINEA` = patrulla
+SÓLO por línea (ignora el arco). El homing y el retroceso del despeje usan la línea siempre.
 
 **Tunear:** `AMIX_TOL_ARCO_OWN_DEG` (30°) = umbral de "borde" (más chico = patrulla más angosta, rebota
 antes; más grande = más ancha) — EL knob principal. `AMIX_ARCO_OWN_SIGN` (signo del desvío): si rebota

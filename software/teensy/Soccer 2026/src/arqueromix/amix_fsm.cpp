@@ -172,15 +172,16 @@ void amix_fsm_tick() {
             }
             // --- BORDE de la patrulla: por ARCO PROPIO (default Virginia) o por LÍNEA (fallback) ---
             if (AMIX_PATRULLA_POR_ARCO) {
-                // Llegó al borde DERECHO del arco (cámara trasera, vía snapshot) → rebota a la IZQUIERDA.
-                // Gateado por el commit (recién rebotó → no re-dispara enseguida). Si NO ve el arco, NO
-                // rebota (riesgo aceptado por Virginia: sin línea de respaldo en la patrulla).
-                if (millis() >= s_commit_until_ms && borde_arco_der()) {
+                // BORDE: por ARCO si la cámara lo VE (pedido Virginia: rebota al llegar al borde del arco);
+                // por LÍNEA si NO lo ve (fallback robusto → SIEMPRE patrulla, no se va de largo cuando la
+                // cámara pierde el arco). Gateado por el commit. Borde derecho → rebota a la IZQUIERDA.
+                const bool en_borde = g_aio.goal_own_visible ? borde_arco_der() : linea();
+                if (millis() >= s_commit_until_ms && en_borde) {
                     parar();
                     millis_inicio_estado = millis();
                     estado = Estado::salir_linea_izq;   // sale a la IZQ → moverce_izquierda
                 }
-            } else if (linea()) {                       // FALLBACK (-DARQMIX_PATRULLA_LINEA): rebote por LÍNEA
+            } else if (linea()) {                       // FALLBACK TOTAL (-DARQMIX_PATRULLA_LINEA): solo LÍNEA
                 parar();
                 millis_inicio_estado = millis();
                 // En COMMIT (recién salió de la línea IZQ): si vuelve a ver línea es la MISMA, NO
@@ -212,14 +213,15 @@ void amix_fsm_tick() {
             }
             // --- BORDE de la patrulla: por ARCO PROPIO (default Virginia) o por LÍNEA (fallback) ---
             if (AMIX_PATRULLA_POR_ARCO) {
-                // Llegó al borde IZQUIERDO del arco → rebota a la DERECHA. Gateado por commit. Si NO
-                // ve el arco, NO rebota (riesgo aceptado: sin línea de respaldo en la patrulla).
-                if (millis() >= s_commit_until_ms && borde_arco_izq()) {
+                // BORDE: por ARCO si lo VE; por LÍNEA si NO (fallback robusto → siempre patrulla).
+                // Borde izquierdo → rebota a la DERECHA. Gateado por commit.
+                const bool en_borde = g_aio.goal_own_visible ? borde_arco_izq() : linea();
+                if (millis() >= s_commit_until_ms && en_borde) {
                     parar();
                     millis_inicio_estado = millis();
                     estado = Estado::salir_linea_der;   // sale a la DER → moverce_derecha
                 }
-            } else if (linea()) {                       // FALLBACK (-DARQMIX_PATRULLA_LINEA): rebote por LÍNEA
+            } else if (linea()) {                       // FALLBACK TOTAL (-DARQMIX_PATRULLA_LINEA): solo LÍNEA
                 parar();
                 millis_inicio_estado = millis();
                 // En COMMIT (recién salió de la línea DER): si vuelve a ver línea es la MISMA →

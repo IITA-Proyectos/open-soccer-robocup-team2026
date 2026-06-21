@@ -156,29 +156,11 @@ constexpr float AMIX_TOL_CERCANIA_MM  = 250.0f; // DESPEJA si la distancia eucl�
 // área, avanza un poco a ciegas, y recién ahí patrulla.
 // ⚠️ SAFETY a 50 s TEMPORAL (pedido Virginia, para observar el retroceso): después bajar a ~4 s.
 constexpr unsigned long AMIX_T_INICIO_RETRO_SAFETY = 50000; // TEMP 50 s (era 4000) — bajar luego
-// Avance del homing tras ver la línea = IMPULSO MOMENTÁNEO (banco Virginia 2026-06-21: el avance
-// anterior mantenía PWM 100 los 400 ms ENTEROS → el omni-3 acumulaba deriva de yaw → el robot se
-// iba CHUECO y rozaba de nuevo la línea del área). Se acorta a un toque breve: la potencia se tiene
-// "solo un momento", no sostenida → no le da tiempo a torcerse. <tunable>
-constexpr unsigned long AMIX_T_INICIO_AVANCE       = 200;   // ERA 400 — impulso breve para despegarse SIN torcerse
+constexpr unsigned long AMIX_T_INICIO_AVANCE       = 400;   // avanzar un poco tras ver la línea (SIN leer sensores) — tunable
 // Retroceso del homing: primitiva DEDICADA con PWM propio (no acoplada al despeje) y dirección
 // flippable. retroceder_inicio() = M1=-PWM, M2=+PWM (= patrón patear_atras = hacia ATRÁS) × SIGN.
 // ⚠️ Si al GO el robot va hacia ADELANTE en vez de atrás → flashear con -DARQMIX_FLIP_INICIO_RETRO.
 constexpr int AMIX_INICIO_RETRO_PWM = 100;  // PWM del retroceso de inicio (controlado, no a tope)
-// PWM del AVANCE del homing — primitiva DEDICADA avanzar_inicio() (NO el avanzar() del despeje, que
-// queda en 100). BAJADO 90→75 (banco Virginia 2026-06-21: "va con demasiada fuerza"). 75 queda
-// apenas sobre el piso de las delanteras (MOTOR_MIN_PWM=70): si NO arranca/se queda, subir hacia 85;
-// NO bajar a 70 (zona muerta).
-constexpr int AMIX_INICIO_AVANCE_PWM = 75;
-// SENTIDO del avance del homing. Banco Virginia 2026-06-21: el movimiento a ciegas iba para el LADO
-// CONTRARIO → se INVIERTE por default. ⚠️ Al invertir queda en el MISMO sentido que el retroceso de
-// inicio: confirmar en banco que igual se DESPEGA de la línea. -DARQMIX_FLIP_INICIO_AVANCE vuelve al
-// sentido viejo (diagnóstico).
-#ifdef ARQMIX_FLIP_INICIO_AVANCE
-constexpr int AMIX_INICIO_AVANCE_SIGN = +1;  // sentido VIEJO (iba al lado contrario) — solo diagnóstico
-#else
-constexpr int AMIX_INICIO_AVANCE_SIGN = -1;  // ✅ sentido CORREGIDO (banco Virginia 2026-06-21)
-#endif
 #ifdef ARQMIX_FLIP_INICIO_RETRO
 constexpr int AMIX_INICIO_RETRO_SIGN = -1;  // invierte la dirección del retroceso de inicio
 #else

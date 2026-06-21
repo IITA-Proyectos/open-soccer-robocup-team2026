@@ -263,9 +263,9 @@ void centrar_antihorario() {
 // curva al revés, invertí los signos de MIX_KICKOFF_M1/M2/M3).
 // ============================================================
 void kickoff_medialuna() {
-    mix_set_motor(0, MIX_KICKOFF_M1);   // M1 delantera IZQ
-    mix_set_motor(1, MIX_KICKOFF_M2);   // M2 delantera DER
-    mix_set_motor(2, MIX_KICKOFF_M3);   // M3 trasera
+    mix_set_motor(0, MIX_KICKOFF_ARC_PWD*80);   // M1 delantera IZQ
+    mix_set_motor(1, MIX_KICKOFF_ARC_PWD*80);   // M2 delantera DER
+    mix_set_motor(2, MIX_KICKOFF_ARC_PWD*MIX_KICKOFF_ARC_CURV*170);   // M3 trasera
 }
 
 }  // namespace mix

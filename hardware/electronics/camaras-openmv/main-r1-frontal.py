@@ -29,15 +29,15 @@ sensor.set_vflip(True)
 sensor.set_auto_whitebal(True)
 sensor.set_auto_gain(True)
 
-sensor.skip_frames(time=2000) 
+sensor.skip_frames(time=2000)
 
 sensor.set_auto_whitebal(False)
 sensor.set_auto_gain(False)
 
-sensor.set_auto_whitebal(False, rgb_gain_db=(2.803574, 0.000000, 5.535230)) 
-sensor.set_auto_gain(False, gain_db=12.041200) 
+sensor.set_auto_whitebal(False, rgb_gain_db=(2.803574, 0.000000, 5.535230))
+sensor.set_auto_gain(False, gain_db=12.041200)
 sensor.set_auto_exposure(False, exposure_us=100328)
-sensor.skip_frames(time=2000) 
+sensor.skip_frames(time=2000)
 
 clock = time.clock()
 
@@ -60,6 +60,39 @@ COORD_OFFSET = 100
 HEADER1, HEADER2, HEADER3 = 201, 202, 203
 END_BYTE = 254
 
+# ----- Parche de corrección del eje Y -----
+# La Y se vuelve más sensible cuanto más lejos está la pelota (perspectiva):
+# pocos px de error en 'v' = varios cm de error en Y. Esta corrección empírica
+# (polinomio cúbico ajustado a tu tabla real-vs-leído) endereza la Y.
+# Está FORZADO a pasar por el origen: f(0)=0, casi no corrige con la pelota
+# pegada al robot (ahí la homografía ya es precisa) y corrige cada vez más lejos.
+# IMPORTANTE: se aplica DESPUÉS de tu ajuste de altura Y = y*(h-r)/h.
+# f(L) = A*L^3 + B*L^2 + C*L   (sin término constante -> arranca en 0)
+# REAJUSTE: coeficientes recalculados contra tus mediciones nuevas con la pelota
+# (30->27, 35->32, 45->41, 50->45, 55->50, 60->53). Ahora el rango 30-60 cae
+# dentro de ~±1.5 cm. OJO: por encima de un crudo ~74 (real > 60 cm) NO hay datos,
+# la curva extrapola y tiende a sobreestimar. Para usar más lejos: medí esos
+# puntos o, mejor, recalibrá la homografía (modo RECAL_PRINT más abajo).
+CORR_Y_A =  0.00010034
+CORR_Y_B = -0.0068086
+CORR_Y_C =  0.7624328
+
+# Rango con datos reales: real 0..60 cm (crudo ~0..74). Más allá es extrapolación.
+CORR_Y_MIN = 0.0
+CORR_Y_MAX = 74.0
+
+
+def corregir_y(Y_hr):
+    # Entrada: Y ya ajustada por altura (y*(h-r)/h). Salida: Y corregida en cm.
+    # Horner: ((A*L + B)*L + C)*L  ==  A*L^3 + B*L^2 + C*L
+    Yc = ((CORR_Y_A * Y_hr + CORR_Y_B) * Y_hr + CORR_Y_C) * Y_hr
+    return Yc
+
+
+# ----- DEBUG / CAPTURA -----
+DEBUG_PRINT = True    # imprime la coord. de la pelota ya corregida (para verificar)
+RECAL_PRINT = False   # ponelo True cuando recalibres: imprime (cx,cy) crudos de la pelota
+
 
 def crc8(data):
     c = 0
@@ -71,9 +104,9 @@ def crc8(data):
 def transformarcoordenadas(u, v):
 #    H = [[ 7.54504107e-01, 1.54808424e-02,  -1.96304100e+02],
 #         [-1.40623499e-01, -2.05684020e-01,  2.30315983e+02],
-#         [-7.07447958e-03,  8.46088118e-02,  1.00000000e+00]] 
+#         [-7.07447958e-03,  8.46088118e-02,  1.00000000e+00]]
 
-    # Camara delantera robot 1 
+    # Camara delantera robot 1
     H = [[ 9.75710406e-01, -1.68298485e-02, -3.10158606e+02],
          [ 4.96930331e-02, -7.50443823e-01,  3.19229639e+02],
          [ 5.35796634e-03,  7.17775346e-02,  1.00000000e+00]]
@@ -84,11 +117,20 @@ def transformarcoordenadas(u, v):
     y = (H[1][0]*u + H[1][1]*v + H[1][2]) / denominator
     X = x * (h - r) / h
     Y = y * (h - r) / h
+    # ---- PARCHE: corrección del eje Y (después del ajuste de altura) ----
+    Y = corregir_y(Y)
+    # X queda intacta: ese eje ya anda bien.
     X = max(-100, min(100, X))
     Y = max(-100, min(100, Y))
     X_coded = max(0, min(200, round(X) + COORD_OFFSET))
     Y_coded = max(0, min(200, round(Y) + COORD_OFFSET))
     return X_coded, Y_coded
+
+
+def decodificar_coordenada(x_coded, y_coded):
+    if x_coded == SENTINEL_CODED or y_coded == SENTINEL_CODED:
+        return None, None
+    return x_coded - COORD_OFFSET, y_coded - COORD_OFFSET
 
 
 def enmascarar_esquinas(img):
@@ -119,7 +161,9 @@ while(True):
 
     # Tapar las esquinas triangulares de arriba (falsos positivos fuera de cancha).
     enmascarar_esquinas(img)
-
+    
+    img.draw_line(img.width() // 2, 0, img.width() // 2, img.height(), color=(255, 255, 255), thickness=1)
+    
     roi = (0, 0, img.width(), int(img.height() * 0.97))
 
     naranja_blobs = img.find_blobs([naranja_threshold], roi=roi, pixels_threshold=7, area_threshold=7, merge=True)
@@ -148,8 +192,25 @@ while(True):
     packet = bytearray(data + [crc8(data), END_BYTE])
 
     uart.write(packet)
-    print("Enviando:", list(packet))  
-    
+
+    # ----- CAPTURA para recalibrar: (cx,cy) crudos de la pelota -----
+    # Poné la pelota en una posición conocida (X,Y) y anotá el cx,cy que sale acá.
+    # Repetí hasta cubrir todo el rango (incluí 70/80/90/100 cm y los costados).
+    # Esos pares (cx,cy)->(X,Y) son los que cargás en pts_img / pts_fisicas del Colab.
+    if RECAL_PRINT and naranja_blobs:
+        b = max(naranja_blobs, key=lambda bb: bb.pixels())
+        print("RECAL pelota -> cx=%d  cy=%d" % (b.cx(), b.cy()))
+
+    # ----- DEBUG: pelota ya corregida (para verificar que la Y matchee la real) -----
+    if DEBUG_PRINT:
+        Xp_real, Yp_real = decodificar_coordenada(Xp, Yp)
+        if Xp_real is None:
+            print("Pelota: NO DETECTADA")
+        else:
+            print("Pelota -> X=%d cm  Y=%d cm" % (Xp_real, Yp_real))
+
+    #print("Enviando:", list(packet))
+
     # Imprime las 3 líneas LISTAS PARA PEGAR como calibración fija:
     #g = sensor.get_gain_db()
     #rgb = sensor.get_rgb_gain_db()

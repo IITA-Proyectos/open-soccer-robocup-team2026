@@ -32,13 +32,18 @@ struct AmixIO {
                                      // El arquero SIGUE la pelota por este ángulo (robusto a la
                                      // escala sin calibrar del snapshot), NO por mm crudos.
 
-    // ---- Arcos (ángulo ° marco robot, +=derecha; distancia mm) ----
-    bool  goal_yellow_visible = false;
-    bool  goal_blue_visible   = false;
-    float goal_yellow_angle = 0.0f;
-    float goal_yellow_dist  = 0.0f;
-    float goal_blue_angle   = 0.0f;
-    float goal_blue_dist    = 0.0f;
+    // ---- Arcos por ROL, NO por color (ángulo ° marco robot, +=derecha; distancia mm) ----
+    // ⚠️ La placa CENTRAL (este programa) NUNCA pregunta por COLOR (amarillo/azul). La placa TOP
+    // ya resolvió cuál arco es el RIVAL (opp = al que se despeja/patea) y cuál el PROPIO (own), con
+    // el módulo goal_polarity ("el arco que el robot tiene al FRENTE es el rival", fijado al arranque
+    // por un latch). Acá SÓLO se consume ese rol ya resuelto: el arquero apunta el despeje al
+    // goal_opp por su ÁNGULO, sin saber ni preguntar el color.
+    bool  goal_opp_visible = false;  // ¿el TOP ve el arco RIVAL (al que despejar)?
+    float goal_opp_angle   = 0.0f;   // ° al arco rival: 0=frente, >0=derecha, <0=izquierda
+    float goal_opp_dist    = 0.0f;   // mm al arco rival (válido sólo si goal_opp_visible)
+    bool  goal_own_visible = false;  // ¿el TOP ve el arco PROPIO? (disponible; la FSM hoy no lo usa)
+    float goal_own_angle   = 0.0f;   // ° al arco propio
+    float goal_own_dist    = 0.0f;   // mm al arco propio
 
     // ---- Heading / rumbo (del SNAPSHOT del TOP por default) ----
     float heading_deg = 0.0f;        // heading actual (grados).

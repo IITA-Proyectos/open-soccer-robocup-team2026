@@ -56,6 +56,12 @@ void avanzar_inicio();
 // al frente → "apunta" bien). NO bloqueante; se resetea en parar()/init.
 void avanzar_patear();
 
+// Giro PURO en el lugar (rotación del omni-3 sin trasladar): los 3 motores al MISMO sentido.
+// Se usa para ALINEAR el frente del robot al ARCO RIVAL antes de despejar (el despeje sale recto
+// al frente, así que "apuntar al arco" = girar hasta tenerlo al frente). pwm_signed>0 = un sentido,
+// <0 = el otro. ⚠️ El SENTIDO físico se RE-VERIFICA en banco como el resto de las primitivas.
+void girar(int pwm_signed);
+
 // Retroceso recto de la secuencia de despeje (inline 2025, L1186-1188):
 //   M1=-150, M2=+150, M3=0 (= opuesto de avanzar).
 void patear_atras();

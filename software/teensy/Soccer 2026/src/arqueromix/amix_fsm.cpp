@@ -71,6 +71,13 @@ static inline bool ball_alineada() {
 static inline bool ball_a_la_derecha() {
     return g_aio.angulo_pelota_deg > 0.0f;
 }
+// ¿El FRENTE del robot ya apunta al ARCO RIVAL (goal_opp) para despejar HACIA ahí?
+// Quién es el arco rival lo resolvió la placa TOP (goal_polarity, por ÁNGULO — sin color); acá
+// sólo se usa su ÁNGULO. Si no es visible no se puede alinear → se patea recto (como el 2025).
+static inline bool alineado_al_arco_opp() {
+    return g_aio.goal_opp_visible &&
+           (fabsf(g_aio.goal_opp_angle) <= AMIX_TOL_ARCO_OPP_DEG);
+}
 
 void amix_fsm_init() {
     estado = Estado::inicio_retroceder;   // homing al área chica antes de patrullar
@@ -207,7 +214,28 @@ void amix_fsm_tick() {
             parar();                                 // deja pasar la inercia lateral
             if (millis() - millis_inicio_estado >= AMIX_T_PAT_PAUSA_INI) {  // 200 ms
                 millis_inicio_estado = millis();
+                estado = Estado::ALINEAR_arco_opp;   // antes de patear: apuntar el frente al ARCO RIVAL
+            }
+            break;
+
+        // ----------------------------------------------------
+        case Estado::ALINEAR_arco_opp:              // NUEVO (pedido Gustavo 2026-06-21): apuntar al ARCO RIVAL
+            // Antes de patear, GIRA en el lugar para poner el ARCO RIVAL (goal_opp) al frente; así el
+            // despeje (avanzar_patear, que sale RECTO al frente) va DIRIGIDO al arco contrario, alineado,
+            // SIN IMPORTAR EL COLOR. Quién es el arco rival lo decidió la placa TOP (goal_polarity, por
+            // ÁNGULO). Acotado: si no ve el arco rival, ya está alineado, o se acaba el tiempo → patea
+            // igual (fallback robusto = el "recto al frente" del arquero 2025; no demora el despeje).
+            if (!g_aio.goal_opp_visible ||
+                alineado_al_arco_opp() ||
+                (millis() - millis_inicio_estado >= AMIX_T_ALINEAR_OPP)) {
+                parar();                             // frena el giro (y resetea la rampa del golpe)
+                millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_adelante;
+            } else {
+                // Gira hacia el arco: ang>0 (arco a la DERECHA) → girar a la derecha para traerlo al
+                // frente. El sentido físico de girar() se RE-VERIFICA en banco (AMIX_GIRO_ALINEAR_SIGN).
+                const int sentido = (g_aio.goal_opp_angle > 0.0f) ? +1 : -1;
+                girar(sentido * AMIX_GIRO_ALINEAR_PWM * AMIX_GIRO_ALINEAR_SIGN);
             }
             break;
 

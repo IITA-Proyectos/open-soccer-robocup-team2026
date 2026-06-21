@@ -32,7 +32,8 @@ enum class Estado : uint8_t {
     salir_linea_der,             // tocó línea IZQ → sale a la DERECHA a ciegas (sin sensores) y patrulla der
     salir_linea_izq,             // tocó línea DER → sale a la IZQUIERDA a ciegas (sin sensores) y patrulla izq
     PATEANDO_pausa_inicial,      // despeje: pausa 200 ms (deja pasar la inercia)
-    PATEANDO_adelante,           // despeje: golpe de avance 450 ms (avanzar_patear)
+    ALINEAR_arco_opp,            // despeje: GIRA para apuntar el frente al ARCO RIVAL (goal_opp) antes de patear
+    PATEANDO_adelante,           // despeje: golpe de avance 450 ms (avanzar_patear) hacia donde quedó apuntando
     PATEANDO_pausa,              // despeje: pausa 1000 ms
     PATEANDO_atras,              // despeje: retroceso recto hasta ver línea (+ safety)
     avanzar_despues_de_patear,   // reposicionamiento 1000 ms → vuelve a patrullar

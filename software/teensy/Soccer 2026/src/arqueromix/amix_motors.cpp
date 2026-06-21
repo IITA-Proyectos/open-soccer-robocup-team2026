@@ -163,6 +163,16 @@ void avanzar_patear() {
     // Entre escalones NO se reescriben los motores (mantienen el último PWM) — igual que el delantero.
 }
 
+// girar() — ROTACIÓN PURA en el lugar. En un omni-3 a 120°, manejar las 3 ruedas con la MISMA
+// velocidad tangencial gira el robot sin trasladarlo (vx=vy=0, ω≠0). Se usa para ALINEAR el frente
+// al ARCO RIVAL antes del despeje. ⚠️ El SENTIDO (qué lado gira con +) se RE-VERIFICA en banco como
+// el resto de las primitivas (el cableado 2026 puede invertirlo → perilla AMIX_GIRO_ALINEAR_SIGN).
+void girar(int pwm_signed) {
+    amix_set_motor(0, pwm_signed);
+    amix_set_motor(1, pwm_signed);
+    amix_set_motor(2, pwm_signed);
+}
+
 // PATEANDO_atras_arquero inline 2025 (L1186-1188): M1=-150, M2=+150, M3=0 (recto atrás).
 void patear_atras() {
     amix_set_motor(0, -AMIX_ATRAS);

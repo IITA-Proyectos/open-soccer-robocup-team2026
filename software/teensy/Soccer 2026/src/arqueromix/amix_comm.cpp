@@ -85,29 +85,17 @@ void apply_top_snapshot(const WorldSnapshot& s) {
         g_aio.t_last_ball_seen_ms = now;
     }
 
-    // --- Arcos: goal_opp (rival) / goal_own (propio) → yellow/blue por polaridad ---
-    // (El arquero 2025 NO usa el arco para patrullar; se pueblan por paridad/telemetría.)
-    const bool opp_vis = (s.goal_opp_visible != 0);
-    const bool own_vis = (s.goal_own_visible != 0);
-    const float opp_ang  = s.goal_opp_angle_centideg / 100.0f;
-    const float opp_dist = static_cast<float>(s.goal_opp_distance_mm);
-    const float own_ang  = s.goal_own_angle_centideg / 100.0f;
-    const float own_dist = static_cast<float>(s.goal_own_distance_mm);
-#ifdef ARQMIX_ATTACK_BLUE
-    g_aio.goal_blue_visible   = opp_vis;
-    g_aio.goal_blue_angle     = opp_vis ? opp_ang  : 0.0f;
-    g_aio.goal_blue_dist      = opp_vis ? opp_dist : 0.0f;
-    g_aio.goal_yellow_visible = own_vis;
-    g_aio.goal_yellow_angle   = own_vis ? own_ang  : 0.0f;
-    g_aio.goal_yellow_dist    = own_vis ? own_dist : 0.0f;
-#else
-    g_aio.goal_yellow_visible = opp_vis;   // rival = AMARILLO (default repo)
-    g_aio.goal_yellow_angle   = opp_vis ? opp_ang  : 0.0f;
-    g_aio.goal_yellow_dist    = opp_vis ? opp_dist : 0.0f;
-    g_aio.goal_blue_visible   = own_vis;
-    g_aio.goal_blue_angle     = own_vis ? own_ang  : 0.0f;
-    g_aio.goal_blue_dist      = own_vis ? own_dist : 0.0f;
-#endif
+    // --- Arcos por ROL (opp=RIVAL / own=PROPIO): copia DIRECTA del snapshot, SIN color ---
+    // La decisión "qué arco es el rival y cuál el propio" YA la tomó la placa TOP con goal_polarity
+    // (regla: el arco al FRENTE del robot = rival; el de atrás = propio; con un latch que la fija al
+    // arranque). El arquero NO mira color (amarillo/azul) NI invierte nada con flags de color: sólo
+    // consume goal_opp/goal_own ya resueltos. Sentinela: visible=0 → ángulo/dist NO son válidos.
+    g_aio.goal_opp_visible = (s.goal_opp_visible != 0);
+    g_aio.goal_opp_angle   = g_aio.goal_opp_visible ? (s.goal_opp_angle_centideg / 100.0f) : 0.0f;
+    g_aio.goal_opp_dist    = g_aio.goal_opp_visible ? static_cast<float>(s.goal_opp_distance_mm) : 0.0f;
+    g_aio.goal_own_visible = (s.goal_own_visible != 0);
+    g_aio.goal_own_angle   = g_aio.goal_own_visible ? (s.goal_own_angle_centideg / 100.0f) : 0.0f;
+    g_aio.goal_own_dist    = g_aio.goal_own_visible ? static_cast<float>(s.goal_own_distance_mm) : 0.0f;
 
 #ifndef ARQMIX_HEADING_OTOS
     // --- Heading desde el SNAPSHOT del TOP (fuente por default) ---

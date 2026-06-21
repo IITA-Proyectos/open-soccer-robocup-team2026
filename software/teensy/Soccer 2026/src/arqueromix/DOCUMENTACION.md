@@ -23,7 +23,7 @@ scope: software/teensy/Soccer 2026/src/arqueromix/
 | Env de compilación `central_robot2_arqueromix` | ✅ en `platformio.ini` (aditivo, no toca nada) |
 | **Compila** | ✅ `pio run -e central_robot2_arqueromix` → SUCCESS, FLASH ~19 KB |
 | Aislamiento (no afecta lo actual) | ✅ `build_src_filter = +<arqueromix/> +<shared/>` (NO compila `src/central/`) |
-| FSM 2025 del arquero portada (10 estados) | ✅ código escrito (port fiel) |
+| FSM 2025 del arquero portada (11 estados) | ✅ código escrito (port fiel) |
 | Manejo directo de motores | ✅ código escrito (pines R1/R2) |
 | Lectura de TOP/DOWN (comm propio) | ✅ código escrito (decodifica `shared/proto`) |
 | **Heading por serie del TOP (no BNO local)** | ✅ (pedido de Virginia) |
@@ -50,7 +50,7 @@ riesgo para el stack actual porque vive en otra carpeta y otro env.
                                           └──────────┘     └────┬─────┘
                                                                 │ lee
                                                           ┌─────▼─────┐
-                                                          │ amix_fsm  │  (FSM arquero 2025: 10 estados)
+                                                          │ amix_fsm  │  (FSM arquero 2025: 11 estados)
                                                           └─────┬─────┘
                                                                 │ llama
                                                           ┌─────▼──────┐
@@ -73,15 +73,15 @@ Las placas CENTRAL 2026 no traen BNO propio; el rumbo se procesa en el TOP. Más
 | Archivo | Qué hace |
 |---|---|
 | `main_arqueromix.cpp` | `setup()`: init comm/motores/FSM. `loop()`: `amix_comm_tick()` → `amix_fsm_tick()`. |
-| `amix_io.h` | `struct AmixIO` + `extern AmixIO g_aio`: variables planas (pelota, arcos, heading, línea, árbitro, timers, frescura). |
-| `amix_comm.cpp/.h` | **Único que toca Serial.** Lee TOP (Serial7) y DOWN (Serial1) a 230400, decodifica con `shared/proto` + `line_view`/`pose_view`, y **llena `g_aio`**. Heading = snapshot del TOP. |
-| `amix_fsm.cpp/.h` | La **FSM del ARQUERO 2025** portada fiel (10 estados). Lee `g_aio`, decide, llama primitivas de `amix_motors`. Agrega el gate `match_running` + un timeout de seguridad al retroceso. |
-| `amix_motors.cpp/.h` | **Manejo directo 2025**: `adproporcional/aiproporcional/impulso_inicial/avanzar/avanzar_patear/patear_atras` + `amix_set_motor(idx,pwm)`. Escribe `analogWrite(PWM)`+`digitalWrite(INA/INB)`. Sin mixer, sin cinemática omni. |
+| `amix_io.h` | `struct AmixIO` + `extern AmixIO g_aio`: variables planas (pelota, **arcos POR ROL `goal_opp`/`goal_own` — SIN color**, heading, línea, árbitro, timers, frescura). |
+| `amix_comm.cpp/.h` | **Único que toca Serial.** Lee TOP (Serial7) y DOWN (Serial1) a 230400, decodifica con `shared/proto` + `line_view`/`pose_view`, y **llena `g_aio`**. Heading = snapshot del TOP. **Arcos: copia directa `goal_opp`/`goal_own` (la polaridad la resolvió el TOP; acá no se mira color).** |
+| `amix_fsm.cpp/.h` | La **FSM del ARQUERO 2025** portada fiel (11 estados). Lee `g_aio`, decide, llama primitivas de `amix_motors`. Agrega el gate `match_running` + un timeout de seguridad al retroceso. |
+| `amix_motors.cpp/.h` | **Manejo directo 2025**: `adproporcional/aiproporcional/impulso_inicial/avanzar/avanzar_patear/patear_atras/`**`girar`** + `amix_set_motor(idx,pwm)`. Escribe `analogWrite(PWM)`+`digitalWrite(INA/INB)`. Sin mixer, sin cinemática omni. (`girar` = rotación pura para alinear al arco rival.) |
 | `amix_config.h` | Pines (R1/R2 2026), constantes 2025 (PWM proporcionales, impulsos, patada), tolerancias, tiempos, selector de heading. |
 | `README.md` | Guía corta + comando de flasheo. |
 | `DOCUMENTACION.md` | Este archivo. |
 
-## 5. La máquina de estados del arquero (10 estados, port fiel del 2025)
+## 5. La máquina de estados del arquero (11 estados, port fiel del 2025)
 
 Flujo del arquero: patrullar lateral siguiendo la pelota en el eje lateral, y al tenerla
 cerca+centrada, despejar (pausa → patada → pausa → retroceso a la línea → reposicionar).
@@ -98,7 +98,7 @@ moverce_derecha ◄──────────────► moverce_izquier
    │
    └ pelota cerca+centrada (profundidad≤CERCANIA && |lateral|≤CENTRADO)
               ▼
-   PATEANDO_pausa_inicial (200 ms) → PATEANDO_adelante (450 ms, avanzar_patear)
+   PATEANDO_pausa_inicial (200 ms) → ALINEAR_arco_opp (gira a apuntar al ARCO RIVAL) → PATEANDO_adelante (450 ms, avanzar_patear hacia el arco rival)
               ▼
    PATEANDO_pausa (1000 ms) → PATEANDO_atras (retroceso recto hasta ver línea + safety 4 s)
               ▼
@@ -345,6 +345,55 @@ MISMA línea y rebotaba para el lado contrario = **de vuelta a la línea**. Fixe
 - **Tiempos revisados:** cada estado usa su propio timer (`millis_inicio_estado` al entrar), el
   commit es `millis() < s_commit_until_ms`. NO se encontró bug de tiempo; el problema era la
   dirección del rebote, no los tiempos.
+
+## 18. Despeje DIRIGIDO al arco rival + arcos por ROL, no por color (pedido Gustavo 2026-06-21)
+
+**Cambio pedido.** Que (1) la determinación de cuál arco es el PROPIO y cuál el RIVAL viva en la
+placa **TOP** (ya era así: `goal_polarity` —"el arco al frente del robot es el rival"—, fijado al
+arranque por un latch), (2) la placa CENTRAL (este programa) **nunca pregunte por COLOR**, y (3) el
+arquero, al despejar, **apunte al ARCO RIVAL (`goal_opp`) y patee alineado hacia ahí**, sin importar
+el color.
+
+**Qué se hizo (sólo en `src/arqueromix/`, SIN tocar el TOP ni `shared/`):**
+
+- **`amix_io.h` / `amix_comm.cpp` — fuera el color.** Antes el snapshot se copiaba a campos
+  `goal_yellow_*/goal_blue_*` con un `#ifdef ARQMIX_ATTACK_BLUE`. Ahora se copia DIRECTO a
+  `goal_opp_*` (rival) y `goal_own_*` (propio), tal como vienen **ya resueltos** del TOP. El arquero
+  no nombra ni invierte colores: el TOP es el único dueño de "qué arco es cuál" (`goal_polarity`).
+- **`amix_motors.{h,cpp}` — primitiva `girar()`.** Rotación pura en el lugar (3 ruedas al mismo
+  sentido). Sirve para apuntar el frente al arco rival (el despeje sale recto al frente).
+- **`amix_fsm.{h,cpp}` — estado nuevo `ALINEAR_arco_opp`.** Se intercala en la secuencia de despeje,
+  ENTRE `PATEANDO_pausa_inicial` y `PATEANDO_adelante`:
+
+  ```
+  ... pelota cerca+centrada → PATEANDO_pausa_inicial (200 ms)
+        ▼
+  ALINEAR_arco_opp:  ¿ve el arco rival? → gira hasta tenerlo al frente (|áng| ≤ AMIX_TOL_ARCO_OPP_DEG)
+        │             ¿no lo ve / ya alineado / timeout AMIX_T_ALINEAR_OPP? → patea igual (recto)
+        ▼
+  PATEANDO_adelante (avanzar_patear) → ahora va DIRIGIDO al arco rival
+  ```
+
+  **Fallback robusto:** si no ve el arco rival, ya está alineado, o se acaba el tiempo de giro,
+  patea igual (recto al frente = comportamiento del arquero 2025). Nunca se cuelga apuntando.
+
+**Por qué "apuntar al rival" y no "lejos del propio":** despejar hacia el arco contrario aleja la
+pelota de nuestro arco Y es ofensivo, y usa `goal_opp` (cámara FRONTAL, la misma que valida el
+delantero). Es lo que pidió Gustavo.
+
+**Tunear (en `amix_config.h`):** `AMIX_TOL_ARCO_OPP_DEG` (12° — cuán fino apunta antes de patear),
+`AMIX_GIRO_ALINEAR_PWM` (90 — fuerza del giro), `AMIX_T_ALINEAR_OPP` (300 ms — tope de giro, arranca
+conservador), y el env `central_robot2_arqueromix_giroflip` (`-DARQMIX_FLIP_GIRO_ALINEAR`) si gira
+para el lado CONTRARIO al arco.
+
+**A validar en banco** *(la cámara trasera/`goal_own` se da por validada por decisión del equipo
+2026-06-21; si falla, se debuggea ahí — igual el despeje usa `goal_opp`, cámara frontal):*
+1. Con el arco rival visible, el arquero **gira para apuntarle** y el despeje sale **hacia el arco
+   rival** (no a un costado). Si gira al revés → `-DARQMIX_FLIP_GIRO_ALINEAR`.
+2. Sin ver el arco rival, **patea recto** sin demorarse (fallback).
+3. El giro de alineación **no saca al arquero de su arco** de forma peligrosa: si pasa, bajar
+   `AMIX_T_ALINEAR_OPP` y/o `AMIX_GIRO_ALINEAR_PWM`.
+4. Compila ✅ (`pio run -e central_robot2_arqueromix` → SUCCESS). **Compila ≠ anda.**
 
 ## 9. Cómo compilar, flashear y volver atrás
 

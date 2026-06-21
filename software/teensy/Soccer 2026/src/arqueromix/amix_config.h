@@ -103,6 +103,31 @@ constexpr int AMIX_KICK_INTERVALO_MS = 10;   // ms entre escalones (rampa 0→18
 constexpr int AMIX_ATRAS = 120;      // retroceso del despeje (era 150) — bajado con el resto
 
 // ============================================================
+// ALINEAR AL ARCO RIVAL antes de despejar (pedido Gustavo 2026-06-21).
+// ----------------------------------------------------------------------------------
+// Antes de patear, el arquero GIRA en el lugar para apuntar su FRENTE al ARCO RIVAL (goal_opp) y
+// despejar HACIA AHÍ (no sólo "lejos / recto"). Quién es el arco rival lo resolvió la placa TOP
+// (goal_polarity, por ángulo); el arquero NO pregunta el COLOR. Si NO ve el arco rival, patea
+// RECTO al frente (comportamiento del arquero 2025 = fallback). Acotado por tolerancia + timeout
+// para no demorar el despeje ni sacar al arquero de su arco.
+// ============================================================
+constexpr float AMIX_TOL_ARCO_OPP_DEG = 12.0f;  // |áng al arco rival| <= esto → ALINEADO → patea.
+                                                // Más amplio = patea antes pero menos preciso. <RE-TUNE>
+constexpr int   AMIX_GIRO_ALINEAR_PWM = 90;     // PWM del giro de alineación (suave/controlado). <RE-TUNE>
+constexpr unsigned long AMIX_T_ALINEAR_OPP = 300; // tope girando: si no logra alinear, patea igual (no
+                                                  // demora el despeje). ARRANCA CONSERVADOR (300 ms) para NO
+                                                  // sacar al arquero de su arco ni perder la pelota durante el
+                                                  // giro; SUBIR en banco si no llega a apuntar. <tunable>
+// SENTIDO del giro: ang>0 (arco a la derecha) debe girar para traer el arco al frente. El sentido
+// físico de girar() depende del cableado 2026 → se RE-VERIFICA en banco. -DARQMIX_FLIP_GIRO_ALINEAR
+// lo invierte si el arquero gira para el lado CONTRARIO al arco.
+#ifdef ARQMIX_FLIP_GIRO_ALINEAR
+constexpr int AMIX_GIRO_ALINEAR_SIGN = -1;
+#else
+constexpr int AMIX_GIRO_ALINEAR_SIGN = +1;
+#endif
+
+// ============================================================
 // Tolerancias de la pelota — POR ÁNGULO (como centralmix usa la cámara). FIX 2026-06-21.
 // ----------------------------------------------------------------------------------
 // PROBLEMA que arregla (banco Virginia): con umbrales en mm (CENTRADO=30/DESVIO=50/

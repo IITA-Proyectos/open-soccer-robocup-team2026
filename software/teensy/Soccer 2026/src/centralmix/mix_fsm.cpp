@@ -28,11 +28,11 @@
 //      se mapea a dist_pelota_mm() >= MIX_TOL_CERCANIA, igual que el 2025.
 //   2) `abs(Yp - Ycontrincante) <= tolerancia_centrado` (30): en 2025 era "la pelota
 //      está alineada con el arco rival en el eje vertical de la cámara". En el marco
-//      nuevo el dato equivalente es el ÁNGULO al arco rival (goal_yellow_angle, arco
-//      rival = AMARILLO como el 2025). Se mapea a:
-//          |goal_yellow_angle| <= MIX_TOL_CENTRADO  (valor 2025 = 30, UNIDADES DISTINTAS:
+//      nuevo el dato equivalente es el ÁNGULO al arco rival (goal_opp_angle, RESUELTO
+//      por el TOP — sin color). Se mapea a:
+//          |goal_opp_angle| <= MIX_TOL_CENTRADO  (valor 2025 = 30, UNIDADES DISTINTAS:
 //          2025 era diferencia de coordenadas Y; acá son GRADOS → RE-TUNEAR en banco).
-//      La guarda ARCO_CONTRINCANTE (2025: hayarco_amarillo) → g_io.goal_yellow_visible.
+//      La guarda ARCO_CONTRINCANTE (2025: hayarco_amarillo) → g_io.goal_opp_visible.
 //   3) s1/s2/s3 >= blanco (3 sensores analógicos): en centralmix la línea llega por
 //      DOWN como line_present/line_angle_deg/line_depth (mix_io). Se reconstruye el
 //      branch de 3 vías por el ÁNGULO de la línea:
@@ -43,8 +43,8 @@
 //      una elección 2026 → RE-TUNEAR. El "OR de los 3 sensores" del 2025 (centrando)
 //      se mapea a line_present.
 //
-// ARCO RIVAL = AMARILLO, igual que el 2025 (ARCO_CONTRINCANTE = hayarco_amarillo).
-//   Dejado para parametrizar: ver kArcoRivalEsAmarillo abajo. <PARAMETRIZAR>
+// ARCO RIVAL = goal_opp (POR ROL, no por color): la placa TOP resuelve la polaridad
+//   (goal_polarity); el delantero NO mira color (ver arco_rival_*() abajo).
 //
 // El bloque ARQUERO del 2025 NO se porta (no existe en este archivo base; este es
 // el delantero).
@@ -79,17 +79,19 @@ static unsigned long millis_inicio_centrando = 0;
 static float heading_inicial_deg = 0.0f;
 
 // ============================================================
-// PARAMETRIZACIÓN del arco rival. El 2025 hardcodeaba AMARILLO
-// (ARCO_CONTRINCANTE = hayarco_amarillo; Ycontrincante = Yam). Se mantiene AMARILLO
-// pero se deja la perilla a la vista para parametrizar a futuro. <PARAMETRIZAR>
+// ARCO RIVAL = goal_opp (POR ROL, NO por color). El 2025 hardcodeaba AMARILLO
+// (ARCO_CONTRINCANTE = hayarco_amarillo). Acá el delantero NO mira color: la placa TOP ya
+// resolvió cuál arco es el rival (goal_polarity, por ÁNGULO — "el arco al frente es el rival",
+// fijado al arranque) y lo entrega como goal_opp en el WorldSnapshot. El delantero apunta el
+// pateo a ESE arco, sin importar el color. Se ELIMINÓ la perilla kArcoRivalEsAmarillo / el mapeo
+// a yellow/blue: la polaridad vive SÓLO en el TOP. Esto además cierra el bug de inconsistencia
+// color↔rol (con kArcoRivalEsAmarillo=false + el mapeo default, arco_rival leía el arco PROPIO).
 // ============================================================
-static constexpr bool kArcoRivalEsAmarillo = false;  // 2025: arco rival = AMARILLO
-
 static inline bool arco_rival_visible() {
-    return kArcoRivalEsAmarillo ? g_io.goal_yellow_visible : g_io.goal_blue_visible;
+    return g_io.goal_opp_visible;
 }
 static inline float arco_rival_angle_deg() {
-    return kArcoRivalEsAmarillo ? g_io.goal_yellow_angle : g_io.goal_blue_angle;
+    return g_io.goal_opp_angle;
 }
 
 // ============================================================

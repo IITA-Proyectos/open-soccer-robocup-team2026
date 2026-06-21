@@ -13,7 +13,7 @@
 //   WorldSnapshot.ball_x_mm/ball_y_mm → g_io.ball_x_mm/ball_y_mm   (+X der, +Y adel)
 //   WorldSnapshot.ball_visible        → g_io.ball_visible (+ sella t_last_ball_seen_ms)
 //   angulo_pelota_deg = atan2(ball_x_mm, ball_y_mm)*180/PI
-//   goal_opp/goal_own (centideg/mm)   → goal_yellow_* / goal_blue_* (según color rival)
+//   goal_opp/goal_own (centideg/mm)   → g_io.goal_opp_* / goal_own_* (copia directa, SIN color)
 //   my_heading_centideg / flags bit4  → heading_deg / heading_valid (si fuente = BNO)
 //   Pose2D.heading_centideg (DOWN)    → otos_heading_deg (y heading_deg si MIX_HEADING_OTOS)
 //   heading_error_deg = wrap180(heading_deg - heading_inicial)

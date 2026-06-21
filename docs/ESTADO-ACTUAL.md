@@ -13,6 +13,19 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> **🥅 ARQUEROMIX — port del ARQUERO 2025 sobre TOP/DOWN (2026-06-21, pedido Virginia, build AISLADO):**
+> Hermano arquero de `centralmix` (el delantero del viernes). Carpeta nueva `src/arqueromix/`
+> (8 archivos) = FSM del arquero 2025 (10 estados, port fiel de `ANALISIS-FIEL-ARQUERO-2025.md`) +
+> manejo DIRECTO de motores (PWM por índice, estilo 2025), alimentado por los datos de TOP/DOWN
+> por serie. **Diferencia con centralmix (pedido Virginia): el heading viene del SNAPSHOT del TOP,
+> NO de un BNO local** (las CENTRAL 2026 no traen BNO propio). La línea/piso viene del DOWN
+> (LineStatusV2). Env aislado `central_robot2_arqueromix` (`build_src_filter = +<arqueromix/> +<shared/>`):
+> **COMPILA SUCCESS (FLASH ~19 KB); NO toca `src/central/` → competencia byte-idéntica.** ⚠️ Compila ≠
+> anda: sentido de motores, signo lateral de pelota y umbrales (píxeles→mm) los valida el equipo →
+> **TASK-114**. Es MODO NO-REGRESIÓN del campeón 2025, NO reemplaza al arquero R2 (que ya anda en
+> banco con Y-hold/pose). Analizado con workflow paralelo (5 lectores + síntesis, validó la
+> implementación contra el código). Journal: `journal/2026-06-21-arqueromix-port-arquero-2025.md`.
+
 > **📚 TRES SKILLS NUEVAS — ToF, cinemática omni-3, cámaras N6 (2026-06-21, doc-only, sin tocar firmware):**
 > Workflow de investigación paralela (web best-practices + lectura de código anclada) + plantilla de oro
 > `bno055-imu-heading-robocup`. Las 3 en `.claude/skills/`, cada una COMPLEMENTA (no duplica) las que cita:

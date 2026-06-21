@@ -1,0 +1,41 @@
+// amix_fsm.h — Máquina de estados del ARQUERO 2025 portada a arqueromix.
+//
+// Port FIEL del ciclo ARQUERO del firmware unificado 2025 (definitivo-arquero_6-9-2026,
+// estado inicial `impulso_inicial`, L1016-1205). Son los 10 estados que el arquero
+// REALMENTE recorre (el bloque DELANTERO del 2025 NO se porta acá; eso es centralmix).
+// Ver docs/internal/ANALISIS-FIEL-ARQUERO-2025.md §2 para el flujo exacto.
+//
+// QUÉ CAMBIA respecto del 2025 (y SOLO esto):
+//   - Toda lectura de sensor → g_aio (amix_io.h), poblado por amix_comm (TOP/DOWN serie).
+//   - Toda escritura de motor → primitivas de amix_motors.h.
+//   - Se AGREGA el gate del árbitro RCJ (si !match_running → parar) al inicio del tick.
+//   - Se AGREGA un timeout de SEGURIDAD al retroceso (el 2025 no tenía: podía colgarse).
+//
+// ⚠️ NO TESTEADO EN HARDWARE. Compila != anda: el sentido de cada primitiva, el signo
+// lateral de la pelota y los umbrales en mm se validan/re-tunean en banco.
+
+#pragma once
+#include <stdint.h>
+
+namespace iitasoccer {
+namespace arqmix {
+
+// Estados REALES del arquero 2025 (nombres = los del flujo, FIEL §2).
+enum class Estado : uint8_t {
+    impulso_inicial,             // estado INICIAL: strafe fuerte 40 ms
+    moverce_derecha,             // patrulla strafe derecha (adproporcional)
+    moverce_izquierda,           // patrulla strafe izquierda (aiproporcional)
+    impulso_derecha,             // anti-traba del borde: empuja derecha 350 ms
+    impulso_izquierda,           // anti-traba del borde: empuja izquierda 350 ms
+    PATEANDO_pausa_inicial,      // despeje: pausa 200 ms (deja pasar la inercia)
+    PATEANDO_adelante,           // despeje: golpe de avance 450 ms (avanzar_patear)
+    PATEANDO_pausa,              // despeje: pausa 1000 ms
+    PATEANDO_atras,              // despeje: retroceso recto hasta ver línea (+ safety)
+    avanzar_despues_de_patear,   // reposicionamiento 1000 ms → vuelve a patrullar
+};
+
+void amix_fsm_init();
+void amix_fsm_tick();
+
+}  // namespace arqmix
+}  // namespace iitasoccer

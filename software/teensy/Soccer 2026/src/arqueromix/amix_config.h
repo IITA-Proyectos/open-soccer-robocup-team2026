@@ -195,6 +195,39 @@ constexpr unsigned long AMIX_T_ATRAS_SAFETY  = 4000;  // tope de seguridad del r
 constexpr uint8_t AMIX_LINE_DEPTH_TRIGGER = 1;  // ≥1 sensor en blanco = línea presente
 
 // ============================================================
+// PATRULLA POR ARCO PROPIO (cámara trasera) — pedido Virginia 2026-06-21.
+// ----------------------------------------------------------------------------------
+// La patrulla deja de rebotar contra la LÍNEA y rebota cuando el ARCO PROPIO (que la cámara trasera
+// ve por detrás, vía snapshot del TOP) llega a cierto ÁNGULO = el arquero llegó al BORDE de su arco
+// → se va al otro lado (misma lógica de rebote + commit que la línea).
+//
+// GEOMETRÍA: el arco propio está DETRÁS del arquero (mira al campo) → goal_own_angle ≈ ±180° cuando
+// está CENTRADO en su arco. El "desvío" se mide respecto de 180°: rear_dev = wrap180(goal_own_angle−180):
+// ≈0 centrado, crece hacia un lado al correrse. Borde = |rear_dev| ≥ AMIX_TOL_ARCO_OWN_DEG.
+//
+// ⚠️ DECISIÓN VIRGINIA: REEMPLAZA la línea en la patrulla (la línea sigue SOLO para el homing y el
+// retroceso del despeje). RIESGO ACEPTADO: si la cámara NO ve el arco propio (goal_own_visible=0) no
+// hay rebote → el arquero podría irse del arco. goal_own NO está validado en banco + depende de la
+// calibración LAB de las cámaras. Fallback: -DARQMIX_PATRULLA_LINEA vuelve al rebote por LÍNEA.
+// ============================================================
+#ifdef ARQMIX_PATRULLA_LINEA
+constexpr bool AMIX_PATRULLA_POR_ARCO = false;  // fallback: patrulla rebota por LÍNEA (viejo)
+#else
+constexpr bool AMIX_PATRULLA_POR_ARCO = true;   // DEFAULT: patrulla rebota por ÁNGULO del arco propio
+#endif
+// Umbral de "borde del arco": cuánto desvío del arco propio respecto de "directamente atrás" (180°)
+// cuenta como borde. Más CHICO = patrulla más ANGOSTA (rebota antes); más GRANDE = más ancha. EL knob
+// principal de esta función → ajustar en banco mirando dónde rebota. <RE-TUNE EN BANCO>
+constexpr float AMIX_TOL_ARCO_OWN_DEG = 30.0f;
+// SENTIDO del desvío (qué lado del arco es cuál). Si el arquero rebota en el borde EQUIVOCADO (o no
+// rebota donde debe), invertir con -DARQMIX_FLIP_ARCO_OWN.
+#ifdef ARQMIX_FLIP_ARCO_OWN
+constexpr float AMIX_ARCO_OWN_SIGN = -1.0f;
+#else
+constexpr float AMIX_ARCO_OWN_SIGN = +1.0f;
+#endif
+
+// ============================================================
 // Comunicación — enlaces TOP (Serial7) y DOWN (Serial1), 230400 (= comm_top/comm_down).
 // ============================================================
 constexpr long AMIX_UART_BAUD = 230400;

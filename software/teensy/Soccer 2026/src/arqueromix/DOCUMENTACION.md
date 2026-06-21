@@ -344,6 +344,39 @@ MISMA línea y rebotaba para el lado contrario = **de vuelta a la línea**. Fixe
   commit es `millis() < s_commit_until_ms`. NO se encontró bug de tiempo; el problema era la
   dirección del rebote, no los tiempos.
 
+### 17.2 La patrulla rebota por el ARCO PROPIO, no por la línea (pedido Virginia 2026-06-21)
+
+**Cambio pedido (decisión Virginia: REEMPLAZAR la línea en la patrulla).** En vez de rebotar contra
+la **línea**, la patrulla rebota cuando el **ARCO PROPIO** (que la cámara trasera ve por detrás, vía
+snapshot del TOP) llega a cierto **ángulo** = el arquero llegó al **borde de su arco** → se va al otro
+lado. Misma mecánica de rebote (reúsa los estados `salir_linea_*` + el commit), sólo cambia **qué lo
+dispara**.
+
+**Geometría.** El arco propio está DETRÁS del arquero (mira al campo) → `goal_own_angle ≈ ±180°` cuando
+está CENTRADO en su arco. El "desvío" se mide respecto de 180°: `rear_goal_dev = wrap180(goal_own_angle
+− 180) × SIGN` (≈0 centrado, crece hacia un lado al correrse). **Borde** = `|rear_goal_dev| ≥
+AMIX_TOL_ARCO_OWN_DEG`. Helpers `borde_arco_der()` / `borde_arco_izq()` en `amix_fsm.cpp` (sólo
+disparan con `goal_own_visible`). En `moverce_derecha`/`moverce_izquierda`, el `if (linea())` se
+reemplazó por el chequeo del borde del arco (gateado por el commit, igual que antes).
+
+**⚠️ RIESGO ACEPTADO (Virginia).** La línea queda FUERA de la patrulla (sigue SOLO para el homing y el
+retroceso del despeje). Si la cámara **NO ve el arco propio** (`goal_own_visible=0`) **no hay rebote**
+→ el arquero podría irse caminando del arco. Además `goal_own` **NO está validado en banco** y depende
+de la **calibración LAB** de las cámaras N6 + de que el robot **arranque mirando a la cancha** (si no,
+la polaridad del TOP puede quedar invertida). **Esto puede andar lindo o casi no hacer nada hasta que
+se valide `goal_own` en banco.** Fallback completo: `-DARQMIX_PATRULLA_LINEA` vuelve al rebote por línea.
+
+**Tunear:** `AMIX_TOL_ARCO_OWN_DEG` (30°) = umbral de "borde" (más chico = patrulla más angosta, rebota
+antes; más grande = más ancha) — EL knob principal. `AMIX_ARCO_OWN_SIGN` (signo del desvío): si rebota
+en el borde EQUIVOCADO o no rebota, invertir con `-DARQMIX_FLIP_ARCO_OWN`.
+
+**Cómo verificar (Virginia):** flashear `central_robot2_arqueromix`. Con `match_running` en GO y el
+arquero centrado en su arco, debería patrullar de lado a lado y **rebotar al llegar a cada borde del
+arco** (sin tocar la línea). (1) ¿Rebota donde corresponde el borde del arco? Ajustá `AMIX_TOL_ARCO_OWN_DEG`.
+(2) ¿Rebota al revés / no rebota? Probá `-DARQMIX_FLIP_ARCO_OWN`. (3) ¿Se va de largo sin rebotar? La
+cámara no está viendo el arco (`goal_own_visible=0`) → es el riesgo conocido; volvé a la línea con
+`-DARQMIX_PATRULLA_LINEA` o validamos la cámara primero.
+
 ## 18. Despeje DIRIGIDO al arco rival + arcos por ROL, no por color (pedido Gustavo 2026-06-21)
 
 **Cambio pedido.** Que (1) la determinación de cuál arco es el PROPIO y cuál el RIVAL viva en la

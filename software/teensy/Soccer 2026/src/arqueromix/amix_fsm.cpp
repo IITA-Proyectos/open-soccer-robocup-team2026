@@ -79,6 +79,29 @@ static inline bool alineado_al_arco_opp() {
            (fabsf(g_aio.goal_opp_angle) <= AMIX_TOL_ARCO_OPP_DEG);
 }
 
+// wrap a [-180,180] (mismo que amix_comm; local para los helpers del arco propio).
+static inline float wrap180_local(float deg) {
+    deg = fmodf(deg, 360.0f);
+    if (deg > 180.0f)  deg -= 360.0f;
+    if (deg < -180.0f) deg += 360.0f;
+    return deg;
+}
+// PATRULLA POR ARCO PROPIO (pedido Virginia 2026-06-21). El arco propio está DETRÁS del arquero →
+// goal_own_angle ≈ ±180° cuando está CENTRADO en su arco. rear_goal_dev = desvío respecto de 180°
+// (≈0 centrado, crece hacia un lado al correrse), con SIGNO flippable. Sólo tiene sentido si
+// goal_own_visible. <RE-VERIFY SIGN / RE-TUNE umbral en banco>
+static inline float rear_goal_dev() {
+    return wrap180_local(g_aio.goal_own_angle - 180.0f) * AMIX_ARCO_OWN_SIGN;
+}
+// ¿Llegó al borde "derecho" del arco? (sólo con el arco a la vista). Borde = desvío ≥ umbral.
+static inline bool borde_arco_der() {
+    return g_aio.goal_own_visible && (rear_goal_dev() >= AMIX_TOL_ARCO_OWN_DEG);
+}
+// ¿Llegó al borde "izquierdo" del arco?
+static inline bool borde_arco_izq() {
+    return g_aio.goal_own_visible && (rear_goal_dev() <= -AMIX_TOL_ARCO_OWN_DEG);
+}
+
 void amix_fsm_init() {
     estado = Estado::inicio_retroceder;   // homing al área chica antes de patrullar
     millis_inicio_estado = millis();
@@ -147,7 +170,17 @@ void amix_fsm_tick() {
             } else {
                 pd = AMIX_PD_BASE;                   // sin pelota: patrulla base
             }
-            if (linea()) {                           // borde → SALIR a ciegas
+            // --- BORDE de la patrulla: por ARCO PROPIO (default Virginia) o por LÍNEA (fallback) ---
+            if (AMIX_PATRULLA_POR_ARCO) {
+                // Llegó al borde DERECHO del arco (cámara trasera, vía snapshot) → rebota a la IZQUIERDA.
+                // Gateado por el commit (recién rebotó → no re-dispara enseguida). Si NO ve el arco, NO
+                // rebota (riesgo aceptado por Virginia: sin línea de respaldo en la patrulla).
+                if (millis() >= s_commit_until_ms && borde_arco_der()) {
+                    parar();
+                    millis_inicio_estado = millis();
+                    estado = Estado::salir_linea_izq;   // sale a la IZQ → moverce_izquierda
+                }
+            } else if (linea()) {                       // FALLBACK (-DARQMIX_PATRULLA_LINEA): rebote por LÍNEA
                 parar();
                 millis_inicio_estado = millis();
                 // En COMMIT (recién salió de la línea IZQ): si vuelve a ver línea es la MISMA, NO
@@ -177,7 +210,16 @@ void amix_fsm_tick() {
             } else {
                 pd = AMIX_PD_BASE;
             }
-            if (linea()) {                           // borde → SALIR a ciegas
+            // --- BORDE de la patrulla: por ARCO PROPIO (default Virginia) o por LÍNEA (fallback) ---
+            if (AMIX_PATRULLA_POR_ARCO) {
+                // Llegó al borde IZQUIERDO del arco → rebota a la DERECHA. Gateado por commit. Si NO
+                // ve el arco, NO rebota (riesgo aceptado: sin línea de respaldo en la patrulla).
+                if (millis() >= s_commit_until_ms && borde_arco_izq()) {
+                    parar();
+                    millis_inicio_estado = millis();
+                    estado = Estado::salir_linea_der;   // sale a la DER → moverce_derecha
+                }
+            } else if (linea()) {                       // FALLBACK (-DARQMIX_PATRULLA_LINEA): rebote por LÍNEA
                 parar();
                 millis_inicio_estado = millis();
                 // En COMMIT (recién salió de la línea DER): si vuelve a ver línea es la MISMA →

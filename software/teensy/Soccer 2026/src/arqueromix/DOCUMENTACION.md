@@ -281,7 +281,13 @@ moverce_derecha    → recién ACÁ empieza a patrullar
   observar el retroceso; bajar a ~4 s cuando ande).
 - **`inicio_avanzar`**: llama `avanzar()` durante `AMIX_T_INICIO_AVANCE=400 ms`, **sin chequear la
   línea** a propósito (para despegarse del blanco antes de patrullar). Después → `moverce_derecha`.
-- El `match_running` (árbitro) sigue gobernando: el homing arranca recién con el **GO**.
+- El `match_running` (árbitro) gobierna: el homing arranca con el **GO**. ✅ **El sentido del
+  retroceso quedó VALIDADO con el env BASE** (banco Virginia 2026-06-21: va para atrás bien, no
+  hizo falta `_retroflip`).
+- ✅ **RE-HOMING en CADA GO (banco Virginia 2026-06-21).** Antes el homing corría una sola vez (el
+  primer GO) porque el FSM no se reiniciaba entre STOP y GO sin apagar la batería. Ahora se detecta
+  el flanco STOP→GO en `amix_fsm_tick` (`s_was_running`) y **cada GO reinicia el FSM a
+  `inicio_retroceder`** → el arquero vuelve a buscar su línea cada vez que arranca.
 
 ⚠️ **Si al GO el robot va hacia ADELANTE en vez de atrás** (banco Virginia 2026-06-21): dos causas
 posibles — (a) arranca **sobre una línea** → `line_present` ya es true → saltea el retroceso y pasa

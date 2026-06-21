@@ -35,6 +35,11 @@ static unsigned long millis_inicio_estado = 0;
 // aiproporcional en el MISMO tick (con valor del tick anterior). Se replica el lag.
 static float pd = AMIX_PD_BASE;
 
+// Flanco del árbitro: detecta STOP→GO para RE-HACER el homing del área chica en CADA GO
+// (banco Virginia 2026-06-21: antes el homing corría una sola vez —el primer GO— porque el FSM
+// no se reiniciaba entre STOP y GO sin apagar la batería).
+static bool s_was_running = false;
+
 // ---- Helpers de lectura (reemplazan las globales seriales/analógicas 2025) ----
 
 // Línea presente (== OR de los 3 sensores 2025; el DOWN ya agrega los 32).
@@ -69,10 +74,18 @@ void amix_fsm_init() {
 }
 
 void amix_fsm_tick() {
-    // --- AGREGADO 2026: GO/STOP del árbitro RCJ (el 2025 arrancaba solo). ---
+    // --- Árbitro RCJ + RE-HOMING en cada GO (banco Virginia 2026-06-21) ---
     if (!g_aio.match_running) {
         parar();
+        s_was_running = false;   // quedó parado → el próximo GO re-arranca el homing
         return;
+    }
+    // Flanco STOP→GO (y el primer GO): reiniciar el FSM al homing del área chica, SIEMPRE.
+    if (!s_was_running) {
+        s_was_running = true;
+        estado = Estado::inicio_retroceder;
+        millis_inicio_estado = millis();
+        pd = AMIX_PD_BASE;
     }
 
     const float error = g_aio.heading_error_deg;   // == 'error' 2025 (ya wrapeado)

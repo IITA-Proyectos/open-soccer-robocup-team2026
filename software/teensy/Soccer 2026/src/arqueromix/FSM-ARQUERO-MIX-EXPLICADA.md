@@ -190,9 +190,10 @@ Idea: al arrancar, **acomodarse en el arco** antes de patrullar.
 - **`inicio_retroceder`** (`amix_fsm.cpp:133-142`): `retroceder_inicio()` (va hacia atrás) hasta que
   `linea()` detecta el blanco del área. Red de seguridad: si nunca la ve, sale igual tras
   `AMIX_T_INICIO_RETRO_SAFETY` (**hoy 50 s temporal**, para observar; baja a ~4 s cuando ande). → `inicio_avanzar`.
-- **`inicio_avanzar`** (`:144-151`): `avanzar_inicio()` (avance lento a ciegas) durante
-  `AMIX_T_INICIO_AVANCE` (400 ms), **sin mirar sensores** a propósito (para despegarse del blanco). →
-  `moverce_derecha` (empieza a patrullar).
+- **`inicio_avanzar`**: `avanzar_inicio()` (avance lento, recto al frente) para SALIR de la línea del
+  área. **FIX 2026-06-21:** ya no termina por reloj fijo — sale cuando cumplió el impulso mínimo
+  (`AMIX_T_INICIO_AVANCE_MIN`=400 ms) **Y** ya no pisa la línea (`!linea()`), o por tope de seguridad
+  (`AMIX_T_INICIO_AVANCE_SAFETY`=1200 ms). Así no arranca a patrullar pisando el área. → `moverce_derecha`.
 
 ### Fase PATRULLA — `moverce_derecha`, `moverce_izquierda`, `salir_linea_der`, `salir_linea_izq`
 

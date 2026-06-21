@@ -156,7 +156,13 @@ constexpr float AMIX_TOL_CERCANIA_MM  = 250.0f; // DESPEJA si la distancia eucl�
 // área, avanza un poco a ciegas, y recién ahí patrulla.
 // ⚠️ SAFETY a 50 s TEMPORAL (pedido Virginia, para observar el retroceso): después bajar a ~4 s.
 constexpr unsigned long AMIX_T_INICIO_RETRO_SAFETY = 50000; // TEMP 50 s (era 4000) — bajar luego
-constexpr unsigned long AMIX_T_INICIO_AVANCE       = 400;   // avanzar un poco tras ver la línea (SIN leer sensores) — tunable
+// Avance de SALIDA de la línea del área (homing). Banco Virginia 2026-06-21: con tiempo FIJO a veces
+// el arquero quedaba muy cerca de la línea de fondo / medio metido en el área chica. FIX: el arranque
+// NO termina por reloj — avanza el impulso MÍNIMO y sale recién cuando YA NO PISA la línea (no ve
+// blanco), con un TOPE de seguridad para no quedarse trabado si la línea nunca se "apaga". El avance es
+// recto al frente (hacia el campo, lejos del fondo) → es la dirección que lo SACA del área.
+constexpr unsigned long AMIX_T_INICIO_AVANCE_MIN    = 400;   // impulso MÍNIMO garantizado (= el 400 ms de antes; sube si parpadea la línea)
+constexpr unsigned long AMIX_T_INICIO_AVANCE_SAFETY = 1200;  // TOPE de seguridad: si a los 1200 ms sigue viendo línea, patrulla igual
 // VELOCIDAD del avance del homing (el movimiento a ciegas tras detectar la línea). Banco Virginia
 // 2026-06-21: "anda de golpe / fuerte" → SOLO se baja la velocidad (90→75... acá 75). MISMO sentido y
 // MISMOS 400 ms que el base; lo ÚNICO distinto vs avanzar() es el PWM. 75 queda apenas sobre el piso

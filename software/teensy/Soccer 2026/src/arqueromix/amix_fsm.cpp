@@ -141,12 +141,21 @@ void amix_fsm_tick() {
             }
             break;
 
-        case Estado::inicio_avanzar:                // avanzar un poco SIN leer los sensores
-            avanzar_inicio();                        // a ciegas, a VELOCIDAD propia (más baja que avanzar):
-                                                     // NO se chequea linea() acá a propósito
-            if (millis() - millis_inicio_estado >= AMIX_T_INICIO_AVANCE) {  // ~400 ms
-                millis_inicio_estado = millis();
-                estado = Estado::moverce_derecha;    // recién ahora empieza a patrullar
+        case Estado::inicio_avanzar:                // avanzar para SALIR de la línea del área (homing)
+            avanzar_inicio();                        // impulso suave a ciegas (75 PWM), RECTO al frente (lejos del fondo)
+            {
+                // El avance NO termina por reloj: sale cuando cumplió el impulso MÍNIMO **Y** ya despegó
+                // de la línea (no pisa blanco), o por TOPE de seguridad (si la línea nunca se "apaga", no
+                // quedarse trabado avanzando). Así NUNCA arranca a patrullar pisando el área chica.
+                // El MÍNIMO cubre un parpadeo inicial de la línea; recién después se mira !linea().
+                const unsigned long dt = millis() - millis_inicio_estado;
+                const bool impulso_minimo_ok = dt >= AMIX_T_INICIO_AVANCE_MIN;
+                const bool ya_salio_de_linea = !linea();
+                const bool safety            = dt >= AMIX_T_INICIO_AVANCE_SAFETY;
+                if ((impulso_minimo_ok && ya_salio_de_linea) || safety) {
+                    millis_inicio_estado = millis();
+                    estado = Estado::moverce_derecha;    // recién ahora empieza a patrullar
+                }
             }
             break;
 

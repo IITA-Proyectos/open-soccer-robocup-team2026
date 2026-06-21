@@ -279,11 +279,14 @@ moverce_derecha    → recién ACÁ empieza a patrullar
   propio `AMIX_INICIO_RETRO_PWM=100` y dirección flippable) hasta que `linea()` da true (DOWN ve el
   blanco del área). Safety `AMIX_T_INICIO_RETRO_SAFETY` = **50 s TEMPORAL** (banco Virginia, para
   observar el retroceso; bajar a ~4 s cuando ande).
-- **`inicio_avanzar`**: llama `avanzar_inicio()` durante `AMIX_T_INICIO_AVANCE=400 ms`, **sin chequear
-  la línea** a propósito (para despegarse del blanco antes de patrullar). Después → `moverce_derecha`.
-  `avanzar_inicio()` = igual a `avanzar()` pero a **velocidad propia** `AMIX_INICIO_AVANCE_PWM=75`
-  (banco Virginia 2026-06-21: ese avance iba "de golpe" → se bajó SOLO la velocidad; mismo sentido y
-  mismos 400 ms; no toca el `avanzar()=100` del despeje).
+- **`inicio_avanzar`**: llama `avanzar_inicio()` (velocidad propia `AMIX_INICIO_AVANCE_PWM=75`, recto al
+  frente, lejos del fondo) para SALIR de la línea del área. **FIX 2026-06-21 (banco Virginia): el avance
+  ya NO termina por reloj fijo** — antes eran 400 ms fijos y el arquero a veces quedaba muy cerca del
+  fondo / medio metido en el área. Ahora sale cuando **cumplió el impulso MÍNIMO (`AMIX_T_INICIO_AVANCE_MIN`
+  =400 ms) Y ya NO pisa la línea** (`!linea()`), o por **tope de seguridad** (`AMIX_T_INICIO_AVANCE_SAFETY`
+  =1200 ms, para no quedarse trabado si la línea nunca se "apaga"). Así NUNCA arranca a patrullar pisando
+  el área. Después → `moverce_derecha`. (El MÍNIMO cubre un parpadeo inicial de la línea; recién después
+  mira `!linea()`.)
 - El `match_running` (árbitro) gobierna: el homing arranca con el **GO**. ✅ **El sentido del
   retroceso quedó VALIDADO con el env BASE** (banco Virginia 2026-06-21: va para atrás bien, no
   hizo falta `_retroflip`).
@@ -298,11 +301,12 @@ directo a `inicio_avanzar` (avanza); (b) el **retroceso está invertido** en est
 `central_robot2_arqueromix_retroflip` (`-DARQMIX_FLIP_INICIO_RETRO`) → si ahora va para atrás, era (b).
 Si con ambos arranca yendo adelante apenas detecta línea, es (a) (arranca sobre el blanco).
 
-**Tunear:** `AMIX_T_INICIO_AVANCE` (400 ms) = cuánto se despega de la línea antes de patrullar.
-`AMIX_INICIO_AVANCE_PWM` (75) = VELOCIDAD del avance del homing (subir hacia 85 si stuttea/no arranca;
-NO bajar de 70 = piso de las delanteras). `AMIX_INICIO_RETRO_PWM` (100) = velocidad PROPIA del retroceso
-de inicio (ya no comparte con el despeje). `AMIX_T_INICIO_RETRO_SAFETY` = 50 s TEMPORAL — bajar a ~4 s
-cuando el arranque ande.
+**Tunear:** `AMIX_T_INICIO_AVANCE_MIN` (400 ms) = impulso mínimo del avance de salida (subir si la
+línea parpadea y sale antes de despegar). `AMIX_T_INICIO_AVANCE_SAFETY` (1200 ms) = tope de seguridad:
+si sigue pisando línea, patrulla igual (subir si a veces queda pisando; bajar si avanza de más hacia el
+campo). `AMIX_INICIO_AVANCE_PWM` (75) = VELOCIDAD del avance del homing (subir hacia 85 si stuttea/no
+arranca; NO bajar de 70 = piso de las delanteras). `AMIX_INICIO_RETRO_PWM` (100) = velocidad PROPIA del
+retroceso de inicio. `AMIX_T_INICIO_RETRO_SAFETY` = 50 s TEMPORAL — bajar a ~4 s cuando el arranque ande.
 Motores: TODO se mueve con PWM (`analogWrite` vía `amix_set_motor`); el retroceso va a PWM 100/255.
 
 ## 17. Salida de la LÍNEA LATERAL — movimiento a ciegas + no volver (banco Virginia 2026-06-21)

@@ -258,7 +258,7 @@ void amix_fsm_tick() {
         // ----------------------------------------------------
         case Estado::salir_linea_der:               // tocó línea IZQ → sale a la DERECHA a ciegas
             adproporcional(AMIX_PD_SALIR, error);    // strafe derecha FUERTE — A CIEGAS (no se lee ningún sensor acá)
-            if (millis() - millis_inicio_estado >= AMIX_T_SALIR_LINEA) {  // ~450 ms (≈ avance del homing)
+            if (millis() - millis_inicio_estado >= AMIX_T_SALIR_LINEA) {  // AMIX_T_SALIR_LINEA (ver amix_config.h)
                 s_commit_until_ms = millis() + AMIX_T_PATRULLA_COMMIT;    // no volver enseguida hacia la línea
                 millis_inicio_estado = millis();
                 estado = Estado::moverce_derecha;
@@ -308,7 +308,7 @@ void amix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::PATEANDO_adelante:             // L1162-1172
-            avanzar_patear();                        // golpe de avance (M1=250, M2=150)
+            avanzar_patear();                        // golpe con RAMPA simétrica 0→AMIX_KICK_VEL_FINAL (M1=+vel, M2=-vel, recto al frente)
             if (millis() - millis_inicio_estado >= AMIX_T_PAT_ADELANTE) {  // 450 ms
                 parar();
                 millis_inicio_estado = millis();
@@ -327,7 +327,7 @@ void amix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::PATEANDO_atras:                // L1184-1195 (retroceso recto)
-            patear_atras();                          // M1=-150, M2=+150, M3=0
+            patear_atras();                          // M1=-AMIX_ATRAS, M2=+AMIX_ATRAS, M3=0 (recto atrás)
             // 2025: SIN timeout, sale sólo al ver blanco. AGREGADO 2026: timeout de
             // seguridad para no colgarse si nunca llega a la línea. <MEJORA 2026>
             if (linea() ||

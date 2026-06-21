@@ -1,8 +1,10 @@
 // amix_fsm.h — Máquina de estados del ARQUERO 2025 portada a arqueromix.
 //
 // Port FIEL del ciclo ARQUERO del firmware unificado 2025 (definitivo-arquero_6-9-2026,
-// estado inicial `impulso_inicial`, L1016-1205). Son los 10 estados que el arquero
-// REALMENTE recorre (el bloque DELANTERO del 2025 NO se porta acá; eso es centralmix).
+// L1016-1205). Son **12 estados** (el enum de abajo): el bloque DELANTERO del 2025 NO se porta acá
+// (eso es centralmix). El estado INICIAL ya NO es `impulso_inicial` (2025) sino `inicio_retroceder`
+// (homing al área, agregado 2026-06-21 banco Virginia). Estados nuevos 2026: inicio_retroceder/
+// inicio_avanzar (homing), salir_linea_der/izq (rebote a ciegas), ALINEAR_arco_opp (apuntar al arco rival).
 // Ver docs/internal/ANALISIS-FIEL-ARQUERO-2025.md §2 para el flujo exacto.
 //
 // QUÉ CAMBIA respecto del 2025 (y SOLO esto):

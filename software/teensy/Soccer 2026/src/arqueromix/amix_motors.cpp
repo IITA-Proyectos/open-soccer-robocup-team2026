@@ -86,6 +86,10 @@ void aiproporcional(float pd, float error) {
         m1 = -(int)(pd * AMIX_PROP_M2_ENEG);         // "motor izquierdo" (idx1) 2025
         m2 = +(int)(pd * AMIX_AI_REAR_ENEG);
     }
+    // SESGO FORWARD (banco Virginia 2026-06-21): micro-empuje RECTO al frente para no derivar atrás.
+    // Signos FIJOS (M1 al +, M2 al - = patrón avanzar), NO sigue el signo del strafe. 0 = off.
+    m0 += AMIX_FORWARD_BIAS_PWM;
+    m1 -= AMIX_FORWARD_BIAS_PWM;
     amix_set_motor(0, m0);
     amix_set_motor(1, m1);
     amix_set_motor(2, m2);
@@ -109,13 +113,16 @@ void adproporcional(float pd, float error) {
         m1 = +(int)(pd * AMIX_PROP_M2_ENEG);
         m2 = -(int)(pd * AMIX_AD_REAR_ENEG);
     }
+    // SESGO FORWARD (banco Virginia 2026-06-21): igual que aiproporcional — signos FIJOS, M1 al +, M2 al -.
+    m0 += AMIX_FORWARD_BIAS_PWM;
+    m1 -= AMIX_FORWARD_BIAS_PWM;
     amix_set_motor(0, m0);
     amix_set_motor(1, m1);
     amix_set_motor(2, m2);
 }
 
-// impulso_inicial 2025 (L1018-1020): M1=+90, M2=+90, M3=-153 (strafe fuerte = patrón
-// adproporcional). El SENTIDO físico (a qué lado) se confirma en banco.
+// impulso_inicial — hoy M1=M2=+AMIX_IMP_INI_FRONT(70), M3=-AMIX_IMP_INI_REAR(110) (2025 era 90/153;
+// bajado banco Virginia). ⚠️ DEAD CODE: el arranque actual es el homing (inicio_retroceder), NO esto.
 void impulso_inicial_mov() {
     amix_set_motor(0, +AMIX_IMP_INI_FRONT);
     amix_set_motor(1, +AMIX_IMP_INI_FRONT);
@@ -174,7 +181,7 @@ void girar(int pwm_signed) {
     amix_set_motor(2, pwm_signed);
 }
 
-// PATEANDO_atras_arquero inline 2025 (L1186-1188): M1=-150, M2=+150, M3=0 (recto atrás).
+// patear_atras() — M1=-AMIX_ATRAS, M2=+AMIX_ATRAS, M3=0 (recto atrás). Hoy AMIX_ATRAS=120 (2025 era 150).
 void patear_atras() {
     amix_set_motor(0, -AMIX_ATRAS);
     amix_set_motor(1, +AMIX_ATRAS);

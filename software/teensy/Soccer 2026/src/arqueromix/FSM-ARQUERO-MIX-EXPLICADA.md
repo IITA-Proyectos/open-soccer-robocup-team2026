@@ -158,8 +158,9 @@ pwm_con_signo)` maneja un motor (signo = sentido). Las primitivas:
 
 ## 5. La máquina de estados (12 estados)
 
-> El comentario del `amix_fsm.h` todavía dice "10 estados" (quedó viejo): hoy son **12** — se agregaron
-> `ALINEAR_arco_opp` y la separación de la salida de línea. Esto es lo FIEL.
+> Son **12** estados (`enum Estado` en `amix_fsm.h`): respecto del 2025 se agregaron el HOMING inicial
+> (`inicio_retroceder`/`inicio_avanzar`), la salida de línea a ciegas (`salir_linea_der`/`izq`) y
+> `ALINEAR_arco_opp` (apuntar al arco rival antes de patear). El comentario del `.h` ya está actualizado.
 
 Los 12 estados se agrupan en **3 fases**: **INICIO** (acomodarse en el arco), **PATRULLA** (ir y venir
 siguiendo la pelota), **DESPEJE** (sacar la pelota). El flujo:
@@ -315,8 +316,8 @@ case Estado::mi_estado:
 - **`goal_own` (arco propio) no está validado:** la patrulla por arco depende de la cámara **trasera** y de
   la calibración LAB. Riesgo aceptado por Virginia, con fallback a línea. Si el arco propio falla y tampoco
   hay línea, el arquero podría irse del arco.
-- **El safety del homing está en 50 s** (temporal, para observar). Hay que bajarlo a ~4 s.
-- **El comentario "10 estados"** del `amix_fsm.h` quedó viejo (son 12). Conviene corregirlo cuando se toque.
+- **⚠️ PENDIENTE — el safety del homing sigue en 50 s** (`AMIX_T_INICIO_RETRO_SAFETY=50000`, temporal de
+  banco). Hay que bajarlo a ~4000 cuando el arranque esté validado. NUNCA se hizo todavía → TASK del equipo.
 - **La línea llega recortada** (present/ángulo/conteo): no hay `cross_track` ni estado por-sensor. Para un
   seguidor de línea fino falta exponer más datos (ver el doc de seguidor de línea).
 

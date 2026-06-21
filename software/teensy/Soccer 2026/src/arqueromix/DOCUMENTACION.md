@@ -23,7 +23,7 @@ scope: software/teensy/Soccer 2026/src/arqueromix/
 | Env de compilación `central_robot2_arqueromix` | ✅ en `platformio.ini` (aditivo, no toca nada) |
 | **Compila** | ✅ `pio run -e central_robot2_arqueromix` → SUCCESS, FLASH ~19 KB |
 | Aislamiento (no afecta lo actual) | ✅ `build_src_filter = +<arqueromix/> +<shared/>` (NO compila `src/central/`) |
-| FSM 2025 del arquero portada (11 estados) | ✅ código escrito (port fiel) |
+| FSM 2025 del arquero portada (12 estados) | ✅ código escrito (port fiel) |
 | Manejo directo de motores | ✅ código escrito (pines R1/R2) |
 | Lectura de TOP/DOWN (comm propio) | ✅ código escrito (decodifica `shared/proto`) |
 | **Heading por serie del TOP (no BNO local)** | ✅ (pedido de Virginia) |
@@ -50,7 +50,7 @@ riesgo para el stack actual porque vive en otra carpeta y otro env.
                                           └──────────┘     └────┬─────┘
                                                                 │ lee
                                                           ┌─────▼─────┐
-                                                          │ amix_fsm  │  (FSM arquero 2025: 11 estados)
+                                                          │ amix_fsm  │  (FSM arquero 2025: 12 estados)
                                                           └─────┬─────┘
                                                                 │ llama
                                                           ┌─────▼──────┐
@@ -75,45 +75,59 @@ Las placas CENTRAL 2026 no traen BNO propio; el rumbo se procesa en el TOP. Más
 | `main_arqueromix.cpp` | `setup()`: init comm/motores/FSM. `loop()`: `amix_comm_tick()` → `amix_fsm_tick()`. |
 | `amix_io.h` | `struct AmixIO` + `extern AmixIO g_aio`: variables planas (pelota, **arcos POR ROL `goal_opp`/`goal_own` — SIN color**, heading, línea, árbitro, timers, frescura). |
 | `amix_comm.cpp/.h` | **Único que toca Serial.** Lee TOP (Serial7) y DOWN (Serial1) a 230400, decodifica con `shared/proto` + `line_view`/`pose_view`, y **llena `g_aio`**. Heading = snapshot del TOP. **Arcos: copia directa `goal_opp`/`goal_own` (la polaridad la resolvió el TOP; acá no se mira color).** |
-| `amix_fsm.cpp/.h` | La **FSM del ARQUERO 2025** portada fiel (11 estados). Lee `g_aio`, decide, llama primitivas de `amix_motors`. Agrega el gate `match_running` + un timeout de seguridad al retroceso. |
+| `amix_fsm.cpp/.h` | La **FSM del ARQUERO 2025** portada fiel (12 estados). Lee `g_aio`, decide, llama primitivas de `amix_motors`. Agrega el gate `match_running` + un timeout de seguridad al retroceso. |
 | `amix_motors.cpp/.h` | **Manejo directo 2025**: `adproporcional/aiproporcional/impulso_inicial/avanzar/avanzar_patear/patear_atras/`**`girar`** + `amix_set_motor(idx,pwm)`. Escribe `analogWrite(PWM)`+`digitalWrite(INA/INB)`. Sin mixer, sin cinemática omni. (`girar` = rotación pura para alinear al arco rival.) |
 | `amix_config.h` | Pines (R1/R2 2026), constantes 2025 (PWM proporcionales, impulsos, patada), tolerancias, tiempos, selector de heading. |
 | `README.md` | Guía corta + comando de flasheo. |
 | `DOCUMENTACION.md` | Este archivo. |
 
-## 5. La máquina de estados del arquero (11 estados, port fiel del 2025)
+## 5. La máquina de estados del arquero (12 estados — actualizado 2026-06-21)
 
-Flujo del arquero: patrullar lateral siguiendo la pelota en el eje lateral, y al tenerla
-cerca+centrada, despejar (pausa → patada → pausa → retroceso a la línea → reposicionar).
+> El estado inicial ya **NO** es `impulso_inicial` (eso era el 2025): hoy arranca con el HOMING al
+> área. El flujo de abajo es el REAL (verificado en `amix_fsm.cpp`). Para los números, ver `amix_config.h`.
+
+Flujo: al GO, **homing** (acomodarse en el arco) → **patrulla** lateral siguiendo la pelota, sin
+meterse al área → al tener la pelota cerca+centrada, **despejar** (apuntando al arco rival).
 
 ```
-impulso_inicial (40 ms, strafe fuerte)
-        ▼
-moverce_derecha ◄──────────────► moverce_izquierda
-   │   │   │                         │   │   │
-   │   │   └ línea(borde) → impulso_izquierda (350 ms) ─┐
-   │   │      línea(borde) → impulso_derecha (350 ms) ──┘  (cada impulso vuelve a su moverce)
-   │   │
-   │   └ pelota desviada (|lateral|≥DESVIO): elige lado por signo de ball_x_mm
-   │
-   └ pelota cerca+centrada (profundidad≤CERCANIA && |lateral|≤CENTRADO)
-              ▼
-   PATEANDO_pausa_inicial (200 ms) → ALINEAR_arco_opp (gira a apuntar al ARCO RIVAL) → PATEANDO_adelante (450 ms, avanzar_patear hacia el arco rival)
-              ▼
-   PATEANDO_pausa (1000 ms) → PATEANDO_atras (retroceso recto hasta ver línea + safety 4 s)
-              ▼
-   avanzar_despues_de_patear (1000 ms) → moverce_derecha  (retoma patrulla)
+GO (match_running) ─► inicio_retroceder ──(ve línea del área, o safety)──► inicio_avanzar
+   (HOMING)            va ATRÁS hasta blanco        avanza al frente HASTA DESPEGAR de la línea
+                                                    (min AMIX_T_INICIO_AVANCE_MIN, tope _SAFETY)
+                                                              ▼
+        ┌──────────────────────────────────────────────► moverce_derecha ◄────► moverce_izquierda
+        │                                                  (patrulla: strafe + corrección de rumbo
+        │                                                   + SESGO FORWARD; sigue la pelota)
+        │   En cada tick de moverce_*:
+        │   1) PROFUNDIDAD: si VE el arco propio + DOWN ve línea (= derivó atrás) ─► inicio_avanzar
+        │   2) BORDE LATERAL: arco (ángulo ≥ TOL_ARCO_OWN) si lo ve, o línea si no ─► salir_linea_*
+        │   3) PELOTA: cerca+centrada ─► despeje; desviada ─► sigue su lado; alineada+lejos ─► para
+        │
+        ├─ salir_linea_der / salir_linea_izq ── strafe FUERTE a ciegas al lado opuesto ─► vuelve a moverce_*
+        │                                        (AMIX_T_SALIR_LINEA + ventana "commit")
+        │
+        └─ DESPEJE (pelota cerca+centrada):
+              PATEANDO_pausa_inicial (200 ms, frena inercia)
+                    ▼
+              ALINEAR_arco_opp (GIRA para apuntar el frente al ARCO RIVAL; si no lo ve, patea recto)
+                    ▼
+              PATEANDO_adelante (golpe con RAMPA 0→AMIX_KICK_VEL_FINAL, recto al frente)
+                    ▼
+              PATEANDO_pausa (1000 ms) ─► PATEANDO_atras (retroceso recto hasta ver línea + safety)
+                    ▼
+              avanzar_despues_de_patear (1000 ms) ─► moverce_derecha  (retoma patrulla)
 ```
 
-- **Patrulla (`moverce_*`):** `ad/aiproporcional()` hace strafe lateral CON corrección de
-  rumbo en 3 bandas según el `error` (= heading − heading_inicial). Sin pelota patrulla a
-  `pd=1`; con pelota desviada `pd=1.5` (corrige más fuerte).
-- **Decisión por la pelota:** cerca+centrada → patea; desviada → va al lado de la pelota;
-  banda muerta (entre centrado y desvío, o centrada-pero-lejos) → para.
-- **Rebote en el borde:** al ver línea, impulso temporizado de 350 ms al lado OPUESTO para
-  no quedarse trabado oscilando (igual que el 2025).
-- Los estados DELANTERO del 2025 (girar/apuntar/centrar/patear largo) **no se portan acá**:
-  eso es `centralmix`.
+- **Homing (`inicio_retroceder`→`inicio_avanzar`):** se acomoda en el arco; el avance sale recién
+  cuando **despega de la línea** (no por reloj fijo) → no arranca pisando el área. Ver §16.
+- **Patrulla (`moverce_*`):** `ad/aiproporcional()` = strafe lateral + corrección de rumbo en 3 bandas
+  (`error` = heading − heading_inicial) + **sesgo forward** (`AMIX_FORWARD_BIAS_PWM`, tendencia a no
+  derivar atrás). El rebote lateral usa el **ÁNGULO del arco propio** si la cámara lo ve, o la **línea**
+  si no (fallback). Ver §17.2.
+- **Profundidad (§17.3):** si ve el arco y DOWN ve la línea del fondo → `inicio_avanzar` (sale del área).
+- **Pelota:** cerca+centrada (`dist≤CERCANIA && |áng|≤KICK_DEG`) → despeja; desviada (`|áng|>CENTRADO`)
+  → strafe a su lado (centra la pelota al frente); alineada+lejos → mantiene posición.
+- **Despeje:** apunta al ARCO RIVAL (`ALINEAR_arco_opp`, §18) y patea con rampa.
+- Los estados DELANTERO del 2025 (apuntar/centrar/patear largo) **no se portan acá**: eso es `centralmix`.
 
 ## 6. El mapeo 2025 → 2026 (la traducción que hace el adaptador)
 
@@ -278,7 +292,8 @@ moverce_derecha    → recién ACÁ empieza a patrullar
 - **`inicio_retroceder`** (`amix_fsm.cpp`): llama `retroceder_inicio()` (primitiva DEDICADA con PWM
   propio `AMIX_INICIO_RETRO_PWM=100` y dirección flippable) hasta que `linea()` da true (DOWN ve el
   blanco del área). Safety `AMIX_T_INICIO_RETRO_SAFETY` = **50 s TEMPORAL** (banco Virginia, para
-  observar el retroceso; bajar a ~4 s cuando ande).
+  observar el retroceso). **⚠️ PENDIENTE: nunca se bajó — sigue en 50000 en el código. Bajar a ~4000
+  cuando el arranque esté validado (TASK del equipo).**
 - **`inicio_avanzar`**: llama `avanzar_inicio()` (velocidad propia `AMIX_INICIO_AVANCE_PWM=75`, recto al
   frente, lejos del fondo) para SALIR de la línea del área. **FIX 2026-06-21 (banco Virginia): el avance
   ya NO termina por reloj fijo** — antes eran 400 ms fijos y el arquero a veces quedaba muy cerca del
@@ -417,6 +432,27 @@ señal de profundidad independiente de la cámara/línea-lateral. Con el arco vi
 línea del fondo debe **avanzar al frente y salir**, no quedarse adentro. (3) Si avanza de más / oscila
 adelante-atrás, es el `inicio_avanzar` (mismo knob `AMIX_T_INICIO_AVANCE_*`). (4) Apagar todo esto:
 `-DARQMIX_NO_PROFUNDIDAD`.
+
+### 17.4 Tuneo del movimiento de patrulla: más lento, sin sobrepaso, con tendencia a avanzar (banco Virginia 2026-06-21)
+
+La patrulla "se pasaba" (sobre todo a la izquierda), a veces se pegaba al rebotar, y derivaba hacia
+atrás metiéndose al corner. Cambios (analizados con la geometría omni-3: M1 del-IZQ, M2 del-DER, M3
+trasera; avanzar = M1+, M2−):
+
+- **Más lenta:** `AMIX_PD_BASE` 1.0→0.85 (escala todo el strafe parejo; NO bajar de 0.80 = zona muerta).
+- **Sobrepaso a la IZQUIERDA:** era asimetría — la corrección de rumbo izquierda (`AMIX_AI_REAR_ENEG`) era
+  2.5× la derecha (`AMIX_AD_REAR_ENEG=40`). Bajada 100→75→**65** (1.625×). Si ahora se pasa a la DERECHA,
+  subir; si SIGUE a la izquierda con esto, el tema es el heading, no esta constante.
+- **Se pega al rebotar:** `AMIX_T_SALIR_LINEA` (duración del rebote a ciegas) 450→350→**380** = balance
+  entre no sobrepasar (corto) y no quedar pegado (largo).
+- **Más angosta:** `AMIX_TOL_ARCO_OWN_DEG` 20→**15**.
+- **TENDENCIA A AVANZAR (sesgo forward):** `AMIX_FORWARD_BIAS_PWM=10` — micro-empuje recto al frente
+  sumado al strafe en `ad/aiproporcional` (SUMA al M1, RESTA al M2, signos FIJOS = patrón avanzar). Para
+  que NO derive atrás. Vale en patrulla y rebote. ⚠️ A validar: si se va para adelante / sale del arco,
+  bajar; apagar con `-DARQMIX_NO_FORWARD_BIAS`.
+- **Adelantarse más al tocar la línea de fondo:** `AMIX_T_INICIO_AVANCE_MIN` 400→**500**.
+
+Todo es tuneo de constantes salvo el sesgo forward (2 líneas en `ad/aiproporcional`). Reversible.
 
 ## 18. Despeje DIRIGIDO al arco rival + arcos por ROL, no por color (pedido Gustavo 2026-06-21)
 

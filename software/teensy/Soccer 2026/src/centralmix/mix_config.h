@@ -235,6 +235,29 @@ constexpr int MIX_CENTRAR_FRONT = 85;   // M1,M2 (delanteras) — ≥70 (piso f�
 constexpr int MIX_CENTRAR_REAR  = 150;  // M3 (trasera) — ≥107 (piso); ojo techo térmico ~150
 
 // ============================================================
+// CAMINO CORTO al centrar (2026-06-22, pedido Elías): al empezar a orbitar la pelota, ELEGIR el
+// sentido (horario/antihorario) según de qué lado está el ARCO RIVAL (goal_opp_angle), en vez de
+// arrancar SIEMPRE para el mismo lado. Así no le da toda la vuelta a la pelota cuando el arco está
+// del otro lado. Si el arco NO se ve, usa un sentido por defecto.
+// Regla: si goal_opp_angle·MIX_CENTRAR_SHORT_SIGN >= 0 → CENTRANDO_horario; si no → antihorario.
+// ⚠️ SIGNO FÍSICO A CONFIRMAR EN BANCO: si igual te da la vuelta LARGA (orbita para el lado
+//   contrario al arco), invertí MIX_CENTRAR_SHORT_SIGN a -1. (KILL-SWITCH: poné 0 → vuelve al
+//   comportamiento viejo, siempre el mismo sentido por defecto.)
+// ============================================================
+constexpr int MIX_CENTRAR_SHORT_SIGN = +1;  // +1 / -1 (camino corto por el lado del arco); 0 = apagado TODO
+
+// RESPALDO por HEADING cuando NO se ve el arco (red-team 2026-06-22). heading_error_deg es la
+// ROTACIÓN DEL CUERPO desde el arranque, NO un bearing al arco → su signo útil es INDEPENDIENTE y
+// casi seguro OPUESTO al de la cámara (girar el cuerpo a la derecha mueve el arco a la izquierda).
+// Por eso tiene SU PROPIA perilla, separada de SHORT_SIGN. DEFAULT 0 = APAGADO (cae al sentido fijo)
+// hasta titularlo en banco con su experimento propio (arrancar mirando al arco, tapar el arco, girar
+// el cuerpo a un lado y ver si orbita hacia el arco). Cuando lo actives: +1/-1; si va por el lado
+// largo, invertilo. Sólo se usa si el arco NO se ve Y heading_valid (fuente de heading viva).
+// ⚠️ Sólo vale si el robot ARRANCÓ mirando al arco rival (heading_inicial se sella al boot, NO contra
+//   el arco). Si no arrancó mirando al arco, el heading miente → por eso la visión SIEMPRE manda.
+constexpr int MIX_CENTRAR_HEAD_SIGN  = 0;   // +1 / -1 (respaldo por heading); 0 = APAGADO (default)
+
+// ============================================================
 // KICKOFF / arranque — PRIMER estado del FSM (coach 2026-06-21, SIN flag: KICKOFF_SEEK es
 // el arranque de TODAS las builds del centralmix). Pedido de Elías: al arrancar, si VE
 // la pelota va hacia ella; si NO la ve, da un IMPULSO FUERTE y CORTO de MEDIALUNA (arco)

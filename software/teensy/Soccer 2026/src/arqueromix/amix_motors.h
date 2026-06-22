@@ -66,6 +66,11 @@ void girar(int pwm_signed);
 //   M1=-150, M2=+150, M3=0 (= opuesto de avanzar).
 void patear_atras();
 
+// Retroceso CON control PROPORCIONAL de rumbo al ARCO RIVAL (SOLO modo quieto, pedido Virginia 2026-06-21):
+// como patear_atras pero suma una rotación ∝ ángulo al arco (con banda muerta + tope) para mantener el
+// frente apuntando al arco contrario mientras retrocede (la inercia tras la alineación lo desalineaba).
+void retroceder_rumbo_opp(float goal_opp_angle, bool goal_opp_visible);
+
 // Retroceso del HOMING de inicio (ir hacia el arco propio a buscar la línea del área). Primitiva
 // DEDICADA con PWM propio (AMIX_INICIO_RETRO_PWM) y dirección flippable (AMIX_INICIO_RETRO_SIGN),
 // para no acoplarse al retroceso del despeje y poder darle vuelta el sentido sin tocar el resto.

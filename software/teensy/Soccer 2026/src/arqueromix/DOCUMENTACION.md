@@ -469,7 +469,10 @@ esperando la pelota. Es la patrulla, **simplificada**.
   esperando → si ve la pelota DESCENTRADA, se mueve lateral para **enfrentarla** → si está ALINEADA (o no
   hay pelota), **quieto** → si está CERCA, **patea** (igual que el default) → tras patear: **gira LENTO
   buscando CENTRARSE con el ARCO RIVAL** (`orientar_frente`, mismo criterio/sentido que `ALINEAR_arco_opp`)
-  → cuando se centra, **vuelve para atrás** (hasta la línea) → **quieto** (NO se vuelve a acomodar).
+  → cuando se centra, **vuelve para atrás MANTENIENDO el frente al arco rival** con un control PROPORCIONAL
+  (`retroceder_rumbo_opp`: la inercia tras la alineación lo desalineaba; el retroceso corrige el rumbo)
+  hasta la línea → **quieto** (NO se vuelve a acomodar). Control: P + banda muerta + tope (skill
+  control-pid-zona-muerta): `AMIX_KP_RUMBO_OPP=2.0`, `AMIX_DEADBAND_OPP_DEG=5`, `AMIX_ROT_MAX=30`.
 - **Implementación (ESTADO DEDICADO `esperar_quieto` — reescrito 2026-06-21).** El primer intento gateaba
   `moverce_*` con un flag, pero `moverce_*` arrastra el **rebote por línea** (oscilaba de costado con las
   líneas del piso) y la **profundidad por línea** (`goal_own_visible && linea()` → avanzar → en cancha

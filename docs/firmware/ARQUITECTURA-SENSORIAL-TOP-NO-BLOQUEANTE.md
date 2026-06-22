@@ -261,9 +261,12 @@ throughput (a 19200-230400 baud el costo por byte es despreciable en el M7 @600 
 
 - **`Wire` (18/19)**: BNO secundario + **4 ToF** comparten este bus. El paralelismo
   real entre BNO y ToF es **CERO** — se turnan. Ningún DMA/ISR/seqlock lo cambia.
-  - El bus está forzado a **100 kHz** (no 400 kHz) en runtime porque a más velocidad
-    el read multi-byte del BNO se corrompe cuando los ToF rangean → **yaw congelado**
-    (banco 2026-06-02/06-08; `sensors_tof.cpp:125,255`).
+  - El bus **base** corre a **100 kHz** (BNO-safe) y se sube a **400 kHz SOLO durante el
+    `getRangingData()` de cada ToF** (✅ validado 2026-06-22 R1+R2; `-DTOP_TOF_FAST_BUS`,
+    `sensors_tof.cpp`). Es seguro porque el BNO PRIMARIO se movió a `Wire2` (sin ToF); en `Wire`
+    queda solo el centinela @1 Hz, que se lee con el bus ya restaurado a 100 kHz. *(Antes el bus
+    estaba CLAVADO a 100 kHz: con el primario en este bus, a más velocidad el read multi-byte se
+    corrompía cuando los ToF rangeaban → yaw congelado — banco 2026-06-02/06-08. Eso quedó SUPERADO.)*
   - Por eso existe el **deconflict temporal** (`main_top.cpp:307-321`): el BNO sólo se
     lee si pasaron ≥ `TOP_BNO_TOF_GAP_MS` (8 ms) desde el último read de ToF. **Es
     load-bearing** — sacarlo recongela el yaw.

@@ -58,9 +58,11 @@ static void mix_debug_print() {
     Serial.print(" | hdg=");      Serial.print(g_io.heading_deg, 1);
     Serial.print(" hvalid=");     Serial.print(g_io.heading_valid);
     Serial.print(" herr=");       Serial.print(g_io.heading_error_deg, 1);
-    // OTOS (lo que usa la patada recta)
+    // OTOS (lo que usa la patada recta) + diagnóstico de la corrección de la patada
     Serial.print(" | otos_hdg="); Serial.print(g_io.otos_heading_deg, 1);
     Serial.print(" otos_conf=");  Serial.print(g_io.otos_confidence);
+    Serial.print(" kick_err=");   Serial.print(g_io.kick_err_deg, 1);
+    Serial.print(" kick_corr=");  Serial.print(g_io.kick_corr);
     // Arco rival + línea + árbitro + enlaces
     Serial.print(" | goalOpp vis="); Serial.print(g_io.goal_opp_visible);
     Serial.print(" ang=");           Serial.print(g_io.goal_opp_angle, 0);

@@ -395,16 +395,14 @@ void amix_fsm_tick() {
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_atras;     // ya centrado al arco rival → vuelve para atrás
             } else {
-                // GIRO PULSADO (PFM, skill control-pid-zona-muerta): pulsa el giro (ON corto) y queda QUIETO
-                // el resto de la ventana (OFF) → giro EFECTIVO MUCHO más LENTO sin caer en zona muerta, y entre
-                // pulsos TOMA el valor LIMPIO del arco (sin smear por el giro). Pedido Virginia 2026-06-21.
-                const unsigned long t_win = (millis() - millis_inicio_estado) % AMIX_T_GIRO_VENTANA;
-                if (t_win < AMIX_T_GIRO_ON) {        // ON: gira un toque hacia el arco rival
-                    const int sentido = g_aio.goal_opp_visible ? ((g_aio.goal_opp_angle > 0.0f) ? +1 : -1) : +1;
-                    girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
-                } else {                             // OFF: QUIETO, lee el valor del arco
-                    parar();
-                }
+                // GIRO CONTINUO y LENTO hacia el ARCO RIVAL (pedido Virginia 2026-06-21: el giro pulsado se
+                // veía "rápido y a tirones"; ahora gira PAREJO, sin ventana ON/OFF). El arco se lee DURANTE el
+                // giro (es lento → poco smear); alineado_al_arco_opp() se evalúa cada tick y corta al centrarse.
+                // ⚠️ control-pid-zona-muerta: el continuo NO baja del PISO del motor → el PWM es el knob de banco
+                // (AMIX_GIRO_FRENTE_PWM): si sale a TIRONES (stick-slip = "parece pulsos") está por debajo del
+                // piso → SUBIR; el continuo no llega a ser tan lento como el pulsado (que promediaba ~duty 26%).
+                const int sentido = g_aio.goal_opp_visible ? ((g_aio.goal_opp_angle > 0.0f) ? +1 : -1) : +1;
+                girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
             }
             break;
     }

@@ -223,8 +223,8 @@ void avanzar_patear() {
         s_kick_use_otos = (g_io.otos_confidence > 0) &&
                           (g_io.t_last_otos_pose_ms > 0) &&
                           ((now - g_io.t_last_otos_pose_ms) < MIX_KICK_OTOS_FRESH_MS);
-    }
-
+    } 
+ 
     // Rampa RÁPIDA hasta el PWM final (no bloqueante, con millis()).
     if (now - s_kick_prev_ms >= (unsigned long)MIX_KICK_INTERVALO_MS) {
         s_kick_prev_ms = now;
@@ -234,64 +234,25 @@ void avanzar_patear() {
         }
     }
 
-    // Corrección de rumbo con el OTOS (heading-hold). Se corrige SOLO si el OTOS está:
-    //   (a) fresco AL ENTRAR (s_kick_use_otos, congelado en el flanco), Y
-    //   (b) fresco AHORA (la pose no envejeció a mitad de la patada), Y
-    //   (c) SANO AHORA (g_io.otos_confidence>0). ESTE tercer chequeo (red-team 2026-06-21) tapa
-    //       el caso "OTOS vivo pero ciego": DOWN puede seguir mandando Pose2D a 100 Hz (timestamp
-    //       fresco) con confidence=0 (ningún OTOS sano) → sin (c) corregiríamos contra un heading
-    //       basura. Con (c), corr=0 → patada RECTA A CIEGAS (degradación segura), que es lo que
-    //       el contrato promete. (c) también re-activa la corrección si confidence vuelve a >0.
-    float err = 0.0f;
+    // Corrección de rumbo con el OTOS (heading-hold). Sólo si el OTOS sigue fresco; si la
+    // pose se puso vieja a mitad de la patada, corr=0 (seguimos recto a ciegas, no a un
+    // rumbo congelado erróneo).
     int corr = 0;
     if (s_kick_use_otos &&
-        g_io.otos_confidence > 0 &&
         (now - g_io.t_last_otos_pose_ms) < MIX_KICK_OTOS_FRESH_MS) {
-        err = wrap180(g_io.otos_heading_deg - s_kick_heading_target);
+        const float err = wrap180(g_io.otos_heading_deg - s_kick_heading_target);
         int c = static_cast<int>(MIX_KICK_HEADING_KP * err);
         if (c >  MIX_KICK_CORR_MAX) c =  MIX_KICK_CORR_MAX;
         if (c < -MIX_KICK_CORR_MAX) c = -MIX_KICK_CORR_MAX;
         corr = c;
     }
-    g_io.kick_err_deg = err;   // diagnóstico para el debug por USB (titular en banco)
-    g_io.kick_corr    = corr;
 
-    // MEZCLA: empuje (M1=+vel, M2=-vel, M3=0) + giro PURO (la MISMA corr en las 3 = el término
-    // ω·R de la cinemática, idéntico para las 3 porque están al mismo radio; es lo que hace
-    // girar()). Sumar la misma corr a las 3 NO es bug: es giro puro, sin traslación parásita.
-    int w[3];
-    w[0] = +s_kick_vel + corr;   // M1 delantera IZQ
-    w[1] = -s_kick_vel + corr;   // M2 delantera DER
-    w[2] =            0 + corr;   // M3 trasera (solo gira para corregir)
-
-    // SATURACIÓN QUE PRESERVA LA DIRECCIÓN (el arreglo). Si dejáramos que mix_set_motor recorte
-    // CADA rueda a ±255 por separado, una delantera saturaría y la otra no → el vector se TUERCE
-    // e inyecta strafe lateral parásito (la patada sale de costado aunque apunte bien). En vez de
-    // eso, si el pico pasa MIX_MAX_PWM escalamos las 3 por el MISMO factor entero → la mezcla
-    // mantiene su dirección. Mismo patrón que saturate_wheels() (src/shared/kinematics.cpp).
-    int peak = 0;
-    for (int i = 0; i < 3; ++i) { int a = (w[i] < 0) ? -w[i] : w[i]; if (a > peak) peak = a; }
-    if (peak > MIX_MAX_PWM) {
-        for (int i = 0; i < 3; ++i)
-            w[i] = (int)((long)w[i] * MIX_MAX_PWM / peak);  // entero, preserva signo y proporciones
-    }
-
-    // (OPCIONAL, default OFF) Piso de la rueda TRASERA. M3 solo hace giro; por debajo de su piso
-    // físico (~107) NO gira (zumba) → el giro queda solo en el diferencial M1/M2 y reaparece
-    // strafe parásito. Si en banco el giro es flojo, MIX_KICK_REAR_FLOOR>0 eleva M3 a su piso
-    // (conserva signo), DESPUÉS del escalado. ⚠️ A ganancias chicas esto vuelve M3 bang-bang →
-    // puede meter zigzag; por eso arranca apagado. (No re-satura: el piso < MIX_MAX_PWM.)
-    if (MIX_KICK_REAR_FLOOR > 0) {
-        int a3 = (w[2] < 0) ? -w[2] : w[2];
-        if (a3 > 0 && a3 < MIX_KICK_REAR_FLOOR)
-            w[2] = (w[2] < 0) ? -MIX_KICK_REAR_FLOOR : MIX_KICK_REAR_FLOOR;
-    }
-
-    // ESCRIBIR. El vector ya cabe en ±255; el clamp por-rueda de mix_set_motor queda solo como
-    // red de seguridad (nunca se activa). Se reescribe en CADA tick (la corr cambia entre rampas).
-    mix_set_motor(0, w[0]);
-    mix_set_motor(1, w[1]);
-    mix_set_motor(2, w[2]);
+    // Empuje (M1=+, M2=-, M3=0) + giro de corrección (mismo signo en las 3, como girar()).
+    // mix_set_motor clampea cada rueda a ±MIX_MAX_PWM (el corr puede saturar M1 a tope; el
+    // efecto de giro igual aparece porque baja M2 y mueve M3). Se reescribe en CADA tick.
+    mix_set_motor(0, +s_kick_vel + corr);  // M1: delantera IZQ
+    mix_set_motor(1, -s_kick_vel + corr);  // M2: delantera DER
+    mix_set_motor(2,            0 + corr);  // M3: trasera (solo gira para corregir)
 }
 
 // retroceder_patear() 2025: M1=patadM1(250, INB1=1), M2=patadM2(170, INA2=1), M3=0(INA3=1).

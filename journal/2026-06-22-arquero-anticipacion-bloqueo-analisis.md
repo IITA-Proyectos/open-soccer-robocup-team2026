@@ -56,9 +56,13 @@ atajar.
 - **S0 — exponer la velocidad a `g_aio`** ✅ IMPLEMENTADA (este commit). ~6 líneas, **cero cambio de
   conducta**. Habilitador. **Paso de banco obligatorio: verificar el SIGNO** de `vx` (y qué `vy` es
   "acercándose") moviendo la pelota a mano, ANTES de cablear lógica.
-- **S2 — arrancar a moverse por el SIGNO de `vx`** (pelota centrada pero que viene con componente lateral)
-  ANTES de que el ángulo cruce la banda muerta. Gateado por flag nuevo + `ball_vel_valid`, fallback
-  automático a la conducta de hoy. ~15 líneas. **Recomendado primero** (no toca el `pd` ni el lazo de rumbo).
+- **S2 — arrancar a moverse por el SIGNO de `vx`** ✅ IMPLEMENTADA (env nuevo
+  `central_robot2_arqueromix_quieto_anticipa` = quieto + `-DARQMIX_ANTICIPA`). En `esperar_quieto`, rama
+  nueva: si la pelota está centrada pero `anticipar_lateral()` (acercándose por `vy·signo` + lateral `|vx|`),
+  strafe hacia el signo de `vx` ANTES de que el ángulo cruce la banda. Sólo SIGNOS + umbrales crudos
+  (`AMIX_ANTICIPA_VX_MIN/VY_MIN`). Flags de inversión `-DARQMIX_FLIP_BALL_VX` / `-DARQMIX_FLIP_BALL_VY`.
+  Consciente de la línea (avanza si toca). Fallback: si se descentra, manda la rama de búsqueda; sin
+  velocidad válida o sin el flag, conducta de hoy. **Candidato byte-idéntico** (AMIX_ANTICIPA=false).
 - **S1 — strafe más fuerte cuando la pelota está CERCA y descentrada** (idea directa de Virginia). ~10
   líneas. ⚠️ **Riesgos (crítica adversarial):** (a) **gol en contra** — el umbral "cerca" se solapa con la
   zona de patada (250 mm); si el strafe fuerte sobrepasa, abre la boca del arco → capar para que SÓLO actúe
@@ -82,5 +86,16 @@ TIGERs (requiere reescribir el control de movimiento — 2027); tocar el candida
 
 ## Verificación
 
-- `pio run -e central_robot2_arqueromix_quieto` → **SUCCESS** (S0). Candidato byte-idéntico en conducta.
+- `pio run -e central_robot2_arqueromix_quieto` (candidato) **SUCCESS** + `central_robot2_arqueromix_quieto_anticipa`
+  (S2) **SUCCESS**. El candidato es byte-idéntico en conducta (S0 expone sin leer, S2 gateada OFF).
 - NO testeado en hardware (regla #1).
+
+## Plan de banco S2 (env `central_robot2_arqueromix_quieto_anticipa`)
+
+1. Provocar pelota que VIENE hacia un lado (centrada al inicio). ¿El arquero **arranca antes** hacia ese lado
+   (no espera a que se descentre)?
+2. **Si anticipa para el lado CONTRARIO** → flashear con `-DARQMIX_FLIP_BALL_VX` (signo de vx invertido).
+3. **Si anticipa cuando la pelota se ALEJA** (en vez de acercarse) → `-DARQMIX_FLIP_BALL_VY`.
+4. **Si reacciona con la pelota casi quieta** (falsos positivos por ruido) → subir `AMIX_ANTICIPA_VX_MIN`/`VY_MIN`;
+   si NO reacciona a tiempo → bajarlos.
+5. Comparar contra el candidato (`_quieto`): ¿bloquea más pelotas que antes pasaban por al lado?

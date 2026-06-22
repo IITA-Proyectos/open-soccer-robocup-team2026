@@ -97,18 +97,24 @@ quedarse con **5** (y a lo sumo 9), DESCARTAR 6.
   `TOP_ENABLE_TOF_SCHED` usa `tof_sched_next` que saltea el caído, `tof_schedule.h:104`) y
   **(b) recortar payload** con `VL53L7CX_DISABLE_*` (`platformio.ini:620-622`, ~5× menos I2C).
   **Lección:** presupuestá el PEOR caso del bus, no el promedio → [[tiempo-real-determinismo]].
-- **TRES regímenes de clock I2C** (`sensors_tof.cpp:154-173`): **1 MHz** carga del firmware
-  (default producción 2026-06-14, TASK-211, boot ~9,6 s), **400 kHz** fallback de carga (TASK-210),
-  **100 kHz** runtime. El `begin()` carga a 1 MHz con fallback a 400 kHz reseteando por LP (`:340-352`).
-- **BAND-AID OBLIGATORIO 100 kHz en runtime** (`sensors_tof.cpp:154-167, 377-380`): a >100 kHz el
-  read multi-byte del **BNO055 secundario** (que comparte el bus `Wire` con los ToF) se corrompe.
-  El `Wire.setClock(TOF_RUN_CLOCK_HZ)` al final del init es OBLIGATORIO; sin él reaparece la
-  corrupción. ⚠️ **Honestidad / inconsistencia viva:** el código atribuye a esto el "freeze del
-  yaw", pero **la skill [[bno055-imu-heading-robocup]] re-diagnosticó (2026-06-21) que el freeze de
-  competencia era el flag `bno_left_en=0` en EEPROM, NO los ToF.** Lo que SÍ es real es la
-  corrupción del read multi-byte a 400 kHz en el bus compartido → el 100 kHz sigue siendo
-  obligatorio para el BNO **secundario**; pero NO le eches el "heading clavado" a los ToF sin antes
-  descartar el flag de config. El fix de fondo fue mover el BNO **primario** a un bus aparte (Wire2).
+- **Regímenes de clock I2C** (`sensors_tof.cpp`): **1 MHz** carga del firmware (default producción
+  2026-06-14, TASK-211, boot ~9,6 s), **400 kHz** fallback de carga (TASK-210), **100 kHz** baseline
+  de runtime y —desde 2026-06-22— **400 kHz SOLO durante el `getRangingData()`** del ToF
+  (`-DTOP_TOF_FAST_BUS`, validado R1+R2; ver abajo). El `begin()` carga a 1 MHz con fallback a 400 kHz
+  reseteando por LP (`:340-352`).
+- **100 kHz como BASELINE del bus (no como techo de TODO el runtime)** (`sensors_tof.cpp`): a >100 kHz
+  el read multi-byte del **BNO055** que comparte `Wire` con los ToF se corrompe. La defensa de fondo
+  fue mover el BNO **primario** a un bus aparte (`Wire2`, sin ToF); en `Wire` quedó solo el **centinela
+  @1 Hz**. Con eso, desde **2026-06-22** el bus **brackea a 400 kHz SOLO durante el `getRangingData()`**
+  del ToF y **restaura 100 kHz** enseguida (`-DTOP_TOF_FAST_BUS` → `TOP_TOF_FAST_BUS_ACTIVE`), así el
+  centinela SIEMPRE lee con el bus en 100. ✅ **Validado en banco R1+R2 (Gustavo, 2026-06-22):** el
+  baseline 100 protege el read del centinela, pero la transferencia grande del ToF va ~4× más rápida
+  (~60→~16 ms). Rollback/A-B: `-DTOP_TOF_BUS_SLOW` (envs `*_slowbus`). ⚠️ **Honestidad / inconsistencia
+  viva:** el código atribuía a la velocidad el "freeze del yaw", pero **[[bno055-imu-heading-robocup]]
+  re-diagnosticó (2026-06-21) que el freeze de competencia era el flag `bno_left_en=0` en EEPROM, NO los
+  ToF.** Lo que SÍ es real es la corrupción del read multi-byte a alta velocidad en el bus COMPARTIDO →
+  por eso el centinela se lee siempre a 100; pero NO le eches el "heading clavado" a los ToF sin antes
+  descartar el flag de config.
 - **`TOP_TOF_NO_RANGE`** (`sensors_tof.cpp:363-369`, default OFF, TASK-223): enumera/configura los
   ToF SIN `startRanging()` → sin pulsos de VCSEL → aísla si un freeze residual es por el RANGEO
   (acople eléctrico/VCSEL) y no por el bus. **`TOF_ONLY_INDEX`** (`:324-328`) inicializa SOLO un

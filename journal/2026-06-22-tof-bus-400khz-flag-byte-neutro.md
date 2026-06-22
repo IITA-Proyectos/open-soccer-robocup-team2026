@@ -6,7 +6,7 @@ requested-by: "Gustavo Viollaz (@gviollaz)"
 ai-assisted: true
 tipo: firmware-banco
 toca-competencia: SÍ desde 2026-06-22 (400 kHz promovido a default de robot2; ver actualización al pie)
-status: compila (default 400 + slowbus 100) · NO VALIDADO EN HARDWARE (lo cierra el equipo)
+status: ✅ VALIDADO EN HARDWARE 2026-06-22 — R1 + R2 andan a 400 (confirmó Gustavo)
 ---
 
 # Bus I2C de los ToF a 400 kHz — parche de banco flag-gated
@@ -58,7 +58,7 @@ el banco confirma que destraba el atraso de forma notable.
   competencia). Si aparecen timeouts/caídas: descartar y volver a 100 kHz (rollback =
   flashear `top_robot2_pri`, byte-idéntico).
 - R1: flash de competencia con 400 = `pio run -e top_robot1_pri_rt -t upload` (paridad RT con R2);
-  rollback = `top_robot1_pri_slowbus`. Igual que R2: NO validado en hardware → correr T1-T7.
+  rollback = `top_robot1_pri_slowbus`. ✅ Validado en R1 el 2026-06-22 (anda a 400).
 
 ## Actualización 2026-06-22 — promovido a DEFAULT de competencia (robot2)
 
@@ -79,6 +79,18 @@ Hecho:
   ya obsoleto — corregido en código/platformio/doc en este mismo commit.)
 - Compila `pio run -e top_robot2_pri -e top_robot2_pri_slowbus` → **2 succeeded**.
 
-⚠️ **Importante:** se adoptó como default por decisión de Gustavo, **NO está validado en hardware**.
-El plan T1–T7 sigue siendo el gate para confiar en él en partido; el doc se actualizó en consecuencia.
 Flasheo de competencia ahora es `pio run -t upload` (default); rollback `pio run -e top_robot2_pri_slowbus -t upload`.
+(Validación en hardware → sección siguiente.)
+
+## Validación 2026-06-22 — R1 + R2 andan a 400 kHz (Gustavo)
+
+Gustavo flasheó **ambos robots** con el 400 kHz y confirmó EN PLACA que **andan** (ToF leyendo, robot
+booteando OK):
+- R2: `pio run -t upload` (default, ya a 400).
+- R1: `pio run -e top_robot1_pri_rt -t upload`.
+
+Con esto el 400 kHz queda **validado y adoptado como default de competencia en los dos robots**. El
+cierre lo hizo el equipo con la placa (confirmación de Gustavo, no de Claude). El `*_slowbus` queda como
+rollback/A-B de 1 flasheo por si alguna vez hiciera falta. Toda la info (este doc, los comentarios de
+`sensors_tof.cpp`/`platformio.ini`, el doc de pruebas y `ESTADO-ACTUAL`) se pasó de "NO VALIDADO" a
+"✅ VALIDADO".

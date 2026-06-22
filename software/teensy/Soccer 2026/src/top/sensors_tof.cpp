@@ -176,8 +176,8 @@ constexpr uint32_t TOF_RUN_CLOCK_HZ  = 100000;  // runtime (coexistencia BNO+ToF
 //    BNO PRIMARIO de los dos vive SOLO en Wire2 y en el bus de ToF queda solo el CENTINELA @1 Hz → el
 //    bus rápido es seguro en ambos. Para volver a 100 kHz (rollback / A-B de loop rate) sin tocar el
 //    resto de flags: -DTOP_TOF_BUS_SLOW (envs top_robot2_pri_slowbus / top_robot1_pri_slowbus).
-// ⚠️ NO VALIDADO EN HARDWARE: a 400 kHz con 5 dispositivos + bodge LP puede haber timeouts I2C; correr
-//    el plan T1-T7 (docs/firmware/TOF-BUS-400KHZ-PLAN-PRUEBAS.md) — distancias, caídas, centinela BNO.
+// ✅ VALIDADO EN HARDWARE 2026-06-22 (Gustavo): AMBOS robots (R1 + R2) andan a 400 kHz (ToF leyendo,
+//    boot OK). Registro y plan: docs/firmware/TOF-BUS-400KHZ-PLAN-PRUEBAS.md.
 constexpr uint32_t TOF_FAST_BUS_HZ   = 400000;
 // Activación efectiva del tramo rápido: ON si está el flag y NO se forzó el lento (opt-out de rollback).
 #if defined(TOP_TOF_FAST_BUS) && !defined(TOP_TOF_BUS_SLOW)

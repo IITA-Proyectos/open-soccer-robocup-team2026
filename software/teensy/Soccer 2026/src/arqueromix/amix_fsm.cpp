@@ -76,6 +76,18 @@ static inline bool ball_alineada() {
 static inline bool ball_a_la_derecha() {
     return g_aio.angulo_pelota_deg > 0.0f;
 }
+// ANTICIPACIÓN (S2): ¿la pelota se MUEVE hacia la derecha del robot? por el SIGNO de vx (flippable, banco).
+static inline bool ball_va_a_la_derecha() {
+    return (g_aio.ball_vx_mm_s * AMIX_BALL_VX_SIGN) > 0.0f;
+}
+// ANTICIPACIÓN (S2): ¿la pelota se ACERCA con componente LATERAL significativa? Gate de anticipación. Sólo
+// SIGNOS + umbrales crudos (la magnitud no está calibrada): acercándose (vy·signo > umbral) Y lateral
+// (|vx| > umbral). Requiere velocidad válida.
+static inline bool anticipar_lateral() {
+    return g_aio.ball_vel_valid &&
+           ((g_aio.ball_vy_mm_s * AMIX_BALL_VY_SIGN) > AMIX_ANTICIPA_VY_MIN) &&
+           (fabsf(g_aio.ball_vx_mm_s) > AMIX_ANTICIPA_VX_MIN);
+}
 // ¿El FRENTE del robot ya apunta al ARCO RIVAL (goal_opp) para despejar HACIA ahí?
 // Quién es el arco rival lo resolvió la placa TOP (goal_polarity, por ÁNGULO — sin color); acá
 // sólo se usa su ÁNGULO. Si no es visible no se puede alinear → se patea recto (como el 2025).
@@ -223,7 +235,24 @@ void amix_fsm_tick() {
                 } else {
                     aiproporcional(AMIX_PD_BALL, error);
                 }
-            } else {                                           // sin pelota, o ya alineada → QUIETO
+            } else if (AMIX_ANTICIPA && haypelota && anticipar_lateral()) {
+                // ANTICIPACIÓN (S2, gateada -DARQMIX_ANTICIPA): pelota CENTRADA (cae acá porque NO está
+                // descentrada) pero VIENE acercándose con componente LATERAL → arranca el strafe hacia el lado
+                // del SIGNO de vx ANTES de que el ángulo cruce la banda muerta (gana 1-2 frames = el atraso que
+                // la hacía pasar por al lado). Consciente de la LÍNEA (igual que la búsqueda): si toca línea →
+                // avanza, no se mete. Fallback: si se descentra, la rama de arriba toma el control; sin
+                // velocidad válida no entra (conducta de hoy). El candidato (AMIX_ANTICIPA=false) NO ejecuta esto.
+                if (linea() || !g_aio.down_link_fresh) {
+                    s_buscar_avance_until_ms = millis() + AMIX_T_BUSCAR_AVANCE;
+                }
+                if (millis() < s_buscar_avance_until_ms) {
+                    avanzar();
+                } else if (ball_va_a_la_derecha()) {
+                    adproporcional(AMIX_PD_BALL, error);       // la pelota se mueve a la derecha → strafe der
+                } else {
+                    aiproporcional(AMIX_PD_BALL, error);       // se mueve a la izquierda → strafe izq
+                }
+            } else {                                           // sin pelota, o ya alineada y sin velocidad lateral → QUIETO
                 parar();
             }
             break;

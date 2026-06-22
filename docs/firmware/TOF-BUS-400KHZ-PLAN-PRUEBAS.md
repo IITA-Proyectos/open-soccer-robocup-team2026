@@ -1,9 +1,9 @@
-# ToF — Bus I2C a 400 kHz (default de competencia robot2) + plan de pruebas
+# ToF — Bus I2C a 400 kHz (default de competencia R1 + R2) + registro de pruebas
 
-> **Estado:** ⭐ 2026-06-22 (Gustavo): el bus a 400 kHz pasó a ser el **DEFAULT de competencia de
-> robot2** (`top_robot2_pri` trae `-DTOP_TOF_FAST_BUS`). Compila (default 400 + `slowbus` 100).
-> **TODAVÍA NO VALIDADO EN HARDWARE** → el plan T1–T7 sigue siendo el gate para CONFIAR en él en
-> partido; rollback de 1 flasheo = `top_robot2_pri_slowbus`. El cierre lo hace el equipo con la placa.
+> **Estado:** ✅ **VALIDADO EN HARDWARE — 2026-06-22 (Gustavo): AMBOS robots (R1 + R2) andan a 400 kHz.**
+> El bus a 400 kHz es el **default de competencia de los dos** (`top_robot2_pri` y `top_robot1_pri`
+> traen `-DTOP_TOF_FAST_BUS`). Este doc queda como REGISTRO del cambio + el plan de pruebas que se
+> corrió. Rollback de 1 flasheo, si alguna vez hiciera falta = `*_slowbus`.
 > **Autor:** Claude Opus 4.8 (Anthropic) · **Pedido por:** Gustavo Viollaz · **Fecha:** 2026-06-22
 
 ---
@@ -130,6 +130,25 @@ Rollback a 100 kHz (si algo falla, o para el A/B de T5): `pio run -e top_robot2_
   (flashear `top_robot2_pri_slowbus`), y la próxima palanca de tiempo-real es bajar la frecuencia de
   round-robin o recortar payload del ToF, no subir el bus.
 
+## Resultados de banco — 2026-06-22 (robot2, Gustavo en la placa)
+
+Leído por serie HEADLESS (`tools/monitor-base/probe_top_serial.py`, solo lectura). Detalle completo +
+mapeo índice→posición en `journal/2026-06-22-banco-tof-400khz-validacion-serie-robot2.md`.
+
+- **T1 ✅** vivo, stream ~21 fps, `resync=0`.
+- **T2 ✅** los 4 ToF leen y responden; 3/4 clavaron objetivos a mano con **16/16 zonas, ±1 mm**
+  (frente/derecha/izquierda). El sensor "que no daba lecturas" estaba SANO (miraba al vacío).
+- **T3 ✅** sin caídas/stale en ventanas de varios minutos.
+- **T4 ✅** el heading sigue el giro suave, maneja el wrap ±180°, se asienta sin deriva, `valid=True`
+  (NO congelado). Convención: izquierda = heading sube (CCW+).
+- **T5 ✅** 400 kHz = **150.511** vs 100 kHz = **71.947 pasadas/s** → **~2,1× más throughput de loop**
+  con el bus rápido (el `getRangingData()` era el costo dominante del lazo, ~70% del tiempo bloqueado a
+  100 kHz). Justificación cuantificada del cambio.
+- **Items abiertos (NO del bus):** centinela 2º BNO = 0.00 (backup sin heading real); cámaras/DOWN
+  caídos en las lecturas finales (probable solo-USB alimentando la TOP).
+
+**El bus a 400 kHz queda VALIDADO en banco (T1–T4) para robot2.**
+
 ---
 
 ## 6. Estado de adopción
@@ -144,6 +163,6 @@ A/B de loop rate (T5).
 `-DTOP_BNO_PRIMARY_ONLY` (primario en Wire2) tras la unificación HW del 2026-06-15/16, así que el bus
 rápido le aplica igual. Flash de competencia de R1 = `top_robot1_pri_rt`; rollback = `top_robot1_pri_slowbus`.
 
-**⚠️ Pendiente: validar T1–T7 en hardware.** Se adoptó como default por decisión de Gustavo, pero NO
-está probado en placa todavía. Hasta correr el plan, tratar el 400 como NO confiable para partido y
-tener listo el `slowbus`. **Esta TASK la cierra el equipo humano con la placa. Claude no la marca `done`.**
+**✅ Validado en hardware (2026-06-22, Gustavo):** ambos robots flasheados con el 400 kHz **andan** —
+ToF leyendo, robot booteando OK. El cierre lo hizo el equipo con la placa (esta confirmación es de
+Gustavo, no de Claude). El `slowbus` queda como rollback/A-B por si alguna vez hiciera falta.

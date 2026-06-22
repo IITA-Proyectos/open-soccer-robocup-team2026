@@ -375,5 +375,36 @@ constexpr float AMIX_HEADING_CORRECT_SIGN = +1.0f;  // viejo (daba 180°) — so
 constexpr float AMIX_HEADING_CORRECT_SIGN = -1.0f;  // ✅ CORRECTO (banco Virginia 2026-06-21)
 #endif
 
+// ============================================================
+// ANTICIPACIÓN (S2) — moverse por el SIGNO de la velocidad de la pelota (banco Virginia 2026-06-22).
+// ----------------------------------------------------------------------------------
+// PROBLEMA: con la pelota CENTRADA (|áng|≤8°) pero viniendo hacia un lado, el arquero esperaba QUIETO hasta
+// que el ÁNGULO cruzaba la banda muerta → reaccionaba 1-2 frames tarde y pasaba por al lado. S2: si la pelota
+// se ACERCA con componente LATERAL, arranca el strafe hacia el lado del SIGNO de vx ANTES de que cruce la
+// banda. Usa SÓLO el SIGNO (la MAGNITUD de vx/vy NO está calibrada). Gateado por -DARQMIX_ANTICIPA (env
+// central_robot2_arqueromix_quieto_anticipa). Default OFF → el candidato de competencia es byte-idéntico.
+// ⚠️ Los SIGNOS (qué vx es "derecha", qué vy es "acercándose") NO están validados → flags de inversión.
+#ifdef ARQMIX_ANTICIPA
+constexpr bool AMIX_ANTICIPA = true;
+#else
+constexpr bool AMIX_ANTICIPA = false;
+#endif
+// SIGNO de vx para el LADO: si el arquero anticipa para el lado CONTRARIO → -DARQMIX_FLIP_BALL_VX.
+#ifdef ARQMIX_FLIP_BALL_VX
+constexpr float AMIX_BALL_VX_SIGN = -1.0f;
+#else
+constexpr float AMIX_BALL_VX_SIGN = +1.0f;
+#endif
+// SIGNO de vy para "ACERCÁNDOSE": si anticipa cuando la pelota se ALEJA (al revés) → -DARQMIX_FLIP_BALL_VY.
+#ifdef ARQMIX_FLIP_BALL_VY
+constexpr float AMIX_BALL_VY_SIGN = -1.0f;
+#else
+constexpr float AMIX_BALL_VY_SIGN = +1.0f;
+#endif
+// Umbrales (UNIDADES CRUDAS del snapshot, SIN calibrar) — TITULAR EN BANCO. Evitan reaccionar al ruido de la
+// velocidad: subir si anticipa con la pelota casi quieta (falsos positivos); bajar si no reacciona a tiempo.
+constexpr float AMIX_ANTICIPA_VX_MIN = 50.0f;  // componente LATERAL mínima para anticipar (|vx| > esto)
+constexpr float AMIX_ANTICIPA_VY_MIN = 50.0f;  // componente de ACERCAMIENTO mínima (vy·signo > esto)
+
 }  // namespace arqmix
 }  // namespace iitasoccer

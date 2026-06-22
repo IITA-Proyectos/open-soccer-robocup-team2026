@@ -371,12 +371,31 @@ void amix_fsm_tick() {
             break;
 
         // ----------------------------------------------------
-        case Estado::avanzar_despues_de_patear:     // L1197-1205
+        case Estado::avanzar_despues_de_patear:     // L1197-1205 — separarse de la línea (avance)
             avanzar();
             if (millis() - millis_inicio_estado >= AMIX_T_AVANCE_POST) {  // 1000 ms
                 millis_inicio_estado = millis();
-                // QUIETO: vuelve a esperar parado. Default: cierra el ciclo → patrulla.
-                estado = AMIX_QUIETO ? Estado::esperar_quieto : Estado::moverce_derecha;
+                // QUIETO: ya se separó de la línea → ahora MIRA AL FRENTE → quieto. Default: cierra → patrulla.
+                estado = AMIX_QUIETO ? Estado::orientar_frente : Estado::moverce_derecha;
+            }
+            break;
+
+        // ----------------------------------------------------
+        // --- MODO QUIETO: MIRAR AL FRENTE tras el despeje (pedido Virginia 2026-06-21) ---
+        case Estado::orientar_frente:
+            // La patada dejó al robot GIRADO (alineó al arco rival). Gira para volver a MIRAR AL FRENTE
+            // (rumbo inicial, heading_error≈0) y recién ahí queda quieto esperando la pelota.
+            if (!g_aio.heading_valid ||
+                fabsf(g_aio.heading_error_deg) <= AMIX_TOL_FRENTE_DEG ||
+                (millis() - millis_inicio_estado >= AMIX_T_ORIENTAR_SAFETY)) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::esperar_quieto;     // vuelve al inicio: quieto esperando la pelota
+            } else {
+                // gira para reducir |heading_error| → 0 (enderezarse al frente). ⚠️ SENTIDO a verificar en
+                // banco (-DARQMIX_FLIP_GIRO_FRENTE si gira para el lado equivocado).
+                const int sentido = (g_aio.heading_error_deg > 0.0f) ? -1 : +1;
+                girar(sentido * AMIX_GIRO_ALINEAR_PWM * AMIX_GIRO_FRENTE_SIGN);
             }
             break;
     }

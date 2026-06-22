@@ -467,7 +467,9 @@ esperando la pelota. Es la patrulla, **simplificada**.
 - **Comportamiento:** al GO, **se mueve un poco a la IZQUIERDA** (`inicio_lateral_izq`, `AMIX_T_INICIO_LATERAL`,
   SOLO en quieto, pedido Virginia) → homing (atrás hasta la línea → adelante para salir) → **QUIETO**
   esperando → si ve la pelota DESCENTRADA, se mueve lateral para **enfrentarla** → si está ALINEADA (o no
-  hay pelota), **quieto** → si está CERCA, **patea** (igual que el default) → tras patear, vuelve a **quieto**.
+  hay pelota), **quieto** → si está CERCA, **patea** (igual que el default) → tras patear: vuelve atrás
+  hasta la línea → se separa un poco → **gira para MIRAR AL FRENTE** (`orientar_frente`, rumbo inicial,
+  porque la patada lo dejó girado al arco rival) → vuelve a **quieto** esperando la pelota.
 - **Implementación (ESTADO DEDICADO `esperar_quieto` — reescrito 2026-06-21).** El primer intento gateaba
   `moverce_*` con un flag, pero `moverce_*` arrastra el **rebote por línea** (oscilaba de costado con las
   líneas del piso) y la **profundidad por línea** (`goal_own_visible && linea()` → avanzar → en cancha

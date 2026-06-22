@@ -173,7 +173,19 @@ constexpr float AMIX_TOL_CERCANIA_MM  = 250.0f; // DESPEJA si la distancia eucl�
 // ============================================================
 // MOVIMIENTO LATERAL INICIAL (SOLO modo quieto, pedido Virginia 2026-06-21): al GO, ANTES del homing,
 // el arquero se mueve un poco a la IZQUIERDA durante este tiempo y recién después va hacia atrás.
-constexpr unsigned long AMIX_T_INICIO_LATERAL = 400;  // cuánto se mueve a la izquierda al arrancar (a ciegas). "un poco".
+constexpr unsigned long AMIX_T_INICIO_LATERAL = 700;  // cuánto se mueve a la izquierda al arrancar (a ciegas). "un poco".
+// MIRAR AL FRENTE tras el despeje (SOLO modo quieto, pedido Virginia 2026-06-21): tras patear (que lo
+// dejó GIRADO apuntando al arco rival) y separarse de la línea, gira para volver a MIRAR AL FRENTE
+// (rumbo inicial, heading_error≈0) antes de quedarse quieto.
+constexpr float AMIX_TOL_FRENTE_DEG = 10.0f;  // |heading_error| <= esto → ya mira al frente (deja de girar)
+constexpr unsigned long AMIX_T_ORIENTAR_SAFETY = 1500;  // tope girando: si no logra enderezarse, va a quieto igual
+// Sentido del giro para enderezarse. ⚠️ Si gira para el lado EQUIVOCADO (se aleja del frente / spinea),
+// flashear con -DARQMIX_FLIP_GIRO_FRENTE.
+#ifdef ARQMIX_FLIP_GIRO_FRENTE
+constexpr int AMIX_GIRO_FRENTE_SIGN = -1;
+#else
+constexpr int AMIX_GIRO_FRENTE_SIGN = +1;
+#endif
 // INICIO — homing al área chica (banco Virginia 2026-06-21): retrocede hasta ver la línea del
 // área, avanza un poco a ciegas, y recién ahí patrulla.
 // ⚠️ SAFETY a 50 s TEMPORAL (pedido Virginia, para observar el retroceso): después bajar a ~4 s.

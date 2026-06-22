@@ -45,6 +45,11 @@ static bool s_was_running = false;
 // dejar (banco Virginia 2026-06-21). 0 = sin commit.
 static unsigned long s_commit_until_ms = 0;
 
+// Ventana de AVANCE al buscar la pelota y tocar línea lateral (modo quieto, banco Virginia 2026-06-22):
+// hasta este millis el arquero AVANZA al frente (en vez de strafe lateral) para despegarse del borde sin
+// meterse al área. Se (re)arma al detectar línea; persiste AMIX_T_BUSCAR_AVANCE para un avance "más grande".
+static unsigned long s_buscar_avance_until_ms = 0;
+
 // ---- Helpers de lectura (reemplazan las globales seriales/analógicas 2025) ----
 
 // Línea presente (== OR de los 3 sensores 2025; el DOWN ya agrega los 32).
@@ -123,6 +128,7 @@ void amix_fsm_tick() {
         millis_inicio_estado = millis();
         pd = AMIX_PD_BASE;
         s_commit_until_ms = 0;
+        s_buscar_avance_until_ms = 0;
     }
 
     const float error = g_aio.heading_error_deg;   // == 'error' 2025 (ya wrapeado)
@@ -185,10 +191,14 @@ void amix_fsm_tick() {
                 // CONSCIENCIA DE LÍNEA al buscar (banco Virginia 2026-06-22): el strafe lateral para
                 // enfrentar la pelota NO miraba la línea → se METÍA al área chica de costado. Ahora: si hay
                 // LÍNEA (borde del área) NO sigue lateral, AVANZA al frente a buscarla (la aleja del fondo y
-                // la acerca a la pelota; apenas despega de la línea vuelve al lateral). Sin dato de línea
-                // fresco (DOWN caído) → también avanza (seguro, no strafea a ciegas).
+                // la acerca a la pelota). El avance es "un poco más grande": al tocar línea (o si DOWN no está
+                // fresco) se ARMA una ventana de AMIX_T_BUSCAR_AVANCE ms → sigue avanzando un toque MÁS allá
+                // del borde antes de volver al lateral (banco: el avance corto quedaba pegado a la línea).
                 if (linea() || !g_aio.down_link_fresh) {
-                    avanzar();                                 // salir del borde hacia el campo / la pelota
+                    s_buscar_avance_until_ms = millis() + AMIX_T_BUSCAR_AVANCE;  // (re)arma la ventana de avance
+                }
+                if (millis() < s_buscar_avance_until_ms) {
+                    avanzar();                                 // avanza al frente (un poco más allá del borde)
                 } else if (ball_a_la_derecha()) {
                     adproporcional(AMIX_PD_BALL, error);       // strafe lateral hacia la pelota (sin línea)
                 } else {
@@ -349,7 +359,11 @@ void amix_fsm_tick() {
         // ----------------------------------------------------
         case Estado::PATEANDO_adelante:             // L1162-1172
             avanzar_patear();                        // golpe con RAMPA simétrica 0→AMIX_KICK_VEL_FINAL (M1=+vel, M2=-vel, recto al frente)
-            if (millis() - millis_inicio_estado >= AMIX_T_PAT_ADELANTE) {  // 450 ms
+            // QUIETO: AÚN PATEANDO sigue leyendo la LÍNEA — si la detecta, CORTA el golpe para NO salirse de
+            // la cancha (pedido Virginia 2026-06-22). Pasa a la pausa post-golpe (→ orientar → retroceder, que
+            // lo traen de vuelta al arco). Patrulla: golpe completo (sin cambios).
+            if ((AMIX_QUIETO && linea()) ||
+                (millis() - millis_inicio_estado >= AMIX_T_PAT_ADELANTE)) {  // 450 ms (o línea en quieto)
                 parar();
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_pausa;

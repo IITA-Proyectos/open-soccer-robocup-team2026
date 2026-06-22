@@ -72,8 +72,14 @@ hacia su arco → pisa el borde del área y frena. **Ajustes de banco (Virginia,
 **Consciencia de línea al BUSCAR la pelota (banco Virginia 2026-06-22):** el strafe lateral de
 `esperar_quieto` (enfrentar la pelota descentrada) no miraba la línea → se metía al área de
 costado. Fix: **si hay `linea()` (o DOWN no fresco) → `avanzar()`** al frente a buscarla en vez de
-seguir lateral (la aleja del fondo/área y la acerca a la pelota; apenas despega del borde vuelve al
-lateral). Decisión táctica de Virginia: aprovechar el borde para salir a buscar.
+seguir lateral. El avance es "un poco más grande": al tocar línea arma una **ventana**
+`AMIX_T_BUSCAR_AVANCE=400` ms (variable `s_buscar_avance_until_ms`) → sigue avanzando un toque más
+allá del borde antes de volver al lateral (el avance corto quedaba pegado). Decisión táctica de
+Virginia: aprovechar el borde para salir a buscar.
+
+**Golpe consciente de línea (banco Virginia 2026-06-22):** `PATEANDO_adelante` (el golpe) AÚN
+PATEANDO lee `linea()`; en modo quieto, si la detecta **corta el golpe** (→ pausa → orientar →
+retroceder) para no salirse de la cancha. Patrulla intacta (gateado por `AMIX_QUIETO`).
 
 **Pendiente de borde total:** queda `inicio_lateral_izq` (strafe izq 1.6 s a ciegas al arranque)
 sin chequeo de línea. No priorizado; siguiente paso si se quiere borde 100 %.

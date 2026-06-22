@@ -180,6 +180,10 @@ constexpr float AMIX_TOL_CERCANIA_MM  = 250.0f; // DESPEJA si la distancia eucl�
 // MOVIMIENTO LATERAL INICIAL (SOLO modo quieto, pedido Virginia 2026-06-21): al GO, ANTES del homing,
 // el arquero se mueve un poco a la IZQUIERDA durante este tiempo y recién después va hacia atrás.
 constexpr unsigned long AMIX_T_INICIO_LATERAL = 1600;  // cuánto se mueve a la izquierda al arrancar (a ciegas). "un poco".
+// AVANCE al BUSCAR la pelota y tocar LÍNEA lateral (SOLO modo quieto, banco Virginia 2026-06-22): en vez de
+// seguir lateral (se metía al área), AVANZA al frente. Para despegarse BIEN del borde, sigue avanzando ESTE
+// tiempo DESPUÉS de dejar de ver la línea (avance "un poco más grande"). Subir si queda pegado al borde.
+constexpr unsigned long AMIX_T_BUSCAR_AVANCE = 400;
 // ORIENTAR AL ARCO RIVAL tras el despeje (SOLO modo quieto). FASE 1 (pedido Virginia 2026-06-21): se
 // orienta por GIROSCOPIO (heading_error_deg → 0), NO por cámara (goal_opp se ensucia al girar y llega a
 // ~4 Hz). Control BANG-BANG con BANDA ANCHA (skill control-pid-zona-muerta): gira al piso

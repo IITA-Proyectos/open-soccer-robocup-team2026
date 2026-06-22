@@ -404,10 +404,14 @@ void amix_fsm_tick() {
                     millis_inicio_estado = millis();
                     estado = Estado::PATEANDO_atras;     // mirando al oponente → vuelve para atrás
                 } else {
-                    // BANG-BANG: girar al PISO en el sentido que lleva heading_error → 0. El sentido físico de
-                    // girar() se RE-VERIFICA en banco: si gira para el lado CONTRARIO → -DARQMIX_FLIP_GIRO_ALINEAR
-                    // (invierte AMIX_GIRO_ALINEAR_SIGN, igual que el giro de alineación pre-patada).
-                    const int sentido = (g_aio.heading_error_deg > 0.0f) ? -1 : +1;
+                    // BANG-BANG: girar al PISO en el sentido que lleva heading_error → 0.
+                    // CORRECCIÓN DE BANCO (Virginia 2026-06-21): con el mapeo opuesto el equilibrio del
+                    // bang-bang quedaba a 180° → el arquero terminaba mirando a NUESTRO arco. Invertido el
+                    // sentido LOCAL (acá: error>0 → +1), el equilibrio pasa a 0° = mirando al OPONENTE.
+                    // Se corrige ACÁ y NO con -DARQMIX_FLIP_GIRO_ALINEAR a propósito: ese flag TAMBIÉN invierte
+                    // el giro de alineación pre-patada (ALINEAR_arco_opp, por cámara) y el retroceso, que pueden
+                    // estar bien. Este es el fix AISLADO del orientar.
+                    const int sentido = (g_aio.heading_error_deg > 0.0f) ? +1 : -1;
                     girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
                 }
             }

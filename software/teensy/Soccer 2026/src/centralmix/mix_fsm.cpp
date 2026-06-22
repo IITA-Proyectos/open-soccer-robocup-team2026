@@ -302,7 +302,7 @@ void mix_fsm_tick() {
         
         case Estado::KICKOFF_SEEK:
 
-             if (haypelota) {  // esperar 700ms por la inercia
+            if (haypelota) {  // esperar 700ms por la inercia
                 parar(); 
                 estado = Estado::APUNTAR_PELOTA; 
                 millis_inicio_estado = millis(); 
@@ -453,13 +453,13 @@ void mix_fsm_tick() {
                 s_giro_atras_dir = 0;
                 millis_inicio_estado = millis();
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;
-            }
+            } 
 
             if (millis() - millis_inicio_estado >= 10000) {  // timeout
                 s_giro_atras_dir = 0;
                 millis_inicio_estado = millis();
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;
-            }
+            } 
 
             if (linea_s1()) {
                 s_giro_atras_dir = 0;

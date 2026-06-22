@@ -47,6 +47,7 @@ class TofSetupApp:
         self._is_sim = getattr(source, "is_sim", False)
         self._cards: Dict[int, dict] = {}     # idx -> widgets de la card
         self._wall_vars: Dict[str, tk.StringVar] = {}
+        self._view_raw = False                # False=vista ORIENTADA (editar) / True=CRUDA (verificar dato)
 
         root.title("IITA Soccer — Config de ToF (TOP) — " + source.describe())
         self._build_layout()
@@ -86,6 +87,8 @@ class TofSetupApp:
         ttk.Button(cfgrow, text="📂 Cargar .json", command=self._load).pack(side="left", padx=3)
         ttk.Button(cfgrow, text="⬇ Bajar a la placa (firmware)", command=self._push_to_fw).pack(side="left", padx=12)
         ttk.Button(cfgrow, text="📤 Exportar header estático firmware", command=self._export_static_header).pack(side="left", padx=3)
+        self._view_btn = ttk.Button(cfgrow, text="👁 Vista: ORIENTADA", command=self._toggle_view)
+        self._view_btn.pack(side="left", padx=12)
         ttk.Label(cfgrow, text=f"archivo: {self.cfg_path}", foreground="#888").pack(side="left", padx=8)
 
         self.status = ttk.Label(self.root, text="", anchor="w", relief="sunken", padding=4)
@@ -242,6 +245,20 @@ class TofSetupApp:
         self.wall_note.configure(text="")
         self._set_status("zonas reseteadas (todas ON)")
 
+    def _toggle_view(self) -> None:
+        """Alterna ORIENTADA ↔ CRUDA. ORIENTADA = rotación/flip + veto aplicados (para orientar
+        y editar). CRUDA = los 16 números TAL CUAL salen del sensor, sin orientar ni vetar — para
+        CONFIRMAR que estás leyendo el dato puro de los 4 ToF (acercá un objeto a distancia conocida
+        y mirá qué zona cruda cambia)."""
+        self._view_raw = not self._view_raw
+        self._view_btn.configure(text="👁 Vista: CRUDA (sin orientar)" if self._view_raw
+                                 else "👁 Vista: ORIENTADA")
+        for idx in range(4):
+            self._render_card(idx)
+        self._set_status("Vista CRUDA: números TAL CUAL del sensor (sin rotar ni vetar)."
+                         if self._view_raw else
+                         "Vista ORIENTADA: rotación/flip + veto aplicados (para editar).")
+
     def _apply_default_veto(self) -> None:
         """Config de ARRANQUE: válida SÓLO la 2ª fila desde abajo (anula las 2 filas de
         arriba —ven por encima de la pared— y la de abajo —choca el piso—)."""
@@ -327,8 +344,9 @@ class TofSetupApp:
 
     def _render(self, f: TopFrame) -> None:
         self.header.configure(
-            text=(f"seq={f.seq}  frames={self.frame_count}  v{f.v}     "
-                  f"zonas ToF CRUDAS del sensor: "
+            text=(f"seq={f.seq}  frames={self.frame_count}  v{f.v}   "
+                  f"[VISTA {'CRUDA' if self._view_raw else 'ORIENTADA'}]   "
+                  f"zonas ToF del sensor: "
                   f"{'SÍ llegan' if f.tof.zones else 'NO llegan (¿flasheaste un env con telemetría?)'}"))
         for idx in range(4):
             self._render_card(idx)
@@ -339,11 +357,13 @@ class TofSetupApp:
             return
         zones = self.last.tof.zones if (self.last and self.last.tof.zones) else None
         raw = zones[idx] if (zones and idx < len(zones)) else [None] * 16
-        disp = self.cfg.oriented_cells(raw, idx)
+        # CRUDA = números tal cual del sensor (sin orientar, sin veto), para verificar el dato puro.
+        # ORIENTADA = rotación/flip + veto aplicados (para orientar y editar el veto).
+        disp = list(raw) if self._view_raw else self.cfg.oriented_cells(raw, idx)
         sensor_on = self.cfg.sensor_enabled.get(idx, True)
         for k in range(GRID_W * GRID_W):
             val = disp[k] if k < len(disp) else None
-            enabled = self.cfg.zone_is_enabled(idx, k)
+            enabled = True if self._view_raw else self.cfg.zone_is_enabled(idx, k)
             x1, x2 = card["xs"][k]
             if not enabled or not sensor_on:
                 card["canvas"].itemconfig(card["cells"][k], fill=VETO_FILL)

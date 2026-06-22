@@ -13,16 +13,19 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
-> **🧭 ARQUEROMIX QUIETO — post-patada por GIROSCOPIO, Fase 1 ORIENTAR (2026-06-21, pedido Virginia):**
-> El giro de centrado post-patada (`orientar_frente`, modo quieto) dejaba de corregir bien (zona muerta +
-> usaba la CÁMARA `goal_opp`). Rediseño en 3 fases por GIROSCOPIO (análisis: workflow 6 agentes + crítica
-> adversarial que tumbó 2 premisas P0). **Fase 1 IMPLEMENTADA:** `orientar_frente` ahora orienta por
-> `heading_error_deg` (giroscopio, sellado al arranque) con **BANG-BANG + banda ancha** (`AMIX_TOL_ORIENTAR_DEG=8°`,
-> giro al piso `AMIX_GIRO_FRENTE_PWM=50`) — esquiva la zona muerta que hacía serpentear; gateado por
-> `heading_valid`. **Fase 2** (retroceso recto + re-orientar por excepción, NO trim-de-trasera que mete
-> diagonal) y **Fase 3** (centrado lateral) PENDIENTES; la 3 POSPUESTA hasta validar el arco propio por
-> cámara trasera = **TASK-224**. Compila SUCCESS (`central_robot2_arqueromix_quieto`); patrulla intacta;
-> NO testeado en HW. Diseño: `docs/superpowers/specs/2026-06-21-arquero-quieto-orientar-giroscopio-design.md`.
+> **🧭 ARQUEROMIX QUIETO — post-patada por GIROSCOPIO, Fases 1+2a (2026-06-21, pedido Virginia):**
+> El post-patada (modo quieto) dejaba de corregir bien (zona muerta + usaba la CÁMARA `goal_opp`). Rediseño
+> en 3 fases por GIROSCOPIO (análisis: workflow 6 agentes + crítica adversarial que tumbó 2 premisas P0).
+> **Fase 1 (orientar) — VALIDADA EN BANCO:** `orientar_frente` orienta por `heading_error_deg` (giroscopio)
+> con **BANG-BANG + banda ancha** (`AMIX_TOL_ORIENTAR_DEG=8°`, giro al piso `AMIX_GIRO_FRENTE_PWM=50`);
+> mira al oponente (se corrigió el sentido: con el mapeo opuesto el bang-bang se estabilizaba a 180° = miraba
+> a nuestro arco; fix LOCAL en orientar, NO el flag global que también afecta la alineación pre-patada).
+> **Fase 2a (retroceso) — IMPLEMENTADA:** `PATEANDO_atras` quieto retrocede **RECTO** (`patear_atras`) y para
+> en la línea, en vez de la corrección por cámara que lo desviaba (se salía/se metía al área); `retroceder_rumbo_opp`
+> quedó sin uso. **Fase 2b** (re-orientar si curva) y **Fase 3** (centrado lateral) PENDIENTES; la 3 POSPUESTA
+> hasta validar arco propio por cámara trasera = **TASK-224**. Compila SUCCESS (`central_robot2_arqueromix_quieto`);
+> patrulla intacta; Fase 2a NO testeada en HW. Diseño:
+> `docs/superpowers/specs/2026-06-21-arquero-quieto-orientar-giroscopio-design.md`.
 > Journal: `journal/2026-06-21-arquero-quieto-orientar-giroscopio.md`.
 
 > **🥅 ARQUEROMIX — port del ARQUERO 2025 sobre TOP/DOWN (2026-06-21, pedido Virginia, build AISLADO):**

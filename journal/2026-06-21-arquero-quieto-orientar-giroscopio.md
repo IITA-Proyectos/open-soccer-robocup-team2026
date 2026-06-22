@@ -9,7 +9,14 @@ testeado-en-hardware: NO (compila; banco lo cierra el equipo)
 analisis: "workflow paralelo 6 agentes (4 lectores + síntesis + crítica adversarial)"
 ---
 
-# Rediseño post-patada del arquero quieto — Fase 1 (orientar por giroscopio)
+# Rediseño post-patada del arquero quieto — Fase 1 (orientar) + Fase 2a (retroceso recto)
+
+> **Actualización 2026-06-21 (Virginia):** el orientar (Fase 1) quedó andando en banco (mira al
+> oponente tras corregir el sentido). Se avanzó con **Fase 2a**: el retroceso del modo quieto
+> deja de usar la corrección por cámara (`retroceder_rumbo_opp`, que lo desviaba → se salía de
+> la cancha / se metía al área) y va **RECTO** (`patear_atras`), parando en la primera línea
+> blanca. Cambio mínimo en `PATEANDO_atras`. La red de re-orientación (Fase 2b) queda para
+> después, solo si el recto curva en banco. `retroceder_rumbo_opp` quedó sin uso.
 
 ## Qué reportó Virginia (banco)
 

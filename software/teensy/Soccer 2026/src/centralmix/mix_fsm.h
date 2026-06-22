@@ -64,5 +64,8 @@ void mix_fsm_init();
 // mix_fsm_tick() debe llamar parar() y NO mover el robot (arranque por árbitro RCJ).
 void mix_fsm_tick();
 
+// Nombre del estado ACTUAL (para el debug USB). Sólo lectura; no muta nada.
+const char* mix_fsm_estado_nombre();
+
 }  // namespace mix
 }  // namespace iitasoccer

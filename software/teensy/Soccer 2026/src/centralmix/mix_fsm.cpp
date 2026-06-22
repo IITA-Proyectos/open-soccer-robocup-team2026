@@ -453,13 +453,13 @@ void mix_fsm_tick() {
                 s_giro_atras_dir = 0;
                 millis_inicio_estado = millis();
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;
-            }
+            } 
 
             if (millis() - millis_inicio_estado >= 10000) {  // timeout
                 s_giro_atras_dir = 0;
                 millis_inicio_estado = millis();
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;
-            }
+            } 
 
             if (linea_s1()) {
                 s_giro_atras_dir = 0;
@@ -895,6 +895,41 @@ void mix_fsm_tick() {
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;
             }
             break;
+    }
+}
+
+// ============================================================
+// Nombre del estado ACTUAL para el debug USB (diagnóstico: ver en qué estado se traba).
+// ============================================================
+const char* mix_fsm_estado_nombre() {
+    switch (estado) {
+        case Estado::PRIMER_IMPULSO_INICIAL_GIRANDO: return "PRIMER_IMP";
+        case Estado::IMPULSO_INICIAL_GIRANDO:        return "IMP_INI_GIR";
+        case Estado::GIRANDO:                        return "GIRANDO";
+        case Estado::APUNTAR_PELOTA:                 return "APUNTAR";
+        case Estado::AVANZANDO:                      return "AVANZANDO";
+        case Estado::CENTRANDO_horario:              return "CENTRAR_H";
+        case Estado::IMPULSO_CENTRANDO_antihorario:  return "IMP_CEN_AH";
+        case Estado::CENTRANDO_antihorario:          return "CENTRAR_AH";
+        case Estado::IMPULSO_CENTRANDO_horario:      return "IMP_CEN_H";
+        case Estado::APUNTAR_PELOTA_antihorario:     return "APUNTAR_AH";
+        case Estado::APUNTAR_PELOTA_horario:         return "APUNTAR_H";
+        case Estado::PATEANDO_corto_pausa_inicial:   return "PATC_PINI";
+        case Estado::PATEANDO_corto_adelante:        return "PATC_ADEL";
+        case Estado::PATEANDO_corto_pausa:           return "PATC_PAU";
+        case Estado::PATEANDO_corto_atras:           return "PATC_ATR";
+        case Estado::PATEANDO_pausa_inicial:         return "PAT_PINI";
+        case Estado::PATEANDO_adelante:              return "PAT_ADEL";
+        case Estado::PATEANDO_pausa:                 return "PAT_PAU";
+        case Estado::PATEANDO_atras:                 return "PAT_ATR";
+        case Estado::AVANZANDO_POR_TIEMPO:           return "AVANZA_T";
+        case Estado::DETECTA_LINEA_1:                return "LINEA_1";
+        case Estado::DETECTA_LINEA_2:                return "LINEA_2";
+        case Estado::DETECTA_LINEA_3:                return "LINEA_3";
+        case Estado::KICKOFF_SEEK:                   return "KICKOFF";
+        case Estado::ESPERAR:                        return "ESPERAR";
+        case Estado::TEST:                           return "TEST";
+        default:                                     return "??";
     }
 }
 

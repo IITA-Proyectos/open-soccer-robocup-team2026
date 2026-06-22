@@ -32,6 +32,14 @@ struct AmixIO {
                                      // El arquero SIGUE la pelota por este ángulo (robusto a la
                                      // escala sin calibrar del snapshot), NO por mm crudos.
 
+    // ---- VELOCIDAD de la pelota (S0, 2026-06-22 — del WorldSnapshot del TOP, marco robot, mm/s) ----
+    // El TOP la deriva y filtra (EMA) y la manda en el snapshot. ⚠️ La MAGNITUD hereda la ESCALA SIN
+    // CALIBRAR de la posición → usar SÓLO el SIGNO/DIRECCIÓN (robusto), NUNCA el valor exacto. Los SIGNOS
+    // (qué es "derecha", qué es "acercándose") se VERIFICAN EN BANCO antes de cablear lógica de anticipación.
+    float ball_vx_mm_s   = 0.0f;     // signo = lado del movimiento lateral de la pelota (a verificar en banco)
+    float ball_vy_mm_s   = 0.0f;     // signo = pelota acercándose/alejándose en +Y (a verificar en banco)
+    bool  ball_vel_valid = false;    // ¿el TOP estimó velocidad? (manda 0,0 si no hay)
+
     // ---- Arcos por ROL, NO por color (ángulo ° marco robot, +=derecha; distancia mm) ----
     // ⚠️ La placa CENTRAL (este programa) NUNCA pregunta por COLOR (amarillo/azul). La placa TOP
     // ya resolvió cuál arco es el RIVAL (opp = al que se despeja/patea) y cuál el PROPIO (own), con

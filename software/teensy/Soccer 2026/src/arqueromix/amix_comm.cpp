@@ -85,6 +85,13 @@ void apply_top_snapshot(const WorldSnapshot& s) {
         g_aio.t_last_ball_seen_ms = now;
     }
 
+    // VELOCIDAD de la pelota (S0, 2026-06-22): exponer del snapshot a g_aio. HABILITADOR — nadie la lee
+    // todavía (conducta byte-idéntica). Sólo el SIGNO es confiable (magnitud sin calibrar). El TOP da 0,0
+    // cuando no hay velocidad estimada. Verificar el signo en banco (mover la pelota a mano) ANTES de cablear.
+    g_aio.ball_vx_mm_s   = static_cast<float>(s.ball_vx_mm_s);
+    g_aio.ball_vy_mm_s   = static_cast<float>(s.ball_vy_mm_s);
+    g_aio.ball_vel_valid = (s.ball_vx_mm_s != 0 || s.ball_vy_mm_s != 0);
+
     // --- Arcos por ROL (opp=RIVAL / own=PROPIO): copia DIRECTA del snapshot, SIN color ---
     // La decisión "qué arco es el rival y cuál el propio" YA la tomó la placa TOP con goal_polarity
     // (regla: el arco al FRENTE del robot = rival; el de atrás = propio; con un latch que la fija al

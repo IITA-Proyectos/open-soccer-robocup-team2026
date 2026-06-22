@@ -360,10 +360,13 @@ void amix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::PATEANDO_atras:                // L1184-1195 (retroceso recto)
-            // QUIETO: retrocede MANTENIENDO el frente al ARCO RIVAL (control proporcional — la inercia
-            // tras la alineación lo desalineaba). Patrulla: retroceso recto (sin cambios).
-            if (AMIX_QUIETO) retroceder_rumbo_opp(g_aio.goal_opp_angle, g_aio.goal_opp_visible);
-            else             patear_atras();         // M1=-AMIX_ATRAS, M2=+AMIX_ATRAS, M3=0 (recto atrás)
+            // FASE 2 (banco Virginia 2026-06-21): retroceso RECTO hasta la línea, en quieto Y en patrulla.
+            // ANTES en quieto usaba retroceder_rumbo_opp (corrección de rumbo por CÁMARA, poca autoridad)
+            // que lo DESVIABA → se salía de la cancha / se metía al área. Ahora va DERECHO (patear_atras) y
+            // para en la primera línea blanca (= borde del área, yendo hacia el arco). El robot ya quedó
+            // MIRANDO al oponente (orientar_frente por giroscopio), así que recto = derecho hacia su arco.
+            // (Red de re-orientación por excepción si el recto CURVA = Fase 2b, sólo si banco lo pide.)
+            patear_atras();                          // M1=-AMIX_ATRAS, M2=+AMIX_ATRAS, M3=0 (recto atrás)
             // 2025: SIN timeout, sale sólo al ver blanco. AGREGADO 2026: timeout de
             // seguridad para no colgarse si nunca llega a la línea. <MEJORA 2026>
             if (linea() ||

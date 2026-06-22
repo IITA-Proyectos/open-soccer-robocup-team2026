@@ -56,11 +56,18 @@ para apuntar a la pelota (`apuntar_pelota_motores`, PWM fijo + tolerancia 15°),
 robot rota varios grados por ciclo; ±2° haría overshoot y serpenteo. ±8° = tolerancia que el
 resto del arquero ya usa (`AMIX_TOL_CENTRADO_DEG`).
 
-### Fase 2 — Retroceder recto + re-orientar por excepción  ⏳ PENDIENTE
+### Fase 2 — Retroceder recto hasta la línea  ✅ 2a IMPLEMENTADA (2026-06-21) / 2b pendiente
 
-`PATEANDO_atras` (quieto): retroceder **recto** (trasera en 0, como `patear_atras`), **sin**
-corrección continua de rumbo. Mientras retrocede, si el heading se tuerce más de ~15° →
-**frenar, re-orientar (Fase 1), reanudar**.
+**Fase 2a (hecha):** `PATEANDO_atras` (quieto) retrocede **recto** (`patear_atras`, trasera en
+0), **sin** la corrección por cámara que lo desviaba (`retroceder_rumbo_opp`, que se salía de
+la cancha / se metía al área). Para en la primera línea blanca (`linea()`, ya existía) o safety
+4 s. Como el robot ya quedó mirando al oponente (Fase 1), recto = derecho hacia su arco → pisa
+el borde del área y frena. Cambio mínimo: una rama del estado; `retroceder_rumbo_opp` quedó sin
+uso.
+
+**Fase 2b (pendiente, sólo si el recto curva en banco):** mientras retrocede, si el heading se
+tuerce más de ~15° → **frenar, re-orientar (Fase 1 bang-bang), reanudar**. Safety 4 s sobre el
+tiempo **total** (no reiniciar el timer en cada re-orientación — crítica P2-6).
 
 **Por qué NO "corregir con la trasera"** (corrección de la crítica adversarial P0-1): meter
 la trasera a base alta para corregir convierte el retroceso recto en **diagonal** (la trasera

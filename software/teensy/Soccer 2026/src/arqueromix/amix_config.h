@@ -179,7 +179,14 @@ constexpr unsigned long AMIX_T_INICIO_LATERAL = 1600;  // cuánto se mueve a la 
 // y sentido que ALINEAR_arco_opp: usa AMIX_TOL_ARCO_OPP_DEG + AMIX_GIRO_ALINEAR_SIGN). Cuando se centra →
 // vuelve para atrás → quieto.
 constexpr unsigned long AMIX_T_ORIENTAR_SAFETY = 3000;  // tope girando LENTO: si no logra centrarse, sigue igual
-constexpr int AMIX_GIRO_FRENTE_PWM = 70;  // giro LENTO para centrarse al arco (más bajo que el de alineación=90). Si NO gira (zona muerta), subir.
+// El giro para centrarse al arco se hace PULSADO (PFM, skill control-pid-zona-muerta): NO se puede hacer
+// más lento bajando el PWM (abajo del piso de los motores se TRABA y no gira). En cambio se PULSA: gira un
+// toque (ON, al PWM que SÍ mueve) y se queda QUIETO el resto de la ventana (OFF) leyendo el arco. El
+// promedio es un giro MUCHO más lento, y entre pulsos toma el valor limpio del arco. Para hacerlo aún más
+// lento: achicar T_GIRO_ON o agrandar T_GIRO_VENTANA (NO bajar el PWM, que lo traba).
+constexpr int AMIX_GIRO_FRENTE_PWM = 90;  // potencia del PULSO de giro (alto para que SÍ mueva en el toque corto). Si no gira ni en el pulso, subir.
+constexpr unsigned long AMIX_T_GIRO_VENTANA = 350;  // ventana del pulso (ms): ON + OFF
+constexpr unsigned long AMIX_T_GIRO_ON      = 90;   // cuánto de la ventana gira (ON). El resto (260 ms) queda QUIETO leyendo. Menos ON = más lento.
 // RETROCESO CON RUMBO al arco rival (SOLO modo quieto, pedido Virginia 2026-06-21: al frenar la
 // alineación, la INERCIA lo desalineaba; ahora el retroceso MANTIENE el frente al arco rival con un
 // control PROPORCIONAL). Guía skill control-pid-zona-muerta: P con BANDA MUERTA + TOPE (sin D contra

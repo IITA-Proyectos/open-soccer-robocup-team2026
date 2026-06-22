@@ -77,9 +77,12 @@ seguir lateral. El avance es "un poco más grande": al tocar línea arma una **v
 allá del borde antes de volver al lateral (el avance corto quedaba pegado). Decisión táctica de
 Virginia: aprovechar el borde para salir a buscar.
 
-**Golpe consciente de línea (banco Virginia 2026-06-22):** `PATEANDO_adelante` (el golpe) AÚN
-PATEANDO lee `linea()`; en modo quieto, si la detecta **corta el golpe** (→ pausa → orientar →
-retroceder) para no salirse de la cancha. Patrulla intacta (gateado por `AMIX_QUIETO`).
+**Golpe consciente de línea + FRENO ACTIVO (banco Virginia 2026-06-22):** `PATEANDO_adelante` AÚN
+PATEANDO lee `linea()`; en modo quieto, si la detecta corta el golpe. Pero `parar()` no frena la
+**inercia** del golpe (se salía igual) → estado nuevo **`frenar_patada`**: contra-empuje fuerte
+atrás (`frenar_atras`, `AMIX_FRENO_PATADA_PWM=200`, plugging) por `AMIX_T_FRENO_PATADA=250` ms para
+matar el impulso, y recién después la secuencia post-patada (pausa → orientar → retroceder). Patrulla
+intacta (gateado por `AMIX_QUIETO`).
 
 **Pendiente de borde total:** queda `inicio_lateral_izq` (strafe izq 1.6 s a ciegas al arranque)
 sin chequeo de línea. No priorizado; siguiente paso si se quiere borde 100 %.

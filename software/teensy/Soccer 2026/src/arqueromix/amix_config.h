@@ -126,6 +126,12 @@ constexpr int AMIX_ATRAS = 120;      // retroceso del despeje (PATRULLA) — NO 
 // ⚠️ A 80 está sobre el piso de las delanteras (70) → se mueve. Si AÚN se mete → bajar a 75; si NO arranca
 // (tironea) → subir. <TITRAR EN BANCO>
 constexpr int AMIX_ATRAS_QUIETO = 80;
+// FRENO DE PATADA (SOLO modo quieto, banco Virginia 2026-06-22): si detecta LÍNEA mientras patea, parar() NO
+// alcanza —la INERCIA del golpe lo saca de la cancha—. Da un contra-empuje FUERTE hacia atrás (plugging) por
+// un tiempo CORTO para MATAR el impulso y despegarse de la línea, y recién después sigue la secuencia
+// post-patada (pausa → orientar → retroceder). Fuerte y corto a propósito.
+constexpr int           AMIX_FRENO_PATADA_PWM = 200;  // PWM del freno-retroceso (alto = frena rápido). Subir si igual se sale; bajar si rebota mucho atrás.
+constexpr unsigned long AMIX_T_FRENO_PATADA   = 250;  // ms del freno (corto, estilo plugging 2025). Subir si no frena a tiempo; bajar si se va de atrás.
 
 // ============================================================
 // ALINEAR AL ARCO RIVAL antes de despejar (pedido Gustavo 2026-06-21).

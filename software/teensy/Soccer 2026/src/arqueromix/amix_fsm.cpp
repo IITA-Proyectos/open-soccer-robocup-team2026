@@ -359,14 +359,32 @@ void amix_fsm_tick() {
         // ----------------------------------------------------
         case Estado::PATEANDO_adelante:             // L1162-1172
             avanzar_patear();                        // golpe con RAMPA simétrica 0→AMIX_KICK_VEL_FINAL (M1=+vel, M2=-vel, recto al frente)
-            // QUIETO: AÚN PATEANDO sigue leyendo la LÍNEA — si la detecta, CORTA el golpe para NO salirse de
-            // la cancha (pedido Virginia 2026-06-22). Pasa a la pausa post-golpe (→ orientar → retroceder, que
-            // lo traen de vuelta al arco). Patrulla: golpe completo (sin cambios).
-            if ((AMIX_QUIETO && linea()) ||
-                (millis() - millis_inicio_estado >= AMIX_T_PAT_ADELANTE)) {  // 450 ms (o línea en quieto)
+            // QUIETO: AÚN PATEANDO sigue leyendo la LÍNEA — si la detecta, CORTA el golpe (pedido Virginia
+            // 2026-06-22). Pero parar() NO frena el impulso (la inercia del golpe lo sacaba igual) → va a
+            // frenar_patada: contra-empuje FUERTE atrás para matar el impulso ANTES de la pausa post-golpe.
+            // Patrulla: golpe completo, directo a la pausa (sin cambios).
+            if (AMIX_QUIETO && linea()) {
+                parar();                             // cierra la rampa del golpe
+                millis_inicio_estado = millis();
+                estado = Estado::frenar_patada;      // FRENO ACTIVO antes de seguir
+            } else if (millis() - millis_inicio_estado >= AMIX_T_PAT_ADELANTE) {  // 450 ms (golpe completo)
                 parar();
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_pausa;
+            }
+            break;
+
+        // ----------------------------------------------------
+        // --- MODO QUIETO: FRENO ACTIVO tras detectar línea pateando (pedido Virginia 2026-06-22) ---
+        case Estado::frenar_patada:
+            // Contra-empuje FUERTE hacia atrás (frenar_atras, AMIX_FRENO_PATADA_PWM) por un tiempo CORTO para
+            // MATAR el impulso del golpe y despegarse de la línea → no salirse de la cancha. NO chequea línea
+            // (está SOBRE ella; pararía al toque) → corta por tiempo. Después sigue la secuencia post-patada.
+            frenar_atras();
+            if (millis() - millis_inicio_estado >= AMIX_T_FRENO_PATADA) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::PATEANDO_pausa;     // sigue: pausa → orientar → retroceder → quieto
             }
             break;
 

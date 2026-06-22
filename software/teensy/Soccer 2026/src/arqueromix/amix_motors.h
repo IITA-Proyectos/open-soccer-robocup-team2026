@@ -71,6 +71,11 @@ void patear_atras();
 // retroceso de la patrulla (patear_atras sigue a AMIX_ATRAS).
 void retroceder_quieto();
 
+// FRENO de patada — contra-empuje FUERTE hacia atrás (AMIX_FRENO_PATADA_PWM, alto) para MATAR el impulso
+// del golpe cuando se detecta línea pateando, y no salirse de la cancha por inercia (banco Virginia
+// 2026-06-22). Mismo patrón recto que patear_atras pero a PWM alto. Se usa breve (AMIX_T_FRENO_PATADA).
+void frenar_atras();
+
 // Retroceso CON control PROPORCIONAL de rumbo al ARCO RIVAL (SOLO modo quieto, pedido Virginia 2026-06-21):
 // como patear_atras pero suma una rotación ∝ ángulo al arco (con banda muerta + tope) para mantener el
 // frente apuntando al arco contrario mientras retrocede (la inercia tras la alineación lo desalineaba).

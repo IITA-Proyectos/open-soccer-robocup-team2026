@@ -130,8 +130,18 @@ abajo) — por eso se diseñó en fases y la Fase 1 quedó como bang-bang, no PI
   ms → sigue avanzando un toque MÁS allá del borde antes de volver al lateral (variable estática
   `s_buscar_avance_until_ms`, patrón del commit). Knob: subir si queda pegado.
 - **Golpe consciente de línea:** `PATEANDO_adelante` (el golpe) AÚN PATEANDO sigue leyendo `linea()`;
-  en modo quieto, si la detecta **CORTA el golpe** (→ pausa post-golpe → orientar → retroceder) para
-  NO salirse de la cancha. Patrulla: golpe completo (sin cambios; gateado por `AMIX_QUIETO`).
+  en modo quieto, si la detecta **CORTA el golpe**. Patrulla: golpe completo (gateado `AMIX_QUIETO`).
+
+### Tercera iteración 2026-06-22 (Virginia) — FRENO ACTIVO de patada (la inercia lo sacaba)
+
+- **Banco:** cortar el golpe con `parar()` NO alcanzaba — **la inercia del golpe lo sacaba igual** de
+  la cancha al detectar línea pateando.
+- **Fix (pedido Virginia "ir más rápido hacia atrás"):** estado nuevo `frenar_patada`. Al detectar
+  línea en `PATEANDO_adelante` (quieto), en vez de pausa va al freno: **contra-empuje FUERTE atrás**
+  (`frenar_atras`, `AMIX_FRENO_PATADA_PWM=200`) por un tiempo corto (`AMIX_T_FRENO_PATADA=250` ms) para
+  MATAR el impulso (plugging, estilo 2025) y despegarse de la línea, y RECIÉN ahí sigue la secuencia
+  (pausa → orientar → retroceder). NO chequea línea (está sobre ella; corta por tiempo).
+- Knobs: `AMIX_FRENO_PATADA_PWM` (subir si igual se sale; bajar si rebota atrás) y `AMIX_T_FRENO_PATADA`.
 
 ## Plan de banco (Fases 1 + 2a)
 

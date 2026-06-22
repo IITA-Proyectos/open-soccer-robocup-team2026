@@ -39,10 +39,13 @@ enum class Estado : uint8_t {
     PATEANDO_pausa_inicial,      // despeje: pausa 200 ms (deja pasar la inercia)
     ALINEAR_arco_opp,            // despeje: GIRA para apuntar el frente al ARCO RIVAL (goal_opp) antes de patear
     PATEANDO_adelante,           // despeje: golpe de avance 450 ms (avanzar_patear) hacia donde quedó apuntando
+    frenar_patada,               // MODO QUIETO: si detecta LÍNEA pateando → contra-empuje fuerte atrás (mata el impulso, no salirse) → pausa
     PATEANDO_pausa,              // despeje: pausa 1000 ms
     PATEANDO_atras,              // despeje: retroceso recto hasta ver línea (+ safety)
     avanzar_despues_de_patear,   // reposicionamiento 1000 ms → vuelve a patrullar (o a orientar_frente en quieto)
     orientar_frente,             // MODO QUIETO: tras patear, gira por GIROSCOPIO (bang-bang, heading→0) a MIRAR al arco rival → atrás → quieto
+    acomodar_linea,              // MODO QUIETO: ANTES de quedar quieto — si toca línea (lateral/atrás), despegarse al lado opuesto
+    acomodar_orientar,           // MODO QUIETO: ANTES de quedar quieto — re-orientar al frente con el BNO (heading→0) → quieto mirando al frente
 };
 
 void amix_fsm_init();

@@ -95,12 +95,77 @@ abajo) — por eso se diseñó en fases y la Fase 1 quedó como bang-bang, no PI
   retroceso gira mal, ENTONCES sí el `AMIX_GIRO_ALINEAR_SIGN` global está invertido para este
   robot → ahí sí flag global. Hoy no hay evidencia de eso.
 
-## Plan de banco (Fase 1)
+## Iteración de banco 2026-06-21 (Virginia) — Fase 2a se metía al área
 
-Mirar SOLO `orientar_frente` tras un despeje: (1) ¿queda mirando al **oponente** ±8° sin
-serpentear? (2) si serpentea → subir `AMIX_TOL_ORIENTAR_DEG`. (3) si tironea → subir
-`AMIX_GIRO_FRENTE_PWM`. (Sentido ya corregido en código; si AÚN gira al revés, avisar — sería
-otro tema, no este mapeo.)
+- **Banco:** el retroceso recto SÍ paraba en la línea, pero a `AMIX_ATRAS=120` se **metía en el
+  área chica** (cruzaba la línea por inercia + latencia antes de frenar).
+- **Fix 1 — velocidad separada y más lenta:** `AMIX_ATRAS_QUIETO=80` (nueva) + primitiva
+  `retroceder_quieto()`. El retroceso del modo quieto va más lento → para más justo en la línea
+  sin cruzarla. NO toca `AMIX_ATRAS` (la patrulla queda igual). Knob: si aún se mete → 75; si no
+  arranca → subir.
+- **Fix 2 — seguridad "nunca salirse" (pedido Virginia):** gate de **frescura del enlace DOWN**.
+  El retroceso lee `linea()` cada tick (verificado: `amix_comm_tick` refresca `line_present`/
+  `line_depth` ANTES del FSM cada loop). Además, si `down_link_fresh==false` (no llega línea hace
+  >500 ms = enlace caído), el arquero **NO retrocede a ciegas**: frena y sale a `esperar_quieto`.
+  Sin dato de línea confiable, mejor quieto que salirse.
+- **PENDIENTE (alcance honesto):** "consciente EN TODO momento" NO está completo. Otros estados
+  del modo quieto trasladan SIN chequear línea: `inicio_lateral_izq` (strafe izq 1.6 s a ciegas)
+  y el strafe a la pelota en `esperar_quieto`. Si se quiere consciencia total de borde, ese es el
+  próximo paso (aparte, para no arriesgar el strafe de juego que ya anda).
+
+## Iteración de banco 2026-06-22 (Virginia) — consciencia de línea al BUSCAR la pelota
+
+- **Banco:** el arquero se metía al área **de costado** mientras BUSCABA la pelota: el strafe
+  lateral de `esperar_quieto` (para enfrentar la pelota descentrada) no chequeaba la línea.
+- **Fix (idea de Virginia):** en `esperar_quieto`, si la pelota está descentrada y **hay línea**
+  (`linea()`, o DOWN no fresco) → `avanzar()` al frente a buscarla en vez de seguir lateral. El
+  avance la aleja del fondo/área y la acerca a la pelota; apenas despega del borde (`!linea()`)
+  vuelve al strafe lateral. Cambio mínimo en una rama del estado.
+- **Por qué avanzar es seguro:** va hacia el campo (lejos del fondo), nunca hacia el área.
+
+### Segunda iteración 2026-06-22 (Virginia) — avance más grande + golpe consciente de línea
+
+- **Avance de búsqueda "un poco más grande":** el avance al tocar línea quedaba pegado al borde
+  (paraba apenas despegaba). Ahora, al detectar línea se arma una **ventana** `AMIX_T_BUSCAR_AVANCE=400`
+  ms → sigue avanzando un toque MÁS allá del borde antes de volver al lateral (variable estática
+  `s_buscar_avance_until_ms`, patrón del commit). Knob: subir si queda pegado.
+- **Golpe consciente de línea:** `PATEANDO_adelante` (el golpe) AÚN PATEANDO sigue leyendo `linea()`;
+  en modo quieto, si la detecta **CORTA el golpe**. Patrulla: golpe completo (gateado `AMIX_QUIETO`).
+
+### Tercera iteración 2026-06-22 (Virginia) — FRENO ACTIVO de patada (la inercia lo sacaba)
+
+- **Banco:** cortar el golpe con `parar()` NO alcanzaba — **la inercia del golpe lo sacaba igual** de
+  la cancha al detectar línea pateando.
+- **Fix (pedido Virginia "ir más rápido hacia atrás"):** estado nuevo `frenar_patada`. Al detectar
+  línea en `PATEANDO_adelante` (quieto), en vez de pausa va al freno: **contra-empuje FUERTE atrás**
+  (`frenar_atras`, `AMIX_FRENO_PATADA_PWM=200`) por un tiempo corto (`AMIX_T_FRENO_PATADA=250` ms) para
+  MATAR el impulso (plugging, estilo 2025) y despegarse de la línea, y RECIÉN ahí sigue la secuencia
+  (pausa → orientar → retroceder). NO chequea línea (está sobre ella; corta por tiempo).
+- Knobs: `AMIX_FRENO_PATADA_PWM` (subir si igual se sale; bajar si rebota atrás) y `AMIX_T_FRENO_PATADA`.
+
+### Cuarta iteración 2026-06-22 (Virginia) — 2 estados de "ACOMODARSE" antes de quedar quieto
+
+Pedido: que ANTES de quedar quieto chequee y corrija, así **cuando se queda quieto SIEMPRE queda
+despegado de la línea y mirando al frente**. Dos estados nuevos, en el flujo ANTES de `esperar_quieto`
+(tras el homing **y** tras el retroceso):
+
+- **`acomodar_linea`:** si TOCA línea (lateral o atrás), se mueve "un poco" al lado OPUESTO para
+  despegarse. Lado por `line_angle_deg` (±180=atrás→avanzar; >0=der→strafe izq; <0=izq→strafe der).
+  ⚠️ La convención de `line_angle` del DOWN NO está validada → flag `-DARQMIX_FLIP_ACOMODAR_LINEA` si
+  despega para el lado equivocado. Safety `AMIX_T_ACOMODAR_LINEA_SAFETY=1500` ms. Sale al `!linea()`.
+- **`acomodar_orientar`:** re-orienta al frente con el BNO (mismo bang-bang heading→0 que `orientar_frente`,
+  banda `AMIX_TOL_ORIENTAR_DEG=8°`), luego → `esperar_quieto`.
+
+Flujo quieto: `... → PATEANDO_atras → acomodar_linea → acomodar_orientar → esperar_quieto`, y también
+`inicio_avanzar → acomodar_linea → ...` (el homing también termina acomodado). Compila SUCCESS.
+
+## Plan de banco (Fases 1 + 2a)
+
+- **Orientar (Fase 1):** ¿queda mirando al **oponente** ±8° sin serpentear? Si serpentea → subir
+  `AMIX_TOL_ORIENTAR_DEG`; si tironea → subir `AMIX_GIRO_FRENTE_PWM`.
+- **Retroceso (Fase 2a):** ¿va derecho y **para en la línea SIN meterse al área**? Si se mete →
+  bajar `AMIX_ATRAS_QUIETO` (80→75). Si curva → Fase 2b (re-orientación). Probar también: cortar
+  el enlace DOWN a propósito y ver que NO retrocede a ciegas (frena).
 
 ## Comando de flasheo
 

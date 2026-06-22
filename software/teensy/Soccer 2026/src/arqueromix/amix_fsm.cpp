@@ -45,6 +45,11 @@ static bool s_was_running = false;
 // dejar (banco Virginia 2026-06-21). 0 = sin commit.
 static unsigned long s_commit_until_ms = 0;
 
+// Ventana de AVANCE al buscar la pelota y tocar línea lateral (modo quieto, banco Virginia 2026-06-22):
+// hasta este millis el arquero AVANZA al frente (en vez de strafe lateral) para despegarse del borde sin
+// meterse al área. Se (re)arma al detectar línea; persiste AMIX_T_BUSCAR_AVANCE para un avance "más grande".
+static unsigned long s_buscar_avance_until_ms = 0;
+
 // ---- Helpers de lectura (reemplazan las globales seriales/analógicas 2025) ----
 
 // Línea presente (== OR de los 3 sensores 2025; el DOWN ya agrega los 32).
@@ -123,6 +128,7 @@ void amix_fsm_tick() {
         millis_inicio_estado = millis();
         pd = AMIX_PD_BASE;
         s_commit_until_ms = 0;
+        s_buscar_avance_until_ms = 0;
     }
 
     const float error = g_aio.heading_error_deg;   // == 'error' 2025 (ya wrapeado)
@@ -166,8 +172,8 @@ void amix_fsm_tick() {
                 const bool safety            = dt >= AMIX_T_INICIO_AVANCE_SAFETY;
                 if ((impulso_minimo_ok && ya_salio_de_linea) || safety) {
                     millis_inicio_estado = millis();
-                    // QUIETO: va a esperar parado (NO patrulla). Default: empieza a patrullar.
-                    estado = AMIX_QUIETO ? Estado::esperar_quieto : Estado::moverce_derecha;
+                    // QUIETO: ANTES de quedar quieto se ACOMODA (despega línea + orienta al frente). Default: patrulla.
+                    estado = AMIX_QUIETO ? Estado::acomodar_linea : Estado::moverce_derecha;
                 }
             }
             break;
@@ -181,11 +187,23 @@ void amix_fsm_tick() {
                 parar();
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_pausa_inicial;
-            } else if (haypelota && !ball_alineada()) {        // DESCENTRADA → strafe lateral para ENFRENTARLA
-                // strafe hacia el lado de la pelota (con corrección de rumbo). Cuando se centre, el
-                // próximo tick cae al else → parar(). NO rebota, NO avanza: solo lateral hasta enfrentar.
-                if (ball_a_la_derecha()) adproporcional(AMIX_PD_BALL, error);
-                else                     aiproporcional(AMIX_PD_BALL, error);
+            } else if (haypelota && !ball_alineada()) {        // DESCENTRADA → buscar la pelota
+                // CONSCIENCIA DE LÍNEA al buscar (banco Virginia 2026-06-22): el strafe lateral para
+                // enfrentar la pelota NO miraba la línea → se METÍA al área chica de costado. Ahora: si hay
+                // LÍNEA (borde del área) NO sigue lateral, AVANZA al frente a buscarla (la aleja del fondo y
+                // la acerca a la pelota). El avance es "un poco más grande": al tocar línea (o si DOWN no está
+                // fresco) se ARMA una ventana de AMIX_T_BUSCAR_AVANCE ms → sigue avanzando un toque MÁS allá
+                // del borde antes de volver al lateral (banco: el avance corto quedaba pegado a la línea).
+                if (linea() || !g_aio.down_link_fresh) {
+                    s_buscar_avance_until_ms = millis() + AMIX_T_BUSCAR_AVANCE;  // (re)arma la ventana de avance
+                }
+                if (millis() < s_buscar_avance_until_ms) {
+                    avanzar();                                 // avanza al frente (un poco más allá del borde)
+                } else if (ball_a_la_derecha()) {
+                    adproporcional(AMIX_PD_BALL, error);       // strafe lateral hacia la pelota (sin línea)
+                } else {
+                    aiproporcional(AMIX_PD_BALL, error);
+                }
             } else {                                           // sin pelota, o ya alineada → QUIETO
                 parar();
             }
@@ -341,10 +359,32 @@ void amix_fsm_tick() {
         // ----------------------------------------------------
         case Estado::PATEANDO_adelante:             // L1162-1172
             avanzar_patear();                        // golpe con RAMPA simétrica 0→AMIX_KICK_VEL_FINAL (M1=+vel, M2=-vel, recto al frente)
-            if (millis() - millis_inicio_estado >= AMIX_T_PAT_ADELANTE) {  // 450 ms
+            // QUIETO: AÚN PATEANDO sigue leyendo la LÍNEA — si la detecta, CORTA el golpe (pedido Virginia
+            // 2026-06-22). Pero parar() NO frena el impulso (la inercia del golpe lo sacaba igual) → va a
+            // frenar_patada: contra-empuje FUERTE atrás para matar el impulso ANTES de la pausa post-golpe.
+            // Patrulla: golpe completo, directo a la pausa (sin cambios).
+            if (AMIX_QUIETO && linea()) {
+                parar();                             // cierra la rampa del golpe
+                millis_inicio_estado = millis();
+                estado = Estado::frenar_patada;      // FRENO ACTIVO antes de seguir
+            } else if (millis() - millis_inicio_estado >= AMIX_T_PAT_ADELANTE) {  // 450 ms (golpe completo)
                 parar();
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_pausa;
+            }
+            break;
+
+        // ----------------------------------------------------
+        // --- MODO QUIETO: FRENO ACTIVO tras detectar línea pateando (pedido Virginia 2026-06-22) ---
+        case Estado::frenar_patada:
+            // Contra-empuje FUERTE hacia atrás (frenar_atras, AMIX_FRENO_PATADA_PWM) por un tiempo CORTO para
+            // MATAR el impulso del golpe y despegarse de la línea → no salirse de la cancha. NO chequea línea
+            // (está SOBRE ella; pararía al toque) → corta por tiempo. Después sigue la secuencia post-patada.
+            frenar_atras();
+            if (millis() - millis_inicio_estado >= AMIX_T_FRENO_PATADA) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::PATEANDO_pausa;     // sigue: pausa → orientar → retroceder → quieto
             }
             break;
 
@@ -360,21 +400,31 @@ void amix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::PATEANDO_atras:                // L1184-1195 (retroceso recto)
-            // FASE 2 (banco Virginia 2026-06-21): retroceso RECTO hasta la línea, en quieto Y en patrulla.
-            // ANTES en quieto usaba retroceder_rumbo_opp (corrección de rumbo por CÁMARA, poca autoridad)
-            // que lo DESVIABA → se salía de la cancha / se metía al área. Ahora va DERECHO (patear_atras) y
-            // para en la primera línea blanca (= borde del área, yendo hacia el arco). El robot ya quedó
-            // MIRANDO al oponente (orientar_frente por giroscopio), así que recto = derecho hacia su arco.
-            // (Red de re-orientación por excepción si el recto CURVA = Fase 2b, sólo si banco lo pide.)
-            patear_atras();                          // M1=-AMIX_ATRAS, M2=+AMIX_ATRAS, M3=0 (recto atrás)
-            // 2025: SIN timeout, sale sólo al ver blanco. AGREGADO 2026: timeout de
-            // seguridad para no colgarse si nunca llega a la línea. <MEJORA 2026>
-            if (linea() ||
-                (millis() - millis_inicio_estado >= AMIX_T_ATRAS_SAFETY)) {  // 4000 ms safety
-                parar();
-                millis_inicio_estado = millis();
-                // QUIETO: ya volvió atrás → queda quieto (NO se vuelve a acomodar). Default: avanza y patrulla.
-                estado = AMIX_QUIETO ? Estado::esperar_quieto : Estado::avanzar_despues_de_patear;
+            // FASE 2a (banco Virginia 2026-06-21): retroceso RECTO hasta la línea. ANTES en quieto usaba
+            // retroceder_rumbo_opp (corrección por CÁMARA, poca autoridad) que lo DESVIABA → se salía de la
+            // cancha / se metía al área. Ahora va DERECHO; el robot ya quedó MIRANDO al oponente (orientar
+            // por giroscopio), así que recto = derecho hacia su arco → para en la línea del borde del área.
+            // QUIETO: retroceso LENTO (AMIX_ATRAS_QUIETO) para parar JUSTO en la línea sin cruzarla (a 120 se
+            // metía por inercia/latencia). SEGURIDAD (pedido Virginia "nunca salirse de la cancha"): si el
+            // enlace con DOWN NO está fresco → NO retroceder a ciegas (sin dato de línea confiable, FRENA).
+            {
+                const bool down_ok = g_aio.down_link_fresh;   // ¿la línea (DOWN) llega fresca? (<500 ms)
+                if (AMIX_QUIETO) {
+                    if (down_ok) retroceder_quieto();         // retroceso lento hacia la línea
+                    else         parar();                     // sin línea fresca → no retroceder a ciegas
+                } else {
+                    patear_atras();                           // patrulla: retroceso normal (sin cambios)
+                }
+                // Sale al PISAR la línea (la lee cada tick; amix_comm la refresca antes del FSM). En quieto,
+                // también si DOWN se cae (no seguir a ciegas) o por safety. <MEJORA 2026: safety + frescura>
+                const bool sin_linea_confiable = AMIX_QUIETO && !down_ok;
+                if (linea() || sin_linea_confiable ||
+                    (millis() - millis_inicio_estado >= AMIX_T_ATRAS_SAFETY)) {  // 4000 ms safety
+                    parar();
+                    millis_inicio_estado = millis();
+                    // QUIETO: ANTES de quedar quieto se ACOMODA (despega línea + orienta al frente). Default: avanza/patrulla.
+                    estado = AMIX_QUIETO ? Estado::acomodar_linea : Estado::avanzar_despues_de_patear;
+                }
             }
             break;
 
@@ -414,6 +464,51 @@ void amix_fsm_tick() {
                     // Se corrige ACÁ y NO con -DARQMIX_FLIP_GIRO_ALINEAR a propósito: ese flag TAMBIÉN invierte
                     // el giro de alineación pre-patada (ALINEAR_arco_opp, por cámara) y el retroceso, que pueden
                     // estar bien. Este es el fix AISLADO del orientar.
+                    const int sentido = (g_aio.heading_error_deg > 0.0f) ? +1 : -1;
+                    girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
+                }
+            }
+            break;
+
+        // ----------------------------------------------------
+        // --- MODO QUIETO: ACOMODARSE antes de quedar quieto (pedido Virginia 2026-06-22) ---
+        // (1) DESPEGARSE de la línea (no quedar quieto sobre la línea / dentro del área).
+        case Estado::acomodar_linea:
+            // Si NO toca línea (o DOWN no fresco, o safety) → ya está → corregir la ORIENTACIÓN.
+            if (!linea() || !g_aio.down_link_fresh ||
+                (millis() - millis_inicio_estado >= AMIX_T_ACOMODAR_LINEA_SAFETY)) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::acomodar_orientar;
+            } else {
+                // Despegarse "un poco" hacia el lado OPUESTO a la línea. line_angle_deg: 0=frente, >0=der,
+                // <0=izq, ±180=atrás (convención DOWN — A VALIDAR; signo flippable con AMIX_ACOMODAR_LINEA_SIGN).
+                // Línea ATRÁS → AVANZAR; línea a la DERECHA → strafe IZQ; a la IZQUIERDA → strafe DER.
+                const float la = g_aio.line_angle_deg * AMIX_ACOMODAR_LINEA_SIGN;
+                if (fabsf(la) >= AMIX_ACOMODAR_ATRAS_DEG) {
+                    avanzar();                                   // línea atrás → despegarse al frente
+                } else if (la > 0.0f) {
+                    aiproporcional(AMIX_PD_BASE, error);         // línea a la derecha → strafe izquierda
+                } else {
+                    adproporcional(AMIX_PD_BASE, error);         // línea a la izquierda → strafe derecha
+                }
+            }
+            break;
+
+        // (2) RE-ORIENTAR al FRENTE con el BNO (heading→0), MISMO bang-bang que orientar_frente, pero al
+        //     terminar queda QUIETO (esperar_quieto) → así "siempre que se queda quieto, mira al frente".
+        case Estado::acomodar_orientar:
+            {
+                const bool sin_heading = !g_aio.heading_valid;
+                const bool orientado   = g_aio.heading_valid &&
+                                         (fabsf(g_aio.heading_error_deg) <= AMIX_TOL_ORIENTAR_DEG);
+                if (orientado || sin_heading ||
+                    (millis() - millis_inicio_estado >= AMIX_T_ORIENTAR_SAFETY)) {
+                    parar();
+                    millis_inicio_estado = millis();
+                    estado = Estado::esperar_quieto;             // quieto, mirando al frente
+                } else {
+                    // Mismo sentido corregido en banco que orientar_frente (error>0 → +1).
                     const int sentido = (g_aio.heading_error_deg > 0.0f) ? +1 : -1;
                     girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
                 }

@@ -188,6 +188,22 @@ void patear_atras() {
     amix_set_motor(2, 0);
 }
 
+// retroceder_quieto() — igual a patear_atras pero a AMIX_ATRAS_QUIETO (más LENTO) para parar justo en la
+// línea sin meterse al área (banco Virginia 2026-06-21). Mismo patrón/sentido; solo cambia el PWM.
+void retroceder_quieto() {
+    amix_set_motor(0, -AMIX_ATRAS_QUIETO);
+    amix_set_motor(1, +AMIX_ATRAS_QUIETO);
+    amix_set_motor(2, 0);
+}
+
+// frenar_atras() — contra-empuje FUERTE hacia atrás (AMIX_FRENO_PATADA_PWM) para matar el impulso del golpe
+// cuando se detecta línea pateando (banco Virginia 2026-06-22). Mismo patrón recto que patear_atras, PWM alto.
+void frenar_atras() {
+    amix_set_motor(0, -AMIX_FRENO_PATADA_PWM);
+    amix_set_motor(1, +AMIX_FRENO_PATADA_PWM);
+    amix_set_motor(2, 0);
+}
+
 // retroceder_rumbo_opp() — retroceso (como patear_atras) PERO con control PROPORCIONAL de rumbo para
 // MANTENER el frente apuntando al ARCO RIVAL (goal_opp). Pedido Virginia 2026-06-21 (la inercia tras la
 // alineación lo desalineaba). El término de rotación `rot` (∝ ángulo al arco, con BANDA MUERTA y TOPE —

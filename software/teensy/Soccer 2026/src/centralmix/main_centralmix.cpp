@@ -29,7 +29,7 @@
 void setup() {
     iitasoccer::mix::mix_comm_init();
     iitasoccer::mix::mix_motors_init();
-    iitasoccer::mix::mix_fsm_init();
+    iitasoccer::mix::mix_fsm_init(); 
 }
 
 void loop() {

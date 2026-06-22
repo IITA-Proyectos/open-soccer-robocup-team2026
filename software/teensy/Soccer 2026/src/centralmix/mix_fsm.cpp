@@ -522,7 +522,7 @@ void mix_fsm_tick() {
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_pausa_inicial;
             }
-            // si |error|<=1 y ya pasó 4s centrando
+            // si |error|<=1 y ya pasó 6s centrando
             else if ((millis() - millis_inicio_centrando >= 6000) && (fabsf(error) <= 1)) {
                 millis_inicio_centrando = millis();
                 millis_inicio_estado = millis();
@@ -538,9 +538,9 @@ void mix_fsm_tick() {
             // si deja de ver la pelota por más de 3s
             if (millis() - millis_pelota >= 3000) {
                 millis_inicio_estado = millis();
-                estado = Estado::IMPULSO_INICIAL_GIRANDO;
-            }
-
+                estado = Estado::IMPULSO_INICIAL_GIRANDO; 
+            } 
+ 
             // timeout
             if (millis() - millis_inicio_centrando >= 25000) {
                 millis_inicio_estado = millis();
@@ -563,7 +563,7 @@ void mix_fsm_tick() {
         case Estado::IMPULSO_CENTRANDO_antihorario:
             impulso_centrando_antihorario();  // 2025 inline: M1/M2 60*ic (-), M3 180*ic (+)
 
-            if (millis() - millis_inicio_estado >= 500) {
+            if (millis() - millis_inicio_estado >= 700) {
                 millis_inicio_estado = millis();
                 estado = Estado::CENTRANDO_antihorario;
             }

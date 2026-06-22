@@ -48,10 +48,8 @@ static void mix_debug_print() {
     const float dist = sqrtf(g_io.ball_x_cm * g_io.ball_x_cm +
                              g_io.ball_y_cm * g_io.ball_y_cm);
 
-    // ESTADO de la FSM (diagnóstico: ver en qué estado se traba) — primero, bien visible
-    Serial.print("ST="); Serial.print(mix_fsm_estado_nombre());
     // Pelota
-    Serial.print(" | ball vis="); Serial.print(g_io.ball_visible);
+    Serial.print("ball vis="); Serial.print(g_io.ball_visible);
     Serial.print(" x=");       Serial.print(g_io.ball_x_cm, 1);
     Serial.print(" y=");       Serial.print(g_io.ball_y_cm, 1);
     Serial.print(" ang=");     Serial.print(g_io.angulo_pelota_deg, 0);

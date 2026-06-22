@@ -85,6 +85,11 @@ struct MixIO {
                                             // línea, así que NO sirve para "¿llegó pose OTOS?").
     bool top_link_fresh  = false;           // ¿llegó snapshot de TOP recientemente?
     bool down_link_fresh = false;           // ¿llegó frame de DOWN recientemente?
+
+    // ---- Diagnóstico de la patada (lo ESCRIBE mix_motors::avanzar_patear; lo lee el debug) ----
+    // Para titular en banco la corrección de rumbo: ver el error y la corr en vivo por USB.
+    float kick_err_deg = 0.0f;              // error de rumbo del OTOS durante la patada (0 si no corrige)
+    int   kick_corr    = 0;                 // término de giro aplicado (PWM, ya clampeado; 0 si no corrige)
 };
 
 // Instancia global única (estilo 2025: estado compartido por variables globales).

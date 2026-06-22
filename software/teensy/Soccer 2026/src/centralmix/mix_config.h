@@ -86,41 +86,72 @@ constexpr float MIX_TOL_APUNTADO = 15.0f;  // tolerancia_apuntado (grados)
 
 // ============================================================
 // Kicker / patada — RECTA y FUERTE con corrección de rumbo por OTOS (2026-06-21, pedido Elías).
+// Revisado con análisis de cinemática + red-team multi-agente (workflow 2026-06-21).
 //
 // El "kicker" es empuje por inercia (NO hay solenoide): el robot acelera hacia adelante para
 // empujar la pelota al arco. ANTES (port 2025) era LAZO ABIERTO: rampa lenta M1=+vel / M2=-vel /
 // M3=0 hasta 240, SIN realimentación → si las 2 ruedas delanteras no están parejas, la patada
 // CURVA. AHORA:
 //   1) FUERTE y RÁPIDA: arranca por encima del piso del motor (MIX_KICK_VEL_START) y rampa
-//      AGRESIVA (paso grande, intervalo corto) hasta MIX_KICK_VEL_FINAL alto. La rampa sigue
-//      existiendo (no slam 0→255) para no hacer brownout del regulador con el pico de arranque.
+//      AGRESIVA hasta MIX_KICK_VEL_FINAL. La rampa NO desaparece (no slam 0→255) para no hacer
+//      brownout del regulador con el pico de arranque.
 //   2) DERECHA: heading-hold con el OTOS. Al iniciar la patada se ANCLA otos_heading_deg como
-//      objetivo; durante el empuje se agrega un término de GIRO (mismo signo en las 3 ruedas,
-//      como girar()) proporcional al error de rumbo, para cancelar la curvatura. Si el OTOS no
-//      está fresco/sano (confidence 0 o pose vieja), la patada va recta "a ciegas" (corr=0).
+//      objetivo; durante el empuje se agrega un término de GIRO (la MISMA corr en las 3 ruedas
+//      = el término ω·R de la cinemática, idéntico para las 3 porque están al mismo radio; es
+//      EXACTAMENTE lo que hace girar()). Sumar la misma corr a las 3 NO es un bug: es giro puro,
+//      sin traslación parásita. (Sumarla solo a 2 ruedas SÍ sería un bug: metería strafe.)
 //
-// ⚠️ El OTOS (otos_heading_deg) es independiente de la fuente de heading de navegación
-//    (BNO del TOP en el env _bno): la patada se corrige con el OTOS LOCAL de DOWN aunque el
-//    BNO del snapshot esté en 0. Requiere que DOWN mande Pose2D con confidence>0 (OTOS sano).
+// SATURACIÓN — el arreglo clave (cinemática verificada contra src/shared/kinematics.cpp):
+//   NO se deja que mix_set_motor recorte CADA rueda por separado. El clamp por-rueda hace que
+//   una delantera sature a 255 y la otra no → el vector se TUERCE e inyecta STRAFE LATERAL
+//   PARÁSITO (la patada sale de costado aunque el morro apunte bien). En su lugar, si el pico
+//   pasa 255 se ESCALAN las 3 ruedas por el MISMO factor → la mezcla (empuje+giro) preserva su
+//   dirección. Mismo patrón que saturate_wheels() (kinematics.cpp:27-39), ya validado en el repo.
+//
+// ⚠️ SIGNO DE LA CORRECCIÓN — este lazo es MIXER-FREE: NO pasa por inverse_kinematics(), así que
+//    NO hereda el OMEGA_SIGN=-1 de config_central.h:175 (el fix del único caso documentado de
+//    realimentación POSITIVA del repo, donde el rumbo se iba -3.7→-71.5). El signo correcto de
+//    MIX_KICK_HEADING_KP hay que validarlo en banco POR SEPARADO del lazo de navegación: que la
+//    navegación vaya derecha NO garantiza que esta patada también. Por eso el default arranca
+//    CHICO (titular de menor a mayor, skill control-pid-zona-muerta).
+//
+// ⚠️ El OTOS (otos_heading_deg) es independiente de la fuente de heading de navegación (BNO del
+//    TOP en el env _bno): la patada se corrige con el OTOS LOCAL de DOWN aunque el BNO del
+//    snapshot esté en 0. Requiere que DOWN mande Pose2D con confidence>0 (OTOS sano).
+//
+// LÍMITE CONOCIDO: corrige ROTACIÓN (rumbo), NO deriva lateral (crab). Si el robot sale empujado
+//   de costado pero apuntando bien, el heading-hold no lo ve. La corrección de eso es el
+//   "cross-track" con x/y del OTOS (la generalización correcta de la idea per-OTOS de Elías) →
+//   queda como mejora futura (necesita cablear otos_x/y_mm a g_io y medir la deriva XY del OTOS).
 // ============================================================
 constexpr int MIX_KICK_VEL_START    = 120;  // PWM inicial del empuje (arranca SOBRE el piso ~70,
-                                            //   no desde 0 → bite inmediato, "rápida")
-constexpr int MIX_KICK_VEL_FINAL    = 255;  // PWM final del empuje (FUERTE; era 240).
-                                            //   Para dar más AUTORIDAD a la corrección de rumbo,
-                                            //   bajalo (deja headroom para el término de giro).
-constexpr int MIX_KICK_PASO         = 45;   // incremento de PWM por paso (RÁPIDO; era 20)
-constexpr int MIX_KICK_INTERVALO_MS = 8;    // ms entre incrementos (era 10) → 120→255 en ~24 ms
+                                            //   no desde 0 → bite inmediato, "rápida"). Rango 90..140.
+constexpr int MIX_KICK_VEL_FINAL    = 240;  // PWM final del empuje (FUERTE). Rango 180..255. Con el
+                                            //   escalado-vector ya NO hay que bajarlo para evitar
+                                            //   saturación asimétrica; si la patada pierde fuerza al
+                                            //   corregir, bajalo a ~200.
+constexpr int MIX_KICK_PASO         = 25;   // incremento de PWM por paso (RÁPIDO). Rango 15..30.
+constexpr int MIX_KICK_INTERVALO_MS = 10;   // ms entre incrementos → 120→240 en ~50 ms.
 
 // --- Corrección de rumbo durante el empuje (heading-hold con el OTOS) ---
-constexpr float MIX_KICK_HEADING_KP = 2.5f; // PWM de giro por GRADO de error de rumbo.
-                                            //   ⚠️ SIGNO A CONFIRMAR EN BANCO: si la patada curva
-                                            //   MÁS al activar la corrección (realimentación
-                                            //   positiva), INVERTÍ el signo (poné -2.5f). El
-                                            //   clamp de abajo evita que descontrole aunque el
-                                            //   signo esté mal (el empuje siempre domina).
-constexpr int MIX_KICK_CORR_MAX     = 70;   // tope (PWM) del término de corrección de giro
-constexpr unsigned long MIX_KICK_OTOS_FRESH_MS = 200;  // si la pose OTOS está más vieja que esto
+constexpr float MIX_KICK_HEADING_KP = -2.5f; // PWM de giro por GRADO de error. *** LA PERILLA DE
+                                            //   BANCO ***. Arranca CHICO (seguridad, ver nota OMEGA_SIGN
+                                            //   arriba). Pasos: (1) confirmar SIGNO con robot LEVANTADO
+                                            //   y VEL_FINAL bajo; si la corrección ALEJA del rumbo →
+                                            //   invertir a +2.5f. (2) Tras fijar signo, subir magnitud
+                                            //   (hasta ~-10) hasta que corrija firme sin zigzag.
+constexpr int MIX_KICK_CORR_MAX     = 30;   // tope (PWM) del término de giro. Arranca CHICO; tras
+                                            //   confirmar signo subir (hasta ~90). Con el escalado,
+                                            //   subirlo NO genera asimetría (las 3 escalan juntas).
+constexpr unsigned long MIX_KICK_OTOS_FRESH_MS = 300;  // si la pose OTOS está más vieja que esto
                                                        // (o confidence==0) → NO corregir (recto a ciegas)
+
+// Piso de la rueda TRASERA (M3) durante la corrección. M3 SOLO hace giro (corr); por debajo de su
+// piso físico (~107, config_central.h MOTOR_MIN_PWM rear) NO gira (zumba) → el giro sale solo del
+// diferencial M1/M2 y reaparece algo de strafe parásito. DEFAULT 0 = APAGADO (a ganancias chicas
+// elevar M3 lo vuelve bang-bang → zigzag). Si en banco el giro es flojo, probar 107 (eleva M3 a su
+// piso conservando signo, DESPUÉS del escalado). Medir si la trasera gira durante la patada.
+constexpr int MIX_KICK_REAR_FLOOR   = 0;    // 0 = off; típico ON = 107
 
 // Retroceso de patada (PWM crudo por motor) — port 1:1 del 2025 (freno/recoil tras el empuje).
 constexpr int MIX_PATAD_M1 = 250;  // patadM1

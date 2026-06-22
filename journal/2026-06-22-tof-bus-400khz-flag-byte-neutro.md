@@ -57,7 +57,8 @@ el banco confirma que destraba el atraso de forma notable.
 - Si pasa: decidir promover el flag a `top_robot2_pri` (re-validar como cambio de
   competencia). Si aparecen timeouts/caídas: descartar y volver a 100 kHz (rollback =
   flashear `top_robot2_pri`, byte-idéntico).
-- Antes de usar en robot1: confirmar que su BNO primario también está fuera del bus de ToF.
+- R1: flash de competencia con 400 = `pio run -e top_robot1_pri_rt -t upload` (paridad RT con R2);
+  rollback = `top_robot1_pri_slowbus`. Igual que R2: NO validado en hardware → correr T1-T7.
 
 ## Actualización 2026-06-22 — promovido a DEFAULT de competencia (robot2)
 
@@ -72,7 +73,10 @@ Hecho:
 - El env `top_robot2_pri_fastbus` se reemplazó por **`top_robot2_pri_slowbus`** (`-DTOP_TOF_BUS_SLOW`):
   la MISMA build de competencia pero a 100 kHz, para rollback de 1 flasheo y para medir el A/B de loop
   rate (T5).
-- **Sólo robot2.** Robot1 NO lo trae (su BNO primario comparte el bus de ToF) → sigue a 100 kHz.
+- **Ambos robots.** R1 también lo trae (`top_robot1_pri` → familia `_fastbno`/`_rt`/...): tras la
+  unificación HW del 2026-06-15/16 su BNO primario también vive SOLO en Wire2 + centinela @1 Hz. (Mi
+  nota previa de "R1 con el BNO en el bus de ToF" describía el cableado VIEJO `TOP_BNO_TOF_DECONFLICT`,
+  ya obsoleto — corregido en código/platformio/doc en este mismo commit.)
 - Compila `pio run -e top_robot2_pri -e top_robot2_pri_slowbus` → **2 succeeded**.
 
 ⚠️ **Importante:** se adoptó como default por decisión de Gustavo, **NO está validado en hardware**.

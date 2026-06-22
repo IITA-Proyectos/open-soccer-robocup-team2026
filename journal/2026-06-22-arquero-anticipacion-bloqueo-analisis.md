@@ -100,18 +100,26 @@ TIGERs (requiere reescribir el control de movimiento — 2027); tocar el candida
    si NO reacciona a tiempo → bajarlos.
 5. Comparar contra el candidato (`_quieto`): ¿bloquea más pelotas que antes pasaban por al lado?
 
-## Iteración de banco 2026-06-22 (Virginia) — el signo OK; +velocidad lateral + orientado robusto
+## REVERTIDO 2026-06-22 — el intento de +velocidad (A) y orientado-busca-arco (B) anduvo PEOR
 
-Banco de la versión anticipa: el **signo de la anticipación es CORRECTO** (se mueve al lado bien). Dos
-ajustes pedidos (ambos en el código base → afectan el quieto vivo y el anticipa; el candidato del TAG
-queda intacto):
+Se probó en banco el commit con (A) `AMIX_PD_BALL 1.5→2.0` y (B) `orientar_de_frente_tick` que sigue
+girando a buscar el arco si no lo ve. **Anduvo peor** (Virginia): la orientación y la "búsqueda" empeoraron,
+y con `pd` alto el strafe **se DESVIABA**. Se hizo `git revert` → vuelta al estado que andaba mejor
+(`PD_BALL=1.5`, orientado original). Aprendizajes (load-bearing para el próximo intento):
 
-- **(A) +velocidad lateral:** `AMIX_PD_BALL` **1.5 → 2.0** (+33% PWM). El strafe de seguir/tapar la pelota
-  no llegaba a pelotas un poco rápidas. ⚠️ El `pd` también amplifica la corrección de rumbo → si serpentea,
-  bajar; si no alcanza, subir a 2.2-2.5 midiendo (techo térmico de la trasera). <TITRAR>
-- **(B) orientado SIEMPRE al arco:** `orientar_de_frente_tick()` — cuando NO ve el arco contrario ya **no se
-  conforma con el giroscopio** (cuyo cero DERIVA y lo dejaba mirando a un lado que no es el arco: "a veces
-  queda sin mirar al frente"). Ahora **sigue girando a BUSCAR el arco** (hacia el frente por heading si lo
-  hay, si no barre) hasta verlo y centrarse en él; el safety corta si nunca aparece. Aplica a `orientar_frente`
-  y `acomodar_orientar`. ⚠️ Riesgo: si el arco contrario NUNCA es visible (cámara/calibración), gira hasta el
-  safety en cada acomodado — eso señalaría un problema de cámara a resolver aparte.
+- **(A) Subir `pd` NO es la forma de ganar velocidad lateral:** confirma lo que advirtió la crítica
+  adversarial — el `pd` multiplica TODO el patrón de `ad/aiproporcional`, **incluida la corrección de rumbo
+  de la trasera** → a `pd` alto sobre-corrige y **se desvía** (no va lateral puro). Pedido de Virginia para
+  el próximo intento: **mover lateralmente con MUCHA MAYOR POTENCIA pero LATERALMENTE, sin desviarse.**
+- **(B) "Seguir girando a buscar el arco" empeoró el orientado** (gira de más / se nota peor). El orientado
+  original (que se conforma con el giroscopio cuando no ve el arco) andaba mejor. La causa de "a veces no
+  mira al frente" hay que atacarla de otra forma (no con barrido).
+
+### Plan para el próximo intento (velocidad lateral PURA, sin desviarse)
+
+La clave: subir la **traslación lateral** sin amplificar la **corrección de rumbo**. Opciones a evaluar
+(de más simple a menos): (1) **kickstart lateral** — impulso inicial fuerte y CORTO al arrancar el strafe
+(rompe la inercia, alcanza la pelota) sin subir el `pd` sostenido que desvía; (2) subir SÓLO las magnitudes
+de traslación (`AMIX_PROP_FRONT_*`) re-balanceando la trasera para que la corrección de rumbo quede igual;
+(3) separar el factor de traslación del factor de rumbo en `ad/aiproporcional` (desacoplar). A discutir con
+Virginia antes de implementar.

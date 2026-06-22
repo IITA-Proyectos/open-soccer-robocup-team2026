@@ -75,13 +75,7 @@ constexpr int AMIX_AI_REAR_ENEG      = 75;   // aiproporcional M3 — REVERTIDO 
 // patrón de PWM se escala parejo). ⚠️ NO bajar de 0.80 o las delanteras (piso ~70) stallean → si a
 // 0.85 se traba/espasmódico, SUBIR a 0.90 (no bajar).
 constexpr float AMIX_PD_BASE = 0.85f;
-// SUBIDO 1.5→2.0 (banco Virginia 2026-06-22): el strafe lateral para SEGUIR/TAPAR la pelota era lento y NO
-// llegaba a pelotas que se mueven un poco rápido. 2.0 = +33% de PWM neto (más velocidad para tapar). Lo usan
-// el seguimiento (esperar_quieto !alineada) y la anticipación (S2). ⚠️ control-pid-zona-muerta: el `pd`
-// multiplica TODO el patrón de ad/aiproporcional, incluida la corrección de rumbo de la trasera → a `pd` muy
-// alto puede SERPENTEAR. Y la trasera (×pd) se acerca al techo térmico (~150-178 PWM). Si no alcanza, subir a
-// 2.2-2.5 MIDIENDO (no serpentea / no calienta); si serpentea, bajar. <TITRAR EN BANCO>
-constexpr float AMIX_PD_BALL = 2.0f;
+constexpr float AMIX_PD_BALL = 1.5f;
 // pd FUERTE para la SALIDA de línea a ciegas (banco Virginia 2026-06-21: necesitaba más impulso
 // para despegarse bien de la línea lateral). Subir si todavía no se despega; bajar si se pasa.
 constexpr float AMIX_PD_SALIR = 1.9f;

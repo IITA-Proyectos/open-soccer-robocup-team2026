@@ -684,21 +684,9 @@ void mix_fsm_tick() {
         // ----------------------------------------------------
         case Estado::PATEANDO_corto_atras:
             retroceder_patear();
-            if (millis() - millis_inicio_estado >= 500) {
+            if (millis() - millis_inicio_estado >= 600) {
                 parar();
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;
-                millis_inicio_estado = millis();
-            }
-            if (linea_s1()) {
-                estado = Estado::DETECTA_LINEA_1;
-                millis_inicio_estado = millis();
-            }
-            if (linea_s2()) {
-                estado = Estado::DETECTA_LINEA_2;
-                millis_inicio_estado = millis();
-            }
-            if (linea_s3()) {
-                estado = Estado::DETECTA_LINEA_3;
                 millis_inicio_estado = millis();
             }
             break;

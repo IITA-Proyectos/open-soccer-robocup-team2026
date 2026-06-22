@@ -13,6 +13,18 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> **🧭 ARQUEROMIX QUIETO — post-patada por GIROSCOPIO, Fase 1 ORIENTAR (2026-06-21, pedido Virginia):**
+> El giro de centrado post-patada (`orientar_frente`, modo quieto) dejaba de corregir bien (zona muerta +
+> usaba la CÁMARA `goal_opp`). Rediseño en 3 fases por GIROSCOPIO (análisis: workflow 6 agentes + crítica
+> adversarial que tumbó 2 premisas P0). **Fase 1 IMPLEMENTADA:** `orientar_frente` ahora orienta por
+> `heading_error_deg` (giroscopio, sellado al arranque) con **BANG-BANG + banda ancha** (`AMIX_TOL_ORIENTAR_DEG=8°`,
+> giro al piso `AMIX_GIRO_FRENTE_PWM=50`) — esquiva la zona muerta que hacía serpentear; gateado por
+> `heading_valid`. **Fase 2** (retroceso recto + re-orientar por excepción, NO trim-de-trasera que mete
+> diagonal) y **Fase 3** (centrado lateral) PENDIENTES; la 3 POSPUESTA hasta validar el arco propio por
+> cámara trasera = **TASK-224**. Compila SUCCESS (`central_robot2_arqueromix_quieto`); patrulla intacta;
+> NO testeado en HW. Diseño: `docs/superpowers/specs/2026-06-21-arquero-quieto-orientar-giroscopio-design.md`.
+> Journal: `journal/2026-06-21-arquero-quieto-orientar-giroscopio.md`.
+
 > **🥅 ARQUEROMIX — port del ARQUERO 2025 sobre TOP/DOWN (2026-06-21, pedido Virginia, build AISLADO):**
 > Hermano arquero de `centralmix` (el delantero del viernes). Carpeta nueva `src/arqueromix/`
 > (8 archivos) = FSM del arquero 2025 (10 estados, port fiel de `ANALISIS-FIEL-ARQUERO-2025.md`) +

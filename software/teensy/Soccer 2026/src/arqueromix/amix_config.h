@@ -174,22 +174,26 @@ constexpr float AMIX_TOL_CERCANIA_MM  = 250.0f; // DESPEJA si la distancia eucl�
 // MOVIMIENTO LATERAL INICIAL (SOLO modo quieto, pedido Virginia 2026-06-21): al GO, ANTES del homing,
 // el arquero se mueve un poco a la IZQUIERDA durante este tiempo y recién después va hacia atrás.
 constexpr unsigned long AMIX_T_INICIO_LATERAL = 1600;  // cuánto se mueve a la izquierda al arrancar (a ciegas). "un poco".
-// CENTRARSE CON EL ARCO DEL OPONENTE tras el despeje (SOLO modo quieto, pedido Virginia 2026-06-21): tras
-// patear (que lo dejó GIRADO), gira LENTO buscando CENTRARSE con el ARCO RIVAL (goal_opp ≈ 0, MISMO criterio
-// y sentido que ALINEAR_arco_opp: usa AMIX_TOL_ARCO_OPP_DEG + AMIX_GIRO_ALINEAR_SIGN). Cuando se centra →
-// vuelve para atrás → quieto.
-constexpr unsigned long AMIX_T_ORIENTAR_SAFETY = 3000;  // tope girando LENTO: si no logra centrarse, sigue igual
-// El giro para centrarse al arco es CONTINUO y LENTO (pedido Virginia 2026-06-21: el pulsado se veía
-// "rápido y a tirones"). Gira a un PWM bajo y CONSTANTE hacia el arco rival, SIN ventana ON/OFF.
-// ⚠️ control-pid-zona-muerta — TRADE-OFF FÍSICO: el giro continuo NO puede bajar del PISO del motor (el
-// pulsado SÍ era más lento porque promediaba ~duty 26%, por debajo del piso). AMIX_GIRO_FRENTE_PWM es EL knob:
-//   · si sale a TIRONES (stick-slip, "parece pulsos otra vez") → está por debajo del piso → SUBIR de a 5.
-//   · si gira suave pero MUY rápido → ya estás cerca del piso; el continuo no da más lento. Avisar (se
-//     evalúa volver al pulsado o un arranque con rampa).
-// BANCO Virginia 2026-06-21: a 70 giraba CONTINUO pero MUY RÁPIDO (no tironeaba) → el piso de giro está
-// POR DEBAJO de 70 (en rotación las 3 ruedas se ayudan, baja el piso vs strafe). Bajado 70→50 para buscar
-// el "lento". Si a 50 empieza a TIRONEAR (stick-slip = cayó debajo del piso) → subir hacia 55/60. <TITRAR>
-constexpr int AMIX_GIRO_FRENTE_PWM = 50;  // PWM del giro CONTINUO lento al arco rival. Si tironea, subir; el continuo no baja del piso.
+// ORIENTAR AL ARCO RIVAL tras el despeje (SOLO modo quieto). FASE 1 (pedido Virginia 2026-06-21): se
+// orienta por GIROSCOPIO (heading_error_deg → 0), NO por cámara (goal_opp se ensucia al girar y llega a
+// ~4 Hz). Control BANG-BANG con BANDA ANCHA (skill control-pid-zona-muerta): gira al piso
+// (AMIX_GIRO_FRENTE_PWM) o para — nunca pide una corrección por debajo del piso (esa era la zona muerta que
+// hacía serpentear). El cero del heading = "mirando al rumbo de colocación" = al arco rival (MISMA
+// referencia que el strafe lateral que YA anda). Gateado por heading_valid: sin heading bueno NO gira a ciegas.
+constexpr unsigned long AMIX_T_ORIENTAR_SAFETY = 3000;  // tope girando: si no logra orientarse, sigue igual
+// BANDA MUERTA de orientación: |heading_error| <= esto → "mirando al oponente", para. ANCHA a propósito:
+// a ~4-6 Hz (latencia del heading del TOP) girando al piso el robot rota varios grados por ciclo; una banda
+// fina (±2°) haría overshoot y serpenteo. ±8° = misma tolerancia que el resto del arquero
+// (AMIX_TOL_CENTRADO_DEG). SUBIR si serpentea alrededor del cero; bajar si queda muy torcido. <TITRAR>
+constexpr float AMIX_TOL_ORIENTAR_DEG = 8.0f;
+// PWM del giro de orientación (FASE 1: BANG-BANG por giroscopio). Gira a ESTE PWM fijo hacia el rumbo
+// objetivo mientras |heading_error| > AMIX_TOL_ORIENTAR_DEG, y para dentro de la banda. Es "continuo y
+// lento" (gira al piso del motor) SIN caer en zona muerta (bang-bang, no proporcional fino: o gira al piso
+// o para).
+// BANCO Virginia 2026-06-21: a 70 giraba continuo pero MUY rápido; bajado a 50 (la velocidad "tal vez está
+// bien"). Si TIRONEA (stick-slip = por debajo del piso) → subir de a 5; si gira muy rápido → no se puede más
+// lento en continuo (es el piso del motor en rotación). <TITRAR EN BANCO>
+constexpr int AMIX_GIRO_FRENTE_PWM = 50;  // PWM fijo del giro de orientación (bang-bang). Si tironea, subir; no baja del piso.
 // (OBSOLETAS: el giro ya NO es pulsado. Se conservan por si se decide volver al esquema PFM.)
 constexpr unsigned long AMIX_T_GIRO_VENTANA = 350;  // [sin uso] ventana del pulso PFM viejo
 constexpr unsigned long AMIX_T_GIRO_ON      = 90;   // [sin uso] ON del pulso PFM viejo

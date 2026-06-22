@@ -385,24 +385,31 @@ void amix_fsm_tick() {
             break;
 
         // ----------------------------------------------------
-        // --- MODO QUIETO: girar LENTO buscando CENTRARSE con el ARCO RIVAL tras el despeje (pedido Virginia 2026-06-21) ---
+        // --- MODO QUIETO: orientar al ARCO RIVAL por GIROSCOPIO tras el despeje (FASE 1, pedido Virginia 2026-06-21) ---
         case Estado::orientar_frente:
-            // La patada dejó al robot GIRADO. Gira LENTO buscando CENTRARSE con el ARCO RIVAL (goal_opp ≈ 0,
-            // MISMO criterio que ALINEAR_arco_opp). Cuando se CENTRA → vuelve para atrás (PATEANDO_atras) → quieto.
-            if (alineado_al_arco_opp() ||
-                (millis() - millis_inicio_estado >= AMIX_T_ORIENTAR_SAFETY)) {
-                parar();
-                millis_inicio_estado = millis();
-                estado = Estado::PATEANDO_atras;     // ya centrado al arco rival → vuelve para atrás
-            } else {
-                // GIRO CONTINUO y LENTO hacia el ARCO RIVAL (pedido Virginia 2026-06-21: el giro pulsado se
-                // veía "rápido y a tirones"; ahora gira PAREJO, sin ventana ON/OFF). El arco se lee DURANTE el
-                // giro (es lento → poco smear); alineado_al_arco_opp() se evalúa cada tick y corta al centrarse.
-                // ⚠️ control-pid-zona-muerta: el continuo NO baja del PISO del motor → el PWM es el knob de banco
-                // (AMIX_GIRO_FRENTE_PWM): si sale a TIRONES (stick-slip = "parece pulsos") está por debajo del
-                // piso → SUBIR; el continuo no llega a ser tan lento como el pulsado (que promediaba ~duty 26%).
-                const int sentido = g_aio.goal_opp_visible ? ((g_aio.goal_opp_angle > 0.0f) ? +1 : -1) : +1;
-                girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
+            // La patada dejó al robot GIRADO. Lo re-orienta a MIRAR AL OPONENTE usando el GIROSCOPIO
+            // (heading_error_deg → 0), NO la cámara (goal_opp se ensucia al girar y llega a ~4 Hz, por eso el
+            // control viejo serpenteaba). Control BANG-BANG con banda ANCHA (skill control-pid-zona-muerta):
+            // gira al PISO o para — NUNCA pide una corrección por debajo del piso (esa era la zona muerta).
+            // El cero del heading = "mirando al rumbo de colocación" = al arco rival (misma referencia que el
+            // strafe lateral que YA anda en banco).
+            {
+                // Sin heading válido NO se gira a ciegas: sale al retroceso (fallback recto).
+                const bool sin_heading = !g_aio.heading_valid;
+                const bool orientado   = g_aio.heading_valid &&
+                                         (fabsf(g_aio.heading_error_deg) <= AMIX_TOL_ORIENTAR_DEG);
+                if (orientado || sin_heading ||
+                    (millis() - millis_inicio_estado >= AMIX_T_ORIENTAR_SAFETY)) {
+                    parar();
+                    millis_inicio_estado = millis();
+                    estado = Estado::PATEANDO_atras;     // mirando al oponente → vuelve para atrás
+                } else {
+                    // BANG-BANG: girar al PISO en el sentido que lleva heading_error → 0. El sentido físico de
+                    // girar() se RE-VERIFICA en banco: si gira para el lado CONTRARIO → -DARQMIX_FLIP_GIRO_ALINEAR
+                    // (invierte AMIX_GIRO_ALINEAR_SIGN, igual que el giro de alineación pre-patada).
+                    const int sentido = (g_aio.heading_error_deg > 0.0f) ? -1 : +1;
+                    girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
+                }
             }
             break;
     }

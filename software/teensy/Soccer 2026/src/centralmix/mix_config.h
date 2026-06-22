@@ -85,6 +85,38 @@ constexpr float MIX_TOL_CERCANIA = 30.0f;  // tolerancia_cercania
 constexpr float MIX_TOL_APUNTADO = 15.0f;  // tolerancia_apuntado (grados)
 
 // ============================================================
+// Jugada "PELOTA ATRÁS" (la ve la cámara TRASERA) — giro-encare sobre el piso del motor.
+// Diseñada con análisis de FSM + red-team multi-agente (workflow 2026-06-22).
+//
+// PROBLEMA que resuelve: cuando la cámara trasera ve la pelota, ésta queda DETRÁS del robot
+// (ball_y_cm<0) y angulo_pelota_deg ≈ ±180. El apuntado fino 2025 (apuntar_pelota_motores) gira a
+// 100*MIX_A = 35 PWM, que está POR DEBAJO del piso del motor ({70,70,107}) → el robot ZUMBA sin
+// girar (zona muerta) y, encima, el ángulo SALTA +180↔-180 con el ruido lateral → el delantero
+// queda CLAVADO ~10 s. (Riesgo de gol en contra: BAJO — CENTRANDO ya orbita y alinea al arco rival
+// antes de patear; esto solo lo desclava rápido.)
+//
+// SOLUCIÓN: en APUNTAR_PELOTA, si la pelota está atrás, GIRAR EN EL LUGAR a MIX_ATRAS_PWM (sobre el
+// piso) hasta que quede APUNTADA (|angulo|<MIX_TOL_APUNTADO). Claves de robustez (del red-team):
+//   - Se ENTRA por ball_y_cm (señal MONÓTONA), NO por el ángulo (que salta ±180).
+//   - El SENTIDO se LATCHEA una sola vez al entrar (no se re-lee cada tick) → no dithera en ±180.
+//   - Se gira a MIX_ATRAS_PWM en TODO el arco 180→15 (no se entrega al apuntado de 35 a mitad de
+//     camino, que volvería a la zona muerta).
+//   - Es GIRO PURO en el lugar (las 3 ruedas mismo signo, como girar()) → NO traslada la pelota
+//     hacia ningún arco mientras gira.
+// ⚠️ SIGNO FÍSICO de +pwm SIN verificar en código (mix_fsm.cpp marca <RE-VERIFICAR SENTIDO EN BANCO>).
+//   El peor caso de un signo mal NO es gol en contra (gira en el lugar): es encarar por el lado LARGO
+//   (~340° en vez de ~20°). Si en banco encara por el lado largo, poné MIX_ATRAS_DIR_SIGN = -1.
+// ============================================================
+constexpr float MIX_ATRAS_Y_ENTRA  = 6.0f;  // cm: ENTRA al giro si ball_y_cm < -6 (pelota claramente
+                                            //   atrás). Rango 4..10. KILL-SWITCH: poné 9999.0f →
+                                            //   la jugada NUNCA dispara (FSM idéntica a hoy).
+constexpr int   MIX_ATRAS_PWM      = 120;   // PWM del giro-encare. >= piso M3 (107) CON margen. Es la
+                                            //   PERILLA principal de banco: subí si zumba/no gira,
+                                            //   bajá si el regulador hace brownout. Rango 110..140.
+constexpr int   MIX_ATRAS_DIR_SIGN = +1;    // sentido del giro (+1/-1). Si encara por el lado LARGO
+                                            //   en banco, invertir a -1 (signo físico A CONFIRMAR).
+
+// ============================================================
 // Kicker / patada — RECTA y FUERTE con corrección de rumbo por OTOS (2026-06-21, pedido Elías).
 // Revisado con análisis de cinemática + red-team multi-agente (workflow 2026-06-21).
 //
@@ -162,7 +194,7 @@ constexpr int MIX_KICK_REAR_FLOOR   = 0;    // 0 = off; típico ON = 107
 //   - (negativo) → al revés, corrige deriva a la IZQUIERDA.
 // Subirlo SOLO si tras el escalado todavía se va siempre para un lado. El heading-hold del OTOS queda
 // ENCIMA para el sesgo variable.
-constexpr int MIX_KICK_FWD_TRIM     = 0;    // PWM trasvasado M1→M2 (0 = sin trim). Subir solo si residual.
+constexpr int MIX_KICK_FWD_TRIM     = 40;    // PWM trasvasado M1→M2 (0 = sin trim). Subir solo si residual.
 
 // Retroceso de patada (PWM crudo por motor) — port 1:1 del 2025 (freno/recoil tras el empuje).
 constexpr int MIX_PATAD_M1 = 250;  // patadM1
@@ -199,8 +231,8 @@ constexpr int MIX_PATAD_M2 = 170;  // patadM2
 // revés: intercambiar etiquetas horario↔antihorario en el FSM, NO tocar los signos acá.
 // Se habilita con -DMIX_CENTRAR_ORBIT_2026 en build_flags (ver platformio.ini).
 // ============================================================
-constexpr int MIX_CENTRAR_FRONT = 80;   // M1,M2 (delanteras) — ≥70 (piso físico)
-constexpr int MIX_CENTRAR_REAR  = 170;  // M3 (trasera) — ≥107 (piso); ojo techo térmico ~150
+constexpr int MIX_CENTRAR_FRONT = 85;   // M1,M2 (delanteras) — ≥70 (piso físico)
+constexpr int MIX_CENTRAR_REAR  = 150;  // M3 (trasera) — ≥107 (piso); ojo techo térmico ~150
 
 // ============================================================
 // KICKOFF / arranque — PRIMER estado del FSM (coach 2026-06-21, SIN flag: KICKOFF_SEEK es

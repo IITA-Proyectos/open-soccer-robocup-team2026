@@ -90,11 +90,19 @@ quede despegado de la línea y mirando al frente:
 - **`acomodar_linea`:** si toca línea (lateral/atrás) se mueve "un poco" al lado opuesto (atrás→avanzar;
   der→strafe izq; izq→strafe der, por `line_angle_deg`). ⚠️ Convención de `line_angle` no validada →
   flag `-DARQMIX_FLIP_ACOMODAR_LINEA`. Sale al `!linea()` o safety 1,5 s.
-- **`acomodar_orientar`:** re-orienta al frente con el BNO (bang-bang heading→0, igual que `orientar_frente`)
-  → `esperar_quieto`.
+- **`acomodar_orientar`:** queda de frente al arco contrario (ver nota de abajo) → `esperar_quieto`.
 
 Flujo quieto: `PATEANDO_atras → acomodar_linea → acomodar_orientar → esperar_quieto` (y el homing
 `inicio_avanzar → acomodar_linea → ...` también).
+
+**Orientación al ARCO CONTRARIO, no al giroscopio (banco Virginia 2026-06-22):** los dos estados de
+orientación (`orientar_frente` y `acomodar_orientar`) dejaron de usar `heading_error→0` y ahora giran
+DESPACIO hacia el **arco contrario** (`goal_opp_angle→0`, `AMIX_TOL_ARCO_OPP_DEG=12°`) vía el helper
+`orientar_de_frente_tick()`. Razón: el **cero del giroscopio DERIVA** (riesgo P1-3 de la crítica
+adversarial) → `heading=0` dejaba de apuntar al arco real. La **cámara es la referencia absoluta** al
+arco; se ensucia al girar rápido, pero girando al piso (50) se usa bien. **Fallback al giroscopio** si
+no ve el arco. Revierte el "giroscopio, no cámara" original (que era para el giro RÁPIDO); el acomodado
+fino y lento sí usa el arco. Cierra (empíricamente) el P1-3 que la crítica había anticipado.
 
 **Pendiente de borde total:** queda `inicio_lateral_izq` (strafe izq 1.6 s a ciegas al arranque)
 sin chequeo de línea. No priorizado; siguiente paso si se quiere borde 100 %.

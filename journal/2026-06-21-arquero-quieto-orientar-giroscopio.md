@@ -159,6 +159,22 @@ despegado de la línea y mirando al frente**. Dos estados nuevos, en el flujo AN
 Flujo quieto: `... → PATEANDO_atras → acomodar_linea → acomodar_orientar → esperar_quieto`, y también
 `inicio_avanzar → acomodar_linea → ...` (el homing también termina acomodado). Compila SUCCESS.
 
+### Quinta iteración 2026-06-22 (Virginia) — orientar al ARCO CONTRARIO (el giroscopio DERIVABA)
+
+- **Banco:** los estados de orientación (`orientar_frente` y `acomodar_orientar`) NO dejaban al
+  arquero de frente al arco. Causa: usaban el GIROSCOPIO (`heading_error → 0`), pero el **cero del
+  giroscopio se sella al arranque y DERIVA** a lo largo de la secuencia → `heading_error=0` ya no
+  apunta al arco real. (Es exactamente el riesgo P1-3 que marcó la crítica adversarial al inicio.)
+- **Fix (idea de Virginia "que quede de frente al arco contrario"):** ambos estados ahora giran
+  DESPACIO hacia el **ARCO CONTRARIO** (`goal_opp_angle → 0`, `AMIX_TOL_ARCO_OPP_DEG=12°`), usando la
+  **CÁMARA como referencia ABSOLUTA** al arco. La cámara se ensucia al girar RÁPIDO, pero girando al
+  piso (50, "despacio") se puede usar. Helper común `orientar_de_frente_tick()`.
+- **Fallback:** si NO ve el arco contrario → usa el giroscopio (`heading→0`); sin heading válido → da
+  por hecho (no gira a ciegas). Así nunca queda girando sin referencia.
+- ⚠️ Matiz vs el pedido original ("giroscopio, no cámara"): aquel era para el giro RÁPIDO (se
+  ensuciaba). Para el acomodado fino y lento, la cámara (arco real) es la referencia correcta; el
+  giroscopio queda de respaldo. El sentido hacia el arco se confirma en banco (mismo que ALINEAR).
+
 ## Plan de banco (Fases 1 + 2a)
 
 - **Orientar (Fase 1):** ¿queda mirando al **oponente** ±8° sin serpentear? Si serpentea → subir

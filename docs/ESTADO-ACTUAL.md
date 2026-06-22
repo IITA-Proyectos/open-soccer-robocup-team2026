@@ -67,6 +67,17 @@ tipo: indice-operacional
 > Tuning `mix_config.h` (`MIX_KICK_*`). + **debug print** USB 115200 en `main_centralmix.cpp` (pelota /
 > heading / OTOS / arco / línea / árbitro). **Compilado ✅ (Claude), sin banco → TASK-117** (incluye el
 > signo de `MIX_KICK_HEADING_KP`). Journal: `journal/2026-06-21-centralmix-patada-recta-otos.md`.
+> (Banco 2026-06-22: la patada **anda derecha**; el sesgo a la derecha era la saturación a PWM alto, lo
+> resolvió el escalado-vector + `MIX_KICK_FWD_TRIM`.)
+
+> **+ JUGADA "PELOTA ATRÁS" (cámara trasera, 2026-06-22):** cuando la cámara trasera ve la pelota (queda
+> detrás, `ball_y_cm<0`, `angulo≈±180`), antes el apuntado fino giraba a 35 PWM (bajo el piso → zumba
+> clavado) y el ángulo saltaba ±180 → delantero **clavado ~10 s**. Ahora, guard en `APUNTAR_PELOTA`:
+> gira EN EL LUGAR a `MIX_ATRAS_PWM`(120, sobre el piso) hasta encarar (`|ang|<15`), gateado por
+> `ball_y_cm` (monótona), con **latch de sentido** (anti-±180) reseteado en las 5 salidas. Giro PURO (no
+> traslada → no agrava gol en contra; CENTRANDO igual alinea al arco antes de patear). Kill-switch
+> `MIX_ATRAS_Y_ENTRA=9999`. Diseño+red-team multi-agente. **Compilado ✅, sin banco → TASK-118** (signo
+> físico `MIX_ATRAS_DIR_SIGN`). Journal: `journal/2026-06-22-centralmix-jugada-pelota-atras.md`.
 
 > **📚 TRES SKILLS NUEVAS — ToF, cinemática omni-3, cámaras N6 (2026-06-21, doc-only, sin tocar firmware):**
 > Workflow de investigación paralela (web best-practices + lectura de código anclada) + plantilla de oro

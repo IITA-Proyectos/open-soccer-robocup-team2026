@@ -72,6 +72,11 @@ static Estado estado = Estado::IMPULSO_INICIAL_GIRANDO;  // placeholder; mix_fsm
 static unsigned long millis_inicio_estado    = 0;
 static unsigned long millis_inicio_centrando = 0;
 
+// Latch del sentido del giro-encare "pelota atrás" (jugada cámara trasera). 0 = inactivo;
+// +1/-1 = girando en ese sentido (congelado al entrar para NO ditherar en ±180). Se RESETEA a 0
+// en CADA salida del case APUNTAR_PELOTA (y en mix_fsm_init) para que no quede pegado entre visitas.
+static int s_giro_atras_dir = 0;
+
 // heading_inicial (initialYaw del 2025): se captura en mix_fsm_init() desde
 // g_io.heading_deg. La FSM consume g_io.heading_error_deg (== 'error' 2025), que
 // mix_comm calcula como wrap180(heading_deg - heading_inicial). heading_inicial se
@@ -195,6 +200,7 @@ void mix_fsm_init() {
     estado = Estado::KICKOFF_SEEK;   // PRIMER estado: arranque (seek pelota / medialuna)
     millis_inicio_estado    = millis();
     millis_inicio_centrando = millis();
+    s_giro_atras_dir        = 0;     // latch del giro-encare "pelota atrás" arranca limpio
 
     // initialYaw 2025: aquí se captura desde g_io.heading_deg (fuente seleccionada
     // por mix_comm: BNO por default, OTOS con -DMIX_HEADING_OTOS). El 'error' de cada
@@ -401,32 +407,58 @@ void mix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::APUNTAR_PELOTA:
-            if (fabsf(anguloPelota) >= MIX_TOL_APUNTADO) {   // tolerancia_apuntado (15)
-                apuntar_pelota_motores();
+            if (fabsf(anguloPelota) >= MIX_TOL_APUNTADO) {   // tolerancia_apuntado (15): aún no apuntado
+                // --- Jugada "PELOTA ATRÁS" (cámara trasera) ---
+                // Se ENTRA por ball_y_cm (señal MONÓTONA), no por el ángulo (que salta ±180). Una vez
+                // adentro, el sentido se LATCHEA (s_giro_atras_dir) y se gira EN EL LUGAR a
+                // MIX_ATRAS_PWM (sobre el piso del motor) durante TODO el arco hasta quedar apuntada
+                // (|angulo|<15), sin re-leer el signo (anti-±180) ni caer al apuntado lento de 35
+                // (zona muerta). Giro PURO (3 ruedas mismo signo) → no traslada la pelota.
+                const bool entrar_atras = (g_io.ball_y_cm < -MIX_ATRAS_Y_ENTRA);
+                if (s_giro_atras_dir != 0 || entrar_atras) {
+                    if (s_giro_atras_dir == 0) {  // LATCH una sola vez al entrar: congela el sentido
+                        // sign(anguloPelota)=sign(ball_x) = de qué lado está; el signo físico de +pwm
+                        // lo ajusta MIX_ATRAS_DIR_SIGN (a confirmar en banco).
+                        s_giro_atras_dir = ((anguloPelota > 0.0f) ? +1 : -1) * MIX_ATRAS_DIR_SIGN;
+                    }
+                    const int pwm = s_giro_atras_dir * MIX_ATRAS_PWM;
+                    mix_set_motor(0, pwm);
+                    mix_set_motor(1, pwm);
+                    mix_set_motor(2, pwm);
+                } else {
+                    apuntar_pelota_motores();    // pelota al frente/lateral: apuntado fino 2025 (sin cambios)
+                }
             } else {
+                s_giro_atras_dir = 0;
                 millis_inicio_estado = millis();
                 estado = Estado::AVANZANDO;
             }
+            g_io.giro_atras_dir = (int8_t)s_giro_atras_dir;  // diagnóstico (debug USB)
 
             if (millis() - millis_pelota >= 500) {  // si deja de ver la pelota
+                s_giro_atras_dir = 0;
                 millis_inicio_estado = millis();
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;
             }
 
             if (millis() - millis_inicio_estado >= 10000) {  // timeout
+                s_giro_atras_dir = 0;
                 millis_inicio_estado = millis();
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;
             }
 
             if (linea_s1()) {
+                s_giro_atras_dir = 0;
                 estado = Estado::DETECTA_LINEA_1;
                 millis_inicio_estado = millis();
             }
             if (linea_s2()) {
+                s_giro_atras_dir = 0;
                 estado = Estado::DETECTA_LINEA_2;
                 millis_inicio_estado = millis();
             }
             if (linea_s3()) {
+                s_giro_atras_dir = 0;
                 estado = Estado::DETECTA_LINEA_3;
                 millis_inicio_estado = millis();
             }

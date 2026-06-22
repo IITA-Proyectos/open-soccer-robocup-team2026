@@ -107,6 +107,25 @@ static inline bool borde_arco_izq() {
     return g_aio.goal_own_visible && (rear_goal_dev() <= -AMIX_TOL_ARCO_OWN_DEG);
 }
 
+// Bang-bang de orientación: gira DESPACIO (al piso AMIX_GIRO_FRENTE_PWM) hasta quedar DE FRENTE al ARCO
+// CONTRARIO (goal_opp_angle → 0). La CÁMARA (goal_opp) es la referencia ABSOLUTA al arco — el giroscopio
+// (heading_error) DERIVA su cero a lo largo de la secuencia y dejaba al arquero mirando a un lado que NO era
+// el arco (banco Virginia 2026-06-22). Fallback al giroscopio SÓLO si NO ve el arco (para no girar a ciegas;
+// sin heading válido, da por hecho). Devuelve true cuando YA está de frente (= condición de salir del estado).
+static bool orientar_de_frente_tick() {
+    if (g_aio.goal_opp_visible) {
+        if (fabsf(g_aio.goal_opp_angle) <= AMIX_TOL_ARCO_OPP_DEG) return true;   // de frente al arco contrario
+        const int sentido = (g_aio.goal_opp_angle > 0.0f) ? +1 : -1;            // gira DESPACIO hacia el arco
+        girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
+        return false;
+    }
+    // No ve el arco → fallback giroscopio (heading→0). Sin heading válido → no girar a ciegas (dar por hecho).
+    if (!g_aio.heading_valid || (fabsf(g_aio.heading_error_deg) <= AMIX_TOL_ORIENTAR_DEG)) return true;
+    const int sentido = (g_aio.heading_error_deg > 0.0f) ? +1 : -1;
+    girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
+    return false;
+}
+
 void amix_fsm_init() {
     // QUIETO: arranca con un movimiento lateral a la izquierda; default: directo al homing.
     estado = AMIX_QUIETO ? Estado::inicio_lateral_izq : Estado::inicio_retroceder;
@@ -438,35 +457,17 @@ void amix_fsm_tick() {
             break;
 
         // ----------------------------------------------------
-        // --- MODO QUIETO: orientar al ARCO RIVAL por GIROSCOPIO tras el despeje (FASE 1, pedido Virginia 2026-06-21) ---
+        // --- MODO QUIETO: orientar de frente al ARCO CONTRARIO tras el despeje (pedido Virginia 2026-06-22) ---
         case Estado::orientar_frente:
-            // La patada dejó al robot GIRADO. Lo re-orienta a MIRAR AL OPONENTE usando el GIROSCOPIO
-            // (heading_error_deg → 0), NO la cámara (goal_opp se ensucia al girar y llega a ~4 Hz, por eso el
-            // control viejo serpenteaba). Control BANG-BANG con banda ANCHA (skill control-pid-zona-muerta):
-            // gira al PISO o para — NUNCA pide una corrección por debajo del piso (esa era la zona muerta).
-            // El cero del heading = "mirando al rumbo de colocación" = al arco rival (misma referencia que el
-            // strafe lateral que YA anda en banco).
-            {
-                // Sin heading válido NO se gira a ciegas: sale al retroceso (fallback recto).
-                const bool sin_heading = !g_aio.heading_valid;
-                const bool orientado   = g_aio.heading_valid &&
-                                         (fabsf(g_aio.heading_error_deg) <= AMIX_TOL_ORIENTAR_DEG);
-                if (orientado || sin_heading ||
-                    (millis() - millis_inicio_estado >= AMIX_T_ORIENTAR_SAFETY)) {
-                    parar();
-                    millis_inicio_estado = millis();
-                    estado = Estado::PATEANDO_atras;     // mirando al oponente → vuelve para atrás
-                } else {
-                    // BANG-BANG: girar al PISO en el sentido que lleva heading_error → 0.
-                    // CORRECCIÓN DE BANCO (Virginia 2026-06-21): con el mapeo opuesto el equilibrio del
-                    // bang-bang quedaba a 180° → el arquero terminaba mirando a NUESTRO arco. Invertido el
-                    // sentido LOCAL (acá: error>0 → +1), el equilibrio pasa a 0° = mirando al OPONENTE.
-                    // Se corrige ACÁ y NO con -DARQMIX_FLIP_GIRO_ALINEAR a propósito: ese flag TAMBIÉN invierte
-                    // el giro de alineación pre-patada (ALINEAR_arco_opp, por cámara) y el retroceso, que pueden
-                    // estar bien. Este es el fix AISLADO del orientar.
-                    const int sentido = (g_aio.heading_error_deg > 0.0f) ? +1 : -1;
-                    girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
-                }
+            // La patada dejó al robot GIRADO. Lo re-orienta a quedar DE FRENTE al ARCO CONTRARIO girando
+            // DESPACIO (orientar_de_frente_tick). Usa la CÁMARA (goal_opp) como referencia ABSOLUTA al arco
+            // —el giroscopio derivaba su cero y lo dejaba mirando a un lado—, con fallback al giroscopio si
+            // no ve el arco. Cuando queda de frente (o safety) → retrocede.
+            if (orientar_de_frente_tick() ||
+                (millis() - millis_inicio_estado >= AMIX_T_ORIENTAR_SAFETY)) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::PATEANDO_atras;     // de frente al arco contrario → vuelve para atrás
             }
             break;
 
@@ -495,23 +496,15 @@ void amix_fsm_tick() {
             }
             break;
 
-        // (2) RE-ORIENTAR al FRENTE con el BNO (heading→0), MISMO bang-bang que orientar_frente, pero al
-        //     terminar queda QUIETO (esperar_quieto) → así "siempre que se queda quieto, mira al frente".
+        // (2) Quedar DE FRENTE al ARCO CONTRARIO antes de quedar quieto: gira DESPACIO hacia el arco
+        //     (orientar_de_frente_tick, MISMO criterio que orientar_frente) → así "siempre que se queda
+        //     quieto, mira de frente al arco contrario". Cámara = referencia absoluta; giroscopio = fallback.
         case Estado::acomodar_orientar:
-            {
-                const bool sin_heading = !g_aio.heading_valid;
-                const bool orientado   = g_aio.heading_valid &&
-                                         (fabsf(g_aio.heading_error_deg) <= AMIX_TOL_ORIENTAR_DEG);
-                if (orientado || sin_heading ||
-                    (millis() - millis_inicio_estado >= AMIX_T_ORIENTAR_SAFETY)) {
-                    parar();
-                    millis_inicio_estado = millis();
-                    estado = Estado::esperar_quieto;             // quieto, mirando al frente
-                } else {
-                    // Mismo sentido corregido en banco que orientar_frente (error>0 → +1).
-                    const int sentido = (g_aio.heading_error_deg > 0.0f) ? +1 : -1;
-                    girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
-                }
+            if (orientar_de_frente_tick() ||
+                (millis() - millis_inicio_estado >= AMIX_T_ORIENTAR_SAFETY)) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::esperar_quieto;             // quieto, de frente al arco contrario
             }
             break;
     }

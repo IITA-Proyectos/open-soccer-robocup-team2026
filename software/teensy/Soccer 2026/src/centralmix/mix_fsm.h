@@ -50,6 +50,7 @@ enum class Estado {
     // hacia el centro → después GIRANDO. Se ejecuta UNA vez (ningún estado vuelve a él).
     KICKOFF_SEEK,
     ESPERAR,
+    TEST, 
 };
 
 // Inicializa la FSM: estado = KICKOFF_SEEK (primer estado), sella timers (millis()). Llamar

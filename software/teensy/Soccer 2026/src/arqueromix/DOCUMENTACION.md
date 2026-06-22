@@ -466,8 +466,10 @@ esperando la pelota. Es la patrulla, **simplificada**.
 
 - **Comportamiento:** homing igual → quieto esperando → si ve la pelota LEJOS y DESCENTRADA, se mueve
   lateral para **enfrentarla** (mismo seguimiento por ángulo) → si está ALINEADA y lejos, **quieto** →
-  si está CERCA, **patea** (igual que el default). El rebote por arco/línea y la profundidad por línea
-  **siguen activos** (seguridades: si derivó, vuelve a su lugar).
+  si está CERCA, **patea** (igual que el default). La **profundidad por línea** sigue activa (safety,
+  empuje al frente si derivó al área). **FIX banco 2026-06-21:** el **rebote lateral** (salir de línea)
+  en quieto SOLO se dispara si está **siguiendo la pelota** — antes, en cancha vacía, las **líneas del
+  piso** lo hacían rebotar de costado (oscilaba sin estar quieto). Ahora con la pelota fuera, no rebota.
 - **Implementación (mínima, sin estados nuevos):** flag `AMIX_QUIETO` (`-DARQMIX_QUIETO`). En `moverce_*`
   el strafe del tope se **gatea**: en quieto solo strafea si está siguiendo una pelota descentrada
   (`haypelota && fuera de commit && !ball_alineada && !ball_para_despejar`); si no, queda quieto (por el

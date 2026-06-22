@@ -200,12 +200,15 @@ void amix_fsm_tick() {
                 // BORDE LATERAL: por ARCO si la cámara lo VE (rebota al llegar al borde del arco); por
                 // LÍNEA si NO lo ve (fallback → siempre patrulla). Gateado por commit. Borde der → rebota IZQ.
                 const bool en_borde = g_aio.goal_own_visible ? borde_arco_der() : linea();
-                if (millis() >= s_commit_until_ms && en_borde) {
+                // MODO QUIETO: el rebote lateral SOLO si está siguiendo la pelota (si no, el arquero
+                // quieto NO debe moverse de costado — las líneas de la cancha NO lo deben hacer rebotar).
+                if (millis() >= s_commit_until_ms && en_borde &&
+                    (!AMIX_QUIETO || (haypelota && !ball_alineada()))) {
                     parar();
                     millis_inicio_estado = millis();
                     estado = Estado::salir_linea_izq;   // sale a la IZQ → moverce_izquierda
                 }
-            } else if (linea()) {                       // FALLBACK TOTAL (-DARQMIX_PATRULLA_LINEA): solo LÍNEA
+            } else if (linea() && (!AMIX_QUIETO || (haypelota && !ball_alineada()))) {  // FALLBACK total; QUIETO: rebote solo si sigue pelota
                 parar();
                 millis_inicio_estado = millis();
                 // En COMMIT (recién salió de la línea IZQ): si vuelve a ver línea es la MISMA, NO
@@ -251,12 +254,15 @@ void amix_fsm_tick() {
                 }
                 // BORDE LATERAL: por ARCO si lo VE; por LÍNEA si NO (fallback). Borde izq → rebota DER.
                 const bool en_borde = g_aio.goal_own_visible ? borde_arco_izq() : linea();
-                if (millis() >= s_commit_until_ms && en_borde) {
+                // MODO QUIETO: el rebote lateral SOLO si está siguiendo la pelota (si no, el arquero
+                // quieto NO debe moverse de costado — las líneas de la cancha NO lo deben hacer rebotar).
+                if (millis() >= s_commit_until_ms && en_borde &&
+                    (!AMIX_QUIETO || (haypelota && !ball_alineada()))) {
                     parar();
                     millis_inicio_estado = millis();
                     estado = Estado::salir_linea_der;   // sale a la DER → moverce_derecha
                 }
-            } else if (linea()) {                       // FALLBACK TOTAL (-DARQMIX_PATRULLA_LINEA): solo LÍNEA
+            } else if (linea() && (!AMIX_QUIETO || (haypelota && !ball_alineada()))) {  // FALLBACK total; QUIETO: rebote solo si sigue pelota
                 parar();
                 millis_inicio_estado = millis();
                 // En COMMIT (recién salió de la línea DER): si vuelve a ver línea es la MISMA →

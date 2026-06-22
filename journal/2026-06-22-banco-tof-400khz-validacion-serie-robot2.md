@@ -6,7 +6,7 @@ requested-by: "Gustavo Viollaz (@gviollaz)"
 ai-assisted: true
 tipo: banco-validacion
 toca-competencia: NO (no se tocó firmware; solo lectura de telemetría por USB)
-status: T1–T4 ✅ EFECTUADOS Y PASADOS (robot2, Gustavo en la placa) · T5 parcial (400 medido) · T6/T7 opcionales
+status: T1–T5 ✅ EFECTUADOS Y PASADOS (robot2, Gustavo en la placa) · T6/T7 opcionales
 ---
 
 # Validación en banco del bus ToF a 400 kHz — robot2
@@ -44,9 +44,11 @@ física poniendo un objetivo frente a cada sensor:
   continuo** (149.7° → −132.1°, ~78° efectivos para un giro a ojo de "90°"), manejó bien el wrap de
   ±180°, y **se asentó estable −132.1° por 12 s sin deriva**. `valid=True` todo el tiempo. **NO está
   congelado.** Convención confirmada: **izquierda = heading sube (CCW+)**.
-- **T5 — loop 400 vs 100: parcial.** A **400 kHz: 150.511 pasadas/s** (15 s, escena con obstáculos
-  enfrente → los ToF rangean y bloquean). Falta el lado **100 kHz** (flashear `top_robot2_pri_slowbus`,
-  misma escena) para el A/B. **PENDIENTE.**
+- **T5 — loop 400 vs 100: ✅** mismo método/escena: **400 kHz = 150.511 pasadas/s** vs
+  **100 kHz = 71.947 pasadas/s** → el bus rápido da **~2,1× más throughput de loop**. O sea el
+  `getRangingData()` de los ToF era el **costo dominante** del lazo (a 100 kHz pasaba ~70% del tiempo
+  bloqueado leyendo ToF); a 400 kHz se libera. Es la justificación cuantificada del cambio. (Son
+  *pasadas de loop*, no la tasa de control —el snapshot va por timer @100 Hz— pero mide el ahogo por I/O.)
 - **T6 (soak 3–5 min) y T7 (con motores): no corridos** (opcionales).
 
 ## Veredicto
@@ -65,6 +67,5 @@ validó antes a nivel "anda"; su detalle por-sensor queda pendiente si se quiere
    Confirmar que es eso y no una caída real.
 
 ## Qué sigue
-- **T5 lado 100:** `pio run -e top_robot2_pri_slowbus -t upload`, misma escena, medir pasadas/s y comparar.
-  Luego volver a `top_robot2_pri` (400, competencia).
+- ✅ T5 hecho (400=150.511 vs 100=71.947 pasadas/s, ~2,1×). Robot2 vuelto a `top_robot2_pri` (400, competencia).
 - Opcional: T6 soak, T7 con motores, validación por-sensor de robot1, y el centinela del 2º BNO.

@@ -141,8 +141,9 @@ mapeo índice→posición en `journal/2026-06-22-banco-tof-400khz-validacion-ser
 - **T3 ✅** sin caídas/stale en ventanas de varios minutos.
 - **T4 ✅** el heading sigue el giro suave, maneja el wrap ±180°, se asienta sin deriva, `valid=True`
   (NO congelado). Convención: izquierda = heading sube (CCW+).
-- **T5 (parcial):** 400 kHz = **150.511 pasadas/s** (15 s, escena con obstáculos). Lado 100 kHz
-  (`top_robot2_pri_slowbus`) PENDIENTE para el A/B.
+- **T5 ✅** 400 kHz = **150.511** vs 100 kHz = **71.947 pasadas/s** → **~2,1× más throughput de loop**
+  con el bus rápido (el `getRangingData()` era el costo dominante del lazo, ~70% del tiempo bloqueado a
+  100 kHz). Justificación cuantificada del cambio.
 - **Items abiertos (NO del bus):** centinela 2º BNO = 0.00 (backup sin heading real); cámaras/DOWN
   caídos en las lecturas finales (probable solo-USB alimentando la TOP).
 

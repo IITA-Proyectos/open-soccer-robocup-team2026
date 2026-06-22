@@ -172,8 +172,8 @@ void amix_fsm_tick() {
                 const bool safety            = dt >= AMIX_T_INICIO_AVANCE_SAFETY;
                 if ((impulso_minimo_ok && ya_salio_de_linea) || safety) {
                     millis_inicio_estado = millis();
-                    // QUIETO: va a esperar parado (NO patrulla). Default: empieza a patrullar.
-                    estado = AMIX_QUIETO ? Estado::esperar_quieto : Estado::moverce_derecha;
+                    // QUIETO: ANTES de quedar quieto se ACOMODA (despega línea + orienta al frente). Default: patrulla.
+                    estado = AMIX_QUIETO ? Estado::acomodar_linea : Estado::moverce_derecha;
                 }
             }
             break;
@@ -422,8 +422,8 @@ void amix_fsm_tick() {
                     (millis() - millis_inicio_estado >= AMIX_T_ATRAS_SAFETY)) {  // 4000 ms safety
                     parar();
                     millis_inicio_estado = millis();
-                    // QUIETO: ya volvió atrás → queda quieto (NO se vuelve a acomodar). Default: avanza/patrulla.
-                    estado = AMIX_QUIETO ? Estado::esperar_quieto : Estado::avanzar_despues_de_patear;
+                    // QUIETO: ANTES de quedar quieto se ACOMODA (despega línea + orienta al frente). Default: avanza/patrulla.
+                    estado = AMIX_QUIETO ? Estado::acomodar_linea : Estado::avanzar_despues_de_patear;
                 }
             }
             break;
@@ -464,6 +464,51 @@ void amix_fsm_tick() {
                     // Se corrige ACÁ y NO con -DARQMIX_FLIP_GIRO_ALINEAR a propósito: ese flag TAMBIÉN invierte
                     // el giro de alineación pre-patada (ALINEAR_arco_opp, por cámara) y el retroceso, que pueden
                     // estar bien. Este es el fix AISLADO del orientar.
+                    const int sentido = (g_aio.heading_error_deg > 0.0f) ? +1 : -1;
+                    girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
+                }
+            }
+            break;
+
+        // ----------------------------------------------------
+        // --- MODO QUIETO: ACOMODARSE antes de quedar quieto (pedido Virginia 2026-06-22) ---
+        // (1) DESPEGARSE de la línea (no quedar quieto sobre la línea / dentro del área).
+        case Estado::acomodar_linea:
+            // Si NO toca línea (o DOWN no fresco, o safety) → ya está → corregir la ORIENTACIÓN.
+            if (!linea() || !g_aio.down_link_fresh ||
+                (millis() - millis_inicio_estado >= AMIX_T_ACOMODAR_LINEA_SAFETY)) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::acomodar_orientar;
+            } else {
+                // Despegarse "un poco" hacia el lado OPUESTO a la línea. line_angle_deg: 0=frente, >0=der,
+                // <0=izq, ±180=atrás (convención DOWN — A VALIDAR; signo flippable con AMIX_ACOMODAR_LINEA_SIGN).
+                // Línea ATRÁS → AVANZAR; línea a la DERECHA → strafe IZQ; a la IZQUIERDA → strafe DER.
+                const float la = g_aio.line_angle_deg * AMIX_ACOMODAR_LINEA_SIGN;
+                if (fabsf(la) >= AMIX_ACOMODAR_ATRAS_DEG) {
+                    avanzar();                                   // línea atrás → despegarse al frente
+                } else if (la > 0.0f) {
+                    aiproporcional(AMIX_PD_BASE, error);         // línea a la derecha → strafe izquierda
+                } else {
+                    adproporcional(AMIX_PD_BASE, error);         // línea a la izquierda → strafe derecha
+                }
+            }
+            break;
+
+        // (2) RE-ORIENTAR al FRENTE con el BNO (heading→0), MISMO bang-bang que orientar_frente, pero al
+        //     terminar queda QUIETO (esperar_quieto) → así "siempre que se queda quieto, mira al frente".
+        case Estado::acomodar_orientar:
+            {
+                const bool sin_heading = !g_aio.heading_valid;
+                const bool orientado   = g_aio.heading_valid &&
+                                         (fabsf(g_aio.heading_error_deg) <= AMIX_TOL_ORIENTAR_DEG);
+                if (orientado || sin_heading ||
+                    (millis() - millis_inicio_estado >= AMIX_T_ORIENTAR_SAFETY)) {
+                    parar();
+                    millis_inicio_estado = millis();
+                    estado = Estado::esperar_quieto;             // quieto, mirando al frente
+                } else {
+                    // Mismo sentido corregido en banco que orientar_frente (error>0 → +1).
                     const int sentido = (g_aio.heading_error_deg > 0.0f) ? +1 : -1;
                     girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
                 }

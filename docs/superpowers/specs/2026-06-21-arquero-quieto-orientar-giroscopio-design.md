@@ -84,6 +84,18 @@ atrás (`frenar_atras`, `AMIX_FRENO_PATADA_PWM=200`, plugging) por `AMIX_T_FRENO
 matar el impulso, y recién después la secuencia post-patada (pausa → orientar → retroceder). Patrulla
 intacta (gateado por `AMIX_QUIETO`).
 
+**Acomodarse antes de quedar quieto (banco Virginia 2026-06-22):** dos estados nuevos en el flujo
+ANTES de `esperar_quieto` (tras el homing Y tras el retroceso), para que al quedar quieto SIEMPRE
+quede despegado de la línea y mirando al frente:
+- **`acomodar_linea`:** si toca línea (lateral/atrás) se mueve "un poco" al lado opuesto (atrás→avanzar;
+  der→strafe izq; izq→strafe der, por `line_angle_deg`). ⚠️ Convención de `line_angle` no validada →
+  flag `-DARQMIX_FLIP_ACOMODAR_LINEA`. Sale al `!linea()` o safety 1,5 s.
+- **`acomodar_orientar`:** re-orienta al frente con el BNO (bang-bang heading→0, igual que `orientar_frente`)
+  → `esperar_quieto`.
+
+Flujo quieto: `PATEANDO_atras → acomodar_linea → acomodar_orientar → esperar_quieto` (y el homing
+`inicio_avanzar → acomodar_linea → ...` también).
+
 **Pendiente de borde total:** queda `inicio_lateral_izq` (strafe izq 1.6 s a ciegas al arranque)
 sin chequeo de línea. No priorizado; siguiente paso si se quiere borde 100 %.
 

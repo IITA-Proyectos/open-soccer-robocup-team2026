@@ -190,6 +190,20 @@ constexpr unsigned long AMIX_T_INICIO_LATERAL = 1600;  // cuánto se mueve a la 
 // seguir lateral (se metía al área), AVANZA al frente. Para despegarse BIEN del borde, sigue avanzando ESTE
 // tiempo DESPUÉS de dejar de ver la línea (avance "un poco más grande"). Subir si queda pegado al borde.
 constexpr unsigned long AMIX_T_BUSCAR_AVANCE = 400;
+
+// ACOMODARSE antes de quedar quieto (2 estados nuevos, pedido Virginia 2026-06-22): (1) acomodar_linea =
+// si TOCA línea (lateral o atrás), despegarse "un poco" hacia el lado OPUESTO; (2) acomodar_orientar =
+// re-orientar al FRENTE con el BNO (heading→0, mismo bang-bang que orientar_frente). Así, cuando queda
+// quieto, NUNCA está sobre la línea y SIEMPRE mira al frente. Van tras el homing Y tras el retroceso.
+constexpr float         AMIX_ACOMODAR_ATRAS_DEG      = 90.0f;  // |line_angle| >= esto → línea ATRÁS → AVANZAR; si no → strafe lateral OPUESTO
+constexpr unsigned long AMIX_T_ACOMODAR_LINEA_SAFETY = 1500;   // tope despegándose de la línea (no quedarse atascado)
+// SIGNO del lado de la línea: la convención de line_angle del DOWN NO está validada en banco. Si en
+// acomodar_linea el arquero despega para el lado EQUIVOCADO → invertir con -DARQMIX_FLIP_ACOMODAR_LINEA.
+#ifdef ARQMIX_FLIP_ACOMODAR_LINEA
+constexpr float AMIX_ACOMODAR_LINEA_SIGN = -1.0f;
+#else
+constexpr float AMIX_ACOMODAR_LINEA_SIGN = +1.0f;
+#endif
 // ORIENTAR AL ARCO RIVAL tras el despeje (SOLO modo quieto). FASE 1 (pedido Virginia 2026-06-21): se
 // orienta por GIROSCOPIO (heading_error_deg → 0), NO por cámara (goal_opp se ensucia al girar y llega a
 // ~4 Hz). Control BANG-BANG con BANDA ANCHA (skill control-pid-zona-muerta): gira al piso

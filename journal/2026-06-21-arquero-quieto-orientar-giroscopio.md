@@ -143,6 +143,22 @@ abajo) — por eso se diseñó en fases y la Fase 1 quedó como bang-bang, no PI
   (pausa → orientar → retroceder). NO chequea línea (está sobre ella; corta por tiempo).
 - Knobs: `AMIX_FRENO_PATADA_PWM` (subir si igual se sale; bajar si rebota atrás) y `AMIX_T_FRENO_PATADA`.
 
+### Cuarta iteración 2026-06-22 (Virginia) — 2 estados de "ACOMODARSE" antes de quedar quieto
+
+Pedido: que ANTES de quedar quieto chequee y corrija, así **cuando se queda quieto SIEMPRE queda
+despegado de la línea y mirando al frente**. Dos estados nuevos, en el flujo ANTES de `esperar_quieto`
+(tras el homing **y** tras el retroceso):
+
+- **`acomodar_linea`:** si TOCA línea (lateral o atrás), se mueve "un poco" al lado OPUESTO para
+  despegarse. Lado por `line_angle_deg` (±180=atrás→avanzar; >0=der→strafe izq; <0=izq→strafe der).
+  ⚠️ La convención de `line_angle` del DOWN NO está validada → flag `-DARQMIX_FLIP_ACOMODAR_LINEA` si
+  despega para el lado equivocado. Safety `AMIX_T_ACOMODAR_LINEA_SAFETY=1500` ms. Sale al `!linea()`.
+- **`acomodar_orientar`:** re-orienta al frente con el BNO (mismo bang-bang heading→0 que `orientar_frente`,
+  banda `AMIX_TOL_ORIENTAR_DEG=8°`), luego → `esperar_quieto`.
+
+Flujo quieto: `... → PATEANDO_atras → acomodar_linea → acomodar_orientar → esperar_quieto`, y también
+`inicio_avanzar → acomodar_linea → ...` (el homing también termina acomodado). Compila SUCCESS.
+
 ## Plan de banco (Fases 1 + 2a)
 
 - **Orientar (Fase 1):** ¿queda mirando al **oponente** ±8° sin serpentear? Si serpentea → subir

@@ -468,9 +468,8 @@ esperando la pelota. Es la patrulla, **simplificada**.
   SOLO en quieto, pedido Virginia) → homing (atrás hasta la línea → adelante para salir) → **QUIETO**
   esperando → si ve la pelota DESCENTRADA, se mueve lateral para **enfrentarla** → si está ALINEADA (o no
   hay pelota), **quieto** → si está CERCA, **patea** (igual que el default) → tras patear: **gira LENTO
-  buscando con el BNO el PUNTO CERO** (`orientar_frente`, rumbo inicial donde miraba al arrancar, porque
-  la patada lo dejó girado al arco rival) → cuando se centra, **vuelve para atrás** (hasta la línea) →
-  **quieto** (NO se vuelve a acomodar).
+  buscando CENTRARSE con el ARCO RIVAL** (`orientar_frente`, mismo criterio/sentido que `ALINEAR_arco_opp`)
+  → cuando se centra, **vuelve para atrás** (hasta la línea) → **quieto** (NO se vuelve a acomodar).
 - **Implementación (ESTADO DEDICADO `esperar_quieto` — reescrito 2026-06-21).** El primer intento gateaba
   `moverce_*` con un flag, pero `moverce_*` arrastra el **rebote por línea** (oscilaba de costado con las
   líneas del piso) y la **profundidad por línea** (`goal_own_visible && linea()` → avanzar → en cancha

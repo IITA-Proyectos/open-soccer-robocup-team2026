@@ -173,20 +173,13 @@ constexpr float AMIX_TOL_CERCANIA_MM  = 250.0f; // DESPEJA si la distancia eucl�
 // ============================================================
 // MOVIMIENTO LATERAL INICIAL (SOLO modo quieto, pedido Virginia 2026-06-21): al GO, ANTES del homing,
 // el arquero se mueve un poco a la IZQUIERDA durante este tiempo y recién después va hacia atrás.
-constexpr unsigned long AMIX_T_INICIO_LATERAL = 900;  // cuánto se mueve a la izquierda al arrancar (a ciegas). "un poco".
-// MIRAR AL FRENTE tras el despeje (SOLO modo quieto, pedido Virginia 2026-06-21): tras patear (que lo
-// dejó GIRADO apuntando al arco rival), gira LENTO buscando con el BNO el PUNTO CERO (el rumbo inicial,
-// heading_error≈0, donde miraba al arrancar). Cuando se centra → vuelve para atrás → quieto.
-constexpr float AMIX_TOL_FRENTE_DEG = 10.0f;  // |heading_error| <= esto → ya mira al frente (deja de girar)
-constexpr unsigned long AMIX_T_ORIENTAR_SAFETY = 3000;  // tope girando LENTO: si no logra enderezarse, sigue igual
-constexpr int AMIX_GIRO_FRENTE_PWM = 70;  // giro LENTO para buscar el cero (más bajo que el de alineación=90). Si NO gira (zona muerta), subir.
-// Sentido del giro para enderezarse. ⚠️ Si gira para el lado EQUIVOCADO (se aleja del frente / spinea),
-// flashear con -DARQMIX_FLIP_GIRO_FRENTE.
-#ifdef ARQMIX_FLIP_GIRO_FRENTE
-constexpr int AMIX_GIRO_FRENTE_SIGN = -1;
-#else
-constexpr int AMIX_GIRO_FRENTE_SIGN = +1;
-#endif
+constexpr unsigned long AMIX_T_INICIO_LATERAL = 1600;  // cuánto se mueve a la izquierda al arrancar (a ciegas). "un poco".
+// CENTRARSE CON EL ARCO DEL OPONENTE tras el despeje (SOLO modo quieto, pedido Virginia 2026-06-21): tras
+// patear (que lo dejó GIRADO), gira LENTO buscando CENTRARSE con el ARCO RIVAL (goal_opp ≈ 0, MISMO criterio
+// y sentido que ALINEAR_arco_opp: usa AMIX_TOL_ARCO_OPP_DEG + AMIX_GIRO_ALINEAR_SIGN). Cuando se centra →
+// vuelve para atrás → quieto.
+constexpr unsigned long AMIX_T_ORIENTAR_SAFETY = 3000;  // tope girando LENTO: si no logra centrarse, sigue igual
+constexpr int AMIX_GIRO_FRENTE_PWM = 70;  // giro LENTO para centrarse al arco (más bajo que el de alineación=90). Si NO gira (zona muerta), subir.
 // INICIO — homing al área chica (banco Virginia 2026-06-21): retrocede hasta ver la línea del
 // área, avanza un poco a ciegas, y recién ahí patrulla.
 // ⚠️ SAFETY a 50 s TEMPORAL (pedido Virginia, para observar el retroceso): después bajar a ~4 s.

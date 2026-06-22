@@ -382,22 +382,22 @@ void amix_fsm_tick() {
             break;
 
         // ----------------------------------------------------
-        // --- MODO QUIETO: girar LENTO buscando el PUNTO CERO (BNO) tras el despeje (pedido Virginia 2026-06-21) ---
+        // --- MODO QUIETO: girar LENTO buscando CENTRARSE con el ARCO RIVAL tras el despeje (pedido Virginia 2026-06-21) ---
         case Estado::orientar_frente:
-            // La patada dejó al robot GIRADO (alineó al arco rival). Gira LENTO buscando con el BNO el
-            // punto CERO (rumbo inicial, heading_error≈0, donde miraba al arrancar). Cuando se CENTRA →
-            // vuelve para atrás (PATEANDO_atras) → quieto.
-            if (!g_aio.heading_valid ||
-                fabsf(g_aio.heading_error_deg) <= AMIX_TOL_FRENTE_DEG ||
+            // La patada dejó al robot GIRADO. Gira LENTO buscando CENTRARSE con el ARCO RIVAL (goal_opp ≈ 0,
+            // MISMO criterio que ALINEAR_arco_opp). Cuando se CENTRA → vuelve para atrás (PATEANDO_atras) → quieto.
+            if (alineado_al_arco_opp() ||
                 (millis() - millis_inicio_estado >= AMIX_T_ORIENTAR_SAFETY)) {
                 parar();
                 millis_inicio_estado = millis();
-                estado = Estado::PATEANDO_atras;     // ya centrado al frente → vuelve para atrás
+                estado = Estado::PATEANDO_atras;     // ya centrado al arco rival → vuelve para atrás
             } else {
-                // gira LENTO para reducir |heading_error| → 0 (enderezarse al frente). ⚠️ SENTIDO a verificar
-                // en banco (-DARQMIX_FLIP_GIRO_FRENTE si gira para el lado equivocado).
-                const int sentido = (g_aio.heading_error_deg > 0.0f) ? -1 : +1;
-                girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_FRENTE_SIGN);
+                // gira LENTO hacia el arco rival si lo VE; si NO lo ve, busca girando a un lado. MISMO
+                // sentido que ALINEAR_arco_opp (AMIX_GIRO_ALINEAR_SIGN; -DARQMIX_FLIP_GIRO_ALINEAR si va al revés).
+                const int sentido = g_aio.goal_opp_visible
+                                    ? ((g_aio.goal_opp_angle > 0.0f) ? +1 : -1)
+                                    : +1;
+                girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
             }
             break;
     }

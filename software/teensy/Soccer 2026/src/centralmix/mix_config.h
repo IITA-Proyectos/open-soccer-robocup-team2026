@@ -153,6 +153,17 @@ constexpr unsigned long MIX_KICK_OTOS_FRESH_MS = 300;  // si la pose OTOS está 
 // piso conservando signo, DESPUÉS del escalado). Medir si la trasera gira durante la patada.
 constexpr int MIX_KICK_REAR_FLOOR   = 0;    // 0 = off; típico ON = 107
 
+// FEEDFORWARD de balance del empuje — corrige una DERIVA CONSTANTE (banco 2026-06-22: la patada se
+// va SIEMPRE a la DERECHA porque a M2/delantera-DER le falta potencia). Un heading-hold P solo NO
+// cancela un sesgo constante (un control proporcional deja error de RÉGIMEN: corrige un poco y se
+// queda con el resto → por eso "siempre" se desvía igual). Este trim se lo saca de RAÍZ, sin
+// latencia: trasvasa PWM de la delantera IZQ (M1) a la DER (M2).
+//   + (positivo) → menos a M1, MÁS a M2 → corrige deriva a la DERECHA (el caso de banco).
+//   - (negativo) → al revés, corrige deriva a la IZQUIERDA.
+// Titular en banco: subir hasta que vaya derecho; si se pasa para el otro lado, bajar. El
+// heading-hold del OTOS queda ENCIMA para el resto (el trim mata el sesgo fijo, el OTOS el variable).
+constexpr int MIX_KICK_FWD_TRIM     = 20;   // PWM trasvasado M1→M2 (0 = sin trim). Banco: titular.
+
 // Retroceso de patada (PWM crudo por motor) — port 1:1 del 2025 (freno/recoil tras el empuje).
 constexpr int MIX_PATAD_M1 = 250;  // patadM1
 constexpr int MIX_PATAD_M2 = 170;  // patadM2

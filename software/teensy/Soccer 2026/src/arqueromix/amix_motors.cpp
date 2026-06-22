@@ -188,6 +188,23 @@ void patear_atras() {
     amix_set_motor(2, 0);
 }
 
+// retroceder_rumbo_opp() — retroceso (como patear_atras) PERO con control PROPORCIONAL de rumbo para
+// MANTENER el frente apuntando al ARCO RIVAL (goal_opp). Pedido Virginia 2026-06-21 (la inercia tras la
+// alineación lo desalineaba). El término de rotación `rot` (∝ ángulo al arco, con BANDA MUERTA y TOPE —
+// guía skill control-pid-zona-muerta) se SUMA a las 3 ruedas (patrón girar); la autoridad de rotación
+// sale del desbalance M1/M2 (el M3 queda bajo su piso). Mismo signo que ALINEAR_arco_opp.
+void retroceder_rumbo_opp(float goal_opp_angle, bool goal_opp_visible) {
+    int rot = 0;
+    if (goal_opp_visible && fabsf(goal_opp_angle) > AMIX_DEADBAND_OPP_DEG) {  // banda muerta: no perseguir ruido
+        rot = (int)(AMIX_KP_RUMBO_OPP * goal_opp_angle) * AMIX_GIRO_ALINEAR_SIGN;
+        if (rot >  AMIX_ROT_MAX) rot =  AMIX_ROT_MAX;   // tope (skill: no subir el clamp para "ganarle")
+        if (rot < -AMIX_ROT_MAX) rot = -AMIX_ROT_MAX;
+    }
+    amix_set_motor(0, -AMIX_ATRAS + rot);   // M1 (atrás + rotación)
+    amix_set_motor(1, +AMIX_ATRAS + rot);   // M2 (atrás + rotación)
+    amix_set_motor(2,  0          + rot);   // M3 (rotación)
+}
+
 // retroceder_inicio() — retroceso del HOMING de inicio. Mismo patrón que patear_atras
 // (M1=-, M2=+ = hacia ATRÁS) pero con PWM propio y signo flippable. Si al GO el robot va hacia
 // ADELANTE en vez de atrás, -DARQMIX_FLIP_INICIO_RETRO invierte el sentido.

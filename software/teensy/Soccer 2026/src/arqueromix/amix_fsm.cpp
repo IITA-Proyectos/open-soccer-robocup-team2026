@@ -360,7 +360,10 @@ void amix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::PATEANDO_atras:                // L1184-1195 (retroceso recto)
-            patear_atras();                          // M1=-AMIX_ATRAS, M2=+AMIX_ATRAS, M3=0 (recto atrás)
+            // QUIETO: retrocede MANTENIENDO el frente al ARCO RIVAL (control proporcional — la inercia
+            // tras la alineación lo desalineaba). Patrulla: retroceso recto (sin cambios).
+            if (AMIX_QUIETO) retroceder_rumbo_opp(g_aio.goal_opp_angle, g_aio.goal_opp_visible);
+            else             patear_atras();         // M1=-AMIX_ATRAS, M2=+AMIX_ATRAS, M3=0 (recto atrás)
             // 2025: SIN timeout, sale sólo al ver blanco. AGREGADO 2026: timeout de
             // seguridad para no colgarse si nunca llega a la línea. <MEJORA 2026>
             if (linea() ||

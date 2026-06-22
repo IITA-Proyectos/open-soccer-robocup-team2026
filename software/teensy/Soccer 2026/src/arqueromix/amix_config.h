@@ -180,6 +180,14 @@ constexpr unsigned long AMIX_T_INICIO_LATERAL = 1600;  // cuánto se mueve a la 
 // vuelve para atrás → quieto.
 constexpr unsigned long AMIX_T_ORIENTAR_SAFETY = 3000;  // tope girando LENTO: si no logra centrarse, sigue igual
 constexpr int AMIX_GIRO_FRENTE_PWM = 70;  // giro LENTO para centrarse al arco (más bajo que el de alineación=90). Si NO gira (zona muerta), subir.
+// RETROCESO CON RUMBO al arco rival (SOLO modo quieto, pedido Virginia 2026-06-21: al frenar la
+// alineación, la INERCIA lo desalineaba; ahora el retroceso MANTIENE el frente al arco rival con un
+// control PROPORCIONAL). Guía skill control-pid-zona-muerta: P con BANDA MUERTA + TOPE (sin D contra
+// actuador cuantizado; I sólo si deriva). La autoridad de rotación sale del desbalance M1/M2 (el M3
+// queda bajo su piso). Valores de arranque ~ los validados del arquero (kp 2.0, trim_max 30).
+constexpr float AMIX_KP_RUMBO_OPP    = 2.0f;  // ganancia proporcional (PWM por grado de error al arco rival). Subir si no alcanza a corregir; bajar si serpentea.
+constexpr float AMIX_DEADBAND_OPP_DEG = 5.0f; // banda muerta: |áng al arco| < esto → corrección 0 (no perseguir ruido)
+constexpr int   AMIX_ROT_MAX          = 30;   // tope de la corrección de rotación (PWM). Sumado al retroceso M1/M2.
 // INICIO — homing al área chica (banco Virginia 2026-06-21): retrocede hasta ver la línea del
 // área, avanza un poco a ciegas, y recién ahí patrulla.
 // ⚠️ SAFETY a 50 s TEMPORAL (pedido Virginia, para observar el retroceso): después bajar a ~4 s.

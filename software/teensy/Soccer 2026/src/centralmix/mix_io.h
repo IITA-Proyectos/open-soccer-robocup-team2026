@@ -57,6 +57,9 @@ struct MixIO {
                                      // Equivale al 'error' del control de rumbo 2025.
     float otos_heading_deg = 0.0f;   // heading CRUDO del OTOS (DOWN), SIEMPRE disponible para
                                      // diagnóstico / A-B aunque la fuente activa sea BNO.
+    uint8_t otos_confidence = 0;     // salud del OTOS reportada por DOWN: 100 = los 2 OTOS sanos,
+                                     // 60 = uno solo, 0 = ninguno (no confiar). Lo usa la patada
+                                     // recta para decidir si corrige el rumbo con el OTOS.
 
     // ---- Línea (de DOWN; ver mix_config umbrales) ----
     bool    line_present = false;    // ¿hay línea presente? (con histéresis de DOWN)
@@ -76,7 +79,10 @@ struct MixIO {
 
     // Frescura de enlaces (rx-watchdog liviano; lo mantiene mix_comm).
     unsigned long t_last_top_frame_ms  = 0; // último WORLD_SNAPSHOT aplicado
-    unsigned long t_last_down_frame_ms = 0; // último frame DOWN aplicado
+    unsigned long t_last_down_frame_ms = 0; // último frame DOWN aplicado (línea O pose O vel)
+    unsigned long t_last_otos_pose_ms  = 0; // último Pose2D del OTOS aplicado (frescura ESPECÍFICA
+                                            // de la pose; t_last_down_frame_ms también sube con la
+                                            // línea, así que NO sirve para "¿llegó pose OTOS?").
     bool top_link_fresh  = false;           // ¿llegó snapshot de TOP recientemente?
     bool down_link_fresh = false;           // ¿llegó frame de DOWN recientemente?
 };

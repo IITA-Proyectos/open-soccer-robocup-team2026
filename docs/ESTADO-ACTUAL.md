@@ -44,6 +44,14 @@ tipo: indice-operacional
 > el `centrar_*` casi-strafe) hacia el centro → luego búsqueda por giro. Tuneable `mix_config.h`
 > (`MIX_KICKOFF_ARC_*`). Va en TODAS las builds del centralmix → flashear `central_robot1_mix_bno`.
 > Sin compilar/banco → **TASK-116**. Journal: `journal/2026-06-21-centralmix-kickoff-medialuna.md`.
+>
+> **+ PATADA RECTA Y FUERTE con OTOS (2026-06-21, pedido Elías):** `avanzar_patear` dejó de ser la
+> rampa lazo-abierto del 2025 (curvaba). Ahora: empuje **fuerte/rápido** (arranca sobre el piso del
+> motor, rampa a 255 en ~24 ms) + **RECTO con heading-hold del OTOS** (ancla `otos_heading_deg` al
+> iniciar y corrige el giro, clampeado; usa el OTOS LOCAL de DOWN, independiente del BNO del snapshot).
+> Tuning `mix_config.h` (`MIX_KICK_*`). + **debug print** USB 115200 en `main_centralmix.cpp` (pelota /
+> heading / OTOS / arco / línea / árbitro). **Compilado ✅ (Claude), sin banco → TASK-117** (incluye el
+> signo de `MIX_KICK_HEADING_KP`). Journal: `journal/2026-06-21-centralmix-patada-recta-otos.md`.
 
 > **📚 TRES SKILLS NUEVAS — ToF, cinemática omni-3, cámaras N6 (2026-06-21, doc-only, sin tocar firmware):**
 > Workflow de investigación paralela (web best-practices + lectura de código anclada) + plantilla de oro

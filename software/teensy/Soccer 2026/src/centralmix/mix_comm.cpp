@@ -209,6 +209,12 @@ void apply_down_line(const LineStatusV2& ls) {
 void apply_down_pose(const Pose2D& pose) {
     // otos_heading_deg = SIEMPRE disponible (crudo OTOS), para diagnóstico / A-B.
     g_io.otos_heading_deg = pose.heading_centideg / 100.0f;
+    // Salud + frescura ESPECÍFICA de la pose OTOS (la usa la patada recta para decidir
+    // si corrige el rumbo con el OTOS). confidence: 100/60/0 según OTOS sanos (ver
+    // src/down/comm_top.cpp). Se sella el timestamp acá, no en update_link_freshness,
+    // para distinguir "llegó pose" de "llegó línea" (ambas tocan t_last_down_frame_ms).
+    g_io.otos_confidence    = pose.confidence;
+    g_io.t_last_otos_pose_ms = millis();
 
 #ifdef MIX_HEADING_OTOS
     // Fuente activa = OTOS: heading_deg = crudo OTOS; validez por confidence.

@@ -32,7 +32,10 @@ DOWN (Serial1) ┴─ mix_comm ─► g_io ───►┤
   `central_robot1_mix_bno`, el de R1 con gyro); **OTOS** con `-DMIX_HEADING_OTOS` (sin gyro).
 - `mix_fsm.cpp` — port FIEL del switch de 24 estados del 2025; lee `g_io`, llama motores.
 - `mix_motors.cpp` — primitivas directas 2025 (`girar/avanzar/centrar/patear/...`) sobre
-  los pines R1 actuales (M1=2/5/3, M2=8/7/6, M3=11/12/4), sin mixer.
+  los pines R1 actuales (M1=2/5/3, M2=8/7/6, M3=11/12/4), sin mixer. La **patada**
+  (`avanzar_patear`) es ahora **fuerte/rápida + RECTA con heading-hold del OTOS** (no la rampa
+  lazo-abierto del 2025): ancla `otos_heading_deg` y corrige el giro. Tuning: `MIX_KICK_*` en
+  `mix_config.h`. Banco → **TASK-117** (incluye el signo de `MIX_KICK_HEADING_KP`).
 - `mix_config.h` — pines + constantes 2025 + selector de heading.
 
 ## TODO de banco (lo que falta validar — el equipo cierra HW)

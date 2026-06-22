@@ -130,6 +130,24 @@ Rollback a 100 kHz (si algo falla, o para el A/B de T5): `pio run -e top_robot2_
   (flashear `top_robot2_pri_slowbus`), y la próxima palanca de tiempo-real es bajar la frecuencia de
   round-robin o recortar payload del ToF, no subir el bus.
 
+## Resultados de banco — 2026-06-22 (robot2, Gustavo en la placa)
+
+Leído por serie HEADLESS (`tools/monitor-base/probe_top_serial.py`, solo lectura). Detalle completo +
+mapeo índice→posición en `journal/2026-06-22-banco-tof-400khz-validacion-serie-robot2.md`.
+
+- **T1 ✅** vivo, stream ~21 fps, `resync=0`.
+- **T2 ✅** los 4 ToF leen y responden; 3/4 clavaron objetivos a mano con **16/16 zonas, ±1 mm**
+  (frente/derecha/izquierda). El sensor "que no daba lecturas" estaba SANO (miraba al vacío).
+- **T3 ✅** sin caídas/stale en ventanas de varios minutos.
+- **T4 ✅** el heading sigue el giro suave, maneja el wrap ±180°, se asienta sin deriva, `valid=True`
+  (NO congelado). Convención: izquierda = heading sube (CCW+).
+- **T5 (parcial):** 400 kHz = **150.511 pasadas/s** (15 s, escena con obstáculos). Lado 100 kHz
+  (`top_robot2_pri_slowbus`) PENDIENTE para el A/B.
+- **Items abiertos (NO del bus):** centinela 2º BNO = 0.00 (backup sin heading real); cámaras/DOWN
+  caídos en las lecturas finales (probable solo-USB alimentando la TOP).
+
+**El bus a 400 kHz queda VALIDADO en banco (T1–T4) para robot2.**
+
 ---
 
 ## 6. Estado de adopción

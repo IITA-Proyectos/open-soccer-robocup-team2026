@@ -69,9 +69,14 @@ hacia su arco → pisa el borde del área y frena. **Ajustes de banco (Virginia,
   (`amix_comm` la refresca antes del FSM); si `down_link_fresh==false` (enlace caído >500 ms), el
   arquero NO retrocede a ciegas → frena. Sin dato de línea confiable, mejor quieto que salirse.
 
-**Pendiente de "consciencia de borde en TODO momento":** otros estados del quieto trasladan sin
-chequear línea (`inicio_lateral_izq` strafe 1.6 s a ciegas; strafe a la pelota en `esperar_quieto`).
-No abordados aún (para no arriesgar el strafe de juego); siguiente paso si se quiere borde total.
+**Consciencia de línea al BUSCAR la pelota (banco Virginia 2026-06-22):** el strafe lateral de
+`esperar_quieto` (enfrentar la pelota descentrada) no miraba la línea → se metía al área de
+costado. Fix: **si hay `linea()` (o DOWN no fresco) → `avanzar()`** al frente a buscarla en vez de
+seguir lateral (la aleja del fondo/área y la acerca a la pelota; apenas despega del borde vuelve al
+lateral). Decisión táctica de Virginia: aprovechar el borde para salir a buscar.
+
+**Pendiente de borde total:** queda `inicio_lateral_izq` (strafe izq 1.6 s a ciegas al arranque)
+sin chequeo de línea. No priorizado; siguiente paso si se quiere borde 100 %.
 
 **Fase 2b (pendiente, sólo si el recto curva en banco):** mientras retrocede, si el heading se
 tuerce más de ~15° → **frenar, re-orientar (Fase 1 bang-bang), reanudar**. Safety 4 s sobre el

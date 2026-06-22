@@ -113,6 +113,16 @@ abajo) — por eso se diseñó en fases y la Fase 1 quedó como bang-bang, no PI
   y el strafe a la pelota en `esperar_quieto`. Si se quiere consciencia total de borde, ese es el
   próximo paso (aparte, para no arriesgar el strafe de juego que ya anda).
 
+## Iteración de banco 2026-06-22 (Virginia) — consciencia de línea al BUSCAR la pelota
+
+- **Banco:** el arquero se metía al área **de costado** mientras BUSCABA la pelota: el strafe
+  lateral de `esperar_quieto` (para enfrentar la pelota descentrada) no chequeaba la línea.
+- **Fix (idea de Virginia):** en `esperar_quieto`, si la pelota está descentrada y **hay línea**
+  (`linea()`, o DOWN no fresco) → `avanzar()` al frente a buscarla en vez de seguir lateral. El
+  avance la aleja del fondo/área y la acerca a la pelota; apenas despega del borde (`!linea()`)
+  vuelve al strafe lateral. Cambio mínimo en una rama del estado.
+- **Por qué avanzar es seguro:** va hacia el campo (lejos del fondo), nunca hacia el área.
+
 ## Plan de banco (Fases 1 + 2a)
 
 - **Orientar (Fase 1):** ¿queda mirando al **oponente** ±8° sin serpentear? Si serpentea → subir

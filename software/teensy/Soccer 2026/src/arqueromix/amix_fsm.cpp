@@ -181,11 +181,19 @@ void amix_fsm_tick() {
                 parar();
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_pausa_inicial;
-            } else if (haypelota && !ball_alineada()) {        // DESCENTRADA → strafe lateral para ENFRENTARLA
-                // strafe hacia el lado de la pelota (con corrección de rumbo). Cuando se centre, el
-                // próximo tick cae al else → parar(). NO rebota, NO avanza: solo lateral hasta enfrentar.
-                if (ball_a_la_derecha()) adproporcional(AMIX_PD_BALL, error);
-                else                     aiproporcional(AMIX_PD_BALL, error);
+            } else if (haypelota && !ball_alineada()) {        // DESCENTRADA → buscar la pelota
+                // CONSCIENCIA DE LÍNEA al buscar (banco Virginia 2026-06-22): el strafe lateral para
+                // enfrentar la pelota NO miraba la línea → se METÍA al área chica de costado. Ahora: si hay
+                // LÍNEA (borde del área) NO sigue lateral, AVANZA al frente a buscarla (la aleja del fondo y
+                // la acerca a la pelota; apenas despega de la línea vuelve al lateral). Sin dato de línea
+                // fresco (DOWN caído) → también avanza (seguro, no strafea a ciegas).
+                if (linea() || !g_aio.down_link_fresh) {
+                    avanzar();                                 // salir del borde hacia el campo / la pelota
+                } else if (ball_a_la_derecha()) {
+                    adproporcional(AMIX_PD_BALL, error);       // strafe lateral hacia la pelota (sin línea)
+                } else {
+                    aiproporcional(AMIX_PD_BALL, error);
+                }
             } else {                                           // sin pelota, o ya alineada → QUIETO
                 parar();
             }

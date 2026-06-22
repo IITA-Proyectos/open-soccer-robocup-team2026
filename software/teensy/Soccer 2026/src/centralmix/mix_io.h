@@ -90,6 +90,8 @@ struct MixIO {
     // Para titular en banco la corrección de rumbo: ver el error y la corr en vivo por USB.
     float kick_err_deg = 0.0f;              // error de rumbo del OTOS durante la patada (0 si no corrige)
     int   kick_corr    = 0;                 // término de giro aplicado (PWM, ya clampeado; 0 si no corrige)
+    int8_t giro_atras_dir = 0;              // sentido latcheado del giro-encare "pelota atrás"
+                                            // (0=inactivo, +1/-1=girando). Para validar el anti-dither.
 };
 
 // Instancia global única (estilo 2025: estado compartido por variables globales).

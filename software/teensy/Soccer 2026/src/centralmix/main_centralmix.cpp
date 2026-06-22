@@ -63,6 +63,7 @@ static void mix_debug_print() {
     Serial.print(" otos_conf=");  Serial.print(g_io.otos_confidence);
     Serial.print(" kick_err=");   Serial.print(g_io.kick_err_deg, 1);
     Serial.print(" kick_corr=");  Serial.print(g_io.kick_corr);
+    Serial.print(" giro_atras="); Serial.print(g_io.giro_atras_dir);
     // Arco rival + línea + árbitro + enlaces
     Serial.print(" | goalOpp vis="); Serial.print(g_io.goal_opp_visible);
     Serial.print(" ang=");           Serial.print(g_io.goal_opp_angle, 0);

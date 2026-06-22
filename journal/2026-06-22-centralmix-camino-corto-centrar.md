@@ -48,6 +48,12 @@ NO validado en banco (regla #1).
 - VÍA 2 (heading): activarla poniendo `MIX_CENTRAR_HEAD_SIGN`=+1; arrancar mirando al arco, tapar el
   arco, girar el cuerpo a un lado, ver si orbita HACIA el arco; si va por el largo, invertir a −1.
 
+## UPDATE (mismo día, pedido Elías): VÍA 2 (heading) SACADA del código
+A pedido de Elías, se REMOVIÓ la VÍA 2 (respaldo por heading) y la constante `MIX_CENTRAR_HEAD_SIGN`.
+Queda SOLO: VÍA 1 (visión, `MIX_CENTRAR_SHORT_SIGN`) + default horario cuando no se ve el arco. Elías
+va a implementar el respaldo por heading **a mano** después. El análisis del signo (heading = rotación
+del cuerpo, signo opuesto a la cámara) queda acá documentado para cuando lo retome.
+
 Ver [[project-iita-soccer-2026-strategy]]. Hermano de `2026-06-22-centralmix-jugada-pelota-atras.md`.
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>

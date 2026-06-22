@@ -488,26 +488,17 @@ void mix_fsm_tick() {
                 millis_inicio_centrando = millis();
                 millis_inicio_estado = millis();
                 // CAMINO CORTO: elegir el sentido de la órbita para NO darle la vuelta LARGA a la
-                // pelota. CASCADA (visión-primaria + heading-respaldo, espejo del disparo de patada):
-                //   1) VISIÓN (medida VERDADERA): si se ve el arco, orbitar hacia su lado (signo de
-                //      goal_opp_angle). MIX_CENTRAR_SHORT_SIGN = perilla del signo físico (banco).
-                //   2) HEADING (respaldo, arco NO visible + heading válido): orbitar hacia el rumbo de
-                //      arranque. ⚠️ heading_error es ROTACIÓN DEL CUERPO, NO un bearing → su signo es
-                //      INDEPENDIENTE y casi seguro OPUESTO al de la cámara → tiene su PROPIA perilla
-                //      MIX_CENTRAR_HEAD_SIGN (default 0 = APAGADO hasta confirmarla en banco). El gate
-                //      heading_valid evita usar un heading clavado (fuente muerta).
-                //   3) DEFAULT (ni arco ni heading útil, o perillas en 0): horario fijo (viejo).
+                // pelota, según de qué lado está el ARCO RIVAL (VISIÓN):
+                //   - si se ve el arco → orbitar hacia su lado (signo de goal_opp_angle).
+                //     MIX_CENTRAR_SHORT_SIGN = perilla del signo físico (banco); 0 = apagado (viejo).
+                //   - si NO se ve el arco (o SHORT_SIGN=0) → horario fijo (comportamiento viejo).
+                // (El respaldo por HEADING cuando no se ve el arco lo va a meter Elías a mano.)
                 // ⚠️ LÍMITE: el test de signo no es el corto si el arco está casi ATRÁS (|áng|>~135°, wrap).
-                if (MIX_CENTRAR_SHORT_SIGN == 0) {
-                    estado = Estado::CENTRANDO_horario;                  // kill-switch global → viejo
-                } else if (arco_rival_visible()) {
+                if (MIX_CENTRAR_SHORT_SIGN != 0 && arco_rival_visible()) {
                     estado = ((arco_rival_angle_deg() * MIX_CENTRAR_SHORT_SIGN) < 0.0f)
-                                 ? Estado::CENTRANDO_antihorario : Estado::CENTRANDO_horario;   // VÍA 1: visión
-                } else if (MIX_CENTRAR_HEAD_SIGN != 0 && g_io.heading_valid) {
-                    estado = ((g_io.heading_error_deg * MIX_CENTRAR_HEAD_SIGN) < 0.0f)
-                                 ? Estado::CENTRANDO_antihorario : Estado::CENTRANDO_horario;   // VÍA 2: heading
+                                 ? Estado::CENTRANDO_antihorario : Estado::CENTRANDO_horario;
                 } else {
-                    estado = Estado::CENTRANDO_horario;                  // VÍA 3: default
+                    estado = Estado::CENTRANDO_horario;
                 }
             }
 

@@ -171,10 +171,11 @@ constexpr uint32_t TOF_RUN_CLOCK_HZ  = 100000;  // runtime (coexistencia BNO+ToF
 // Wire; ahora ese BNO es solo CENTINELA a 1 Hz (el primario se movió a Wire2), y como el bus base no
 // cambia, el centinela SIEMPRE lo lee a 100 kHz → no hace falta tocar sensors_imu. A 400 kHz el
 // bloque pasa de ~60 a ~16 ms → libera el loop.
-// ⭐ 2026-06-22 (Gustavo): pasa a ser el DEFAULT de competencia de ROBOT2 — top_robot2_pri trae
-//    -DTOP_TOF_FAST_BUS. Para volver a 100 kHz (rollback / comparación A/B de loop rate) SIN tocar el
-//    resto de flags: -DTOP_TOF_BUS_SLOW (env top_robot2_pri_slowbus). ROBOT1 NO lo trae: su BNO
-//    PRIMARIO comparte el bus de ToF, así que sigue a 100 kHz hasta analizarlo aparte.
+// ⭐ 2026-06-22 (Gustavo): pasa a ser el DEFAULT de competencia de AMBOS robots — top_robot2_pri y
+//    top_robot1_pri traen -DTOP_TOF_FAST_BUS. R1 = R2 también acá (unificación HW 2026-06-15/16): el
+//    BNO PRIMARIO de los dos vive SOLO en Wire2 y en el bus de ToF queda solo el CENTINELA @1 Hz → el
+//    bus rápido es seguro en ambos. Para volver a 100 kHz (rollback / A-B de loop rate) sin tocar el
+//    resto de flags: -DTOP_TOF_BUS_SLOW (envs top_robot2_pri_slowbus / top_robot1_pri_slowbus).
 // ⚠️ NO VALIDADO EN HARDWARE: a 400 kHz con 5 dispositivos + bodge LP puede haber timeouts I2C; correr
 //    el plan T1-T7 (docs/firmware/TOF-BUS-400KHZ-PLAN-PRUEBAS.md) — distancias, caídas, centinela BNO.
 constexpr uint32_t TOF_FAST_BUS_HZ   = 400000;

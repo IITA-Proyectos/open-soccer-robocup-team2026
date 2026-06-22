@@ -179,7 +179,20 @@ constexpr unsigned long AMIX_T_INICIO_LATERAL = 1600;  // cuánto se mueve a la 
 // y sentido que ALINEAR_arco_opp: usa AMIX_TOL_ARCO_OPP_DEG + AMIX_GIRO_ALINEAR_SIGN). Cuando se centra →
 // vuelve para atrás → quieto.
 constexpr unsigned long AMIX_T_ORIENTAR_SAFETY = 3000;  // tope girando LENTO: si no logra centrarse, sigue igual
-constexpr int AMIX_GIRO_FRENTE_PWM = 70;  // giro LENTO para centrarse al arco (más bajo que el de alineación=90). Si NO gira (zona muerta), subir.
+// El giro para centrarse al arco es CONTINUO y LENTO (pedido Virginia 2026-06-21: el pulsado se veía
+// "rápido y a tirones"). Gira a un PWM bajo y CONSTANTE hacia el arco rival, SIN ventana ON/OFF.
+// ⚠️ control-pid-zona-muerta — TRADE-OFF FÍSICO: el giro continuo NO puede bajar del PISO del motor (el
+// pulsado SÍ era más lento porque promediaba ~duty 26%, por debajo del piso). AMIX_GIRO_FRENTE_PWM es EL knob:
+//   · si sale a TIRONES (stick-slip, "parece pulsos otra vez") → está por debajo del piso → SUBIR de a 5.
+//   · si gira suave pero MUY rápido → ya estás cerca del piso; el continuo no da más lento. Avisar (se
+//     evalúa volver al pulsado o un arranque con rampa).
+// BANCO Virginia 2026-06-21: a 70 giraba CONTINUO pero MUY RÁPIDO (no tironeaba) → el piso de giro está
+// POR DEBAJO de 70 (en rotación las 3 ruedas se ayudan, baja el piso vs strafe). Bajado 70→50 para buscar
+// el "lento". Si a 50 empieza a TIRONEAR (stick-slip = cayó debajo del piso) → subir hacia 55/60. <TITRAR>
+constexpr int AMIX_GIRO_FRENTE_PWM = 50;  // PWM del giro CONTINUO lento al arco rival. Si tironea, subir; el continuo no baja del piso.
+// (OBSOLETAS: el giro ya NO es pulsado. Se conservan por si se decide volver al esquema PFM.)
+constexpr unsigned long AMIX_T_GIRO_VENTANA = 350;  // [sin uso] ventana del pulso PFM viejo
+constexpr unsigned long AMIX_T_GIRO_ON      = 90;   // [sin uso] ON del pulso PFM viejo
 // RETROCESO CON RUMBO al arco rival (SOLO modo quieto, pedido Virginia 2026-06-21: al frenar la
 // alineación, la INERCIA lo desalineaba; ahora el retroceso MANTIENE el frente al arco rival con un
 // control PROPORCIONAL). Guía skill control-pid-zona-muerta: P con BANDA MUERTA + TOPE (sin D contra

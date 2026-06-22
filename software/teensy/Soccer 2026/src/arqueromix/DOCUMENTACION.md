@@ -467,8 +467,9 @@ esperando la pelota. Es la patrulla, **simplificada**.
 - **Comportamiento:** al GO, **se mueve un poco a la IZQUIERDA** (`inicio_lateral_izq`, `AMIX_T_INICIO_LATERAL`,
   SOLO en quieto, pedido Virginia) → homing (atrás hasta la línea → adelante para salir) → **QUIETO**
   esperando → si ve la pelota DESCENTRADA, se mueve lateral para **enfrentarla** → si está ALINEADA (o no
-  hay pelota), **quieto** → si está CERCA, **patea** (igual que el default) → tras patear: **gira LENTO
-  buscando CENTRARSE con el ARCO RIVAL** (`orientar_frente`, mismo criterio/sentido que `ALINEAR_arco_opp`)
+  hay pelota), **quieto** → si está CERCA, **patea** (igual que el default) → tras patear: **gira PULSADO
+  (lento) buscando CENTRARSE con el ARCO RIVAL** (`orientar_frente`, PFM: pulsa el giro + queda quieto entre
+  pulsos para TOMAR el valor del arco sin smear — no se puede hacer lento bajando el PWM, que lo traba)
   → cuando se centra, **vuelve para atrás MANTENIENDO el frente al arco rival** con un control PROPORCIONAL
   (`retroceder_rumbo_opp`: la inercia tras la alineación lo desalineaba; el retroceso corrige el rumbo)
   hasta la línea → **quieto** (NO se vuelve a acomodar). Control: P + banda muerta + tope (skill

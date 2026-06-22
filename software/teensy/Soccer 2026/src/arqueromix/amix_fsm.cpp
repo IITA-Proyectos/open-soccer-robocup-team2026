@@ -395,11 +395,13 @@ void amix_fsm_tick() {
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_atras;     // ya centrado al arco rival → vuelve para atrás
             } else {
-                // gira LENTO hacia el arco rival si lo VE; si NO lo ve, busca girando a un lado. MISMO
-                // sentido que ALINEAR_arco_opp (AMIX_GIRO_ALINEAR_SIGN; -DARQMIX_FLIP_GIRO_ALINEAR si va al revés).
-                const int sentido = g_aio.goal_opp_visible
-                                    ? ((g_aio.goal_opp_angle > 0.0f) ? +1 : -1)
-                                    : +1;
+                // GIRO CONTINUO y LENTO hacia el ARCO RIVAL (pedido Virginia 2026-06-21: el giro pulsado se
+                // veía "rápido y a tirones"; ahora gira PAREJO, sin ventana ON/OFF). El arco se lee DURANTE el
+                // giro (es lento → poco smear); alineado_al_arco_opp() se evalúa cada tick y corta al centrarse.
+                // ⚠️ control-pid-zona-muerta: el continuo NO baja del PISO del motor → el PWM es el knob de banco
+                // (AMIX_GIRO_FRENTE_PWM): si sale a TIRONES (stick-slip = "parece pulsos") está por debajo del
+                // piso → SUBIR; el continuo no llega a ser tan lento como el pulsado (que promediaba ~duty 26%).
+                const int sentido = g_aio.goal_opp_visible ? ((g_aio.goal_opp_angle > 0.0f) ? +1 : -1) : +1;
                 girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
             }
             break;

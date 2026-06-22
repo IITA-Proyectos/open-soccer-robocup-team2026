@@ -42,7 +42,7 @@ enum class Estado : uint8_t {
     PATEANDO_pausa,              // despeje: pausa 1000 ms
     PATEANDO_atras,              // despeje: retroceso recto hasta ver línea (+ safety)
     avanzar_despues_de_patear,   // reposicionamiento 1000 ms → vuelve a patrullar (o a orientar_frente en quieto)
-    orientar_frente,             // MODO QUIETO: tras patear, gira LENTO a CENTRARSE con el arco rival → atrás → quieto
+    orientar_frente,             // MODO QUIETO: tras patear, gira por GIROSCOPIO (bang-bang, heading→0) a MIRAR al arco rival → atrás → quieto
 };
 
 void amix_fsm_init();

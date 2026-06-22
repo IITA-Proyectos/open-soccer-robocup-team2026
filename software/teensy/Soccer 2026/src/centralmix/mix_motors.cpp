@@ -30,9 +30,18 @@
 
 #include "mix_motors.h"
 #include "mix_config.h"
+#include "mix_io.h"      // g_io: otos_heading_deg / otos_confidence / frescura (patada recta)
 
 namespace iitasoccer {
 namespace mix {
+
+// Normaliza un ángulo a [-180, 180]. Local a este .cpp (la patada recta lo usa para
+// el error de rumbo del OTOS). Misma semántica que el wrap180 de mix_comm / mix_fsm.
+static inline float wrap180(float deg) {
+    while (deg >  180.0f) deg -= 360.0f;
+    while (deg < -180.0f) deg += 360.0f;
+    return deg;
+}
 
 // ============================================================
 // Tabla de pines por índice de motor (0=M1, 1=M2, 2=M3) — espejo de mix_config.h.
@@ -50,6 +59,10 @@ static unsigned long s_kick_prev_ms   = 0;  // tiempoAnteriorPateo
 static bool          s_kick_active     = false; // ¿ya estamos en una rampa de patada?
                                                // (para resetear s_kick_vel AL ENTRAR;
                                                //  el 2025 NO reseteaba entre patadas)
+static float         s_kick_heading_target = 0.0f; // rumbo OTOS anclado al iniciar la patada
+                                                    // (objetivo del heading-hold = ir DERECHO)
+static bool          s_kick_use_otos       = false; // ¿el OTOS estaba fresco/sano al entrar?
+                                                     // (si no, la patada va recta "a ciegas")
 
 // ============================================================
 // mix_motors_init — pinMode de los 9 pines de motor (port del setup() 2025).
@@ -69,6 +82,8 @@ void mix_motors_init() {
     s_kick_vel    = 0;
     s_kick_prev_ms = millis();
     s_kick_active  = false;
+    s_kick_heading_target = 0.0f;
+    s_kick_use_otos       = false;
 }
 
 // ============================================================
@@ -107,10 +122,14 @@ void mix_set_motor(int idx, int pwm_signed) {
 // ============================================================
 
 // parar() 2025: los 3 motores con PWM=0, INA=0, INB=0 → frenado.
+// + Cierra la rampa de patada (s_kick_active=false): la FSM llama parar() en TODA pausa y
+//   en cada transición; así la próxima avanzar_patear() detecta el flanco de entrada y
+//   RE-ANCLA el rumbo objetivo del OTOS, aunque la patada anterior se haya abortado por línea.
 void parar() {
     mix_set_motor(0, 0);
     mix_set_motor(1, 0);
     mix_set_motor(2, 0);
+    s_kick_active = false;
 }
 
 // girar() 2025: 3 ruedas a 100*g = 100*0.3 = 30, todas con INA=0/INB=1 (sentido neg).
@@ -162,49 +181,78 @@ void retroceder3() {
 }
 
 // ============================================================
-// Kicker — empuje por inercia con rampa NO BLOQUEANTE (port 1:1 del 2025).
+// Kicker — empuje RECTO y FUERTE con corrección de rumbo por OTOS (2026-06-21, pedido Elías).
 //
-// 2025 avanzar_patear(): cada intervaloPateo(20ms) sube velocidadActualPateo en
-// pasoPateo(5) hasta velocidadFinalPateo(240), y aplica:
-//   M1 = vel (INA1=1, INB1=0)
-//   M2 = vel (INA2=0, INB2=1)
-//   M3 = 0   (INA3=0, INB3=0)
+// REEMPLAZA el avanzar_patear() lazo-abierto del 2025 (rampa lenta 0→240 sin
+// realimentación, que CURVA si las 2 ruedas delanteras no están parejas) por:
 //
-// DIFERENCIA INTENCIONAL vs 2025: el 2025 NO reseteaba velocidadActualPateo entre
-// patadas, así que una segunda patada arrancaba ya a tope. Acá SÍ se resetea AL
-// ENTRAR a una rampa nueva (s_kick_active pasa de false→true), para que cada patada
-// arranque desde 0 y haga la rampa completa. La FSM debe llamar a kick_reset()
-// (vía parar()/otra primitiva) o simplemente dejar de llamar avanzar_patear() entre
-// patadas: la próxima vez que vuelva a llamarla, detecta la transición y resetea.
+//   1) EMPUJE FUERTE Y RÁPIDO. Arranca en MIX_KICK_VEL_START (sobre el piso del motor,
+//      bite inmediato) y rampa AGRESIVA (MIX_KICK_PASO grande cada MIX_KICK_INTERVALO_MS
+//      corto) hasta MIX_KICK_VEL_FINAL (alto). La rampa NO desaparece (evita brownout del
+//      regulador por el pico de arranque), pero llega a tope en ~24 ms (era ~120 ms).
+//      Patrón de avance del 2025:  M1=+vel (INA1=1) · M2=-vel (INB2=1) · M3=0.
+//
+//   2) DERECHO (heading-hold con el OTOS). Al ENTRAR a la patada (flanco false→true) se
+//      ANCLA otos_heading_deg como objetivo y se decide si el OTOS es confiable AHORA
+//      (confidence>0 + pose fresca). En cada tick se mide el error de rumbo y se agrega un
+//      término de GIRO (mismo signo en las 3 ruedas, EXACTAMENTE como girar()) proporcional
+//      al error → cancela la curvatura y la patada sale recta. El término está CLAMPEADO
+//      (MIX_KICK_CORR_MAX) y el empuje siempre lo domina: aunque el signo del Kp esté mal,
+//      no descontrola (a lo sumo curva, no gira en el lugar) → se corrige con el signo en banco.
+//      Si el OTOS NO está fresco/sano → corr=0 (patada recta "a ciegas", como el 2025 pero rápida).
+//
+// IMPORTANTE: ahora se ESCRIBEN los motores en CADA tick (no solo en el borde del intervalo),
+// porque la corrección de rumbo cambia entre intervalos aunque la velocidad de rampa no. Es
+// barato (3 analogWrite + 6 digitalWrite) y necesario para que el heading-hold reaccione.
+//
+// El RESETEO entre patadas lo da parar() (lo llama la FSM en cada pausa/transición): cierra
+// s_kick_active → la próxima avanzar_patear() re-ancla el rumbo y rampa desde el inicio.
 // ============================================================
 void avanzar_patear() {
-    // Al (re)entrar a la rampa: resetear la velocidad a 0 (NO como el 2025).
-    if (!s_kick_active) {
-        s_kick_active  = true;
-        s_kick_vel     = 0;
-        s_kick_prev_ms = millis();
-    }
-
     const unsigned long now = millis();
 
-    // Subir la velocidad cada MIX_KICK_INTERVALO_MS (no bloqueante, con millis()).
+    // (Re)entrada a una patada nueva (flanco false→true): empezar SOBRE el piso, anclar el
+    // rumbo objetivo del OTOS y fijar si el OTOS es confiable AHORA (se congela para toda
+    // esta patada: si el enlace se cae a mitad igual dejamos de corregir por el chequeo de
+    // frescura de abajo).
+    if (!s_kick_active) {
+        s_kick_active  = true;
+        s_kick_vel     = MIX_KICK_VEL_START;
+        s_kick_prev_ms = now;
+        s_kick_heading_target = g_io.otos_heading_deg;   // dirección al iniciar la patada
+        s_kick_use_otos = (g_io.otos_confidence > 0) &&
+                          (g_io.t_last_otos_pose_ms > 0) &&
+                          ((now - g_io.t_last_otos_pose_ms) < MIX_KICK_OTOS_FRESH_MS);
+    }
+
+    // Rampa RÁPIDA hasta el PWM final (no bloqueante, con millis()).
     if (now - s_kick_prev_ms >= (unsigned long)MIX_KICK_INTERVALO_MS) {
         s_kick_prev_ms = now;
-
         if (s_kick_vel < MIX_KICK_VEL_FINAL) {
             s_kick_vel += MIX_KICK_PASO;
-            if (s_kick_vel > MIX_KICK_VEL_FINAL) {
-                s_kick_vel = MIX_KICK_VEL_FINAL;
-            }
+            if (s_kick_vel > MIX_KICK_VEL_FINAL) s_kick_vel = MIX_KICK_VEL_FINAL;
         }
-
-        // Aplicar la velocidad actual (igual patrón de sentido que el 2025).
-        mix_set_motor(0, +s_kick_vel);  // M1: INA1=1, INB1=0
-        mix_set_motor(1, -s_kick_vel);  // M2: INA2=0, INB2=1
-        mix_set_motor(2, 0);            // M3: parado (INA3=0, INB3=0)
     }
-    // Entre intervalos NO se reescriben los motores (idéntico al 2025: los pines
-    // mantienen el último PWM aplicado por hardware).
+
+    // Corrección de rumbo con el OTOS (heading-hold). Sólo si el OTOS sigue fresco; si la
+    // pose se puso vieja a mitad de la patada, corr=0 (seguimos recto a ciegas, no a un
+    // rumbo congelado erróneo).
+    int corr = 0;
+    if (s_kick_use_otos &&
+        (now - g_io.t_last_otos_pose_ms) < MIX_KICK_OTOS_FRESH_MS) {
+        const float err = wrap180(g_io.otos_heading_deg - s_kick_heading_target);
+        int c = static_cast<int>(MIX_KICK_HEADING_KP * err);
+        if (c >  MIX_KICK_CORR_MAX) c =  MIX_KICK_CORR_MAX;
+        if (c < -MIX_KICK_CORR_MAX) c = -MIX_KICK_CORR_MAX;
+        corr = c;
+    }
+
+    // Empuje (M1=+, M2=-, M3=0) + giro de corrección (mismo signo en las 3, como girar()).
+    // mix_set_motor clampea cada rueda a ±MIX_MAX_PWM (el corr puede saturar M1 a tope; el
+    // efecto de giro igual aparece porque baja M2 y mueve M3). Se reescribe en CADA tick.
+    mix_set_motor(0, +s_kick_vel + corr);  // M1: delantera IZQ
+    mix_set_motor(1, -s_kick_vel + corr);  // M2: delantera DER
+    mix_set_motor(2,            0 + corr);  // M3: trasera (solo gira para corregir)
 }
 
 // retroceder_patear() 2025: M1=patadM1(250, INB1=1), M2=patadM2(170, INA2=1), M3=0(INA3=1).

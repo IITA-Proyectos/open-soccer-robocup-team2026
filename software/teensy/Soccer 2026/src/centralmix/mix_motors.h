@@ -39,10 +39,13 @@ void retroceder1();        // retroceso variante 1 (salida de DETECTA_LINEA_1)
 void retroceder2();        // retroceso variante 2 (salida de DETECTA_LINEA_2)
 void retroceder3();        // retroceso variante 3 (salida de DETECTA_LINEA_3)
 
-// Kicker (empuje por inercia con rampa) — usa MIX_KICK_* de mix_config.
-// avanzar_patear() es NO BLOQUEANTE: sube velocidadActualPateo de a MIX_KICK_PASO
-// cada MIX_KICK_INTERVALO_MS hasta MIX_KICK_VEL_FINAL (igual que el 2025). Debe
-// llamarse repetidamente desde el estado de patada.
+// Kicker (empuje por inercia) — RECTO y FUERTE con heading-hold del OTOS. Usa MIX_KICK_*
+// de mix_config. NO BLOQUEANTE: arranca en MIX_KICK_VEL_START y rampa AGRESIVA hasta
+// MIX_KICK_VEL_FINAL; en cada tick agrega un término de giro (clampeado a MIX_KICK_CORR_MAX)
+// proporcional al error de rumbo del OTOS (otos_heading_deg) para ir derecho. Si el OTOS no
+// está fresco/sano, va recto a ciegas. El rumbo objetivo se ancla al iniciar la patada (parar()
+// cierra la rampa). Debe llamarse repetidamente desde el estado de patada. ⚠️ Signo del Kp a
+// confirmar en banco (si curva más, invertir MIX_KICK_HEADING_KP).
 void avanzar_patear();
 void retroceder_patear();  // retroceso de patada con PWM crudo MIX_PATAD_M1 / MIX_PATAD_M2
 

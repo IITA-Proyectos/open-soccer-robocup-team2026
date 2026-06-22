@@ -85,14 +85,44 @@ constexpr float MIX_TOL_CERCANIA = 30.0f;  // tolerancia_cercania
 constexpr float MIX_TOL_APUNTADO = 15.0f;  // tolerancia_apuntado (grados)
 
 // ============================================================
-// Kicker / patada — port 1:1 del 2025 (el "kicker" es empuje por inercia, sin
-// solenoide físico; el robot acelera hacia adelante con rampa).
+// Kicker / patada — RECTA y FUERTE con corrección de rumbo por OTOS (2026-06-21, pedido Elías).
+//
+// El "kicker" es empuje por inercia (NO hay solenoide): el robot acelera hacia adelante para
+// empujar la pelota al arco. ANTES (port 2025) era LAZO ABIERTO: rampa lenta M1=+vel / M2=-vel /
+// M3=0 hasta 240, SIN realimentación → si las 2 ruedas delanteras no están parejas, la patada
+// CURVA. AHORA:
+//   1) FUERTE y RÁPIDA: arranca por encima del piso del motor (MIX_KICK_VEL_START) y rampa
+//      AGRESIVA (paso grande, intervalo corto) hasta MIX_KICK_VEL_FINAL alto. La rampa sigue
+//      existiendo (no slam 0→255) para no hacer brownout del regulador con el pico de arranque.
+//   2) DERECHA: heading-hold con el OTOS. Al iniciar la patada se ANCLA otos_heading_deg como
+//      objetivo; durante el empuje se agrega un término de GIRO (mismo signo en las 3 ruedas,
+//      como girar()) proporcional al error de rumbo, para cancelar la curvatura. Si el OTOS no
+//      está fresco/sano (confidence 0 o pose vieja), la patada va recta "a ciegas" (corr=0).
+//
+// ⚠️ El OTOS (otos_heading_deg) es independiente de la fuente de heading de navegación
+//    (BNO del TOP en el env _bno): la patada se corrige con el OTOS LOCAL de DOWN aunque el
+//    BNO del snapshot esté en 0. Requiere que DOWN mande Pose2D con confidence>0 (OTOS sano).
 // ============================================================
-constexpr int MIX_KICK_VEL_FINAL    = 240;  // velocidadFinalPateo
-constexpr int MIX_KICK_PASO         = 20;    // pasoPateo (incremento de PWM)
-constexpr int MIX_KICK_INTERVALO_MS = 10;   // intervaloPateo (ms entre incrementos)
+constexpr int MIX_KICK_VEL_START    = 120;  // PWM inicial del empuje (arranca SOBRE el piso ~70,
+                                            //   no desde 0 → bite inmediato, "rápida")
+constexpr int MIX_KICK_VEL_FINAL    = 255;  // PWM final del empuje (FUERTE; era 240).
+                                            //   Para dar más AUTORIDAD a la corrección de rumbo,
+                                            //   bajalo (deja headroom para el término de giro).
+constexpr int MIX_KICK_PASO         = 45;   // incremento de PWM por paso (RÁPIDO; era 20)
+constexpr int MIX_KICK_INTERVALO_MS = 8;    // ms entre incrementos (era 10) → 120→255 en ~24 ms
 
-// Retroceso de patada (PWM crudo por motor) — port 1:1 del 2025.
+// --- Corrección de rumbo durante el empuje (heading-hold con el OTOS) ---
+constexpr float MIX_KICK_HEADING_KP = 2.5f; // PWM de giro por GRADO de error de rumbo.
+                                            //   ⚠️ SIGNO A CONFIRMAR EN BANCO: si la patada curva
+                                            //   MÁS al activar la corrección (realimentación
+                                            //   positiva), INVERTÍ el signo (poné -2.5f). El
+                                            //   clamp de abajo evita que descontrole aunque el
+                                            //   signo esté mal (el empuje siempre domina).
+constexpr int MIX_KICK_CORR_MAX     = 70;   // tope (PWM) del término de corrección de giro
+constexpr unsigned long MIX_KICK_OTOS_FRESH_MS = 200;  // si la pose OTOS está más vieja que esto
+                                                       // (o confidence==0) → NO corregir (recto a ciegas)
+
+// Retroceso de patada (PWM crudo por motor) — port 1:1 del 2025 (freno/recoil tras el empuje).
 constexpr int MIX_PATAD_M1 = 250;  // patadM1
 constexpr int MIX_PATAD_M2 = 170;  // patadM2
 

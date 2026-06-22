@@ -71,7 +71,7 @@ y el resto (FSM + motores) es **autocontenido estilo 2025**, leyendo `g_io`.
 
 | Archivo | Qué hace |
 |---|---|
-| `main_centralmix.cpp` | `setup()`: init comm/motores/FSM. `loop()`: `mix_comm_tick()` → `mix_fsm_tick()`. |
+| `main_centralmix.cpp` | `setup()`: init comm/motores/FSM. `loop()`: `mix_comm_tick()` → `mix_fsm_tick()`. + **print de debug** USB Serial 115200 throttleado (`if(Serial)`, apagable con `-DMIX_NO_DEBUG_SERIAL`): pelota / heading (`hdg`/`hvalid`/`herr`) / OTOS (`otos_hdg`/`otos_conf`) / arco / línea / árbitro / enlaces. |
 | `mix_io.h` | Define `struct MixIO` + `extern MixIO g_io`: las variables planas (pelota, arcos, heading, línea, árbitro, timers, frescura de enlaces). Es "lo disponible". |
 | `mix_comm.cpp/.h` | **Único que toca Serial.** Lee TOP (Serial7) y DOWN (Serial1) a 230400, decodifica con `shared/proto` + `line_view`/`pose_view`, y **llena `g_io`**. Calcula `angulo_pelota_deg` y `heading_error_deg`. |
 | `mix_fsm.cpp/.h` | La **FSM 2025** portada fiel (24 estados). Lee `g_io`, decide, llama primitivas de `mix_motors`. Agrega el gate `match_running`. |
@@ -104,6 +104,9 @@ Flujo del delantero (arranque → buscar → apuntar → acercar → orbitar →
 
 - **Patada larga** (`PATEANDO_*`): pausa 1000ms → avanzar 500ms → pausa 500ms →
   retroceder 200ms. Empuja "a ciegas" (cuando la pelota está pegada, la cámara no la ve).
+  El empuje (`avanzar_patear`) ya NO es la rampa lenta lazo-abierto del 2025: ahora es **fuerte/rápido
+  + RECTO con heading-hold del OTOS** (ancla `otos_heading_deg` al iniciar y corrige el giro; ver
+  `mix_config.h` `MIX_KICK_*` y journal `2026-06-21-centralmix-patada-recta-otos.md`). TASK-117.
 - **Patada corta** (`PATEANDO_corto_*`): cuando pisa línea bien alineado al arco.
 - `PRIMER_IMPULSO_INICIAL_GIRANDO`: está en el enum pero **sin `case`** (estado muerto
   ya en el 2025; se conservó por fidelidad).

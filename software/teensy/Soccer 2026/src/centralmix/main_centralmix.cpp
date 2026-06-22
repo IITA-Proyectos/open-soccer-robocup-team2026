@@ -7,12 +7,19 @@
 //   loop():  drena comunicación → avanza FSM.
 //
 // CONTRATO / SKELETON. La lógica vive en mix_comm.cpp / mix_motors.cpp /
-// mix_fsm.cpp (a implementar). Este archivo NO contiene lógica de juego.
+// mix_fsm.cpp. Este archivo NO contiene lógica de juego (solo init + debug print).
 //
-// Para compilar como env propio en platformio.ini (a definir por el equipo, NO se
-// toca acá): src_filter que incluya SOLO src/centralmix/ + src/shared/ (proto,
-// types, line_view, pose_view) y build_flags -DROBOT... según corresponda. La
-// fuente de heading se elige con -DMIX_HEADING_OTOS (default: BNO). Ver mix_config.h.
+// Para compilar como env propio en platformio.ini: src_filter que incluya SOLO
+// src/centralmix/ + src/shared/ (proto, types, line_view, pose_view) y build_flags
+// -DROBOT... La fuente de heading se elige con -DMIX_HEADING_SNAPSHOT (R1 con gyro)
+// o -DMIX_HEADING_OTOS. Ver mix_config.h.
+//
+// DEBUG por USB Serial (115200): un print THROTTLEADO (MIX_DBG_PERIOD_MS) con los
+// datos clave de g_io. Sirve para banco: verificar el heading del TOP (¿llega
+// hdg_valid=1?, ¿heading_err se mueve al girar el robot?) y tunear la patada recta
+// (¿otos_hdg se mueve?, ¿otos_conf>0?). Guardado con `if (Serial)`: si NO hay PC
+// conectada NO cuesta nada (Teensy descarta el USB sin bloquear). Para apagarlo del
+// todo, compilar con -DMIX_NO_DEBUG_SERIAL.
 //
 // ⚠️ NO TESTEADO EN HARDWARE.
 
@@ -24,16 +31,60 @@
 #include "mix_motors.h"
 #include "mix_fsm.h"
 
-#include <math.h>   // sqrtf (debug de distancia)
+#include <math.h>   // sqrtf (distancia pelota en el debug)
+
+#ifndef MIX_NO_DEBUG_SERIAL
+static constexpr unsigned long MIX_DBG_PERIOD_MS = 150;  // ~6,7 Hz (no floodear ni frenar el loop)
+static unsigned long s_dbg_prev_ms = 0;
+
+// Imprime una línea con los datos clave de g_io. Solo si hay PC conectada (`if (Serial)`).
+static void mix_debug_print() {
+    using namespace iitasoccer::mix;
+    const unsigned long now = millis();
+    if (now - s_dbg_prev_ms < MIX_DBG_PERIOD_MS) return;
+    s_dbg_prev_ms = now;
+    if (!Serial) return;   // sin host USB → no imprimir (Teensy no bloquea, pero ahorramos)
+
+    const float dist = sqrtf(g_io.ball_x_cm * g_io.ball_x_cm +
+                             g_io.ball_y_cm * g_io.ball_y_cm);
+
+    // Pelota
+    Serial.print("ball vis="); Serial.print(g_io.ball_visible);
+    Serial.print(" x=");       Serial.print(g_io.ball_x_cm, 1);
+    Serial.print(" y=");       Serial.print(g_io.ball_y_cm, 1);
+    Serial.print(" ang=");     Serial.print(g_io.angulo_pelota_deg, 0);
+    Serial.print(" d=");       Serial.print(dist, 0);
+    // Heading del TOP (snapshot) — lo que verifica el pendiente #2
+    Serial.print(" | hdg=");      Serial.print(g_io.heading_deg, 1);
+    Serial.print(" hvalid=");     Serial.print(g_io.heading_valid);
+    Serial.print(" herr=");       Serial.print(g_io.heading_error_deg, 1);
+    // OTOS (lo que usa la patada recta)
+    Serial.print(" | otos_hdg="); Serial.print(g_io.otos_heading_deg, 1);
+    Serial.print(" otos_conf=");  Serial.print(g_io.otos_confidence);
+    // Arco rival + línea + árbitro + enlaces
+    Serial.print(" | goalOpp vis="); Serial.print(g_io.goal_opp_visible);
+    Serial.print(" ang=");           Serial.print(g_io.goal_opp_angle, 0);
+    Serial.print(" | line p=");      Serial.print(g_io.line_present);
+    Serial.print(" ang=");           Serial.print(g_io.line_angle_deg, 0);
+    Serial.print(" | match=");       Serial.print(g_io.match_running);
+    Serial.print(" topFresh=");      Serial.print(g_io.top_link_fresh);
+    Serial.print(" downFresh=");     Serial.println(g_io.down_link_fresh);
+}
+#endif  // MIX_NO_DEBUG_SERIAL
 
 void setup() {
+#ifndef MIX_NO_DEBUG_SERIAL
+    Serial.begin(115200);   // USB debug (no espera al host: arranca igual sin PC)
+#endif
     iitasoccer::mix::mix_comm_init();
     iitasoccer::mix::mix_motors_init();
-    iitasoccer::mix::mix_fsm_init(); 
+    iitasoccer::mix::mix_fsm_init();
 }
 
 void loop() {
     iitasoccer::mix::mix_comm_tick();
     iitasoccer::mix::mix_fsm_tick();
+#ifndef MIX_NO_DEBUG_SERIAL
+    mix_debug_print();
+#endif
 }
- 

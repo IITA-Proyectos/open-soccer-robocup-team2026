@@ -125,15 +125,19 @@ static inline bool borde_arco_izq() {
 // el arco (banco Virginia 2026-06-22). Fallback al giroscopio SÓLO si NO ve el arco (para no girar a ciegas;
 // sin heading válido, da por hecho). Devuelve true cuando YA está de frente (= condición de salir del estado).
 static bool orientar_de_frente_tick() {
+    // 1. VE el arco contrario → centrarse en él (referencia ABSOLUTA al arco REAL).
     if (g_aio.goal_opp_visible) {
         if (fabsf(g_aio.goal_opp_angle) <= AMIX_TOL_ARCO_OPP_DEG) return true;   // de frente al arco contrario
         const int sentido = (g_aio.goal_opp_angle > 0.0f) ? +1 : -1;            // gira DESPACIO hacia el arco
         girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
         return false;
     }
-    // No ve el arco → fallback giroscopio (heading→0). Sin heading válido → no girar a ciegas (dar por hecho).
-    if (!g_aio.heading_valid || (fabsf(g_aio.heading_error_deg) <= AMIX_TOL_ORIENTAR_DEG)) return true;
-    const int sentido = (g_aio.heading_error_deg > 0.0f) ? +1 : -1;
+    // 2. NO ve el arco → girar a BUSCARLO. NO conformarse con el giroscopio: su cero DERIVA y dejaba al
+    //    arquero mirando a un lado que NO es el arco (banco Virginia 2026-06-22: "a veces queda sin mirar al
+    //    frente / no siempre corrige"). Dirección: hacia el FRENTE por heading si lo hay (ahí suele estar el
+    //    arco), si no barrer fijo. Cuando el arco aparezca, el caso 1 lo centra; el safety corta si nunca
+    //    aparece. Diferencia CLAVE: en el caso 2 ya NO devuelve true sin ver el arco → SIEMPRE busca el arco.
+    const int sentido = g_aio.heading_valid ? ((g_aio.heading_error_deg > 0.0f) ? +1 : -1) : +1;
     girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_ALINEAR_SIGN);
     return false;
 }

@@ -99,3 +99,19 @@ TIGERs (requiere reescribir el control de movimiento — 2027); tocar el candida
 4. **Si reacciona con la pelota casi quieta** (falsos positivos por ruido) → subir `AMIX_ANTICIPA_VX_MIN`/`VY_MIN`;
    si NO reacciona a tiempo → bajarlos.
 5. Comparar contra el candidato (`_quieto`): ¿bloquea más pelotas que antes pasaban por al lado?
+
+## Iteración de banco 2026-06-22 (Virginia) — el signo OK; +velocidad lateral + orientado robusto
+
+Banco de la versión anticipa: el **signo de la anticipación es CORRECTO** (se mueve al lado bien). Dos
+ajustes pedidos (ambos en el código base → afectan el quieto vivo y el anticipa; el candidato del TAG
+queda intacto):
+
+- **(A) +velocidad lateral:** `AMIX_PD_BALL` **1.5 → 2.0** (+33% PWM). El strafe de seguir/tapar la pelota
+  no llegaba a pelotas un poco rápidas. ⚠️ El `pd` también amplifica la corrección de rumbo → si serpentea,
+  bajar; si no alcanza, subir a 2.2-2.5 midiendo (techo térmico de la trasera). <TITRAR>
+- **(B) orientado SIEMPRE al arco:** `orientar_de_frente_tick()` — cuando NO ve el arco contrario ya **no se
+  conforma con el giroscopio** (cuyo cero DERIVA y lo dejaba mirando a un lado que no es el arco: "a veces
+  queda sin mirar al frente"). Ahora **sigue girando a BUSCAR el arco** (hacia el frente por heading si lo
+  hay, si no barre) hasta verlo y centrarse en él; el safety corta si nunca aparece. Aplica a `orientar_frente`
+  y `acomodar_orientar`. ⚠️ Riesgo: si el arco contrario NUNCA es visible (cámara/calibración), gira hasta el
+  safety en cada acomodado — eso señalaría un problema de cámara a resolver aparte.

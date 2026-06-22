@@ -65,13 +65,13 @@ ToF; cuando en otro tick le toca al centinela BNO, el bus ya está en 100 kHz. E
 centinela **nunca depende de "acordarse de bajar el clock"** → por eso **no se tocó
 `sensors_imu.cpp`** (cero riesgo de regresión en la IMU).
 
-**Archivos tocados:** solo `src/top/sensors_tof.cpp` (constante `TOF_FAST_BUS_HZ` +
-el bracket bajo `#ifdef`) y `platformio.ini` (env nuevo `top_robot2_pri_fastbus`).
+**Archivos tocados:** `src/top/sensors_tof.cpp` (constante `TOF_FAST_BUS_HZ` + el bracket bajo
+`#ifdef`) y `platformio.ini` (flag en `top_robot2_pri` y `top_robot1_pri` + envs `*_slowbus`).
 
 **Alcance:** el bracket está en el camino **MULTI** (los 4 ToF, que es el de
 competencia). El camino de un solo ToF frontal queda a 100 kHz (sin acelerar, pero
-seguro). Aplica a robot2; **antes de usarlo en robot1, confirmar que el BNO primario
-de robot1 también esté fuera del bus de ToF** (en `Wire2`).
+seguro). Aplica a **AMBOS robots**: tras la unificación HW del 2026-06-15/16, R1 = R2 (BNO
+primario solo en Wire2, centinela @1 Hz en el bus de ToF), así que el bus rápido es seguro en los dos.
 
 ---
 
@@ -140,8 +140,9 @@ byte-idéntico al de antes). El env de banco `_fastbus` se reemplazó por `top_r
 (`-DTOP_TOF_BUS_SLOW`), que vuelve a 100 kHz sin tocar el resto de flags — para rollback y para el
 A/B de loop rate (T5).
 
-**Sólo robot2.** Robot1 NO lo trae: su BNO PRIMARIO comparte el bus de ToF, así que sigue a 100 kHz
-hasta analizarlo aparte (mismo razonamiento del band-aid original).
+**Ambos robots (2026-06-22).** R1 también lo trae: la familia `top_robot1_pri*` ya usa
+`-DTOP_BNO_PRIMARY_ONLY` (primario en Wire2) tras la unificación HW del 2026-06-15/16, así que el bus
+rápido le aplica igual. Flash de competencia de R1 = `top_robot1_pri_rt`; rollback = `top_robot1_pri_slowbus`.
 
 **⚠️ Pendiente: validar T1–T7 en hardware.** Se adoptó como default por decisión de Gustavo, pero NO
 está probado en placa todavía. Hasta correr el plan, tratar el 400 como NO confiable para partido y

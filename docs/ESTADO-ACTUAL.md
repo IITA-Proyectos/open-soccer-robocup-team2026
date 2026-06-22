@@ -13,20 +13,22 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
-> **🧭 ARQUEROMIX QUIETO — post-patada por GIROSCOPIO, Fases 1+2a (2026-06-21, pedido Virginia):**
-> El post-patada (modo quieto) dejaba de corregir bien (zona muerta + usaba la CÁMARA `goal_opp`). Rediseño
-> en 3 fases por GIROSCOPIO (análisis: workflow 6 agentes + crítica adversarial que tumbó 2 premisas P0).
-> **Fase 1 (orientar) — VALIDADA EN BANCO:** `orientar_frente` orienta por `heading_error_deg` (giroscopio)
-> con **BANG-BANG + banda ancha** (`AMIX_TOL_ORIENTAR_DEG=8°`, giro al piso `AMIX_GIRO_FRENTE_PWM=50`);
-> mira al oponente (se corrigió el sentido: con el mapeo opuesto el bang-bang se estabilizaba a 180° = miraba
-> a nuestro arco; fix LOCAL en orientar, NO el flag global que también afecta la alineación pre-patada).
-> **Fase 2a (retroceso) — IMPLEMENTADA:** `PATEANDO_atras` quieto retrocede **RECTO** (`patear_atras`) y para
-> en la línea, en vez de la corrección por cámara que lo desviaba (se salía/se metía al área); `retroceder_rumbo_opp`
-> quedó sin uso. **Fase 2b** (re-orientar si curva) y **Fase 3** (centrado lateral) PENDIENTES; la 3 POSPUESTA
-> hasta validar arco propio por cámara trasera = **TASK-224**. Compila SUCCESS (`central_robot2_arqueromix_quieto`);
-> patrulla intacta; Fase 2a NO testeada en HW. Diseño:
-> `docs/superpowers/specs/2026-06-21-arquero-quieto-orientar-giroscopio-design.md`.
-> Journal: `journal/2026-06-21-arquero-quieto-orientar-giroscopio.md`.
+> **🥅 ARQUEROMIX QUIETO — CANDIDATO A COMPETENCIA (2026-06-22, "anda bastante bien" — Virginia):**
+> Tag **`arquero-competencia-candidato-2026-06-22`**. Env **`central_robot2_arqueromix_quieto`**. El arquero
+> en modo quieto: homing al arco → espera la pelota → si descentrada la sigue de costado (y si toca línea
+> avanza a buscarla) → si cerca despeja → secuencia post-patada (freno por línea + orientar de frente al ARCO
+> CONTRARIO + retroceso recto hasta la línea) → **acomodarse** (despegar línea + quedar de frente al arco)
+> antes de quedar quieto. Todo CONSCIENTE de la línea (no salirse de la cancha). Iteraciones de banco
+> 2026-06-21/22: orientación por GIROSCOPIO → corregido sentido → **luego cambiado a ARCO CONTRARIO por cámara
+> (el cero del giroscopio derivaba)**; retroceso lento; freno activo de patada (plugging); avance al buscar;
+> 2 estados de acomodarse. NO es cierre formal de HW (lo cierra el equipo); "anda bastante bien" = veredicto
+> de Virginia en banco. Patrulla (`central_robot2_arqueromix`) intacta. Diseño:
+> `docs/superpowers/specs/2026-06-21-arquero-quieto-orientar-giroscopio-design.md`. Journal:
+> `journal/2026-06-21-arquero-quieto-orientar-giroscopio.md`.
+> **🔬 EN CURSO (2026-06-22):** versión NUEVA (sobre una copia, gateada, sin tocar el candidato) que ANTICIPA
+> y bloquea la pelota usando la VELOCIDAD/dirección de pelota del TOP (`ball_vx/vy_mm_s` del WorldSnapshot —
+> CONFIRMADO que el TOP la manda, pero `amix_comm` aún NO la expone a `g_aio`). Investigación + diseño en
+> marcha (workflow). Objetivo: pelota cerca al costado → strafe más fuerte para atajar; anticipar trayectoria.
 
 > **🥅 ARQUEROMIX — port del ARQUERO 2025 sobre TOP/DOWN (2026-06-21, pedido Virginia, build AISLADO):**
 > Hermano arquero de `centralmix` (el delantero del viernes). Carpeta nueva `src/arqueromix/`

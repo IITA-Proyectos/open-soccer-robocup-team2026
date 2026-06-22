@@ -353,7 +353,8 @@ void amix_fsm_tick() {
             parar();
             if (millis() - millis_inicio_estado >= AMIX_T_PAT_PAUSA) {  // 1000 ms
                 millis_inicio_estado = millis();
-                estado = Estado::PATEANDO_atras;
+                // QUIETO: primero GIRA LENTO buscando el cero (BNO), después vuelve atrás. Default: directo atrás.
+                estado = AMIX_QUIETO ? Estado::orientar_frente : Estado::PATEANDO_atras;
             }
             break;
 
@@ -366,36 +367,37 @@ void amix_fsm_tick() {
                 (millis() - millis_inicio_estado >= AMIX_T_ATRAS_SAFETY)) {  // 4000 ms safety
                 parar();
                 millis_inicio_estado = millis();
-                estado = Estado::avanzar_despues_de_patear;
+                // QUIETO: ya volvió atrás → queda quieto (NO se vuelve a acomodar). Default: avanza y patrulla.
+                estado = AMIX_QUIETO ? Estado::esperar_quieto : Estado::avanzar_despues_de_patear;
             }
             break;
 
         // ----------------------------------------------------
-        case Estado::avanzar_despues_de_patear:     // L1197-1205 — separarse de la línea (avance)
+        case Estado::avanzar_despues_de_patear:     // L1197-1205 (solo PATRULLA; en quieto no se usa)
             avanzar();
             if (millis() - millis_inicio_estado >= AMIX_T_AVANCE_POST) {  // 1000 ms
                 millis_inicio_estado = millis();
-                // QUIETO: ya se separó de la línea → ahora MIRA AL FRENTE → quieto. Default: cierra → patrulla.
-                estado = AMIX_QUIETO ? Estado::orientar_frente : Estado::moverce_derecha;
+                estado = Estado::moverce_derecha;    // cierra el ciclo → patrulla
             }
             break;
 
         // ----------------------------------------------------
-        // --- MODO QUIETO: MIRAR AL FRENTE tras el despeje (pedido Virginia 2026-06-21) ---
+        // --- MODO QUIETO: girar LENTO buscando el PUNTO CERO (BNO) tras el despeje (pedido Virginia 2026-06-21) ---
         case Estado::orientar_frente:
-            // La patada dejó al robot GIRADO (alineó al arco rival). Gira para volver a MIRAR AL FRENTE
-            // (rumbo inicial, heading_error≈0) y recién ahí queda quieto esperando la pelota.
+            // La patada dejó al robot GIRADO (alineó al arco rival). Gira LENTO buscando con el BNO el
+            // punto CERO (rumbo inicial, heading_error≈0, donde miraba al arrancar). Cuando se CENTRA →
+            // vuelve para atrás (PATEANDO_atras) → quieto.
             if (!g_aio.heading_valid ||
                 fabsf(g_aio.heading_error_deg) <= AMIX_TOL_FRENTE_DEG ||
                 (millis() - millis_inicio_estado >= AMIX_T_ORIENTAR_SAFETY)) {
                 parar();
                 millis_inicio_estado = millis();
-                estado = Estado::esperar_quieto;     // vuelve al inicio: quieto esperando la pelota
+                estado = Estado::PATEANDO_atras;     // ya centrado al frente → vuelve para atrás
             } else {
-                // gira para reducir |heading_error| → 0 (enderezarse al frente). ⚠️ SENTIDO a verificar en
-                // banco (-DARQMIX_FLIP_GIRO_FRENTE si gira para el lado equivocado).
+                // gira LENTO para reducir |heading_error| → 0 (enderezarse al frente). ⚠️ SENTIDO a verificar
+                // en banco (-DARQMIX_FLIP_GIRO_FRENTE si gira para el lado equivocado).
                 const int sentido = (g_aio.heading_error_deg > 0.0f) ? -1 : +1;
-                girar(sentido * AMIX_GIRO_ALINEAR_PWM * AMIX_GIRO_FRENTE_SIGN);
+                girar(sentido * AMIX_GIRO_FRENTE_PWM * AMIX_GIRO_FRENTE_SIGN);
             }
             break;
     }

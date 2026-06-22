@@ -173,12 +173,13 @@ constexpr float AMIX_TOL_CERCANIA_MM  = 250.0f; // DESPEJA si la distancia eucl�
 // ============================================================
 // MOVIMIENTO LATERAL INICIAL (SOLO modo quieto, pedido Virginia 2026-06-21): al GO, ANTES del homing,
 // el arquero se mueve un poco a la IZQUIERDA durante este tiempo y recién después va hacia atrás.
-constexpr unsigned long AMIX_T_INICIO_LATERAL = 700;  // cuánto se mueve a la izquierda al arrancar (a ciegas). "un poco".
+constexpr unsigned long AMIX_T_INICIO_LATERAL = 900;  // cuánto se mueve a la izquierda al arrancar (a ciegas). "un poco".
 // MIRAR AL FRENTE tras el despeje (SOLO modo quieto, pedido Virginia 2026-06-21): tras patear (que lo
-// dejó GIRADO apuntando al arco rival) y separarse de la línea, gira para volver a MIRAR AL FRENTE
-// (rumbo inicial, heading_error≈0) antes de quedarse quieto.
+// dejó GIRADO apuntando al arco rival), gira LENTO buscando con el BNO el PUNTO CERO (el rumbo inicial,
+// heading_error≈0, donde miraba al arrancar). Cuando se centra → vuelve para atrás → quieto.
 constexpr float AMIX_TOL_FRENTE_DEG = 10.0f;  // |heading_error| <= esto → ya mira al frente (deja de girar)
-constexpr unsigned long AMIX_T_ORIENTAR_SAFETY = 1500;  // tope girando: si no logra enderezarse, va a quieto igual
+constexpr unsigned long AMIX_T_ORIENTAR_SAFETY = 3000;  // tope girando LENTO: si no logra enderezarse, sigue igual
+constexpr int AMIX_GIRO_FRENTE_PWM = 70;  // giro LENTO para buscar el cero (más bajo que el de alineación=90). Si NO gira (zona muerta), subir.
 // Sentido del giro para enderezarse. ⚠️ Si gira para el lado EQUIVOCADO (se aleja del frente / spinea),
 // flashear con -DARQMIX_FLIP_GIRO_FRENTE.
 #ifdef ARQMIX_FLIP_GIRO_FRENTE

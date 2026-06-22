@@ -171,6 +171,9 @@ constexpr float AMIX_TOL_CERCANIA_MM  = 250.0f; // DESPEJA si la distancia eucl�
 // ============================================================
 // Tiempos / timeouts del ARQUERO (FIEL §3.5) — ms. Iguales 2025.
 // ============================================================
+// MOVIMIENTO LATERAL INICIAL (SOLO modo quieto, pedido Virginia 2026-06-21): al GO, ANTES del homing,
+// el arquero se mueve un poco a la IZQUIERDA durante este tiempo y recién después va hacia atrás.
+constexpr unsigned long AMIX_T_INICIO_LATERAL = 400;  // cuánto se mueve a la izquierda al arrancar (a ciegas). "un poco".
 // INICIO — homing al área chica (banco Virginia 2026-06-21): retrocede hasta ver la línea del
 // área, avanza un poco a ciegas, y recién ahí patrulla.
 // ⚠️ SAFETY a 50 s TEMPORAL (pedido Virginia, para observar el retroceso): después bajar a ~4 s.

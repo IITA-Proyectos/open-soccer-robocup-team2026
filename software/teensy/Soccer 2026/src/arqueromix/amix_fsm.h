@@ -1,7 +1,7 @@
 // amix_fsm.h — Máquina de estados del ARQUERO 2025 portada a arqueromix.
 //
 // Port FIEL del ciclo ARQUERO del firmware unificado 2025 (definitivo-arquero_6-9-2026,
-// L1016-1205). Son **13 estados** (el enum de abajo; +`esperar_quieto` del modo quieto): el bloque DELANTERO del 2025 NO se porta acá
+// L1016-1205). Son **14 estados** (el enum de abajo; +`esperar_quieto` y +`inicio_lateral_izq` del modo quieto): el bloque DELANTERO del 2025 NO se porta acá
 // (eso es centralmix). El estado INICIAL ya NO es `impulso_inicial` (2025) sino `inicio_retroceder`
 // (homing al área, agregado 2026-06-21 banco Virginia). Estados nuevos 2026: inicio_retroceder/
 // inicio_avanzar (homing), salir_linea_der/izq (rebote a ciegas), ALINEAR_arco_opp (apuntar al arco rival).
@@ -27,7 +27,8 @@ namespace arqmix {
 // HOMING al área chica — retrocede hasta ver la línea del área, avanza un poco a ciegas, y recién
 // ahí patrulla. Así arranca siempre posicionado en su arco.
 enum class Estado : uint8_t {
-    inicio_retroceder,           // estado INICIAL: ir hacia atrás hasta detectar la línea del área
+    inicio_lateral_izq,          // MODO QUIETO: estado INICIAL — moverse un poco a la IZQUIERDA, luego → homing.
+    inicio_retroceder,           // estado INICIAL (patrulla) / 2º en quieto: ir hacia atrás hasta detectar la línea del área
     inicio_avanzar,              // tras ver la línea: avanzar un poco SIN leer los sensores
     esperar_quieto,              // MODO QUIETO (-DARQMIX_QUIETO): parado esperando la pelota. SOLO parar /
                                  // seguir pelota lateral / patear. NO usa moverce_*/rebote/profundidad.

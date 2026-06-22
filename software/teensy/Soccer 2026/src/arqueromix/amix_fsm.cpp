@@ -103,7 +103,8 @@ static inline bool borde_arco_izq() {
 }
 
 void amix_fsm_init() {
-    estado = Estado::inicio_retroceder;   // homing al área chica antes de patrullar
+    // QUIETO: arranca con un movimiento lateral a la izquierda; default: directo al homing.
+    estado = AMIX_QUIETO ? Estado::inicio_lateral_izq : Estado::inicio_retroceder;
     millis_inicio_estado = millis();
     pd = AMIX_PD_BASE;
 }
@@ -115,10 +116,10 @@ void amix_fsm_tick() {
         s_was_running = false;   // quedó parado → el próximo GO re-arranca el homing
         return;
     }
-    // Flanco STOP→GO (y el primer GO): reiniciar el FSM al homing del área chica, SIEMPRE.
+    // Flanco STOP→GO (y el primer GO): reiniciar el FSM SIEMPRE. QUIETO: arranca con el lateral izq.
     if (!s_was_running) {
         s_was_running = true;
-        estado = Estado::inicio_retroceder;
+        estado = AMIX_QUIETO ? Estado::inicio_lateral_izq : Estado::inicio_retroceder;
         millis_inicio_estado = millis();
         pd = AMIX_PD_BASE;
         s_commit_until_ms = 0;
@@ -128,6 +129,17 @@ void amix_fsm_tick() {
     const bool  haypelota = g_aio.ball_visible;     // == 'haypelota' 2025
 
     switch (estado) {
+        // ----------------------------------------------------
+        // --- MODO QUIETO: movimiento lateral IZQUIERDA inicial, ANTES del homing (pedido Virginia 2026-06-21) ---
+        case Estado::inicio_lateral_izq:
+            aiproporcional(AMIX_PD_BASE, error);     // strafe IZQUIERDA a ciegas (con corrección de rumbo)
+            if (millis() - millis_inicio_estado >= AMIX_T_INICIO_LATERAL) {  // se movió "un poco"
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::inicio_retroceder;  // y AHORA sí, el homing (ir hacia atrás)
+            }
+            break;
+
         // ----------------------------------------------------
         // --- INICIO: homing al área chica (banco Virginia 2026-06-21) ---
         case Estado::inicio_retroceder:             // ir HACIA ATRÁS hasta detectar la línea del área

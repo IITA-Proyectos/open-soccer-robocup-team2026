@@ -64,6 +64,15 @@ Env: `central_robot2_arqueromix_quieto`. Mirar SOLO el giro post-patada (estado
 3. Criterio: el robot termina apuntando al arco rival (`|goal_opp| ≤ 12°`) sin tirones
    antes del retroceso.
 
+## Iteración de banco 2026-06-21 (Virginia)
+
+- **PWM 70 → giraba CONTINUO pero MUY RÁPIDO** (clave: NO a tirones). Eso dice que el piso
+  de giro está **por debajo de 70**: en rotación pura las 3 ruedas se ayudan, así que el
+  piso baja respecto del strafe individual. Buena noticia — hay margen para el "lento".
+- **Bajado 70 → 50** (`AMIX_GIRO_FRENTE_PWM`). Próximo banco: ver si a 50 sigue parejo o
+  empieza a tironear (stick-slip = cayó debajo del piso → subir a 55/60).
+- (Dato observado en banco; NO cierra TASK de hardware — sigue abierto.)
+
 ## Verificación
 
 - `pio run -e central_robot2_arqueromix_quieto` → **SUCCESS** (FLASH code 17288, data 4040).

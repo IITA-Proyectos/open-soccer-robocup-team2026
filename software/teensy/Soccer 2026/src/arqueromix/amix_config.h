@@ -186,10 +186,10 @@ constexpr unsigned long AMIX_T_ORIENTAR_SAFETY = 3000;  // tope girando LENTO: s
 //   · si sale a TIRONES (stick-slip, "parece pulsos otra vez") → está por debajo del piso → SUBIR de a 5.
 //   · si gira suave pero MUY rápido → ya estás cerca del piso; el continuo no da más lento. Avisar (se
 //     evalúa volver al pulsado o un arranque con rampa).
-// Arranca en 70 = piso nominal de las delanteras (lo más lento siendo continuo). OJO: la TRASERA (piso ~107)
-// puede no participar a este PWM → el giro sale algo asimétrico (rota + traslada un poco), igual que el
-// pulso de 90 de antes. <TITRAR EN BANCO>
-constexpr int AMIX_GIRO_FRENTE_PWM = 70;  // PWM del giro CONTINUO lento al arco rival. Subir si tironea; el continuo no baja del piso.
+// BANCO Virginia 2026-06-21: a 70 giraba CONTINUO pero MUY RÁPIDO (no tironeaba) → el piso de giro está
+// POR DEBAJO de 70 (en rotación las 3 ruedas se ayudan, baja el piso vs strafe). Bajado 70→50 para buscar
+// el "lento". Si a 50 empieza a TIRONEAR (stick-slip = cayó debajo del piso) → subir hacia 55/60. <TITRAR>
+constexpr int AMIX_GIRO_FRENTE_PWM = 50;  // PWM del giro CONTINUO lento al arco rival. Si tironea, subir; el continuo no baja del piso.
 // (OBSOLETAS: el giro ya NO es pulsado. Se conservan por si se decide volver al esquema PFM.)
 constexpr unsigned long AMIX_T_GIRO_VENTANA = 350;  // [sin uso] ventana del pulso PFM viejo
 constexpr unsigned long AMIX_T_GIRO_ON      = 90;   // [sin uso] ON del pulso PFM viejo

@@ -436,7 +436,7 @@ tipo: indice-operacional
 > ⚠️ **El 4.0 NO expone S7 (28/29) en el borde** (back-pads) → el enlace a CENTRAL va por **S4**, no S7 (fix 2026-06-02: antes estaba en S7 y el TOP nunca le llegaba a la CENTRAL).
 > **CENTRAL (Teensy 4.1):** **S7 (pin 28)←TOP** (el cable sale del TOP pin 17/TX4) · **S1 (pin 0)←DOWN** · **pines 7/8 LIBRES para el motor 2** → **conflicto 7/8 (TASK-036) RESUELTO**. HC-SR04 en pines 4/3.
 > CENTRAL **sin BNO** (los 2 BNO están en el TOP). **Los 4 ToF activos por default** en
-> top_robot1/2 (`TOP_ENABLE_MULTI_TOF`; **I²C 100 kHz** — el BNO055 + ToF NO coexisten a 400 kHz, boot ~40 s). **`Zircon.pdf`** (esquemático
+> top_robot1/2/pri (`TOP_ENABLE_MULTI_TOF`; **bus de ToF a 400 kHz** ✅ validado 2026-06-22 R1+R2 — el BNO PRIMARIO está SOLO en Wire2 y coexiste con los ToF; queda el centinela @1 Hz. El viejo "100 kHz / no coexisten a 400 / boot ~40 s" quedó SUPERADO; boot ~9,6 s). **`Zircon.pdf`** (esquemático
 > del Zircon/CENTRAL, fuente Robomov) ya está en `hardware/electronics/`. Detalle único del
 > cableado: `hardware/electronics/MAPA-CONEXIONES-3-PLACAS.md`. Cualquier "conflicto 7/8
 > abierto" o "Serial2 → CENTRAL" más abajo está **superado**.

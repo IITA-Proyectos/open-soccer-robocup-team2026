@@ -1,9 +1,9 @@
-# ToF — Bus I2C a 400 kHz (default de competencia robot2) + plan de pruebas
+# ToF — Bus I2C a 400 kHz (default de competencia R1 + R2) + registro de pruebas
 
-> **Estado:** ⭐ 2026-06-22 (Gustavo): el bus a 400 kHz pasó a ser el **DEFAULT de competencia de
-> robot2** (`top_robot2_pri` trae `-DTOP_TOF_FAST_BUS`). Compila (default 400 + `slowbus` 100).
-> **TODAVÍA NO VALIDADO EN HARDWARE** → el plan T1–T7 sigue siendo el gate para CONFIAR en él en
-> partido; rollback de 1 flasheo = `top_robot2_pri_slowbus`. El cierre lo hace el equipo con la placa.
+> **Estado:** ✅ **VALIDADO EN HARDWARE — 2026-06-22 (Gustavo): AMBOS robots (R1 + R2) andan a 400 kHz.**
+> El bus a 400 kHz es el **default de competencia de los dos** (`top_robot2_pri` y `top_robot1_pri`
+> traen `-DTOP_TOF_FAST_BUS`). Este doc queda como REGISTRO del cambio + el plan de pruebas que se
+> corrió. Rollback de 1 flasheo, si alguna vez hiciera falta = `*_slowbus`.
 > **Autor:** Claude Opus 4.8 (Anthropic) · **Pedido por:** Gustavo Viollaz · **Fecha:** 2026-06-22
 
 ---
@@ -144,6 +144,6 @@ A/B de loop rate (T5).
 `-DTOP_BNO_PRIMARY_ONLY` (primario en Wire2) tras la unificación HW del 2026-06-15/16, así que el bus
 rápido le aplica igual. Flash de competencia de R1 = `top_robot1_pri_rt`; rollback = `top_robot1_pri_slowbus`.
 
-**⚠️ Pendiente: validar T1–T7 en hardware.** Se adoptó como default por decisión de Gustavo, pero NO
-está probado en placa todavía. Hasta correr el plan, tratar el 400 como NO confiable para partido y
-tener listo el `slowbus`. **Esta TASK la cierra el equipo humano con la placa. Claude no la marca `done`.**
+**✅ Validado en hardware (2026-06-22, Gustavo):** ambos robots flasheados con el 400 kHz **andan** —
+ToF leyendo, robot booteando OK. El cierre lo hizo el equipo con la placa (esta confirmación es de
+Gustavo, no de Claude). El `slowbus` queda como rollback/A-B por si alguna vez hiciera falta.

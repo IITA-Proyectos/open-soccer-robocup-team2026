@@ -237,22 +237,26 @@ void avanzar_patear() {
     // Corrección de rumbo con el OTOS (heading-hold). Sólo si el OTOS sigue fresco; si la
     // pose se puso vieja a mitad de la patada, corr=0 (seguimos recto a ciegas, no a un
     // rumbo congelado erróneo).
+    float err = 0.0f;
     int corr = 0;
     if (s_kick_use_otos &&
         (now - g_io.t_last_otos_pose_ms) < MIX_KICK_OTOS_FRESH_MS) {
-        const float err = wrap180(g_io.otos_heading_deg - s_kick_heading_target);
+        err = wrap180(g_io.otos_heading_deg - s_kick_heading_target);
         int c = static_cast<int>(MIX_KICK_HEADING_KP * err);
         if (c >  MIX_KICK_CORR_MAX) c =  MIX_KICK_CORR_MAX;
         if (c < -MIX_KICK_CORR_MAX) c = -MIX_KICK_CORR_MAX;
         corr = c;
     }
+    g_io.kick_err_deg = err;   // diagnóstico para el debug por USB (titular en banco)
+    g_io.kick_corr    = corr;
 
-    // Empuje (M1=+, M2=-, M3=0) + giro de corrección (mismo signo en las 3, como girar()).
-    // mix_set_motor clampea cada rueda a ±MIX_MAX_PWM (el corr puede saturar M1 a tope; el
-    // efecto de giro igual aparece porque baja M2 y mueve M3). Se reescribe en CADA tick.
-    mix_set_motor(0, +s_kick_vel + corr);  // M1: delantera IZQ
-    mix_set_motor(1, -s_kick_vel + corr);  // M2: delantera DER
-    mix_set_motor(2,            0 + corr);  // M3: trasera (solo gira para corregir)
+    // Empuje (M1=+vel, M2=-vel, M3=0) + giro de corrección (misma corr en las 3, como girar()).
+    // + FEEDFORWARD de balance MIX_KICK_FWD_TRIM: trasvasa PWM de M1 (izq) a M2 (der) para matar
+    //   la deriva CONSTANTE (banco: se iba siempre a la DERECHA, a M2 le faltaba potencia). El
+    //   heading-hold (corr) queda encima para el resto. mix_set_motor clampea cada rueda a ±255.
+    mix_set_motor(0, +(s_kick_vel - MIX_KICK_FWD_TRIM) + corr);  // M1: delantera IZQ (menos)
+    mix_set_motor(1, -(s_kick_vel + MIX_KICK_FWD_TRIM) + corr);  // M2: delantera DER (más, boost)
+    mix_set_motor(2,                               0   + corr);  // M3: trasera (solo gira para corregir)
 }
 
 // retroceder_patear() 2025: M1=patadM1(250, INB1=1), M2=patadM2(170, INA2=1), M3=0(INA3=1).

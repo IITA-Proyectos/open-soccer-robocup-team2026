@@ -187,3 +187,51 @@ def test_raw_zone_mask_top_row_180_maps_to_bottom_raw():
     for z in (0, 1, 2, 3):
         cfg.zone_enabled[0][z] = False
     assert cfg.raw_zone_mask(0) == 0x0FFF                # crudas 12..15 anuladas
+
+
+# ── Veto INICIAL recomendado: SÓLO la 2ª fila desde abajo (pedido Gustavo) ──────
+def test_default_veto_solo_fila_2_activa_en_display():
+    # 4×4: fila 2 (zonas display 8..11) ACTIVA; filas 0,1,3 vetadas.
+    cfg = TofLayout()
+    cfg.apply_default_veto()
+    for z in range(N_ZONES):
+        r = z // GRID_W
+        assert cfg.zone_is_enabled(0, z) == (r == 2), f"zona {z} (fila {r})"
+
+
+def test_default_veto_raw_mask_rot0_es_0x0F00():
+    # Sin rotación, display=crudo → la fila 2 (zonas 8..11) queda activa = 0x0F00.
+    cfg = TofLayout()
+    cfg.rotation_deg = {i: 0 for i in range(4)}          # forzar rot 0 en todos (idx3 default=180)
+    cfg.apply_default_veto()
+    assert cfg.raw_zone_mask(0) == 0x0F00
+
+
+def test_default_veto_raw_mask_sensor_180_mapea_a_fila_de_arriba():
+    # ToF a 180° (ej. el izquierdo): la "2ª desde abajo" en PANTALLA cae en las zonas
+    # CRUDAS 4..7 (display z ← crudo 15-z → disp 8..11 ← crudo 7..4) = 0x00F0.
+    cfg = TofLayout()
+    cfg.rotation_deg = {i: 0 for i in range(4)}
+    cfg.rotation_deg[3] = 180
+    cfg.apply_default_veto()
+    assert cfg.raw_zone_mask(3) == 0x00F0
+
+
+# ── Exportador del layout ESTÁTICO al firmware (hornear FIJO) ───────────────────
+def test_flip_to_bits():
+    from monitor_base.tof_layout import flip_to_bits
+    assert flip_to_bits("none") == 0
+    assert flip_to_bits("h") == 1
+    assert flip_to_bits("v") == 2
+
+
+def test_export_static_header_usa_bearing_correcto_sin_bug_derizq():
+    # bearings por defecto: FRONT=0, BACK=180, RIGHT=270, LEFT=90 (convención HARDWARE,
+    # NO el bug RIGHT=90/LEFT=270). rotación idx3=180 por default; flips 0.
+    from monitor_base.tof_layout import export_static_layout_header
+    hdr = export_static_layout_header({"TEENSY_ABC123": TofLayout()})
+    assert '"TEENSY_ABC123"' in hdr
+    assert "{ 0, 180, 270, 90 }" in hdr                  # bearings (der=270, izq=90 = correcto)
+    assert "{ 0, 0, 0, 180 }" in hdr                     # rotaciones (izq a 180°)
+    assert "TOF_STATIC_LAYOUT_COUNT = 1" in hdr
+    assert "#pragma once" in hdr

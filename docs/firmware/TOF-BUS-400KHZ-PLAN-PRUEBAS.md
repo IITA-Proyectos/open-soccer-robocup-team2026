@@ -1,7 +1,9 @@
-# ToF — Bus I2C a 400 kHz (parche de banco) + plan de pruebas
+# ToF — Bus I2C a 400 kHz (default de competencia robot2) + plan de pruebas
 
-> **Estado:** firmware LISTO y COMPILA (default + variante). **NO VALIDADO EN HARDWARE.**
-> El cierre de este doc lo hace el equipo flasheando un TOP y corriendo el plan T1–T7.
+> **Estado:** ⭐ 2026-06-22 (Gustavo): el bus a 400 kHz pasó a ser el **DEFAULT de competencia de
+> robot2** (`top_robot2_pri` trae `-DTOP_TOF_FAST_BUS`). Compila (default 400 + `slowbus` 100).
+> **TODAVÍA NO VALIDADO EN HARDWARE** → el plan T1–T7 sigue siendo el gate para CONFIAR en él en
+> partido; rollback de 1 flasheo = `top_robot2_pri_slowbus`. El cierre lo hace el equipo con la placa.
 > **Autor:** Claude Opus 4.8 (Anthropic) · **Pedido por:** Gustavo Viollaz · **Fecha:** 2026-06-22
 
 ---
@@ -89,7 +91,7 @@ de robot1 también esté fuera del bus de ToF** (en `Wire2`).
 - **prioridad:** **P2** — mejora de tiempo-real capitalizable; el robot compite sin
   esto. Sube a **P1** si en banco se confirma que destraba el atraso del WorldSnapshot
   de forma notable.
-- **escape (rollback):** flashear `top_robot2_pri` (byte-idéntico a competencia).
+- **escape (rollback):** flashear `top_robot2_pri_slowbus` (la MISMA build, bus a 100 kHz).
   Si algo se porta raro, se vuelve en 1 flasheo.
 
 ---
@@ -97,21 +99,23 @@ de robot1 también esté fuera del bus de ToF** (en `Wire2`).
 ## 5. Plan de pruebas en hardware real
 
 **Setup:** TOP de robot2, monitor USB despierto (la app de `tools/monitor-base`).
-Tener a mano el binario de escape (`top_robot2_pri`).
+Tener a mano el binario de escape (`top_robot2_pri_slowbus`).
 
-**Flasheo del binario a probar:**
+**Flasheo:** el 400 kHz ya es el DEFAULT de competencia (robot2), así que el binario a probar **ES el
+de partido**:
 ```
-pio run -e top_robot2_pri_fastbus -t upload
+pio run -t upload
 ```
+Rollback a 100 kHz (si algo falla, o para el A/B de T5): `pio run -e top_robot2_pri_slowbus -t upload`.
 
 | # | Prueba | Cómo | Criterio de PASA |
 |---|--------|------|------------------|
-| **T1** | Arranca | Flashear fastbus, encender, abrir monitor. | El TOP bootea y el monitor despierta (cámaras/IMU/ToF/WorldSnapshot llegan). |
-| **T2** | **Distancias ToF correctas** *(make-or-break)* | Poner pared/mano a distancias conocidas frente a **cada uno** de los 4 ToF. Comparar contra lo que daba a 100 kHz (`top_robot2_pri`). | Las 4 distancias coinciden con la realidad y con el baseline. **Sin** ceros espurios, basura ni saltos. |
+| **T1** | Arranca | Flashear el default (400), encender, abrir monitor. | El TOP bootea y el monitor despierta (cámaras/IMU/ToF/WorldSnapshot llegan). |
+| **T2** | **Distancias ToF correctas** *(make-or-break)* | Poner pared/mano a distancias conocidas frente a **cada uno** de los 4 ToF. Comparar contra lo que da a 100 kHz (`top_robot2_pri_slowbus`). | Las 4 distancias coinciden con la realidad y con el baseline. **Sin** ceros espurios, basura ni saltos. |
 | **T3** | Sin caídas de sensor | Mirar la frescura por-sensor / `ever_ok` / si el round-robin saltea alguno, durante ~2–3 min. | Ningún ToF entra en stale ni desaparece del turnero por NACK. |
 | **T4** | **Centinela BNO sano** | Ver el heading del 2º BNO (centinela, 1 Hz) y compararlo con el primario (Wire2). | El centinela da heading coherente (no salta, no se congela), dentro de tolerancia del primario. |
-| **T5** | **Loop más rápido** *(el objetivo)* | Medir loop rate del TOP / tasa de WorldSnapshot **antes** (`top_robot2_pri`) y **después** (fastbus). | El loop/WorldSnapshot sube de forma medible (se libera el ~60→~16 ms por lectura). Anotar los números. |
-| **T6** | Soak quieto | Robot quieto 3–5 min con fastbus. | Sin falso-CONGELADO del freeze-detector, sin caída de ToF, heading estable. |
+| **T5** | **Loop más rápido** *(el objetivo)* | Medir loop rate del TOP / tasa de WorldSnapshot **a 100 kHz** (`top_robot2_pri_slowbus`) y **a 400** (default). | El loop/WorldSnapshot sube de forma medible (se libera el ~60→~16 ms por lectura). Anotar los números. |
+| **T6** | Soak quieto | Robot quieto 3–5 min a 400. | Sin falso-CONGELADO del freeze-detector, sin caída de ToF, heading estable. |
 | **T7** | Con movimiento | Ruedas al aire o jugada corta: seguir paredes / distancias bajo motores andando. | Las distancias siguen trackeando; sin regresión vs 100 kHz. |
 
 **Qué anotar (para decidir si se adopta):**
@@ -120,19 +124,25 @@ pio run -e top_robot2_pri_fastbus -t upload
 - Cualquier timeout/NACK/caída observada en T3–T4.
 
 **Decisión:**
-- Si T2–T4 **PASAN** y T5 muestra mejora → candidato a adoptar (cómo, en §6).
-- Si aparecen timeouts/caídas en T3 o el centinela se ensucia en T4 → **descartar**
-  fastbus, volver a 100 kHz, y la próxima palanca de tiempo-real es bajar la frecuencia
-  de round-robin o recortar payload del ToF, no subir el bus.
+- Si T2–T4 **PASAN** y T5 muestra mejora → el 400 queda confirmado como default de competencia (ya
+  está puesto; ver §6).
+- Si aparecen timeouts/caídas en T3 o el centinela se ensucia en T4 → **revertir** a 100 kHz
+  (flashear `top_robot2_pri_slowbus`), y la próxima palanca de tiempo-real es bajar la frecuencia de
+  round-robin o recortar payload del ToF, no subir el bus.
 
 ---
 
-## 6. Si pasa: cómo se adopta (NO hacer hasta validar)
+## 6. Estado de adopción
 
-Hoy el cambio vive **solo** en el env de banco `top_robot2_pri_fastbus`. Si el equipo
-valida T1–T7 en hardware, recién ahí se decide promoverlo al binario de competencia
-agregando `-DTOP_TOF_FAST_BUS` a `top_robot2_pri` (eso **cambia** el binario de
-partido → se re-valida en banco como cualquier cambio de competencia). Mientras tanto,
-competencia sigue byte-idéntica.
+⭐ **2026-06-22 (Gustavo):** el flag `-DTOP_TOF_FAST_BUS` se **promovió a `top_robot2_pri`** → el bus a
+400 kHz es el **default de competencia de robot2**. Esto **cambia** el binario de partido (ya NO es
+byte-idéntico al de antes). El env de banco `_fastbus` se reemplazó por `top_robot2_pri_slowbus`
+(`-DTOP_TOF_BUS_SLOW`), que vuelve a 100 kHz sin tocar el resto de flags — para rollback y para el
+A/B de loop rate (T5).
 
-**⚠️ Esta TASK la cierra el equipo humano con la placa. Claude no la marca `done`.**
+**Sólo robot2.** Robot1 NO lo trae: su BNO PRIMARIO comparte el bus de ToF, así que sigue a 100 kHz
+hasta analizarlo aparte (mismo razonamiento del band-aid original).
+
+**⚠️ Pendiente: validar T1–T7 en hardware.** Se adoptó como default por decisión de Gustavo, pero NO
+está probado en placa todavía. Hasta correr el plan, tratar el 400 como NO confiable para partido y
+tener listo el `slowbus`. **Esta TASK la cierra el equipo humano con la placa. Claude no la marca `done`.**

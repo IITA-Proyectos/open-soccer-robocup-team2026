@@ -154,21 +154,34 @@ void amix_fsm_tick() {
                 const bool safety            = dt >= AMIX_T_INICIO_AVANCE_SAFETY;
                 if ((impulso_minimo_ok && ya_salio_de_linea) || safety) {
                     millis_inicio_estado = millis();
-                    estado = Estado::moverce_derecha;    // recién ahora empieza a patrullar
+                    // QUIETO: va a esperar parado (NO patrulla). Default: empieza a patrullar.
+                    estado = AMIX_QUIETO ? Estado::esperar_quieto : Estado::moverce_derecha;
                 }
             }
             break;
 
         // ----------------------------------------------------
-        case Estado::moverce_derecha:               // L1030-1076 (FIX cámara por ÁNGULO 2026-06-21)
-            // MODO QUIETO: strafea SOLO si está siguiendo una pelota DESCENTRADA (lejos+off-center,
-            // fuera de commit, que no sea para patear). Si no hay pelota / está alineada / en commit →
-            // NO strafea → queda QUIETO (por el parar() de las ramas de abajo). Patrulla normal (default,
-            // AMIX_QUIETO=false): el `||` corta y strafea SIEMPRE = byte-idéntico a antes.
-            if (!AMIX_QUIETO ||
-                (haypelota && millis() >= s_commit_until_ms && !ball_alineada() && !ball_para_despejar())) {
-                adproporcional(pd, error);          // strafe derecha + corrección rumbo
+        // --- MODO QUIETO (-DARQMIX_QUIETO): esperar PARADO; seguir la pelota para enfrentarla; patear si cerca ---
+        // SIMPLE a propósito: NADA de patrulla / rebote / profundidad (eso generaba movimiento parásito —
+        // banco Virginia 2026-06-21). Solo 3 ramas. Reusa la secuencia de despeje (PATEANDO_*).
+        case Estado::esperar_quieto:
+            if (haypelota && ball_para_despejar()) {           // CERCA + al frente → DESPEJA (igual que siempre)
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::PATEANDO_pausa_inicial;
+            } else if (haypelota && !ball_alineada()) {        // DESCENTRADA → strafe lateral para ENFRENTARLA
+                // strafe hacia el lado de la pelota (con corrección de rumbo). Cuando se centre, el
+                // próximo tick cae al else → parar(). NO rebota, NO avanza: solo lateral hasta enfrentar.
+                if (ball_a_la_derecha()) adproporcional(AMIX_PD_BALL, error);
+                else                     aiproporcional(AMIX_PD_BALL, error);
+            } else {                                           // sin pelota, o ya alineada → QUIETO
+                parar();
             }
+            break;
+
+        // ----------------------------------------------------
+        case Estado::moverce_derecha:               // L1030-1076 (FIX cámara por ÁNGULO 2026-06-21)
+            adproporcional(pd, error);              // strafe derecha + corrección rumbo
             if (haypelota) {
                 if (ball_para_despejar()) {         // cerca + al frente → DESPEJA
                     parar();
@@ -200,15 +213,12 @@ void amix_fsm_tick() {
                 // BORDE LATERAL: por ARCO si la cámara lo VE (rebota al llegar al borde del arco); por
                 // LÍNEA si NO lo ve (fallback → siempre patrulla). Gateado por commit. Borde der → rebota IZQ.
                 const bool en_borde = g_aio.goal_own_visible ? borde_arco_der() : linea();
-                // MODO QUIETO: el rebote lateral SOLO si está siguiendo la pelota (si no, el arquero
-                // quieto NO debe moverse de costado — las líneas de la cancha NO lo deben hacer rebotar).
-                if (millis() >= s_commit_until_ms && en_borde &&
-                    (!AMIX_QUIETO || (haypelota && !ball_alineada()))) {
+                if (millis() >= s_commit_until_ms && en_borde) {
                     parar();
                     millis_inicio_estado = millis();
                     estado = Estado::salir_linea_izq;   // sale a la IZQ → moverce_izquierda
                 }
-            } else if (linea() && (!AMIX_QUIETO || (haypelota && !ball_alineada()))) {  // FALLBACK total; QUIETO: rebote solo si sigue pelota
+            } else if (linea()) {                       // FALLBACK TOTAL (-DARQMIX_PATRULLA_LINEA): solo LÍNEA
                 parar();
                 millis_inicio_estado = millis();
                 // En COMMIT (recién salió de la línea IZQ): si vuelve a ver línea es la MISMA, NO
@@ -220,11 +230,7 @@ void amix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::moverce_izquierda:             // L1078-1124 (espejo, FIX cámara por ÁNGULO)
-            // MODO QUIETO (espejo): strafea SOLO si sigue una pelota descentrada; si no, queda quieto.
-            if (!AMIX_QUIETO ||
-                (haypelota && millis() >= s_commit_until_ms && !ball_alineada() && !ball_para_despejar())) {
-                aiproporcional(pd, error);
-            }
+            aiproporcional(pd, error);
             if (haypelota) {
                 if (ball_para_despejar()) {
                     parar();
@@ -254,15 +260,12 @@ void amix_fsm_tick() {
                 }
                 // BORDE LATERAL: por ARCO si lo VE; por LÍNEA si NO (fallback). Borde izq → rebota DER.
                 const bool en_borde = g_aio.goal_own_visible ? borde_arco_izq() : linea();
-                // MODO QUIETO: el rebote lateral SOLO si está siguiendo la pelota (si no, el arquero
-                // quieto NO debe moverse de costado — las líneas de la cancha NO lo deben hacer rebotar).
-                if (millis() >= s_commit_until_ms && en_borde &&
-                    (!AMIX_QUIETO || (haypelota && !ball_alineada()))) {
+                if (millis() >= s_commit_until_ms && en_borde) {
                     parar();
                     millis_inicio_estado = millis();
                     estado = Estado::salir_linea_der;   // sale a la DER → moverce_derecha
                 }
-            } else if (linea() && (!AMIX_QUIETO || (haypelota && !ball_alineada()))) {  // FALLBACK total; QUIETO: rebote solo si sigue pelota
+            } else if (linea()) {                       // FALLBACK TOTAL (-DARQMIX_PATRULLA_LINEA): solo LÍNEA
                 parar();
                 millis_inicio_estado = millis();
                 // En COMMIT (recién salió de la línea DER): si vuelve a ver línea es la MISMA →
@@ -360,7 +363,8 @@ void amix_fsm_tick() {
             avanzar();
             if (millis() - millis_inicio_estado >= AMIX_T_AVANCE_POST) {  // 1000 ms
                 millis_inicio_estado = millis();
-                estado = Estado::moverce_derecha;    // cierra el ciclo → patrulla
+                // QUIETO: vuelve a esperar parado. Default: cierra el ciclo → patrulla.
+                estado = AMIX_QUIETO ? Estado::esperar_quieto : Estado::moverce_derecha;
             }
             break;
     }

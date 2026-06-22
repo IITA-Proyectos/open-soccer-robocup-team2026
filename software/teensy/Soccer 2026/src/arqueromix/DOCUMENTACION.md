@@ -464,22 +464,28 @@ Todo es tuneo de constantes salvo el sesgo forward (2 líneas en `ad/aiproporcio
 Versión de prueba donde el arquero **NO patrulla**: hace el homing igual y después se queda **QUIETO**
 esperando la pelota. Es la patrulla, **simplificada**.
 
-- **Comportamiento:** homing igual → quieto esperando → si ve la pelota LEJOS y DESCENTRADA, se mueve
-  lateral para **enfrentarla** (mismo seguimiento por ángulo) → si está ALINEADA y lejos, **quieto** →
-  si está CERCA, **patea** (igual que el default). La **profundidad por línea** sigue activa (safety,
-  empuje al frente si derivó al área). **FIX banco 2026-06-21:** el **rebote lateral** (salir de línea)
-  en quieto SOLO se dispara si está **siguiendo la pelota** — antes, en cancha vacía, las **líneas del
-  piso** lo hacían rebotar de costado (oscilaba sin estar quieto). Ahora con la pelota fuera, no rebota.
-- **Implementación (mínima, sin estados nuevos):** flag `AMIX_QUIETO` (`-DARQMIX_QUIETO`). En `moverce_*`
-  el strafe del tope se **gatea**: en quieto solo strafea si está siguiendo una pelota descentrada
-  (`haypelota && fuera de commit && !ball_alineada && !ball_para_despejar`); si no, queda quieto (por el
-  `parar()` de las ramas de pelota). Todo lo demás (homing, seguir, patear, rebote, profundidad) se REUSA.
-- **Default byte-idéntico:** sin el flag, `AMIX_QUIETO=false` → el `||` corta y el strafe corre siempre
-  como antes. La patrulla normal (`central_robot2_arqueromix`) NO cambia.
-- **Env:** `pio run -e central_robot2_arqueromix_quieto -t upload`. Combinable con `_retroflip`/`_giroflip`
-  si hace falta (agregar el flag al build_flags).
-- ⚠️ Riesgo a mirar en banco: si la pelota PARPADEA (visible/no), podría temblar entre seguir y quieto
-  (arranque-frenado del omni). Si pasa, se agrega una persistencia corta de pelota (knob de 3 líneas).
+- **Comportamiento:** homing igual → **QUIETO** esperando → si ve la pelota DESCENTRADA, se mueve
+  lateral para **enfrentarla** → si está ALINEADA (o no hay pelota), **quieto** → si está CERCA, **patea**
+  (igual que el default) → tras patear, vuelve a **quieto**.
+- **Implementación (ESTADO DEDICADO `esperar_quieto` — reescrito 2026-06-21).** El primer intento gateaba
+  `moverce_*` con un flag, pero `moverce_*` arrastra el **rebote por línea** (oscilaba de costado con las
+  líneas del piso) y la **profundidad por línea** (`goal_own_visible && linea()` → avanzar → en cancha
+  llena de líneas + arco visible → **caminaba para adelante sin parar**). Solución correcta: el quieto
+  **NO usa `moverce_*` ni nada de patrulla**. Tiene su propio estado `esperar_quieto`, con SOLO 3 ramas:
+  ```
+  esperar_quieto:
+     pelota CERCA+al frente → patea (PATEANDO_*)
+     pelota DESCENTRADA     → strafe lateral hacia ella (ad/aiproporcional, con corrección de rumbo)
+     si no                  → parar()  (QUIETO)
+  ```
+  Sin rebote, sin profundidad, sin fallback de línea → cero movimiento parásito. El homing
+  (`inicio_avanzar`) y el post-despeje (`avanzar_despues_de_patear`) van a `esperar_quieto` en vez de
+  `moverce_derecha` cuando `AMIX_QUIETO`. Reusa homing + secuencia de despeje; NO usa moverce_*/rebote.
+- **Default byte-idéntico:** sin el flag, `AMIX_QUIETO=false` → las transiciones van a `moverce_derecha`
+  (constexpr) y `esperar_quieto` nunca se entra. La patrulla normal NO cambia (moverce_* quedó limpio).
+- **Env:** `pio run -e central_robot2_arqueromix_quieto -t upload`.
+- ⚠️ Riesgo a mirar en banco: si la pelota PARPADEA (visible/no), podría temblar entre seguir y quieto.
+  Si pasa, se agrega una persistencia corta de pelota. (No incluida: YAGNI hasta verlo.)
 
 ## 18. Despeje DIRIGIDO al arco rival + arcos por ROL, no por color (pedido Gustavo 2026-06-21)
 

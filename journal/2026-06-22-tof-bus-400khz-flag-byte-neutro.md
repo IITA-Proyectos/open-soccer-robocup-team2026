@@ -5,8 +5,8 @@ author: "Claude Opus 4.8 (Anthropic)"
 requested-by: "Gustavo Viollaz (@gviollaz)"
 ai-assisted: true
 tipo: firmware-banco
-toca-competencia: NO (flag default OFF → binario de competencia byte-idéntico)
-status: compila (default + variante) · NO VALIDADO EN HARDWARE (lo cierra el equipo)
+toca-competencia: SÍ desde 2026-06-22 (400 kHz promovido a default de robot2; ver actualización al pie)
+status: compila (default 400 + slowbus 100) · NO VALIDADO EN HARDWARE (lo cierra el equipo)
 ---
 
 # Bus I2C de los ToF a 400 kHz — parche de banco flag-gated
@@ -58,3 +58,23 @@ el banco confirma que destraba el atraso de forma notable.
   competencia). Si aparecen timeouts/caídas: descartar y volver a 100 kHz (rollback =
   flashear `top_robot2_pri`, byte-idéntico).
 - Antes de usar en robot1: confirmar que su BNO primario también está fuera del bus de ToF.
+
+## Actualización 2026-06-22 — promovido a DEFAULT de competencia (robot2)
+
+Mismo día, Gustavo pidió que el bus **arranque a 400 kHz por default** (no quedar como opt-in de banco).
+Hecho:
+
+- `top_robot2_pri` (binario de competencia) ahora trae `-DTOP_TOF_FAST_BUS` → el bus a 400 es el
+  default de robot2. **Ya NO es byte-idéntico** al binario previo (el frontmatter de arriba se
+  actualizó a `toca-competencia: SÍ`).
+- El gate en código pasó de opt-in a **opt-out**: macro `TOP_TOF_FAST_BUS_ACTIVE` = ON si está el flag
+  y NO se forzó `-DTOP_TOF_BUS_SLOW`. Así existe un rollback/A-B limpio sin tocar el resto de flags.
+- El env `top_robot2_pri_fastbus` se reemplazó por **`top_robot2_pri_slowbus`** (`-DTOP_TOF_BUS_SLOW`):
+  la MISMA build de competencia pero a 100 kHz, para rollback de 1 flasheo y para medir el A/B de loop
+  rate (T5).
+- **Sólo robot2.** Robot1 NO lo trae (su BNO primario comparte el bus de ToF) → sigue a 100 kHz.
+- Compila `pio run -e top_robot2_pri -e top_robot2_pri_slowbus` → **2 succeeded**.
+
+⚠️ **Importante:** se adoptó como default por decisión de Gustavo, **NO está validado en hardware**.
+El plan T1–T7 sigue siendo el gate para confiar en él en partido; el doc se actualizó en consecuencia.
+Flasheo de competencia ahora es `pio run -t upload` (default); rollback `pio run -e top_robot2_pri_slowbus -t upload`.

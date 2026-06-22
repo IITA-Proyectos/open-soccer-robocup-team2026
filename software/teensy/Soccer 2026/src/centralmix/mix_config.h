@@ -80,9 +80,9 @@ constexpr float MIX_PD = 1.0f;   // avances proporcionales (2025 'pd')
 // ============================================================
 // Tolerancias 2025 (en mm para cercanía/centrado; en grados para apuntado).
 // ============================================================
-constexpr float MIX_TOL_CENTRADO = 60.0f;  // tolerancia_centrado
-constexpr float MIX_TOL_CERCANIA = 6000.0f;  // tolerancia_cercania
-constexpr float MIX_TOL_APUNTADO = 30.0f;  // tolerancia_apuntado (grados)
+constexpr float MIX_TOL_CENTRADO = 10.0f;  // tolerancia_centrado
+constexpr float MIX_TOL_CERCANIA = 30.0f;  // tolerancia_cercania
+constexpr float MIX_TOL_APUNTADO = 15.0f;  // tolerancia_apuntado (grados)
 
 // ============================================================
 // Kicker / patada — port 1:1 del 2025 (el "kicker" es empuje por inercia, sin
@@ -148,10 +148,10 @@ constexpr int MIX_CENTRAR_REAR  = 170;  // M3 (trasera) — ≥107 (piso); ojo t
 // (si no, invertir MIX_KICKOFF_ARC_DIR); (2) F/T/duración; (3) que "hacia el centro" tenga
 // sentido para tu lado de saque (sin pose absoluta el lado es FIJO → setearlo acá).
 // ============================================================
-constexpr int MIX_KICKOFF_ARC_PWD  = 1.0;  // F: componente de AVANCE (fuerte; > piso ~70)
-constexpr int MIX_KICKOFF_ARC_CURV = 1.0;   // T: componente de GIRO/curvatura de la medialuna
+constexpr int MIX_KICKOFF_ARC_PWD  = 2;  // F: componente de AVANCE (fuerte; > piso ~70)
+constexpr int MIX_KICKOFF_ARC_CURV = 2.0;   // T: componente de GIRO/curvatura de la medialuna
 constexpr int MIX_KICKOFF_ARC_DIR  = +1;   // lado de la curva (+1 / -1) — confirmar en banco
-constexpr int MIX_KICKOFF_ARC_MS   = 50;  // duración del impulso (CORTO), en ms
+constexpr int MIX_KICKOFF_ARC_MS   = 500;  // duración del impulso (CORTO), en ms
 
 // ============================================================
 // Heading — control de rumbo del 2025 (error = currentYaw - initialYaw, kp=0.3).

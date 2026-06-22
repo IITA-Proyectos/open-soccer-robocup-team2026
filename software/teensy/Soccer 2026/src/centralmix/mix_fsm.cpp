@@ -207,11 +207,60 @@ void mix_fsm_init() {
 // mix_fsm_tick — port FIEL del switch(estado) del loop() 2025.
 // ============================================================
 void mix_fsm_tick() {
-    // --- AGREGADO 2026 (no estaba en el 2025): GO/STOP del árbitro RCJ. ---
-    // Si el partido no está corriendo, frenar y NO mover. Única regla nueva.
+    // --- Árbitro RCJ + KICKOFF una vez por "encendido del robot" (pedido Elías) ---
+    static bool prev_go       = false;  // para el flanco STOP→GO
+    static bool seen_stop     = false;  // ¿vimos un STOP confirmado?
+    static bool kickoff_done  = false;  // ¿ya se hizo el kickoff en este "encendido"?
+    static bool prev_top_link = false;  // para detectar el power-cycle del robot vía el TOP
+
+    // POWER-CYCLE DEL ROBOT detectado por el TOP (link perdido→recuperado = el TOP rebooteó
+    // con la batería). Vuelve la FSM AL ARRANQUE (kickoff). CLAVE para el banco: "cortar la
+    // energía" NO siempre resetea la CENTRAL (capacitores/regulador la mantienen viva en el
+    // corte breve) → estado y kickoff_done quedaban PEGADOS de la sesión anterior → al
+    // iniciar, el robot iba directo a IMPULSO_INICIAL/GIRANDO en vez del kickoff. El TOP SÍ
+    // rebootea (saca los sensores ~40 s) → su flanco link-recuperado delata el power-cycle
+    // aunque la CENTRAL no se haya reseteado. En competencia (la CENTRAL sí resetea) también
+    // aplica (el link arranca stale y se vuelve fresco → mismo flanco). El timer real del
+    // medialuna se vuelve a anclar al GO en el bloque go_edge de abajo.
+    if (g_io.top_link_fresh && !prev_top_link) {
+        estado = Estado::KICKOFF_SEEK;
+        millis_inicio_estado    = millis();
+        millis_inicio_centrando = millis();
+        kickoff_done = false;
+        prev_go      = false;
+    }
+    prev_top_link = g_io.top_link_fresh;
+
+    // STOP: frenar y NO mover. Confirma que vimos un STOP real (base del flanco STOP→GO).
     if (!g_io.match_running) {
+        seen_stop = true;
+        prev_go = false;
         parar();
         return;
+    }
+
+    // GO sin haber visto un STOP antes (match_running venía en true desde el arranque:
+    // transitorio del power-up o pin del árbitro pegado) → NO mover hasta un STOP→GO real.
+    // Evita que el kickoff se "consuma" en un GO espurio del boot (y de paso, que el robot
+    // se mueva solo al encender si el pin del árbitro está pegado).
+    if (!seen_stop) {
+        parar(); 
+        return;
+    }
+
+    const bool go_edge = !prev_go;   // flanco STOP→GO (con STOP ya confirmado)
+    prev_go = true;
+
+    // KICKOFF: se arma UNA sola vez por encendido, en el PRIMER GO real, con el timer
+    // ANCLADO AL GO (no al boot). Así la medialuna corre completa aunque el TOP tarde ~40 s
+    // en bootear (fix del bug power-cycle, donde el timer se medía desde el arranque y ya
+    // estaba vencido al llegar el GO). En los GOs siguientes (saque tras gol) NO se re-arma:
+    // para volver a hacer el kickoff hay que CORTAR Y VOLVER A DAR ENERGÍA.
+    if (go_edge && !kickoff_done) {
+        estado = Estado::KICKOFF_SEEK;
+        millis_inicio_estado    = millis();
+        millis_inicio_centrando = millis();
+        kickoff_done = true;
     }
 
     // 'error' del control de rumbo 2025 == g_io.heading_error_deg (ya wrapeado).
@@ -232,6 +281,12 @@ void mix_fsm_tick() {
         //   línea        → escape DETECTA_LINEA_* de siempre (no salir de cancha).
         // ----------------------------------------------------
         case Estado::KICKOFF_SEEK:
+
+             if (haypelota) {  // esperar 700ms por la inercia
+                parar(); 
+                estado = Estado::APUNTAR_PELOTA; 
+                millis_inicio_estado = millis(); 
+            }
             // línea → escape de siempre (prioridad sobre la medialuna)
             if (linea_s1()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_1; break; }
             if (linea_s2()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_2; break; }
@@ -239,24 +294,24 @@ void mix_fsm_tick() {
             // no ve pelota → impulso FUERTE y CORTO de medialuna hacia el centro
             kickoff_medialuna();
             if (millis() - millis_inicio_estado >= (unsigned long)MIX_KICKOFF_ARC_MS) {
-                parar();
+                parar(); 
                 millis_inicio_estado = millis();
                 estado = Estado::GIRANDO;   // tras el impulso, búsqueda por giro de siempre
-            }
-            break;
-
+            } 
+            break; 
+ 
         // ----------------------------------------------------
         // PRIMER_IMPULSO_INICIAL_GIRANDO: declarado en el enum 2025 pero SIN case en
         // el switch (estado muerto). Se conserva en el enum por fidelidad; aquí NO
         // tiene case, igual que el 2025.
         // ----------------------------------------------------
-
+ 
         // ----------------------------------------------------
         case Estado::IMPULSO_INICIAL_GIRANDO:
             // girar con más potencia (150) — 2025 inline.
             
             if (haypelota) {
-                parar();
+                parar(); 
                 if (millis() - millis_inicio_estado >= 1000) {  // esperar 1s por la inercia
                     estado = Estado::APUNTAR_PELOTA;
                     millis_inicio_estado = millis();
@@ -384,10 +439,10 @@ void mix_fsm_tick() {
             // si ya está lo suficientemente cerca de la pelota
             // 2025: haypelota && (Xp <= tolerancia_cercania) <RE-TUNEO 2025→2026>
             if (haypelota && (dist_pelota_cm() <= MIX_TOL_CERCANIA)) {
-                millis_inicio_centrando = millis();
-                millis_inicio_estado = millis();
-                estado = Estado::CENTRANDO_horario;
-            }
+                millis_inicio_centrando = millis(); 
+                millis_inicio_estado = millis(); 
+                estado = Estado::CENTRANDO_horario; 
+            } 
 
             // si deja de apuntar a la pelota
             if (fabsf(anguloPelota) >= MIX_TOL_APUNTADO) {
@@ -422,21 +477,21 @@ void mix_fsm_tick() {
             break;
 
         // ----------------------------------------------------
-        case Estado::CENTRANDO_horario:
-            centrar_horario();  // 2025: M1/M2 60*c (+), M3 180*c (-)
-
+        case Estado::CENTRANDO_horario: 
+            centrar_horario();  // 2025: M1/M2 60*c (+), M3 180*c (-) 
+  
             // si está apuntando al arco idealmente
             // 2025: ARCO_CONTRINCANTE && haypelota && (abs(Yp - Ycontrincante) <= tol_centrado)
             //   ARCO_CONTRINCANTE → arco_rival_visible() (amarillo)
             //   abs(Yp - Ycontrincante) <= 30 → |arco_rival_angle| <= MIX_TOL_CENTRADO  <RE-TUNEO 2025→2026>
-            if (arco_rival_visible() && haypelota &&
+            if (arco_rival_visible() && haypelota && 
                 (fabsf(arco_rival_angle_deg()) <= MIX_TOL_CENTRADO)) {
                 millis_inicio_centrando = millis();
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_pausa_inicial;
             }
             // si |error|<=1 y ya pasó 4s centrando
-            else if ((millis() - millis_inicio_centrando >= 4000) && (fabsf(error) <= 1)) {
+            else if ((millis() - millis_inicio_centrando >= 6000) && (fabsf(error) <= 1)) {
                 millis_inicio_centrando = millis();
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_pausa_inicial;

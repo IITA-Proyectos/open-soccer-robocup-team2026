@@ -49,6 +49,7 @@ enum class Estado {
     // Ve la pelota → va hacia ella; no la ve → impulso fuerte y corto de medialuna
     // hacia el centro → después GIRANDO. Se ejecuta UNA vez (ningún estado vuelve a él).
     KICKOFF_SEEK,
+    ESPERAR,
 };
 
 // Inicializa la FSM: estado = KICKOFF_SEEK (primer estado), sella timers (millis()). Llamar

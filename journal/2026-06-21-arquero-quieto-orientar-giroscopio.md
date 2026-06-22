@@ -70,11 +70,30 @@ abajo) — por eso se diseñó en fases y la Fase 1 quedó como bang-bang, no PI
 - Patrulla (`central_robot2_arqueromix`) NO tocada en lógica (el cambio es del modo quieto).
 - NO testeado en hardware (regla #1).
 
+## Iteración de banco 2026-06-21 (Virginia) — sentido invertido
+
+- **Banco:** el giro funcionaba y se DETENÍA (lazo estable), pero el arquero quedaba **mirando
+  a NUESTRO arco** (180° del oponente). Firma clásica de **sentido de giro invertido** en un
+  bang-bang de heading: el lazo igual converge, pero al punto OPUESTO (skill
+  control-pid-zona-muerta: "un signo invertido también queda estable, a 180° del objetivo").
+- **Fix:** invertir el sentido **SOLO en `orientar_frente`** (`(heading_error>0)?-1:+1` →
+  `?+1:-1`). El equilibrio del bang-bang pasa de 180° (nuestro arco) a 0° (oponente).
+- **Por qué NO `-DARQMIX_FLIP_GIRO_ALINEAR`** (lo que se pensó primero): ese flag invierte
+  `AMIX_GIRO_ALINEAR_SIGN`, usado en TRES giros — orientar, **alineación pre-patada**
+  (`ALINEAR_arco_opp`, por cámara) y retroceso. Flipearlo arregla el orientar pero puede
+  romper la alineación pre-patada (que puede estar bien). El orientar (giroscopio, ángulo del
+  rumbo) y la alineación (cámara, ángulo al objetivo) tienen sentidos opuestos a propósito. Fix
+  aislado > flag global.
+- ⚠️ Si en banco se ve que ANTES de patear el robot apunta para el lado equivocado, o el
+  retroceso gira mal, ENTONCES sí el `AMIX_GIRO_ALINEAR_SIGN` global está invertido para este
+  robot → ahí sí flag global. Hoy no hay evidencia de eso.
+
 ## Plan de banco (Fase 1)
 
-Mirar SOLO `orientar_frente` tras un despeje: (1) ¿queda mirando al oponente ±8° sin
-serpentear? (2) ¿gira para el lado correcto? si no → `-DARQMIX_FLIP_GIRO_ALINEAR`. (3) si
-serpentea → subir `AMIX_TOL_ORIENTAR_DEG`. (4) si tironea → subir `AMIX_GIRO_FRENTE_PWM`.
+Mirar SOLO `orientar_frente` tras un despeje: (1) ¿queda mirando al **oponente** ±8° sin
+serpentear? (2) si serpentea → subir `AMIX_TOL_ORIENTAR_DEG`. (3) si tironea → subir
+`AMIX_GIRO_FRENTE_PWM`. (Sentido ya corregido en código; si AÚN gira al revés, avisar — sería
+otro tema, no este mapeo.)
 
 ## Comando de flasheo
 

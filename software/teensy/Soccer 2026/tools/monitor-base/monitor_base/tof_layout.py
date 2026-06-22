@@ -42,6 +42,13 @@ DEFAULT_POSITION = {0: "FRONT", 1: "BACK", 2: "RIGHT", 3: "LEFT"}
 # corrección que zones.raw_zone_for_canonical aplica de fábrica.
 DEFAULT_ROTATION = {0: 0, 1: 0, 2: 0, 3: 180}
 
+# Mapeo POSICIÓN → mount_bearing_deg (para la trilateración del firmware), en la convención
+# CORRECTA del HARDWARE (validada en banco 2026-05-30, pinout_common.h): FRONT=0, BACK=180,
+# RIGHT=270 (EAST), LEFT=90 (WEST). ⚠️ NO es la convención (buggeada) RIGHT=90/LEFT=270 que
+# arrastran el comentario de top_config.h, el parser de `POS` y robot_geometry.py — ÉSTA es la
+# buena. El exportador del layout estático usa este mapeo para no propagar el bug der/izq.
+POSITION_TO_BEARING = {"FRONT": 0, "BACK": 180, "RIGHT": 270, "LEFT": 90}
+
 
 # Si True, el FIRMWARE (compilado con -DTOP_ENABLE_TOF_ROT, ej. env top_robot2_pri_tofrot) es el
 # DUENO de la rotacion: la app manda ROT/FLIP reales + la mascara en marco CANONICO (sin plegar) y
@@ -195,6 +202,19 @@ class TofLayout:
     def reset_zone_masks(self) -> None:
         self.zone_enabled = {i: [True] * N_ZONES for i in range(N_TOF)}
 
+    def apply_default_veto(self) -> None:
+        """VETO INICIAL recomendado (config de arranque, pedido Gustavo 2026-06-21): dejar
+        válida SÓLO la 2ª fila desde abajo —la que mira la pared a la altura útil—. Anula:
+          • las 2 filas SUPERIORES (0 y 1): ven POR ENCIMA de la pared → afuera de la cancha.
+          • la fila INFERIOR (grid_w-1): choca contra el PISO cerca del robot.
+        En 4×4 (marco DISPLAY, 'arriba' = fila 0) queda activa la fila `grid_w-2` (= fila 2 →
+        zonas de display 8..11), que `raw_zone_mask` pliega por la rotación de cada sensor a su
+        marco CRUDO al bajar. Es un PUNTO DE PARTIDA: con los ToF bien ubicados/rotados da
+        valores razonables, y se ajusta a mano con el monitor."""
+        keep = self.grid_w - 2
+        self.reset_zone_masks()
+        self.apply_row_veto([r for r in range(self.grid_w) if r != keep])
+
     # ── Persistencia (lado app) ─────────────────────────────────────────────
     def to_dict(self) -> dict:
         return {
@@ -344,3 +364,69 @@ def load_or_default(path: Optional[str] = None) -> TofLayout:
         except Exception:       # noqa: BLE001 — config corrupta → defaults
             pass
     return TofLayout()
+
+
+# ── Exportador del layout ESTÁTICO al firmware (Fase 1: hornear FIJO) ──────────
+def flip_to_bits(flip: str) -> int:
+    """Codifica el flip de la app al bitfield del firmware (top_config:
+    bit0 = espejo X/columnas = 'h'; bit1 = espejo Y/filas = 'v'). 'none' = 0."""
+    return {"none": 0, "h": 1, "v": 2}.get(flip, 0)
+
+
+def export_static_layout_header(entries: Dict[str, "TofLayout"]) -> str:
+    """Genera el contenido del header C++ con el layout ESTÁTICO (mount_bearing + rotación +
+    flip) POR SERIAL del Teensy, para HORNEARLO FIJO en el firmware: el firmware lee su propio
+    serial al boot y aplica la entrada que coincide (si ninguna coincide → default fail-safe).
+    El VETO de zonas NO va acá — eso es DINÁMICO (vive en EEPROM, editable en cancha).
+    `bearing_deg` usa POSITION_TO_BEARING (convención HARDWARE correcta, sin el bug der/izq)."""
+    lines = [
+        "// tof_static_layout.h — GENERADO por el configurador visual del monitor (tof_layout.py).",
+        "// ⚠️ NO editar a mano: regenerar desde el monitor ('Exportar header firmware').",
+        "// Layout ESTÁTICO por serial del Teensy: {mount_bearing[4], zone_rotation[4], flip[4]}.",
+        "// Convención HARDWARE de bearing: FRONT=0, BACK=180, RIGHT=270, LEFT=90 (NO el bug der/izq).",
+        "// El VETO de zonas NO está acá: es dinámico (EEPROM, editable en cancha).",
+        "#pragma once",
+        "#include <stdint.h>",
+        "",
+        "struct TofStaticEntry {",
+        "    const char* serial;        // N° de serie del Teensy (descriptor USB)",
+        "    int16_t bearing_deg[4];    // por índice de sensor [0..3]",
+        "    int16_t rotation_deg[4];   // 0/90/180/270 horaria",
+        "    uint8_t flip[4];           // bit0=espejo X, bit1=espejo Y",
+        "};",
+        "",
+        "static constexpr TofStaticEntry TOF_STATIC_LAYOUT[] = {",
+    ]
+    for serial in sorted(entries):
+        lay = entries[serial]
+        bearing = [POSITION_TO_BEARING.get(lay.position.get(i, "FRONT"), 0) for i in range(N_TOF)]
+        rot = [int(lay.rotation_deg.get(i, 0)) for i in range(N_TOF)]
+        flip = [flip_to_bits(lay.flip.get(i, "none")) for i in range(N_TOF)]
+        b = ", ".join(str(x) for x in bearing)
+        rr = ", ".join(str(x) for x in rot)
+        ff = ", ".join(str(x) for x in flip)
+        lines.append(f'    {{ "{serial}", {{ {b} }}, {{ {rr} }}, {{ {ff} }} }},')
+    lines.append("};")
+    lines.append("")
+    lines.append(f"static constexpr int TOF_STATIC_LAYOUT_COUNT = {len(entries)};")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def collect_saved_layouts(directory: Optional[str] = None) -> Dict[str, "TofLayout"]:
+    """Junta los .json de layout POR SERIAL (tof_layout_<serial>.json) de `directory` (por
+    defecto, junto al paquete). Devuelve {serial: TofLayout}; el serial sale del nombre del
+    archivo. Es lo que alimenta a export_static_layout_header()."""
+    import os
+    import glob
+    here = directory or os.path.dirname(os.path.abspath(__file__))
+    out: Dict[str, TofLayout] = {}
+    prefix, suffix = "tof_layout_", ".json"
+    for p in glob.glob(os.path.join(here, prefix + "*" + suffix)):
+        base = os.path.basename(p)
+        serial = base[len(prefix):-len(suffix)]
+        try:
+            out[serial] = TofLayout.load(p)
+        except Exception:       # noqa: BLE001 — un .json corrupto no rompe el resto
+            continue
+    return out

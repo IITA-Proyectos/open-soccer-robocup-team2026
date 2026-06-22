@@ -85,6 +85,7 @@ class TofSetupApp:
         ttk.Button(cfgrow, text="💾 Guardar .json", command=self._save).pack(side="left", padx=3)
         ttk.Button(cfgrow, text="📂 Cargar .json", command=self._load).pack(side="left", padx=3)
         ttk.Button(cfgrow, text="⬇ Bajar a la placa (firmware)", command=self._push_to_fw).pack(side="left", padx=12)
+        ttk.Button(cfgrow, text="📤 Exportar header estático firmware", command=self._export_static_header).pack(side="left", padx=3)
         ttk.Label(cfgrow, text=f"archivo: {self.cfg_path}", foreground="#888").pack(side="left", padx=8)
 
         self.status = ttk.Label(self.root, text="", anchor="w", relief="sunken", padding=4)
@@ -158,6 +159,8 @@ class TofSetupApp:
         btns = ttk.Frame(parent); btns.pack(fill="x", pady=(4, 0))
         ttk.Button(btns, text="🔎 Sugerir y vetar filas que ven por encima de la pared",
                    command=self._suggest_and_apply).pack(side="left", padx=3)
+        ttk.Button(btns, text="⬛ Default: SÓLO 2ª fila desde abajo",
+                   command=self._apply_default_veto).pack(side="left", padx=3)
         ttk.Button(btns, text="↺ Reset zonas (todas ON)",
                    command=self._reset_zones).pack(side="left", padx=3)
         self.wall_note = ttk.Label(parent, foreground="#9bd", font=("Consolas", 8), text="")
@@ -239,6 +242,37 @@ class TofSetupApp:
         self.wall_note.configure(text="")
         self._set_status("zonas reseteadas (todas ON)")
 
+    def _apply_default_veto(self) -> None:
+        """Config de ARRANQUE: válida SÓLO la 2ª fila desde abajo (anula las 2 filas de
+        arriba —ven por encima de la pared— y la de abajo —choca el piso—)."""
+        self.cfg.apply_default_veto()
+        for idx in range(4):
+            self._render_card(idx)
+        self.wall_note.configure(text="")
+        self._set_status("veto DEFAULT: válida SÓLO la 2ª fila desde abajo. "
+                         "Guardá (💾) y bajá a la placa (⬇) para que la TOP lo use.")
+
+    def _export_static_header(self) -> None:
+        """Junta los layouts guardados POR SERIAL y genera el header ESTÁTICO del firmware
+        (bearing/rotación/flip por serial). El veto NO va acá (es dinámico)."""
+        import os
+        from .tof_layout import collect_saved_layouts, export_static_layout_header
+        try:
+            entries = collect_saved_layouts()
+            if not entries:
+                self._set_status("⚠ No hay layouts guardados por serial. Guardá primero (💾) "
+                                 "con la placa conectada (el archivo queda keyed por su serial).")
+                return
+            hdr = export_static_layout_header(entries)
+            here = os.path.dirname(os.path.abspath(__file__))
+            out = os.path.join(here, "tof_static_layout.h")
+            with open(out, "w", encoding="utf-8") as f:
+                f.write(hdr)
+            self._set_status(f"✔ header estático exportado ({len(entries)} placa/s) → {out} · "
+                             f"commitealo al firmware como src/shared/tof_static_layout.h")
+        except Exception as e:  # noqa: BLE001
+            self._set_status(f"⚠ no pude exportar: {e}")
+
     def _save(self) -> None:
         try:
             self.cfg.save(self.cfg_path)
@@ -271,10 +305,10 @@ class TofSetupApp:
         for c in live:
             self.source.send(c.text)
             sent += 1
-        msg = f"→ {sent} comandos enviados (POS/ON-OFF/SAVE)."
+        msg = f"→ {sent} comandos enviados (POS/ON-OFF/ZONEMASK/SAVE). La ZONEMASK YA se aplica en el robot."
         if pending:
-            msg += (f"  {len(pending)} PENDIENTES de firmware (ROT/FLIP/ZONE) — "
-                    f"se aplican solos en el display; bajarán cuando el firmware los soporte.")
+            msg += (f"  ({len(pending)} ROT/FLIP NO enviados A PROPÓSITO: en modo default la rotación "
+                    f"va PLEGADA dentro de la ZONEMASK; no quedan 'pendientes'.)")
         self._set_status(msg)
 
     # ── Loop / render ───────────────────────────────────────────────────────
@@ -294,7 +328,8 @@ class TofSetupApp:
     def _render(self, f: TopFrame) -> None:
         self.header.configure(
             text=(f"seq={f.seq}  frames={self.frame_count}  v{f.v}     "
-                  f"zonas ToF: {'SÍ' if f.tof.zones else 'pendiente firmware (no viajan aún)'}"))
+                  f"zonas ToF CRUDAS del sensor: "
+                  f"{'SÍ llegan' if f.tof.zones else 'NO llegan (¿flasheaste un env con telemetría?)'}"))
         for idx in range(4):
             self._render_card(idx)
 

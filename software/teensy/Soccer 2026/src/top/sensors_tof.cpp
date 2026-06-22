@@ -165,6 +165,15 @@ constexpr uint8_t TOF_RANGING_FREQ_HZ  = 15;
 //    reintroduce el freeze del heading. Verificable en banco (girar el robot).
 constexpr uint32_t TOF_INIT_CLOCK_HZ = 400000;  // FALLBACK de carga si 1 MHz falla (validado TA-1)
 constexpr uint32_t TOF_RUN_CLOCK_HZ  = 100000;  // runtime (coexistencia BNO+ToF)
+// FAST BUS (banco 2026-06-22, -DTOP_TOF_FAST_BUS, default OFF): el bus base SIGUE en 100 kHz
+// (BNO-safe), pero se sube a 400 kHz SOLO durante el getRangingData() del ToF (la transferencia
+// grande, el cuello de botella ~60 ms) y se RESTAURA a 100 kHz inmediatamente. Antes el bus
+// quedaba fijo en 100 kHz por el BNO055 SECUNDARIO que comparte Wire; ahora ese BNO es solo
+// CENTINELA a 1 Hz (el primario se movió a Wire2), y como el bus base no cambia, el centinela
+// SIEMPRE lo lee a 100 kHz → no hace falta tocar sensors_imu. A 400 kHz el bloque pasa de ~60 a
+// ~16 ms → libera el loop. ⚠️ NO VALIDADO EN BANCO: con 5 dispositivos + bodge puede haber
+// timeouts I2C a 400 kHz; medir loop rate, distancias y heading antes de confiar.
+constexpr uint32_t TOF_FAST_BUS_HZ   = 400000;
 // TA-2 (TASK-211): carga a 1 MHz (Fast Mode Plus) = DEFAULT de producción desde 2026-06-14.
 // VALIDADO en banco por Gustavo + Virginia (>15 power-cycles en top_robot2_pri: 4/4 ToF a
 // 1 MHz, 0 fallbacks, boot ~9,6 s vs ~14,4 s a 400 kHz vs ~40 s original). Si algún ToF no
@@ -462,6 +471,10 @@ void sensors_tof_tick() {
     s_rr = static_cast<uint8_t>((s_rr + 1) % NUM_TOF);
     const bool i_valid = true;
 #endif
+#ifdef TOP_TOF_FAST_BUS
+    // 400 kHz SOLO para leer el bloque ToF; el BNO centinela del bus lo lee a 100 kHz (otro tick).
+    Wire.setClock(TOF_FAST_BUS_HZ);
+#endif
     if (i_valid && g_ready[i] && g_tof_multi[i].isDataReady() &&
         g_tof_multi[i].getRangingData(&g_tof_results)) {
         // getRangingData() OK = el sensor responde por I2C -> lectura FRESCA
@@ -497,6 +510,10 @@ void sensors_tof_tick() {
         g_last_ok_ms[i]   = now;
         g_ever_ok[i]      = true;
     }
+#ifdef TOP_TOF_FAST_BUS
+    // Restaurar 100 kHz: el bus queda BNO-safe el resto del loop (el centinela lo lee así).
+    Wire.setClock(TOF_RUN_CLOCK_HZ);
+#endif
     // si getRangingData() devuelve false, NO tocamos g_last_ok_ms[i]: el valor
     // cacheado se mantiene SOLO mientras siga fresco; tras TOF_STALE_TIMEOUT_MS
     // sin un read bueno, el getter lo expira a TOF_NO_READING (P1-TOF-STALE).

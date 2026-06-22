@@ -80,9 +80,9 @@ constexpr float MIX_PD = 1.0f;   // avances proporcionales (2025 'pd')
 // ============================================================
 // Tolerancias 2025 (en mm para cercanía/centrado; en grados para apuntado).
 // ============================================================
-constexpr float MIX_TOL_CENTRADO = 10.0f;  // tolerancia_centrado
+constexpr float MIX_TOL_CENTRADO = 5.0f;  // tolerancia_centrado
 constexpr float MIX_TOL_CERCANIA = 30.0f;  // tolerancia_cercania
-constexpr float MIX_TOL_APUNTADO = 25.0f;  // tolerancia_apuntado (grados)
+constexpr float MIX_TOL_APUNTADO = 20.0f;  // tolerancia_apuntado (grados)
 
 // ============================================================
 // Jugada "PELOTA ATRÁS" (la ve la cámara TRASERA) — giro-encare sobre el piso del motor.

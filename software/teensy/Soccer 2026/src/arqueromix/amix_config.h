@@ -119,7 +119,13 @@ constexpr int AMIX_KICK_VEL_FINAL    = 180;  // velocidad PICO del golpe — sub
 constexpr int AMIX_KICK_PASO         = 20;   // incremento de PWM por escalón de la rampa
 constexpr int AMIX_KICK_INTERVALO_MS = 10;   // ms entre escalones (rampa 0→180 en ~90 ms)
 // PATEANDO_atras_arquero (inline 2025, L1186-1188): retroceso recto M1=ATRAS, M2=ATRAS, M3=0.
-constexpr int AMIX_ATRAS = 120;      // retroceso del despeje (era 150) — bajado con el resto
+constexpr int AMIX_ATRAS = 120;      // retroceso del despeje (PATRULLA) — NO tocar (queda como andaba)
+// Retroceso del modo QUIETO — MÁS LENTO que la patrulla (banco Virginia 2026-06-21: a 120 el arquero se
+// METÍA en el área chica porque cruzaba la línea por inercia + latencia antes de frenar). Más lento = para
+// más JUSTO en la línea sin cruzarla. Separado de AMIX_ATRAS para NO tocar el retroceso de la patrulla.
+// ⚠️ A 80 está sobre el piso de las delanteras (70) → se mueve. Si AÚN se mete → bajar a 75; si NO arranca
+// (tironea) → subir. <TITRAR EN BANCO>
+constexpr int AMIX_ATRAS_QUIETO = 80;
 
 // ============================================================
 // ALINEAR AL ARCO RIVAL antes de despejar (pedido Gustavo 2026-06-21).

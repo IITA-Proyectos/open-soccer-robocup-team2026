@@ -95,12 +95,31 @@ abajo) — por eso se diseñó en fases y la Fase 1 quedó como bang-bang, no PI
   retroceso gira mal, ENTONCES sí el `AMIX_GIRO_ALINEAR_SIGN` global está invertido para este
   robot → ahí sí flag global. Hoy no hay evidencia de eso.
 
-## Plan de banco (Fase 1)
+## Iteración de banco 2026-06-21 (Virginia) — Fase 2a se metía al área
 
-Mirar SOLO `orientar_frente` tras un despeje: (1) ¿queda mirando al **oponente** ±8° sin
-serpentear? (2) si serpentea → subir `AMIX_TOL_ORIENTAR_DEG`. (3) si tironea → subir
-`AMIX_GIRO_FRENTE_PWM`. (Sentido ya corregido en código; si AÚN gira al revés, avisar — sería
-otro tema, no este mapeo.)
+- **Banco:** el retroceso recto SÍ paraba en la línea, pero a `AMIX_ATRAS=120` se **metía en el
+  área chica** (cruzaba la línea por inercia + latencia antes de frenar).
+- **Fix 1 — velocidad separada y más lenta:** `AMIX_ATRAS_QUIETO=80` (nueva) + primitiva
+  `retroceder_quieto()`. El retroceso del modo quieto va más lento → para más justo en la línea
+  sin cruzarla. NO toca `AMIX_ATRAS` (la patrulla queda igual). Knob: si aún se mete → 75; si no
+  arranca → subir.
+- **Fix 2 — seguridad "nunca salirse" (pedido Virginia):** gate de **frescura del enlace DOWN**.
+  El retroceso lee `linea()` cada tick (verificado: `amix_comm_tick` refresca `line_present`/
+  `line_depth` ANTES del FSM cada loop). Además, si `down_link_fresh==false` (no llega línea hace
+  >500 ms = enlace caído), el arquero **NO retrocede a ciegas**: frena y sale a `esperar_quieto`.
+  Sin dato de línea confiable, mejor quieto que salirse.
+- **PENDIENTE (alcance honesto):** "consciente EN TODO momento" NO está completo. Otros estados
+  del modo quieto trasladan SIN chequear línea: `inicio_lateral_izq` (strafe izq 1.6 s a ciegas)
+  y el strafe a la pelota en `esperar_quieto`. Si se quiere consciencia total de borde, ese es el
+  próximo paso (aparte, para no arriesgar el strafe de juego que ya anda).
+
+## Plan de banco (Fases 1 + 2a)
+
+- **Orientar (Fase 1):** ¿queda mirando al **oponente** ±8° sin serpentear? Si serpentea → subir
+  `AMIX_TOL_ORIENTAR_DEG`; si tironea → subir `AMIX_GIRO_FRENTE_PWM`.
+- **Retroceso (Fase 2a):** ¿va derecho y **para en la línea SIN meterse al área**? Si se mete →
+  bajar `AMIX_ATRAS_QUIETO` (80→75). Si curva → Fase 2b (re-orientación). Probar también: cortar
+  el enlace DOWN a propósito y ver que NO retrocede a ciegas (frena).
 
 ## Comando de flasheo
 

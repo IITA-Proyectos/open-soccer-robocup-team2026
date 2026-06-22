@@ -360,21 +360,31 @@ void amix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::PATEANDO_atras:                // L1184-1195 (retroceso recto)
-            // FASE 2 (banco Virginia 2026-06-21): retroceso RECTO hasta la línea, en quieto Y en patrulla.
-            // ANTES en quieto usaba retroceder_rumbo_opp (corrección de rumbo por CÁMARA, poca autoridad)
-            // que lo DESVIABA → se salía de la cancha / se metía al área. Ahora va DERECHO (patear_atras) y
-            // para en la primera línea blanca (= borde del área, yendo hacia el arco). El robot ya quedó
-            // MIRANDO al oponente (orientar_frente por giroscopio), así que recto = derecho hacia su arco.
-            // (Red de re-orientación por excepción si el recto CURVA = Fase 2b, sólo si banco lo pide.)
-            patear_atras();                          // M1=-AMIX_ATRAS, M2=+AMIX_ATRAS, M3=0 (recto atrás)
-            // 2025: SIN timeout, sale sólo al ver blanco. AGREGADO 2026: timeout de
-            // seguridad para no colgarse si nunca llega a la línea. <MEJORA 2026>
-            if (linea() ||
-                (millis() - millis_inicio_estado >= AMIX_T_ATRAS_SAFETY)) {  // 4000 ms safety
-                parar();
-                millis_inicio_estado = millis();
-                // QUIETO: ya volvió atrás → queda quieto (NO se vuelve a acomodar). Default: avanza y patrulla.
-                estado = AMIX_QUIETO ? Estado::esperar_quieto : Estado::avanzar_despues_de_patear;
+            // FASE 2a (banco Virginia 2026-06-21): retroceso RECTO hasta la línea. ANTES en quieto usaba
+            // retroceder_rumbo_opp (corrección por CÁMARA, poca autoridad) que lo DESVIABA → se salía de la
+            // cancha / se metía al área. Ahora va DERECHO; el robot ya quedó MIRANDO al oponente (orientar
+            // por giroscopio), así que recto = derecho hacia su arco → para en la línea del borde del área.
+            // QUIETO: retroceso LENTO (AMIX_ATRAS_QUIETO) para parar JUSTO en la línea sin cruzarla (a 120 se
+            // metía por inercia/latencia). SEGURIDAD (pedido Virginia "nunca salirse de la cancha"): si el
+            // enlace con DOWN NO está fresco → NO retroceder a ciegas (sin dato de línea confiable, FRENA).
+            {
+                const bool down_ok = g_aio.down_link_fresh;   // ¿la línea (DOWN) llega fresca? (<500 ms)
+                if (AMIX_QUIETO) {
+                    if (down_ok) retroceder_quieto();         // retroceso lento hacia la línea
+                    else         parar();                     // sin línea fresca → no retroceder a ciegas
+                } else {
+                    patear_atras();                           // patrulla: retroceso normal (sin cambios)
+                }
+                // Sale al PISAR la línea (la lee cada tick; amix_comm la refresca antes del FSM). En quieto,
+                // también si DOWN se cae (no seguir a ciegas) o por safety. <MEJORA 2026: safety + frescura>
+                const bool sin_linea_confiable = AMIX_QUIETO && !down_ok;
+                if (linea() || sin_linea_confiable ||
+                    (millis() - millis_inicio_estado >= AMIX_T_ATRAS_SAFETY)) {  // 4000 ms safety
+                    parar();
+                    millis_inicio_estado = millis();
+                    // QUIETO: ya volvió atrás → queda quieto (NO se vuelve a acomodar). Default: avanza/patrulla.
+                    estado = AMIX_QUIETO ? Estado::esperar_quieto : Estado::avanzar_despues_de_patear;
+                }
             }
             break;
 

@@ -58,12 +58,20 @@ resto del arquero ya usa (`AMIX_TOL_CENTRADO_DEG`).
 
 ### Fase 2 — Retroceder recto hasta la línea  ✅ 2a IMPLEMENTADA (2026-06-21) / 2b pendiente
 
-**Fase 2a (hecha):** `PATEANDO_atras` (quieto) retrocede **recto** (`patear_atras`, trasera en
-0), **sin** la corrección por cámara que lo desviaba (`retroceder_rumbo_opp`, que se salía de
-la cancha / se metía al área). Para en la primera línea blanca (`linea()`, ya existía) o safety
-4 s. Como el robot ya quedó mirando al oponente (Fase 1), recto = derecho hacia su arco → pisa
-el borde del área y frena. Cambio mínimo: una rama del estado; `retroceder_rumbo_opp` quedó sin
-uso.
+**Fase 2a (hecha):** `PATEANDO_atras` (quieto) retrocede **recto**, **sin** la corrección por
+cámara que lo desviaba (`retroceder_rumbo_opp`, sin uso ahora). Para en la primera línea blanca
+(`linea()`) o safety 4 s. Como el robot ya quedó mirando al oponente (Fase 1), recto = derecho
+hacia su arco → pisa el borde del área y frena. **Ajustes de banco (Virginia, segunda iteración):**
+- **Velocidad propia y más lenta** del retroceso del quieto: `AMIX_ATRAS_QUIETO=80` (vs
+  `AMIX_ATRAS=120` de la patrulla, que NO se toca) + primitiva `retroceder_quieto()`. A 120 se
+  metía al área (cruzaba la línea por inercia + latencia); más lento = para más justo.
+- **Seguridad "nunca salirse":** gate de **frescura del enlace DOWN**. La línea se lee cada tick
+  (`amix_comm` la refresca antes del FSM); si `down_link_fresh==false` (enlace caído >500 ms), el
+  arquero NO retrocede a ciegas → frena. Sin dato de línea confiable, mejor quieto que salirse.
+
+**Pendiente de "consciencia de borde en TODO momento":** otros estados del quieto trasladan sin
+chequear línea (`inicio_lateral_izq` strafe 1.6 s a ciegas; strafe a la pelota en `esperar_quieto`).
+No abordados aún (para no arriesgar el strafe de juego); siguiente paso si se quiere borde total.
 
 **Fase 2b (pendiente, sólo si el recto curva en banco):** mientras retrocede, si el heading se
 tuerce más de ~15° → **frenar, re-orientar (Fase 1 bang-bang), reanudar**. Safety 4 s sobre el

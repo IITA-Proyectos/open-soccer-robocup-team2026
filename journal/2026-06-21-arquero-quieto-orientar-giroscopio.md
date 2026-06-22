@@ -123,6 +123,16 @@ abajo) — por eso se diseñó en fases y la Fase 1 quedó como bang-bang, no PI
   vuelve al strafe lateral. Cambio mínimo en una rama del estado.
 - **Por qué avanzar es seguro:** va hacia el campo (lejos del fondo), nunca hacia el área.
 
+### Segunda iteración 2026-06-22 (Virginia) — avance más grande + golpe consciente de línea
+
+- **Avance de búsqueda "un poco más grande":** el avance al tocar línea quedaba pegado al borde
+  (paraba apenas despegaba). Ahora, al detectar línea se arma una **ventana** `AMIX_T_BUSCAR_AVANCE=400`
+  ms → sigue avanzando un toque MÁS allá del borde antes de volver al lateral (variable estática
+  `s_buscar_avance_until_ms`, patrón del commit). Knob: subir si queda pegado.
+- **Golpe consciente de línea:** `PATEANDO_adelante` (el golpe) AÚN PATEANDO sigue leyendo `linea()`;
+  en modo quieto, si la detecta **CORTA el golpe** (→ pausa post-golpe → orientar → retroceder) para
+  NO salirse de la cancha. Patrulla: golpe completo (sin cambios; gateado por `AMIX_QUIETO`).
+
 ## Plan de banco (Fases 1 + 2a)
 
 - **Orientar (Fase 1):** ¿queda mirando al **oponente** ±8° sin serpentear? Si serpentea → subir

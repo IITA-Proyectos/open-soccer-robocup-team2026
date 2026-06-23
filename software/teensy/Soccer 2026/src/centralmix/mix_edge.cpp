@@ -57,13 +57,43 @@ float mix_edge_wrap_angle(float ball_angle_deg, const EdgeParams& p) {
 EdgeOut mix_edge_attack(const EdgeIn& in, const EdgeParams& p) {
     EdgeOut out{};
 
-    // Dirección de avance = la curva de rodeo.
-    out.go_ang_deg = mix_edge_wrap_angle(in.ball_angle_deg, p);
+    constexpr float RAD2DEG = 57.29577951308232f;
 
-    // ¿Comprometerse al empuje (gol por inercia)? Pelota cerca + bien al frente.
+    // --- Posición ACTUAL de la pelota (para distancia y para el disparo de empuje) ---
+    const float bx = in.ball_x_cm;
+    const float by = in.ball_y_cm;
+    const float dist_now = std::sqrt(bx * bx + by * by);
+    const float ang_now  = std::atan2(bx, by) * RAD2DEG;   // 0=frente, +=derecha
+
+    // --- FEEDFORWARD de velocidad: si la pelota se mueve, apuntar a dónde VA a estar ---
+    // (generaliza el "go_ang += 30" de Edge usando el VECTOR de velocidad real). Gateado por
+    // vel_min (ignora ruido / pelota casi quieta) y topeado por lead_max_cm (acota el ruido).
+    float bx_aim = bx;
+    float by_aim = by;
+    const float speed = std::sqrt(in.ball_vx_cm_s * in.ball_vx_cm_s +
+                                  in.ball_vy_cm_s * in.ball_vy_cm_s);
+    if (in.ball_visible && speed > p.vel_min_cm_s) {
+        float lx = in.ball_vx_cm_s * p.lead_s;   // adelanto en cm (vel·tiempo)
+        float ly = in.ball_vy_cm_s * p.lead_s;
+        const float lmag = std::sqrt(lx * lx + ly * ly);
+        if (lmag > p.lead_max_cm && lmag > 0.0f) {   // topear la magnitud del adelanto
+            const float k = p.lead_max_cm / lmag;
+            lx *= k;
+            ly *= k;
+        }
+        bx_aim = bx + lx;
+        by_aim = by + ly;
+    }
+    const float ang_aim = std::atan2(bx_aim, by_aim) * RAD2DEG;
+
+    // Dirección de avance = la curva de rodeo sobre el ángulo ADELANTADO (anticipa la pelota).
+    out.go_ang_deg = mix_edge_wrap_angle(ang_aim, p);
+
+    // ¿Comprometerse al empuje (gol por inercia)? Se decide con la pelota ACTUAL (NO la
+    // predicha): no comprometerse a empujar contra una posición que todavía no existe.
     bool push = in.ball_visible &&
-                (in.ball_dist_cm < p.push_dist_cm) &&
-                (std::fabs(in.ball_angle_deg) < p.push_align_deg);
+                (dist_now < p.push_dist_cm) &&
+                (std::fabs(ang_now) < p.push_align_deg);
 
     // Si SE VE el arco rival, exigir además que esté alineado al frente (no empujar para
     // cualquier lado). Si NO se ve el arco, empujar igual (se confía en el rumbo/heading,

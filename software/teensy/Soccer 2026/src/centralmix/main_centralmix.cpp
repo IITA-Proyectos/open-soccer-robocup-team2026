@@ -63,6 +63,8 @@ static void mix_debug_print() {
     Serial.print(" y=");       Serial.print(g_io.ball_y_cm, 1);
     Serial.print(" ang=");     Serial.print(g_io.angulo_pelota_deg, 0);
     Serial.print(" d=");       Serial.print(dist, 0);
+    Serial.print(" vx=");      Serial.print(g_io.ball_vx_cm_s, 0);   // velocidad pelota (rodeo Edge)
+    Serial.print(" vy=");      Serial.print(g_io.ball_vy_cm_s, 0);
     // Heading del TOP (snapshot) — lo que verifica el pendiente #2
     Serial.print(" | hdg=");      Serial.print(g_io.heading_deg, 1);
     Serial.print(" hvalid=");     Serial.print(g_io.heading_valid);

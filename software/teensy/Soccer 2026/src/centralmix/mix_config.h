@@ -355,6 +355,19 @@ constexpr float MIX_EDGE_PUSH_GOAL_DEG  = 25.0f; // si se VE el arco rival, alin
 constexpr unsigned long MIX_EDGE_PUSH_MS = 500;  // duración del empuje a fondo (= PATEANDO_adelante 2025).
 constexpr unsigned long MIX_EDGE_BACK_MS = 200;  // retroceso corto post-empuje (= PATEANDO_atras 2025).
 
+// --- FEEDFORWARD de velocidad de pelota (ANTICIPAR la pelota en movimiento). El TOP manda
+//     la velocidad de pelota en el WorldSnapshot (ball_velocity); el rodeo apunta a dónde la
+//     pelota VA a estar dentro de LEAD_S, no a dónde está. Es lo que le faltaba al mix para
+//     llegar a una pelota en movimiento. ---
+// ⚠️ La velocidad es RELATIVA al robot (incluye ego-movimiento) y de cámara (ruidosa) → por eso
+//    el GATE (vel_min) y el TOPE (lead_max). KILL-SWITCH: poné MIX_EDGE_VEL_MIN_CM_S = 9999 →
+//    nunca adelanta → rodeo por posición pura (como sin feedforward). Probar A-B en banco.
+constexpr float MIX_EDGE_VEL_MIN_CM_S = 30.0f;  // por debajo de esta rapidez, ignorar la velocidad
+                                                //   (ruido / pelota casi quieta). Subir si tiembla.
+constexpr float MIX_EDGE_LEAD_S       = 0.20f;  // cuántos segundos adelantar la pelota. Subir =
+                                                //   anticipa más (y amplifica más el ruido).
+constexpr float MIX_EDGE_LEAD_MAX_CM  = 40.0f;  // tope del adelanto (cm): acota el ruido de la vel.
+
 // --- Pérdida de pelota durante el rodeo → volver a buscar. ---
 constexpr unsigned long MIX_EDGE_BALL_LOST_MS = 500;  // sin ver pelota más que esto → BUSCAR.
 

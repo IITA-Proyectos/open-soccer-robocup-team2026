@@ -43,10 +43,17 @@ LINEA_*). Mirar también `ang` (ángulo pelota), `d` (distancia cm), `goalOpp vi
    subir, o revisar que `goalOpp` se vea (si se ve y está desalineado, no empuja a propósito).
 5. **VELOCIDAD.** Subir `MIX_EDGE_SPEED` 200→220→240 hasta el máximo que no haga brownout del regulador
    ni pierda la pelota por inercia. Vigilar temperatura de motores (rodeo sostenido).
-6. **PELOTA EN MOVIMIENTO.** Tirar la pelota cruzada y ver si el rodeo la **alcanza** (sin el feedforward
-   de velocidad de Edge —no cableado— no la va a anticipar, pero el ser reactivo + full velocidad debería
-   mejorar mucho vs el mix 2025). Anotar si "llega a hacer gol" con pelota en movimiento (la pregunta
-   original). Si NO alcanza → candidato a cablear la velocidad de pelota de DOWN a `g_io` (mejora futura).
+6. **PELOTA EN MOVIMIENTO + FEEDFORWARD de velocidad (la pregunta original).** El rodeo YA usa la
+   velocidad de pelota del TOP (`ball_vx/vy`, ver `vx=`/`vy=` en el debug USB) para **anticipar**: apunta
+   a dónde la pelota VA a estar. Pasos:
+   - **¿Llega el dato?** Mover la pelota a mano frente al robot y mirar `vx=`/`vy=` en USB: deben moverse
+     (si quedan en 0 siempre → el TOP no la estima; revisar `ball_velocity` del TOP, no este código).
+   - **A-B del feedforward:** primero con kill-switch `MIX_EDGE_VEL_MIN_CM_S = 9999` (rodeo por posición
+     pura), después el default (30). Tirar la pelota cruzada y comparar: ¿con feedforward la **alcanza /
+     hace gol** y sin él no? Esa es la respuesta a "si la pelota se mueve, ¿llega?".
+   - **Tuneo:** si tiembla / sobre-anticipa (la velocidad relativa incluye ego-movimiento + ruido de
+     cámara) → subir `MIX_EDGE_VEL_MIN_CM_S` o bajar `MIX_EDGE_LEAD_S`. Si anticipa POCO → subir `LEAD_S`.
+     `MIX_EDGE_LEAD_MAX_CM` topea cuánto adelanta (acota el ruido).
 7. **LÍNEA.** Durante el rodeo a full, ¿el escape de línea (`retroceder1/2/3`, sectores ±60°) frena a
    tiempo sin salir de cancha? El rodeo es más rápido que el mix 2025 → puede necesitar re-tuneo de los
    sectores o un margen. Si pisa línea seguido → avisar y dibujamos la geometría de los sensores de luz
@@ -67,8 +74,10 @@ Cualquier env de competencia, o `central_robot1_mix_bno` (mismo robot, FSM 2025 
 NO está → vuelve a lo de hoy). El rodeo vive 100% detrás del flag: no toca el mix 2025.
 
 ## Mejora futura (2027 / si hace falta — NO ahora)
-- **Feedforward de velocidad de pelota** (lo mejor de Edge): cablear `Velocity2D` de DOWN → `g_io` →
-  `EdgeIn` y sumar al `go_ang` cuando la pelota se mueve. Anticiparía la pelota en movimiento.
+- **Velocidad de pelota en marco MUNDO** (no relativa): hoy el feedforward usa la velocidad relativa al
+  robot (incluye ego-movimiento). Compensarla con la velocidad propia del OTOS daría una estimación más
+  limpia de a dónde va la pelota de verdad. (El feedforward relativo YA está implementado y andando — esto
+  es un refinamiento si el ego-movimiento molesta tras tunear el gate/tope.)
 - **Curva por interpolación suave** (Edge tenía un cúbico) en vez de 3 tramos lineales, si el rodeo se
   siente "quebrado" en los breakpoints.
 

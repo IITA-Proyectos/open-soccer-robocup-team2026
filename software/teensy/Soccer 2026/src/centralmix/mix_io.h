@@ -36,6 +36,15 @@ struct MixIO {
     bool  ball_visible = false;    // ¿la cámara ve la pelota? (haypelota 2025)
     float angulo_pelota_deg = 0.0f; // atan2(ball_x_cm, ball_y_cm) en °, calculado por mix_comm
 
+    // Velocidad de la pelota (marco robot: +X=derecha, +Y=adelante; cm/s). La CALCULA el TOP
+    // (módulo ball_velocity, a partir de la pelota de cámara en el tiempo) y la manda en el
+    // WorldSnapshot (ball_vx_mm_s/ball_vy_mm_s); mix_comm la pasa a cm/s (÷10). 0 = N/A o quieta.
+    // La usa el rodeo estilo Edge (-DMIX_ATTACK_EDGE) para ANTICIPAR la pelota en movimiento.
+    // ⚠️ Es velocidad RELATIVA al robot → incluye el ego-movimiento (cuando el robot se mueve,
+    // la pelota quieta "se mueve" en este marco). El feedforward la gatea por umbral + tope.
+    float ball_vx_cm_s = 0.0f;     // + = la pelota va hacia la derecha del robot (cm/s)
+    float ball_vy_cm_s = 0.0f;     // + = la pelota se acerca por el frente (cm/s)
+
     // ---- Arcos por ROL, NO por color (ángulo ° marco robot, +=derecha; distancia mm) ----
     // ⚠️ La placa CENTRAL (este programa) NUNCA pregunta por COLOR (amarillo/azul). La placa TOP
     // ya resolvió cuál arco es el RIVAL (opp = al que se patea) y cuál el PROPIO (own), con el

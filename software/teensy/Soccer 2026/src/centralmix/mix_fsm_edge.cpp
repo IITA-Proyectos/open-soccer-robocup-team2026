@@ -49,6 +49,9 @@ static EdgeParams edge_params() {
     p.push_dist_cm  = MIX_EDGE_PUSH_DIST_CM;
     p.push_align_deg= MIX_EDGE_PUSH_ALIGN_DEG;
     p.push_goal_deg = MIX_EDGE_PUSH_GOAL_DEG;
+    p.vel_min_cm_s  = MIX_EDGE_VEL_MIN_CM_S;
+    p.lead_s        = MIX_EDGE_LEAD_S;
+    p.lead_max_cm   = MIX_EDGE_LEAD_MAX_CM;
     return p;
 }
 
@@ -82,10 +85,6 @@ static int omega_mira_arco() {
     if (corr >  (float)MIX_EDGE_OMEGA_MAX) corr =  (float)MIX_EDGE_OMEGA_MAX;
     if (corr < -(float)MIX_EDGE_OMEGA_MAX) corr = -(float)MIX_EDGE_OMEGA_MAX;
     return (int)corr;
-}
-
-static inline float dist_pelota_cm() {
-    return sqrtf(g_io.ball_x_cm * g_io.ball_x_cm + g_io.ball_y_cm * g_io.ball_y_cm);
 }
 
 // ============================================================
@@ -187,10 +186,12 @@ void mix_fsm_edge_tick() {
                 break;
             }
 
-            // Armar la entrada del núcleo puro desde g_io.
+            // Armar la entrada del núcleo puro desde g_io (pelota en x/y + velocidad).
             EdgeIn in{};
-            in.ball_angle_deg = g_io.angulo_pelota_deg;
-            in.ball_dist_cm   = dist_pelota_cm();
+            in.ball_x_cm      = g_io.ball_x_cm;
+            in.ball_y_cm      = g_io.ball_y_cm;
+            in.ball_vx_cm_s   = g_io.ball_vx_cm_s;
+            in.ball_vy_cm_s   = g_io.ball_vy_cm_s;
             in.ball_visible   = haypelota;
             in.goal_visible   = g_io.goal_opp_visible;
             in.goal_angle_deg = g_io.goal_opp_angle;

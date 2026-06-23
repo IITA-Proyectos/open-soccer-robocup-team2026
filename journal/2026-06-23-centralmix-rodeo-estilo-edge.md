@@ -52,11 +52,24 @@ usa la FSM reactiva nueva. Archivos (todos en `src/centralmix/`):
 4. **`mix_config.h`** — bloque `MIX_EDGE_*` (todas las perillas, con notas de banco).
 5. **`main_centralmix.cpp`** + **`platformio.ini`** — selección por flag + env `central_robot1_mix_edge`.
 
+### Feedforward de velocidad — SÍ implementado (update mismo día, pedido Elías)
+Elías marcó que "el mix trae todos los datos del mundo del TOP, capaz sirve la velocidad de la pelota".
+**Tenía razón:** el `WorldSnapshot` del TOP YA trae `ball_vx_mm_s`/`ball_vy_mm_s` (el TOP los calcula con
+el módulo `ball_velocity` y los manda en `main_top.cpp:231`). `mix_comm` los recibía pero NO los pasaba a
+`g_io`. Se cableó: `mix_io.ball_vx_cm_s/vy` + `mix_comm` (÷10 a cm/s) → `EdgeIn` → núcleo puro.
+- En vez del `go_ang += 30` crudo de Edge, se hace **proyección predictiva**: apuntar a la pelota
+  `posición + velocidad·LEAD_S` (dónde VA a estar), gateado por `MIX_EDGE_VEL_MIN_CM_S` (ignora ruido) y
+  topeado por `MIX_EDGE_LEAD_MAX_CM` (acota el ruido de la velocidad de cámara).
+- El **empuje** se sigue decidiendo con la pelota ACTUAL (no la predicha): no comprometerse a empujar
+  contra una posición que todavía no existe.
+- ⚠️ Caveat honesto: la velocidad es RELATIVA al robot (incluye ego-movimiento) y de cámara (ruidosa).
+  Por eso el gate + tope + el kill-switch (`MIX_EDGE_VEL_MIN_CM_S = 9999` → rodeo por posición pura, A-B
+  en banco). 3 tests host nuevos (anticipa / gate ignora lento / tope).
+
 ### Diferencia honesta vs Edge
-- **NO está el feedforward de velocidad** (lo mejor de Edge para pelota en movimiento): `mix_io` HOY no
-  trae velocidad de pelota. Queda como **mejora futura** (cablear la velocidad de DOWN a `g_io`). Aun
-  así, lo grande (1 estado reactivo a full velocidad + giro al arco) ya ataca la lentitud.
 - **Sin pateador:** el "gol" es empuje por inercia (`avanzar_patear`), no solenoide.
+- El feedforward usa proyección predictiva (mejor que el `+30` fijo de Edge), pero la velocidad RELATIVA
+  con ego-movimiento es un límite conocido → si molesta en banco, kill-switch y queda el rodeo por posición.
 
 ## Verificación host (sin hardware)
 `test/test_mix_edge/` (Unity) — **11/11 verde** (`bash scripts/run-host-tests.sh test_mix_edge`):

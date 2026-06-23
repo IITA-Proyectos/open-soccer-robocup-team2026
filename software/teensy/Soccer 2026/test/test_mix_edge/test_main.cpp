@@ -33,7 +33,24 @@ static EdgeParams P() {
     p.push_dist_cm  = MIX_EDGE_PUSH_DIST_CM;
     p.push_align_deg= MIX_EDGE_PUSH_ALIGN_DEG;
     p.push_goal_deg = MIX_EDGE_PUSH_GOAL_DEG;
+    p.vel_min_cm_s  = MIX_EDGE_VEL_MIN_CM_S;
+    p.lead_s        = MIX_EDGE_LEAD_S;
+    p.lead_max_cm   = MIX_EDGE_LEAD_MAX_CM;
     return p;
+}
+
+// Pelota en (ángulo, distancia) → x/y, velocidad 0 (estática). Para los tests sin velocidad.
+static EdgeIn mk(float ang_deg, float dist_cm, bool ball, bool goal_vis, float goal_ang) {
+    const float a = ang_deg * 3.14159265f / 180.0f;
+    EdgeIn in{};
+    in.ball_x_cm    = dist_cm * std::sin(a);
+    in.ball_y_cm    = dist_cm * std::cos(a);
+    in.ball_vx_cm_s = 0.0f;
+    in.ball_vy_cm_s = 0.0f;
+    in.ball_visible = ball;
+    in.goal_visible = goal_vis;
+    in.goal_angle_deg = goal_ang;
+    return in;
 }
 
 // -------- CURVA --------
@@ -85,16 +102,6 @@ void test_wrap_tope(void) {
 
 // -------- DECISIÓN DE EMPUJE --------
 
-static EdgeIn mk(float ang, float dist, bool ball, bool goal_vis, float goal_ang) {
-    EdgeIn in{};
-    in.ball_angle_deg = ang;
-    in.ball_dist_cm   = dist;
-    in.ball_visible   = ball;
-    in.goal_visible   = goal_vis;
-    in.goal_angle_deg = goal_ang;
-    return in;
-}
-
 // Pelota LEJOS → no empujar (sigue rodeando).
 void test_push_lejos_no(void) {
     EdgeOut o = mix_edge_attack(mk(0.0f, 100.0f, true, true, 0.0f), P());
@@ -125,6 +132,42 @@ void test_push_costado_no(void) {
     TEST_ASSERT_FALSE(o.push_ready);
 }
 
+// -------- FEEDFORWARD DE VELOCIDAD (anticipar la pelota en movimiento) --------
+
+// Pelota al frente (ang 0) pero MOVIÉNDOSE a la derecha rápido → el rodeo apunta a la
+// DERECHA (anticipa), no derecho (0). Sin el feedforward daría ~0.
+void test_ff_anticipa_lado(void) {
+    EdgeIn in{};
+    in.ball_x_cm = 0.0f; in.ball_y_cm = 50.0f;   // pelota al frente, 50 cm
+    in.ball_vx_cm_s = 100.0f; in.ball_vy_cm_s = 0.0f;  // se va a la derecha, 100 cm/s
+    in.ball_visible = true; in.goal_visible = false; in.goal_angle_deg = 0.0f;
+    EdgeOut o = mix_edge_attack(in, P());
+    TEST_ASSERT_TRUE(o.go_ang_deg > 5.0f);   // apunta claramente a la derecha (anticipa)
+}
+
+// Misma pelota pero velocidad por DEBAJO del umbral → NO anticipa (≈ derecho a la pelota).
+void test_ff_gate_ignora_lento(void) {
+    EdgeIn in{};
+    in.ball_x_cm = 0.0f; in.ball_y_cm = 50.0f;
+    in.ball_vx_cm_s = 5.0f; in.ball_vy_cm_s = 0.0f;   // 5 cm/s < vel_min (30) → ruido
+    in.ball_visible = true; in.goal_visible = false; in.goal_angle_deg = 0.0f;
+    EdgeOut o = mix_edge_attack(in, P());
+    TEST_ASSERT_FLOAT_WITHIN(1.0f, 0.0f, o.go_ang_deg);   // sin lead → casi 0
+}
+
+// Velocidad enorme → el adelanto se TOPEA (lead_max_cm): el ángulo no se dispara sin límite.
+void test_ff_tope(void) {
+    EdgeIn fast{};
+    fast.ball_x_cm = 0.0f; fast.ball_y_cm = 50.0f;
+    fast.ball_vx_cm_s = 100000.0f; fast.ball_vy_cm_s = 0.0f;  // absurdo (ruido extremo)
+    fast.ball_visible = true; fast.goal_visible = false; fast.goal_angle_deg = 0.0f;
+    EdgeOut o = mix_edge_attack(fast, P());
+    // Con tope 40 cm de adelanto sobre 50 cm de frente → ángulo ≈ atan2(40,50)=38.7° → curva.
+    // Sin tope, atan2(enorme,50)≈90° → sería mucho mayor. Verificamos que quedó acotado.
+    const float a = std::atan2(MIX_EDGE_LEAD_MAX_CM, 50.0f) * 180.0f / 3.14159265f; // ≈38.7°
+    TEST_ASSERT_TRUE(o.go_ang_deg <= mix_edge_wrap_angle(a + 1.0f, P()) + 0.5f);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_wrap_cero);
@@ -138,5 +181,8 @@ int main(void) {
     RUN_TEST(test_push_arco_desalineado_no);
     RUN_TEST(test_push_sin_arco_si);
     RUN_TEST(test_push_costado_no);
+    RUN_TEST(test_ff_anticipa_lado);
+    RUN_TEST(test_ff_gate_ignora_lento);
+    RUN_TEST(test_ff_tope);
     return UNITY_END();
 }

@@ -43,13 +43,24 @@ struct EdgeParams {
     float push_dist_cm;     // pelota más cerca que esto = candidata a empujar
     float push_align_deg;   // y dentro de este ángulo al frente
     float push_goal_deg;    // si se VE el arco rival, debe estar dentro de esto para empujar
+
+    // --- Feedforward de velocidad (anticipar la pelota en movimiento) ---
+    // Si la pelota se mueve más rápido que vel_min, se apunta a dónde ESTARÁ dentro de lead_s
+    // segundos (posición + velocidad·lead_s), en vez de dónde está. El adelanto se TOPEA en
+    // lead_max_cm para no amplificar el ruido de la velocidad de cámara. vel_min ALTO = apagado.
+    float vel_min_cm_s;     // umbral: por debajo, ignorar la velocidad (ruido / pelota casi quieta)
+    float lead_s;           // cuántos segundos adelantar la posición de la pelota
+    float lead_max_cm;      // tope del adelanto (cm) — acota el ruido
 };
 
-// Entrada: lo que la FSM lee de g_io (ya en la convención de centralmix:
-// ángulo 0 = frente, + = derecha).
+// Entrada: lo que la FSM lee de g_io. Marco robot: +X=derecha, +Y=frente; cm y cm/s.
+// (Se pasa la pelota en x/y CRUDOS — el ángulo/distancia y el adelanto por velocidad se
+//  calculan adentro, así la decisión es auto-contenida y testeable.)
 struct EdgeIn {
-    float ball_angle_deg;   // ángulo robot→pelota (0=frente, +=derecha) = g_io.angulo_pelota_deg
-    float ball_dist_cm;     // distancia robot→pelota (cm) = sqrt(x²+y²)
+    float ball_x_cm;        // g_io.ball_x_cm  (+ = derecha)
+    float ball_y_cm;        // g_io.ball_y_cm  (+ = frente)
+    float ball_vx_cm_s;     // g_io.ball_vx_cm_s (velocidad pelota, marco robot)
+    float ball_vy_cm_s;     // g_io.ball_vy_cm_s
     bool  ball_visible;     // g_io.ball_visible
     bool  goal_visible;     // g_io.goal_opp_visible (arco RIVAL, resuelto por el TOP)
     float goal_angle_deg;   // ángulo robot→arco rival (0=frente, +=derecha) = g_io.goal_opp_angle

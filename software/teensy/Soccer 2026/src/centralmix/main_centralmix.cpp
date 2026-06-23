@@ -29,7 +29,16 @@
 #include "mix_io.h"
 #include "mix_comm.h"
 #include "mix_motors.h"
+
+// Selección de FSM del delantero (mutuamente excluyentes):
+//   DEFAULT (sin flag)      → mix_fsm.cpp     : port FIEL del delantero 2025 (apuntar→avanzar→orbitar).
+//   con -DMIX_ATTACK_EDGE   → mix_fsm_edge.cpp: rodeo REACTIVO estilo Edge (1 estado, full velocidad).
+// Es 100% aditivo: el flag SOLO cambia qué FSM se llama; el resto de centralmix es idéntico.
+#ifdef MIX_ATTACK_EDGE
+#include "mix_fsm_edge.h"
+#else
 #include "mix_fsm.h"
+#endif
 
 #include <math.h>   // sqrtf (distancia pelota en el debug)
 
@@ -71,7 +80,12 @@ static void mix_debug_print() {
     Serial.print(" ang=");           Serial.print(g_io.line_angle_deg, 0);
     Serial.print(" | match=");       Serial.print(g_io.match_running);
     Serial.print(" topFresh=");      Serial.print(g_io.top_link_fresh);
-    Serial.print(" downFresh=");     Serial.println(g_io.down_link_fresh);
+    Serial.print(" downFresh=");     Serial.print(g_io.down_link_fresh);
+#ifdef MIX_ATTACK_EDGE
+    Serial.print(" | EDGE=");        Serial.println(iitasoccer::mix::mix_fsm_edge_estado_nombre());
+#else
+    Serial.println();
+#endif
 }
 #endif  // MIX_NO_DEBUG_SERIAL
 
@@ -81,12 +95,20 @@ void setup() {
 #endif
     iitasoccer::mix::mix_comm_init();
     iitasoccer::mix::mix_motors_init();
+#ifdef MIX_ATTACK_EDGE
+    iitasoccer::mix::mix_fsm_edge_init();
+#else
     iitasoccer::mix::mix_fsm_init();
+#endif
 }
 
 void loop() {
     iitasoccer::mix::mix_comm_tick();
+#ifdef MIX_ATTACK_EDGE
+    iitasoccer::mix::mix_fsm_edge_tick();
+#else
     iitasoccer::mix::mix_fsm_tick();
+#endif
 #ifndef MIX_NO_DEBUG_SERIAL
     mix_debug_print();
 #endif

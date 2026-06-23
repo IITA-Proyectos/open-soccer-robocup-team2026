@@ -357,5 +357,37 @@ void kickoff_medialuna() {
     mix_set_motor(2, MIX_KICKOFF_ARC_PWD*0);   // M3 trasera
 }
 
+// ============================================================
+// mix_mover_vector — primitiva HOLONÓMICA (traslación en cualquier ángulo + giro).
+// Ver el contrato + la cinemática (anclada a banco) en mix_motors.h. La usa el rodeo
+// estilo Edge (mix_fsm_edge.cpp).
+// ============================================================
+void mix_mover_vector(float go_ang_deg, int speed, int omega) {
+    // go_ang: 0 = frente (+Y), + = derecha (+X). Descomponer en (vx=derecha, vy=frente).
+    const float a  = go_ang_deg * 0.017453292519943295f;  // grados → rad
+    const float vx = (float)speed * sinf(a);   // componente DERECHA
+    const float vy = (float)speed * cosf(a);   // componente FRENTE
+
+    // Cinemática inversa R1 (verificada con Elías 2026-06-23). El término omega va igual
+    // a las 3 (giro puro, como girar()): no inyecta traslación parásita.
+    int w[3];
+    w[0] = (int)( 0.5f * vx + 0.8660254f * vy) + omega;  // M1 delantera IZQ
+    w[1] = (int)( 0.5f * vx - 0.8660254f * vy) + omega;  // M2 delantera DER
+    w[2] = (int)(-1.0f * vx                  ) + omega;  // M3 trasera
+
+    // Saturación POR ESCALADO (preserva la dirección): si el pico pasa MIX_MAX_PWM, escalar
+    // las 3 ruedas por el mismo factor. Mismo patrón que avanzar_patear / saturate_wheels.
+    int peak = 0;
+    for (int i = 0; i < 3; ++i) { const int m = (w[i] < 0) ? -w[i] : w[i]; if (m > peak) peak = m; }
+    if (peak > MIX_MAX_PWM) {
+        for (int i = 0; i < 3; ++i)
+            w[i] = (int)((long)w[i] * MIX_MAX_PWM / peak);
+    }
+
+    mix_set_motor(0, w[0]);
+    mix_set_motor(1, w[1]);
+    mix_set_motor(2, w[2]);
+}
+
 }  // namespace mix
 }  // namespace iitasoccer

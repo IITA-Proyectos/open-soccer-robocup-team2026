@@ -310,5 +310,53 @@ constexpr int MIX_BNO055_I2C_ADDR = 0x28;
 // ============================================================
 constexpr long MIX_UART_BAUD = 230400;  // TOP (Serial7) y DOWN (Serial1)
 
+// ============================================================
+// RODEO estilo "Edge" (回り込み) — delantero REACTIVO (coach + Elías, 2026-06-23).
+// Solo se usa con -DMIX_ATTACK_EDGE (FSM mix_fsm_edge.cpp). Sin el flag, centralmix
+// corre EXACTAMENTE como hoy (FSM 2025 en mix_fsm.cpp): esto es 100% aditivo.
+//
+// QUÉ ES: el delantero campeón mundial 2024 Team Edge se pone detrás de la pelota con UNA
+// sola fórmula reactiva (no apuntar→avanzar→orbitar en estados), a full velocidad. Acá se
+// porta esa curva (mix_edge.cpp) + un giro que mira al arco, sobre la primitiva holonómica
+// mix_mover_vector. Empuje al arco POR INERCIA (sin pateador), reusando avanzar_patear.
+//
+// ⚠️ NADA de esto está testeado en hardware. Toda PERILLA se titula en banco. Las unidades
+// de distancia/ángulo son las de mix_io (cm CRUDO de cámara, grados marco robot).
+// ============================================================
+
+// --- Curva de rodeo: |ángulo de pelota| → ángulo de avance (mix_edge_wrap_angle). ---
+// Piecewise lineal CONTINUA en 3 tramos. Subir una pendiente = rodear MÁS agresivo en esa
+// zona (apuntar más al costado de la pelota). Defaults = espíritu de Edge (1.2 / 2.0 / 1.0).
+constexpr float MIX_EDGE_K_NEAR    = 1.2f;    // pendiente zona cercana (pelota casi al frente)
+constexpr float MIX_EDGE_B1_DEG    = 20.0f;   // fin zona cercana (°)
+constexpr float MIX_EDGE_K_SIDE    = 2.0f;    // pendiente zona lateral (rodeo fuerte: ×2 el ángulo)
+constexpr float MIX_EDGE_B2_DEG    = 75.0f;   // fin zona lateral (°)
+constexpr float MIX_EDGE_K_WIDE    = 1.0f;    // pendiente zona ancha (pelota muy al costado/atrás)
+constexpr float MIX_EDGE_GO_MAX_DEG = 170.0f; // tope del ángulo de avance (no apuntar 100% atrás)
+
+// --- Velocidad de rodeo (PWM de traslación). Edge va a 220-240; arrancá MEDIO y subí. ---
+constexpr int   MIX_EDGE_SPEED     = 200;     // PWM de traslación durante el rodeo. Rango 150..240.
+
+// --- Giro: orientar el FRENTE al arco rival MIENTRAS rodea (clave SIN pateador: hay que ---
+//     llegar detrás de la pelota ya mirando al arco para empujar derecho). ---
+constexpr float MIX_EDGE_FACE_KP   = 1.5f;    // PWM de giro por GRADO de error al arco rival.
+                                              //   *** PERILLA DE BANCO (signo Y magnitud) ***.
+                                              //   Paso 1: confirmar SIGNO con robot levantado (si
+                                              //   gira ALEJÁNDOSE del arco → invertir a -1.5). Paso
+                                              //   2: subir magnitud hasta que encare firme sin zigzag.
+constexpr int   MIX_EDGE_OMEGA_MAX = 70;      // tope del PWM de giro (no dominar a la traslación).
+
+// --- Disparo del EMPUJE (gol por inercia, sin pateador). El robot se compromete a empujar
+//     recto cuando la pelota está CERCA + al FRENTE + (arco alineado o no visible). ---
+constexpr float MIX_EDGE_PUSH_DIST_CM   = 14.0f; // pelota más cerca que esto = empujar. RE-TUNEAR
+                                                 //   (cm CRUDO de cámara; medir el valor real cerca).
+constexpr float MIX_EDGE_PUSH_ALIGN_DEG = 25.0f; // y dentro de este ángulo al frente.
+constexpr float MIX_EDGE_PUSH_GOAL_DEG  = 25.0f; // si se VE el arco rival, alineado dentro de esto.
+constexpr unsigned long MIX_EDGE_PUSH_MS = 500;  // duración del empuje a fondo (= PATEANDO_adelante 2025).
+constexpr unsigned long MIX_EDGE_BACK_MS = 200;  // retroceso corto post-empuje (= PATEANDO_atras 2025).
+
+// --- Pérdida de pelota durante el rodeo → volver a buscar. ---
+constexpr unsigned long MIX_EDGE_BALL_LOST_MS = 500;  // sin ver pelota más que esto → BUSCAR.
+
 }  // namespace mix
 }  // namespace iitasoccer

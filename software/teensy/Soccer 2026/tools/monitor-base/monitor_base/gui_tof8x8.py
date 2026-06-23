@@ -193,7 +193,7 @@ class Tof8x8App:
     celda + dt_us y fps por sensor. SOLO LECTURA: abre el serial, manda
     STREAM ON + PING y dibuja; no envía comandos de config."""
 
-    CELL = 26                 # px por celda (8×8 = 208 px de grilla)
+    CELL = 48                 # px por celda (8×8 = 384 px de grilla) — grande para leer el mm
     PING_INTERVAL_S = 1.0
 
     def __init__(self, root, port: Optional[str], baud: int = 115200,
@@ -230,8 +230,23 @@ class Tof8x8App:
                                bg="#11151a", fg="#cfe", padx=8, pady=6)
         self.header.pack(fill="x")
 
-        cards = ttk.Frame(self.root, padding=6)
-        cards.pack(fill="both", expand=True)
+        # Área SCROLLABLE: las 4 grillas 8×8 grandes no entran en pantalla → Canvas con barras
+        # de desplazamiento (horizontal abajo, vertical a la derecha) que aparecen si no entra.
+        outer = ttk.Frame(self.root)
+        outer.pack(fill="both", expand=True)
+        scv = tk.Canvas(outer, bg="#11151a", highlightthickness=0)
+        vsb = ttk.Scrollbar(outer, orient="vertical", command=scv.yview)
+        hsb = ttk.Scrollbar(outer, orient="horizontal", command=scv.xview)
+        scv.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        vsb.pack(side="right", fill="y")
+        hsb.pack(side="bottom", fill="x")
+        scv.pack(side="left", fill="both", expand=True)
+        cards = ttk.Frame(scv, padding=6)
+        scv.create_window((0, 0), window=cards, anchor="nw")
+        # Recalcular el área scrolleable cuando cambia el tamaño del contenido (rueda del mouse opcional).
+        cards.bind("<Configure>", lambda e: scv.configure(scrollregion=scv.bbox("all")))
+        scv.bind_all("<MouseWheel>", lambda e: scv.yview_scroll(int(-e.delta / 120), "units"))
+        scv.bind_all("<Shift-MouseWheel>", lambda e: scv.xview_scroll(int(-e.delta / 120), "units"))
         # Orden visual por idx 0..3 = FRONT | BACK | RIGHT | LEFT (orden del contrato).
         for col, idx in enumerate(range(N_SENSORS)):
             self._cards[idx] = self._make_card(cards, col, idx)
@@ -262,7 +277,7 @@ class Tof8x8App:
                     fill=NO_READING_COLOR, outline="#1a1d20"))
                 texts.append(canvas.create_text(
                     x0 + self.CELL / 2, y0 + self.CELL / 2, text="",
-                    fill="#0b0e11", font=("Consolas", 6)))
+                    fill="#000000", font=("Consolas", 13, "bold")))
         caption = ttk.Label(wrap, font=("Consolas", 8), text="(esperando ZN8…)")
         caption.pack()
         return {"wrap": wrap, "canvas": canvas, "cells": cells, "texts": texts,
@@ -332,9 +347,9 @@ class Tof8x8App:
             val = fr.cells[k] if k < len(fr.cells) else None
             color = NO_READING_COLOR if val is None else zone_color(val)
             card["canvas"].itemconfig(card["cells"][k], fill=color)
-            # A 8×8 (26 px) el mm de 4 dígitos no entra; mostramos hasta 3 dígitos
-            # (cm-ish) tal cual, y los >9999 / None quedan en blanco para no ensuciar.
-            txt = "" if val is None else (str(val) if val < 1000 else "")
+            # Mostrar SIEMPRE el mm (incluidas las lejanas/verdes ≥1000) — pedido Virginia.
+            # Con CELL=48 + fuente 13 bold entran los 4 dígitos. None = sin lectura → vacío.
+            txt = "" if val is None else str(val)
             card["canvas"].itemconfig(card["texts"][k], text=txt)
         f = self.state.fps.fps(idx)
         card["caption"].configure(

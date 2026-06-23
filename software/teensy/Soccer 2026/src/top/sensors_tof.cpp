@@ -57,8 +57,19 @@ namespace iitasoccer {
 namespace {
 
 // ----- Estado del modulo -----
+// RESOLUCION EFECTIVA del frame ToF. Default 16 (4x4). Con -DTOP_TOF_8X8 (env de banco/piloto
+// top_robot2_pri_tof8x8) pasa a 64 (8x8) -> los buffers, loops y config de abajo usan ESTE valor.
+// Sin el flag = byte-identico (la constante resuelve a 16, las ramas #ifdef desaparecen).
+#ifdef TOP_TOF_8X8
+constexpr uint8_t TOF_EFFECTIVE_ZONES = 64;  // 8x8 (piloto; emite las 64 por debug ZN8)
+#else
+constexpr uint8_t TOF_EFFECTIVE_ZONES = 16;  // 4x4 (competencia)
+#endif
+
 uint16_t g_distances_mm[NUM_TOF];
-uint16_t g_zones_mm[NUM_TOF][16];  // zonas crudas 4x4 por sensor (campo "z" de la telemetría)
+// Buffer de zonas crudas por sensor (campo "z" de la telemetría). ANTI-OVERFLOW (OBLIGATORIO):
+// con TOP_TOF_8X8 fill_zones escribe 64 zonas -> el buffer DEBE ser [64], no [16].
+uint16_t g_zones_mm[NUM_TOF][TOF_EFFECTIVE_ZONES];  // 16 (4x4) o 64 (8x8 con TOP_TOF_8X8)
 bool     g_ready[NUM_TOF];
 // Frescura por sensor (P1-TOF-STALE 2026-06-03): g_last_ok_ms[i] = millis() de la
 // ultima lectura BUENA; g_ever_ok[i] = si alguna vez hubo una. La decision
@@ -148,8 +159,16 @@ void tof_recover_to_default() {
 // Resolucion 4x4 = 16 zonas. Mas liviano que 8x8 y suficiente para un solo
 // sensor que aporta "distancia frontal promedio" al firmware del TOP. Si en
 // el futuro se quiere usar el array completo para evasion fina, subir a 64.
-constexpr uint8_t TOF_RESOLUTION_ZONES = 16;  // 4x4
+// PILOTO 8x8 (TOP_TOF_8X8): los 4 ToF a 64 zonas (8x8). A 8x8 el sensor NO sostiene 15 Hz
+// (el frame es 4x mas grande), por eso el ranging baja a ~8 Hz. MANTENER setResolution ANTES
+// de setRangingFrequency (lo exige el chip: la freq valida depende de la resolucion).
+#ifdef TOP_TOF_8X8
+constexpr uint8_t TOF_RESOLUTION_ZONES = 64;  // 8x8 (piloto)
+constexpr uint8_t TOF_RANGING_FREQ_HZ  = 8;   // 8x8 no sostiene 15 Hz
+#else
+constexpr uint8_t TOF_RESOLUTION_ZONES = 16;  // 4x4 (competencia)
 constexpr uint8_t TOF_RANGING_FREQ_HZ  = 15;
+#endif
 
 // ----------------------------------------------------------------------------
 // CLOCKS I2C — DOS regímenes distintos (TA-1 + TA-2, 2026-06-14). Ver TASK-210/211.
@@ -309,7 +328,8 @@ bool sensors_tof_init() {
         g_ready[i] = false;
         g_last_ok_ms[i] = 0;
         g_ever_ok[i] = false;   // sin lectura buena todavia -> getter da NO_READING
-        for (int z = 0; z < 16; ++z) g_zones_mm[i][z] = TOF_NO_READING;
+        // Limpiar TODAS las zonas efectivas (16 o 64 con TOP_TOF_8X8) -> sin basura en el buffer.
+        for (int z = 0; z < TOF_EFFECTIVE_ZONES; ++z) g_zones_mm[i][z] = TOF_NO_READING;
     }
 
     // NOTA: NO tocamos los pines XSHUT (PIN_TOF_XSHUT[]). Validado el
@@ -484,8 +504,21 @@ void sensors_tof_tick() {
     // 400 kHz SOLO para leer el bloque ToF; el BNO centinela del bus lo lee a 100 kHz (otro tick).
     Wire.setClock(TOF_FAST_BUS_HZ);
 #endif
+#ifdef TOP_TOF_8X8
+    // PILOTO 8x8: leemos isDataReady y, si hay frame, el getRangingData con el reloj de micros()
+    // ALREDEDOR para medir dt_us (el costo del bloque grande 8x8 — es el dato que impacta el loop).
+    bool tof_got = false;
+    uint32_t tof_dt_us = 0;
+    if (i_valid && g_ready[i] && g_tof_multi[i].isDataReady()) {
+        const uint32_t t0 = micros();
+        tof_got = g_tof_multi[i].getRangingData(&g_tof_results);
+        tof_dt_us = micros() - t0;
+    }
+    if (tof_got) {
+#else
     if (i_valid && g_ready[i] && g_tof_multi[i].isDataReady() &&
         g_tof_multi[i].getRangingData(&g_tof_results)) {
+#endif
         // getRangingData() OK = el sensor responde por I2C -> lectura FRESCA
         // (aunque mean sea NO_READING = "nada en rango", es una respuesta
         // valida y reciente, no un dato colgado). Sellamos la frescura.
@@ -518,6 +551,29 @@ void sensors_tof_tick() {
 #endif
         g_last_ok_ms[i]   = now;
         g_ever_ok[i]      = true;
+#ifdef TOP_TOF_8X8
+        // DEBUG ZN8 (piloto 8x8): UNA linea de texto por tick con las 64 zonas CRUDAS leidas
+        // de g_tof_results (orden fila*8+col), 65535 si el target_status no es valido {5,6,9}.
+        // Contrato (identico al del monitor): ZN8,<idx>,<res>,<dt_us>,<v0..v63>
+        // <dt_us> = micros() medido alrededor del getRangingData de ESTE ToF (impacto en el loop).
+        // Emitimos SOLO el ToF de este tick (el del round-robin), NO los 4 juntos. Texto plano
+        // por el Serial USB: NO empieza con '{' (no choca con el protocolo binario del monitor).
+        Serial.print(F("ZN8,"));
+        Serial.print((unsigned)i);
+        Serial.print(',');
+        Serial.print((unsigned)TOF_EFFECTIVE_ZONES);   // res = 64
+        Serial.print(',');
+        Serial.print((unsigned long)tof_dt_us);
+        for (uint8_t z = 0; z < TOF_EFFECTIVE_ZONES; ++z) {
+            const uint8_t s  = g_tof_results.target_status[z];
+            const bool  ok   = (s == 5 || s == 6 || s == 9);
+            const int16_t mm = g_tof_results.distance_mm[z];
+            uint16_t v = (ok && mm >= 0) ? static_cast<uint16_t>(mm) : 0xFFFF;  // 65535 = sin lectura
+            Serial.print(',');
+            Serial.print((unsigned)v);
+        }
+        Serial.println();
+#endif
     }
 #ifdef TOP_TOF_FAST_BUS_ACTIVE
     // Restaurar 100 kHz: el bus queda BNO-safe el resto del loop (el centinela lo lee así).
@@ -620,7 +676,9 @@ uint16_t sensors_tof_get_distance_mm(uint8_t idx) {
 // no es válida, el sensor está deshabilitado por config, o venció (P1-TOF-STALE):
 // reusa el getter de distancia como compuerta de frescura/habilitación.
 uint16_t sensors_tof_get_zone_mm(uint8_t idx, uint8_t zone) {
-    if (idx >= NUM_TOF || zone >= 16) return TOF_NO_READING;
+    // zone valida hasta la resolucion efectiva (16 o 64 con TOP_TOF_8X8); arriba de eso
+    // el buffer no tiene esa zona -> rechazar para no leer fuera de rango.
+    if (idx >= NUM_TOF || zone >= TOF_EFFECTIVE_ZONES) return TOF_NO_READING;
     if (sensors_tof_get_distance_mm(idx) == TOF_NO_READING) return TOF_NO_READING;
     return g_zones_mm[idx][zone];
 }

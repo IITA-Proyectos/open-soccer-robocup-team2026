@@ -55,6 +55,9 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
                         "según altura de pared + cancha (guarda a .json; baja a firmware)")
     p.add_argument("--tof-360", action="store_true",
                    help="modo TOP — TIRA 360 de los 4 ToF (izq|frente|der|atrás) + cámaras arriba")
+    p.add_argument("--tof8x8", action="store_true",
+                   help="modo TOP — VISOR 8×8 (solo lectura): 4 grillas 8×8 (FRONT/BACK/RIGHT/LEFT) "
+                        "del piloto ToF 8×8 (mensaje 'ZN8,...'), con mm por celda + dt_us y fps por sensor")
     p.add_argument("--timeline", action="store_true",
                    help="modo TOP — TIMELINE/caja-negra EN VIVO del snapshot TOP→CENTRAL")
     p.add_argument("--cam-fusion", action="store_true",
@@ -307,6 +310,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.list_ports:
         return list_ports()
     if args.selftest:
+        if args.tof8x8:
+            from . import gui_tof8x8
+            return gui_tof8x8.selftest(args.selftest_frames)
         if args.monitor:
             from . import gui_shell
             return gui_shell.smoke(args.selftest_frames)
@@ -332,6 +338,19 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.top:
             return run_selftest_top(args.selftest_frames)
         return run_selftest(args.selftest_frames, _dead_list(args.sim_dead))
+
+    # Visor 8×8: vista STANDALONE que lee el serial CRUDO (mensaje de texto 'ZN8,…',
+    # no JSON), así que NO usa FrameSource ni el shell unificado. Solo lectura.
+    if args.tof8x8:
+        from . import gui_tof8x8
+        try:
+            port = args.port if (args.port and not args.replay and not args.sim) else None
+            gui_tof8x8.run_tof8x8(port=port, baud=args.baud)
+        except Exception as e:  # noqa: BLE001 — tkinter sin display, etc.
+            print(f"No se pudo iniciar el visor 8×8 ({e}). "
+                  f"Probá --tof8x8 --selftest para un chequeo sin ventana.", file=sys.stderr)
+            return 2
+        return 0
 
     source = _build_source(args)
 

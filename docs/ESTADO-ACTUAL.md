@@ -13,6 +13,18 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> **📡 PILOTO ToF 8×8 — los 4 ToF a 64 zonas + visualizador (2026-06-23, pedido Virginia, GATEADO):**
+> Para evaluar si los ToF sirven para POSICIONAMIENTO (en 4×4 desde el centro las paredes caen en una
+> ventana ≤16° y las 4 filas de 15° no calzan). Env de banco **`top_robot2_pri_tof8x8`** (= `top_robot2_pri`
+> + `-DTOP_TOF_8X8`): los 4 ToF a 8×8, ranging ~8 Hz, emite las 64 zonas crudas **+ el `dt_us` por sensor**
+> por un mensaje debug `ZN8` (texto, invisible al protocolo binario). Visualizador nuevo
+> **`python -m monitor_base --tof8x8`** (4 grillas 8×8 + dt/fps). Todo bajo `#ifdef TOP_TOF_8X8` →
+> **competencia byte-idéntica** (`top_robot2_pri` md5 del .hex sin cambio). Host: `pio` SUCCESS + `pytest`
+> 350 passed. **NO testeado en HW** → **TASK-226** (criterios: lee 8×8 · resolución vertical real vs 4×4 ·
+> loop tolerable por `dt_us` peor caso · **BNO no se congela girando 60 s = bloqueante**). Si pasa → fase de
+> selección 2-por-columna + pose en TOP (no rompe el contrato `z`). Journal:
+> `journal/2026-06-23-piloto-tof-8x8-visualizador.md`.
+
 > **🥅 ARQUEROMIX QUIETO — CANDIDATO A COMPETENCIA (2026-06-22, "anda bastante bien" — Virginia):**
 > Tag **`arquero-competencia-candidato-2026-06-22`**. Env **`central_robot2_arqueromix_quieto`**. El arquero
 > en modo quieto: homing al arco → espera la pelota → si descentrada la sigue de costado (y si toca línea

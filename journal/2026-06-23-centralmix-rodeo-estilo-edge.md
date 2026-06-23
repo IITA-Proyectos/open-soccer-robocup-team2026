@@ -37,9 +37,15 @@ Verificada contra 5 primitivas de banco (`avanzar`→[+,−,0], `girar`→[−,�
 convención de signo por rueda (vista de frente: horario=−PWM, antihorario=+PWM, igual que `avanzar`).
 Diagrama + derivación: `docs/firmware/CINEMATICA-OMNI-R1-DERIVACION.md`.
 
-## Qué se implementó (100% aditivo, detrás de `-DMIX_ATTACK_EDGE`)
-SIN el flag, centralmix corre **idéntico a hoy** (FSM 2025 de `mix_fsm.cpp`). Con el flag, el delantero
-usa la FSM reactiva nueva. Archivos (todos en `src/centralmix/`):
+## Qué se implementó (carpeta APARTE `src/centraledge/`, pedido de Elías)
+> **Update 2026-06-23 (Elías):** el rodeo Edge se separó a su propia carpeta `src/centraledge/` (copia
+> autocontenida de centralmix + Edge, mismo patrón que centralmix vs arqueromix) para revisarlo sin
+> mezclarlo con el mix 2025. **`src/centralmix/` quedó PRISTINO** (su FSM 2025 + el estado `TEST` de
+> debug de Elías intactos, verificado: diff vacío contra el commit previo). El env
+> `central_robot1_mix_edge` compila SOLO `centraledge/` + `shared/`. Las rutas de abajo que dicen
+> `src/centralmix/` hoy son `src/centraledge/`.
+
+Archivos (en `src/centraledge/`):
 
 1. **`mix_edge.{h,cpp}`** — núcleo **PURO** (sin Arduino, host-testeable): la **curva de rodeo**
    (|ángulo pelota|→ángulo avance, piecewise lineal CONTINUA en 3 tramos) + la decisión de **empuje**.

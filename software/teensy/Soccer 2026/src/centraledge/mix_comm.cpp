@@ -146,6 +146,11 @@ void apply_top_snapshot(const WorldSnapshot& s) {
     g_io.angulo_pelota_deg =
         atan2f(g_io.ball_x_cm, g_io.ball_y_cm) * 180.0f / static_cast<float>(M_PI);
 
+    // Velocidad de la pelota (marco robot): el TOP la manda en mm/s → cm/s (÷10), como x/y.
+    // 0 = N/A (el TOP no la pudo estimar) o pelota quieta. La consume el rodeo Edge.
+    g_io.ball_vx_cm_s = static_cast<float>(s.ball_vx_mm_s) / 10.0f;
+    g_io.ball_vy_cm_s = static_cast<float>(s.ball_vy_mm_s) / 10.0f;
+
     // Sella el timestamp de "última vez que se vio la pelota" (== millis_pelota 2025).
     if (g_io.ball_visible) {
         g_io.t_last_ball_seen_ms = now;

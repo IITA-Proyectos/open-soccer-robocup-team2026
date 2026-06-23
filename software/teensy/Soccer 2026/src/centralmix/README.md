@@ -18,22 +18,11 @@
   `pio run -e central_robot1_mix -t upload`
 - Volver a lo actual:  cualquier env de competencia de siempre (`central_robot1`, etc.).
 
-## Dos delanteros (se eligen por flag de compilación)
-- **DEFAULT (sin flag)** → `mix_fsm.cpp`: port FIEL del delantero **2025** (24 estados,
-  apuntar→avanzar→orbitar). Es lo descrito en este README.
-- **`-DMIX_ATTACK_EDGE`** → `mix_fsm_edge.cpp`: delantero **REACTIVO estilo "Edge"** (campeón
-  mundial Lightweight 2024). Se pone detrás de la pelota con UNA fórmula de **rodeo** amplificado
-  a full velocidad (`mix_edge.cpp`, núcleo PURO host-testeable) + gira mirando al arco (primitiva
-  holonómica `mix_mover_vector`), y empuja por inercia. Env: `central_robot1_mix_edge`. Banco →
-  **TASK-119**. Diseño: `journal/2026-06-23-centralmix-rodeo-estilo-edge.md`. Cinemática (derivada
-  + verificada con Elías): `docs/firmware/CINEMATICA-OMNI-R1-DERIVACION.md`. Perillas: bloque
-  `MIX_EDGE_*` de `mix_config.h`. 100% aditivo: sin el flag, el delantero 2025 queda EXACTAMENTE igual.
-
 ## Flujo de datos (autocontenido, SIN world_model)
 ```
-TOP (Serial7) ─┐                       ┌─ mix_fsm       (FSM 2025: 24 estados)   ── DEFAULT
-DOWN (Serial1) ┴─ mix_comm ─► g_io ───►┤  ó mix_fsm_edge (rodeo Edge reactivo)   ── -DMIX_ATTACK_EDGE
-                  (decode proto)        └─ mix_motors (DIRECTO 2025 + mix_mover_vector → Zircon R1)
+TOP (Serial7) ─┐                       ┌─ mix_fsm   (FSM 2025: 24 estados)
+DOWN (Serial1) ┴─ mix_comm ─► g_io ───►┤
+                  (decode proto)        └─ mix_motors (manejo DIRECTO 2025 → pines Zircon R1)
 ```
 - `mix_io.h` — `struct MixIO g_io`: las **variables planas** estilo 2025 (pelota x/y +
   ángulo, arcos, heading + error, línea, match_running, OTOS). Es "lo disponible".

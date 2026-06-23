@@ -13,8 +13,8 @@
 #include <unity.h>
 #include <cmath>
 
-#include "../../src/centralmix/mix_config.h"     // MIX_EDGE_* (host-safe: solo <stdint.h>)
-#include "../../src/centralmix/mix_edge.cpp"      // trae también mix_edge.h
+#include "../../src/centraledge/mix_config.h"     // MIX_EDGE_* (host-safe: solo <stdint.h>)
+#include "../../src/centraledge/mix_edge.cpp"      // trae también mix_edge.h
 
 using namespace iitasoccer::mix;
 

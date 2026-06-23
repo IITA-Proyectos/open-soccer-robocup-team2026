@@ -1,18 +1,17 @@
-// main_centralmix.cpp — entrypoint del programa AUTOCONTENIDO "centralmix".
+// main_centraledge.cpp — entrypoint del programa AUTOCONTENIDO "centraledge".
 //
-// Programa estilo 2025 (FSM del delantero + primitivas de motor directas) pero
-// alimentado por los datos de TOP/DOWN (SIN world_model). Estructura mínima:
+// CARPETA APARTE de centralmix (pedido de Elías: revisar el rodeo Edge separado del mix 2025).
+// Es una COPIA autocontenida de centralmix + el rodeo estilo Edge (mismo patrón que centralmix
+// vs arqueromix). centralmix queda PRISTINO. El env central_robot1_mix_edge compila SOLO esta
+// carpeta (build_src_filter = +<centraledge/> +<shared/>) con -DMIX_ATTACK_EDGE.
 //
 //   setup(): inicializa comunicación (TOP/DOWN), motores y FSM.
 //   loop():  drena comunicación → avanza FSM.
 //
-// CONTRATO / SKELETON. La lógica vive en mix_comm.cpp / mix_motors.cpp /
-// mix_fsm.cpp. Este archivo NO contiene lógica de juego (solo init + debug print).
+// CONTRATO / SKELETON. La lógica vive en mix_comm.cpp / mix_motors.cpp / mix_fsm_edge.cpp.
+// Este archivo NO contiene lógica de juego (solo init + debug print).
 //
-// Para compilar como env propio en platformio.ini: src_filter que incluya SOLO
-// src/centralmix/ + src/shared/ (proto, types, line_view, pose_view) y build_flags
-// -DROBOT... La fuente de heading se elige con -DMIX_HEADING_SNAPSHOT (R1 con gyro)
-// o -DMIX_HEADING_OTOS. Ver mix_config.h.
+// La fuente de heading se elige con -DMIX_HEADING_SNAPSHOT (R1 con gyro) o -DMIX_HEADING_OTOS.
 //
 // DEBUG por USB Serial (115200): un print THROTTLEADO (MIX_DBG_PERIOD_MS) con los
 // datos clave de g_io. Sirve para banco: verificar el heading del TOP (¿llega
@@ -29,7 +28,16 @@
 #include "mix_io.h"
 #include "mix_comm.h"
 #include "mix_motors.h"
+
+// Selección de FSM del delantero (mutuamente excluyentes):
+//   DEFAULT (sin flag)      → mix_fsm.cpp     : port FIEL del delantero 2025 (apuntar→avanzar→orbitar).
+//   con -DMIX_ATTACK_EDGE   → mix_fsm_edge.cpp: rodeo REACTIVO estilo Edge (1 estado, full velocidad).
+// Es 100% aditivo: el flag SOLO cambia qué FSM se llama; el resto de centralmix es idéntico.
+#ifdef MIX_ATTACK_EDGE
+#include "mix_fsm_edge.h"
+#else
 #include "mix_fsm.h"
+#endif
 
 #include <math.h>   // sqrtf (distancia pelota en el debug)
 
@@ -54,6 +62,8 @@ static void mix_debug_print() {
     Serial.print(" y=");       Serial.print(g_io.ball_y_cm, 1);
     Serial.print(" ang=");     Serial.print(g_io.angulo_pelota_deg, 0);
     Serial.print(" d=");       Serial.print(dist, 0);
+    Serial.print(" vx=");      Serial.print(g_io.ball_vx_cm_s, 0);   // velocidad pelota (rodeo Edge)
+    Serial.print(" vy=");      Serial.print(g_io.ball_vy_cm_s, 0);
     // Heading del TOP (snapshot) — lo que verifica el pendiente #2
     Serial.print(" | hdg=");      Serial.print(g_io.heading_deg, 1);
     Serial.print(" hvalid=");     Serial.print(g_io.heading_valid);
@@ -71,7 +81,12 @@ static void mix_debug_print() {
     Serial.print(" ang=");           Serial.print(g_io.line_angle_deg, 0);
     Serial.print(" | match=");       Serial.print(g_io.match_running);
     Serial.print(" topFresh=");      Serial.print(g_io.top_link_fresh);
-    Serial.print(" downFresh=");     Serial.println(g_io.down_link_fresh);
+    Serial.print(" downFresh=");     Serial.print(g_io.down_link_fresh);
+#ifdef MIX_ATTACK_EDGE
+    Serial.print(" | EDGE=");        Serial.println(iitasoccer::mix::mix_fsm_edge_estado_nombre());
+#else
+    Serial.println();
+#endif
 }
 #endif  // MIX_NO_DEBUG_SERIAL
 
@@ -81,12 +96,20 @@ void setup() {
 #endif
     iitasoccer::mix::mix_comm_init();
     iitasoccer::mix::mix_motors_init();
+#ifdef MIX_ATTACK_EDGE
+    iitasoccer::mix::mix_fsm_edge_init();
+#else
     iitasoccer::mix::mix_fsm_init();
+#endif
 }
 
 void loop() {
     iitasoccer::mix::mix_comm_tick();
+#ifdef MIX_ATTACK_EDGE
+    iitasoccer::mix::mix_fsm_edge_tick();
+#else
     iitasoccer::mix::mix_fsm_tick();
+#endif
 #ifndef MIX_NO_DEBUG_SERIAL
     mix_debug_print();
 #endif

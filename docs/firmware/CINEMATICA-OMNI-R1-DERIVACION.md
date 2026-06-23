@@ -77,5 +77,5 @@ ande" al cablearla en `strategy.cpp` son:
 
 ## 6. Verificación host
 
-La matriz vive en `mix_mover_vector()` (`src/centralmix/mix_motors.cpp`). La curva de rodeo que la usa
+La matriz vive en `mix_mover_vector()` (`src/centraledge/mix_motors.cpp`). La curva de rodeo que la usa
 está testeada en `test/test_mix_edge/` (11/11). El sentido físico final se confirma en banco — **TASK-119**.

@@ -60,5 +60,33 @@ void centrar_antihorario();  // orbita en sentido antihorario (CENTRANDO_antihor
 // Lo llama el estado KICKOFF_SEEK del FSM (primer estado / arranque).
 void kickoff_medialuna();
 
+// ------------------------------------------------------------
+// Primitiva HOLONÓMICA — moverse en CUALQUIER dirección + girar a la vez.
+//
+// La necesita el rodeo estilo Edge (mix_fsm_edge): traslación en un ángulo arbitrario
+// (la curva de rodeo) MIENTRAS el frente se orienta al arco. Las primitivas 2025
+// (avanzar/girar/centrar) son fijas y no alcanzan para esto.
+//
+// CINEMÁTICA (reconstruida desde el banco de Elías — avanzar/girar/retroceder — y
+// VERIFICADA con él el 2026-06-23; geometría R1 M1=delIZQ, M2=delDER, M3=trasera):
+//     w_M1 = +0.5·vx + 0.866·vy + omega
+//     w_M2 = +0.5·vx − 0.866·vy + omega
+//     w_M3 = −1.0·vx +    0     + omega
+// con vx = componente DERECHA, vy = componente FRENTE (vx=speed·sin, vy=speed·cos), y
+// omega = MISMO PWM sumado a las 3 ruedas (giro puro; signo = sentido). Trabaja DIRECTO
+// en PWM (sin mm/s ni max_speed → no hereda la calibración del kinematics.cpp del repo).
+//
+//   go_ang_deg : dirección de traslación. 0 = frente, + = derecha (MISMA convención que
+//                g_io.angulo_pelota_deg). Es hacia DÓNDE se mueve el robot, no hacia
+//                dónde mira.
+//   speed      : PWM de traslación (0..~240). Pico de rueda ≈ speed.
+//   omega      : PWM de giro, sumado igual a las 3 ruedas. + / − = un sentido u otro
+//                (perilla de banco; ver MIX_EDGE_FACE_KP). 0 = no girar.
+//
+// Satura por ESCALADO (si el pico de rueda pasa MIX_MAX_PWM, escala las 3 por el mismo
+// factor) → preserva la dirección del movimiento, igual que avanzar_patear / saturate_wheels.
+// ⚠️ Sentido físico anclado a avanzar() (banco); el signo de omega se confirma en banco.
+void mix_mover_vector(float go_ang_deg, int speed, int omega);
+
 }  // namespace mix
 }  // namespace iitasoccer

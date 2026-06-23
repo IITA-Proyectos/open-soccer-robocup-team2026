@@ -43,7 +43,14 @@ constexpr uint16_t TOF_MAX_RANGE_MM = 4000;  // ~4m según datasheet VL53L7CX
 // un frame perdido aislado es normal, así que un timeout corto borraría datos
 // buenos. ~250 ms = ~3-4 frames perdidos seguidos = sensor realmente colgado,
 // no jitter. Mantiene la preferencia "último dato bueno" para 1 frame perdido.
+// MODO MAX-RANGE (TOP_TOF_MAXRANGE): el ranging baja a 2 Hz (500 ms/frame) para detectar paredes negras
+// -> 250 ms expiraria cada lectura ANTES del próximo frame. Se sube el timeout para que el round-robin
+// lento no borre datos buenos. Solo en el env de banco; competencia (sin el flag) queda en 250 ms.
+#ifdef TOP_TOF_MAXRANGE
+constexpr uint32_t TOF_STALE_TIMEOUT_MS = 2000;  // a 2 Hz: ~3-4 frames lentos seguidos = colgado real
+#else
 constexpr uint32_t TOF_STALE_TIMEOUT_MS = 250;
+#endif
 
 // ----------------------------------------------------------------------------
 // LÓGICA PURA host-testeable (sin Arduino): decide si un valor cacheado sigue

@@ -162,9 +162,18 @@ void tof_recover_to_default() {
 // PILOTO 8x8 (TOP_TOF_8X8): los 4 ToF a 64 zonas (8x8). A 8x8 el sensor NO sostiene 15 Hz
 // (el frame es 4x mas grande), por eso el ranging baja a ~8 Hz. MANTENER setResolution ANTES
 // de setRangingFrequency (lo exige el chip: la freq valida depende de la resolucion).
-#ifdef TOP_TOF_8X8
+// MODO MAX-RANGE (TOP_TOF_MAXRANGE, env de banco top_robot2_pri_tofmaxrange): para detectar las paredes
+// NEGRAS de la cancha (baja reflectancia IR -> poco retorno -> el alcance se desploma). Se queda en 4x4 (cada
+// zona integra 4x mas luz que en 8x8 = mas alcance por zona) y BAJA la frecuencia a 2 Hz (mucho mas tiempo de
+// integracion por medicion -> mas fotones -> mas alcance con targets oscuros). Va con modo CONTINUO
+// (-DTOP_ENABLE_TOF_CONTINUOUS en el env) que da mas senal. A 2 Hz una lectura tarda 500 ms -> el stale
+// timeout (250 ms) la expiraria; por eso TOP_TOF_MAXRANGE tambien sube TOF_STALE_TIMEOUT_MS (sensors_tof.h).
+#if defined(TOP_TOF_8X8)
 constexpr uint8_t TOF_RESOLUTION_ZONES = 64;  // 8x8 (piloto)
 constexpr uint8_t TOF_RANGING_FREQ_HZ  = 8;   // 8x8 no sostiene 15 Hz
+#elif defined(TOP_TOF_MAXRANGE)
+constexpr uint8_t TOF_RESOLUTION_ZONES = 16;  // 4x4 (mas senal por zona que 8x8 = mas alcance con negro)
+constexpr uint8_t TOF_RANGING_FREQ_HZ  = 2;   // LENTO: max integracion -> max alcance con paredes NEGRAS
 #else
 constexpr uint8_t TOF_RESOLUTION_ZONES = 16;  // 4x4 (competencia)
 constexpr uint8_t TOF_RANGING_FREQ_HZ  = 15;

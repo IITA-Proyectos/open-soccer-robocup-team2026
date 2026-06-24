@@ -6,17 +6,17 @@
 # Bill of Materials (BOM) — Major Components
 ## IITA Low Battery Messi · RoboCupJunior Soccer **Open** · Incheon 2026
 
-> ⚠️ **WORKING VERSION IN SPANISH** — this BOM feeds the **Poster** and the **TDP**, which **FINAL must be submitted in ENGLISH** (RCJ rubric requirement). **Translate before submission.** The team reads/improves this version; GitHub automatically translates for the judges.
+> ⚠️ **WORKING VERSION IN SPANISH** — this BOM feeds the **Poster** and the **TDP**, which **FINAL must be submitted in ENGLISH** (RCJ rubric requirement). **Translate before submission.** The team reads/improves this version; GitHub translates automatically for the judges.
 
-> 📋 **Official template:** if RoboCupJunior publishes an **official BOM template** for the TDP/poster Soccer 2026, **transcribe this table to that template** before submission (check at `robocup-junior.github.io/soccer-rules/master/` and in the online TDP form). This BOM already includes all the columns that the rubric asks for *major components*: **Component · Part number/model · Quantity · Source/supplier · New vs reused · Kit vs custom · Unit cost · Total cost**.
-
----
-
-**Why this document exists (mapping to rubric):** the RCJ Soccer 2026 rubric explicitly requests, both in the **Poster → Method/Design** and in the **TDP → Electrical/Mechanical**, a **BOM of major components with justified component selection, cost, and development time**. This document is the sole source of that data; the poster and the TDP reference this table instead of duplicating it. Each section below has a heading that maps **1:1** to a rubric criterion for the judge to find at a glance.
+> 📋 **Official template:** if RoboCupJunior publishes an **official BOM template** for the TDP/poster Soccer 2026, **transcribe this table to that template** before submission (check at `robocup-junior.github.io/soccer-rules/master/` and in the online TDP form). This BOM already includes all the columns that the rubric requests for *major components*: **Component · Part number/model · Quantity · Source/supplier · New vs reused · Kit vs custom · Unit cost · Total cost**.
 
 ---
 
-## 0. Identification (Poster → Title/Identification · target level: Excellent)
+**Why this document exists (mapping to rubric):** the RCJ Soccer 2026 rubric explicitly requests, both in the **Poster → Method/Design** and in the **TDP → Electrical/Mechanical**, a **BOM of major components with justified component selection, cost, and development time**. This document is the sole source of that data; the poster and the TDP reference this table instead of duplicating it. Each section below has a header that maps **1:1** to a rubric criterion for the judge to find at a glance.
+
+---
+
+## 0. Identification (Poster → Title/Identification · targeted level: Excellent)
 
 | Data | Value |
 |---|---|
@@ -30,31 +30,31 @@
 
 ---
 
-## 1. BOM of major components per robot (TDP → Electrical · Poster → Method/Design · target level: Excellent)
+## 1. BOM of major components per robot (TDP → Electrical · Poster → Method/Design · targeted level: Excellent)
 
-> **How to read the table.** The quantities are **per robot** unless noted. The column **New/Reused** distinguishes what the team designed/bought new for 2026 from what it **reuses** from the national champion robot 2025 (angle of **sustainability** awarded by the rubric). **Kit/Custom** distinguishes purchased module (COTS) from board/component manufactured by the team. The **unit costs** of the passive components come from the EasyEDA/LCSC manufacturing BOMs of the repo (`hardware/electronics/.../BOM_*.csv`, date 2026-04-12/20, **cited verbatim**); the rest are **international reference, a single value = the highest per item** (conservative upper bound, verified by web). The column **Total cost = unit cost × quantity**; each section closes with its **Subtotal** and the grand total is in §3.1.
+> **How to read the table.** The quantities are **per robot** unless noted. The column **New/Reused** distinguishes what the team designed/purchased new for 2026 from what is **reused** from the national champion robot 2025 (angle of **sustainability** awarded by the rubric). **Kit/Custom** distinguishes purchased module (COTS) from board/piece manufactured by the team. The **unit costs** of the ring's passives come from the EasyEDA/LCSC manufacturing BOMs from the repo (`hardware/electronics/.../BOM_*.csv`, date 2026-04-12/20, **quoted verbatim**); the rest are **international reference, a single value = the highest per item** (conservative upper bound, verified by web). The column **Total cost = unit cost × quantity**; each section closes with its **Subtotal** and the grand total is in §3.1.
 
 ### 1.1 Computing / control (processors)
 
 | Component | Part number / model | Qty | Source / supplier | New / Reused | Kit / Custom | Unit cost | Total cost |
 |---|---|---|---|---|---|---|---|
-| MCU board TOP | **Teensy 4.0** (LCSC `C99001332551`) — Cortex-M7 @600 MHz | 1 | PJRC / LCSC | New | Module (kit) on custom PCB | **USD 23.80** (SparkFun DEV-15583) | **USD 23.80** |
-| MCU board DOWN | **Teensy 4.0** (LCSC `C99001332551`) | 1 | PJRC / LCSC | New | Module (kit) on custom PCB | **USD 23.80** (SparkFun DEV-15583) | **USD 23.80** |
-| MCU board CENTRAL | **Teensy 4.1** (Cortex-M7 @600 MHz) | 1 | PJRC | **Reused** (from the National robot 2025) | Module (kit) on Zircon PCB | **USD 31.50** (SparkFun DEV-16771) | **USD 31.50** |
-| MCU board COMM | **ESP32-C6-MINI-1-N4** (Espressif; RISC-V, WiFi 6 / BLE 5 / 802.15.4, native USB, 4 MB flash) | 1 | Espressif (on COMM PCB) | New | SMD on custom PCB (RCJ fork) | **USD 4.53** (DigiKey) | **USD 4.53** |
+| MCU TOP board | **Teensy 4.0** (LCSC `C99001332551`) — Cortex-M7 @600 MHz | 1 | PJRC / LCSC | New | Module (kit) on custom PCB | **USD 23.80** (SparkFun DEV-15583) | **USD 23.80** |
+| MCU DOWN board | **Teensy 4.0** (LCSC `C99001332551`) | 1 | PJRC / LCSC | New | Module (kit) on custom PCB | **USD 23.80** (SparkFun DEV-15583) | **USD 23.80** |
+| MCU CENTRAL board | **Teensy 4.1** (Cortex-M7 @600 MHz) | 1 | PJRC | **Reused** (from the National robot 2025) | Module (kit) on Zircon PCB | **USD 31.50** (SparkFun DEV-16771) | **USD 31.50** |
+| MCU COMM board | **ESP32-C6-MINI-1-N4** (Espressif; RISC-V, WiFi 6 / BLE 5 / 802.15.4, native USB, flash 4 MB) | 1 | Espressif (on COMM PCB) | New | SMD on custom PCB (RCJ fork) | **USD 4.53** (DigiKey) | **USD 4.53** |
 | **Subtotal §1.1** | | | | | | | **USD 83.63** |
 
 ### 1.2 Perception sensors (cameras + IMU + distance)
 
 | Component | Part number / model | Qty | Source / supplier | New / Reused | Kit / Custom | Unit cost | Total cost |
 |---|---|---|---|---|---|---|---|
-| Vision camera | **OpenMV Cam N6** (STM32N6 Cortex-M55 + NPU Neural-ART, PAG7936 sensor, QVGA RGB565 ~30 Hz) | 2 | OpenMV | New | Module (kit) | **USD 165/u** (openmv.io) | **USD 330.00** |
-| IMU (heading/yaw) | **Bosch BNO055** (designators U10/U11; both at 0x28, on separate buses Wire2/Wire) | 2 | Bosch (module) | New | Module (kit) in 4P header | **USD 34.95/u** (Adafruit #2472) | **USD 69.90** ⚠️ see note |
+| Vision camera | **OpenMV Cam N6** (STM32N6 Cortex-M55 + NPU Neural-ART, sensor PAG7936, QVGA RGB565 ~30 Hz) | 2 | OpenMV | New | Module (kit) | **USD 165/u** (openmv.io) | **USD 330.00** |
+| IMU (heading/yaw) | **Bosch BNO055** (designators U10/U11) | 2 | Bosch (module) | New | Module (kit) on 4P header | **USD 34.95/u** (Adafruit #2472) | **USD 69.90** ⚠️ see note |
 | Multi-zone ToF sensor | **ST VL53L7CX** (8×8 zones, FoV 60°, Pololu module) | 4 | STMicro / Pololu | New | Module (kit) | **USD 19.95/u** (Pololu #3418) | **USD 79.80** |
 | Ultrasonic | **HC-SR04** (designator U6 on TOP) | 1 | generic | New | Module (kit) | **USD 5.25** (SparkFun) | **USD 5.25** |
 | **Subtotal §1.2** | | | | | | | **USD 484.95** |
 
-> ⚠️ **Note BNO055:** the repo mounts **2 BNO055**, **both at I²C 0x28 on SEPARATE buses** (corrected 2026-06-15, confirmed on bench by Gustavo on both R1 and R2): the **PRIMARY** on `Wire2` (pins 24/25), alone on its bus → no contention; the **SECONDARY** on `Wire` (pins 18/19), alongside the 4 ToF VL53L7CX. There is **no BNO at 0x29** (the old "2nd BNO with ADR bridged to 3V3 → 0x29 / both BNO on the same Wire bus / faulty RIGHT unit" scheme was an error, already fixed in hardware). The robot competes with **2 BNO055 + 4 ToF**. For replicability/spares: foresee **2–4 units** (Incheon). Actual reference price: **USD 34.95/u** (Adafruit #2472) or 29.95 (Qwiic #4646); the old ~USD 15 was a qualitative note from the repo.
+> ⚠️ **BNO055 Note:** the robot mounts **2 BNO055**, **both on I²C 0x28 but on SEPARATE buses** (correction 2026-06-15, confirmed in bench on R1 and R2): the **PRIMARY** goes only on `Wire2` (pins 24/25), **without ToF → no contention**; the **SECONDARY** goes on `Wire` (pins 18/19), alongside the 4 ToF. **There is no BNO at 0x29** — the old scheme (2nd BNO with ADR to 3V3 → 0x29, or "RIGHT @ 0x29 failed") was an error already corrected in hardware. The robot competes with **2 healthy BNOs + 4 ToF**. For replicability/spares: foresee **2–4 units** (Incheon). Actual reference price: **USD 34.95/u** (Adafruit #2472) or 29.95 (Qwiic #4646); the old ~USD 15 was a qualitative note from the repo.
 
 ### 1.3 Odometry and floor sensors (DOWN board)
 
@@ -72,13 +72,13 @@
 
 | Component | Part number / model | Qty | Source / supplier | New / Reused | Kit / Custom | Unit cost | Total cost |
 |---|---|---|---|---|---|---|---|
-| Traction motor | **DC brushed "TT" type motor** (5 V common, KIWI base 3 wheels at 120°; model/torque/RPM exact **[to be confirmed]**) | 3 | generic / Pololu | **[New/Reused?]** — 2025 used "TT motors" | Module (kit) | **USD 23.95/u** (max ref.: Pololu 30:1 HP #1093; the generic TT is ~USD 3) | **USD 71.85** |
+| Traction motor | **DC brushed "TT" type motor** (common 5 V, KIWI base 3 wheels at 120°; model/torque/RPM exacts **[to be confirmed]**) | 3 | generic / Pololu | **[New/Reused?]** — 2025 used "TT motors" | Module (kit) | **USD 23.95/u** (max ref.: Pololu 30:1 HP #1093; generic TT is ~USD 3) | **USD 71.85** |
 | Motor driver (H-bridge) | **3 H-bridges integrated on the Zircon PCB** (drivers U5/U7/U17; INA+INB+PWM 8-bit) | 3 | Robomov (on Zircon) | **Reused** (part of Zircon) | Custom (on Zircon shield) | included in Zircon | included |
-| Omnidirectional wheel | **38 mm omni wheel** (Nexus 14184 + 3 mm axle hub; Ø/material/rollers exact **[to be confirmed]**) | 3 | Nexus / generic | **[New/Reused?]** | Module (kit) | **USD 6.50/u** (omni ~4.00 + hub ~2.50) | **USD 19.50** |
+| Omnidirectional wheel | **38 mm omni wheel** (Nexus 14184 + 3 mm axle hub; Ø/material/rollers exacts **[to be confirmed]**) | 3 | Nexus / generic | **[New/Reused?]** | Module (kit) | **USD 6.50/u** (omni ~4.00 + hub ~2.50) | **USD 19.50** |
 | Kicker / solenoid | **NONE** — the robot **does not have a physical kicker** (pushes the ball by inertia) | 0 | — | — | — | — | **USD 0** |
 | **Subtotal §1.4** | | | | | | | **USD 91.35** |
 
-> ✅ **Design decision (sustainability + simplicity, awardable):** **no kicker** → fewer components, less energy, fewer points of failure. The striker pushes by inertia when aligned with the opposing goal (logic in `src/shared/behind_ball.{h,cpp}`, 16 tests).
+> ✅ **Design decision (sustainability + simplicity, awardable):** **no kicker** → fewer components, less energy, fewer points of failure. The striker pushes by inertia when aligned to the opposing goal (logic in `src/shared/behind_ball.{h,cpp}`, 16 tests).
 
 ### 1.5 Power supply (common to all 3 boards)
 
@@ -87,7 +87,7 @@
 | Battery | **LiPo 2S · 7.4 V nominal · 6800 mAh** (8.4 V full / ~6.0 V cutoff; energy **≈ 50 Wh** = 6.8 Ah × 7.4 V; Deans connector; C-rating/brand/weight **[to be confirmed]**, ref. 50C) | 1 | generic (RC) | New | Module (kit) | **USD 42.99** (max ref.: Gens Ace 7.4 V 6800 mAh 50C 2S) | **USD 42.99** |
 | Battery connector | **Deans-T-F (XP1)** | 3 (1/board) | generic | New | Component | **USD 1.00** (max ref.) | **USD 3.00** |
 | Schottky diode (protection) | **B5819W SL** (LCSC `C8598`, 1 A/40 V; OR-ing/polarity) | 6 (2/board) | CJ / LCSC | New | SMD on custom PCB | **USD 0.024** | **USD 0.14** |
-| Buck regulator | **MP1584-EN** (SIP 4-pin module; rails 5 V logic + 3.3 V sensors) | 6 (2/board) | generic | New | Module (kit) | **USD 0.90/u** (pack of 6 = 5.39) | **USD 5.40** |
+| Buck regulator | **MP1584-EN** (SIP 4-pin module; rails 5 V logic + 3.3 V sensors) | 6 (2/board) | generic | New | Module (kit) | **USD 0.90/u** (pack 6 = 5.39) | **USD 5.40** |
 | LDO 3.3 V (only COMM) | **TI UA78M33CDCYR** (SOT-223) | 1 | TI | New | SMD on COMM PCB | **USD 0.30** (max ref.) | **USD 0.30** |
 | **Subtotal §1.5** | | | | | | | **USD 51.83** |
 
@@ -98,7 +98,7 @@
 | PCB **TOP** | `Roboliga2026_TOP` (224.0 × 97.5 mm, 2 layers; EasyEDA → JLCPCB) | 1 | JLCPCB (IITA design) | **New** | **Custom** | **USD 10.00** (max ref., prorated batch of 5) | **USD 10.00** |
 | PCB **DOWN** (= base plate) | `Roboliga 2026 Futbol` REV 1.0 (~175.1 × 165.7 mm, plate-like outline, **IS the structural chassis**) | 1 | JLCPCB (IITA design) | **New** | **Custom** | **USD 10.00** (max ref., prorated) | **USD 10.00** |
 | PCB **COMM** | `PCB1` (25.40 × 31.20 mm; IITA fork of the official RCJ `soccer-communication-module`) | 1 | JLCPCB (IITA design) | **New** | **Custom** (open-source RCJ fork) | **USD 5.00** (max ref., prorated) | **USD 5.00** |
-| PCB/Shield **CENTRAL** | **Zircon Rev v15** (commercial PCB from **Robomov**, robomov.net; public schematic `Zircon.pdf`) | 1 | Robomov | **Reused** (board that won the National 2025) | **Purchased (COTS commercial)** | **USD 250.00** (max ref.; Robomov does not sell it separately, full kit USD 529) | **USD 250.00** |
+| PCB/Shield **CENTRAL** | **Zircon Rev v15** (commercial PCB from **Robomov**, robomov.net; schematic `Zircon.pdf` public) | 1 | Robomov | **Reused** (board that won the National 2025) | **Purchased (COTS commercial)** | **USD 250.00** (max ref.; Robomov does not sell it separately, complete kit USD 529) | **USD 250.00** |
 | **Subtotal §1.6** | | | | | | | **USD 275.00** |
 
 > 🔁 **Sustainability / reuse (awardable):** the **Zircon Rev v15 + Teensy 4.1** is the brain that **won the National 2025**; the new boards (TOP/DOWN) are **mounted around it**, not replacing it. If a new board fails in Incheon, CENTRAL **degrades to monolithic mode**. The design is **capitalizable post-Incheon** (replace one board without touching the others; better camera = only change the firmware of the TOP).
@@ -111,39 +111,39 @@
 |---|---|---|---|---|---|---|---|
 | Level shifter UART | **TI TXS0102DCUR** (VSON8; 2 bits bidirectional, UART robot ↔ ESP 3.3 V; designator U6) | 1 | TI | New | SMD on COMM PCB | **USD 0.50** (max ref.) | **USD 0.50** |
 | 3-axis accelerometer | **ST LIS3DHTR** (LGA-16; I²C, "shake-to-start" from the RCJ module; designator U7) | 1 | STMicro | New | SMD on COMM PCB | **USD 2.00** (max ref.) | **USD 2.00** |
-| Tactile buttons | **TS-1088-AR02016** (SW-SMD; CONNECT/PROG = user button + boot strap GPIO9) | 2 | generic | New | SMD on COMM PCB | **USD 0.10** (max ref.) | **USD 0.20** |
+| Tactile buttons | **TS-1088-AR02016** (SW-SMD; CONNECT/PROG = user button + strap boot GPIO9) | 2 | generic | New | SMD on COMM PCB | **USD 0.10** (max ref.) | **USD 0.20** |
 | **Subtotal §1.7** | | | | | | | **USD 2.70** |
 
-> ⚠️ **Note COMM:** the referee starts/stops by **LEVEL of voltage on OUT_1/OUT_2** (3.3 V=GO, 0 V=STOP), **NOT by UART** — firmware C6 receives the command via BLE from the referee app and translates it to level. The UART `RX_OUT/TX_OUT` (via TXS0102) is passive hardware that the official firmware v0.91 still does not use. The OLED display of the RCJ module is **external** (not populated on this board, goes via I²C on U4).
+> ⚠️ **COMM Note:** the referee starts/stops by **LEVEL of voltage on OUT_1/OUT_2** (3.3 V=GO, 0 V=STOP), **NOT by UART** — the C6 firmware receives the command via BLE from the referee app and translates it to level. The UART `RX_OUT/TX_OUT` (via TXS0102) is passive hardware that the official firmware v0.91 still does not use. The OLED display of the RCJ module is **external** (not populated on this board, goes via I²C on U4).
 
 ---
 
-## 2. Justification of component selection (TDP → Electrical: "data-based reasoning" · target level: Excellent)
+## 2. Justification of component selection (TDP → Electrical: "data-based reasoning" · targeted level: Excellent)
 
 The rubric rewards **data-driven design decisions and trade-offs**, not just the list. Summary of decisions with quantitative backing (full detail in the cited docs):
 
 | Decision | Alternatives evaluated | Data / criterion | Choice |
 |---|---|---|---|
 | **2D Localization: 4× VL53L7CX (ToF) vs LiDAR vs EKF/MCL** | LiDAR (~USD 100), ToF array (~USD 80 = 4× VL53L7CX), EKF (±0.5–1 cm/3–5 days), Particle Filter (~500 µs, "overkill for field 1.83×2.43 m with 4 orthogonal walls") | ToF: **±2–3 cm**, negligible CPU, **1 day** of dev, **~USD 80** vs **USD 100** for LiDAR | **Geometric trilateration with 4 ToF** (`docs/lidar-tof-slam-analysis.md`, `research/.../2026-05-25-localizacion-tof-imu-analisis.md`) |
-| **2× BNO055** (redundancy of heading) | 1 IMU | "two chips of ~USD 35 each; much superior reliability" | 2 IMU (**both at 0x28 on separate buses Wire2/Wire**) |
-| **2× OTOS** (optical odometry) | encoders on wheel | measures **lateral slip and rotation** directly from the floor; bench: 300 mm real → 280.4 mm (6.5 % error, passes 8 % tolerance) — see error graph by surface in `docs/competencia/assets/fig9_otos_error.png` | 2 OTOS dual-bus |
+| **2× BNO055** (redundancy of heading) | 1 IMU | "two chips of ~USD 35 each; much superior reliability" | 2 IMUs (**2 healthy**; both on 0x28 on separate buses — `Wire2` without ToF + `Wire` with the ToF) |
+| **2× OTOS** (optical odometry) | encoders on wheel | measures **lateral slip and rotation** directly from the floor; bench: 300 mm real → 280.4 mm (6.5 % error, passes 8 % tolerance) — see error graph by surface in `docs/competencia/assets/fig9_otos_error.png` | 2 dual-bus OTOS |
 | **MCU: Teensy 4.x (Cortex-M7 @600 MHz)** | ESP32, smaller STM32 | each MCU runs at **<30 % CPU** *(design goal — not measured with oscilloscope)* (margin for Kalman/EKF/coordinating) | Teensy 4.0/4.1 |
-| **No kicker** | solenoid (2025 had it) | fewer components/energy/failures; push by inertia | eliminated from firmware 2026-06-03 |
+| **No kicker** | solenoid (2025 had it) | fewer components/energy/failures; push by inertia | removed from firmware 2026-06-03 |
 | **OpenMV N6** (vs H7 Plus) | OpenMV H7 Plus | NPU Neural-ART for color vision; HW restriction (use `sensor`+`pyb.UART`) documented | 2× N6 |
 
-> ✅ **ToF price RESOLVED (2026-06-05):** the VL53L7CX (8×8 zones) costs **USD 19.95/u** (Pololu carrier #3418, with 3.3V regulator + level-shifters; drops to 17.96 from 5 u). The old ~USD 26 was for the VL53L1X of 1 zone and DOES NOT apply. ToF subtotal/robot = 4 × 19.95 = **USD 79.80**. The design decision (ToF vs LiDAR) remains valid.
+> ✅ **ToF Price RESOLVED (2026-06-05):** the VL53L7CX (8×8 zones) costs **USD 19.95/u** (Pololu carrier #3418, with 3.3V regulator + level-shifters; drops to 17.96 from 5 u). The old ~USD 26 was for the VL53L1X of 1 zone and DOES NOT apply. ToF subtotal/robot = 4 × 19.95 = **USD 79.80**. The design decision (ToF vs LiDAR) remains valid.
 
 ---
 
-## 3. Estimated cost and development time (Poster → Method/Design: "development time and cost" · target level: Excellent)
+## 3. Estimated cost and development time (Poster → Method/Design: "development time and cost" · targeted level: Excellent)
 
 ### 3.1 Estimated total cost
 
 > 🇦🇷 **Cost note — import context (Argentina).** The prices in this section are **international reference values (USD)** taken from international retailers (DigiKey, Mouser, SparkFun, Pololu, openmv.io, etc.). The **actual acquisition cost in Argentina is significantly higher**: import is **restricted** — a limited number of units can be brought per operation (on the order of **3 per item at a time**) — which forces **splitting purchases among several suppliers** and paying **multiple taxes and costs** (tariffs, VAT, withholdings, courier). Therefore, we publish the **international reference price** as a reproducible base for another team to estimate theirs, and clarify that the local *landed* cost is higher.
 
-> **Costing criterion:** a **single value per item = the highest** of the international references (conservative upper bound). Sum of the subtotals from §1.1–§1.7.
+> **Costing criterion:** a **single value per item = the highest** from the international references (conservative upper bound). Sum of the subtotals from §1.1–§1.7.
 
-| Concept | Cost (USD, international ref. · highest value per item) |
+| Concept | Cost (USD, international ref · highest value per item) |
 |---|---|
 | §1.1 Computing / control (Teensy 4.0 ×2 + Teensy 4.1 + ESP32-C6) | **USD 83.63** |
 | §1.2 Perception (2× N6 + 2× BNO055 + 4× VL53L7CX + HC-SR04) | **USD 484.95** |
@@ -158,25 +158,25 @@ The rubric rewards **data-driven design decisions and trade-offs**, not just the
 | **TOTAL COST 2 robots** — both all new | **≈ USD 2,336** |
 | Conversion to local currency (ARS) | **TC 1480 ARS = 1 USD** (2026-06-13) → minimum reference equivalents: ≈ **ARS 1,728,640/robot** (USD 1,168 × 1480), ≈ **ARS 1,312,760** reusing CENTRAL (USD 887), ≈ **ARS 3,041,400** for 2 robots (USD 2,055) · ⚠️ the actual local *landed* cost is **HIGHER** due to taxes and Argentine import restrictions (see note above) — the equivalent in pesos is **floor, not total** |
 
-> 💵 Prices are **international reference (USD)**, **a single value per item = the highest** of the references (upper bound), verified by web (openmv.io, SparkFun, Pololu, Adafruit, DigiKey, banggood/Gens Ace for the battery, etc.); **full breakdown with URLs in `BOM-COSTOS-TEMPLATE.md`**. **Pending from the team (small):** actual price of the **Zircon** board separately (Robomov only publishes the full kit USD 529), confirm the **actual motor** (the high Pololu HP $23.95 was used; the generic TT is ~$3), the **brand/C-rating/weight** of the battery, and the **hours** of development. (The **exchange rate** is already confirmed: **1480 ARS = 1 USD**, 2026-06-13 — equivalent in pesos = floor, the real *landed* is higher due to import.) If the TT motor (~$3) is confirmed and estimates drop, the total/robot drops from ~$1,168 towards ~$1,100.
+> 💵 Prices are **international reference (USD)**, **a single value per item = the highest** from the references (upper bound), verified by web (openmv.io, SparkFun, Pololu, Adafruit, DigiKey, banggood/Gens Ace for the battery, etc.); **full breakdown with URLs in `BOM-COSTOS-TEMPLATE.md`**. **Pending from the team (small):** actual price of the **Zircon** board separately (Robomov only publishes the complete kit USD 529), confirm the **actual motor** (the high Pololu HP $23.95 was used; the generic TT is ~$3), the **brand/C-rating/weight** of the battery, and the **hours** of development. (The **exchange rate** is already confirmed: **1480 ARS = 1 USD**, 2026-06-13 — equivalent in pesos = floor, the actual *landed* is higher due to import.) If the TT motor (~$3) is confirmed and estimates drop, the total/robot drops from ~$1,168 to ~$1,100.
 
 ### 3.2 Development time (traceable in journals)
 
 | Milestone | Date | Evidence |
 |---|---|---|
 | Project kickoff | 2026-02-21 | `journal/2026-02-21-project-kickoff.md` |
-| Firmware start for 3 boards (Plan A) | 2026-05-10/11 → 2026-06-28 (8 weekly milestones) | `journal/2026-05-10-fase-0-y-arranque-fase-1.md` |
-| 3 physical boards exist ("robot almost complete mechanically/electronically") | 2026-05-29 | `ESTADO-ACTUAL.md` L478-481 |
+| Firmware startup 3 boards (Plan A) | 2026-05-10/11 → 2026-06-28 (8 weekly milestones) | `journal/2026-05-10-fase-0-y-arranque-fase-1.md` |
+| 3 physical boards exist ("robot almost complete mechanical/electronic") | 2026-05-29 | `ESTADO-ACTUAL.md` L478-481 |
 | Bring-up DOWN (32 sensors + OTOS) | 2026-05-24 | `journal/2026-05-24-*` |
 | Bring-up TOP (4 ToF on single bus, BNO) | 2026-05-25 → 05-31 | `journal/2026-05-30-top-tof-4-en-bus-unico-*` |
 | Approved referee (moves the robot end-to-end) | 2026-06-02/03 | `journal/2026-06-03-banco-*` |
 | **Total engineering effort** | **≈ 4 months** (Feb–Jun 2026), development assisted by multiple agents in branches | journals |
 
-> 💡 **Sellable process metric:** **host-native test suite that grows traceably session by session** — 246 → 262 → 324 → 354 → 403 → 470 → 545 → 658 → 834 → **858 tests / 61 suites / 0 failures (measured 2026-06-14 via `scripts/run-host-tests.sh`, g++ from Webots)**. See the growth graph in `docs/competencia/assets/fig8_test_growth.png` (generated by `gen_figuras.py`).
+> 💡 **Sellable process metric:** **suite of host-native tests that grows traceably session to session** — 246 → 262 → 324 → 354 → 403 → 470 → 545 → 658 → 834 → **858 tests / 61 suites / 0 failures (measured 2026-06-14 via `scripts/run-host-tests.sh`, g++ from Webots)**. See the growth graph in `docs/competencia/assets/fig8_test_growth.png` (generated by `gen_figuras.py`).
 
 ---
 
-## 4. Summary by board (TDP → Mechanical/Electrical: subsystem traceability · target level: Excellent)
+## 4. Summary by board (TDP → Mechanical/Electrical: subsystem traceability · targeted level: Excellent)
 
 | Board | MCU | Role | Key sensors/actuators | New/Reused | PCB |
 |---|---|---|---|---|---|
@@ -187,12 +187,12 @@ The rubric rewards **data-driven design decisions and trade-offs**, not just the
 
 ---
 
-## 5. Open-source and replicability of the BOM (Documentation & Community Contribution + TDP Bonus +1/+1 · target level: Excellent)
+## 5. Open-source and replicability of the BOM (Documentation & Community Contribution + TDP Bonus +1/+1 · targeted level: Excellent)
 
-The rubric grants **+1 bonus for open-source CAD/PCB/schematics** and **+1 for open-source software**, plus the criterion **Documentation & Community Contribution (5 pts)**. This BOM enables **replicability** (RCJ gold standard):
+The rubric grants **+1 bonus for open-source CAD/PCB/schematics** and **+1 for open-source software**, plus the criterion **Documentation & Community Contribution (5 pts)**. This BOM enables **replicability** (gold standard RCJ):
 
-- **Custom PCBs that can be manufactured:** the complete **EasyEDA projects** (SCH JSON + PCB JSON + PDF + **BOM CSV** + Pick&Place + gerbers + FlyingProbeTesting) for **TOP** and **DOWN** are in `hardware/electronics/pcb_design/{top_board,down_board}/` and `gerber_file/`. Another team can **re-manufacture TOP and DOWN as is** (JLCPCB).
-- **CENTRAL (Zircon):** commercial board **Robomov Rev v15** with **public schematic** (`hardware/electronics/Zircon.pdf`, robomov.net) → replicable by buying it or from its schematic.
+- **Custom PCBs manufacturable:** the complete **EasyEDA projects** (SCH JSON + PCB JSON + PDF + **BOM CSV** + Pick&Place + gerbers + FlyingProbeTesting) for **TOP** and **DOWN** are in `hardware/electronics/pcb_design/{top_board,down_board}/` and `gerber_file/`. Another team can **re-manufacture TOP and DOWN as is** (JLCPCB).
+- **CENTRAL (Zircon):** commercial board **Robomov Rev v15** with **public schematic** (`hardware/electronics/Zircon.pdf`, robomov.net) → replicable by purchasing it or from its schematic.
 - **COMM:** **open-source fork** of the official RCJ module (`IITA-Proyectos/rcj-soccer-open_communication_module`).
 - **Software:** C++/Python firmware under **MIT** license, with reproducible **host-native testing** (`scripts/run-host-tests.sh`) and **100% offline** build.
 - **The actual manufacturing BOMs** (with LCSC part numbers and unit prices) are versioned: `hardware/electronics/pcb_design/down_board/BOM_Roboliga_2026_Futbol_2026-04-12.csv`, `hardware/electronics/pcb_design/top_board/BOM_Roboliga2026_TOP_2026-04-12.csv`, `hardware/electronics/gerber_file/Placas/Comm/BOM_Board1_PCB1_2026-04-20.xlsx`.
@@ -201,20 +201,20 @@ The rubric grants **+1 bonus for open-source CAD/PCB/schematics** and **+1 for o
 
 ## 6. Missing data (Gaps) — complete before submitting poster/TDP
 
-> Mark each as **real data to be obtained from the team**; without this, the poster/TDP loses points in *Method/Design* (cost/time) and *Documentation* (replicability).
+> Mark each as **real data to obtain from the team**; without this, the poster/TDP loses points in *Method/Design* (cost/time) and *Documentation* (replicability).
 
 | # | Gap | Type |
 |---|---|---|
 | 1 | **IITA Low Battery Messi** officially registered in RoboCup Incheon | Identification |
 | 2 | ✅ RESOLVED: Roboliga Argentina 2025 (national final, UAI) · Salta, Argentina | Identification |
-| 3 | ⚙️ **[COSTS] reference values LOADED** (2026-06-07, a single value = the highest per item, §1.1–§1.7 with Total cost per row). Pending: **actual prices/invoices** from the team (vs international reference) + confirm standalone Zircon and actual motor | Cost |
-| 4 | ✅ **[TOTAL COST] CALCULATED**: ≈ **USD 1,168/robot** (all new) · ≈ **887** (reusing CENTRAL) · ≈ **2,055–2,336** for 2 robots (§3.1). **Conversion to ARS RESOLVED: TC 1480 ARS = 1 USD (2026-06-13)** → minimum reference equivalent ≈ ARS 1,728,640/robot; the *landed* real is higher due to taxes/import | Cost |
+| 3 | ⚙️ **[COSTS] reference values LOADED** (2026-06-07, a single value = the highest per item, §1.1–§1.7 with Total cost per row). Pending: **actual prices/invoices** from the team (vs international reference) + confirm separate Zircon and actual motor | Cost |
+| 4 | ✅ **[TOTAL COST] CALCULATED**: ≈ **USD 1,168/robot** (all new) · ≈ **887** (reusing CENTRAL) · ≈ **2,055–2,336** for 2 robots (§3.1). **Conversion to ARS RESOLVED: TC 1480 ARS = 1 USD (2026-06-13)** → minimum reference equivalent ≈ ARS 1,728,640/robot; the actual *landed* cost is higher due to taxes/import | Cost |
 | 5 | **[SPEC motor]** model/voltage/RPM/torque/reduction/encoder of the TT motor 2026 | Mechanical |
 | 6 | **[SPEC wheel]** Ø/material/no. rollers/origin (printed or purchased) of the omni wheel 2026 | Mechanical |
 | 7 | ⚙️ **[SPEC battery] PARTIAL**: ✅ **LiPo 2S · 7.4 V · 6800 mAh** (≈50 Wh, 1 pack/robot) loaded in §1.5. Pending: **C-rating, brand, weight** | Electrical |
 | 8 | **[New/Reused motors/wheels]** confirm if traction is new 2026 or reused 2025 | Sustainability |
-| 9 | ✅ Final test figure **resolved**: **858 tests / 61 suites / 0 failures (measured 2026-06-14 via `scripts/run-host-tests.sh`, g++ from Webots)** — appears in `docs/competencia/assets/fig8_test_growth.png` | Process |
-| 10 | **[PHOTO]** of each populated PCB (TOP/DOWN/Zircon/COMM) and of the assembled robot to label in the poster | Images |
+| 9 | ✅ Final test count **resolved**: **858 tests / 61 suites / 0 failures (measured 2026-06-14 via `scripts/run-host-tests.sh`, g++ from Webots)** — appears in `docs/competencia/assets/fig8_test_growth.png` | Process |
+| 10 | **[PHOTO]** of each populated PCB (TOP/DOWN/Zircon/COMM) and of the assembled robot for labeling in the poster | Images |
 | 11 | **[GAP]** actual set-points of the MP1584 (trimpot, unmeasured) and prorated cost of PCBs from the JLCPCB batch | Electrical |
 | 12 | **[TEMPLATE]** check if there is an official RCJ BOM template and transcribe | Format |
 

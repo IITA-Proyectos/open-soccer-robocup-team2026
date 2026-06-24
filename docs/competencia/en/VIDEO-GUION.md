@@ -15,7 +15,7 @@ feature: "Learn and design new technology (PCBs, 3D mechanics) using AI as a too
 ---
 
 > # ⚠️ WORKING VERSION IN SPANISH
-> **The FINAL video carries voice-over in Spanish RioPlatense + BURNED-IN ENGLISH SUBTITLES** throughout the video (international judges). All overlaid texts (titles, numbers, steps) will be in English in the final version. **Format: horizontal 16:9.**
+> **The FINAL video carries narration in Spanish RioPlatense + BURNED-IN ENGLISH SUBTITLES** throughout the video (international judges). All overlaid texts (titles, numbers, steps) will be in English in the final version. **Format: horizontal 16:9.**
 >
 > *Working draft in Spanish. The FINAL video carries Spanish voice-over with burned-in ENGLISH subtitles throughout. Landscape 16:9.*
 
@@ -26,10 +26,10 @@ feature: "Learn and design new technology (PCBs, 3D mechanics) using AI as a too
 This is the **shot-by-shot** script for the **Short Form Video TDP** (rubric RCJ Soccer 2026: **1 point**, scale **0/1**; ceiling = **Satisfactory = 1**). The rubric asks for ONE thing for the point: to show **the feature that the team is MOST proud of, explained clearly so that ANOTHER competitor can understand and learn it**.
 
 **Feature of this version (combined focus):**
-- **PROTAGONIST:** learn and design technology that we did NOT master (new TOP and DOWN boards in EasyEDA, and the redesigned motor support in 3D) using **AI as a learning and design tool**. Firm framing: **AI was the tool; the team learned, decided, and validated** — the students are responsible.
+- **PROTAGONIST:** learn and design technology that we did NOT master (new TOP and DOWN boards in EasyEDA, and the redesigned motor mount in 3D) using **AI as a learning and design tool**. Firm framing: **AI was the tool; the team learned, decided, and validated** — the students are responsible.
 - **SUPPORT (the guarantee):** we tested everything on the computer before trusting it (testing host-native). This is NOT a second feature: it is the PROOF that the learning was serious and validated by us, not a "copy and paste from AI".
 
-**Why they combine without losing focus:** ~80% of the time is the story of learning + the new boards; testing appears briefly (10–15 s) as a response to the obvious question from the judge ("And how did you know it was right if you were just learning?").
+**Why they combine without losing focus:** ~80% of the time is the story of learning + the new boards; testing appears briefly (10–15 s) as a response to the obvious judge's question ("how did you know it was right if you were just learning?").
 
 Each row of the table has 4 columns:
 - **Time** — start mark of the shot (cumulative). Closes **< 3:00**.
@@ -55,7 +55,7 @@ Each row of the table has 4 columns:
 
 | Time | Narration (ES — exact text) | Image on screen | Text/graphic on screen (EN) |
 |---|---|---|---|
-| 0:00 | "We became national champions… with two robots that, to be honest, had a rather poor structure and technology." | [IMG: photo/clip of the old robots from the National; court environment] | **Title:** "We won nationals — with two robots we knew weren't good enough" |
+| 0:00 | "We became national champions… with two robots that, to be honest, had a rather poor structure and technology." | [IMG: photo/clip of the old robots from the National; field environment] | **Title:** "We won nationals — with two robots we knew weren't good enough" |
 | 0:10 | "So for the world cup, we decided to remake them. But there was a problem: we, the students, didn't know how to design electronic boards or master the technologies we wanted to use." | [IMG: photo of the team; cut to boards/PCBs] | **Text:** "Problem: we're students — we didn't know how to design PCBs or these new technologies" |
 | 0:22 | "We are IITA Low Battery Messi, from Salta, Argentina. And this is what we are most proud of: how, using AI as a tool, we learned to design our own boards." | [IMG: transition to the finished new boards / EasyEDA] | **Lower-third:** "IITA Low Battery Messi · Salta, Argentina" |
 
@@ -65,7 +65,7 @@ Each row of the table has 4 columns:
 |---|---|---|---|
 | 0:32 | "We used artificial intelligence as a learning and design tool. But let it be clear: AI was the tool. We learned, decided, and validated. We are responsible for everything that went onto the robot." | [IMG: you and Enzo working in front of the computer with EasyEDA open] | **Title:** "AI was the tool. WE learned, decided and validated." |
 | 0:48 | "With that help, in a few weeks we were able to understand electronics and design two new boards from scratch: the top one, which perceives the world, and the bottom one, which reads the floor." | [IMG: render/photo of the TOP board and the DOWN board, labeled] | **Text:** "We designed 2 new boards: TOP (perception) & DOWN (floor sensing)" |
-| 1:00 | "We kept the champion brain from last year, but we redesigned the motor support in 3D to fit them deeper and gain stability." | [IMG: 3D render of the new motor support / comparison old vs new] | **Text:** "Kept our 2025 champion brain — redesigned the motor mounts in 3D" |
+| 1:00 | "We kept the champion brain from last year, but we redesigned the motor mounts in 3D to fit them deeper and gain stability." | [IMG: 3D render of the new motor mount / comparison old vs new] | **Text:** "Kept our 2025 champion brain — redesigned the motor mounts in 3D" |
 
 ## BLOCK 3 — How we validated (criterion: answers the judge's question) · 1:10–1:50
 
@@ -73,7 +73,7 @@ Each row of the table has 4 columns:
 |---|---|---|---|
 | 1:10 | "Now, you might be wondering: if you were just learning, how did you know that what you were doing was right?" | [IMG: the computer with a clean terminal, on hold] | **Text:** "But how did we know it was right, if we were still learning?" |
 | 1:20 | "That's the other half: we didn't trust blindly. We separated the robot's brain into modules that we could test on the computer, without the board, without waiting for the hardware." | [IMG: simple diagram of 2 layers: pure logic ↔ hardware] | **Text:** "We test the robot's brain on a laptop — no board needed" |
-| 1:33 | "Each change was tested in seconds. Hundreds of automated tests, zero failures. Only when it passed, did we trust it." | [IMG: **REAL screencast** of the test suite passing in green; freeze on the total + 0 failures] | **Large number:** "Hundreds of tests · 0 failures · in seconds" |
+| 1:33 | "Each change was tested in seconds. Hundreds of automated tests, zero failures. Only when it passed, did we trust it." | [IMG: **REAL screencast** of the test suite passing in green; freeze on total + 0 failures] | **Large number:** "Hundreds of tests · 0 failures · in seconds" |
 
 > **Production note:** confirm the exact number of tests running `scripts/run-host-tests.sh` on the day of recording and put THAT number on screen. See "Gap Log".
 
@@ -93,7 +93,7 @@ Each row of the table has 4 columns:
 | 2:30 | "Thus, without being experts, we turned two old robots into much better ones. And they started to move." | [IMG: **footage of the new robot moving on the field** — record in the 1–2 weeks following] | **Text:** "Not experts — but we turned two old robots into much better ones" |
 | 2:42 | "All our code and our boards are open, with MIT license, on GitHub. If your team is also learning, take it. See you in Incheon. Thank you!" | [IMG: screenshot of the repo; closes with team card + handle] | **Final card:** "Open-source · MIT · github.com/IITA-Proyectos/open-soccer-robocup-team2026 · IITA Low Battery Messi · Incheon 2026" |
 
-> **Video closing: ≈ 2:55** — under the limit of 3:00. If the narration stretches, the first cut is the second half of the narration from Block 1 (0:10) or shorten a step from Block 4.
+> **Video closing: ≈ 2:55** — under the limit of 3:00. If the narration stretches, the first cut is the second half of the narration of Block 1 (0:10) or shorten a step from Block 4.
 
 ---
 
@@ -102,15 +102,15 @@ Each row of the table has 4 columns:
 ### A. The new: boards and design (the protagonist feature)
 1. **[PHOTO/RENDER]** Finished TOP board (labeled "perception").
 2. **[PHOTO/RENDER]** Finished DOWN board (labeled "floor sensing").
-3. **[RENDER/PHOTO]** The redesigned motor support in 3D — ideally comparison old vs new.
+3. **[RENDER/PHOTO]** The redesigned motor mount in 3D — ideally comparison old vs new.
 4. **[CAPTURE]** EasyEDA open with the design of one of the boards (schematic or PCB).
 5. **[CLIP]** You and Enzo working in front of the computer designing.
 
 ### B. The validation (the support)
-1. **[CRITICAL CAPTURE]** REAL screencast of the test suite running, with the total + 0 failures clearly readable. Confirm the number on the day of recording.
+1. **[CAPTURE — CRITICAL]** REAL screencast of the test suite running, with the total + 0 failures clearly readable. Confirm the number on the day of recording.
 2. **[DIAGRAM]** The 2 layers: pure logic ↔ hardware (simple).
 
-### C. Footage of the robot / team (B-roll)
+### C. Footage of the robot / team (roll B)
 1. **[PHOTO/CLIP]** OLD robots from the National 2025 (hook 0:00).
 2. **[PHOTO]** Photo of the team (0:10).
 3. **[CLIP — record 1–2 weeks later]** New robot moving on the field (closing, Block 5). **The only shot that can be recorded after Sunday.**
@@ -122,12 +122,12 @@ Each row of the table has 4 columns:
 - **Duration:** target **< 3:00** (hard limit). Count ≈ 2:55.
 - **Format:** **horizontal 16:9** (deliverable of the rubric). If you want a version for social media, crop a vertical one separately later.
 - **Language / subtitles:** narration in **Spanish RioPlatense** + **burned-in English subtitles** throughout the ENTIRE video. Overlaid texts in English.
-- **Framing of the role of AI (CRITICAL before judges):** always "AI was the tool; the team learned, decided, and validated". NEVER imply that AI did the work alone. This protects compliance with the RCJ student authorship rule and reinforces Sportsmanship/Documentation.
+- **Framing of the role of AI (CRITICAL before judges):** always "AI was the tool; the team learned, decided, and validated." NEVER imply that AI did the work alone. This protects compliance with the RCJ student authorship rule and reinforces Sportsmanship/Documentation.
 - **Audio:** clear voice; soft background music. Narrate slowly in Block 4 (the 3 ideas are what the competitor takes away).
 - **Legibility of terminals/boards:** high contrast, zoom on important things (the number of tests; the labels of the boards).
 - **Technical honesty (do not oversell):** show as finished only what is verified. The robot moving goes with real footage.
 - **Realistic recording plan:**
-  - **Sunday:** narration + screencasts + captures of EasyEDA + photos/renders of the boards and the 3D support + footage of old parts/robots + photo of the team.
+  - **Sunday:** narration + screencasts + captures of EasyEDA + photos/renders of the boards and the 3D mount + footage of old pieces/robots + photo of the team.
   - **1–2 weeks later:** only the shots of the new robot on the field (Block 5).
 
 ---
@@ -137,8 +137,8 @@ Each row of the table has 4 columns:
 | # | Gap | Type | Where it impacts |
 |---|---|---|---|
 | 1 | ✅ **RESOLVED:** team name = **IITA Low Battery Messi** (IITA = the institution that teaches them robotics) | Identification | Title, lower-third, final card |
-| 2 | ✅ **RESOLVED:** new boards = TOP + DOWN (design by María + Enzo with AI in EasyEDA); CENTRAL = Zircon reused with redesigned motor support in 3D | Content | Block 2 |
+| 2 | ✅ **RESOLVED:** new boards = TOP + DOWN (design by María + Enzo with AI in EasyEDA); CENTRAL = reused Zircon with redesigned motor mount in 3D | Content | Block 2 |
 | 3 | **[NUMBER OF TESTS]** run `scripts/run-host-tests.sh` on the day of recording and put the real total on screen (1:33) | Data | Block 3 |
-| 4 | **[PHOTO/RENDER]** TOP and DOWN boards + 3D motor support (ideally old vs new) + capture of EasyEDA | Footage | Block 2 |
+| 4 | **[PHOTO/RENDER]** TOP and DOWN boards + 3D motor mount (ideally old vs new) + capture of EasyEDA | Footage | Block 2 |
 | 5 | **[PHOTO/CLIP]** OLD robots from the National + photo of the team + clip you/Enzo designing | Footage | Blocks 1–2 |
 | 6 | **[CLIP — post-Sunday]** new robot moving on the field (closing) | Footage | Block 5 |

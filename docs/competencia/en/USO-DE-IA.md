@@ -8,11 +8,11 @@ title: "Use of Artificial Intelligence in the Project — RoboCupJunior Soccer O
 team: "IITA Low Battery Messi"
 org: "Institute of Innovation and Applied Technology (IITA) / Innovar Foundation"
 date: 2026-06-05
-status: living document (working version ES — translate to EN for delivery)
+status: living document (working version ES — translate to EN for submission)
 purpose: "To transparently and substantively declare HOW and WHERE we use AI, what AI does and what people do, and how we ensure authorship and correctness."
 ---
 
-> ⚠️ **WORKING VERSION IN SPANISH.** For the RoboCupJunior delivery/judges, it is translated into English (`en/USO-DE-IA.md`). This document is deliberately extensive: it is designed to thoroughly answer if a judge asks "how did you use AI?".
+> ⚠️ **WORKING VERSION IN SPANISH.** For the RoboCupJunior submission/judges, it is translated into English (`en/USO-DE-IA.md`). This document is deliberately extensive: it is designed to thoroughly answer if a judge asks, "how did you use AI?".
 
 # Use of Artificial Intelligence in the Project
 
@@ -20,11 +20,11 @@ purpose: "To transparently and substantively declare HOW and WHERE we use AI, wh
 
 We use AI (mainly **Claude**, operated by us via *Claude Code* and **MCP** servers) as an **engineering tool that accelerates work**, just like a calculator, a CAD environment, a compiler, or a linter accelerate work — **but without replacing human decisions**. Our principle is one and it is non-negotiable:
 
-> **AI accelerates; competitors (18 years) decide, validate on real hardware, and are solely responsible for what is uploaded to the robot.**
+> **AI accelerates; competitors (18 years) decide, validate on real hardware, and are solely responsible for what goes on the robot.**
 
 AI touches **seven fronts**: PCB design (*VIBE PCB Design*), 3D design (*VIBE 3D Design*), firmware programming (*VIBE Coding*), **testing**, **documentation**, **debugging**, and in the future **image recognition with neural networks (YOLO)**. In **all**, there is a **human who reviews, validates, and approves** before the change is real, and an **objective safety net** (test gate, bench validation) that tests that the change is correct. Nothing is "believed" because AI said it: **it is verified**.
 
-**The central purpose of all this is one: to accelerate times** — compress the entire engineering cycle, from **concept** to **robot running**. Our declared goal is to go through the **seven stages** (concept → PCB → 3D → assembly → programming → documentation → testing) in **30 days** with the materials at hand, because each VIBE front removes the bottleneck from a stage. We develop this in depth in §1.4, with the honest caveat that this year the cycle was slower — but due to the importation of materials in Argentina, not due to the method.
+**The central purpose of all this is one: to accelerate times** — compress the entire engineering cycle, from **concept** to **robot running**. Our declared goal is to go through the **seven stages** (concept → PCB → 3D → assembly → programming → documentation → testing) in **30 days** with the materials at hand, because each VIBE front removes the bottleneck from a stage. We develop this in depth in §1.4, with the honest caveat that this year the cycle was slower — but due to the import of materials in Argentina, not due to the method.
 
 This document exists because we believe that transparency is part of good engineering. We do not hide that we use AI: **we explain why its use is legitimate, educational, and verifiable**, and exactly where its role begins and ends.
 
@@ -39,13 +39,13 @@ The entire history of engineering is the story of **tools that amplify the engin
 
 What distinguishes **legitimate** use from **illegitimate** use is not *whether* AI is used, but **how**:
 - **Illegitimate:** pasting a request, copying the output without understanding it, being unable to explain what was delivered, being unable to reproduce it, claiming work that is not understood.
-- **Legitimate (ours):** using AI to **accelerate tasks we understand**, **reviewing every output**, **validating against reality** (bench/tests), **understanding the result well enough to defend and modify it**, and **openly declaring** where it was used.
+- **Legitimate (ours):** using AI to **accelerate tasks we understand**, **reviewing each output**, **validating against reality** (bench/tests), **understanding the result enough to defend and modify it**, and **openly declaring** where it was used.
 
 ### 1.2 The guiding principle: *human-in-the-loop* with human responsibility
 In our flow, AI **proposes**; the human **disposes**. Specifically, no artifact reaches the robot or the deliverable without passing through **at least one** of these human/objective controls:
 1. **Explicit human review** of the change (we read the diff, understand what changes and why).
 2. **Objective verification gate** (the host-native test suite must remain green).
-3. **Physical validation on the bench** (behavior is tested with the real robot, not assumed).
+3. **Physical validation on the bench** (behavior is tested with the real robot, it is not assumed).
 4. **Traceability** (each assisted commit is marked with co-authorship; the engineering *journal* records each iteration).
 
 ### 1.3 Honesty about the limits
@@ -57,32 +57,32 @@ All of the above (legitimacy, *human-in-the-loop*, honest limits) describes **ho
 
 > **We use AI to ACCELERATE TIMES: compress the entire engineering cycle, from the CONCEPT to the ROBOT RUNNING.**
 
-We do not use AI for fashion or to "seem modern." We use it because it solves the most expensive problem for any robotics team: **the time that passes between having an idea and having a robot that executes it on the field**. That *time-to-working-robot* is, historically, months. Our bet —and we believe it is possible— is to reduce it to **weeks**.
+We do not use AI for fashion or to "look modern." We use it because it solves the most expensive problem for any robotics team: **the time that passes between having an idea and having a robot that executes it on the field**. That *time-to-working-robot* is historically months. Our bet —and we believe it is possible— is to reduce it to **weeks**.
 
-**The concrete goal: the complete cycle in 30 days.** We maintain that, with the available materials (motors, sensors, cameras), a team that uses AI with discipline can go through **all seven complete stages** of developing a competition robot in **30 days**:
+**The concrete goal: the complete cycle in 30 days.** We maintain that, with the available materials (motors, sensors, cameras), a team that uses AI with discipline can go through **all seven stages** of developing a competition robot in **30 days**:
 
 1. **Conceptual design** — robot architecture, game strategy, division into subsystems.
 2. **PCB design + manufacturing** — schematic, routing, Gerbers, BOM, order to factory.
 3. **3D model of the chassis + 3D printing** — parametric CAD of parts and supports, export and print.
 4. **Assembly** — mechanical and electronic assembly of the physical robot.
-5. **Programming** — firmware of the boards and game logic.
+5. **Programming** — firmware for the boards and game logic.
 6. **Documentation** — TDP, poster, data contracts, *journal*, rubric deliverables.
 7. **Program testing** — verification of logic and validation of behavior.
 
-**The complete cycle.** Not one stage: all seven. And **we believe it is possible** because we have evidence that each stage, separately, can already be compressed.
+**The complete cycle.** Not one stage: all seven. And **we believe it is possible** because we have evidence that each stage, separately, is already compressed.
 
 **Why it is possible: each VIBE front removes the bottleneck from a stage.** AI does not accelerate "the project" in the abstract; it accelerates **each link** in the chain, which is where time is really lost:
 
-- **VIBE PCB Design** (assisted schematic/routing via MCP, §4.1) compresses **electronic design**: the most tedious and error-prone —mapping pins, generating pinouts, reviewing netlists— no longer takes days.
+- **VIBE PCB Design** (schematic/routing assisted via MCP, §4.1) compresses **electronic design**: the most tedious and error-prone —mapping pins, generating pinouts, reviewing netlists— stops costing days.
 - **VIBE 3D Design** (Fusion 360 via MCP, §4.2) compresses the **chassis**: the first printable draft of a part goes from hours of CAD to minutes.
-- **VIBE Coding** (pure modules + host-tests, §4.3 and §4.4) compresses **programming and testing at the same time**, and with a decisive advantage: since the logic is compiled and tested on the PC **without the board**, the brain of the robot can be advanced **before the hardware exists**. Programming is no longer blocked waiting for assembly.
-- **Assisted documentation and debugging** (§4.5 and §4.6) compress the **closure**: documenting at the level that the rubric rewards and diagnosing failures is no longer the final bottleneck.
+- **VIBE Coding** (pure modules + host-tests, §4.3 and §4.4) compresses **programming and testing at the same time**, and with a decisive advantage: since the logic is compiled and tested on the PC **without the board**, the robot's brain can be advanced **before the hardware exists**. Programming is no longer blocked waiting for assembly.
+- **Assisted documentation and debugging** (§4.5 and §4.6) compress the **closure**: documenting at the level that the rubric rewards and diagnosing failures stops being the final bottleneck.
 
-Together, these compressions attack **all** stages of the cycle at once. That is why a goal that sounds aggressive —30 days— seems achievable to us: it does not depend on working more hours, but on **no stage remaining as a bottleneck**.
+Combined, these compressions attack **all** stages of the cycle at once. That is why a goal that sounds aggressive —30 days— seems achievable to us: it does not depend on working more hours, but on **no stage remaining as a bottleneck**.
 
-**The honest caveat (because this document does not oversell).** This year **we did not achieve the 30-day cycle**: it was slower. But the cause **was not the method** — it was the **provision of materials**. Importing components in Argentina is slow and unpredictable: customs splits orders and parts (motors, sensors, cameras, connectors) arrive gradually over **weeks**. Much of our schedule was set by import logistics, not the pace of engineering.
+**The honest caveat (because this document does not oversell).** This year we **did not** achieve the 30-day cycle: it was slower. But the cause **was not the method** —it was the **provision of materials**. Importing components in Argentina is slow and unpredictable: customs splits orders and parts (motors, sensors, cameras, connectors) arrive gradually over **weeks**. Much of our schedule was set by import logistics, not the engineering pace.
 
-And here is the most important connection of the entire document: **our discipline of host-testing was born precisely from that slowness of materials.** Separating pure logic from hardware and compiling/testing it on the PC with `g++` (§4.3, §4.4) was, before being a good software practice, a **direct response** to not having the complete hardware: it allowed us to build and validate the brain of the robot while the components were still in transit. The physical bottleneck **pushed** us to the practice that most accelerates the software bottleneck. The goal of 30 days remains; what we learned is that, when the method is no longer the limit, the limit shifts to the supply chain — and even for that, AI allowed us to keep advancing.
+And here is the most important connection in the entire document: **our host-testing discipline was born precisely from that material slowness.** Separating pure logic from hardware and compiling/testing it on the PC with `g++` (§4.3, §4.4) was, before being a good software practice, a **direct response** to not having the complete hardware: it allowed us to build and validate the robot's brain while the components were still in transit. The physical bottleneck **pushed** us to the practice that most accelerates the software bottleneck. The goal of 30 days remains; what we learned is that, when the method is no longer the limit, the limit shifts to the supply chain — and even for that, AI allowed us to keep advancing.
 
 ---
 
@@ -97,7 +97,7 @@ The typical unit of work is not "a prompt," but an **orchestrated flow**:
 4. **Physical validation** when applicable (bench).
 5. **Traceable commit** and record in the *journal*.
 
-A key feature of our orchestration: when we launch **several AI agents in parallel**, each is the **unique owner of a file** (so they do not overwrite each other) and there is a **central verification** that runs the gate before accepting anything. It is the same principle of *ownership* and *CI* from professional software development.
+A key feature of our orchestration: when we launch **several AI agents in parallel**, each one is **the unique owner of a file** (so they do not overwrite each other) and there is a **central verification** that runs the gate before accepting anything. It is the same principle of *ownership* and *CI* from professional software development.
 
 ---
 
@@ -108,13 +108,13 @@ This section underpins everything else. Without this, "we use AI" would be an ex
 | Control | What it is | Why it protects us |
 |---|---|---|
 | **Host-native test gate** | A suite of **858 tests / 61 suites / 0 failures** (living figure, measured 2026-06-14 with `scripts/run-host-tests.sh`) that compiles pure logic on the PC with `g++`. It must be **green** before any merge. | It is an **objective referee**: if AI (or a human) breaks something, the gate catches it. Correctness does not depend on trusting AI. |
-| **Fallback byte-identical + feature flags** | Each new capability enters as a **pure gated module** (`#ifdef`), off by default, with fallback **byte-identical** to the previous binary. | The competition binary **does not change** until we validate. An AI idea cannot "slip" into the robot without approval. |
+| **Fallback byte-identical + feature flags** | Each new capability enters as a **pure gated module** (`#ifdef`), off by default, with fallback **byte-identical** to the previous binary. | The competition binary **does not change** until we validate. An idea from AI cannot "slip" into the robot without approval. |
 | **Bench validation** | Physical behavior (motors, sensors, vision, edge braking) is tested with the robot. | AI does not validate hardware; **we do**. Reality is the final judge. |
 | **Ownership by file** | In parallel work, a single agent (or person) edits each file. | Prevents conflicts and keeps responsibility clear. |
 | **Traceability** | Assisted commits signed with `Co-Authored-By`; engineering *journal* with each session and measured iteration. | Anyone can audit **what was done, when, and with what help**. Total transparency. |
 | **Byte-by-byte data contracts** | The boards communicate through documented and tested byte contracts (golden tests of offsets). | AI can propose protocol changes, but a change that breaks the contract **fails a golden test** and does not pass. |
 
-**Governance conclusion:** in this project, *accepting* an AI contribution **requires more human effort** than generating it. That asymmetry is intentional: it ensures that we understand and are accountable for everything we deliver.
+**Governance conclusion:** in this project, *accepting* an AI contribution **takes more human effort** than generating it. That asymmetry is intentional: it ensures that we understand and are accountable for everything we deliver.
 
 ---
 
@@ -122,11 +122,11 @@ This section underpins everything else. Without this, "we use AI" would be an ex
 
 ### 4.1 VIBE PCB Design — AI-assisted electronic design (EasyEDA via MCP)
 
-**What we do.** We design the robot's PCBs (own **TOP** and **DOWN** boards; **COMM**, a fork of the official RCJ module) in **EasyEDA**, where an AI agent proposes and edits the **schematic and routing** through a **MCP server** that exposes EasyEDA as a programmable tool. The human **validates each change** of the schematic/PCB.
+**What we do.** We design the robot's PCBs (own **TOP** and **DOWN** boards; **COMM**, a fork of the official RCJ module) in **EasyEDA**, where an AI agent proposes and edits the **schematic and routing** through an **MCP server** that exposes EasyEDA as a programmable tool. The human **validates each change** to the schematic/PCB.
 
 **How, in detail.**
 - The MCP translates design intent ("connect this mux to these pins," "route this net," "generate the pinout table from the schematic") into concrete operations on the EasyEDA project.
-- AI is particularly useful for **tedious and error-prone human tasks**: mapping the *scrambling* of pins from the line ring multiplexers, generating the complete pinout table from the schematic/PCB JSON (with a reproducible script), reviewing netlists, and detecting unrouted nets.
+- AI is especially useful for **tedious and error-prone human tasks**: mapping the *scrambling* of pins from the line ring multiplexers, generating the complete pinout table from the schematic/PCB JSON (with a reproducible script), reviewing netlists, and detecting unrouted nets.
 - The human runs **DRC/ERC**, validates footprints against datasheets, and decides layout compromises (trace lengths, grounds, spacing).
 
 **Why it is justified.** PCB design has a huge layer of **verifiable mechanical work** (does this net reach this pin?, does the pinout match the firmware?) where human error is costly (a poorly routed board = weeks of delay and money). AI reduces that error and frees up time for real engineering decisions. **The final validation (DRC/ERC, manufacturing, bring-up on the bench) is 100% human.**
@@ -145,58 +145,58 @@ This section underpins everything else. Without this, "we use AI" would be an ex
 
 ### 4.3 VIBE Coding — AI-assisted C++ firmware
 
-**What we do.** The firmware for the **3 Teensy boards** (TOP/CENTRAL/DOWN) plus the **COMM** is developed with AI assistance, but under a **specifically designed architecture to ensure that AI is safe and verifiable**:
+**What we do.** The firmware for the **3 Teensy boards** (TOP/CENTRAL/DOWN) plus the **COMM** is developed with AI assistance, but under an **architecture specifically designed to make AI safe and verifiable**:
 
 - **Pure logic separated from hardware.** All decision logic lives in **pure C++ modules** (`src/shared/`, without Arduino, without `Serial`/`Wire`/`analogWrite`); the Arduino *glue* is thin. This allows **compiling and testing the logic on the PC with `g++`, without the board**.
 - **New capability = pure module + test + flag + byte-identical fallback.** Every AI-assisted feature enters off by default, with its test, and without changing the competition binary until validated.
 - **Multi-agent orchestration with unique ownership per file + central verification.** For large tasks, we launch several agents in parallel (each owning a file) and a central step runs the gate before accepting.
 
-**Why it is justified.** AI writes code quickly but can make mistakes; our architecture turns that risk into something **detectable and bounded**: if the logic is wrong, **a host test catches it in seconds**; if something was not validated, **it is off by a flag**. AI gives us speed; the architecture gives us security.
+**Why it is justified.** AI writes code quickly but can make mistakes; our architecture turns that risk into something **detectable and contained**: if the logic is wrong, **a host test catches it in seconds**; if something was not validated, **it is off by a flag**. AI gives us speed; the architecture gives us safety.
 
 **Evidence in the repo.** C++17 firmware for 3 boards, **834 host-native tests / 60 suites / 0 failures** (living figure), pure modules like `ball_predict`, `kinematics`, `localization`, `pids`, `imu_fusion`, `drive_straight`; reliability audits implemented as gated and byte-identical *batches*; commits with `Co-Authored-By`.
 
 ### 4.4 AI-assisted Testing
 
-**What we do.** AI helps us **build and grow the test network** that is then our objective referee. It is not "AI says it works": it is "AI wrote tests that **prove** it works, and the tests run by themselves".
+**What we do.** AI helps us **build and grow the test network** that is then our objective referee. It is not "AI says it works": it is "AI wrote tests that **prove** it works, and the tests run on their own".
 
 **How, in detail.**
 - **Growing and traceable host-native suite** (180 → … → 658 → 834 cases), run with a single offline script.
-- **Golden byte-by-byte contract tests**: for data crossing boards by raw bytes (the `WorldSnapshot` of 31 B, `LineStatusV2` of 16 B, the camera→TOP packet), tests that **fix the offset of each field**, so that an accidental reordering **breaks the test** even if the size does not change.
+- **Golden byte-by-byte contract tests**: for the data crossing boards by raw bytes (the `WorldSnapshot` of 31 B, `LineStatusV2` of 16 B, the camera→TOP packet), tests that **fix the offset of each field**, so that an accidental reordering **breaks the test** even if the size does not change.
 - **Adversarial verification**: when an agent claims to have fixed/found something, another agent (or a *mutation test*) **tries to refute it** — for example, we purposely altered an offset and confirmed that the golden test **fails**, proving that the test does not pass "in empty".
 - **Coverage as a net against regressions**: every bug we find becomes a test that "never goes unnoticed again".
 
-**Why it is justified.** Testing is **exactly** the counterbalance to the risk of AI. The more assisted code, **the more** automated tests we want. AI makes cheap what was previously expensive (writing many tests), and that **elevates** quality, not lowers it.
+**Why it is justified.** Testing is **exactly** the counterbalance to the risk of AI. The more assisted code, **the more** automated tests we want. AI makes cheap what was previously expensive (writing many tests), and that **raises** quality, not lowers it.
 
 ### 4.5 AI-assisted Documentation
 
-**What we do.** We use AI to produce and maintain **dense and consistent technical documentation**: the TDP, the poster, the video script, interview preparation, the BOM, the **byte-by-byte data contracts**, the engineering *journal*, bench runbooks, and this very document.
+**What we do.** We use AI to produce and maintain **dense and consistent technical documentation**: the TDP, the poster, the video script, interview preparation, the BOM, the **byte-by-byte data contracts**, the engineering *journal*, the bench runbooks, and this very document.
 
 **How, in detail.**
 - AI maintains **transversal consistency** (that the same number/data appears the same in all deliverables) — something where human error is very high. We even built a **"living figure" script** that re-measures the tests and propagates the number with its **date and time of measurement** to all documents, so that **no figure is ever outdated** (a real risk in front of a judge who runs the test and sees another number).
-- AI translates deliverables into English (rubric requirement) preserving data and structure; we review the final correction.
-- The human provides the **truth content** (design decisions, bench data, team identity) and **validates** that the doc does not "oversell".
+- AI translates the deliverables into English (rubric requirement) preserving data and structure; we review the final correction.
+- The human provides the **true content** (design decisions, bench data, team identity) and **validates** that the doc does not "oversell".
 
 **Why it is justified.** Documenting well is part of the score (TDP, poster) and of **replicability** (that another team can copy our methodology). AI makes documenting stop being the bottleneck and allows us to document **at the level of detail that the rubric rewards**.
 
 ### 4.6 AI-assisted Debugging
 
-**What we do.** We use AI to **diagnose** problems: reading traces, crossing symptoms with the code, generating hypotheses, and proposing minimal and surgical fixes — always under verification.
+**What we do.** We use AI to **diagnose** problems: reading traces, crossing symptoms with code, generating hypotheses, and proposing minimal and surgical fixes — always under verification.
 
 **How, in detail.**
 - **Systematic audits**: we ran reliability audits like "champion coach" (dozens of findings, adversarially verified and classified by severity) that uncovered latent bugs and debt — each finding verified against the real code before acceptance.
-- **Bench failure diagnosis**: AI helped us understand real and subtle failure modes, for example: the **yaw of the BNO freezing** due to I²C contention with the ToF at a certain clock; the **brownout of the 3.3 V rail** of the OTOS being confused with "another chip" due to a strange I²C address; the **arbitration by GPIO level** (not UART). In all, AI proposed the hypothesis and **the bench confirmed or refuted it**.
-- **Disciplined fixes**: every debugging fix enters as a minimal change, gated or byte-identical, with its test, and passes the gate.
+- **Bench failure diagnosis**: AI helped us understand real and subtle failure modes, for example: the **yaw of the BNO freezing** due to I²C contention with the ToF at a certain clock; the **brownout of the 3.3 V rail** of the OTOS being confused with "another chip" due to a strange I²C address; the **GPIO level arbitration** (not UART). In all cases, AI proposed the hypothesis and **the bench confirmed or refuted it**.
+- **Discipline in fixes**: every debugging fix enters as a minimal change, gated or byte-identical, with its test, and passes the gate.
 
 **Why it is justified.** Debugging is where AI is most useful **and** where it is easiest to deceive oneself: that is why we tie it to **adversarial verification** (is the bug real? does the fix really fix it? does the gate break something?). An AI hypothesis **is not a conclusion** until the code or the bench confirms it.
 
 ### 4.7 Future: image recognition with YOLO (AI in vision)
 
-**What we plan.** Today vision detects the ball and the goals with **color thresholds in LAB space** (classic, fast, but sensitive to lighting — that is why recalibrating for the light in Incheon is our #1 blocker). The **next natural step** is **recognition by neural networks (YOLO)** running **on the camera itself**: we use **OpenMV Cam N6**, which integrates a **NPU (Neural-ART)** designed for neural network inference at the edge.
+**What we plan.** Today vision detects the ball and goals with **color thresholds in LAB space** (classic, fast, but sensitive to lighting — that is why recalibrating for the light in Incheon is our #1 blocker). The **next natural step** is **recognition by neural networks (YOLO)** running **on the camera itself**: we use **OpenMV Cam N6**, which integrates a **NPU (Neural-ART)** designed for neural network inference at the edge.
 
 **Why it makes sense (and why it is "real" AI).** YOLO is a **convolutional neural network** for object detection: it is AI in the strictest sense (a trained model that infers). Compared to color thresholds, a network:
 - is **robust to lighting changes** (the problem that affects us most today),
 - can distinguish **ball vs. reflections vs. noise** and classify goals by color/shape with more tolerance,
-- runs **on-device** in the NPU of the N6, without relying on a PC.
+- runs **on-device** on the NPU of the N6, without relying on a PC.
 
 **How we would approach it (honest roadmap).** Capture and label a dataset of the real field/ball → train/tune a small YOLO model → quantize it and deploy it on the NPU of the N6 → maintain the LAB detector as **fallback** (consistent with our discipline of always present *fallback*). **This is future work**, not something delivered today; we declare it as a roadmap.
 
@@ -207,7 +207,7 @@ This section underpins everything else. Without this, "we use AI" would be an ex
 ## 5. What AI does NOT do in this project (explicit limits)
 
 To leave no ambiguity in front of a judge:
-- **Does not decide what goes on the robot.** That is decided by the team, and is behind flags and the gate.
+- **Does not decide what goes on the robot.** That is decided by the team, and it is behind flags and the gate.
 - **Does not validate hardware.** Motors, edge braking, camera calibration, regulator set-points, wheel angles: everything is measured/validated on the bench, by people.
 - **Does not measure real performance.** CPU loads and latencies are design objectives until measured with instruments.
 - **Does not replace understanding.** We can explain, modify, and defend each subsystem; if we did not understand it, we would not deliver it.
@@ -224,7 +224,7 @@ To leave no ambiguity in front of a judge:
 | **Fusion 360 MCP Server** (local) | Operate parametric 3D modeling | Team (tolerances + assembly) |
 | **Host-native test suite** (`g++` + Unity, offline) | Objective referee of logic correctness | Automatic (green gate mandatory) |
 | **Multi-agent orchestration** (unique-owner-per-file + central verification) | Parallelize large tasks securely | Team (central verification) |
-| **OpenMV Cam N6 + NPU Neural-ART** | (Future) YOLO on-device inference for vision | Team (dataset + field validation) |
+| **OpenMV Cam N6 + NPU Neural-ART** | (Future) YOLO on-device inference for vision | Team (dataset + validation on the field) |
 
 The entire project is **open-source (MIT)** and the flows are **reproducible**: another team can see not only *what* we did but *how* we did it with AI.
 
@@ -235,7 +235,7 @@ The entire project is **open-source (MIT)** and the flows are **reproducible**: 
 - **We learned to specify problems precisely** (a good prompt is a good engineering specification).
 - **We learned to verify instead of trust**: we designed gates, golden tests, and adversarial verification — real QA skills.
 - **We learned defensive architecture**: separating pure logic from hardware, *feature flags*, byte-identical fallback — industry patterns.
-- **We learned traceability and teamwork**: ownership by file, co-authorship, engineering *journal*.
+- **We learned traceability and teamwork**: file ownership, co-authorship, engineering *journal*.
 - **We learned the limits of the tool**: we know what NOT to delegate (physical validation, design decisions, measurement).
 
 AI did not save us from learning: it **forced us to learn** at a higher level (verification, architecture, governance) to use it responsibly.
@@ -248,7 +248,7 @@ AI did not save us from learning: it **forced us to learn** at a higher level (v
 - **AI was used as an acceleration tool** in the seven described fronts, always with **human review and objective verification**.
 - **Everything assisted by AI is traceable** (commits with co-authorship, engineering *journal*) and is **reproducible** (public MIT repo).
 - **We can explain, modify, and defend each subsystem** of the robot live.
-- **We do not oversell**: we openly declare what is validated, what is *code-complete* but pending on the bench, and what is roadmap (e.g. YOLO).
+- **We do not oversell**: we openly declare what is validated, what is *code-complete* but pending on the bench, and what is roadmap (e.g., YOLO).
 
 ### Anticipated Frequently Asked Questions
 - *"Did AI make the robot for you?"* → No. AI accelerated tasks we understand; we decide, validate on the bench, and are accountable for everything. The proof: we can explain and modify any part, and everything is tied to tests/bench.
@@ -261,9 +261,9 @@ AI did not save us from learning: it **forced us to learn** at a higher level (v
 
 1. **Vision by AI (YOLO on the NPU of the N6)** — from LAB thresholds to learned perception, with LAB fallback.
 2. **Maturation of VIBE 3D Design** — from assisted first draft to final parts for manufacturing.
-3. **Single assisted "robot definition"** — centralize robot configuration in a single file (in progress) to scale to multiple robots.
-4. **More automated adversarial verification** — panels of judges-AI and systematic *mutation testing* on critical modules.
+3. **Single assisted "robot definition"** — centralizing robot configuration in a single file (in progress) to scale to multiple robots.
+4. **More automated adversarial verification** — panels of judge-AI and systematic *mutation testing* on critical modules.
 
 ---
 
-*Document prepared as part of the deliverables for RoboCupJunior Soccer Open 2026. Working version in Spanish; the English version for delivery lives in `docs/competencia/en/USO-DE-IA.md`.*
+*Document prepared as part of the deliverables for RoboCupJunior Soccer Open 2026. Working version in Spanish; the English version for submission lives in `docs/competencia/en/USO-DE-IA.md`.*

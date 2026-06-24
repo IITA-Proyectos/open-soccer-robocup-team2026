@@ -18,8 +18,8 @@
 
 | Role | Name | Detail |
 |---|---|---|
-| Competitor — Soccer Open (travels) | María Virginia Viollaz (@mariaviollaz), 18 | Computer vision, strategy, trajectories, camera parser, bench. **Learned to design with AI** (VIBE). National champion 2022 (Rescue Line) + RoboCup 2023 world champion, Eindhoven |
-| Competitor — Soccer Open (travels) | Elías Cordero, 18 (Electromechanical Engineering, UNSa) | Motors, kinematics, measurements, mechanics, bench. **Learned to design with AI** (VIBE) |
+| Competitor — Soccer Open (travels) | María Virginia Viollaz (@mariaviollaz), 18 | Goalkeeper strategy, trajectories, bench, design, documentation. **Learned to design with AI** (VIBE). National champion 2022 (Rescue Line) + RoboCup 2023 world champion, Eindhoven |
+| Competitor — Soccer Open (travels) | Elías Cordero, 18 (Electromechanical Engineering, UNSa) | Computer vision, forward strategy, kinematics, measurements and calibration. **Learned to design with AI** (VIBE) |
 | Main coach (travels) | Enzo Juárez Velázquez (@enzzo195) | Guide for PCB design with AI (VIBE PCB design, EasyEDA via MCP), electrical validation, hardware bodges, technical review. In Incheon **also leads the IITA RCJ Rescue Line team** |
 | Secondary coach (travels) | Cecilia Budeguer | Team support in Incheon (backup, especially while Enzo assists the Rescue Line team) |
 | Project director (DOES NOT travel) | Gustavo Viollaz (@gviollaz) | Coordination, integration of the 3 boards, bench sessions. Work obligations prevent him from traveling to Korea |

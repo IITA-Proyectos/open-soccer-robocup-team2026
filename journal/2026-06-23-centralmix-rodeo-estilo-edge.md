@@ -77,6 +77,13 @@ el módulo `ball_velocity` y los manda en `main_top.cpp:231`). `mix_comm` los re
 - El feedforward usa proyección predictiva (mejor que el `+30` fijo de Edge), pero la velocidad RELATIVA
   con ego-movimiento es un límite conocido → si molesta en banco, kill-switch y queda el rodeo por posición.
 
+### Variante SIN velocidad — `src/centraledgefijo/` (update 2026-06-23, Elías)
+Elías pidió una versión que NO use la velocidad de la pelota: solo el rodeo SIMPLE de Edge (la curva
+fija de amplificación por POSICIÓN), sin la predicción ni ningún bump por velocidad. Se hizo en una
+carpeta APARTE `src/centraledgefijo/` (copia de centraledge; `mix_edge` sin `ball_vx/vy` ni params de
+velocidad; `mix_config` sin `VEL_MIN/LEAD_*`). Env `central_robot1_mix_edge_fijo`. Sirve para A-B en
+banco: `centraledge` (con velocidad) vs `centraledgefijo` (sin). Host: `test_mix_edge_fijo` 12/12.
+
 ## Verificación host (sin hardware)
 `test/test_mix_edge/` (Unity) — **11/11 verde** (`bash scripts/run-host-tests.sh test_mix_edge`):
 curva (cero, simetría, monotonía, **continuidad** en los quiebres, valores clave, tope) + decisión de

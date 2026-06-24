@@ -84,6 +84,15 @@ carpeta APARTE `src/centraledgefijo/` (copia de centraledge; `mix_edge` sin `bal
 velocidad; `mix_config` sin `VEL_MIN/LEAD_*`). Env `central_robot1_mix_edge_fijo`. Sirve para A-B en
 banco: `centraledge` (con velocidad) vs `centraledgefijo` (sin). Host: `test_mix_edge_fijo` 12/12.
 
+### Variante CONDUCIR — `src/centralconduce/` (update 2026-06-23, Elías)
+Elías pidió OTRA estrategia (NO el rodeo): que busque la pelota, la **centre al frente** (para que al
+avanzar no se le escape), la **lleve al arco** (o al **heading 0** si no ve el arco) manteniéndola
+adelante, y **a <40 cm del arco apunte y patee**. Carpeta `src/centralconduce/` (copia de la base mix,
+SIN `mix_edge` — no usa la curva de rodeo). FSM nueva: `KICKOFF→BUSCAR→CENTRAR→CONDUCIR→APUNTAR_ARCO→
+PATEAR→RETROCEDER` + escape de línea. Usa `mix_mover_vector` (avanzar a la pelota + giro al arco) y un
+helper `omega_hacia(ángulo)`. Env `central_robot1_mix_conduce`. Sintaxis verificada con g++ (stub
+Arduino); la FSM se valida en banco (TASK-119) — no hay host-test (es lógica Arduino/umbral).
+
 ## Verificación host (sin hardware)
 `test/test_mix_edge/` (Unity) — **11/11 verde** (`bash scripts/run-host-tests.sh test_mix_edge`):
 curva (cero, simetría, monotonía, **continuidad** en los quiebres, valores clave, tope) + decisión de

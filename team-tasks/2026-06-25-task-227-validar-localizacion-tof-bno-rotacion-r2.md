@@ -7,6 +7,12 @@
 - **Depende de:** lecturas hechas (informe `research/in-progress/2026-06-25-tof-localizacion-arquero-informe.md`),
   módulo `src/shared/keeper_xy_walls.h` (heading-free, ya en repo), env `top_robot2_pri_tofmaxrange`.
 - **Relacionada:** TASK-221 (keeper_xy_walls heading-free), TASK-225/226 (ToF montaje/8×8).
+- **Firmware LISTO (compila + host-test 16/16, competencia byte-idéntica):** env **`top_robot2_pri_xypose`**
+  = max-range + `keeper_xy_from_walls_heading` (cos(θ) a la distancia + gating |θ|>30°). Perillas FIJAS v1:
+  wall_reach 1300, gate 3000 cdeg, trim 35. **NO validado en HW — esta TASK es esa validación.**
+  - Flashear: `pio run -e top_robot2_pri_xypose -t upload`
+  - Ver pose XY: `python -m monitor_base --field --port COMxx` (dibuja snap.my_x/y/heading; x=… y=… hdg=… conf=…)
+  - Anclar cero: con el robot mirando al arco, comando `IMU ZERO` (o arrancar mirando al arco).
 
 ## Contexto
 

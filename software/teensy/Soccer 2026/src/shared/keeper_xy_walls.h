@@ -25,6 +25,7 @@
 
 #pragma once
 #include <stdint.h>
+#include <math.h>   // cosf — corrección rotación-aware (keeper_xy_from_walls_heading)
 
 namespace iitasoccer {
 
@@ -153,6 +154,41 @@ inline KeeperXY keeper_xy_from_walls(const KeeperWallDist& d, const KeeperXYConf
     }
 
     return r;
+}
+
+// ---------------------------------------------------------------------------
+// Variante ROTACIÓN-AWARE (BNO): corrige las distancias por el giro del robot.
+//
+// Bajo rotación heading θ, el eje de cada ToF queda θ fuera de la normal de su
+// pared → la distancia REDUCIDA es el slant; la perpendicular real = slant·cos(θ)
+// (informe 2026-06-25 §5.2: D_perp = d·cos(θ)). Importante: el cos se aplica a la
+// DISTANCIA de pared ANTES de trilaterar, NO al x/y ya calculado. cos es PAR → el
+// signo de θ no importa (izq/der dan la misma corrección) → robusto a la convención
+// de signo del heading. Si |θ| supera head_gate_centideg, la rotación es tanta que
+// las paredes salen del FoV / el mapa "miente" → se INVALIDA toda la pose (lo honesto).
+//
+//   heading_centideg  : rumbo del BNO; 0 = robot mira al arco rival (anclado por el
+//                       boot mirando al arco, o por el comando IMU ZERO en vivo).
+//   head_gate_centideg: umbral de congelado (p.ej. 3000 = 30°).
+//
+// Reusa keeper_xy_from_walls (NO duplica la lógica de trilateración/consistencia).
+inline KeeperXY keeper_xy_from_walls_heading(KeeperWallDist d, const KeeperXYConfig& c,
+                                             int16_t heading_centideg,
+                                             uint16_t head_gate_centideg) {
+    const int32_t habs = (heading_centideg < 0) ? -(int32_t)heading_centideg
+                                                : (int32_t)heading_centideg;
+    if (habs > (int32_t)head_gate_centideg) {
+        KeeperXY r;
+        r.x_mm = 0; r.x_valid = false;
+        r.y_mm = 0; r.y_valid = false;
+        return r;   // demasiado rotado → pose no confiable (congelar)
+    }
+    const float k = cosf((float)heading_centideg * 0.01f * 0.0174532925f);  // cdeg→rad
+    const uint16_t NR = KEEPER_TOF_NO_READING;
+    if (d.left_mm  != NR) d.left_mm  = (uint16_t)((float)d.left_mm  * k + 0.5f);
+    if (d.right_mm != NR) d.right_mm = (uint16_t)((float)d.right_mm * k + 0.5f);
+    if (d.back_mm  != NR) d.back_mm  = (uint16_t)((float)d.back_mm  * k + 0.5f);
+    return keeper_xy_from_walls(d, c);
 }
 
 }  // namespace iitasoccer

@@ -37,7 +37,14 @@ bool               g_initialized = false;
 // --- Estimador XY HEADING-FREE del arquero (ver src/shared/keeper_xy_walls.h) ---
 // Tunables de banco (si hace falta, ajustar y reflashear):
 constexpr uint8_t  KEEPER_TRIM_PCT       = 35;    // recorte simétrico de la mediana
+#ifdef TOP_KEEPER_HEADING_CORR
+// Variante rotación-aware (ToF + BNO). Perillas FIJAS en v1 (no tocan la EEPROM; ver
+// informe 2026-06-25). Ajuste = reflashear.
+constexpr uint16_t KEEPER_WALL_REACH_MM  = 1300;  // max-range ve la pared NEGRA hasta ~1.4 m (medido)
+constexpr uint16_t KEEPER_HEAD_GATE_CDEG = 3000;  // |heading|>30° -> pose no confiable -> CONGELA
+#else
 constexpr uint16_t KEEPER_WALL_REACH_MM  = 1000;  // pared reducida más lejos = no confiable
+#endif
 constexpr uint16_t KEEPER_XY_CONSISTENCY = 200;   // x_izq≈x_der dentro de esto -> promedio
 constexpr uint16_t KEEPER_XY_SYMMETRIC   = 150;   // |d_izq-d_der| chico e inconsistente -> ambiguo
 
@@ -67,7 +74,15 @@ LocalizationPose compute_keeper_xy_pose() {
     c.wall_reach_mm  = KEEPER_WALL_REACH_MM;
     c.consistency_mm = KEEPER_XY_CONSISTENCY;
     c.symmetric_mm   = KEEPER_XY_SYMMETRIC;
+#ifdef TOP_KEEPER_HEADING_CORR
+    // Rotación-aware: corrige las distancias por el giro del BNO (cos a la DISTANCIA,
+    // no al x/y) y congela la pose si |heading|>gate. El heading 0 debe estar anclado
+    // al arco rival (boot mirando al arco o comando IMU ZERO).
+    const int16_t hdg_cdeg = sensors_imu_get_heading_centideg();
+    const KeeperXY r = keeper_xy_from_walls_heading(d, c, hdg_cdeg, KEEPER_HEAD_GATE_CDEG);
+#else
     const KeeperXY r = keeper_xy_from_walls(d, c);
+#endif
 
     LocalizationPose p{};
     // X desconocida -> centro de cancha (no dispara el X-bound del arquero).
@@ -75,7 +90,11 @@ LocalizationPose compute_keeper_xy_pose() {
     p.y_mm = r.y_mm;
     // La conf la maneja la Y (profundidad): eje confiable en la zona de fondo.
     p.valid = r.y_valid;
+#ifdef TOP_KEEPER_HEADING_CORR
+    p.heading_centideg = hdg_cdeg;   // el rumbo del BNO acompaña la pose
+#else
     p.heading_centideg = 0;
+#endif
     p.source_flags = (uint8_t)(
         (d.left_mm  != KEEPER_TOF_NO_READING ? 0x08 : 0) |
         (d.right_mm != KEEPER_TOF_NO_READING ? 0x04 : 0) |

@@ -132,6 +132,49 @@ void test_xy_back_out_of_reach_y_invalid(void) {
     TEST_ASSERT_FALSE(r.y_valid);
 }
 
+// ===========================================================================
+// 3) Variante ROTACIÓN-AWARE (BNO): keeper_xy_from_walls_heading
+// ===========================================================================
+
+// Heading 0 (mira al arco) -> cos(0)=1 -> idéntico a la versión sin heading.
+void test_xy_heading_zero_is_noop(void) {
+    KeeperWallDist d{416, 229, 213};
+    KeeperXY a = keeper_xy_from_walls(d, cfg());
+    KeeperXY b = keeper_xy_from_walls_heading(d, cfg(), 0, 3000);
+    TEST_ASSERT_EQUAL(a.x_valid, b.x_valid);
+    TEST_ASSERT_EQUAL(a.y_valid, b.y_valid);
+    TEST_ASSERT_INT16_WITHIN(1, a.x_mm, b.x_mm);
+    TEST_ASSERT_INT16_WITHIN(1, a.y_mm, b.y_mm);
+}
+
+// Rotado 20°: la distancia SLANT (300) se corrige a perpendicular = 300*cos20 ≈ 282.
+// x = 282+95 = 377 (izq), y = 282+95 = 377 (atrás). El cos va a la DISTANCIA, no al x/y.
+void test_xy_heading_corrects_distances(void) {
+    KeeperWallDist d{300, NR, 300};
+    KeeperXY r = keeper_xy_from_walls_heading(d, cfg(), 2000, 3000);  // θ=20°, gate=30°
+    TEST_ASSERT_TRUE(r.x_valid);
+    TEST_ASSERT_INT16_WITHIN(4, 377, r.x_mm);   // 300*cos20+95 = 376.9
+    TEST_ASSERT_TRUE(r.y_valid);
+    TEST_ASSERT_INT16_WITHIN(4, 377, r.y_mm);
+}
+
+// cos es PAR: +20° y -20° dan la misma corrección (robusto al signo del heading).
+void test_xy_heading_sign_symmetric(void) {
+    KeeperWallDist d{300, NR, 300};
+    KeeperXY rp = keeper_xy_from_walls_heading(d, cfg(), +2000, 3000);
+    KeeperXY rn = keeper_xy_from_walls_heading(d, cfg(), -2000, 3000);
+    TEST_ASSERT_INT16_WITHIN(1, rp.x_mm, rn.x_mm);
+    TEST_ASSERT_INT16_WITHIN(1, rp.y_mm, rn.y_mm);
+}
+
+// Rotado más que el gate (40° > 30°) -> pose CONGELADA (x e y inválidas).
+void test_xy_heading_gate_freezes_when_too_rotated(void) {
+    KeeperWallDist d{300, NR, 300};
+    KeeperXY r = keeper_xy_from_walls_heading(d, cfg(), 4000, 3000);  // θ=40° > gate 30°
+    TEST_ASSERT_FALSE(r.x_valid);
+    TEST_ASSERT_FALSE(r.y_valid);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_reduce_left_touching);
@@ -146,5 +189,9 @@ int main(int, char**) {
     RUN_TEST(test_xy_centered_floor_is_ambiguous);
     RUN_TEST(test_xy_far_wall_ignored);
     RUN_TEST(test_xy_back_out_of_reach_y_invalid);
+    RUN_TEST(test_xy_heading_zero_is_noop);
+    RUN_TEST(test_xy_heading_corrects_distances);
+    RUN_TEST(test_xy_heading_sign_symmetric);
+    RUN_TEST(test_xy_heading_gate_freezes_when_too_rotated);
     return UNITY_END();
 }

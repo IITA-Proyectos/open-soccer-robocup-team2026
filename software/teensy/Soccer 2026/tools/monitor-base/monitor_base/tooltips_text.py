@@ -64,6 +64,11 @@ TOOLTIPS = {
                 "guardar. Útil para deshacer antes de Guardar EEPROM.",
     "CFG RESET": "Vuelve la config de sensores a fábrica (todo ON), solo en memoria. Si "
                  "después tocás Guardar EEPROM, perdés la config previa.",
+    "IMU ZERO": "Pone el rumbo (heading) en CERO: apuntá el robot al ARCO RIVAL y tocá "
+                "esto. Sin esto, el 0 queda donde estaba al encender (por eso a veces "
+                "marca un ángulo sin haberse movido). Necesario para que la pose XY ande.",
+    "IMU SAVE": "Guarda en EEPROM la calibración del IMU (el cero del heading) para que "
+                "sobreviva al apagado. Tocalo después de IMU ZERO si querés que persista.",
 
     # ── Config ToF (TOP) ────────────────────────────────────────────────────
     "tofset.pos": "Indica hacia dónde mira ese láser. No viaja al robot al instante: se "

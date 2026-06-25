@@ -92,7 +92,8 @@ class HealthPanel(Panel):
             om.pack()
             attach_tooltip(om, tip("TOF POS"))
         cfgrow = ttk.Frame(parent); cfgrow.pack(fill="x", pady=(4, 0))
-        for label, cmd in (("Guardar EEPROM", "CFG SAVE"), ("Recargar", "CFG LOAD"),
+        for label, cmd in (("⌖ IMU ZERO (al arco)", "IMU ZERO"), ("IMU SAVE", "IMU SAVE"),
+                           ("Guardar EEPROM", "CFG SAVE"), ("Recargar", "CFG LOAD"),
                            ("Reset defaults", "CFG RESET")):
             cb = ttk.Button(cfgrow, text=label, command=lambda c=cmd: self.ctx.send(c))
             cb.pack(side="left", padx=2)

@@ -26,6 +26,9 @@ s.reset_input_buffer()
 s.write(b"STREAM ON\n"); s.flush()
 
 acc = [[[] for _ in range(16)] for _ in range(4)]   # acc[sensor][zona] = muestras
+# Los DOS BNO por separado + el fusionado + el centinela (para ver cuál da el heading bueno):
+#   hdg = fusionado (i.heading_valid), left/right = cada BNO (i.left_ok/right_ok), sent = centinela.
+imu_acc = {"hdg": [], "left": [], "right": [], "sent": []}
 nframes = 0
 t0 = time.time(); last_ping = t0
 try:
@@ -42,6 +45,12 @@ try:
             fr = parse_line_top(line)
         except Exception:
             continue
+        im = getattr(fr, "imu", None)
+        if im is not None:
+            if getattr(im, "heading_valid", False): imu_acc["hdg"].append(float(im.heading_deg))
+            if getattr(im, "left_ok", False):       imu_acc["left"].append(float(im.left_deg))
+            if getattr(im, "right_ok", False):       imu_acc["right"].append(float(im.right_deg))
+            if getattr(im, "sentinel_ok", False):    imu_acc["sent"].append(float(im.sentinel_deg))
         if fr.tof and fr.tof.zones:
             nframes += 1
             for i, zs in enumerate(fr.tof.zones[:4]):
@@ -55,7 +64,16 @@ finally:
         pass
     s.close()
 
-print(f"{nframes} frames con zonas.\n")
+print(f"{nframes} frames con zonas.")
+NOM = {"hdg": "FUSIONADO", "left": "BNO-LEFT ", "right": "BNO-RIGHT", "sent": "CENTINELA"}
+for k in ("hdg", "left", "right", "sent"):
+    v = imu_acc[k]
+    if v:
+        m = statistics.mean(v); sd = statistics.pstdev(v) if len(v) > 1 else 0.0
+        print(f"  {NOM[k]}: {m:7.1f}° ± {sd:5.1f}  (n{len(v)}, min {min(v):.1f} max {max(v):.1f})")
+    else:
+        print(f"  {NOM[k]}: sin lecturas válidas")
+print()
 LAB = ["FRONT", "BACK", "RIGHT", "LEFT"]
 for i in range(4):
     print(f"=== ToF{i} {LAB[i]}  (zona CRUDA fila*4+col: media±std nMuestras) ===")

@@ -354,6 +354,19 @@ void setup() {
     // el "tof_init" ANTES (carga a 100 kHz) y DESPUÉS (carga a 400 kHz) del cambio.
     const uint32_t t_boot0 = millis();
     sensors_tof_predim_lp();  // (1) dormir ToF (LP low) -> bus limpio para el BNO
+    // BNO SETTLE (2026-06-25, pedido Virginia): el BNO055 sella MAL el heading si el robot se
+    // MUEVE durante el arranque (bias del giroscopio + captura del heading inicial). Esta espera
+    // da tiempo a soltar el robot y dejarlo QUIETO antes de iniciar/calibrar el BNO. Va DESPUES de
+    // predim_lp (ToF dormidos -> bus quieto) y ANTES de t_imu0 para no inflar el boot timing de
+    // imu_init. GATEADO: competencia (sin el flag) queda BYTE-IDENTICA; el env de banco lo activa
+    // con -DTOP_BNO_SETTLE_MS=3000. (Si se valida en banco, conviene activarlo tambien en competencia:
+    // un heading mal sellado al arranque rota TODO el mapa de pose — es barato como seguro.)
+#ifdef TOP_BNO_SETTLE_MS
+    Serial.print("[boot] BNO settle ");
+    Serial.print(TOP_BNO_SETTLE_MS);
+    Serial.println(" ms -> MANTENE EL ROBOT QUIETO (calibrando heading)...");
+    delay(TOP_BNO_SETTLE_MS);
+#endif
     const uint32_t t_imu0 = millis();
     sensors_imu_init();       // (2) BNO(s) @ 0x28 (Wire2 + Wire) con los ToF dormidos
     const uint32_t t_imu_ms = millis() - t_imu0;

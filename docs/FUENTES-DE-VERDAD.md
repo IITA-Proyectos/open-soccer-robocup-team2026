@@ -21,7 +21,7 @@ tipo: indice
 
 | Tema | Doc/módulo canónico (vigente) | Superados / no usar como guía |
 |---|---|---|
-| **¿Qué env flasheo hoy? (vigentes vs lista negra)** | **`docs/pruebas-banco/QUE-FLASHEO-HOY.md`** (tabla robot×placa + lista negra de envs trampa + teclas; se actualiza en el mismo commit que cualquier cambio de env recomendado) | Los banners sueltos de ESTADO-ACTUAL y el header de `platformio.ini` (congelado en mayo) — siguen siendo historia útil pero la tabla manda |
+| **¿Qué env flasheo hoy? (vigentes vs lista negra)** | **`docs/pruebas-banco/QUE-FLASHEO-HOY.md`** (tabla robot×placa + lista negra de envs trampa + teclas; se actualiza en el mismo commit que cualquier cambio de env recomendado) · companion día-de-cancha que la replica y le suma app/IMU ZERO/gotchas + marca conflictos: `docs/COMANDOS-COMPETENCIA.md` | Los banners sueltos de ESTADO-ACTUAL y el header de `platformio.ini` (congelado en mayo) — siguen siendo historia útil pero la tabla manda |
 | **Backlog priorizado Incheon (temas pendientes consolidados)** | **`docs/BACKLOG-INCHEON.md`** (auditoría 2026-06-11: P0/P1/P2 deduplicados y verificados contra el código; vivo) | Listas parciales en MEJORAS-PENDIENTES / MEJORAS-ANALISIS-UNO-POR-UNO / team-tasks README (siguen siendo las fuentes de detalle por ítem; el backlog las consolida) |
 | **Arquitectura general 3 placas** | `docs/ARQUITECTURA-3-PLACAS-2026.md` (la sección "Mapa de flujo de datos" tiene WorldSnapshot v1 24 B — ver tema WorldSnapshot abajo) | — |
 | **Mapa de datos end-to-end (qué corre + qué mensaje va a quién/cómo)** | **`docs/MAPA-DE-DATOS.md`** (índice "start-here": cada mensaje con tipo/tamaño/transporte/pin/freq + quién lo llena/consume + link al contrato canónico) | — |

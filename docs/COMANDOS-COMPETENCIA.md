@@ -59,14 +59,22 @@ Cargar `hardware/electronics/camaras-openmv/main.py` desde OpenMV IDE. (NO los `
 
 ---
 
-## 2. APP DE MONITOREO  (desde `…\Soccer 2026\tools\monitor-base`)
+## 2. APP DE MONITOREO  (comprobar sensores)
 
-| Qué | Comando |
-|---|---|
-| **Monitor unificado** (auto-detecta placa) | `python -m monitor_base --monitor` |
-| **Cancha / pose XY** (robot x/y/heading + pelota) | `python -m monitor_base --field` |
-| **Salud por sensor** (+ botón IMU ZERO, §5) | `python -m monitor_base --top-salud` |
-| Listar puertos / ver qué Teensy hay | `python -m monitor_base --list-ports` |
+**Paso 1 — entrá a la carpeta** (copiá y pegá tal cual):
+```
+cd "C:\Users\violl\iitasoccer\soccer-main\software\teensy\Soccer 2026\tools\monitor-base"
+```
+**Paso 2 — abrí la app** (y andá al panel **"Salud"** para ver los sensores):
+```
+python -m monitor_base --monitor                 # unificado (auto-detecta la placa)
+python -m monitor_base --monitor --port COM15     # si no auto-detecta, fijá el puerto
+python -m monitor_base --field                   # cancha / pose XY
+python -m monitor_base --top-salud                # salud + botón IMU ZERO
+python -m monitor_base --list-ports               # ver qué COM es la Teensy
+```
+> El COM puede cambiar al cambiar de cable/puerto (fue COM15 / COM17). Si dice **"esperando datos"**, casi
+> siempre es **puerto equivocado** → corré `--list-ports` y usá `--port` con el COM que diga "probable Teensy".
 
 ---
 

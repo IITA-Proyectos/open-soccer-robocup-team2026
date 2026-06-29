@@ -48,6 +48,13 @@ static bool s_was_running = false;
 // meterse al área. Se (re)arma al detectar línea; persiste AMIX_T_BUSCAR_AVANCE para un avance "más grande".
 static unsigned long s_buscar_avance_until_ms = 0;
 
+#ifdef ARQMIX_KICK_SHORT_ON_LINE
+// PATEO CORTO SOBRE LA LÍNEA (gateado, pedido Virginia 2026-06-29, como el delantero centralmix): si el
+// despeje ARRANCA con el arquero SOBRE la línea, el golpe es CORTO (menos tiempo → menos envión → no se sale
+// de la cancha) en vez del completo. Se setea al ENTRAR a PATEANDO_adelante (en ALINEAR), se usa en el golpe.
+static bool s_kick_corto = false;
+#endif
+
 // ---- Helpers de lectura (reemplazan las globales seriales/analógicas 2025) ----
 
 // Línea presente (== OR de los 3 sensores 2025; el DOWN ya agrega los 32).
@@ -263,6 +270,9 @@ void amix_fsm_tick() {
                 (millis() - millis_inicio_estado >= AMIX_T_ALINEAR_OPP)) {
                 parar();                             // frena el giro (y resetea la rampa del golpe)
                 millis_inicio_estado = millis();
+#ifdef ARQMIX_KICK_SHORT_ON_LINE
+                s_kick_corto = linea();              // ¿arranca el golpe SOBRE la línea? → golpe CORTO
+#endif
                 estado = Estado::PATEANDO_adelante;
             } else {
                 // Gira hacia el arco: ang>0 (arco a la DERECHA) → girar a la derecha para traerlo al
@@ -279,6 +289,20 @@ void amix_fsm_tick() {
             // 2026-06-22). Pero parar() NO frena el impulso (la inercia del golpe lo sacaba igual) → va a
             // frenar_patada: contra-empuje FUERTE atrás para matar el impulso ANTES de la pausa post-golpe.
             // Patrulla: golpe completo, directo a la pausa (sin cambios).
+#ifdef ARQMIX_KICK_SHORT_ON_LINE
+            // golpe CORTO si arrancó SOBRE la línea (s_kick_corto): menos tiempo → menos envión → no salirse.
+            // Completo si había lugar. La línea + frenar_patada siguen igual (red de seguridad).
+            if (linea()) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::frenar_patada;
+            } else if (millis() - millis_inicio_estado >=
+                       (s_kick_corto ? AMIX_T_PAT_ADELANTE_CORTO : AMIX_T_PAT_ADELANTE)) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::PATEANDO_pausa;
+            }
+#else
             if (linea()) {
                 parar();                             // cierra la rampa del golpe
                 millis_inicio_estado = millis();
@@ -288,6 +312,7 @@ void amix_fsm_tick() {
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_pausa;
             }
+#endif
             break;
 
         // ----------------------------------------------------

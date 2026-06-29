@@ -259,7 +259,13 @@ constexpr int AMIX_INICIO_RETRO_SIGN = -1;  // invierte la dirección del retroc
 constexpr int AMIX_INICIO_RETRO_SIGN = +1;
 #endif
 constexpr unsigned long AMIX_T_PAT_PAUSA_INI = 200;   // PATEANDO_pausa_inicial_arquero
-constexpr unsigned long AMIX_T_PAT_ADELANTE  = 450;   // PATEANDO_adelante_arquero
+constexpr unsigned long AMIX_T_PAT_ADELANTE  = 450;   // PATEANDO_adelante_arquero (golpe COMPLETO)
+#ifdef ARQMIX_KICK_SHORT_ON_LINE
+// Golpe CORTO cuando el despeje arranca SOBRE la línea (gateado, pedido Virginia 2026-06-29): menos tiempo de
+// empuje → menos envión hacia adelante → no se sale de la cancha. ~250 ms (vs 450). Subir si no despeja la
+// pelota lo suficiente; bajar si todavía se sale. <TITRAR EN BANCO>
+constexpr unsigned long AMIX_T_PAT_ADELANTE_CORTO = 250;
+#endif
 constexpr unsigned long AMIX_T_PAT_PAUSA     = 1000;  // PATEANDO_pausa_arquero
 // (PATEANDO_atras_arquero NO tiene timeout en 2025: retrocede hasta ver blanco. Acá se
 //  agrega un timeout de SEGURIDAD para no colgarse — ver amix_fsm. <MEJORA 2026>)

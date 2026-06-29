@@ -11,6 +11,12 @@ fidelidad: "Verificado contra el código vigente al 2026-06-21 (incluye homing q
 
 # El ARQUERO MIX, explicado para poder modificarlo
 
+> ⚠️ **2026-06-29 — se ELIMINÓ el modo PATRULLA.** El arquero quedó **SÓLO QUIETO** (el más confiable,
+> decisión del equipo). Las secciones de **patrulla** de abajo (`moverce_derecha`/`moverce_izquierda`,
+> `salir_linea_der`/`izq`, `avanzar_despues_de_patear`, rebote por arco propio, profundidad por línea, el
+> flag `AMIX_QUIETO`) describen código que **YA NO EXISTE** — quedan como historia del port 2025. El robot
+> hoy hace: lateral_izq → homing → **quieto** (sigue la pelota de costado / despeja) → post-patada → acomodar → quieto.
+
 > **Para qué sirve este documento.** Es la **base** para tocar la máquina de estados del arquero sin
 > romperla: explica, desde lo conceptual hasta el código, qué partes tiene el programa, **de dónde salen
 > los datos** (pelota, arcos, línea del piso) y **qué hace cada estado**. No es el log de banco (eso está en

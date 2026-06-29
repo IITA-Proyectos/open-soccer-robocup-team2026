@@ -41,8 +41,9 @@ pio run -e down_robot2 -t upload                         # placa DOWN
 > **QUIETO buscando la pelota**. Si la pelota se va al costado la **sigue de costado** (consciente de la línea, no
 > se sale); si está cerca **despeja**; después de patear se **orienta de frente al arco contrario** (giroscopio) y
 > **retrocede hasta la línea**.
-> **TOP = `top_robot2_pri`** (NUNCA `top_robot1*`, están en LISTA NEGRA). Fallbacks CENTRAL: `central_robot2_arquero`
-> o `central_robot2_arqueromix` (patrulla). DOWN alternativo: `down_robot2_rt`.
+> **TOP = `top_robot2_pri`** (NUNCA `top_robot1*`, están en LISTA NEGRA). Fallback CENTRAL real: `central_robot2_arquero`
+> (FSM v3.3 vieja, intacta). Nota: desde 2026-06-29 el arquero es **SOLO QUIETO** (se sacó la patrulla); `central_robot2_arqueromix`
+> ahora es **igual** al `_quieto`. DOWN alternativo: `down_robot2_rt`.
 
 ### ⚽ 2) BAJAR el DELANTERO (las 3 placas)
 ```

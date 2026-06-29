@@ -1,4 +1,8 @@
-// amix_fsm.h — Máquina de estados del ARQUERO 2025 portada a arqueromix.
+// amix_fsm.h — Máquina de estados del ARQUERO (MODO QUIETO) portada a arqueromix.
+//
+// 2026-06-29 (decisión equipo): se ELIMINÓ el modo PATRULLA — el arquero es SÓLO QUIETO.
+// El enum de abajo ya NO tiene moverce_*/salir_linea_*/avanzar_despues_de_patear (eran de
+// patrulla). El texto histórico debajo puede mencionarlos como referencia del port 2025.
 //
 // Port FIEL del ciclo ARQUERO del firmware unificado 2025 (definitivo-arquero_6-9-2026,
 // L1016-1205). Son **15 estados** (el enum de abajo; +`esperar_quieto`, +`inicio_lateral_izq`, +`orientar_frente` del modo quieto): el bloque DELANTERO del 2025 NO se porta acá
@@ -30,22 +34,16 @@ enum class Estado : uint8_t {
     inicio_lateral_izq,          // MODO QUIETO: estado INICIAL — moverse un poco a la IZQUIERDA, luego → homing.
     inicio_retroceder,           // estado INICIAL (patrulla) / 2º en quieto: ir hacia atrás hasta detectar la línea del área
     inicio_avanzar,              // tras ver la línea: avanzar un poco SIN leer los sensores
-    esperar_quieto,              // MODO QUIETO (-DARQMIX_QUIETO): parado esperando la pelota. SOLO parar /
-                                 // seguir pelota lateral / patear. NO usa moverce_*/rebote/profundidad.
-    moverce_derecha,             // patrulla strafe derecha (adproporcional)
-    moverce_izquierda,           // patrulla strafe izquierda (aiproporcional)
-    salir_linea_der,             // tocó línea IZQ → sale a la DERECHA a ciegas (sin sensores) y patrulla der
-    salir_linea_izq,             // tocó línea DER → sale a la IZQUIERDA a ciegas (sin sensores) y patrulla izq
+    esperar_quieto,              // parado esperando la pelota. SOLO parar / seguir pelota lateral / patear.
     PATEANDO_pausa_inicial,      // despeje: pausa 200 ms (deja pasar la inercia)
     ALINEAR_arco_opp,            // despeje: GIRA para apuntar el frente al ARCO RIVAL (goal_opp) antes de patear
     PATEANDO_adelante,           // despeje: golpe de avance 450 ms (avanzar_patear) hacia donde quedó apuntando
     frenar_patada,               // MODO QUIETO: si detecta LÍNEA pateando → contra-empuje fuerte atrás (mata el impulso, no salirse) → pausa
     PATEANDO_pausa,              // despeje: pausa 1000 ms
     PATEANDO_atras,              // despeje: retroceso recto hasta ver línea (+ safety)
-    avanzar_despues_de_patear,   // reposicionamiento 1000 ms → vuelve a patrullar (o a orientar_frente en quieto)
-    orientar_frente,             // MODO QUIETO: tras patear, gira por GIROSCOPIO (bang-bang, heading→0) a MIRAR al arco rival → atrás → quieto
-    acomodar_linea,              // MODO QUIETO: ANTES de quedar quieto — si toca línea (lateral/atrás), despegarse al lado opuesto
-    acomodar_orientar,           // MODO QUIETO: ANTES de quedar quieto — re-orientar al frente con el BNO (heading→0) → quieto mirando al frente
+    orientar_frente,             // tras patear, gira (cámara/giroscopio, heading→0) a MIRAR al arco rival → atrás
+    acomodar_linea,              // ANTES de quedar quieto — si toca línea (lateral/atrás), despegarse al lado opuesto
+    acomodar_orientar,           // ANTES de quedar quieto — re-orientar al frente (heading→0) → quieto mirando al frente
 };
 
 void amix_fsm_init();

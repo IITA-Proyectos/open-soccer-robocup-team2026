@@ -76,9 +76,6 @@ constexpr int AMIX_AI_REAR_ENEG      = 75;   // aiproporcional M3 — REVERTIDO 
 // 0.85 se traba/espasmódico, SUBIR a 0.90 (no bajar).
 constexpr float AMIX_PD_BASE = 0.85f;
 constexpr float AMIX_PD_BALL = 1.5f;
-// pd FUERTE para la SALIDA de línea a ciegas (banco Virginia 2026-06-21: necesitaba más impulso
-// para despegarse bien de la línea lateral). Subir si todavía no se despega; bajar si se pasa.
-constexpr float AMIX_PD_SALIR = 1.9f;
 
 // SESGO HACIA ADELANTE de la patrulla (pedido Virginia 2026-06-21: el arquero deriva hacia ATRÁS y se
 // mete al área/corner; quiere "tendencia a avanzar en la cancha"). Es un micro-empuje RECTO al frente
@@ -261,16 +258,9 @@ constexpr int AMIX_INICIO_RETRO_SIGN = -1;  // invierte la dirección del retroc
 #else
 constexpr int AMIX_INICIO_RETRO_SIGN = +1;
 #endif
-// Salida de línea LATERAL (banco Virginia 2026-06-21): al tocar la línea de un costado, hace un
-// movimiento A CIEGAS (sin leer sensores) hacia el lado opuesto —igual idea que el avance del
-// homing—, y después patrulla para el otro lado SIN volver enseguida (commit). Evita que se
-// "enganche" oscilando en la línea.
-constexpr unsigned long AMIX_T_SALIR_LINEA     = 350;  // REVERTIDO a 350 (volvió al estado que andaba mejor; era 380). Si se PEGA al rebotar, subir a 400; si SOBREPASA, bajar.
-constexpr unsigned long AMIX_T_PATRULLA_COMMIT = 1000; // tras salir, ignora el LADO de la pelota este tiempo (no vuelve enseguida hacia la línea)
 constexpr unsigned long AMIX_T_PAT_PAUSA_INI = 200;   // PATEANDO_pausa_inicial_arquero
 constexpr unsigned long AMIX_T_PAT_ADELANTE  = 450;   // PATEANDO_adelante_arquero
 constexpr unsigned long AMIX_T_PAT_PAUSA     = 1000;  // PATEANDO_pausa_arquero
-constexpr unsigned long AMIX_T_AVANCE_POST   = 1000;  // avanzar_despues_de_patear
 // (PATEANDO_atras_arquero NO tiene timeout en 2025: retrocede hasta ver blanco. Acá se
 //  agrega un timeout de SEGURIDAD para no colgarse — ver amix_fsm. <MEJORA 2026>)
 constexpr unsigned long AMIX_T_ATRAS_SAFETY  = 4000;  // tope de seguridad del retroceso (NO estaba en 2025)
@@ -283,70 +273,6 @@ constexpr unsigned long AMIX_T_ATRAS_SAFETY  = 4000;  // tope de seguridad del r
 // ============================================================
 constexpr uint8_t AMIX_LINE_DEPTH_TRIGGER = 1;  // ≥1 sensor en blanco = línea presente
 
-// ============================================================
-// MODO QUIETO (-DARQMIX_QUIETO) — versión de prueba, pedido Virginia 2026-06-21.
-// ----------------------------------------------------------------------------------
-// El arquero hace el HOMING igual, pero entre despejes NO patrulla de lado a lado: queda QUIETO
-// esperando la pelota. Si la ve LEJOS y DESCENTRADA, se mueve lateral para enfrentarla (mismo
-// seguimiento por ÁNGULO que la patrulla). Si está ALINEADA y lejos → quieto. Si está CERCA → patea
-// (igual que hoy). El rebote por arco/línea y la profundidad por línea SIGUEN activos (seguridades:
-// si derivó, vuelve a su lugar). Default OFF → patrulla normal byte-idéntica.
-#ifdef ARQMIX_QUIETO
-constexpr bool AMIX_QUIETO = true;
-#else
-constexpr bool AMIX_QUIETO = false;
-#endif
-
-// ============================================================
-// PATRULLA POR ARCO PROPIO (cámara trasera) — pedido Virginia 2026-06-21.
-// ----------------------------------------------------------------------------------
-// La patrulla deja de rebotar contra la LÍNEA y rebota cuando el ARCO PROPIO (que la cámara trasera
-// ve por detrás, vía snapshot del TOP) llega a cierto ÁNGULO = el arquero llegó al BORDE de su arco
-// → se va al otro lado (misma lógica de rebote + commit que la línea).
-//
-// GEOMETRÍA: el arco propio está DETRÁS del arquero (mira al campo) → goal_own_angle ≈ ±180° cuando
-// está CENTRADO en su arco. El "desvío" se mide respecto de 180°: rear_dev = wrap180(goal_own_angle−180):
-// ≈0 centrado, crece hacia un lado al correrse. Borde = |rear_dev| ≥ AMIX_TOL_ARCO_OWN_DEG.
-//
-// ⚠️ DECISIÓN VIRGINIA: REEMPLAZA la línea en la patrulla (la línea sigue SOLO para el homing y el
-// retroceso del despeje). RIESGO ACEPTADO: si la cámara NO ve el arco propio (goal_own_visible=0) no
-// hay rebote → el arquero podría irse del arco. goal_own NO está validado en banco + depende de la
-// calibración LAB de las cámaras. Fallback: -DARQMIX_PATRULLA_LINEA vuelve al rebote por LÍNEA.
-// ============================================================
-#ifdef ARQMIX_PATRULLA_LINEA
-constexpr bool AMIX_PATRULLA_POR_ARCO = false;  // fallback: patrulla rebota por LÍNEA (viejo)
-#else
-constexpr bool AMIX_PATRULLA_POR_ARCO = true;   // DEFAULT: patrulla rebota por ÁNGULO del arco propio
-#endif
-// Umbral de "borde del arco": cuánto desvío del arco propio respecto de "directamente atrás" (180°)
-// cuenta como borde. Más CHICO = patrulla más ANGOSTA (rebota antes, más centrada al arco); más GRANDE
-// = más ancha. EL knob principal del recorrido lateral → ajustar en banco mirando dónde rebota.
-// BAJADO 30→20→15 (banco Virginia 2026-06-21): patrulla más ANGOSTA, más centrada frente al arco. <RE-TUNE>
-constexpr float AMIX_TOL_ARCO_OWN_DEG = 15.0f;
-// SENTIDO del desvío (qué lado del arco es cuál). Si el arquero rebota en el borde EQUIVOCADO (o no
-// rebota donde debe), invertir con -DARQMIX_FLIP_ARCO_OWN.
-#ifdef ARQMIX_FLIP_ARCO_OWN
-constexpr float AMIX_ARCO_OWN_SIGN = -1.0f;
-#else
-constexpr float AMIX_ARCO_OWN_SIGN = +1.0f;
-#endif
-
-// ============================================================
-// PROFUNDIDAD por LÍNEA — que NO se meta al área chica (banco Virginia 2026-06-21).
-// ----------------------------------------------------------------------------------
-// El arquero deriva hacia ATRÁS (hacia su arco) durante la patrulla y se mete al área. La CÁMARA NO
-// sirve para medir distancia/profundidad (verificado: pierde el arco JUSTO cuando está cerca). La
-// señal CONFIABLE de profundidad es la LÍNEA del área (DOWN). Regla: si el arquero VE el arco (la
-// patrulla ya cubre lo lateral por el ÁNGULO del arco, NO necesita la línea para rebotar de lado) Y
-// detecta la línea → derivó hacia atrás → AVANZA al frente para salir del área (reúsa el estado
-// inicio_avanzar, que avanza recto al frente hasta despegar de la línea). Cuando NO ve el arco, la
-// línea se usa para el rebote LATERAL (fallback) y este control de profundidad NO actúa.
-// -DARQMIX_NO_PROFUNDIDAD lo apaga.
-#ifdef ARQMIX_NO_PROFUNDIDAD
-constexpr bool AMIX_PROFUNDIDAD_POR_LINEA = false;
-#else
-constexpr bool AMIX_PROFUNDIDAD_POR_LINEA = true;
-#endif
 
 // ============================================================
 // Comunicación — enlaces TOP (Serial7) y DOWN (Serial1), 230400 (= comm_top/comm_down).

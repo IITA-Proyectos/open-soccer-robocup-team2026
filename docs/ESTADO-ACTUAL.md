@@ -25,6 +25,12 @@ tipo: indice-operacional
 > selección 2-por-columna + pose en TOP (no rompe el contrato `z`). Journal:
 > `journal/2026-06-23-piloto-tof-8x8-visualizador.md`.
 
+> **🧹 2026-06-29 — el arqueromix quedó SOLO QUIETO (se eliminó la patrulla, decisión del equipo "el quieto es
+> el más confiable"):** se borraron los 5 estados de patrulla + helpers + el flag `AMIX_QUIETO` (hardcodeado a
+> quieto). Camino del quieto **byte-idéntico en lógica** (revisión adversarial SEGURO); compila; el env base
+> `central_robot2_arqueromix` ahora == `_quieto`. **Binario cambió → smoke-test en banco pendiente.** Journal
+> `journal/2026-06-29-arqueromix-solo-quieto-limpieza-patrulla.md`.
+>
 > **🥅 ARQUEROMIX QUIETO — CANDIDATO A COMPETENCIA (2026-06-22, "anda bastante bien" — Virginia):**
 > Tag **`arquero-competencia-candidato-2026-06-22`**. Env **`central_robot2_arqueromix_quieto`**. El arquero
 > en modo quieto: homing al arco → espera la pelota → si descentrada la sigue de costado (y si toca línea

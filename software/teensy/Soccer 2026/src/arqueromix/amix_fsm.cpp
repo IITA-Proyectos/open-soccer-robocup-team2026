@@ -1,4 +1,10 @@
-// amix_fsm.cpp — Máquina de estados del ARQUERO 2025 (port fiel) para arqueromix.
+// amix_fsm.cpp — Máquina de estados del ARQUERO (MODO QUIETO) para arqueromix.
+//
+// 2026-06-29 (decisión equipo): se ELIMINÓ el modo PATRULLA. El arquero es SÓLO QUIETO —
+// el programa más confiable. Ya NO hay patrulla de lado a lado / rebote por arco/línea /
+// profundidad: esos estados (moverce_*, salir_linea_*, avanzar_despues_de_patear) y el flag
+// AMIX_QUIETO se borraron. Quedó un solo camino: lateral_izq → homing → quieto (sigue la
+// pelota de costado / despeja) → post-patada → acomodar → quieto.
 //
 // PORT del ciclo ARQUERO de definitivo-arquero_6-9-2026 (FIEL §2). Sólo cambian las
 // fuentes (g_aio en vez de sensores locales), las salidas (primitivas amix_motors) y
@@ -29,21 +35,13 @@ namespace iitasoccer {
 namespace arqmix {
 
 // Estado + timers (eran globales sueltas en el 2025).
-static Estado estado = Estado::inicio_retroceder;
+static Estado estado = Estado::inicio_lateral_izq;
 static unsigned long millis_inicio_estado = 0;
-// `pd` (factor proporcional): el 2025 lo seteaba en moverce_* y lo usaba adproporcional/
-// aiproporcional en el MISMO tick (con valor del tick anterior). Se replica el lag.
-static float pd = AMIX_PD_BASE;
 
 // Flanco del árbitro: detecta STOP→GO para RE-HACER el homing del área chica en CADA GO
 // (banco Virginia 2026-06-21: antes el homing corría una sola vez —el primer GO— porque el FSM
 // no se reiniciaba entre STOP y GO sin apagar la batería).
 static bool s_was_running = false;
-
-// Ventana de "commit" tras salir de una línea lateral: hasta este millis, la patrulla IGNORA el
-// lado de la pelota (no flipea de dirección) → "no vuelve enseguida" hacia la línea que acaba de
-// dejar (banco Virginia 2026-06-21). 0 = sin commit.
-static unsigned long s_commit_until_ms = 0;
 
 // Ventana de AVANCE al buscar la pelota y tocar línea lateral (modo quieto, banco Virginia 2026-06-22):
 // hasta este millis el arquero AVANZA al frente (en vez de strafe lateral) para despegarse del borde sin
@@ -96,29 +94,6 @@ static inline bool alineado_al_arco_opp() {
            (fabsf(g_aio.goal_opp_angle) <= AMIX_TOL_ARCO_OPP_DEG);
 }
 
-// wrap a [-180,180] (mismo que amix_comm; local para los helpers del arco propio).
-static inline float wrap180_local(float deg) {
-    deg = fmodf(deg, 360.0f);
-    if (deg > 180.0f)  deg -= 360.0f;
-    if (deg < -180.0f) deg += 360.0f;
-    return deg;
-}
-// PATRULLA POR ARCO PROPIO (pedido Virginia 2026-06-21). El arco propio está DETRÁS del arquero →
-// goal_own_angle ≈ ±180° cuando está CENTRADO en su arco. rear_goal_dev = desvío respecto de 180°
-// (≈0 centrado, crece hacia un lado al correrse), con SIGNO flippable. Sólo tiene sentido si
-// goal_own_visible. <RE-VERIFY SIGN / RE-TUNE umbral en banco>
-static inline float rear_goal_dev() {
-    return wrap180_local(g_aio.goal_own_angle - 180.0f) * AMIX_ARCO_OWN_SIGN;
-}
-// ¿Llegó al borde "derecho" del arco? (sólo con el arco a la vista). Borde = desvío ≥ umbral.
-static inline bool borde_arco_der() {
-    return g_aio.goal_own_visible && (rear_goal_dev() >= AMIX_TOL_ARCO_OWN_DEG);
-}
-// ¿Llegó al borde "izquierdo" del arco?
-static inline bool borde_arco_izq() {
-    return g_aio.goal_own_visible && (rear_goal_dev() <= -AMIX_TOL_ARCO_OWN_DEG);
-}
-
 // Bang-bang de orientación: gira DESPACIO (al piso AMIX_GIRO_FRENTE_PWM) hasta quedar DE FRENTE al ARCO
 // CONTRARIO (goal_opp_angle → 0). La CÁMARA (goal_opp) es la referencia ABSOLUTA al arco — el giroscopio
 // (heading_error) DERIVA su cero a lo largo de la secuencia y dejaba al arquero mirando a un lado que NO era
@@ -139,10 +114,9 @@ static bool orientar_de_frente_tick() {
 }
 
 void amix_fsm_init() {
-    // QUIETO: arranca con un movimiento lateral a la izquierda; default: directo al homing.
-    estado = AMIX_QUIETO ? Estado::inicio_lateral_izq : Estado::inicio_retroceder;
+    // Arranca con un movimiento lateral a la izquierda y después el homing al área chica.
+    estado = Estado::inicio_lateral_izq;
     millis_inicio_estado = millis();
-    pd = AMIX_PD_BASE;
 }
 
 void amix_fsm_tick() {
@@ -152,13 +126,11 @@ void amix_fsm_tick() {
         s_was_running = false;   // quedó parado → el próximo GO re-arranca el homing
         return;
     }
-    // Flanco STOP→GO (y el primer GO): reiniciar el FSM SIEMPRE. QUIETO: arranca con el lateral izq.
+    // Flanco STOP→GO (y el primer GO): reiniciar el FSM SIEMPRE (arranca con el lateral izq).
     if (!s_was_running) {
         s_was_running = true;
-        estado = AMIX_QUIETO ? Estado::inicio_lateral_izq : Estado::inicio_retroceder;
+        estado = Estado::inicio_lateral_izq;
         millis_inicio_estado = millis();
-        pd = AMIX_PD_BASE;
-        s_commit_until_ms = 0;
         s_buscar_avance_until_ms = 0;
     }
 
@@ -203,8 +175,8 @@ void amix_fsm_tick() {
                 const bool safety            = dt >= AMIX_T_INICIO_AVANCE_SAFETY;
                 if ((impulso_minimo_ok && ya_salio_de_linea) || safety) {
                     millis_inicio_estado = millis();
-                    // QUIETO: ANTES de quedar quieto se ACOMODA (despega línea + orienta al frente). Default: patrulla.
-                    estado = AMIX_QUIETO ? Estado::acomodar_linea : Estado::moverce_derecha;
+                    // ANTES de quedar quieto se ACOMODA (despega de la línea + se orienta de frente).
+                    estado = Estado::acomodar_linea;
                 }
             }
             break;
@@ -257,122 +229,6 @@ void amix_fsm_tick() {
             }
             break;
 
-        // ----------------------------------------------------
-        case Estado::moverce_derecha:               // L1030-1076 (FIX cámara por ÁNGULO 2026-06-21)
-            adproporcional(pd, error);              // strafe derecha + corrección rumbo
-            if (haypelota) {
-                if (ball_para_despejar()) {         // cerca + al frente → DESPEJA
-                    parar();
-                    millis_inicio_estado = millis();
-                    estado = Estado::PATEANDO_pausa_inicial;
-                } else if (millis() < s_commit_until_ms) {
-                    pd = AMIX_PD_BASE;               // recién salió de una línea: seguir patrullando ESTE lado (no volver)
-                } else if (!ball_alineada()) {      // off-center → SIGUE la pelota (por ángulo)
-                    pd = AMIX_PD_BALL;              // 1.5
-                    estado = ball_a_la_derecha() ? Estado::moverce_derecha
-                                                  : Estado::moverce_izquierda;
-                } else {
-                    parar();                         // alineada y lejos → mantener posición (banda angosta)
-                }
-            } else {
-                pd = AMIX_PD_BASE;                   // sin pelota: patrulla base
-            }
-            // --- BORDE de la patrulla: por ARCO PROPIO (default Virginia) o por LÍNEA (fallback) ---
-            if (AMIX_PATRULLA_POR_ARCO) {
-                // PROFUNDIDAD (no meterse al área): si VE el arco (lo LATERAL lo cubre el ángulo, NO la
-                // línea) Y detecta la línea del fondo → derivó hacia ATRÁS → AVANZA al frente para salir
-                // del área. La línea es la señal CONFIABLE de profundidad (la cámara no sirve para distancia).
-                if (AMIX_PROFUNDIDAD_POR_LINEA && g_aio.goal_own_visible && linea()) {
-                    parar();
-                    millis_inicio_estado = millis();
-                    estado = Estado::inicio_avanzar;    // avanza recto al frente HASTA despegar → vuelve a patrullar
-                    break;
-                }
-                // BORDE LATERAL: por ARCO si la cámara lo VE (rebota al llegar al borde del arco); por
-                // LÍNEA si NO lo ve (fallback → siempre patrulla). Gateado por commit. Borde der → rebota IZQ.
-                const bool en_borde = g_aio.goal_own_visible ? borde_arco_der() : linea();
-                if (millis() >= s_commit_until_ms && en_borde) {
-                    parar();
-                    millis_inicio_estado = millis();
-                    estado = Estado::salir_linea_izq;   // sale a la IZQ → moverce_izquierda
-                }
-            } else if (linea()) {                       // FALLBACK TOTAL (-DARQMIX_PATRULLA_LINEA): solo LÍNEA
-                parar();
-                millis_inicio_estado = millis();
-                // En COMMIT (recién salió de la línea IZQ): si vuelve a ver línea es la MISMA, NO
-                // cleared → seguir saliendo a la DERECHA (no meterse de vuelta). Normal: rebote a la IZQ.
-                estado = (millis() < s_commit_until_ms) ? Estado::salir_linea_der
-                                                        : Estado::salir_linea_izq;
-            }
-            break;
-
-        // ----------------------------------------------------
-        case Estado::moverce_izquierda:             // L1078-1124 (espejo, FIX cámara por ÁNGULO)
-            aiproporcional(pd, error);
-            if (haypelota) {
-                if (ball_para_despejar()) {
-                    parar();
-                    millis_inicio_estado = millis();
-                    estado = Estado::PATEANDO_pausa_inicial;
-                } else if (millis() < s_commit_until_ms) {
-                    pd = AMIX_PD_BASE;               // recién salió de una línea: seguir patrullando ESTE lado (no volver)
-                } else if (!ball_alineada()) {
-                    pd = AMIX_PD_BALL;
-                    estado = ball_a_la_derecha() ? Estado::moverce_derecha
-                                                  : Estado::moverce_izquierda;
-                } else {
-                    parar();
-                }
-            } else {
-                pd = AMIX_PD_BASE;
-            }
-            // --- BORDE de la patrulla: por ARCO PROPIO (default Virginia) o por LÍNEA (fallback) ---
-            if (AMIX_PATRULLA_POR_ARCO) {
-                // PROFUNDIDAD (espejo): VE el arco Y detecta la línea del fondo → derivó atrás → AVANZA
-                // al frente para salir del área (la línea es la señal confiable de profundidad).
-                if (AMIX_PROFUNDIDAD_POR_LINEA && g_aio.goal_own_visible && linea()) {
-                    parar();
-                    millis_inicio_estado = millis();
-                    estado = Estado::inicio_avanzar;    // avanza recto al frente HASTA despegar → vuelve a patrullar
-                    break;
-                }
-                // BORDE LATERAL: por ARCO si lo VE; por LÍNEA si NO (fallback). Borde izq → rebota DER.
-                const bool en_borde = g_aio.goal_own_visible ? borde_arco_izq() : linea();
-                if (millis() >= s_commit_until_ms && en_borde) {
-                    parar();
-                    millis_inicio_estado = millis();
-                    estado = Estado::salir_linea_der;   // sale a la DER → moverce_derecha
-                }
-            } else if (linea()) {                       // FALLBACK TOTAL (-DARQMIX_PATRULLA_LINEA): solo LÍNEA
-                parar();
-                millis_inicio_estado = millis();
-                // En COMMIT (recién salió de la línea DER): si vuelve a ver línea es la MISMA →
-                // seguir saliendo a la IZQUIERDA (no meterse de vuelta). Normal: rebote a la DER.
-                estado = (millis() < s_commit_until_ms) ? Estado::salir_linea_izq
-                                                        : Estado::salir_linea_der;
-            }
-            break;
-
-        // ----------------------------------------------------
-        case Estado::salir_linea_der:               // tocó línea IZQ → sale a la DERECHA a ciegas
-            adproporcional(AMIX_PD_SALIR, error);    // strafe derecha FUERTE — A CIEGAS (no se lee ningún sensor acá)
-            if (millis() - millis_inicio_estado >= AMIX_T_SALIR_LINEA) {  // AMIX_T_SALIR_LINEA (ver amix_config.h)
-                s_commit_until_ms = millis() + AMIX_T_PATRULLA_COMMIT;    // no volver enseguida hacia la línea
-                millis_inicio_estado = millis();
-                estado = Estado::moverce_derecha;
-            }
-            break;
-
-        // ----------------------------------------------------
-        case Estado::salir_linea_izq:               // tocó línea DER → sale a la IZQUIERDA a ciegas (espejo)
-            aiproporcional(AMIX_PD_SALIR, error);    // strafe izquierda FUERTE — A CIEGAS
-            if (millis() - millis_inicio_estado >= AMIX_T_SALIR_LINEA) {
-                s_commit_until_ms = millis() + AMIX_T_PATRULLA_COMMIT;
-                millis_inicio_estado = millis();
-                estado = Estado::moverce_izquierda;
-            }
-            break;
-
         // --- SECUENCIA DE DESPEJE ---
         // ----------------------------------------------------
         case Estado::PATEANDO_pausa_inicial:        // L1151-1160
@@ -411,7 +267,7 @@ void amix_fsm_tick() {
             // 2026-06-22). Pero parar() NO frena el impulso (la inercia del golpe lo sacaba igual) → va a
             // frenar_patada: contra-empuje FUERTE atrás para matar el impulso ANTES de la pausa post-golpe.
             // Patrulla: golpe completo, directo a la pausa (sin cambios).
-            if (AMIX_QUIETO && linea()) {
+            if (linea()) {
                 parar();                             // cierra la rampa del golpe
                 millis_inicio_estado = millis();
                 estado = Estado::frenar_patada;      // FRENO ACTIVO antes de seguir
@@ -441,8 +297,8 @@ void amix_fsm_tick() {
             parar();
             if (millis() - millis_inicio_estado >= AMIX_T_PAT_PAUSA) {  // 1000 ms
                 millis_inicio_estado = millis();
-                // QUIETO: primero GIRA LENTO buscando el cero (BNO), después vuelve atrás. Default: directo atrás.
-                estado = AMIX_QUIETO ? Estado::orientar_frente : Estado::PATEANDO_atras;
+                // Primero GIRA LENTO buscando el cero (cámara/giroscopio), después vuelve atrás.
+                estado = Estado::orientar_frente;
             }
             break;
 
@@ -457,31 +313,18 @@ void amix_fsm_tick() {
             // enlace con DOWN NO está fresco → NO retroceder a ciegas (sin dato de línea confiable, FRENA).
             {
                 const bool down_ok = g_aio.down_link_fresh;   // ¿la línea (DOWN) llega fresca? (<500 ms)
-                if (AMIX_QUIETO) {
-                    if (down_ok) retroceder_quieto();         // retroceso lento hacia la línea
-                    else         parar();                     // sin línea fresca → no retroceder a ciegas
-                } else {
-                    patear_atras();                           // patrulla: retroceso normal (sin cambios)
-                }
-                // Sale al PISAR la línea (la lee cada tick; amix_comm la refresca antes del FSM). En quieto,
-                // también si DOWN se cae (no seguir a ciegas) o por safety. <MEJORA 2026: safety + frescura>
-                const bool sin_linea_confiable = AMIX_QUIETO && !down_ok;
+                if (down_ok) retroceder_quieto();             // retroceso lento hacia la línea
+                else         parar();                         // sin línea fresca → no retroceder a ciegas
+                // Sale al PISAR la línea (la lee cada tick; amix_comm la refresca antes del FSM). También si
+                // DOWN se cae (no seguir a ciegas) o por safety. <MEJORA 2026: safety + frescura>
+                const bool sin_linea_confiable = !down_ok;
                 if (linea() || sin_linea_confiable ||
                     (millis() - millis_inicio_estado >= AMIX_T_ATRAS_SAFETY)) {  // 4000 ms safety
                     parar();
                     millis_inicio_estado = millis();
-                    // QUIETO: ANTES de quedar quieto se ACOMODA (despega línea + orienta al frente). Default: avanza/patrulla.
-                    estado = AMIX_QUIETO ? Estado::acomodar_linea : Estado::avanzar_despues_de_patear;
+                    // ANTES de quedar quieto se ACOMODA (despega de la línea + se orienta de frente).
+                    estado = Estado::acomodar_linea;
                 }
-            }
-            break;
-
-        // ----------------------------------------------------
-        case Estado::avanzar_despues_de_patear:     // L1197-1205 (solo PATRULLA; en quieto no se usa)
-            avanzar();
-            if (millis() - millis_inicio_estado >= AMIX_T_AVANCE_POST) {  // 1000 ms
-                millis_inicio_estado = millis();
-                estado = Estado::moverce_derecha;    // cierra el ciclo → patrulla
             }
             break;
 

@@ -8,6 +8,12 @@ scope: software/teensy/Soccer 2026/src/arqueromix/
 
 # arqueromix — qué quedó hecho
 
+> ⚠️ **2026-06-29 — se ELIMINÓ el modo PATRULLA.** El arquero es **SÓLO QUIETO** (el programa más
+> confiable, decisión del equipo). Todo lo que este doc describa de **patrulla** (estados `moverce_*`,
+> `salir_linea_*`, `avanzar_despues_de_patear`, rebote por arco propio, profundidad por línea, el flag
+> `AMIX_QUIETO`) **YA NO EXISTE en el código** — queda como referencia histórica del port 2025. El flujo
+> vivo es: lateral_izq → homing → quieto (sigue la pelota de costado / despeja) → post-patada → acomodar → quieto.
+
 > **En una frase.** Es el **arquero 2025** (campeón Nacional BsAs: su máquina de estados
 > y su manejo directo de motores) **revivido sobre el robot 2026**: en vez de leer sus
 > propios sensores, lee los datos que mandan las placas **TOP y DOWN** por serie. Es el

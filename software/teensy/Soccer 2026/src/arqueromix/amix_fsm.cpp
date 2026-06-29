@@ -113,6 +113,18 @@ static bool orientar_de_frente_tick() {
     return false;
 }
 
+#ifdef ARQMIX_ORIENT_LINE_ESCAPE
+// ESCAPE DE LÍNEA AL ORIENTAR (gateado, pedido Virginia 2026-06-29): si el arquero pisa la línea MIENTRAS
+// gira para orientarse (puede pasar si fue al borde a buscar la pelota), se DESPEGA del borde antes de seguir
+// girando, para no salirse. Mismo criterio de despegue que acomodar_linea (lado OPUESTO a la línea).
+static inline void escapar_de_linea(float error) {
+    const float la = g_aio.line_angle_deg * AMIX_ACOMODAR_LINEA_SIGN;
+    if (fabsf(la) >= AMIX_ACOMODAR_ATRAS_DEG) avanzar();                            // línea atrás → al frente
+    else if (la > 0.0f)                       aiproporcional(AMIX_PD_BASE, error);  // línea der → strafe izq
+    else                                      adproporcional(AMIX_PD_BASE, error);  // línea izq → strafe der
+}
+#endif
+
 void amix_fsm_init() {
     // Arranca con un movimiento lateral a la izquierda y después el homing al área chica.
     estado = Estado::inicio_lateral_izq;
@@ -335,6 +347,15 @@ void amix_fsm_tick() {
             // DESPACIO (orientar_de_frente_tick). Usa la CÁMARA (goal_opp) como referencia ABSOLUTA al arco
             // —el giroscopio derivaba su cero y lo dejaba mirando a un lado—, con fallback al giroscopio si
             // no ve el arco. Cuando queda de frente (o safety) → retrocede.
+#ifdef ARQMIX_ORIENT_LINE_ESCAPE
+            // Si pisa la línea girando → ESCAPA del borde antes de seguir orientando (no salirse). Mientras
+            // no venza el safety; al vencerlo, orienta/sale igual (no quedarse trabado escapando).
+            if (linea() && g_aio.down_link_fresh &&
+                (millis() - millis_inicio_estado < AMIX_T_ORIENTAR_SAFETY)) {
+                escapar_de_linea(error);
+                break;
+            }
+#endif
             if (orientar_de_frente_tick() ||
                 (millis() - millis_inicio_estado >= AMIX_T_ORIENTAR_SAFETY)) {
                 parar();
@@ -372,6 +393,15 @@ void amix_fsm_tick() {
         //     (orientar_de_frente_tick, MISMO criterio que orientar_frente) → así "siempre que se queda
         //     quieto, mira de frente al arco contrario". Cámara = referencia absoluta; giroscopio = fallback.
         case Estado::acomodar_orientar:
+#ifdef ARQMIX_ORIENT_LINE_ESCAPE
+            // Si pisa la línea girando → ESCAPA del borde antes de seguir orientando (no salirse / no quedar
+            // quieto sobre la línea). Mientras no venza el safety; al vencerlo, orienta/sale igual.
+            if (linea() && g_aio.down_link_fresh &&
+                (millis() - millis_inicio_estado < AMIX_T_ORIENTAR_SAFETY)) {
+                escapar_de_linea(error);
+                break;
+            }
+#endif
             if (orientar_de_frente_tick() ||
                 (millis() - millis_inicio_estado >= AMIX_T_ORIENTAR_SAFETY)) {
                 parar();

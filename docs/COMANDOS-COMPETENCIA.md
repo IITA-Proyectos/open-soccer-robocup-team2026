@@ -25,46 +25,34 @@ complementa: [docs/pruebas-banco/QUE-FLASHEO-HOY.md, docs/RUNBOOK-BANCO-INCHEON.
 
 ## 1. FLASHEO DE COMPETENCIA (envs del canónico QUE-FLASHEO-HOY)
 
-**⚠️ ANTES de cualquier `pio`, parate en la carpeta del FIRMWARE** (NO en la del monitor). Copiá y pegá:
+> 📌 **Dos carpetas:** flashear (`pio`) → `…\Soccer 2026` (en cada receta de abajo el `cd` ya viene incluido) ·
+> app (`python -m monitor_base`) → `…\Soccer 2026\tools\monitor-base`. Si `pio` dice *"Not a PlatformIO project"*,
+> es que estás en la carpeta equivocada → corré el `cd` primero.
+
+### 🥅 1) BAJAR el ARQUERO — programa DEFINITIVO (las 3 placas)
+Copiá **el bloque entero** (la 1ª línea `cd` te para en la carpeta correcta; después cada `pio` baja una placa):
 ```
 cd "C:\Users\violl\iitasoccer\soccer-main\software\teensy\Soccer 2026"
+pio run -e top_robot2_pri -t upload                     # placa TOP
+pio run -e central_robot2_arqueromix_quieto -t upload   # placa CENTRAL (definitivo)
+pio run -e down_robot2 -t upload                         # placa DOWN
 ```
-> 📌 Dos carpetas: **flashear (`pio`)** → `…\Soccer 2026` · **app (`python -m monitor_base`)** → `…\Soccer 2026\tools\monitor-base`.
-> Si te tira *"Not a PlatformIO project / platformio.ini not found"*, estás en la carpeta equivocada → corré el `cd` de arriba.
+> **Qué hace al iniciar:** va al arco — **se mueve de costado hasta la línea** → **avanza** un poco → se queda
+> **QUIETO buscando la pelota**. Si la pelota se va al costado la **sigue de costado** (consciente de la línea, no
+> se sale); si está cerca **despeja**; después de patear se **orienta de frente al arco contrario** (giroscopio) y
+> **retrocede hasta la línea**.
+> **TOP = `top_robot2_pri`** (NUNCA `top_robot1*`, están en LISTA NEGRA). Fallbacks CENTRAL: `central_robot2_arquero`
+> o `central_robot2_arqueromix` (patrulla). DOWN alternativo: `down_robot2_rt`.
 
-### TOP (las DOS placas TOP usan el MISMO env)
+### ⚽ 2) BAJAR el DELANTERO (las 3 placas)
 ```
-pio run -e top_robot2_pri -t upload
+cd "C:\Users\violl\iitasoccer\soccer-main\software\teensy\Soccer 2026"
+pio run -e top_robot2_pri -t upload      # placa TOP
+pio run -e central_robot2 -t upload      # placa CENTRAL
+pio run -e down -t upload                 # placa DOWN (con OTOS)
 ```
-> ⚠️ **`top_robot1`, `top_robot1_pri*`, `top_robot1_oscint`, `top_robot1_bno_wire2` están en LISTA NEGRA**
-> (cableado VIEJO pre-recableado 06-11). Para CUALQUIER TOP va `top_robot2_pri`.
-
-### 🥅 El robot que juega de ARQUERO  (programa DEFINITIVO)
-| Placa | Comando |
-|---|---|
-| TOP | `pio run -e top_robot2_pri -t upload` |
-| **CENTRAL** | `pio run -e central_robot2_arqueromix_quieto -t upload` |
-| DOWN | `pio run -e down_robot2 -t upload` |
-
-> **Qué hace el arquero al iniciar:** va al arco — **se mueve de costado hasta la línea** → **avanza** un poco
-> → se queda **QUIETO buscando la pelota**. Si la pelota se va a un costado la **sigue de costado** (consciente
-> de la línea, no se sale de la cancha); si está cerca **despeja**; después de patear se **orienta de frente al
-> arco contrario** (por giroscopio) y **retrocede hasta la línea**.
->
-> Definitivo elegido por el equipo (2026-06-29) = `central_robot2_arqueromix_quieto` (candidato 06-22).
-> **Fallbacks del arquero:** `central_robot2_arquero` (viejo canónico, .hex `CENTRAL_R2_arquero_competencia.hex`)
-> o `central_robot2_arqueromix` (patrulla). DOWN: si `down_robot2` falla, probar `down_robot2_rt`.
-
-### ⚽ El robot que juega de DELANTERO
-| Placa | Comando | Nota |
-|---|---|---|
-| TOP | `pio run -e top_robot2_pri -t upload` | (igual) |
-| **CENTRAL** | `pio run -e central_robot2 -t upload` | delantero de partido (si va en la placa R2) |
-| DOWN | `pio run -e down -t upload` | **con OTOS** (la placa con OTOS = la del delantero) |
-
-> ⚠️ Si el delantero va en la PLACA R1: su CENTRAL de partido está **en decisión pendiente** (QUE-FLASHEO-HOY:
-> "hoy usar `central_robot1_arquero_demo`"; `central_robot1_delantero_practica_bb` es **fallback, NO competencia**).
-> **Confirmá con Gustavo qué placa juega qué rol y con qué CENTRAL.**
+> ⚠️ Si el delantero va en la PLACA R1, su CENTRAL de partido está **en decisión pendiente** (QUE-FLASHEO-HOY:
+> "hoy usar `central_robot1_arquero_demo`"). **Confirmá con Gustavo qué placa juega qué rol y con qué CENTRAL.**
 
 ### Cámaras (ambas, ambos robots)
 Cargar `hardware/electronics/camaras-openmv/main.py` desde OpenMV IDE. (NO los `cam-*-n6.py` de los packs, deprecados.)

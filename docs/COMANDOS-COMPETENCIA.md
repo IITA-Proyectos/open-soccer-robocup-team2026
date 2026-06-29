@@ -25,6 +25,13 @@ complementa: [docs/pruebas-banco/QUE-FLASHEO-HOY.md, docs/RUNBOOK-BANCO-INCHEON.
 
 ## 1. FLASHEO DE COMPETENCIA (envs del canónico QUE-FLASHEO-HOY)
 
+**⚠️ ANTES de cualquier `pio`, parate en la carpeta del FIRMWARE** (NO en la del monitor). Copiá y pegá:
+```
+cd "C:\Users\violl\iitasoccer\soccer-main\software\teensy\Soccer 2026"
+```
+> 📌 Dos carpetas: **flashear (`pio`)** → `…\Soccer 2026` · **app (`python -m monitor_base`)** → `…\Soccer 2026\tools\monitor-base`.
+> Si te tira *"Not a PlatformIO project / platformio.ini not found"*, estás en la carpeta equivocada → corré el `cd` de arriba.
+
 ### TOP (las DOS placas TOP usan el MISMO env)
 ```
 pio run -e top_robot2_pri -t upload

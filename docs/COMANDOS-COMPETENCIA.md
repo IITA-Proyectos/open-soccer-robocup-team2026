@@ -32,16 +32,21 @@ pio run -e top_robot2_pri -t upload
 > ⚠️ **`top_robot1`, `top_robot1_pri*`, `top_robot1_oscint`, `top_robot1_bno_wire2` están en LISTA NEGRA**
 > (cableado VIEJO pre-recableado 06-11). Para CUALQUIER TOP va `top_robot2_pri`.
 
-### 🥅 El robot que juega de ARQUERO
-| Placa | Comando | Nota |
-|---|---|---|
-| TOP | `pio run -e top_robot2_pri -t upload` | (igual que arriba) |
-| **CENTRAL** | `pio run -e central_robot2_arquero -t upload` | ⭐ canónico (.hex listo: `CENTRAL_R2_arquero_competencia.hex`) **— ⚠️ DECIDIR vs el candidato nuevo** (abajo) |
-| DOWN | `pio run -e down_robot2 -t upload` | sin OTOS. ⚠️ DECIDIR vs `down_robot2_rt` (abajo) |
+### 🥅 El robot que juega de ARQUERO  (programa DEFINITIVO)
+| Placa | Comando |
+|---|---|
+| TOP | `pio run -e top_robot2_pri -t upload` |
+| **CENTRAL** | `pio run -e central_robot2_arqueromix_quieto -t upload` |
+| DOWN | `pio run -e down_robot2 -t upload` |
 
-> **⚠️ Decisión pendiente — CENTRAL del arquero:** el candidato **2026-06-22** que Virginia viene afinando es
-> **`central_robot2_arqueromix_quieto`** ("anda bastante bien", port del campeón 2025). El canónico QUE-FLASHEO-HOY
-> (06-11) todavía marca `central_robot2_arquero`. **Son 2 keepers distintos — el equipo decide cuál lleva.**
+> **Qué hace el arquero al iniciar:** va al arco — **se mueve de costado hasta la línea** → **avanza** un poco
+> → se queda **QUIETO buscando la pelota**. Si la pelota se va a un costado la **sigue de costado** (consciente
+> de la línea, no se sale de la cancha); si está cerca **despeja**; después de patear se **orienta de frente al
+> arco contrario** (por giroscopio) y **retrocede hasta la línea**.
+>
+> Definitivo elegido por el equipo (2026-06-29) = `central_robot2_arqueromix_quieto` (candidato 06-22).
+> **Fallbacks del arquero:** `central_robot2_arquero` (viejo canónico, .hex `CENTRAL_R2_arquero_competencia.hex`)
+> o `central_robot2_arqueromix` (patrulla). DOWN: si `down_robot2` falla, probar `down_robot2_rt`.
 
 ### ⚽ El robot que juega de DELANTERO
 | Placa | Comando | Nota |
@@ -131,7 +136,7 @@ python -m monitor_base --list-ports               # ver qué COM es la Teensy
 
 ## ⚠️ CONFLICTOS A RESOLVER CON GUSTAVO (antes de Incheon)
 1. **Rol ↔ placa:** FUENTES-DE-VERDAD L47 dice "R1 arquero / R2 delantero"; la memoria/sesión dice Virginia=arquera con R2. **Definir qué placa juega qué rol.**
-2. **CENTRAL arquero:** `central_robot2_arquero` (canónico ⭐) vs `central_robot2_arqueromix_quieto` (candidato 06-22). **Elegir.**
+2. ~~**CENTRAL arquero**~~ ✅ **RESUELTO (equipo, 2026-06-29):** el arquero usa `central_robot2_arqueromix_quieto`. (Falta actualizar QUE-FLASHEO-HOY → ver #4.)
 3. **DOWN R2:** `down_robot2` (canónico) vs `down_robot2_rt` (completo RT, ESTADO-ACTUAL 06-16). **Elegir.**
 4. **QUE-FLASHEO-HOY (06-11) quedó stale** vs el trabajo posterior (arqueromix_quieto, RT down/central) → **reconciliar** la tabla canónica.
 5. **Refuerzo del conflicto #1:** el comentario de `[env:down_robot2]` dice "(delantero)" y FUENTES L47 también (R1 arquero / R2 delantero) — esto **CONTRADICE** la memoria/sesión (Virginia = arquera con R2). NO está claro cuál es el correcto; es el mismo nudo del #1 y resolverlo define todo el cableado. **No lo decido yo.**

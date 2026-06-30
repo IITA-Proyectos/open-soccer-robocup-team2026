@@ -70,6 +70,15 @@ struct MixIO {
                                      // 60 = uno solo, 0 = ninguno (no confiar). Lo usa la patada
                                      // recta para decidir si corrige el rumbo con el OTOS.
 
+    // ---- Velocidad del ROBOT medida por el OTOS (flujo óptico; reemplaza encoders) ----
+    // El OTOS dice hacia dónde y a qué velocidad se traslada el robot DE VERDAD (no lo que
+    // mandamos a los motores). Sin encoders, es la realimentación para corregir la dirección
+    // de avance a ciegas. La llena mix_comm desde el Velocity2D de DOWN (apply_down_vel).
+    float   otos_vx_cm_s    = 0.0f;   // + = el robot se traslada hacia su DERECHA (cm/s)
+    float   otos_vy_cm_s    = 0.0f;   // + = el robot se traslada hacia ADELANTE (cm/s)
+    float   otos_omega_deg_s= 0.0f;   // giro real del robot (deg/s) — diagnóstico
+    uint8_t otos_slip       = 0;      // 0-255 patinazo (diferencia entre los 2 OTOS) — diagnóstico
+
     // ---- Línea (de DOWN; ver mix_config umbrales) ----
     bool    line_present = false;    // ¿hay línea presente? (con histéresis de DOWN)
     float   line_angle_deg = 0.0f;   // ángulo de la línea en ° (0 = frente)

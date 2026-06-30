@@ -234,9 +234,13 @@ void apply_down_pose(const Pose2D& pose) {
     g_io.t_last_down_frame_ms = millis();
 }
 
-void apply_down_vel(const Velocity2D& /*vel*/) {
-    // centralmix (port FSM 2025) no usa velocidad OTOS hoy. Se decodifica para
-    // mantener la frescura del enlace y por si la FSM la consume más adelante.
+void apply_down_vel(const Velocity2D& vel) {
+    // Velocidad del ROBOT medida por el OTOS (reemplaza encoders). El DOWN la manda en mm/s
+    // (lineal) y centideg/s (angular); acá la pasamos a cm/s y deg/s para la estrategia.
+    g_io.otos_vx_cm_s     = static_cast<float>(vel.vx_mm_s) / 10.0f;        // mm/s → cm/s
+    g_io.otos_vy_cm_s     = static_cast<float>(vel.vy_mm_s) / 10.0f;
+    g_io.otos_omega_deg_s = static_cast<float>(vel.omega_centideg_s) / 100.0f;
+    g_io.otos_slip        = vel.slip_estimate;
     g_io.t_last_down_frame_ms = millis();
 }
 

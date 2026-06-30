@@ -35,6 +35,24 @@
 namespace iitasoccer {
 namespace mix {
 
+// ============================================================
+// MODO LENTO DE BANCO (probar sin romper el robot 2026-06-30).
+// Techo DURO de PWM aplicado a CADA motor en mix_set_motor → cubre TODO lo que haga el
+// robot (perseguir, acomodar, escoltar, giro 180, patada). Ningún motor supera
+// MIX_LENTO_MAX_PWM, así que el robot se mueve despacio y suave para probarlo seguro.
+//   Velocidad NORMAL:  MIX_MODO_LENTO -> 0   (o build flag -DMIX_MODO_LENTO=0)
+//   Un poco más rápido: subí MIX_LENTO_MAX_PWM.
+// ⚠️ 30 PWM puede estar POR DEBAJO del piso del motor (~107 medido, skill dinamica-omni-3-ruedas):
+//    si el robot ZUMBA y NO se mueve, NO está roto → subí MIX_LENTO_MAX_PWM (40,60,80...) hasta
+//    que apenas camine. Esta es LA perilla a titular en banco.
+// ============================================================
+#ifndef MIX_MODO_LENTO
+#define MIX_MODO_LENTO     1     // 1 = modo lento ACTIVO (default banco). 0 = velocidad normal.
+#endif
+#ifndef MIX_LENTO_MAX_PWM
+#define MIX_LENTO_MAX_PWM  30    // techo de PWM por motor en modo lento.
+#endif
+
 // Normaliza un ángulo a [-180, 180]. Local a este .cpp (la patada recta lo usa para
 // el error de rumbo del OTOS). Misma semántica que el wrap180 de mix_comm / mix_fsm.
 static inline float wrap180(float deg) {
@@ -99,6 +117,11 @@ void mix_set_motor(int idx, int pwm_signed) {
     int mag = signed_eff;
     if (mag < 0) mag = -mag;
     if (mag > MIX_MAX_PWM) mag = MIX_MAX_PWM;
+
+#if MIX_MODO_LENTO
+    // Techo DURO de modo lento: NINGÚN motor supera MIX_LENTO_MAX_PWM (probar sin romper).
+    if (mag > MIX_LENTO_MAX_PWM) mag = MIX_LENTO_MAX_PWM;
+#endif
 
     // Dirección por la pareja INA/INB (NUNCA por el signo del PWM).
     if (signed_eff > 0) {

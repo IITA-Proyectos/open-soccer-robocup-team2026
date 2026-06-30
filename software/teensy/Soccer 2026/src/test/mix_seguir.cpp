@@ -62,8 +62,7 @@ static float s_last_ball_ang = 1.0f, s_last_go = 0.0f;
 static bool  s_ever_seen = false, s_face_goal = false;   // s_face_goal: ¿el giro mira al arco (fase 2) o a la pelota (fase 1)?
 static int   s_giro_atras_dir = 0;     // latch del giro-encare "pelota atrás". 0=inactivo.
 static bool  s_atras_handled = false;  // ya se giró a encarar esta pelota-atrás → no re-girar en el ataque.
-static bool  s_goal_have = false;
-static float s_goal_heading_abs = 0.0f, s_goal_dist_cm = 150.0f;
+static float s_goal_dist_cm = 150.0f;  // última distancia al arco vista (para el offset detrás).
 static float s_aim = 0.0f, s_dist = 0.0f, s_dbg_goal = 0.0f;
 
 static inline float clampf(float v,float lo,float hi){ return v<lo?lo:(v>hi?hi:v); }
@@ -72,22 +71,20 @@ static inline float wrap180(float d){ while(d>180.f)d-=360.f; while(d<-180.f)d+=
 void mix_seguir_init(){
     s_estado = Estado::PERSEGUIR; s_last_ball_ang = 1.0f; s_last_go = 0.0f; s_ever_seen = false; s_face_goal = false;
     s_giro_atras_dir = 0; s_atras_handled = false;
-    s_goal_have = false; s_goal_heading_abs = 0.0f; s_goal_dist_cm = 150.0f; s_aim = 0.0f; s_dist = 0.0f;
+    s_goal_dist_cm = 150.0f; s_aim = 0.0f; s_dist = 0.0f;
 }
 
 static float goal_angle_robot(){
-    // CONVENCIÓN: heading_deg = yaw (+=CCW); goal_opp_angle = rumbo a la pelota/arco en marco robot
-    // (+=DERECHA = CW). El rumbo ABSOLUTO al arco (mundo) = heading - goal_opp_angle. Y el ángulo al
-    // arco en marco robot a un heading nuevo = heading_now - rumbo_absoluto. (El signo importa cuando
-    // el robot gira MUCHO sin ver el arco —p. ej. el giro de 180° de "pelota atrás"—; con el signo
-    // viejo (+) la estimación divergía y el robot encaraba para el lado equivocado.)
+    // DOS casos (sin memoria de gyro):
+    //   - VE el arco  -> usa el ángulo de la cámara (goal_opp_angle) y guarda su distancia.
+    //   - NO lo ve    -> apunta al ÁNGULO 0 = el rumbo de referencia (heading_error_deg). El robot
+    //                    se prende mirando al arco rival, así que "0" = dirección del arco rival.
+    //                    Apenas la cámara vuelve a ver el arco, manda el ángulo real.
     if (g_io.goal_opp_visible){
-        s_goal_have = true; s_goal_heading_abs = g_io.heading_deg - g_io.goal_opp_angle;
         if (g_io.goal_opp_dist > 1.0f) s_goal_dist_cm = g_io.goal_opp_dist / 10.0f;
         return g_io.goal_opp_angle;
     }
-    if (s_goal_have) return wrap180(g_io.heading_deg - s_goal_heading_abs);
-    return wrap180(g_io.heading_error_deg);   // nunca visto: arco hacia el rumbo inicial
+    return wrap180(g_io.heading_error_deg);   // no ve el arco: ángulo 0 (rumbo de referencia)
 }
 
 void mix_seguir_tick(){

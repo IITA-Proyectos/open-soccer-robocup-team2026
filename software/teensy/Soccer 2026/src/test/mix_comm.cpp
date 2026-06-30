@@ -156,6 +156,10 @@ void apply_top_snapshot(const WorldSnapshot& s) {
         g_io.t_last_ball_seen_ms = now;
     }
 
+    // Obstáculo más cercano al frente (ultrasonido HC-SR04 + ToF si hay), para anti-choque.
+    // Copia directa: 0xFFFF = SIN obstáculo. El consumidor (T_ULTRASONIDO) decide el umbral.
+    g_io.obstacle_mm = s.min_obstacle_mm;
+
     // --- Arcos por ROL (opp=RIVAL / own=PROPIO): copia DIRECTA del snapshot, SIN color ---
     // La decisión "qué arco es el rival y cuál el propio" YA la tomó la placa TOP (goal_polarity).
     // El delantero NO mira color (amarillo/azul) NI invierte nada: consume goal_opp/goal_own ya

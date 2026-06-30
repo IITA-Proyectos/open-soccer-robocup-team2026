@@ -66,14 +66,18 @@ enum Test {
     T_MOTOR_3    = 6,  // SOLO M3 despacio.
     T_AVANZAR    = 7,  // traslación ADELANTE despacio. ¿Va derecho o sale de costado?
     T_GIRO_LUGAR = 8,  // giro PURO en el lugar despacio. ¿Para qué lado gira?
-    T_ESTRATEGIA = 9   // corre mix_seguir COMPLETO despacio (todo junto).
+    T_ESTRATEGIA = 9,  // corre mix_seguir COMPLETO despacio (todo junto).
+    T_ULTRASONIDO= 10  // avanza despacio y FRENA si el ultrasonido ve algo a <10 cm. Tecla 'u'.
 };
 
-Test estado = T_SENSORES;   // <<<<<<<<<< CAMBIÁ ESTE VALOR Y RE-FLASHEÁ (o tecleá 0..9)
+Test estado = T_SENSORES;   // <<<<<<<<<< CAMBIÁ ESTE VALOR Y RE-FLASHEÁ (o tecleá 0..9, o 'u')
 
-// PWM de los tests de motor (T_MOTOR_*, T_AVANZAR, T_GIRO_LUGAR). El modo lento de
-// mix_motors lo recorta a MIX_LENTO_MAX_PWM igual; este valor es por si lo apagás.
+// PWM de los tests de motor (T_MOTOR_*, T_AVANZAR, T_GIRO_LUGAR, T_ULTRASONIDO). El modo
+// lento de mix_motors lo recorta a MIX_LENTO_MAX_PWM igual; este valor es por si lo apagás.
 static const int TEST_PWM = 80;
+
+// T_ULTRASONIDO: distancia (mm) a la que FRENA para no chocar. 100 mm = 10 cm.
+static const uint16_t ULTRA_STOP_MM = 100;
 
 // ============================================================
 //   Utilidades
@@ -119,15 +123,18 @@ static void imprimir_encabezado(){
             Serial.println("Debe girar SOBRE SU EJE sin trasladarse. Anotá el sentido."); break;
         case T_ESTRATEGIA: Serial.println("ESTRATEGIA seguir COMPLETA despacio ========");
             Serial.println("Corre mix_seguir entero. Poné la pelota adelante y miralo perseguir/escoltar."); break;
+        case T_ULTRASONIDO: Serial.println("ULTRASONIDO anti-choque despacio ========");
+            Serial.println("Avanza despacio y FRENA si ve algo a <10 cm. Poné la mano adelante: debe parar."); break;
     }
-    Serial.println("(Tecleá 0..9 para cambiar de test)");
+    Serial.println("(Tecleá 0..9 o 'u' para cambiar de test)");
 }
 
-// Lee el Monitor Serie: si tecleás un dígito 0..9, cambia el test en vivo.
+// Lee el Monitor Serie: dígito 0..9 -> ese test; 'u'/'U' -> T_ULTRASONIDO.
 static void leer_serial(){
     while (Serial.available()){
         const int c = Serial.read();
         if (c >= '0' && c <= '9') estado = (Test)(c - '0');
+        else if (c == 'u' || c == 'U') estado = T_ULTRASONIDO;
     }
 }
 
@@ -260,5 +267,26 @@ void loop(){
             if(toca) Serial.println("T_ESTRATEGIA deshabilitado: copiá mix_seguir y poné TEST_CON_SEGUIR 1.");
 #endif
             break;
+
+        // ---- Ultrasonido anti-choque: avanza despacio y FRENA si hay algo a <10 cm ----
+        case T_ULTRASONIDO: {
+            const uint16_t d = g_io.obstacle_mm;   // mm; 0xFFFF = nada, 0 = sin lectura/glitch
+            const bool obstaculo = (d > 0) && (d < 0xFFFF) && (d <= ULTRA_STOP_MM);
+            if (obstaculo){
+                parar();                            // algo a <10 cm -> FRENA (no choca)
+            } else {
+#if TEST_TIENE_MOVER_VECTOR
+                mix_mover_vector(0.0f, TEST_PWM, 0);   // libre -> avanza despacio
+#else
+                parar();
+#endif
+            }
+            if(toca){
+                Serial.print("ULTRA dist_mm=");
+                if (d >= 0xFFFF) Serial.print("--- (nada)"); else Serial.print(d);
+                Serial.println(obstaculo ? "  OBSTACULO <10cm -> FRENA" : "  libre -> avanza");
+            }
+            break;
+        }
     }
 }

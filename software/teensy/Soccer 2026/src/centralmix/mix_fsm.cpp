@@ -290,13 +290,17 @@ void mix_fsm_tick() {
     const unsigned long millis_pelota = g_io.t_last_ball_seen_ms;
 
     // --- ANTI-CHOQUE (ultrasonido): obstáculo al frente a <15 cm → RETROCEDER y volver a BUSCAR ---
-    // Interrupción de MÁXIMA PRIORIDAD (después del árbitro/kickoff): salta a EVITAR_OBSTACULO desde
-    // CUALQUIER estado, SIN excepción (incluido el escape de línea). La pared está justo después de
-    // la línea → si el ultrasonido frena antes de la pared, el robot no llega a cruzar la línea.
-    // Es seguro porque el ultrasonido es SOLO DE FRENTE: solo interrumpe si hay algo ADELANTE; si la
-    // línea está a un costado (nada adelante), obstaculo_cerca()=false y el escape de línea corre
-    // normal. Única exclusión: EVITAR_OBSTACULO mismo (si no, reiniciaría el timer y nunca saldría).
-    if (obstaculo_cerca() && estado != Estado::EVITAR_OBSTACULO && estado != Estado::DETECTA_LINEA_1 && estado != Estado::DETECTA_LINEA_2 && estado != Estado::DETECTA_LINEA_3) {
+    // PRIORIDAD: la LÍNEA gana. El obstáculo SOLO interrumpe si NO hay línea presente
+    // (!linea_presente()). Por qué (bug "se sale de la cancha", banco 2026-07-01): EVITAR retrocede
+    // RECTO (retroceder2), y con una línea DETRÁS eso la cruzaría; además, si el obstáculo pisaba el
+    // escape de línea cada tick, el escape DIRECCIONAL (retroceder1/3, que va adelante-lateral y SÍ se
+    // aleja de la línea) nunca corría y el robot retrocedía sin fin sobre la línea. La línea es la
+    // restricción DURA (penaliza), el choque no → cuando hay línea manda el escape de línea; el
+    // anti-choque espera a que no haya línea. (La exclusión de los DETECTA_LINEA queda redundante con
+    // !linea_presente() pero se deja explícita.) Exclusión de EVITAR mismo: si no, reinicia el timer.
+    if (obstaculo_cerca() && !linea_presente() &&
+        estado != Estado::EVITAR_OBSTACULO &&
+        estado != Estado::DETECTA_LINEA_1 && estado != Estado::DETECTA_LINEA_2 && estado != Estado::DETECTA_LINEA_3) {
         millis_inicio_estado = millis();
         estado = Estado::EVITAR_OBSTACULO;
     }
@@ -918,29 +922,22 @@ void mix_fsm_tick() {
 
         // ----------------------------------------------------
         // EVITAR_OBSTACULO (rama ultrasonido): el ultrasonido vio algo a <15 cm al frente.
-        // RETROCEDE (mismo escape que "línea al frente") por MIX_EVITAR_MS y vuelve a BUSCAR
-        // la pelota girando (GIRANDO). Si al terminar el obstáculo sigue cerca, el chequeo de
-        // arriba lo re-dispara solo. El ultrasonido NO ve la pelota (montado alto) → esto nunca
-        // frena por la pelota, solo por robots/paredes.
+        // PRIMERO mira la línea: si hay, escapa con la primitiva DIRECCIONAL (retroceder1/2/3, que se
+        // aleja de la línea) SIN retroceder recto — así NO cruza una línea trasera. Con la prioridad
+        // de línea de arriba, ese DETECTA_LINEA corre completo (el obstáculo no lo re-pisa). Solo si
+        // NO hay línea retrocede (retroceder2) para alejarse del obstáculo; tras MIX_EVITAR_MS vuelve
+        // a BUSCAR (GIRANDO). El ultrasonido NO ve la pelota (montado alto): solo frena por robots/paredes.
         case Estado::EVITAR_OBSTACULO:
-            retroceder2();
+            // Línea ANTES de moverse: escapá en la dirección correcta y no des ni un tick para atrás
+            // sobre una línea trasera.
+            if (linea_s1()) { estado = Estado::DETECTA_LINEA_1; millis_inicio_estado = millis(); break; }
+            if (linea_s2()) { estado = Estado::DETECTA_LINEA_2; millis_inicio_estado = millis(); break; }
+            if (linea_s3()) { estado = Estado::DETECTA_LINEA_3; millis_inicio_estado = millis(); break; }
+            retroceder2();   // libre de línea → alejarse del obstáculo del frente
             if (millis() - millis_inicio_estado >= MIX_EVITAR_MS) {
                 parar();
                 millis_inicio_estado = millis();
                 estado = Estado::GIRANDO;   // vuelve a BUSCAR la pelota
-            }
- 
-            if (linea_s1()) {
-                estado = Estado::DETECTA_LINEA_1;
-                millis_inicio_estado = millis();
-            }
-            if (linea_s2()) {
-                estado = Estado::DETECTA_LINEA_2;
-                millis_inicio_estado = millis();
-            }
-            if (linea_s3()) {
-                estado = Estado::DETECTA_LINEA_3;
-                millis_inicio_estado = millis();
             }
             break;
     }

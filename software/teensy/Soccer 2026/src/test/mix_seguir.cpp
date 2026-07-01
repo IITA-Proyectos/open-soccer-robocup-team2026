@@ -104,20 +104,6 @@ void mix_seguir_tick(){
     const unsigned long now = millis();
     if (!g_io.match_running){ s_estado = Estado::ESPERA; parar(); return; }
 
-    // ===================== MODO SIMPLE: solo PERSEGUIR serpenteando + PARAR a 15 cm =====================
-    if (SEGUIR_SIMPLE){
-        if (!g_io.ball_visible){ parar(); s_estado = Estado::BUSCAR; s_dist = -1.0f; return; }  // sin pelota → quieto
-        const float ang_ball = g_io.angulo_pelota_deg;                 // + = derecha
-        const float dist = sqrtf(g_io.ball_x_cm*g_io.ball_x_cm + g_io.ball_y_cm*g_io.ball_y_cm);
-        s_dist = dist; s_aim = ang_ball;
-        if (dist <= SEGUIR_STOP_CM){ parar(); s_estado = Estado::ESPERA; return; }  // llegó a 15 cm → PARA
-        // Serpenteo: traslada HACIA la pelota (ang_ball) y a la vez GIRA para mirarla (omega).
-        const int omega = (int)clampf(ang_ball * FACE_BALL_KP, -(float)OMEGA_MAX, (float)OMEGA_MAX);
-        mix_mover_vector(ang_ball, SEGUIR_SPEED, omega);
-        s_estado = Estado::PERSEGUIR; s_last_go = ang_ball;
-        return;
-    }
-
     const float goal_ang = goal_angle_robot();
     s_dbg_goal = goal_ang;
     if (g_io.ball_visible){ s_last_ball_ang = g_io.angulo_pelota_deg; s_ever_seen = true; }
@@ -146,6 +132,28 @@ void mix_seguir_tick(){
                 return;
             }
         }
+    }
+
+    // ===================== MODO SIMPLE: solo PERSEGUIR serpenteando + PARAR a 15 cm =====================
+    // Va DESPUÉS del giro-atrás: si la pelota está DETRÁS, primero hace el 180 de arriba; una vez de
+    // FRENTE, persigue serpenteando y PARA a SEGUIR_STOP_CM. NO acomoda detrás ni escolta.
+    if (SEGUIR_SIMPLE){
+        if (!g_io.ball_visible){
+            // No la ve → girar en el lugar buscándola (hacia el último lado visto), como seguir_sim.
+            const int dir = (s_last_ball_ang >= 0.0f) ? +1 : -1;
+            mix_mover_vector(0.0f, 0, dir * BUSCAR_OMEGA);
+            s_estado = Estado::BUSCAR; s_dist = -1.0f;
+            return;
+        }
+        const float ang_ball = g_io.angulo_pelota_deg;                 // + = derecha
+        const float dist = sqrtf(g_io.ball_x_cm*g_io.ball_x_cm + g_io.ball_y_cm*g_io.ball_y_cm);
+        s_dist = dist; s_aim = ang_ball;
+        if (dist <= SEGUIR_STOP_CM){ parar(); s_estado = Estado::ESPERA; return; }  // a 15 cm → PARA y quieto
+        // Serpenteo: traslada HACIA la pelota (ang_ball) y a la vez GIRA para mirarla (omega).
+        const int omega = (int)clampf(ang_ball * FACE_BALL_KP, -(float)OMEGA_MAX, (float)OMEGA_MAX);
+        mix_mover_vector(ang_ball, SEGUIR_SPEED, omega);
+        s_estado = Estado::PERSEGUIR; s_last_go = ang_ball;
+        return;
     }
 
     // --- Giro según la FASE: fase 1 mira la PELOTA, fase 2 mira el ARCO (con anti-hueco de cámara). ---

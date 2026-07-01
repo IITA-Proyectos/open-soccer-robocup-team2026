@@ -50,7 +50,12 @@ namespace mix {
 #define MIX_MODO_LENTO     1     // 1 = modo lento ACTIVO (default banco). 0 = velocidad normal.
 #endif
 #ifndef MIX_LENTO_MAX_PWM
-#define MIX_LENTO_MAX_PWM  30    // techo de PWM por motor en modo lento.
+// 150: banco 2026-07-01 confirmó que a 30 los motores ZUMBAN pero NO mueven el robot (30 está
+// muy por debajo del piso medido {70,70,107} — ver skill dinamica-omni-3-ruedas). Por debajo de
+// ~110 el robot NO se traslada. 150 lo mueve (con margen sobre el piso) y sigue siendo lento
+// (~60% de SPEED). Subí más si aún queda flojo; bajá si va rápido. OJO: es un techo, NO compensa
+// la zona muerta → comandos por debajo del piso igual no mueven esa rueda.
+#define MIX_LENTO_MAX_PWM  150
 #endif
 
 // Normaliza un ángulo a [-180, 180]. Local a este .cpp (la patada recta lo usa para

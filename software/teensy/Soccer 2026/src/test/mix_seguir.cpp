@@ -44,6 +44,11 @@ static const float FACE_GOAL_KP   = 2.0f;  // giro para encarar el arco (fase 2)
 static const int   OMEGA_MAX      = 90;
 static const int   BUSCAR_OMEGA   = 95;
 // --- Predictivo (seguir la pelota en movimiento) ---
+// ⚠️ DESACTIVADO (banco 2026-07-01): la velocidad de pelota del TOP (g_io.ball_vx/vy) es NO
+//   confiable — se queda TRABADA en un valor. Un lead constante y falso desviaría el apuntado.
+//   Con esto en false, el robot persigue la posición REAL de la pelota (sin anticipar). Volver a
+//   true cuando el TOP mande una velocidad de pelota buena (es un bug del TOP, no de acá).
+static const bool  USAR_VEL_PELOTA = false;
 static const float LEAD_S         = 0.20f;
 static const float VEL_MIN_CM_S    = 8.0f;
 static const float LEAD_MAX_CM     = 35.0f;
@@ -160,7 +165,7 @@ void mix_seguir_tick(){
     float tbx = bx, tby = by;
     {
         const float vx = g_io.ball_vx_cm_s, vy = g_io.ball_vy_cm_s, spd = sqrtf(vx*vx+vy*vy);
-        if (spd >= VEL_MIN_CM_S){ float lead = LEAD_S; if (spd*lead > LEAD_MAX_CM) lead = LEAD_MAX_CM/spd;
+        if (USAR_VEL_PELOTA && spd >= VEL_MIN_CM_S){ float lead = LEAD_S; if (spd*lead > LEAD_MAX_CM) lead = LEAD_MAX_CM/spd;
                                   tbx = bx + vx*lead; tby = by + vy*lead; }
     }
     const float D2R=(float)M_PI/180.0f, R2D=180.0f/(float)M_PI;

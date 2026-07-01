@@ -140,6 +140,25 @@ static inline bool linea_s3() {
     return linea_presente() && (g_io.line_angle_deg > 60.0f);
 }
 
+// ---- Anti-choque: ¿hay un obstáculo cerca al frente? (ultrasonido HC-SR04 vía g_io.obstacle_mm) ----
+// El ultrasonido va montado ALTO → no ve la pelota (baja), sí robots/paredes. 0xFFFF = nada,
+// 0 = sin lectura/glitch (ambos = "libre"). Umbral MIX_OBSTACULO_STOP_MM (0 = anti-choque apagado).
+static inline bool obstaculo_cerca() {
+    const uint16_t d = g_io.obstacle_mm;
+    return (MIX_OBSTACULO_STOP_MM > 0) && (d > 0) && (d < 0xFFFF) && (d <= MIX_OBSTACULO_STOP_MM);
+}
+
+// ¿Obstáculo MUY cerca (<5 cm) al frente? (para el caso "atrapado" contra una línea trasera).
+static inline bool obstaculo_muy_cerca() {
+    const uint16_t d = g_io.obstacle_mm;
+    return (MIX_OBSTACULO_MUY_CERCA_MM > 0) && (d > 0) && (d < 0xFFFF) && (d <= MIX_OBSTACULO_MUY_CERCA_MM);
+}
+
+// ¿Hay línea DETRÁS del robot? (en el hemisferio trasero: |ángulo| > 90°, 0 = frente).
+static inline bool linea_atras() {
+    return linea_presente() && (fabsf(g_io.line_angle_deg) > 90.0f);
+}
+
 // ============================================================
 // IMPULSOS / centrados que el 2025 escribía INLINE con analogWrite (no eran
 // funciones nombradas). Se reproducen acá con mix_set_motor para no inventar
@@ -280,6 +299,31 @@ void mix_fsm_tick() {
     const float anguloPelota = g_io.angulo_pelota_deg;
     // 'millis_pelota' 2025 == g_io.t_last_ball_seen_ms (lo sella mix_comm).
     const unsigned long millis_pelota = g_io.t_last_ball_seen_ms;
+
+    // --- ATRAPADO: obstáculo MUY cerca (<5 cm) adelante Y línea DETRÁS → QUEDARSE QUIETO ---
+    // No hay salida segura: adelante choca (obstáculo pegado), atrás cruza la línea. Prioridad
+    // MÁXIMA (antes del anti-choque y del switch): frena y NO toca el estado; cuando el obstáculo
+    // se aleja (>5 cm o desaparece), la condición se apaga sola y la FSM sigue normal.
+    if (obstaculo_muy_cerca() && linea_atras()) {
+        parar();
+        return;
+    }
+
+    // --- ANTI-CHOQUE (ultrasonido): obstáculo al frente a <15 cm → RETROCEDER y volver a BUSCAR ---
+    // PRIORIDAD: la LÍNEA gana. El obstáculo SOLO interrumpe si NO hay línea presente
+    // (!linea_presente()). Por qué (bug "se sale de la cancha", banco 2026-07-01): EVITAR retrocede
+    // RECTO (retroceder2), y con una línea DETRÁS eso la cruzaría; además, si el obstáculo pisaba el
+    // escape de línea cada tick, el escape DIRECCIONAL (retroceder1/3, que va adelante-lateral y SÍ se
+    // aleja de la línea) nunca corría y el robot retrocedía sin fin sobre la línea. La línea es la
+    // restricción DURA (penaliza), el choque no → cuando hay línea manda el escape de línea; el
+    // anti-choque espera a que no haya línea. (La exclusión de los DETECTA_LINEA queda redundante con
+    // !linea_presente() pero se deja explícita.) Exclusión de EVITAR mismo: si no, reinicia el timer.
+    if (obstaculo_cerca() && !linea_presente() &&
+        estado != Estado::EVITAR_OBSTACULO &&
+        estado != Estado::DETECTA_LINEA_1 && estado != Estado::DETECTA_LINEA_2 && estado != Estado::DETECTA_LINEA_3) {
+        millis_inicio_estado = millis();
+        estado = Estado::EVITAR_OBSTACULO;
+    }
 
     switch (estado) {
 
@@ -893,6 +937,31 @@ void mix_fsm_tick() {
                 parar();
                 millis_inicio_estado = millis();
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;
+            }
+            break;
+
+        // ----------------------------------------------------
+        // EVITAR_OBSTACULO (rama ultrasonido): el ultrasonido vio algo a <15 cm al frente.
+        // PRIMERO mira la línea: si hay, escapa con la primitiva DIRECCIONAL (retroceder1/2/3, que se
+        // aleja de la línea) SIN retroceder recto — así NO cruza una línea trasera. Con la prioridad
+        // de línea de arriba, ese DETECTA_LINEA corre completo (el obstáculo no lo re-pisa). Solo si
+        // NO hay línea retrocede (retroceder2) para alejarse del obstáculo; tras MIX_EVITAR_MS vuelve
+        // a BUSCAR (GIRANDO). El ultrasonido NO ve la pelota (montado alto): solo frena por robots/paredes.
+        case Estado::EVITAR_OBSTACULO:
+            // Línea ANTES de moverse: escapá en la dirección correcta y no des ni un tick para atrás
+            // sobre una línea trasera.
+            if (linea_s1()) { estado = Estado::DETECTA_LINEA_1; millis_inicio_estado = millis(); break; }
+            if (linea_s2()) { estado = Estado::DETECTA_LINEA_2; millis_inicio_estado = millis(); break; }
+            if (linea_s3()) { estado = Estado::DETECTA_LINEA_3; millis_inicio_estado = millis(); break; }
+            // Retroceso LENTO (mismo patrón que retroceder2 pero a MIX_EVITAR_PWM) → la DOWN
+            // alcanza a DETECTAR la línea antes de cruzarla, y frena/escapa a tiempo.
+            mix_set_motor(0, -MIX_EVITAR_PWM);
+            mix_set_motor(1, +MIX_EVITAR_PWM);
+            mix_set_motor(2, 0);
+            if (millis() - millis_inicio_estado >= MIX_EVITAR_MS) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::GIRANDO;   // vuelve a BUSCAR la pelota
             }
             break;
     }

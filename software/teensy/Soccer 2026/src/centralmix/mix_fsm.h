@@ -50,7 +50,11 @@ enum class Estado {
     // hacia el centro → después GIRANDO. Se ejecuta UNA vez (ningún estado vuelve a él).
     KICKOFF_SEEK,
     ESPERAR,
-    TEST, 
+    TEST,
+    // --- AGREGADO 2026 (rama ultrasonido): anti-choque. Si el ultrasonido (montado ALTO, no ve la
+    //     pelota) detecta algo a <15 cm, la FSM interrumpe, RETROCEDE y vuelve a BUSCAR (GIRANDO).
+    //     Ver mix_config.h: MIX_OBSTACULO_STOP_MM / MIX_EVITAR_MS.
+    EVITAR_OBSTACULO,
 };
 
 // Inicializa la FSM: estado = KICKOFF_SEEK (primer estado), sella timers (millis()). Llamar

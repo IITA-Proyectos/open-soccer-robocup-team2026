@@ -329,6 +329,29 @@ void amix_fsm_tick() {
             }
             break;
 
+#ifdef ARQMIX_RETRO_BRAKE_ON_LINE
+        // ----------------------------------------------------
+        // --- MODO QUIETO: ESCAPE HACIA ADELANTE tras tocar la línea volviendo del pateo (gateado, María 2026-07-01) ---
+        case Estado::escapar_adelante:
+            // Al VOLVER del pateo el retroceso pisó la línea; en vez de un freno por TIEMPO (a ciegas), AVANZA al
+            // frente HASTA que DEJA de pisar la línea — EXACTAMENTE como el homing (inicio_avanzar): usa la LÍNEA
+            // para saber cuándo parar de escapar, no un reloj. Sale con impulso MÍNIMO (cubre el parpadeo de la
+            // línea) + ya NO pisa línea, o por RED de seguridad (si la línea nunca se apaga, no quedar trabado
+            // avanzando). Reusa las MISMAS constantes y primitiva del homing (avanzar_inicio / AMIX_T_INICIO_AVANCE_*).
+            avanzar_inicio();                            // avance suave (75 PWM) RECTO al frente (despegarse de la línea)
+            {
+                const unsigned long dt            = millis() - millis_inicio_estado;
+                const bool impulso_minimo_ok      = dt >= AMIX_T_INICIO_AVANCE_MIN;
+                const bool ya_salio_de_linea      = !linea();
+                const bool safety                 = dt >= AMIX_T_INICIO_AVANCE_SAFETY;
+                if ((impulso_minimo_ok && ya_salio_de_linea) || safety) {
+                    millis_inicio_estado = millis();
+                    estado = Estado::acomodar_linea;     // ya despegado de la línea → acomodar → quieto
+                }
+            }
+            break;
+#endif
+
         // ----------------------------------------------------
         case Estado::PATEANDO_pausa:                // L1174-1182
             parar();
@@ -349,6 +372,35 @@ void amix_fsm_tick() {
             // metía por inercia/latencia). SEGURIDAD (pedido Virginia "nunca salirse de la cancha"): si el
             // enlace con DOWN NO está fresco → NO retroceder a ciegas (sin dato de línea confiable, FRENA).
             {
+#ifdef ARQMIX_RETRO_BRAKE_ON_LINE
+                // RETROCESO COMO EL HOMING (banco María 2026-07-01): vuelve HASTA DETECTAR la línea y NADA MÁS.
+                // Las condiciones extra que tenía (gate de frescura de DOWN + safety corto de 4 s) lo cortaban
+                // ANTES de pisar la línea → el escape sobre la línea no llegaba a actuar → se metía "no siempre
+                // pero muchas veces". Ahora es INCONDICIONAL como inicio_retroceder (el retroceso del arranque,
+                // que "siempre anda bien"): retroceder_quieto() hasta linea() → escapar_adelante. El safety queda
+                // SÓLO como red anti-cuelgue GRANDE (AMIX_T_ATRAS_SAFETY_RETRO ~ el del homing): no debería
+                // dispararse en juego; sólo si DOWN muere y la línea nunca se ve (para no retroceder infinito).
+                retroceder_quieto();
+                if (linea()) {
+                    parar();
+                    millis_inicio_estado = millis();
+                    estado = Estado::escapar_adelante;   // pisó la línea → avanza al frente hasta despegarse → acomodar
+                } else if (!g_aio.down_link_fresh) {
+                    // SEGURIDAD (revisión adversarial 2026-07-01): si el enlace con DOWN MUERE a mitad del retroceso,
+                    // line_present queda CONGELADO (amix_comm apply_down_line nunca lo resetea al perder el enlace) →
+                    // sin este corte el retroceso CIEGO correría hasta AMIX_T_ATRAS_SAFETY_RETRO (50 s) y se saldría de
+                    // la cancha. NO es un corte de juego normal (en juego DOWN llega fresco → sigue "hasta la línea");
+                    // sólo actúa si el sensor de línea está MUERTO (ahí "hasta la línea" es imposible). Espejo de lo
+                    // que ya hacía la rama sin flag (if !down_ok → parar). El equipo lo confirma en banco.
+                    parar();
+                    millis_inicio_estado = millis();
+                    estado = Estado::acomodar_linea;
+                } else if (millis() - millis_inicio_estado >= AMIX_T_ATRAS_SAFETY_RETRO) {  // red anti-cuelgue (última)
+                    parar();
+                    millis_inicio_estado = millis();
+                    estado = Estado::acomodar_linea;
+                }
+#else
                 const bool down_ok = g_aio.down_link_fresh;   // ¿la línea (DOWN) llega fresca? (<500 ms)
                 if (down_ok) retroceder_quieto();             // retroceso lento hacia la línea
                 else         parar();                         // sin línea fresca → no retroceder a ciegas
@@ -362,6 +414,7 @@ void amix_fsm_tick() {
                     // ANTES de quedar quieto se ACOMODA (despega de la línea + se orienta de frente).
                     estado = Estado::acomodar_linea;
                 }
+#endif
             }
             break;
 

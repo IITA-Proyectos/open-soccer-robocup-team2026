@@ -130,6 +130,22 @@ constexpr int AMIX_ATRAS_QUIETO = 80;
 constexpr int           AMIX_FRENO_PATADA_PWM = 200;  // PWM del freno-retroceso (alto = frena rápido). Subir si igual se sale; bajar si rebota mucho atrás.
 constexpr unsigned long AMIX_T_FRENO_PATADA   = 250;  // ms del freno (corto, estilo plugging 2025). Subir si no frena a tiempo; bajar si se va de atrás.
 
+// RETROCESO POST-PATEO "HASTA LA LÍNEA + ESCAPE ADELANTE" (SOLO modo quieto, gateado, pedido María 2026-07-01):
+// al VOLVER hacia atrás tras patear (PATEANDO_atras) el arquero se metía / cruzaba la línea. FIX espejo del
+// HOMING del arranque: (1) el retroceso va HASTA detectar la línea (sin el gate de frescura ni el safety corto
+// que lo cortaban antes; queda solo una red anti-cuelgue grande) y (2) al pisar la línea AVANZA al frente HASTA
+// despegarse (estado escapar_adelante, condición NO tiempo). Reusa la primitiva/constantes del homing.
+#ifdef ARQMIX_RETRO_BRAKE_ON_LINE
+// RED DE ÚLTIMO RECURSO del retroceso post-pateo (banco María 2026-07-01): el retroceso termina SÓLO al DETECTAR
+// la línea (como el homing del inicio, que "siempre anda bien") — se le SACARON el gate de frescura de DOWN y el
+// safety corto de 4 s, que lo cortaban ANTES de pisar la línea. Esto queda SÓLO como red anti-cuelgue: NO debería
+// dispararse nunca en juego; sólo evita retroceder infinito si DOWN muriera y la línea NUNCA se viera. Grande a
+// propósito (~ el del homing). Para sacarlo del todo (retroceso 100% "hasta la línea") subirlo aún más.
+constexpr unsigned long AMIX_T_ATRAS_SAFETY_RETRO = 50000;  // ms (RED, no un corte normal). <banco: no tocar salvo que corte antes de la línea>
+// El ESCAPE tras tocar la línea = AVANZAR al frente HASTA despegarse (estado escapar_adelante), espejo del homing:
+// reusa las constantes AMIX_T_INICIO_AVANCE_MIN/SAFETY y la primitiva avanzar_inicio() — no necesita propias.
+#endif
+
 // ============================================================
 // ALINEAR AL ARCO RIVAL antes de despejar (pedido Gustavo 2026-06-21).
 // ----------------------------------------------------------------------------------

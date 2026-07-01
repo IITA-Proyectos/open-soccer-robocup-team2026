@@ -44,6 +44,9 @@ enum class Estado : uint8_t {
     orientar_frente,             // tras patear, gira (cámara/giroscopio, heading→0) a MIRAR al arco rival → atrás
     acomodar_linea,              // ANTES de quedar quieto — si toca línea (lateral/atrás), despegarse al lado opuesto
     acomodar_orientar,           // ANTES de quedar quieto — re-orientar al frente (heading→0) → quieto mirando al frente
+#ifdef ARQMIX_RETRO_BRAKE_ON_LINE
+    escapar_adelante,            // MODO QUIETO (gateado): tras tocar la LÍNEA volviendo del pateo → AVANZA al frente HASTA despegarse (como el homing) → acomodar
+#endif
 };
 
 void amix_fsm_init();

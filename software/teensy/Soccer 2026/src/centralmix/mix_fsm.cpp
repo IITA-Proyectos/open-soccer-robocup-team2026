@@ -140,6 +140,14 @@ static inline bool linea_s3() {
     return linea_presente() && (g_io.line_angle_deg > 60.0f);
 }
 
+// ---- Anti-choque: ¿hay un obstáculo cerca al frente? (ultrasonido HC-SR04 vía g_io.obstacle_mm) ----
+// El ultrasonido va montado ALTO → no ve la pelota (baja), sí robots/paredes. 0xFFFF = nada,
+// 0 = sin lectura/glitch (ambos = "libre"). Umbral MIX_OBSTACULO_STOP_MM (0 = anti-choque apagado).
+static inline bool obstaculo_cerca() {
+    const uint16_t d = g_io.obstacle_mm;
+    return (MIX_OBSTACULO_STOP_MM > 0) && (d > 0) && (d < 0xFFFF) && (d <= MIX_OBSTACULO_STOP_MM);
+}
+
 // ============================================================
 // IMPULSOS / centrados que el 2025 escribía INLINE con analogWrite (no eran
 // funciones nombradas). Se reproducen acá con mix_set_motor para no inventar
@@ -280,6 +288,19 @@ void mix_fsm_tick() {
     const float anguloPelota = g_io.angulo_pelota_deg;
     // 'millis_pelota' 2025 == g_io.t_last_ball_seen_ms (lo sella mix_comm).
     const unsigned long millis_pelota = g_io.t_last_ball_seen_ms;
+
+    // --- ANTI-CHOQUE (ultrasonido): obstáculo al frente a <15 cm → RETROCEDER y volver a BUSCAR ---
+    // Interrupción de máxima prioridad (después del árbitro/kickoff). Si el ultrasonido ve algo
+    // cerca, salta a EVITAR_OBSTACULO desde CUALQUIER estado. NO pisa el escape de línea (ese tiene
+    // prioridad para no salir de la cancha) ni se re-dispara si ya está evitando.
+    if (obstaculo_cerca() &&
+        estado != Estado::EVITAR_OBSTACULO &&
+        estado != Estado::DETECTA_LINEA_1 &&
+        estado != Estado::DETECTA_LINEA_2 &&
+        estado != Estado::DETECTA_LINEA_3) {
+        millis_inicio_estado = millis();
+        estado = Estado::EVITAR_OBSTACULO;
+    }
 
     switch (estado) {
 
@@ -893,6 +914,21 @@ void mix_fsm_tick() {
                 parar();
                 millis_inicio_estado = millis();
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;
+            }
+            break;
+
+        // ----------------------------------------------------
+        // EVITAR_OBSTACULO (rama ultrasonido): el ultrasonido vio algo a <15 cm al frente.
+        // RETROCEDE (mismo escape que "línea al frente") por MIX_EVITAR_MS y vuelve a BUSCAR
+        // la pelota girando (GIRANDO). Si al terminar el obstáculo sigue cerca, el chequeo de
+        // arriba lo re-dispara solo. El ultrasonido NO ve la pelota (montado alto) → esto nunca
+        // frena por la pelota, solo por robots/paredes.
+        case Estado::EVITAR_OBSTACULO:
+            retroceder2();
+            if (millis() - millis_inicio_estado >= MIX_EVITAR_MS) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::GIRANDO;   // vuelve a BUSCAR la pelota
             }
             break;
     }

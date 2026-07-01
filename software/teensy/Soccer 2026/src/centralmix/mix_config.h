@@ -116,6 +116,14 @@ constexpr int   MIX_ATRAS_PWM      = 120;   // PWM del giro-encare. >= piso M3 (
 constexpr int   MIX_ATRAS_DIR_SIGN = +1;    // sentido del giro (+1/-1). Si encara por el lado LARGO
                                             //   en banco, invertir a -1 (signo físico A CONFIRMAR).
 
+// --- ANTI-CHOQUE con el ultrasonido (HC-SR04 fusionado en g_io.obstacle_mm) ---
+// El ultrasonido está montado ALTO: NO ve la pelota (le pasa por encima), SÍ ve robots/paredes.
+// Si detecta algo a menos de MIX_OBSTACULO_STOP_MM, la FSM interrumpe y va a EVITAR_OBSTACULO:
+// retrocede MIX_EVITAR_MS y vuelve a BUSCAR (GIRANDO). KILL-SWITCH: MIX_OBSTACULO_STOP_MM = 0 →
+// nunca dispara (FSM idéntica a hoy).
+constexpr uint16_t      MIX_OBSTACULO_STOP_MM = 150;   // <15 cm al frente → retroceder. 0 = apagado.
+constexpr unsigned long MIX_EVITAR_MS         = 400;   // cuánto retrocede (igual que el escape de línea).
+
 // ============================================================
 // Kicker / patada — RECTA y FUERTE con corrección de rumbo por OTOS (2026-06-21, pedido Elías).
 // Revisado con análisis de cinemática + red-team multi-agente (workflow 2026-06-21).

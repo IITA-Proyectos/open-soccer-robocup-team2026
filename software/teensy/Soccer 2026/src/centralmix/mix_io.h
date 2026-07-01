@@ -36,6 +36,11 @@ struct MixIO {
     bool  ball_visible = false;    // ¿la cámara ve la pelota? (haypelota 2025)
     float angulo_pelota_deg = 0.0f; // atan2(ball_x_cm, ball_y_cm) en °, calculado por mix_comm
 
+    // ---- Obstáculo más cercano al frente (anti-choque, ultrasonido HC-SR04 fusionado por el TOP) ----
+    // El TOP manda min_obstacle_mm en el WorldSnapshot. El ultrasonido va montado ALTO → NO ve la
+    // pelota (le pasa por encima), SÍ ve robots/paredes. 0xFFFF = SIN obstáculo; 0 = sin lectura/glitch.
+    uint16_t obstacle_mm = 0xFFFF; // mm al obstáculo más cercano (0xFFFF = libre)
+
     // ---- Arcos por ROL, NO por color (ángulo ° marco robot, +=derecha; distancia mm) ----
     // ⚠️ La placa CENTRAL (este programa) NUNCA pregunta por COLOR (amarillo/azul). La placa TOP
     // ya resolvió cuál arco es el RIVAL (opp = al que se patea) y cuál el PROPIO (own), con el

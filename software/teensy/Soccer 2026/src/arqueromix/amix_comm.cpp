@@ -92,6 +92,12 @@ void apply_top_snapshot(const WorldSnapshot& s) {
     g_aio.ball_vy_mm_s   = static_cast<float>(s.ball_vy_mm_s);
     g_aio.ball_vel_valid = (s.ball_vx_mm_s != 0 || s.ball_vy_mm_s != 0);
 
+#ifdef ARQMIX_AVOID_OBSTACLE
+    // Obstáculo más cercano al frente (ultrasonido HC-SR04 fusionado por el TOP en min_obstacle_mm), para el
+    // anti-choque. Copia directa: 0xFFFF = SIN obstáculo. El FSM decide el umbral (ARQMIX_OBST_STOP_MM).
+    g_aio.obstacle_mm = s.min_obstacle_mm;
+#endif
+
     // --- Arcos por ROL (opp=RIVAL / own=PROPIO): copia DIRECTA del snapshot, SIN color ---
     // La decisión "qué arco es el rival y cuál el propio" YA la tomó la placa TOP con goal_polarity
     // (regla: el arco al FRENTE del robot = rival; el de atrás = propio; con un latch que la fija al

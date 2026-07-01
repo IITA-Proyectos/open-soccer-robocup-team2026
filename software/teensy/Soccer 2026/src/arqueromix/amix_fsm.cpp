@@ -61,6 +61,15 @@ static bool s_kick_corto = false;
 static inline bool linea() {
     return g_aio.line_present && (g_aio.line_depth >= AMIX_LINE_DEPTH_TRIGGER);
 }
+#ifdef ARQMIX_AVOID_OBSTACLE
+// ANTI-CHOQUE: ¿hay un obstáculo cerca al FRENTE? (ultrasonido vía g_aio.obstacle_mm). El ultrasonido va
+// montado ALTO → NO ve la pelota, SÍ robots/paredes. 0xFFFF = nada, 0 = sin lectura/glitch (ambos = "libre").
+// Umbral ARQMIX_OBST_STOP_MM (0 = anti-choque apagado). Espejo de obstaculo_cerca() del delantero (Elías).
+static inline bool obstaculo_cerca() {
+    const uint16_t d = g_aio.obstacle_mm;
+    return (ARQMIX_OBST_STOP_MM > 0) && (d > 0) && (d < 0xFFFF) && (d <= ARQMIX_OBST_STOP_MM);
+}
+#endif
 // Distancia euclídea robot→pelota (mm) — como dist_pelota_mm() de centralmix.
 static inline float dist_pelota_mm() {
     return sqrtf(g_aio.ball_x_mm * g_aio.ball_x_mm + g_aio.ball_y_mm * g_aio.ball_y_mm);
@@ -155,6 +164,27 @@ void amix_fsm_tick() {
 
     const float error = g_aio.heading_error_deg;   // == 'error' 2025 (ya wrapeado)
     const bool  haypelota = g_aio.ball_visible;     // == 'haypelota' 2025
+
+#ifdef ARQMIX_AVOID_OBSTACLE
+    // ANTI-CHOQUE (gateado, pedido María 2026-07-01): si hay un robot cerca al FRENTE (ultrasonido), FRENA y
+    // espera — NO se mueve hacia el rival (corta el tick antes del switch → congela el despeje/búsqueda/homing).
+    // Cuando el obstáculo se aleja/desaparece, la condición se apaga sola y la FSM sigue normal. Es "frenar y
+    // esperar" (decisión María), NO retroceder (a diferencia del delantero). Va DESPUÉS del gate del árbitro y del
+    // re-homing (para no romper el manejo de estado), pero ANTES del switch (prioridad sobre el estado actual).
+    // DOS AJUSTES de la revisión adversarial 2026-07-01:
+    //  (1) `millis_inicio_estado = millis()` "PAUSA" el reloj del estado en curso: sin esto, el tiempo congelado
+    //      contaría para el timeout (millis sigue corriendo) → al reanudar, un estado temporizado (golpe 450 ms,
+    //      alineación 300 ms) vencería de inmediato y se SALTEARÍA su acción (no patearía / no apuntaría). Al
+    //      reiniciar el reloj cada tick congelado, al soltar el obstáculo el estado corre su duración COMPLETA.
+    //  (2) EXCLUIR `frenar_patada`: es el contra-empuje ACTIVO (200 PWM atrás) que mata la inercia del golpe para
+    //      no salirse. `parar()` es RUEDA LIBRE (coast) → congelarlo dejaría que la inercia del golpe arrastre al
+    //      arquero HACIA el obstáculo del frente (lo contrario de evitar). Se deja COMPLETAR el freno activo.
+    if (obstaculo_cerca() && estado != Estado::frenar_patada) {
+        millis_inicio_estado = millis();   // pausa el timer del estado (no contar el congelamiento al reanudar)
+        parar();
+        return;
+    }
+#endif
 
     switch (estado) {
         // ----------------------------------------------------

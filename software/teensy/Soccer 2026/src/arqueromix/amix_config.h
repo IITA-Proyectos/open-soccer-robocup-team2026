@@ -295,6 +295,23 @@ constexpr unsigned long AMIX_T_ATRAS_SAFETY  = 4000;  // tope de seguridad del r
 // ============================================================
 constexpr uint8_t AMIX_LINE_DEPTH_TRIGGER = 1;  // ≥1 sensor en blanco = línea presente
 
+// ============================================================
+// ANTI-CHOQUE con el ULTRASONIDO (gateado -DARQMIX_AVOID_OBSTACLE, pedido María 2026-07-01).
+// ----------------------------------------------------------------------------------
+// Si min_obstacle_mm del snapshot del TOP (= min(4 ToF + HC-SR04); top_robot2_pri trae -DTOP_ENABLE_MULTI_TOF)
+// detecta algo a <= este umbral al FRENTE, el arquero FRENA y espera (no se mueve hacia el rival, incluido el
+// despeje). Cuando el obstáculo se aleja/desaparece (0xFFFF), sigue normal solo. "Frenar y esperar" (decisión
+// María), NO retroceder. KILL-SWITCH: 0 = apagado.
+// ⚠️ SUPUESTO + CHEQUEO BLOQUEANTE: este anti-choque asume que en R2 min_obstacle es EFECTIVAMENTE sólo el
+// ULTRASONIDO (montado alto → no ve la pelota). Eso SÓLO se cumple si los ToF están DESHABILITADOS en la EEPROM
+// del TOP; el HC-SR04 no ve la pelota, pero los ToF van más bajo y SÍ podrían verla. **CONFIRMAR EN BANCO** que
+// la PELOTA no baja min_obstacle_mm de este umbral (leer snap_min_obstacle_mm por telemetría acercando SÓLO la
+// pelota). Si se dispara con la pelota, el arquero no despejaría → deshabilitar/enmascarar los ToF frontales en
+// la config del TOP (g_top_cfg.tof[i].enabled/zone_mask), NO se arregla desde acá.
+#ifdef ARQMIX_AVOID_OBSTACLE
+constexpr uint16_t ARQMIX_OBST_STOP_MM = 150;  // <15 cm al frente → parar y esperar. 0 = apagado. <TITRAR EN BANCO>
+#endif
+
 
 // ============================================================
 // Comunicación — enlaces TOP (Serial7) y DOWN (Serial1), 230400 (= comm_top/comm_down).

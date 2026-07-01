@@ -40,6 +40,17 @@ struct AmixIO {
     float ball_vy_mm_s   = 0.0f;     // signo = pelota acercándose/alejándose en +Y (a verificar en banco)
     bool  ball_vel_valid = false;    // ¿el TOP estimó velocidad? (manda 0,0 si no hay)
 
+    // ---- Obstáculo más cercano al frente (ANTI-CHOQUE, gateado -DARQMIX_AVOID_OBSTACLE) ----
+    // El TOP manda min_obstacle_mm en el WorldSnapshot = **min(4 ToF + HC-SR04)** (sensors_tof_get_min_distance_mm;
+    // top_robot2_pri compila con -DTOP_ENABLE_MULTI_TOF). El HC-SR04 (ultrasonido) va montado ALTO → NO ve la
+    // pelota. PERO los ToF sí podrían verla (van más bajo). ⚠️ Este anti-choque asume que en R2 min_obstacle es
+    // EFECTIVAMENTE sólo el ultrasonido — eso SÓLO se cumple si los ToF están DESHABILITADOS en la EEPROM del TOP
+    // (g_top_cfg.tof[i].enabled=false). **VERIFICAR EN BANCO** que la PELOTA no lo dispara (ver amix_config.h).
+    // 0xFFFF = SIN obstáculo (libre). Sólo se puebla/usa con el flag → sin flag el struct queda byte-idéntico.
+#ifdef ARQMIX_AVOID_OBSTACLE
+    uint16_t obstacle_mm = 0xFFFF;   // mm al obstáculo más cercano al frente (0xFFFF = libre)
+#endif
+
     // ---- Arcos por ROL, NO por color (ángulo ° marco robot, +=derecha; distancia mm) ----
     // ⚠️ La placa CENTRAL (este programa) NUNCA pregunta por COLOR (amarillo/azul). La placa TOP
     // ya resolvió cuál arco es el RIVAL (opp = al que se despeja/patea) y cuál el PROPIO (own), con

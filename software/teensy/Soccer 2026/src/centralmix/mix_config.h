@@ -73,16 +73,16 @@ constexpr uint8_t MIX_LINE_DEPTH_TRIGGER = 1;  // ≥1 sensor en blanco = línea
 // ============================================================
 constexpr float MIX_G  = 0.4f;   // girando
 constexpr float MIX_A  = 0.35f;   // apuntando pelota
-constexpr float MIX_C  = 0.4f;   // centrando (2025 ROBOT2)
+constexpr float MIX_C  = 0.6f;   // centrando (2025 ROBOT2)
 constexpr float MIX_IC = 0.55f;  // impulso centrando (2025 ROBOT2)
 constexpr float MIX_PD = 1.0f;   // avances proporcionales (2025 'pd')
 
 // ============================================================
 // Tolerancias 2025 (en mm para cercanía/centrado; en grados para apuntado).
 // ============================================================
-constexpr float MIX_TOL_CENTRADO = 5.0f;  // tolerancia_centrado
-constexpr float MIX_TOL_CERCANIA = 30.0f;  // tolerancia_cercania
-constexpr float MIX_TOL_APUNTADO = 20.0f;  // tolerancia_apuntado (grados)
+constexpr float MIX_TOL_CENTRADO = 15.0f;  // tolerancia_centrado
+constexpr float MIX_TOL_CERCANIA = 20.0f;  // tolerancia_cercania
+constexpr float MIX_TOL_APUNTADO = 30.0f;  // tolerancia_apuntado (grados)
 
 // ============================================================
 // Jugada "PELOTA ATRÁS" (la ve la cámara TRASERA) — giro-encare sobre el piso del motor.
@@ -115,6 +115,22 @@ constexpr int   MIX_ATRAS_PWM      = 120;   // PWM del giro-encare. >= piso M3 (
                                             //   bajá si el regulador hace brownout. Rango 110..140.
 constexpr int   MIX_ATRAS_DIR_SIGN = +1;    // sentido del giro (+1/-1). Si encara por el lado LARGO
                                             //   en banco, invertir a -1 (signo físico A CONFIRMAR).
+
+// --- ANTI-CHOQUE con el ultrasonido (HC-SR04 fusionado en g_io.obstacle_mm) ---
+// El ultrasonido está montado ALTO: NO ve la pelota (le pasa por encima), SÍ ve robots/paredes.
+// Si detecta algo a menos de MIX_OBSTACULO_STOP_MM, la FSM interrumpe y va a EVITAR_OBSTACULO:
+// retrocede MIX_EVITAR_MS y vuelve a BUSCAR (GIRANDO). KILL-SWITCH: MIX_OBSTACULO_STOP_MM = 0 →
+// nunca dispara (FSM idéntica a hoy).
+constexpr uint16_t      MIX_OBSTACULO_STOP_MM = 150;   // <15 cm al frente → retroceder. 0 = apagado.
+constexpr unsigned long MIX_EVITAR_MS         = 500;   // cuánto retrocede (más largo porque va LENTO).
+// Velocidad del retroceso al evitar: LENTO a propósito (banco 2026-07-01) para que la placa DOWN
+// alcance a DETECTAR la línea antes de cruzarla. retroceder2 va a 100; acá bajamos a MIX_EVITAR_PWM.
+// ⚠️ Piso del motor delantero ~70: por debajo NO mueve. Si zumba y no retrocede, SUBILO (80→90...);
+// si querés más lento y aún se mueve, bajalo con cuidado. Es LA perilla de "que capte la línea".
+constexpr int           MIX_EVITAR_PWM        = 80;    // PWM del retroceso lento del anti-choque.
+// ATRAPADO: obstáculo MUY cerca (<5 cm) adelante Y línea DETRÁS → no hay salida segura (adelante
+// choca, atrás cruza la línea) → QUEDARSE QUIETO hasta que el obstáculo se aleje. 0 = apagado.
+constexpr uint16_t      MIX_OBSTACULO_MUY_CERCA_MM = 50;   // <5 cm = "pegado".
 
 // ============================================================
 // Kicker / patada — RECTA y FUERTE con corrección de rumbo por OTOS (2026-06-21, pedido Elías).

@@ -51,6 +51,14 @@
 #define TEST_TIENE_VELOCIDADES 1
 #endif
 
+// BANCO: arrancar la estrategia (test 9) SOLA, sin el START del árbitro, pero ESPERANDO unos
+// segundos desde que se entra al test (para soltar el robot). 1 = arranca sola tras el delay.
+// 0 = respeta el árbitro (competencia). ⚠️ Con 1 el robot SE MUEVE solo tras el delay → vigilalo.
+#ifndef TEST_FORZAR_MATCH
+#define TEST_FORZAR_MATCH 1
+#endif
+static const unsigned long TEST_START_DELAY_MS = 5000;   // esperar 5 s antes de arrancar la estrategia
+
 using namespace iitasoccer::mix;
 
 // ============================================================
@@ -85,6 +93,7 @@ static const float AV_KP_HDG   = 3.0f;   // heading-hold: PWM de giro por grado 
 static const int   AV_OMEGA_MAX= 60;     // tope del término de giro (PWM)
 static float s_av_hdg = 0.0f;            // rumbo latcheado al entrar a T_AVANZAR
 static bool  s_av_hdg_ok = false;        // ¿ya se latcheó? (se resetea al cambiar de test)
+static unsigned long s_estrat_t0 = 0;    // millis al ENTRAR a T_ESTRATEGIA (para el delay de arranque)
 
 // ============================================================
 //   Utilidades
@@ -109,6 +118,7 @@ static void imprimir_encabezado(){
     if (estado == s_estado_prev) return;
     s_estado_prev = estado;
     s_av_hdg_ok = false;   // al cambiar de test, re-latchear el rumbo de T_AVANZAR en la próxima entrada
+    s_estrat_t0 = 0;       // y re-arrancar el delay de 5 s de la estrategia en la próxima entrada
     Serial.println();
     Serial.print("======== TEST "); Serial.print((int)estado); Serial.print("  ");
     switch (estado){
@@ -273,21 +283,34 @@ void loop(){
             break;
 
         // ---- Estrategia completa ----
-        case T_ESTRATEGIA:
+        case T_ESTRATEGIA: {
 #if TEST_CON_SEGUIR
-            mix_seguir_tick();
+            if (s_estrat_t0 == 0) s_estrat_t0 = millis();            // latch al ENTRAR al test 9
+            const unsigned long espera = millis() - s_estrat_t0;
+            const bool arrancar = (espera >= TEST_START_DELAY_MS);   // esperar 5 s antes de moverse
+#if TEST_FORZAR_MATCH
+            g_io.match_running = arrancar;   // BANCO: arranca sola tras 5 s (sin árbitro)
+#endif
+            if (arrancar) mix_seguir_tick(); else parar();           // los primeros 5 s: QUIETO
             if(toca){
-                Serial.print("ESTADO="); Serial.print(mix_seguir_estado_nombre());
-                Serial.print(" dist="); Serial.print(mix_seguir_dist_cm(),0);
-                Serial.print(" aim=");  Serial.print(mix_seguir_aim_deg(),0);
-                Serial.print(" | pelota vis="); Serial.print(g_io.ball_visible);
-                Serial.print(" ang="); Serial.print(g_io.angulo_pelota_deg,0);
-                Serial.print(" | hdg="); Serial.println(g_io.heading_deg,0);
+                if (!arrancar){
+                    Serial.print("ESPERANDO arranque... faltan ");
+                    Serial.print((TEST_START_DELAY_MS - espera)/1000 + 1); Serial.println(" s");
+                } else {
+                    Serial.print("ESTADO="); Serial.print(mix_seguir_estado_nombre());
+                    Serial.print(" dist="); Serial.print(mix_seguir_dist_cm(),0);
+                    Serial.print(" aim=");  Serial.print(mix_seguir_aim_deg(),0);
+                    Serial.print(" | match="); Serial.print(g_io.match_running);
+                    Serial.print(" pelota vis="); Serial.print(g_io.ball_visible);
+                    Serial.print(" ang="); Serial.print(g_io.angulo_pelota_deg,0);
+                    Serial.print(" | hdg="); Serial.println(g_io.heading_deg,0);
+                }
             }
 #else
             parar();
             if(toca) Serial.println("T_ESTRATEGIA deshabilitado: copiá mix_seguir y poné TEST_CON_SEGUIR 1.");
 #endif
             break;
+        }
     }
 }

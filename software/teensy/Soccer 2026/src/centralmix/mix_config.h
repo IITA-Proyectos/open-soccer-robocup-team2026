@@ -123,6 +123,9 @@ constexpr int   MIX_ATRAS_DIR_SIGN = +1;    // sentido del giro (+1/-1). Si enca
 // nunca dispara (FSM idéntica a hoy).
 constexpr uint16_t      MIX_OBSTACULO_STOP_MM = 150;   // <15 cm al frente → retroceder. 0 = apagado.
 constexpr unsigned long MIX_EVITAR_MS         = 100;   // cuánto retrocede (igual que el escape de línea).
+// ATRAPADO: obstáculo MUY cerca (<5 cm) adelante Y línea DETRÁS → no hay salida segura (adelante
+// choca, atrás cruza la línea) → QUEDARSE QUIETO hasta que el obstáculo se aleje. 0 = apagado.
+constexpr uint16_t      MIX_OBSTACULO_MUY_CERCA_MM = 50;   // <5 cm = "pegado".
 
 // ============================================================
 // Kicker / patada — RECTA y FUERTE con corrección de rumbo por OTOS (2026-06-21, pedido Elías).

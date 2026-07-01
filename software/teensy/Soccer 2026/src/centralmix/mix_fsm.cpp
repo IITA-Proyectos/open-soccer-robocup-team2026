@@ -148,6 +148,17 @@ static inline bool obstaculo_cerca() {
     return (MIX_OBSTACULO_STOP_MM > 0) && (d > 0) && (d < 0xFFFF) && (d <= MIX_OBSTACULO_STOP_MM);
 }
 
+// ¿Obstáculo MUY cerca (<5 cm) al frente? (para el caso "atrapado" contra una línea trasera).
+static inline bool obstaculo_muy_cerca() {
+    const uint16_t d = g_io.obstacle_mm;
+    return (MIX_OBSTACULO_MUY_CERCA_MM > 0) && (d > 0) && (d < 0xFFFF) && (d <= MIX_OBSTACULO_MUY_CERCA_MM);
+}
+
+// ¿Hay línea DETRÁS del robot? (en el hemisferio trasero: |ángulo| > 90°, 0 = frente).
+static inline bool linea_atras() {
+    return linea_presente() && (fabsf(g_io.line_angle_deg) > 90.0f);
+}
+
 // ============================================================
 // IMPULSOS / centrados que el 2025 escribía INLINE con analogWrite (no eran
 // funciones nombradas). Se reproducen acá con mix_set_motor para no inventar
@@ -288,6 +299,15 @@ void mix_fsm_tick() {
     const float anguloPelota = g_io.angulo_pelota_deg;
     // 'millis_pelota' 2025 == g_io.t_last_ball_seen_ms (lo sella mix_comm).
     const unsigned long millis_pelota = g_io.t_last_ball_seen_ms;
+
+    // --- ATRAPADO: obstáculo MUY cerca (<5 cm) adelante Y línea DETRÁS → QUEDARSE QUIETO ---
+    // No hay salida segura: adelante choca (obstáculo pegado), atrás cruza la línea. Prioridad
+    // MÁXIMA (antes del anti-choque y del switch): frena y NO toca el estado; cuando el obstáculo
+    // se aleja (>5 cm o desaparece), la condición se apaga sola y la FSM sigue normal.
+    if (obstaculo_muy_cerca() && linea_atras()) {
+        parar();
+        return;
+    }
 
     // --- ANTI-CHOQUE (ultrasonido): obstáculo al frente a <15 cm → RETROCEDER y volver a BUSCAR ---
     // PRIORIDAD: la LÍNEA gana. El obstáculo SOLO interrumpe si NO hay línea presente

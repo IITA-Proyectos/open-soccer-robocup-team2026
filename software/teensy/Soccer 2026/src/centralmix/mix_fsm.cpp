@@ -182,18 +182,17 @@ static inline void impulso_inicial_girando() {
 //   anguloPelota > 0 (pelota a la DERECHA) → 2025 enciende "antihorario" (INA0/INB1).
 //   anguloPelota < 0 (pelota a la IZQUIERDA) → 2025 enciende "horario"     (INA1/INB0).
 static inline void apuntar_pelota_motores() {
-    const int pwm = (int)(100.0f * MIX_A);  // 100 * a (2025)
-    if (g_io.angulo_pelota_deg > 0) {
-        // sentido antihorario (INA0/INB1 → +)
-        mix_set_motor(0, +pwm);
-        mix_set_motor(1, +pwm);
-        mix_set_motor(2, +pwm);
-    } else {
-        // sentido horario (INA1/INB0 → -)
-        mix_set_motor(0, -pwm);
-        mix_set_motor(1, -pwm);
-        mix_set_motor(2, -pwm);
-    }
+    // PROPORCIONAL al ángulo (rama apuntar-proporcional): más |ángulo| ⇒ más potencia de giro,
+    // menos |ángulo| ⇒ menos. potencia = |ángulo| * MIX_APUNTAR_KP, clampeada entre MIN y MAX.
+    const float ang = g_io.angulo_pelota_deg;          // + = pelota a la derecha, - = izquierda
+    int pwm = (int)(fabsf(ang) * MIX_APUNTAR_KP);
+    if (pwm < MIX_APUNTAR_PWM_MIN) pwm = MIX_APUNTAR_PWM_MIN;   // piso: que gire aunque el ángulo sea chico
+    if (pwm > MIX_APUNTAR_PWM_MAX) pwm = MIX_APUNTAR_PWM_MAX;   // techo: no pasarse de fuerte
+    // El SIGNO del ángulo decide el sentido del giro (giro PURO: las 3 ruedas mismo signo).
+    const int p = (ang > 0.0f) ? +pwm : -pwm;
+    mix_set_motor(0, p);
+    mix_set_motor(1, p);
+    mix_set_motor(2, p);
 }
 
 // IMPULSO_CENTRANDO_antihorario (2025): M1/M2 a 60*ic INA1/INB0(-), M3 a 180*ic INA0/INB1(+).

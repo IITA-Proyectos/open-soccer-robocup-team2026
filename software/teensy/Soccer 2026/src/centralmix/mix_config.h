@@ -85,6 +85,19 @@ constexpr float MIX_TOL_CERCANIA = 20.0f;  // tolerancia_cercania
 constexpr float MIX_TOL_APUNTADO = 30.0f;  // tolerancia_apuntado (grados)
 
 // ============================================================
+// APUNTAR_PELOTA — giro PROPORCIONAL al ángulo (rama apuntar-proporcional, pedido Elías).
+// Reemplaza el apuntado FIJO 2025 (100*MIX_A = 35, en zona muerta). Ahora la potencia con la que
+// gira para apuntar a la pelota CRECE con |ángulo de la pelota|:
+//     potencia = |angulo_pelota_deg| * MIX_APUNTAR_KP,  clampeada entre MIN y MAX.
+//   → ángulo GRANDE ⇒ gira FUERTE (llega rápido);  ángulo CHICO ⇒ gira SUAVE (no se pasa).
+// El SENTIDO del giro lo da el SIGNO del ángulo (igual que antes).
+// ============================================================
+constexpr float MIX_APUNTAR_KP      = 2.5f;   // ganancia: PWM por grado de |ángulo| (la pendiente).
+constexpr int   MIX_APUNTAR_PWM_MIN = 90;     // potencia MÍNIMA (ángulo chico). ⚠️ piso del motor
+                                              //   ~70 (M1/M2) y ~107 (M3, giro puro) → por debajo NO gira.
+constexpr int   MIX_APUNTAR_PWM_MAX = 180;    // potencia MÁXIMA (ángulo grande).
+
+// ============================================================
 // Jugada "PELOTA ATRÁS" (la ve la cámara TRASERA) — giro-encare sobre el piso del motor.
 // Diseñada con análisis de FSM + red-team multi-agente (workflow 2026-06-22).
 //

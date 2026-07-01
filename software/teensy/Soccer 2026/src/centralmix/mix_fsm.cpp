@@ -290,14 +290,13 @@ void mix_fsm_tick() {
     const unsigned long millis_pelota = g_io.t_last_ball_seen_ms;
 
     // --- ANTI-CHOQUE (ultrasonido): obstáculo al frente a <15 cm → RETROCEDER y volver a BUSCAR ---
-    // Interrupción de máxima prioridad (después del árbitro/kickoff). Si el ultrasonido ve algo
-    // cerca, salta a EVITAR_OBSTACULO desde CUALQUIER estado. NO pisa el escape de línea (ese tiene
-    // prioridad para no salir de la cancha) ni se re-dispara si ya está evitando.
-    if (obstaculo_cerca() &&
-        estado != Estado::EVITAR_OBSTACULO &&
-        estado != Estado::DETECTA_LINEA_1 &&
-        estado != Estado::DETECTA_LINEA_2 &&
-        estado != Estado::DETECTA_LINEA_3) {
+    // Interrupción de MÁXIMA PRIORIDAD (después del árbitro/kickoff): salta a EVITAR_OBSTACULO desde
+    // CUALQUIER estado, SIN excepción (incluido el escape de línea). La pared está justo después de
+    // la línea → si el ultrasonido frena antes de la pared, el robot no llega a cruzar la línea.
+    // Es seguro porque el ultrasonido es SOLO DE FRENTE: solo interrumpe si hay algo ADELANTE; si la
+    // línea está a un costado (nada adelante), obstaculo_cerca()=false y el escape de línea corre
+    // normal. Única exclusión: EVITAR_OBSTACULO mismo (si no, reiniciaría el timer y nunca saldría).
+    if (obstaculo_cerca() && estado != Estado::EVITAR_OBSTACULO) {
         millis_inicio_estado = millis();
         estado = Estado::EVITAR_OBSTACULO;
     }

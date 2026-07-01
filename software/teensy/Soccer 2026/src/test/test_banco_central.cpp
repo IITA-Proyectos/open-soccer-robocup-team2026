@@ -75,10 +75,22 @@ Test estado = T_SENSORES;   // <<<<<<<<<< CAMBIÁ ESTE VALOR Y RE-FLASHEÁ (o te
 // mix_motors lo recorta a MIX_LENTO_MAX_PWM igual; este valor es por si lo apagás.
 static const int TEST_PWM = 80;
 
+// --- T_AVANZAR: avanzar DERECHO con lazo cerrado del OTOS + heading-hold ---
+// PID lateral: usa la velocidad lateral del OTOS (otos_vx, + = derecha) para corregir la deriva →
+// apunta a que otos_vx = 0 (no se mueve de costado). Heading-hold: mantiene el rumbo del BNO que
+// tenía al ENTRAR al test → que NO rote. Perillas (titular en banco):
+static const float AV_KP_VX    = 3.0f;   // corrección de ÁNGULO por cm/s de deriva lateral (deg/(cm/s))
+static const float AV_GO_MAX   = 25.0f;  // tope de la corrección de ángulo (deg)
+static const float AV_KP_HDG   = 3.0f;   // heading-hold: PWM de giro por grado de error de rumbo
+static const int   AV_OMEGA_MAX= 60;     // tope del término de giro (PWM)
+static float s_av_hdg = 0.0f;            // rumbo latcheado al entrar a T_AVANZAR
+static bool  s_av_hdg_ok = false;        // ¿ya se latcheó? (se resetea al cambiar de test)
+
 // ============================================================
 //   Utilidades
 // ============================================================
 static inline float wrap180(float d){ while(d>180)d-=360; while(d<-180)d+=360; return d; }
+static inline float clampf(float v,float lo,float hi){ return v<lo?lo:(v>hi?hi:v); }
 
 static unsigned long s_print_prev = 0;
 static const unsigned long PRINT_PERIOD_MS = 150;   // ~6,7 Hz, no floodea
@@ -96,6 +108,7 @@ static bool toca_imprimir(){
 static void imprimir_encabezado(){
     if (estado == s_estado_prev) return;
     s_estado_prev = estado;
+    s_av_hdg_ok = false;   // al cambiar de test, re-latchear el rumbo de T_AVANZAR en la próxima entrada
     Serial.println();
     Serial.print("======== TEST "); Serial.print((int)estado); Serial.print("  ");
     switch (estado){
@@ -113,8 +126,8 @@ static void imprimir_encabezado(){
             Serial.println("Solo M2 debe girar."); break;
         case T_MOTOR_3:    Serial.println("MOTOR 3 solo (LEVANTAR robot) ========");
             Serial.println("Solo M3 debe girar."); break;
-        case T_AVANZAR:    Serial.println("AVANZAR adelante despacio ========");
-            Serial.println("Debe ir DERECHO hacia adelante. Si sale de costado: revisar cinematica/signos."); break;
+        case T_AVANZAR:    Serial.println("AVANZAR derecho (PID OTOS + heading-hold) ========");
+            Serial.println("Avanza corrigiendo con el OTOS (vx->0) y sin rotar. otos_vx debe tender a 0."); break;
         case T_GIRO_LUGAR: Serial.println("GIRO en el lugar despacio ========");
             Serial.println("Debe girar SOBRE SU EJE sin trasladarse. Anotá el sentido."); break;
         case T_ESTRATEGIA: Serial.println("ESTRATEGIA seguir COMPLETA despacio ========");
@@ -226,14 +239,30 @@ void loop(){
             if(toca){ Serial.println("M3 = +TEST_PWM. Solo M3 debe girar."); } break;
 
         // ---- Tests de movimiento de CUERPO (usan mix_mover_vector) ----
-        case T_AVANZAR:
+        case T_AVANZAR: {
 #if TEST_TIENE_MOVER_VECTOR
-            mix_mover_vector(0.0f, TEST_PWM, 0);   // 0° = adelante, sin giro
-            if(toca){ Serial.println("AVANZAR adelante. ¿Va derecho? (mira la deriva lateral)"); }
+            // Rumbo objetivo = el que tenía al ENTRAR (para heading-hold: que NO rote).
+            if (!s_av_hdg_ok){ s_av_hdg = g_io.heading_deg; s_av_hdg_ok = true; }
+            // PID lateral (P) con el OTOS: si deriva a la DERECHA (otos_vx>0) apuntá a la IZQUIERDA
+            // (go<0) para anular la velocidad lateral → otos_vx = 0.
+            const float go = clampf(-AV_KP_VX * g_io.otos_vx_cm_s, -AV_GO_MAX, AV_GO_MAX);
+            // Heading-hold (P): que no rote. error = rumbo actual - rumbo objetivo; +omega = giro
+            // horario (banco: +PWM → CW), así que se corrige con -Kp*error.
+            const float herr = wrap180(g_io.heading_deg - s_av_hdg);
+            const int omega = (int)clampf(-AV_KP_HDG * herr, -(float)AV_OMEGA_MAX, (float)AV_OMEGA_MAX);
+            mix_mover_vector(go, TEST_PWM, omega);
+            if(toca){
+                Serial.print("AVANZAR otos_vx="); Serial.print(g_io.otos_vx_cm_s,1);
+                Serial.print(" -> go=");           Serial.print(go,0);
+                Serial.print(" | hErr=");          Serial.print(herr,0);
+                Serial.print(" omega=");           Serial.print(omega);
+                Serial.println("  (vx debe tender a 0; si tira para un lado, ajustar AV_KP_VX / trim M2)");
+            }
 #else
             parar(); if(toca) Serial.println("T_AVANZAR: falta mix_mover_vector (TEST_TIENE_MOVER_VECTOR 0).");
 #endif
             break;
+        }
         case T_GIRO_LUGAR:
 #if TEST_TIENE_MOVER_VECTOR
             mix_mover_vector(0.0f, 0, TEST_PWM);   // speed 0, solo omega = giro puro

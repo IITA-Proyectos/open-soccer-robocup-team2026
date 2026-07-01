@@ -58,6 +58,12 @@ namespace mix {
 #define MIX_LENTO_MAX_PWM  150
 #endif
 
+// TRIM por motor (feedforward de balance). Banco 2026-07-01: en T_AVANZAR el robot iba
+// masomenos derecho pero el MOTOR 2 (delantero DER) quedaba FLOJO → se le da +20% de PWM para
+// emparejar. 1.0 = sin cambio. [0]=M1, [1]=M2, [2]=M3. Titular en banco (si aún tira para un
+// lado, subí/bajá el de M2). El PID de OTOS del test corrige lo que quede.
+static const float MIX_MOTOR_TRIM[3] = { 1.00f, 1.20f, 1.00f };
+
 // Normaliza un ángulo a [-180, 180]. Local a este .cpp (la patada recta lo usa para
 // el error de rumbo del OTOS). Misma semántica que el wrap180 de mix_comm / mix_fsm.
 static inline float wrap180(float deg) {
@@ -118,9 +124,13 @@ void mix_set_motor(int idx, int pwm_signed) {
     // Sentido efectivo tras aplicar el invert de HW de este motor.
     const int signed_eff = pwm_signed * MIX_MOTOR_INVERT[idx];
 
-    // Magnitud para analogWrite (siempre positiva, clampeada a MIX_MAX_PWM).
+    // Magnitud para analogWrite (siempre positiva).
     int mag = signed_eff;
     if (mag < 0) mag = -mag;
+
+    // TRIM de balance por motor (M2 flojo → +20%). Se aplica ANTES de los topes.
+    if (mag > 0) mag = (int)(mag * MIX_MOTOR_TRIM[idx] + 0.5f);
+
     if (mag > MIX_MAX_PWM) mag = MIX_MAX_PWM;
 
 #if MIX_MODO_LENTO

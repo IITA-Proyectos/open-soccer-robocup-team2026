@@ -57,7 +57,7 @@
 #ifndef TEST_FORZAR_MATCH
 #define TEST_FORZAR_MATCH 1
 #endif
-static const unsigned long TEST_START_DELAY_MS = 5000;   // esperar 5 s antes de arrancar la estrategia
+static const unsigned long TEST_START_DELAY_MS = 30000;  // esperar 30 s antes de arrancar la estrategia
 
 using namespace iitasoccer::mix;
 
@@ -77,7 +77,9 @@ enum Test {
     T_ESTRATEGIA = 9   // corre mix_seguir COMPLETO despacio (todo junto).
 };
 
-Test estado = T_SENSORES;   // <<<<<<<<<< CAMBIÁ ESTE VALOR Y RE-FLASHEÁ (o tecleá 0..9)
+// ARRANCA en la ESTRATEGIA para correr SIN USB (a batería): prende → espera 30 s → arranca.
+// Para volver al menú de tests por USB, poné T_SENSORES (o tecleá 0..9 con el monitor abierto).
+Test estado = T_ESTRATEGIA;   // <<<<<<<<<< estado de arranque (T_SENSORES = menú de banco por USB)
 
 // PWM de los tests de motor (T_MOTOR_*, T_AVANZAR, T_GIRO_LUGAR). El modo lento de
 // mix_motors lo recorta a MIX_LENTO_MAX_PWM igual; este valor es por si lo apagás.

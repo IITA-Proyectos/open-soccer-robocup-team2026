@@ -953,7 +953,11 @@ void mix_fsm_tick() {
             if (linea_s1()) { estado = Estado::DETECTA_LINEA_1; millis_inicio_estado = millis(); break; }
             if (linea_s2()) { estado = Estado::DETECTA_LINEA_2; millis_inicio_estado = millis(); break; }
             if (linea_s3()) { estado = Estado::DETECTA_LINEA_3; millis_inicio_estado = millis(); break; }
-            retroceder2();   // libre de línea → alejarse del obstáculo del frente
+            // Retroceso LENTO (mismo patrón que retroceder2 pero a MIX_EVITAR_PWM) → la DOWN
+            // alcanza a DETECTAR la línea antes de cruzarla, y frena/escapa a tiempo.
+            mix_set_motor(0, -MIX_EVITAR_PWM);
+            mix_set_motor(1, +MIX_EVITAR_PWM);
+            mix_set_motor(2, 0);
             if (millis() - millis_inicio_estado >= MIX_EVITAR_MS) {
                 parar();
                 millis_inicio_estado = millis();

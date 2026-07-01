@@ -122,7 +122,12 @@ constexpr int   MIX_ATRAS_DIR_SIGN = +1;    // sentido del giro (+1/-1). Si enca
 // retrocede MIX_EVITAR_MS y vuelve a BUSCAR (GIRANDO). KILL-SWITCH: MIX_OBSTACULO_STOP_MM = 0 →
 // nunca dispara (FSM idéntica a hoy).
 constexpr uint16_t      MIX_OBSTACULO_STOP_MM = 150;   // <15 cm al frente → retroceder. 0 = apagado.
-constexpr unsigned long MIX_EVITAR_MS         = 100;   // cuánto retrocede (igual que el escape de línea).
+constexpr unsigned long MIX_EVITAR_MS         = 500;   // cuánto retrocede (más largo porque va LENTO).
+// Velocidad del retroceso al evitar: LENTO a propósito (banco 2026-07-01) para que la placa DOWN
+// alcance a DETECTAR la línea antes de cruzarla. retroceder2 va a 100; acá bajamos a MIX_EVITAR_PWM.
+// ⚠️ Piso del motor delantero ~70: por debajo NO mueve. Si zumba y no retrocede, SUBILO (80→90...);
+// si querés más lento y aún se mueve, bajalo con cuidado. Es LA perilla de "que capte la línea".
+constexpr int           MIX_EVITAR_PWM        = 80;    // PWM del retroceso lento del anti-choque.
 // ATRAPADO: obstáculo MUY cerca (<5 cm) adelante Y línea DETRÁS → no hay salida segura (adelante
 // choca, atrás cruza la línea) → QUEDARSE QUIETO hasta que el obstáculo se aleje. 0 = apagado.
 constexpr uint16_t      MIX_OBSTACULO_MUY_CERCA_MM = 50;   // <5 cm = "pegado".

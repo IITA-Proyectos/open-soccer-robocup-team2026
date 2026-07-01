@@ -296,7 +296,7 @@ void mix_fsm_tick() {
     // Es seguro porque el ultrasonido es SOLO DE FRENTE: solo interrumpe si hay algo ADELANTE; si la
     // línea está a un costado (nada adelante), obstaculo_cerca()=false y el escape de línea corre
     // normal. Única exclusión: EVITAR_OBSTACULO mismo (si no, reiniciaría el timer y nunca saldría).
-    if (obstaculo_cerca() && estado != Estado::EVITAR_OBSTACULO) {
+    if (obstaculo_cerca() && estado != Estado::EVITAR_OBSTACULO && estado != Estado::DETECTA_LINEA_1 && estado != Estado::DETECTA_LINEA_2 && estado != Estado::DETECTA_LINEA_3) {
         millis_inicio_estado = millis();
         estado = Estado::EVITAR_OBSTACULO;
     }

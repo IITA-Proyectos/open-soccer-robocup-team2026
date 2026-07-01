@@ -122,7 +122,7 @@ constexpr int   MIX_ATRAS_DIR_SIGN = +1;    // sentido del giro (+1/-1). Si enca
 // retrocede MIX_EVITAR_MS y vuelve a BUSCAR (GIRANDO). KILL-SWITCH: MIX_OBSTACULO_STOP_MM = 0 →
 // nunca dispara (FSM idéntica a hoy).
 constexpr uint16_t      MIX_OBSTACULO_STOP_MM = 150;   // <15 cm al frente → retroceder. 0 = apagado.
-constexpr unsigned long MIX_EVITAR_MS         = 400;   // cuánto retrocede (igual que el escape de línea).
+constexpr unsigned long MIX_EVITAR_MS         = 100;   // cuánto retrocede (igual que el escape de línea).
 
 // ============================================================
 // Kicker / patada — RECTA y FUERTE con corrección de rumbo por OTOS (2026-06-21, pedido Elías).

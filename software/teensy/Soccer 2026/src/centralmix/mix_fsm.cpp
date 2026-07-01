@@ -929,6 +929,19 @@ void mix_fsm_tick() {
                 millis_inicio_estado = millis();
                 estado = Estado::GIRANDO;   // vuelve a BUSCAR la pelota
             }
+ 
+            if (linea_s1()) {
+                estado = Estado::DETECTA_LINEA_1;
+                millis_inicio_estado = millis();
+            }
+            if (linea_s2()) {
+                estado = Estado::DETECTA_LINEA_2;
+                millis_inicio_estado = millis();
+            }
+            if (linea_s3()) {
+                estado = Estado::DETECTA_LINEA_3;
+                millis_inicio_estado = millis();
+            }
             break;
     }
 }

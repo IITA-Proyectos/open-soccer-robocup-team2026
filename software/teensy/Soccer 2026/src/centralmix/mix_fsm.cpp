@@ -212,12 +212,12 @@ static inline void impulso_centrando_horario() {
 
 // ============================================================
 // mix_fsm_init — setup de la FSM. El PRIMER estado es SIEMPRE KICKOFF_SEEK (arranque
-// del partido). AVANCE_INICIO se QUITÓ 2026-06-21 (pedido Elías). Ningún otro estado
-// transiciona a KICKOFF_SEEK → la maniobra de arranque se ejecuta UNA sola vez.
+// del partido). AVANCE_INICIO se QUITÓ 2026-06-21 (pedido Elías). El kickoff se RE-ARMA
+// en cada START del árbitro (ver el bloque go_edge en mix_fsm_tick).
 // ============================================================
 void mix_fsm_init() {
     estado = Estado::KICKOFF_SEEK;   // PRIMER estado: arranque (seek pelota / medialuna)
-    //estado = Estado::TEST; 
+    // DEBUG de banco: para probar UN estado aislado, descomentá → estado = Estado::TEST;
     millis_inicio_estado    = millis();
     millis_inicio_centrando = millis();
     s_giro_atras_dir        = 0;     // latch del giro-encare "pelota atrás" arranca limpio
@@ -233,27 +233,24 @@ void mix_fsm_init() {
 // mix_fsm_tick — port FIEL del switch(estado) del loop() 2025.
 // ============================================================
 void mix_fsm_tick() {
-    // --- Árbitro RCJ + KICKOFF una vez por "encendido del robot" (pedido Elías) ---
+    // --- Árbitro RCJ + KICKOFF en CADA START del árbitro (pedido Elías 2026-07-01) ---
     static bool prev_go       = false;  // para el flanco STOP→GO
     static bool seen_stop     = false;  // ¿vimos un STOP confirmado?
-    static bool kickoff_done  = false;  // ¿ya se hizo el kickoff en este "encendido"?
     static bool prev_top_link = false;  // para detectar el power-cycle del robot vía el TOP
 
     // POWER-CYCLE DEL ROBOT detectado por el TOP (link perdido→recuperado = el TOP rebooteó
     // con la batería). Vuelve la FSM AL ARRANQUE (kickoff). CLAVE para el banco: "cortar la
     // energía" NO siempre resetea la CENTRAL (capacitores/regulador la mantienen viva en el
-    // corte breve) → estado y kickoff_done quedaban PEGADOS de la sesión anterior → al
-    // iniciar, el robot iba directo a IMPULSO_INICIAL/GIRANDO en vez del kickoff. El TOP SÍ
-    // rebootea (saca los sensores ~40 s) → su flanco link-recuperado delata el power-cycle
-    // aunque la CENTRAL no se haya reseteado. En competencia (la CENTRAL sí resetea) también
-    // aplica (el link arranca stale y se vuelve fresco → mismo flanco). El timer real del
-    // medialuna se vuelve a anclar al GO en el bloque go_edge de abajo.
+    // corte breve) → el estado quedaba PEGADO de la sesión anterior → al iniciar, el robot iba
+    // directo a IMPULSO_INICIAL/GIRANDO en vez del kickoff. El TOP SÍ rebootea (saca los sensores
+    // ~40 s) → su flanco link-recuperado delata el power-cycle aunque la CENTRAL no se haya
+    // reseteado. En competencia (la CENTRAL sí resetea) también aplica (el link arranca stale y se
+    // vuelve fresco → mismo flanco). El timer real del medialuna se vuelve a anclar al GO en el
+    // bloque go_edge de abajo.
     if (g_io.top_link_fresh && !prev_top_link) {
         estado = Estado::KICKOFF_SEEK;
-        //estado = Estado::TEST; 
         millis_inicio_estado    = millis();
         millis_inicio_centrando = millis();
-        kickoff_done = false;
         prev_go      = false;
     }
     prev_top_link = g_io.top_link_fresh;
@@ -280,15 +277,12 @@ void mix_fsm_tick() {
 
     // KICKOFF: se arma en CADA START del árbitro (cada flanco STOP→GO), con el timer ANCLADO
     // AL GO (no al boot). Así la medialuna corre completa aunque el TOP tarde ~40 s en bootear.
-    // CAMBIO (pedido Elías 2026-07-01): antes se hacía UNA sola vez por encendido (kickoff_done);
-    // ahora se RE-ARMA en cada saque (tras gol / medio tiempo) apenas el árbitro vuelve a dar GO.
-    // (kickoff_done queda sin uso a propósito; se conserva para no tocar el bloque power-cycle.)
+    // CAMBIO (pedido Elías 2026-07-01): antes se hacía UNA sola vez por encendido; ahora se
+    // RE-ARMA en cada saque (tras gol / medio tiempo) apenas el árbitro vuelve a dar GO.
     if (go_edge) {
         estado = Estado::KICKOFF_SEEK;
-        //estado = Estado::TEST;
         millis_inicio_estado    = millis();
         millis_inicio_centrando = millis();
-        kickoff_done = true;
     }
 
     // 'error' del control de rumbo 2025 == g_io.heading_error_deg (ya wrapeado).

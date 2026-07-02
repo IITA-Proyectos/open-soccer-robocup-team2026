@@ -331,8 +331,9 @@ void mix_fsm_tick() {
             break;
 
         // ----------------------------------------------------
-        // KICKOFF_SEEK (AGREGADO 2026): PRIMER estado = arranque del partido. Se ejecuta
-        // UNA sola vez (ningún otro estado vuelve a él).
+        // KICKOFF_SEEK (AGREGADO 2026): estado de arranque del partido. Se RE-ARMA en CADA
+        // START del árbitro (flanco STOP→GO; ver el bloque go_edge arriba). Ningún OTRO estado
+        // de juego vuelve a él por su cuenta.
         //   ve la pelota → APUNTAR_PELOTA (va hacia ella);
         //   NO la ve     → impulso FUERTE y CORTO de medialuna → luego GIRANDO;
         //   línea        → escape DETECTA_LINEA_* de siempre (no salir de cancha).

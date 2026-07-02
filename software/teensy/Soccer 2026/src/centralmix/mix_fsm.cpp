@@ -173,9 +173,9 @@ static inline bool linea_atras() {
 // IMPULSO_INICIAL_GIRANDO: girar con 150 en los 3 (sentido de girar()).
 static inline void impulso_inicial_girando() {
     // 2025: PWM=150, INA=0/INB=1 en los 3 → sentido positivo a 150.
-    mix_set_motor(0, -150);
-    mix_set_motor(1, -150);
-    mix_set_motor(2, -150);
+    mix_set_motor(0, -170);
+    mix_set_motor(1, -170);
+    mix_set_motor(2, -170);
 }
 
 // APUNTAR_PELOTA*: rotar a 100*a según signo de angulo_pelota_deg.

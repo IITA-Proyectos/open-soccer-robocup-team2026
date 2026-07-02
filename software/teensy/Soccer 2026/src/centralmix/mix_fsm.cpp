@@ -278,14 +278,14 @@ void mix_fsm_tick() {
     const bool go_edge = !prev_go;   // flanco STOP→GO (con STOP ya confirmado)
     prev_go = true;
 
-    // KICKOFF: se arma UNA sola vez por encendido, en el PRIMER GO real, con el timer
-    // ANCLADO AL GO (no al boot). Así la medialuna corre completa aunque el TOP tarde ~40 s
-    // en bootear (fix del bug power-cycle, donde el timer se medía desde el arranque y ya
-    // estaba vencido al llegar el GO). En los GOs siguientes (saque tras gol) NO se re-arma:
-    // para volver a hacer el kickoff hay que CORTAR Y VOLVER A DAR ENERGÍA.
-    if (go_edge && !kickoff_done) {
+    // KICKOFF: se arma en CADA START del árbitro (cada flanco STOP→GO), con el timer ANCLADO
+    // AL GO (no al boot). Así la medialuna corre completa aunque el TOP tarde ~40 s en bootear.
+    // CAMBIO (pedido Elías 2026-07-01): antes se hacía UNA sola vez por encendido (kickoff_done);
+    // ahora se RE-ARMA en cada saque (tras gol / medio tiempo) apenas el árbitro vuelve a dar GO.
+    // (kickoff_done queda sin uso a propósito; se conserva para no tocar el bloque power-cycle.)
+    if (go_edge) {
         estado = Estado::KICKOFF_SEEK;
-        //estado = Estado::TEST; 
+        //estado = Estado::TEST;
         millis_inicio_estado    = millis();
         millis_inicio_centrando = millis();
         kickoff_done = true;

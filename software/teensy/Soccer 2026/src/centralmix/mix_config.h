@@ -72,7 +72,7 @@ constexpr uint8_t MIX_LINE_DEPTH_TRIGGER = 1;  // ≥1 sensor en blanco = línea
 // (ROBOT2 2025: c=0.4, ic=0.55)
 // ============================================================
 constexpr float MIX_G  = 0.9f;   // girando
-constexpr float MIX_A  = 0.5f;   // apuntando pelota
+constexpr float MIX_A  = 0.43f;   // apuntando pelota
 constexpr float MIX_C  = 0.55f;   // centrando (2025 ROBOT2)
 constexpr float MIX_IC = 1.0f;   // impulso centrando (2025 ROBOT2)
 constexpr float MIX_PD = 1.0f;   // avances proporcionales (2025 'pd')
@@ -110,7 +110,7 @@ constexpr float MIX_TOL_APUNTADO = 40.0f;  // tolerancia_apuntado (grados)
 constexpr float MIX_ATRAS_Y_ENTRA  = 6.0f;  // cm: ENTRA al giro si ball_y_cm < -6 (pelota claramente
                                             //   atrás). Rango 4..10. KILL-SWITCH: poné 9999.0f →
                                             //   la jugada NUNCA dispara (FSM idéntica a hoy).
-constexpr int   MIX_ATRAS_PWM      = 120;   // PWM del giro-encare. >= piso M3 (107) CON margen. Es la
+constexpr int   MIX_ATRAS_PWM      = 150;   // PWM del giro-encare. >= piso M3 (107) CON margen. Es la
                                             //   PERILLA principal de banco: subí si zumba/no gira,
                                             //   bajá si el regulador hace brownout. Rango 110..140.
 constexpr int   MIX_ATRAS_DIR_SIGN = +1;    // sentido del giro (+1/-1). Si encara por el lado LARGO

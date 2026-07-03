@@ -45,9 +45,9 @@ enum class Estado {
     DETECTA_LINEA_1,
     DETECTA_LINEA_2,
     DETECTA_LINEA_3,
-    // --- AGREGADO 2026 (coach): PRIMER estado = arranque del partido (sin flag). ---
-    // Ve la pelota → va hacia ella; no la ve → impulso fuerte y corto de medialuna
-    // hacia el centro → después GIRANDO. Se ejecuta UNA vez (ningún estado vuelve a él).
+    // --- AGREGADO 2026 (coach); redefinido 2026-07-03: PRIMER estado = PATADA de saque. ---
+    // Patea recto (avanzar_patear, SOLO avanza) → después IMPULSO_INICIAL_GIRANDO.
+    // Se RE-ARMA en CADA START del árbitro (flanco STOP→GO), no solo la primera vez.
     KICKOFF_SEEK,
     ESPERAR,
     TEST,

@@ -71,10 +71,10 @@ constexpr uint8_t MIX_LINE_DEPTH_TRIGGER = 1;  // ≥1 sensor en blanco = línea
 //   ic = velocidad impulso centrando
 // (ROBOT2 2025: c=0.4, ic=0.55)
 // ============================================================
-constexpr float MIX_G  = 0.4f;   // girando
-constexpr float MIX_A  = 0.35f;   // apuntando pelota
-constexpr float MIX_C  = 0.6f;   // centrando (2025 ROBOT2)
-constexpr float MIX_IC = 0.55f;  // impulso centrando (2025 ROBOT2)
+constexpr float MIX_G  = 0.9f;   // girando
+constexpr float MIX_A  = 0.43f;   // apuntando pelota
+constexpr float MIX_C  = 0.55f;   // centrando (2025 ROBOT2)
+constexpr float MIX_IC = 1.0f;   // impulso centrando (2025 ROBOT2)
 constexpr float MIX_PD = 1.0f;   // avances proporcionales (2025 'pd')
 
 // ============================================================
@@ -82,7 +82,7 @@ constexpr float MIX_PD = 1.0f;   // avances proporcionales (2025 'pd')
 // ============================================================
 constexpr float MIX_TOL_CENTRADO = 15.0f;  // tolerancia_centrado
 constexpr float MIX_TOL_CERCANIA = 20.0f;  // tolerancia_cercania
-constexpr float MIX_TOL_APUNTADO = 30.0f;  // tolerancia_apuntado (grados)
+constexpr float MIX_TOL_APUNTADO = 40.0f;  // tolerancia_apuntado (grados)
 
 // ============================================================
 // Jugada "PELOTA ATRÁS" (la ve la cámara TRASERA) — giro-encare sobre el piso del motor.
@@ -110,7 +110,7 @@ constexpr float MIX_TOL_APUNTADO = 30.0f;  // tolerancia_apuntado (grados)
 constexpr float MIX_ATRAS_Y_ENTRA  = 6.0f;  // cm: ENTRA al giro si ball_y_cm < -6 (pelota claramente
                                             //   atrás). Rango 4..10. KILL-SWITCH: poné 9999.0f →
                                             //   la jugada NUNCA dispara (FSM idéntica a hoy).
-constexpr int   MIX_ATRAS_PWM      = 120;   // PWM del giro-encare. >= piso M3 (107) CON margen. Es la
+constexpr int   MIX_ATRAS_PWM      = 150;   // PWM del giro-encare. >= piso M3 (107) CON margen. Es la
                                             //   PERILLA principal de banco: subí si zumba/no gira,
                                             //   bajá si el regulador hace brownout. Rango 110..140.
 constexpr int   MIX_ATRAS_DIR_SIGN = +1;    // sentido del giro (+1/-1). Si encara por el lado LARGO
@@ -127,7 +127,7 @@ constexpr unsigned long MIX_EVITAR_MS         = 500;   // cuánto retrocede (má
 // alcance a DETECTAR la línea antes de cruzarla. retroceder2 va a 100; acá bajamos a MIX_EVITAR_PWM.
 // ⚠️ Piso del motor delantero ~70: por debajo NO mueve. Si zumba y no retrocede, SUBILO (80→90...);
 // si querés más lento y aún se mueve, bajalo con cuidado. Es LA perilla de "que capte la línea".
-constexpr int           MIX_EVITAR_PWM        = 80;    // PWM del retroceso lento del anti-choque.
+constexpr int           MIX_EVITAR_PWM        = 130;    // PWM del retroceso lento del anti-choque.
 // ATRAPADO: obstáculo MUY cerca (<5 cm) adelante Y línea DETRÁS → no hay salida segura (adelante
 // choca, atrás cruza la línea) → QUEDARSE QUIETO hasta que el obstáculo se aleje. 0 = apagado.
 constexpr uint16_t      MIX_OBSTACULO_MUY_CERCA_MM = 50;   // <5 cm = "pegado".
@@ -210,7 +210,7 @@ constexpr int MIX_KICK_REAR_FLOOR   = 0;    // 0 = off; típico ON = 107
 //   - (negativo) → al revés, corrige deriva a la IZQUIERDA.
 // Subirlo SOLO si tras el escalado todavía se va siempre para un lado. El heading-hold del OTOS queda
 // ENCIMA para el sesgo variable.
-constexpr int MIX_KICK_FWD_TRIM     = 40;    // PWM trasvasado M1→M2 (0 = sin trim). Subir solo si residual.
+constexpr int MIX_KICK_FWD_TRIM     = 60;    // PWM trasvasado M1→M2 (0 = sin trim). Subir solo si residual.
 
 // Retroceso de patada (PWM crudo por motor) — port 1:1 del 2025 (freno/recoil tras el empuje).
 constexpr int MIX_PATAD_M1 = 250;  // patadM1
@@ -284,7 +284,7 @@ constexpr int MIX_CENTRAR_SHORT_SIGN = +1;  // +1 / -1 (camino corto por el lado
 constexpr int MIX_KICKOFF_ARC_PWD  = 2;  // F: componente de AVANCE (fuerte; > piso ~70)
 constexpr int MIX_KICKOFF_ARC_CURV = 2.0;   // T: componente de GIRO/curvatura de la medialuna
 constexpr int MIX_KICKOFF_ARC_DIR  = +1;   // lado de la curva (+1 / -1) — confirmar en banco
-constexpr int MIX_KICKOFF_ARC_MS   = 500;  // duración del impulso (CORTO), en ms
+constexpr int MIX_KICKOFF_ARC_MS   = 1000;  // duración del impulso (CORTO), en ms
 
 // ============================================================
 // Heading — control de rumbo del 2025 (error = currentYaw - initialYaw, kp=0.3).

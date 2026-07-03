@@ -216,7 +216,7 @@ static inline void impulso_centrando_horario() {
 // en cada START del árbitro (ver el bloque go_edge en mix_fsm_tick).
 // ============================================================
 void mix_fsm_init() {
-    estado = Estado::KICKOFF_SEEK;   // PRIMER estado: arranque (seek pelota / medialuna)
+    estado = Estado::KICKOFF_SEEK;   // PRIMER estado: patada de saque
     // DEBUG de banco: para probar UN estado aislado, descomentá → estado = Estado::TEST;
     millis_inicio_estado    = millis();
     millis_inicio_centrando = millis();
@@ -245,7 +245,7 @@ void mix_fsm_tick() {
     // directo a IMPULSO_INICIAL/GIRANDO en vez del kickoff. El TOP SÍ rebootea (saca los sensores
     // ~40 s) → su flanco link-recuperado delata el power-cycle aunque la CENTRAL no se haya
     // reseteado. En competencia (la CENTRAL sí resetea) también aplica (el link arranca stale y se
-    // vuelve fresco → mismo flanco). El timer real del medialuna se vuelve a anclar al GO en el
+    // vuelve fresco → mismo flanco). El timer real de la patada de saque se vuelve a anclar al GO en el
     // bloque go_edge de abajo.
     if (g_io.top_link_fresh && !prev_top_link) {
         estado = Estado::KICKOFF_SEEK;
@@ -276,7 +276,7 @@ void mix_fsm_tick() {
     prev_go = true;
 
     // KICKOFF: se arma en CADA START del árbitro (cada flanco STOP→GO), con el timer ANCLADO
-    // AL GO (no al boot). Así la medialuna corre completa aunque el TOP tarde ~40 s en bootear.
+    // AL GO (no al boot). Así la patada de saque corre completa aunque el TOP tarde ~40 s en bootear.
     // CAMBIO (pedido Elías 2026-07-01): antes se hacía UNA sola vez por encendido; ahora se
     // RE-ARMA en cada saque (tras gol / medio tiempo) apenas el árbitro vuelve a dar GO.
     if (go_edge) {
@@ -331,28 +331,39 @@ void mix_fsm_tick() {
             break;
 
         // ----------------------------------------------------
-        // KICKOFF_SEEK (AGREGADO 2026): estado de arranque del partido. Se RE-ARMA en CADA
-        // START del árbitro (flanco STOP→GO; ver el bloque go_edge arriba). Ningún OTRO estado
-        // de juego vuelve a él por su cuenta.
-        //   ve la pelota → APUNTAR_PELOTA (va hacia ella);
-        //   NO la ve     → impulso FUERTE y CORTO de medialuna → luego GIRANDO;
-        //   línea        → escape DETECTA_LINEA_* de siempre (no salir de cancha).
+        // KICKOFF_SEEK (AGREGADO 2026, redefinido 2026-07-03): PATADA de saque. Es el PRIMER
+        // estado y se RE-ARMA en CADA START del árbitro (flanco STOP→GO; ver go_edge arriba).
+        // Al arrancar el partido y en CADA saque (tras gol / medio tiempo) PATEA RECTO de una,
+        // SIN mirar la pelota, y después cae a la búsqueda por giro (IMPULSO_INICIAL_GIRANDO).
+        //   fase 1 (0..ARC_MS)          → avanzar_patear(): empuje recto FUERTE (rampa 120→240
+        //                                 con corrección de rumbo del OTOS).
+        //   fase 2 (ARC_MS..+RECOIL_MS) → retroceder_patear(): recoil corto. Además CIERRA la
+        //                                 rampa de patada (s_kick_active) para que la PRÓXIMA
+        //                                 patada real vuelva a arrancar desde el piso y con rumbo
+        //                                 NUEVO (si no, saldría a 240 fija hacia el rumbo del saque).
+        //   fase 3                      → parar() → IMPULSO_INICIAL_GIRANDO (a buscar la pelota).
+        //   línea (cualquier fase)      → escape DETECTA_LINEA_* de siempre (no salir de cancha).
+        // ⚠️ FIX 2026-07-03: antes decía `avanzar_patear;` SIN paréntesis → NO llamaba a la
+        //    función (instrucción vacía) → el robot NO pateaba al saque.
         // ----------------------------------------------------
-        
-        case Estado::KICKOFF_SEEK:
-
-            // línea → escape de siempre (prioridad sobre la medialuna)
+        case Estado::KICKOFF_SEEK: {
+            // línea → escape de siempre (prioridad sobre la patada de saque)
             if (linea_s1()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_1; break; }
             if (linea_s2()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_2; break; }
             if (linea_s3()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_3; break; }
-            // no ve pelota → impulso FUERTE y CORTO de medialuna hacia el centro
-            avanzar_patear;
-            if (millis() - millis_inicio_estado >= (unsigned long)MIX_KICKOFF_ARC_MS) {
-                parar(); 
+            const unsigned long t_kick    = millis() - millis_inicio_estado;
+            const unsigned long RECOIL_MS = 200;   // recoil corto que cierra la rampa de patada
+            if (t_kick < (unsigned long)MIX_KICKOFF_ARC_MS) {
+                avanzar_patear();                  // empuje recto del saque
+            } else if (t_kick < (unsigned long)MIX_KICKOFF_ARC_MS + RECOIL_MS) {
+                retroceder_patear();               // recoil → resetea la rampa de la próxima patada
+            } else {
+                parar();
                 millis_inicio_estado = millis();
-                estado = Estado::IMPULSO_INICIAL_GIRANDO;   // tras el impulso, búsqueda por giro de siempre
-            } 
-            break; 
+                estado = Estado::IMPULSO_INICIAL_GIRANDO;   // luego: buscar la pelota girando
+            }
+            break;
+        }
  
         // ----------------------------------------------------
         // PRIMER_IMPULSO_INICIAL_GIRANDO: declarado en el enum 2025 pero SIN case en

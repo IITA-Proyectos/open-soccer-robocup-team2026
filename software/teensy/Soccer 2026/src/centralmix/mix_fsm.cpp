@@ -346,7 +346,7 @@ void mix_fsm_tick() {
             if (linea_s2()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_2; break; }
             if (linea_s3()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_3; break; }
             // no ve pelota → impulso FUERTE y CORTO de medialuna hacia el centro
-            avazar_patear();
+            avanzar_patear;
             if (millis() - millis_inicio_estado >= (unsigned long)MIX_KICKOFF_ARC_MS) {
                 parar(); 
                 millis_inicio_estado = millis();

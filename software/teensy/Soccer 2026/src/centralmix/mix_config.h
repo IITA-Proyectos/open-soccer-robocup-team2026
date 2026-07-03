@@ -284,7 +284,7 @@ constexpr int MIX_CENTRAR_SHORT_SIGN = +1;  // +1 / -1 (camino corto por el lado
 constexpr int MIX_KICKOFF_ARC_PWD  = 2;  // F: componente de AVANCE (fuerte; > piso ~70)
 constexpr int MIX_KICKOFF_ARC_CURV = 2.0;   // T: componente de GIRO/curvatura de la medialuna
 constexpr int MIX_KICKOFF_ARC_DIR  = +1;   // lado de la curva (+1 / -1) — confirmar en banco
-constexpr int MIX_KICKOFF_ARC_MS   = 500;  // duración del impulso (CORTO), en ms
+constexpr int MIX_KICKOFF_ARC_MS   = 1000;  // duración del impulso (CORTO), en ms
 
 // ============================================================
 // Heading — control de rumbo del 2025 (error = currentYaw - initialYaw, kp=0.3).

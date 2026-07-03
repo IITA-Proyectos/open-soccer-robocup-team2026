@@ -287,6 +287,15 @@ constexpr unsigned long AMIX_T_PAT_PAUSA     = 1000;  // PATEANDO_pausa_arquero
 //  agrega un timeout de SEGURIDAD para no colgarse — ver amix_fsm. <MEJORA 2026>)
 constexpr unsigned long AMIX_T_ATRAS_SAFETY  = 4000;  // tope de seguridad del retroceso (NO estaba en 2025)
 
+// MODO "RETROCESO POR TIEMPO" (test María 2026-07-02, gateado -DARQMIX_RETRO_BY_TIME): en esta cancha la línea
+// NO se detecta confiable (el robot da "lifted" / calibración vieja) — así que los DOS retrocesos que dependían
+// de la línea pasan a ser por TIEMPO FIJO y NO leen la línea. (1) el retroceso del arranque/homing
+// (inicio_retroceder) y (2) el retroceso post-pateo (PATEANDO_atras). El resto del arquero NO cambia.
+#ifdef ARQMIX_RETRO_BY_TIME
+constexpr unsigned long AMIX_T_INICIO_RETRO_FIXED = 400;   // ms del retroceso inicial (homing) POR TIEMPO. <TITRAR>  (era 1500, bajado a 400 — María 2026-07-02)
+constexpr unsigned long AMIX_T_ATRAS_FIXED        = 1300;  // ms del retroceso post-pateo POR TIEMPO. <TITRAR>
+#endif
+
 // ============================================================
 // Línea (de DOWN) — reemplaza los 3 sensores de luz locales del 2025.
 // El 2025 detectaba el borde con s1>=blanco1 || s2>=blanco2 (no s3) durante la

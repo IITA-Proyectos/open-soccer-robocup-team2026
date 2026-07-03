@@ -202,6 +202,14 @@ void amix_fsm_tick() {
         // --- INICIO: homing al área chica (banco Virginia 2026-06-21) ---
         case Estado::inicio_retroceder:             // ir HACIA ATRÁS hasta detectar la línea del área
             retroceder_inicio();                     // retroceso dedicado (PWM propio, sentido flippable)
+#ifdef ARQMIX_RETRO_BY_TIME
+            // MODO POR TIEMPO (test María 2026-07-02): NO lee la línea; retrocede un TIEMPO FIJO y avanza.
+            if (millis() - millis_inicio_estado >= AMIX_T_INICIO_RETRO_FIXED) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::inicio_avanzar;
+            }
+#else
             // Sale al ver la línea (blanco del área chica). Safety: si NUNCA la ve, avanza igual
             // tras AMIX_T_INICIO_RETRO_SAFETY para no quedarse retrocediendo contra la pared.
             if (linea() || (millis() - millis_inicio_estado >= AMIX_T_INICIO_RETRO_SAFETY)) {
@@ -209,6 +217,7 @@ void amix_fsm_tick() {
                 millis_inicio_estado = millis();
                 estado = Estado::inicio_avanzar;
             }
+#endif
             break;
 
         case Estado::inicio_avanzar:                // avanzar para SALIR de la línea del área (homing)
@@ -402,7 +411,17 @@ void amix_fsm_tick() {
             // metía por inercia/latencia). SEGURIDAD (pedido Virginia "nunca salirse de la cancha"): si el
             // enlace con DOWN NO está fresco → NO retroceder a ciegas (sin dato de línea confiable, FRENA).
             {
-#ifdef ARQMIX_RETRO_BRAKE_ON_LINE
+#ifdef ARQMIX_RETRO_BY_TIME
+                // MODO POR TIEMPO (test María 2026-07-02, -DARQMIX_RETRO_BY_TIME): NO lee la línea; retrocede un
+                // TIEMPO FIJO (AMIX_T_ATRAS_FIXED) y pasa a acomodar. Para cancha donde la línea no se detecta
+                // confiable. El resto de la secuencia post-pateo (acomodar → orientar → quieto) no cambia.
+                retroceder_quieto();
+                if (millis() - millis_inicio_estado >= AMIX_T_ATRAS_FIXED) {
+                    parar();
+                    millis_inicio_estado = millis();
+                    estado = Estado::acomodar_linea;
+                }
+#elif defined(ARQMIX_RETRO_BRAKE_ON_LINE)
                 // RETROCESO COMO EL HOMING (banco María 2026-07-01): vuelve HASTA DETECTAR la línea y NADA MÁS.
                 // Las condiciones extra que tenía (gate de frescura de DOWN + safety corto de 4 s) lo cortaban
                 // ANTES de pisar la línea → el escape sobre la línea no llegaba a actuar → se metía "no siempre

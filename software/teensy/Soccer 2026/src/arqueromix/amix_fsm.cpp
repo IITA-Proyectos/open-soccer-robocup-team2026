@@ -48,6 +48,12 @@ static bool s_was_running = false;
 // meterse al área. Se (re)arma al detectar línea; persiste AMIX_T_BUSCAR_AVANCE para un avance "más grande".
 static unsigned long s_buscar_avance_until_ms = 0;
 
+#ifdef ARQMIX_REHOME_NO_BALL
+// RE-HOMING POR PÉRDIDA DE PELOTA (test María 2026-07-03): reloj de referencia — se resetea al VER la pelota y al
+// disparar el re-homing, así no re-dispara hasta que pasen otros AMIX_T_REHOME_NO_BALL ms sin verla.
+static unsigned long s_rehome_ref_ms = 0;
+#endif
+
 #ifdef ARQMIX_KICK_SHORT_ON_LINE
 // PATEO CORTO SOBRE LA LÍNEA (gateado, pedido Virginia 2026-06-29, como el delantero centralmix): si el
 // despeje ARRANCA con el arquero SOBRE la línea, el golpe es CORTO (menos tiempo → menos envión → no se sale
@@ -145,6 +151,9 @@ void amix_fsm_init() {
     // Arranca con un movimiento lateral a la izquierda y después el homing al área chica.
     estado = Estado::inicio_lateral_izq;
     millis_inicio_estado = millis();
+#ifdef ARQMIX_REHOME_NO_BALL
+    s_rehome_ref_ms = millis();
+#endif
 }
 
 void amix_fsm_tick() {
@@ -160,6 +169,9 @@ void amix_fsm_tick() {
         estado = Estado::inicio_lateral_izq;
         millis_inicio_estado = millis();
         s_buscar_avance_until_ms = 0;
+#ifdef ARQMIX_REHOME_NO_BALL
+        s_rehome_ref_ms = millis();
+#endif
     }
 
     const float error = g_aio.heading_error_deg;   // == 'error' 2025 (ya wrapeado)
@@ -244,6 +256,21 @@ void amix_fsm_tick() {
         // SIMPLE a propósito: NADA de patrulla / rebote / profundidad (eso generaba movimiento parásito —
         // banco Virginia 2026-06-21). Solo 3 ramas. Reusa la secuencia de despeje (PATEANDO_*).
         case Estado::esperar_quieto:
+#ifdef ARQMIX_REHOME_NO_BALL
+            // RE-HOMING POR PÉRDIDA DE PELOTA (test María 2026-07-03): si VE la pelota, resetea el reloj; si pasan
+            // AMIX_T_REHOME_NO_BALL ms SIN verla, vuelve HACIA ATRÁS hasta la línea + escape (reusa el homing:
+            // inicio_retroceder → inicio_avanzar → acomodar_linea → orientar → esperar). Resetea el reloj al
+            // disparar (no re-dispara hasta otros AMIX_T_REHOME_NO_BALL ms sin pelota).
+            if (haypelota) {
+                s_rehome_ref_ms = millis();
+            } else if (millis() - s_rehome_ref_ms >= AMIX_T_REHOME_NO_BALL) {
+                s_rehome_ref_ms = millis();
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::inicio_retroceder;   // atrás hasta la línea + escape → vuelve a esperar
+                break;
+            }
+#endif
             if (haypelota && ball_para_despejar()) {           // CERCA + al frente → DESPEJA (igual que siempre)
                 parar();
                 millis_inicio_estado = millis();

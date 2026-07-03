@@ -210,6 +210,13 @@ constexpr unsigned long AMIX_T_BUSCAR_AVANCE = 500;
 constexpr unsigned long AMIX_T_BUSCAR_AVANCE = 400;
 #endif
 
+// RE-HOMING POR PÉRDIDA DE PELOTA (test María 2026-07-03, gateado -DARQMIX_REHOME_NO_BALL): si pasan estos ms SIN
+// ver la pelota (esperando quieto), el arquero vuelve una vez hacia atrás HASTA detectar la línea + se acomoda
+// (escape), y sigue esperando. Subir/bajar para cambiar cada cuánto se re-acomoda si perdió la pelota.
+#ifdef ARQMIX_REHOME_NO_BALL
+constexpr unsigned long AMIX_T_REHOME_NO_BALL = 15000;  // 15 s sin ver la pelota → re-homing. <TITRAR>
+#endif
+
 // ACOMODARSE antes de quedar quieto (2 estados nuevos, pedido Virginia 2026-06-22): (1) acomodar_linea =
 // si TOCA línea (lateral o atrás), despegarse "un poco" hacia el lado OPUESTO; (2) acomodar_orientar =
 // re-orientar al FRENTE con el BNO (heading→0, mismo bang-bang que orientar_frente). Así, cuando queda

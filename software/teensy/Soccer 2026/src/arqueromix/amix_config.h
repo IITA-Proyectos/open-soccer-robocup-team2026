@@ -183,8 +183,18 @@ constexpr int AMIX_GIRO_ALINEAR_SIGN = +1;
 // angular es ANGOSTA → el arquero trackea cualquier pelota off-center.
 //   angulo_pelota_deg: 0=frente, >0=derecha, <0=izquierda.
 // ============================================================
+#ifdef ARQMIX_CENTRADO_FINO
+// CENTRADO FINO (test María 2026-07-03, gateado): banda muerta angular MÁS ANGOSTA. PROBLEMA que ataca
+// (banco María, _evita_lejos): como la banda es POR ÁNGULO, el corrimiento lateral que acepta crece con
+// la distancia (≈ distancia × tan(tol): a 8° ≈ 14% → pelota a 1,5 m = hasta ~21 cm corrido y el FSM lo da
+// por "centrado"). A 5° el corrimiento baja a ≈ 9% (~13 cm a 1,5 m). Riesgo: banda angosta + piso de PWM
+// = "caza" la pelota lejana con micro-strafes que no terminan (oscilación). <TITRAR EN BANCO>: si oscila
+// sin parar → subir a 6; si sigue quedando corrido → bajar a 4 (no menos: ruido angular de la cámara). Era 8.
+constexpr float AMIX_TOL_CENTRADO_DEG = 5.0f;
+#else
 constexpr float AMIX_TOL_CENTRADO_DEG = 8.0f;   // |áng| <= esto → ALINEADO (mantiene posición).
                                                 // |áng| > esto  → SIGUE la pelota (strafe a su lado).
+#endif
 constexpr float AMIX_TOL_KICK_DEG     = 30.0f;  // para DESPEJAR: la pelota debe estar dentro de
                                                 // este ángulo (más amplio que CENTRADO) Y cerca.
 constexpr float AMIX_TOL_CERCANIA_MM  = 250.0f; // DESPEJA si la distancia euclídea a la pelota

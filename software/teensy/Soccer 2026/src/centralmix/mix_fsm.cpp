@@ -335,35 +335,29 @@ void mix_fsm_tick() {
         // estado y se RE-ARMA en CADA START del árbitro (flanco STOP→GO; ver go_edge arriba).
         // Al arrancar el partido y en CADA saque (tras gol / medio tiempo) PATEA RECTO de una,
         // SIN mirar la pelota, y después cae a la búsqueda por giro (IMPULSO_INICIAL_GIRANDO).
-        //   fase 1 (0..ARC_MS)          → avanzar_patear(): empuje recto FUERTE (rampa 120→240
-        //                                 con corrección de rumbo del OTOS).
-        //   fase 2 (ARC_MS..+RECOIL_MS) → retroceder_patear(): recoil corto. Además CIERRA la
-        //                                 rampa de patada (s_kick_active) para que la PRÓXIMA
-        //                                 patada real vuelva a arrancar desde el piso y con rumbo
-        //                                 NUEVO (si no, saldría a 240 fija hacia el rumbo del saque).
-        //   fase 3                      → parar() → IMPULSO_INICIAL_GIRANDO (a buscar la pelota).
-        //   línea (cualquier fase)      → escape DETECTA_LINEA_* de siempre (no salir de cancha).
+        //   0..ARC_MS  → avanzar_patear(): empuje recto FUERTE (rampa 120→240 con corrección de
+        //                rumbo del OTOS). SOLO avanza — no retrocede (pedido Elías 2026-07-03).
+        //   >= ARC_MS  → parar() → IMPULSO_INICIAL_GIRANDO (a buscar la pelota).
+        //   línea      → escape DETECTA_LINEA_* de siempre (no salir de cancha).
+        // NOTA: parar() ADEMÁS cierra la rampa de patada (s_kick_active=false, ver mix_motors.cpp),
+        //   así que la PRÓXIMA patada real re-ancla bien el rumbo y rampa desde el piso — no hace
+        //   falta un recoil para resetearla.
         // ⚠️ FIX 2026-07-03: antes decía `avanzar_patear;` SIN paréntesis → NO llamaba a la
         //    función (instrucción vacía) → el robot NO pateaba al saque.
         // ----------------------------------------------------
-        case Estado::KICKOFF_SEEK: {
+        case Estado::KICKOFF_SEEK:
             // línea → escape de siempre (prioridad sobre la patada de saque)
             if (linea_s1()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_1; break; }
             if (linea_s2()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_2; break; }
             if (linea_s3()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_3; break; }
-            const unsigned long t_kick    = millis() - millis_inicio_estado;
-            const unsigned long RECOIL_MS = 200;   // recoil corto que cierra la rampa de patada
-            if (t_kick < (unsigned long)MIX_KICKOFF_ARC_MS) {
-                avanzar_patear();                  // empuje recto del saque
-            } else if (t_kick < (unsigned long)MIX_KICKOFF_ARC_MS + RECOIL_MS) {
-                retroceder_patear();               // recoil → resetea la rampa de la próxima patada
+            if (millis() - millis_inicio_estado < (unsigned long)MIX_KICKOFF_ARC_MS) {
+                avanzar_patear();                  // empuje recto del saque (SOLO avanza)
             } else {
-                parar();
+                parar();                            // frena + cierra la rampa de patada
                 millis_inicio_estado = millis();
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;   // luego: buscar la pelota girando
             }
             break;
-        }
  
         // ----------------------------------------------------
         // PRIMER_IMPULSO_INICIAL_GIRANDO: declarado en el enum 2025 pero SIN case en

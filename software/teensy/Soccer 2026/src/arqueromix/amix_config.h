@@ -202,7 +202,13 @@ constexpr unsigned long AMIX_T_INICIO_LATERAL = 1600;  // cuánto se mueve a la 
 // AVANCE al BUSCAR la pelota y tocar LÍNEA lateral (SOLO modo quieto, banco Virginia 2026-06-22): en vez de
 // seguir lateral (se metía al área), AVANZA al frente. Para despegarse BIEN del borde, sigue avanzando ESTE
 // tiempo DESPUÉS de dejar de ver la línea (avance "un poco más grande"). Subir si queda pegado al borde.
+#ifdef ARQMIX_BUSCAR_AVANCE_LARGO
+// ESCAPE DE LÍNEA AL BUSCAR más GRANDE (test María 2026-07-03, gateado): avanza más tiempo tras tocar la línea
+// para despegarse mejor del borde. Subir más si queda pegado; bajar si se mete al campo. Era 400.
+constexpr unsigned long AMIX_T_BUSCAR_AVANCE = 500;
+#else
 constexpr unsigned long AMIX_T_BUSCAR_AVANCE = 400;
+#endif
 
 // ACOMODARSE antes de quedar quieto (2 estados nuevos, pedido Virginia 2026-06-22): (1) acomodar_linea =
 // si TOCA línea (lateral o atrás), despegarse "un poco" hacia el lado OPUESTO; (2) acomodar_orientar =
@@ -275,7 +281,14 @@ constexpr int AMIX_INICIO_RETRO_SIGN = -1;  // invierte la dirección del retroc
 constexpr int AMIX_INICIO_RETRO_SIGN = +1;
 #endif
 constexpr unsigned long AMIX_T_PAT_PAUSA_INI = 200;   // PATEANDO_pausa_inicial_arquero
+#ifdef ARQMIX_KICK_FAR
+// GOLPE MÁS LARGO (test María 2026-07-03, gateado -DARQMIX_KICK_FAR): la pelota va MÁS LEJOS porque el arquero
+// EMPUJA más tiempo (misma fuerza AMIX_KICK_VEL_FINAL=180, más duración). Subir más si aún queda corto; bajar
+// si el arquero se impulsa demasiado al frente y se despega mucho de su arco. <TITRAR EN BANCO>
+constexpr unsigned long AMIX_T_PAT_ADELANTE  = 550;   // golpe MÁS LARGO (era 450)
+#else
 constexpr unsigned long AMIX_T_PAT_ADELANTE  = 450;   // PATEANDO_adelante_arquero (golpe COMPLETO)
+#endif
 #ifdef ARQMIX_KICK_SHORT_ON_LINE
 // Golpe CORTO cuando el despeje arranca SOBRE la línea (gateado, pedido Virginia 2026-06-29): menos tiempo de
 // empuje → menos envión hacia adelante → no se sale de la cancha. ~250 ms (vs 450). Subir si no despeja la

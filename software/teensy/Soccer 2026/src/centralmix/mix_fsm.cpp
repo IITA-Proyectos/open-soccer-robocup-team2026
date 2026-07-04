@@ -13,8 +13,8 @@ namespace mix {
 
 // ============================================================
 
-//static Estado estado = Estado::IMPULSO_INICIAL_GIRANDO;   // placeholder; mix_fsm_init() lo fija
-static Estado estado = Estado::TEST;
+static Estado estado = Estado::IMPULSO_INICIAL_GIRANDO;   // placeholder; mix_fsm_init() lo fija
+//static Estado estado = Estado::TEST;
 static unsigned long millis_inicio_estado    = 0;
 static unsigned long millis_inicio_centrando = 0;
 
@@ -162,8 +162,8 @@ static inline void impulso_centrando_horario() {
 // en cada START del árbitro (ver el bloque go_edge en mix_fsm_tick).
 // ============================================================
 void mix_fsm_init() {
-    //estado = Estado::KICKOFF_SEEK;   // PRIMER estado: patada de saque
-    estado = Estado::TEST;
+    estado = Estado::KICKOFF_SEEK;   // PRIMER estado: patada de saque
+    //estado = Estado::TEST;
     millis_inicio_estado    = millis();
     millis_inicio_centrando = millis();
     s_giro_atras_dir        = 0;     // latch del giro-encare "pelota atrás" arranca limpio
@@ -194,8 +194,8 @@ void mix_fsm_tick() {
     // vuelve fresco → mismo flanco). El timer real de la patada de saque se vuelve a anclar al GO en el
     // bloque go_edge de abajo.
     if (g_io.top_link_fresh && !prev_top_link) {
-        //estado = Estado::KICKOFF_SEEK;
-        estado = Estado::TEST;
+        estado = Estado::KICKOFF_SEEK;
+        //estado = Estado::TEST;
         millis_inicio_estado    = millis();
         millis_inicio_centrando = millis();
         prev_go      = false;
@@ -227,8 +227,8 @@ void mix_fsm_tick() {
     // CAMBIO (pedido Elías 2026-07-01): antes se hacía UNA sola vez por encendido; ahora se
     // RE-ARMA en cada saque (tras gol / medio tiempo) apenas el árbitro vuelve a dar GO.
     if (go_edge) {
-        //estado = Estado::KICKOFF_SEEK;
-        estado = Estado::TEST;  // DEBUG de b
+        estado = Estado::KICKOFF_SEEK;
+        //estado = Estado::TEST;  // DEBUG de b
         millis_inicio_estado    = millis();
         millis_inicio_centrando = millis();
     }
@@ -280,20 +280,38 @@ void mix_fsm_tick() {
             }
 
             break;
-
-       // ----------------------------------------------------
+        // ----------------------------------------------------
         case Estado::KICKOFF_SEEK:
             // línea → escape de siempre (prioridad sobre la patada de saque)
-            if (linea_s1()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_1; break; }
-            if (linea_s2()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_2; break; }
-            if (linea_s3()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_3; break; }
-            if (millis() - millis_inicio_estado < (unsigned long)MIX_KICKOFF_ARC_MS) {
-                avanzar();                  // empuje recto del saque (SOLO avanza)
-            } else {
-                parar();                            // frena + cierra la rampa de patada
-                millis_inicio_estado = millis();
-                estado = Estado::IMPULSO_INICIAL_GIRANDO;   // luego: buscar la pelota girando
-            }
+            mover_lateral_bno(200, -1);  // adelante, potencia 100
+            if (millis() - millis_inicio_estado >= 2500) {
+                parar();
+                if(millis() - millis_inicio_estado >= 2000) {
+                    estado = Estado::KICKOFF_SEEK1; 
+                    millis_inicio_estado = millis(); 
+                } 
+            }        
+            break;
+
+        // ----------------------------------------------------
+        case Estado::KICKOFF_SEEK1:
+            // línea → escape de siempre (prioridad sobre la patada de saque)
+            parar();  // adelante, potencia 100
+            if (millis() - millis_inicio_estado >= 500) {
+                estado = Estado::KICKOFF_SEEK2; 
+                millis_inicio_estado = millis(); 
+            }        
+            break;
+
+       // ----------------------------------------------------
+        case Estado::KICKOFF_SEEK2:
+            // línea → escape de siempre (prioridad sobre la patada de saque)
+            mover_recto_bno(200, 1);  // adelante, potencia 100
+            if (millis() - millis_inicio_estado >= 2500) {
+                parar(); 
+                estado = Estado::IMPULSO_INICIAL_GIRANDO; 
+                millis_inicio_estado = millis(); 
+            }        
             break;
 
         // ----------------------------------------------------
@@ -519,7 +537,7 @@ void mix_fsm_tick() {
                 estado = Estado::PATEANDO_pausa_inicial;
             }
             // si |error|<=1 y ya pasó 6s centrando
-            else if ((millis() - millis_inicio_centrando >= 1) && (fabsf(error) <= 5)) {
+            else if ((millis() - millis_inicio_centrando >= 1) && (fabsf(error) <= 1)) {
                 millis_inicio_centrando = millis();
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_pausa_inicial;
@@ -760,8 +778,8 @@ void mix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::PATEANDO_adelante:
-            avanzar_patear();
-            if (millis() - millis_inicio_estado >= 500) {
+            mover_recto_bno(230, 1);  // adelante, potencia 100
+            if (millis() - millis_inicio_estado >= 700) {
                 parar();
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_pausa;
@@ -805,8 +823,8 @@ void mix_fsm_tick() {
 
         // ----------------------------------------------------
         case Estado::PATEANDO_atras:
-            retroceder_patear();
-            if (millis() - millis_inicio_estado >= 200) {
+            mover_recto_bno(250, -1);  // atras, potencia 100
+            if (millis() - millis_inicio_estado >= 700) {
                 parar();
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;
                 millis_inicio_estado = millis();

@@ -71,18 +71,18 @@ constexpr uint8_t MIX_LINE_DEPTH_TRIGGER = 1;  // ≥1 sensor en blanco = línea
 //   ic = velocidad impulso centrando
 // (ROBOT2 2025: c=0.4, ic=0.55)
 // ============================================================
-constexpr float MIX_G  = 0.7f;   // girando
-constexpr float MIX_A  = 0.43f;   // apuntando pelota
-constexpr float MIX_C  = 0.45f;   // centrando (2025 ROBOT2)
+constexpr float MIX_G  = 0.75f;   // girando
+constexpr float MIX_A  = 0.35f;   // apuntando pelota
+constexpr float MIX_C  = 0.50f;   // centrando (2025 ROBOT2)
 constexpr float MIX_IC = 1.0f;   // impulso centrando (2025 ROBOT2)
 constexpr float MIX_PD = 1.0f;   // avances proporcionales (2025 'pd')
 
 // ============================================================
 // Tolerancias 2025 (en mm para cercanía/centrado; en grados para apuntado).
 // ============================================================
-constexpr float MIX_TOL_CENTRADO = 15.0f;  // tolerancia_centrado
-constexpr float MIX_TOL_CERCANIA = 50.0f;  // tolerancia_cercania
-constexpr float MIX_TOL_APUNTADO = 40.0f;  // tolerancia_apuntado (grados)
+constexpr float MIX_TOL_CENTRADO = 10.0f;  // tolerancia_centrado
+constexpr float MIX_TOL_CERCANIA = 10.0f;  // tolerancia_cercania
+constexpr float MIX_TOL_APUNTADO = 7.0f;  // tolerancia_apuntado (grados)
 
 // ============================================================
 // Jugada "PELOTA ATRÁS" (la ve la cámara TRASERA) — giro-encare sobre el piso del motor.

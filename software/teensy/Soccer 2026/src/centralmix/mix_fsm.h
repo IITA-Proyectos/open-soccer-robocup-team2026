@@ -55,6 +55,8 @@ enum class Estado {
     //     pelota) detecta algo a <15 cm, la FSM interrumpe, RETROCEDE y vuelve a BUSCAR (GIRANDO).
     //     Ver mix_config.h: MIX_OBSTACULO_STOP_MM / MIX_EVITAR_MS.
     EVITAR_OBSTACULO,
+    KICKOFF_SEEK1,
+    KICKOFF_SEEK2,
 };
 
 // Inicializa la FSM: estado = KICKOFF_SEEK (primer estado), sella timers (millis()). Llamar

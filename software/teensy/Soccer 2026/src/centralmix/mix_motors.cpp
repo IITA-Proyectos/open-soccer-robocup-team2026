@@ -142,8 +142,8 @@ void girar() {
 
 // avanzar() 2025: M1=100 (INA1=1), M2=100 (INB2=1), M3=0.
 void avanzar() {
-    mix_set_motor(0, +175);  // M1: INA1=1, INB1=0
-    mix_set_motor(1, -175);  // M2: INA2=0, INB2=1
+    mix_set_motor(0, +150);  // M1: INA1=1, INB1=0
+    mix_set_motor(1, -150);  // M2: INA2=0, INB2=1
     mix_set_motor(2, 0);     // M3: PWM=0, INA3=1, INB3=0 → magnitud 0 = frenado
 }
 

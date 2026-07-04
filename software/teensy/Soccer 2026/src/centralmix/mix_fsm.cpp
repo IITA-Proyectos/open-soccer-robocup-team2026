@@ -1,56 +1,4 @@
 // mix_fsm.cpp — Máquina de estados de centralmix.
-//
-// PORT FIEL del switch del delantero 2025
-// (software/_deprecated-2025/robot-delantero/delantero-sin-zirconLib.cpp).
-//
-// QUÉ CAMBIA respecto del 2025 (y SOLO esto):
-//   - TODA lectura de sensor se reemplaza por g_io (mix_io.h), poblado por mix_comm.
-//   - TODA escritura de motor se reemplaza por las primitivas de mix_motors.h.
-//   - Se AGREGA una sola regla de prioridad al inicio de mix_fsm_tick():
-//       si !g_io.match_running → parar() y return (GO/STOP del árbitro RCJ; el 2025
-//       no tenía esto porque arrancaba solo). Es lo ÚNICO que se añade al flujo.
-//
-// QUÉ NO CAMBIA (fidelidad 1:1 con el 2025):
-//   - Las transiciones de estado (cada `estado = ...`) están verbatim.
-//   - Los umbrales: |anguloPelota| < 15 (MIX_TOL_APUNTADO), tolerancia_centrado=30,
-//     tolerancia_cercania=50, |error|<=1/50/80, etc. — todos con el valor 2025.
-//   - Los timers: millis_inicio_estado, millis_inicio_centrando, millis_pelota
-//     (este último = g_io.t_last_ball_seen_ms, lo sella mix_comm) y TODOS los
-//     umbrales en ms (700/70/1000/9000/500/10000/20000/4000/25000/300/3000/200/400…).
-//
-// MAPEOS QUE REQUIRIERON DECISIÓN (marcados con  // <RE-TUNEO 2025→2026>):
-//   1) `Xp <= tolerancia_cercania` (50): en 2025 Xp era la coordenada LATERAL cruda
-//      de la pelota (0..~100, codificada). En el marco nuevo (+X=der, +Y=adel, en cm)
-//      "estar cerca" = distancia al robot pequeña. Se mapea a:
-//          dist_pelota_cm() <= MIX_TOL_CERCANIA  (valor 2025 = 50, UNIDADES DISTINTAS:
-//          2025 era cuenta codificada, acá es cm → RE-TUNEAR en banco).
-//      Su negación `Xp >= tolerancia_cercania` (en APUNTAR_PELOTA_horario/antihorario)
-//      se mapea a dist_pelota_cm() >= MIX_TOL_CERCANIA, igual que el 2025.
-//   2) `abs(Yp - Ycontrincante) <= tolerancia_centrado` (30): en 2025 era "la pelota
-//      está alineada con el arco rival en el eje vertical de la cámara". En el marco
-//      nuevo el dato equivalente es el ÁNGULO al arco rival (goal_opp_angle, RESUELTO
-//      por el TOP — sin color). Se mapea a:
-//          |goal_opp_angle| <= MIX_TOL_CENTRADO  (valor 2025 = 30, UNIDADES DISTINTAS:
-//          2025 era diferencia de coordenadas Y; acá son GRADOS → RE-TUNEAR en banco).
-//      La guarda ARCO_CONTRINCANTE (2025: hayarco_amarillo) → g_io.goal_opp_visible.
-//   3) s1/s2/s3 >= blanco (3 sensores analógicos): en centralmix la línea llega por
-//      DOWN como line_present/line_angle_deg/line_depth (mix_io). Se reconstruye el
-//      branch de 3 vías por el ÁNGULO de la línea:
-//          línea a la IZQUIERDA  → DETECTA_LINEA_1 (era s1, sensor izquierdo)
-//          línea al FRENTE       → DETECTA_LINEA_2 (era s2, sensor centro)
-//          línea a la DERECHA    → DETECTA_LINEA_3 (era s3, sensor derecho)
-//      con line_present (depth>=trigger) como gate. Los SECTORES de ángulo (±30°) son
-//      una elección 2026 → RE-TUNEAR. El "OR de los 3 sensores" del 2025 (centrando)
-//      se mapea a line_present.
-//
-// ARCO RIVAL = goal_opp (POR ROL, no por color): la placa TOP resuelve la polaridad
-//   (goal_polarity); el delantero NO mira color (ver arco_rival_*() abajo).
-//
-// El bloque ARQUERO del 2025 NO se porta (no existe en este archivo base; este es
-// el delantero).
-//
-// ⚠️ NO TESTEADO EN HARDWARE. Compila == NO anda: el sentido físico de cada primitiva
-// y todos los mapeos marcados <RE-TUNEO 2025→2026> se validan en banco.
 
 #include <Arduino.h>
 #include <math.h>
@@ -64,10 +12,7 @@ namespace iitasoccer {
 namespace mix {
 
 // ============================================================
-// Estado y timers de la FSM (eran globales sueltas en el 2025).
-//   millis_pelota del 2025  ==  g_io.t_last_ball_seen_ms  (lo sella mix_comm).
-//   Acá quedan millis_inicio_estado y millis_inicio_centrando (locales a la FSM).
-// ============================================================
+
 static Estado estado = Estado::IMPULSO_INICIAL_GIRANDO;  // placeholder; mix_fsm_init() lo fija
 static unsigned long millis_inicio_estado    = 0;
 static unsigned long millis_inicio_centrando = 0;
@@ -330,41 +275,21 @@ void mix_fsm_tick() {
             
             break;
 
-        // ----------------------------------------------------
-        // KICKOFF_SEEK (AGREGADO 2026, redefinido 2026-07-03): PATADA de saque. Es el PRIMER
-        // estado y se RE-ARMA en CADA START del árbitro (flanco STOP→GO; ver go_edge arriba).
-        // Al arrancar el partido y en CADA saque (tras gol / medio tiempo) PATEA RECTO de una,
-        // SIN mirar la pelota, y después cae a la búsqueda por giro (IMPULSO_INICIAL_GIRANDO).
-        //   0..ARC_MS  → avanzar_patear(): empuje recto FUERTE (rampa 120→240 con corrección de
-        //                rumbo del OTOS). SOLO avanza — no retrocede (pedido Elías 2026-07-03).
-        //   >= ARC_MS  → parar() → IMPULSO_INICIAL_GIRANDO (a buscar la pelota).
-        //   línea      → escape DETECTA_LINEA_* de siempre (no salir de cancha).
-        // NOTA: parar() ADEMÁS cierra la rampa de patada (s_kick_active=false, ver mix_motors.cpp),
-        //   así que la PRÓXIMA patada real re-ancla bien el rumbo y rampa desde el piso — no hace
-        //   falta un recoil para resetearla.
-        // ⚠️ FIX 2026-07-03: antes decía `avanzar_patear;` SIN paréntesis → NO llamaba a la
-        //    función (instrucción vacía) → el robot NO pateaba al saque.
-        // ----------------------------------------------------
+       // ----------------------------------------------------
         case Estado::KICKOFF_SEEK:
             // línea → escape de siempre (prioridad sobre la patada de saque)
             if (linea_s1()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_1; break; }
             if (linea_s2()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_2; break; }
             if (linea_s3()) { millis_inicio_estado = millis(); estado = Estado::DETECTA_LINEA_3; break; }
             if (millis() - millis_inicio_estado < (unsigned long)MIX_KICKOFF_ARC_MS) {
-                avanzar_patear();                  // empuje recto del saque (SOLO avanza)
+                avanzar();                  // empuje recto del saque (SOLO avanza)
             } else {
                 parar();                            // frena + cierra la rampa de patada
                 millis_inicio_estado = millis();
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;   // luego: buscar la pelota girando
             }
             break;
- 
-        // ----------------------------------------------------
-        // PRIMER_IMPULSO_INICIAL_GIRANDO: declarado en el enum 2025 pero SIN case en
-        // el switch (estado muerto). Se conserva en el enum por fidelidad; aquí NO
-        // tiene case, igual que el 2025.
-        // ----------------------------------------------------
- 
+
         // ----------------------------------------------------
         case Estado::IMPULSO_INICIAL_GIRANDO:
             // girar con más potencia (150) — 2025 inline.
@@ -459,7 +384,7 @@ void mix_fsm_tick() {
             break;
 
         // ----------------------------------------------------
-        case Estado::APUNTAR_PELOTA:
+        case Estado::APUNTAR_PELOTA: 
             if (fabsf(anguloPelota) >= MIX_TOL_APUNTADO) {   // tolerancia_apuntado (15): aún no apuntado
                 // --- Jugada "PELOTA ATRÁS" (cámara trasera) ---
                 // Se ENTRA por ball_y_cm (señal MONÓTONA), no por el ángulo (que salta ±180). Una vez
@@ -588,7 +513,7 @@ void mix_fsm_tick() {
                 estado = Estado::PATEANDO_pausa_inicial;
             }
             // si |error|<=1 y ya pasó 6s centrando
-            else if ((millis() - millis_inicio_centrando >= 6000) && (fabsf(error) <= 1)) {
+            else if ((millis() - millis_inicio_centrando >= 1) && (fabsf(error) <= 5)) {
                 millis_inicio_centrando = millis();
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_pausa_inicial;
@@ -612,16 +537,6 @@ void mix_fsm_tick() {
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;
             }
 
-            // salidas líneas blancas (OR de los 3 sensores 2025 → linea_presente)
-            if (linea_s1() || linea_s2() || linea_s3()) {
-                if (fabsf(error) <= 80) {  // 🛑 2025: tal vez bajar/subir después
-                    millis_inicio_estado = millis();
-                    estado = Estado::PATEANDO_corto_pausa_inicial;
-                } else {
-                    millis_inicio_estado = millis();
-                    estado = Estado::IMPULSO_CENTRANDO_antihorario;
-                }
-            }
             break;
 
         // ----------------------------------------------------
@@ -646,7 +561,7 @@ void mix_fsm_tick() {
                 estado = Estado::PATEANDO_pausa_inicial;
             }
             // acá se supone que patee al lado opuesto del contrincante
-            else if ((millis() - millis_inicio_centrando >= 4000) && (fabsf(error) <= 1)) {
+            else if ((millis() - millis_inicio_centrando >= 1) && (fabsf(error) <= 5)) {
                 millis_inicio_centrando = millis();
                 millis_inicio_estado = millis();
                 estado = Estado::PATEANDO_pausa_inicial;
@@ -932,31 +847,6 @@ void mix_fsm_tick() {
                 parar();
                 millis_inicio_estado = millis();
                 estado = Estado::IMPULSO_INICIAL_GIRANDO;
-            }
-            break;
-
-        // ----------------------------------------------------
-        // EVITAR_OBSTACULO (rama ultrasonido): el ultrasonido vio algo a <15 cm al frente.
-        // PRIMERO mira la línea: si hay, escapa con la primitiva DIRECCIONAL (retroceder1/2/3, que se
-        // aleja de la línea) SIN retroceder recto — así NO cruza una línea trasera. Con la prioridad
-        // de línea de arriba, ese DETECTA_LINEA corre completo (el obstáculo no lo re-pisa). Solo si
-        // NO hay línea retrocede (retroceder2) para alejarse del obstáculo; tras MIX_EVITAR_MS vuelve
-        // a BUSCAR (GIRANDO). El ultrasonido NO ve la pelota (montado alto): solo frena por robots/paredes.
-        case Estado::EVITAR_OBSTACULO:
-            // Línea ANTES de moverse: escapá en la dirección correcta y no des ni un tick para atrás
-            // sobre una línea trasera.
-            if (linea_s1()) { estado = Estado::DETECTA_LINEA_1; millis_inicio_estado = millis(); break; }
-            if (linea_s2()) { estado = Estado::DETECTA_LINEA_2; millis_inicio_estado = millis(); break; }
-            if (linea_s3()) { estado = Estado::DETECTA_LINEA_3; millis_inicio_estado = millis(); break; }
-            // Retroceso LENTO (mismo patrón que retroceder2 pero a MIX_EVITAR_PWM) → la DOWN
-            // alcanza a DETECTAR la línea antes de cruzarla, y frena/escapa a tiempo.
-            mix_set_motor(0, -MIX_EVITAR_PWM);
-            mix_set_motor(1, +MIX_EVITAR_PWM);
-            mix_set_motor(2, 0);
-            if (millis() - millis_inicio_estado >= MIX_EVITAR_MS) {
-                parar();
-                millis_inicio_estado = millis();
-                estado = Estado::GIRANDO;   // vuelve a BUSCAR la pelota
             }
             break;
     }

@@ -156,66 +156,6 @@ static inline void impulso_centrando_horario() {
 }
 
 // ============================================================
-// TECHNICAL CHALLENGE — moverse LATERAL / RECTO con heading-hold del BNO.
-// Se prueban desde el case Estado::TEST (para entrar: descomentá `estado = Estado::TEST;`
-// en mix_fsm_init). Elegí la prueba con TEST_MODO / TEST_POT / TEST_DIR de abajo.
-// Cinemática omni-3 verificada contra avanzar()/retroceder() de mix_motors:
-//   lateral (+X, derecha): M1=+0.5·vx, M2=+0.5·vx, M3=-vx
-//   recto   (+Y, adelante): M1=+0.87·vy, M2=-0.87·vy, M3=0
-//   heading-hold: la MISMA corrección en las 3 ruedas (giro puro, = ωR).
-// ⚠️ NO TESTEADO EN HW: confirmar en banco la DIRECCIÓN (invertir TEST_DIR) y el SIGNO del
-//   heading-hold (TC_CORR_SIGN = -1 si en vez de mantener el rumbo se va rotando).
-// Requiere heading del BNO → flashear un env con -DMIX_HEADING_SNAPSHOT (mix_bno / mix_ultra).
-// ============================================================
-enum class TestMove { LATERAL, RECTO, QUIETO };
-static TestMove TEST_MODO = TestMove::LATERAL;   // ← ELEGÍ: LATERAL / RECTO / QUIETO
-static int      TEST_POT  = 100;                 // ← potencia (PWM) de la prueba
-static int      TEST_DIR  = +1;                  // ← dir: lateral +1=DER/-1=IZQ ; recto +1=ADEL/-1=ATRAS
-
-static constexpr float TC_KP        = 2.0f;   // heading-hold: PWM de giro por GRADO de error del BNO
-static constexpr int   TC_CORR_MAX  = 60;     // tope (PWM) del giro correctivo
-static constexpr int   TC_CORR_SIGN = +1;     // signo del heading-hold (⚠️ -1 si diverge en banco)
-static constexpr float TC_HDG_TOL   = 1.0f;   // banda muerta del rumbo (grados)
-
-// Corrección de rumbo (heading-hold): giro proporcional al error del BNO, IGUAL en las 3 ruedas.
-static int tc_correccion_rumbo() {
-    const float err = g_io.heading_error_deg;   // BNO (wrap180), 0 = rumbo de arranque
-    if (err > -TC_HDG_TOL && err < TC_HDG_TOL) return 0;
-    int c = (int)(TC_KP * err) * TC_CORR_SIGN;
-    if (c >  TC_CORR_MAX) c =  TC_CORR_MAX;
-    if (c < -TC_CORR_MAX) c = -TC_CORR_MAX;
-    return c;
-}
-
-// Escribe las 3 ruedas preservando la dirección (si el pico pasa MIX_MAX_PWM, escala las 3 igual).
-static void tc_escribir_ruedas(int w0, int w1, int w2) {
-    int a0 = (w0 < 0) ? -w0 : w0, a1 = (w1 < 0) ? -w1 : w1, a2 = (w2 < 0) ? -w2 : w2;
-    int peak = a0; if (a1 > peak) peak = a1; if (a2 > peak) peak = a2;
-    if (peak > MIX_MAX_PWM) {
-        w0 = (int)((long)w0 * MIX_MAX_PWM / peak);
-        w1 = (int)((long)w1 * MIX_MAX_PWM / peak);
-        w2 = (int)((long)w2 * MIX_MAX_PWM / peak);
-    }
-    mix_set_motor(0, w0); mix_set_motor(1, w1); mix_set_motor(2, w2);
-}
-
-// LATERAL con heading-hold. potencia ≈ PWM de la rueda TRASERA (las delanteras salen a la mitad).
-// direccion: +1 = DERECHA, -1 = IZQUIERDA.
-static void mover_lateral_bno(int potencia, int direccion) {
-    const int vx   = direccion * potencia;    // + = derecha
-    const int corr = tc_correccion_rumbo();
-    tc_escribir_ruedas(vx / 2 + corr, vx / 2 + corr, -vx + corr);
-}
-
-// DERECHO (adelante/atrás) con heading-hold. potencia ≈ PWM de las DELANTERAS.
-// direccion: +1 = ADELANTE, -1 = ATRÁS.
-static void mover_recto_bno(int potencia, int direccion) {
-    const int f    = direccion * potencia;    // + = adelante
-    const int corr = tc_correccion_rumbo();
-    tc_escribir_ruedas(f + corr, -f + corr, corr);
-}
-
-// ============================================================
 // mix_fsm_init — setup de la FSM. El PRIMER estado es SIEMPRE KICKOFF_SEEK (arranque
 // del partido). AVANCE_INICIO se QUITÓ 2026-06-21 (pedido Elías). El kickoff se RE-ARMA
 // en cada START del árbitro (ver el bloque go_edge en mix_fsm_tick).
@@ -327,12 +267,12 @@ void mix_fsm_tick() {
     switch (estado) {
 
         case Estado::TEST:
-            // TECHNICAL CHALLENGE: probar mover_lateral_bno / mover_recto_bno según el selector
-            // (TEST_MODO / TEST_POT / TEST_DIR, arriba del archivo). Frena si ve línea (seguridad).
-            if (linea_presente()) { parar(); break; }
-            if      (TEST_MODO == TestMove::LATERAL) mover_lateral_bno(TEST_POT, TEST_DIR);
-            else if (TEST_MODO == TestMove::RECTO)   mover_recto_bno(TEST_POT, TEST_DIR);
-            else                                     parar();
+
+            impulso_centrando_horario();
+            if (millis() - millis_inicio_estado >= 3000) {
+                parar();
+            }
+
             break;
 
        // ----------------------------------------------------

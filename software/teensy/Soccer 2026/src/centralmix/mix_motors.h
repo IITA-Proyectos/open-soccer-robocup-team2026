@@ -60,5 +60,11 @@ void centrar_antihorario();  // orbita en sentido antihorario (CENTRANDO_antihor
 // Lo llama el estado KICKOFF_SEEK del FSM (primer estado / arranque).
 void kickoff_medialuna();
 
+// Movimiento con heading-hold del BNO (technical challenge). Llamalas desde donde quieras en
+// la FSM. potencia = PWM; direccion = +1 / -1 (lateral: +1=DER/-1=IZQ; recto: +1=ADEL/-1=ATRÁS).
+// Mantienen el rumbo con g_io.heading_error_deg (requiere heading del BNO válido).
+void mover_lateral_bno(int potencia, int direccion);  // strafe con heading-hold
+void mover_recto_bno(int potencia, int direccion);    // adelante/atrás con heading-hold
+
 }  // namespace mix
 }  // namespace iitasoccer

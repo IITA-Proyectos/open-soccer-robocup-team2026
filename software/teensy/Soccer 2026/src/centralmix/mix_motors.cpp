@@ -357,5 +357,60 @@ void kickoff_medialuna() {
     mix_set_motor(2, MIX_KICKOFF_ARC_PWD*0);   // M3 trasera
 }
 
+// ============================================================
+// MOVIMIENTO con heading-hold del BNO (technical challenge). Dos primitivas PÚBLICAS para
+// llamar desde DONDE QUIERAS en la FSM (como avanzar()/girar()). Mantienen el rumbo con el
+// error del BNO (g_io.heading_error_deg): agregan un giro correctivo IGUAL en las 3 ruedas
+// (= ωR de la cinemática → giro puro, sin traslación parásita).
+// Cinemática omni-3 verificada contra avanzar()/retroceder():
+//   lateral (+X, derecha): M1=+0.5·vx, M2=+0.5·vx, M3=-vx
+//   recto   (+Y, adelante): M1=+0.87·vy, M2=-0.87·vy, M3=0
+// ⚠️ NO TESTEADO EN HW: confirmar en banco la DIRECCIÓN (invertir el signo de 'direccion') y el
+//   SIGNO del heading-hold (TC_CORR_SIGN = -1 si en vez de mantener el rumbo se va rotando).
+// Requiere heading del BNO válido → env con -DMIX_HEADING_SNAPSHOT (mix_bno / mix_ultra).
+// ============================================================
+static constexpr float TC_KP        = 2.0f;   // heading-hold: PWM de giro por GRADO de error del BNO
+static constexpr int   TC_CORR_MAX  = 60;     // tope (PWM) del giro correctivo
+static constexpr int   TC_CORR_SIGN = +1;     // signo del heading-hold (⚠️ -1 si diverge en banco)
+static constexpr float TC_HDG_TOL   = 1.0f;   // banda muerta del rumbo (grados)
+
+// Giro correctivo del heading-hold (proporcional al error del BNO, clampeado + banda muerta).
+static int tc_correccion_rumbo() {
+    const float err = g_io.heading_error_deg;   // BNO (wrap180), 0 = rumbo de arranque
+    if (err > -TC_HDG_TOL && err < TC_HDG_TOL) return 0;
+    int c = (int)(TC_KP * err) * TC_CORR_SIGN;
+    if (c >  TC_CORR_MAX) c =  TC_CORR_MAX;
+    if (c < -TC_CORR_MAX) c = -TC_CORR_MAX;
+    return c;
+}
+
+// Escribe las 3 ruedas preservando la dirección (si el pico pasa MIX_MAX_PWM, escala las 3 igual).
+static void tc_escribir_ruedas(int w0, int w1, int w2) {
+    int a0 = (w0 < 0) ? -w0 : w0, a1 = (w1 < 0) ? -w1 : w1, a2 = (w2 < 0) ? -w2 : w2;
+    int peak = a0; if (a1 > peak) peak = a1; if (a2 > peak) peak = a2;
+    if (peak > MIX_MAX_PWM) {
+        w0 = (int)((long)w0 * MIX_MAX_PWM / peak);
+        w1 = (int)((long)w1 * MIX_MAX_PWM / peak);
+        w2 = (int)((long)w2 * MIX_MAX_PWM / peak);
+    }
+    mix_set_motor(0, w0); mix_set_motor(1, w1); mix_set_motor(2, w2);
+}
+
+// LATERAL con heading-hold. potencia ≈ PWM de la rueda TRASERA (las delanteras salen a la mitad).
+// direccion: +1 = DERECHA, -1 = IZQUIERDA.
+void mover_lateral_bno(int potencia, int direccion) {
+    const int vx   = direccion * potencia;    // + = derecha
+    const int corr = tc_correccion_rumbo();
+    tc_escribir_ruedas(vx / 2 + corr, vx / 2 + corr, -vx + corr);
+}
+
+// DERECHO (adelante/atrás) con heading-hold. potencia ≈ PWM de las DELANTERAS.
+// direccion: +1 = ADELANTE, -1 = ATRÁS.
+void mover_recto_bno(int potencia, int direccion) {
+    const int f    = direccion * potencia;    // + = adelante
+    const int corr = tc_correccion_rumbo();
+    tc_escribir_ruedas(f + corr, -f + corr, corr);
+}
+
 }  // namespace mix
 }  // namespace iitasoccer

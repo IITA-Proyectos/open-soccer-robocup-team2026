@@ -66,6 +66,7 @@ void kickoff_medialuna();
 void mover_lateral_bno(int potencia, int direccion);  // strafe con heading-hold
 void mover_recto_bno(int potencia, int direccion);    // adelante/atrás con heading-hold
 void girar_bno(int potencia, int direccion);          // giro en el lugar (+1 horario / -1 antihorario)
+bool girar_bno(int potencia, int direccion, float angulo);  // gira 'angulo' grados y frena (true=llegó)
 
 }  // namespace mix
 }  // namespace iitasoccer

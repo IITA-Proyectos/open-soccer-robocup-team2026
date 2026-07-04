@@ -424,5 +424,34 @@ void girar_bno(int potencia, int direccion) {
     tc_escribir_ruedas(w, w, w);
 }
 
+// GIRAR en el lugar HASTA cierto ÁNGULO (versión con objetivo). Gira en 'direccion' a 'potencia'
+// hasta haber girado 'angulo' grados desde donde arrancó el giro, y FRENA. Devuelve true cuando
+// llegó (y queda lista para el próximo giro). Llamala en cada tick; en true, el giro terminó.
+// Mide cuánto giró con el BNO (g_io.heading_error_deg → requiere -DMIX_HEADING_SNAPSHOT).
+// direccion: +1 = HORARIO (CW), -1 = ANTIHORARIO. angulo: grados a girar (magnitud).
+// ⚠️ Un giro por vez: se ancla en su primer tick y se cierra al llegar; no arranques otro giro
+//    antes de que este devuelva true.
+static bool  s_gira_activo  = false;
+static float s_gira_inicial = 0.0f;
+bool girar_bno(int potencia, int direccion, float angulo) {
+    if (!s_gira_activo) {                         // primer tick de ESTE giro: ancla el rumbo
+        s_gira_inicial = g_io.heading_error_deg;
+        s_gira_activo  = true;
+    }
+    float girado = g_io.heading_error_deg - s_gira_inicial;
+    while (girado >  180.0f) girado -= 360.0f;    // normaliza a [-180, 180]
+    while (girado < -180.0f) girado += 360.0f;
+    const float girado_abs = (girado < 0.0f) ? -girado : girado;
+    const float meta_abs   = (angulo < 0.0f) ? -angulo : angulo;
+    if (girado_abs >= meta_abs) {                 // llegó al ángulo pedido
+        parar();
+        s_gira_activo = false;
+        return true;
+    }
+    const int w = direccion * potencia;           // mismo signo en las 3 → giro puro
+    tc_escribir_ruedas(w, w, w);
+    return false;
+}
+
 }  // namespace mix
 }  // namespace iitasoccer

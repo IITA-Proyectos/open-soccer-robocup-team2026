@@ -52,6 +52,12 @@ static unsigned long s_buscar_avance_until_ms = 0;
 // RE-HOMING POR PÉRDIDA DE PELOTA (test María 2026-07-03): reloj de referencia — se resetea al VER la pelota y al
 // disparar el re-homing, así no re-dispara hasta que pasen otros AMIX_T_REHOME_NO_BALL ms sin verla.
 static unsigned long s_rehome_ref_ms = 0;
+#ifdef ARQMIX_REHOME_RAPIDO
+// ¿El retroceso en curso es del RE-HOMING (no del homing del GO)? Distingue los dos usos de
+// inicio_retroceder: SOLO el del re-homing corta al ver la pelota (test María 2026-07-04). El del GO
+// NO corta (la pelota del centro siempre se ve al arrancar → cortaría el homing y nunca llegaría al arco).
+static bool s_rehome_activo = false;
+#endif
 #endif
 
 #ifdef ARQMIX_KICK_SHORT_ON_LINE
@@ -172,6 +178,9 @@ void amix_fsm_tick() {
 #ifdef ARQMIX_REHOME_NO_BALL
         s_rehome_ref_ms = millis();
 #endif
+#ifdef ARQMIX_REHOME_RAPIDO
+        s_rehome_activo = false;   // GO nuevo → este homing es el del ARRANQUE, nunca corta por pelota
+#endif
     }
 
     const float error = g_aio.heading_error_deg;   // == 'error' 2025 (ya wrapeado)
@@ -213,12 +222,28 @@ void amix_fsm_tick() {
         // ----------------------------------------------------
         // --- INICIO: homing al área chica (banco Virginia 2026-06-21) ---
         case Estado::inicio_retroceder:             // ir HACIA ATRÁS hasta detectar la línea del área
+#ifdef ARQMIX_REHOME_RAPIDO
+            // CORTE POR PELOTA — SOLO si este retroceso es del RE-HOMING (test María 2026-07-04): si VE
+            // la pelota, corta y vuelve a esperar_quieto (seguirla / posicionarse / despejar). El homing
+            // del GO NO corta (s_rehome_activo=false ahí): al arrancar el partido la pelota del centro
+            // siempre se ve → cortaría el homing y el arquero nunca llegaría a su arco.
+            if (s_rehome_activo && haypelota) {
+                s_rehome_activo = false;
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::esperar_quieto;
+                break;
+            }
+#endif
             retroceder_inicio();                     // retroceso dedicado (PWM propio, sentido flippable)
 #ifdef ARQMIX_RETRO_BY_TIME
             // MODO POR TIEMPO (test María 2026-07-02): NO lee la línea; retrocede un TIEMPO FIJO y avanza.
             if (millis() - millis_inicio_estado >= AMIX_T_INICIO_RETRO_FIXED) {
                 parar();
                 millis_inicio_estado = millis();
+#ifdef ARQMIX_REHOME_RAPIDO
+                s_rehome_activo = false;             // el retroceso terminó → la marca no queda colgada
+#endif
                 estado = Estado::inicio_avanzar;
             }
 #else
@@ -227,6 +252,9 @@ void amix_fsm_tick() {
             if (linea() || (millis() - millis_inicio_estado >= AMIX_T_INICIO_RETRO_SAFETY)) {
                 parar();
                 millis_inicio_estado = millis();
+#ifdef ARQMIX_REHOME_RAPIDO
+                s_rehome_activo = false;             // el retroceso terminó → la marca no queda colgada
+#endif
                 estado = Estado::inicio_avanzar;
             }
 #endif
@@ -267,6 +295,9 @@ void amix_fsm_tick() {
                 s_rehome_ref_ms = millis();
                 parar();
                 millis_inicio_estado = millis();
+#ifdef ARQMIX_REHOME_RAPIDO
+                s_rehome_activo = true;   // marca: este retroceso es del RE-HOMING → puede cortar por pelota
+#endif
                 estado = Estado::inicio_retroceder;   // atrás hasta la línea + escape → vuelve a esperar
                 break;
             }

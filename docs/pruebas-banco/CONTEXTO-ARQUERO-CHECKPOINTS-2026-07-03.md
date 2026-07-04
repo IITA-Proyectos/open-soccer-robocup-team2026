@@ -79,8 +79,13 @@ Vengo armando **7 CHECKPOINTS** del arquero, cada uno gateado detrás de flags, 
    `-DARQMIX_RETRO_CUT_BALL` — si mientras retrocede tras el despeje VE la pelota, corta el retroceso y vuelve
    a `esperar_quieto` (la sigue / se posiciona / despeja). NO toca el homing del GO (la pelota del centro
    siempre se ve → habría matado el homing). Knob `AMIX_RETRO_CUT_DIST_MM`=9999 (cualquier pelota; si queda
-   adelantado bajar a ~800-1000). Flags: `#8 + -DARQMIX_KICK_TRIM + -DARQMIX_RETRO_CUT_BALL`.
-   md5 `F1C6CA9EEA2231EE5733E232C8DCE421`. Estado: sin banco (TASK-123). Tag `arquero-rectocortaretro-checkpoint-2026-07-04`.
+   adelantado bajar a ~800-1000). (c) `-DARQMIX_REHOME_RAPIDO` — el re-homing heredado baja 15 s → 5 s
+   (`AMIX_T_REHOME_NO_BALL`) y SU retroceso corta si ve la pelota (solo el del re-homing, marca
+   `s_rehome_activo`; el homing del GO nunca corta). Flags: `#8 + -DARQMIX_KICK_TRIM +
+   -DARQMIX_RETRO_CUT_BALL + -DARQMIX_REHOME_RAPIDO`.
+   md5 `1881F751C79507B9E70759FFEE7B39A1` (con trim=8, en titración: 0=izq, 15=der, probando 8).
+   Estado: en titración de banco (TASK-123). Tag `arquero-rectocortaretro-checkpoint-2026-07-04` = la
+   versión inicial (trim=15, sin rehome rápido, md5 `F1C6CA9EEA2231EE5733E232C8DCE421`).
 
 (Tags git: `git tag -l "arquero-*checkpoint*"`. Volver a uno: `git checkout <tag>`. Los #1 y #2 son commits base,
 sin tag dedicado.)

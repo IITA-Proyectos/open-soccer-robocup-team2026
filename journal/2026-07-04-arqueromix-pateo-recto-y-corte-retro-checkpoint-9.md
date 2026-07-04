@@ -44,3 +44,16 @@ nunca llegaría a su arco. El re-homing (que reusa ese estado) tampoco lo necesi
 - 9 envs `pio run` SUCCESS; checkpoints #1–#8 **byte-idénticos** (md5 contra la tabla del contexto).
 - md5 del #9 anotado en `docs/pruebas-banco/CONTEXTO-ARQUERO-CHECKPOINTS-2026-07-03.md`.
 - **SIN banco** → TASK-123 (el cierre es del equipo). Nada se promueve a competencia.
+
+## Addendum (mismo día, banco en vivo con María)
+
+1. **Titración del trim:** con 15 el golpe se pasó (ahora desviaba a la DERECHA) → bajado a **8**
+   (bisección: 0=izq, 15=der; si aún derecha → 5, si vuelve a izquierda → 11).
+2. **`-DARQMIX_REHOME_RAPIDO` (3er flag del #9):** pedido María — "timer que se reinicia cada vez que
+   ve la pelota; a los 5 s sin verla, atrás hasta la línea; ese retroceso corta si ve pelota". El timer
+   ya existía (re-homing del #7): el flag lo baja 15 s → 5 s y agrega el corte por pelota SOLO al
+   retroceso del re-homing (marca `s_rehome_activo`, limpiada en cada GO): el homing del GO no corta
+   (la pelota del centro siempre se ve al arrancar — habría matado el homing). La marca también se
+   limpia al terminar el retroceso normalmente (no queda colgada).
+- Re-verificado tras ambos cambios: 9 envs SUCCESS, #1–#8 byte-idénticos.
+  md5 del #9 final del día: `1881F751C79507B9E70759FFEE7B39A1`.

@@ -6,7 +6,12 @@
 - **Estado:** abierta — **código listo, SIN banco.** Compila SUCCESS; los 8 checkpoints anteriores byte-idénticos (md5 verificados).
 - **Build (banco):** `pio run -e central_robot2_arqueromix_recto_cortaretro -t upload`
 - **Escape / rollback:** `pio run -e central_robot2_arqueromix_centrado_fino -t upload` (checkpoint #8, idéntico salvo estos 2 flags).
-- **Flags:** `-DARQMIX_KICK_TRIM` + `-DARQMIX_RETRO_CUT_BALL` (sobre los flags del #8).
+- **Flags:** `-DARQMIX_KICK_TRIM` + `-DARQMIX_RETRO_CUT_BALL` + `-DARQMIX_REHOME_RAPIDO` (sobre los flags del #8).
+
+## Titración en curso (banco María 2026-07-04)
+
+- `AMIX_KICK_TRIM_PWM`: **0 = se iba a la izquierda · 15 = se pasó (derecha) → probando 8** (bisección).
+  Si aún derecha → 5; si volvió a izquierda → 11.
 
 ## Contexto (banco María 2026-07-04 con el #8)
 
@@ -34,8 +39,19 @@ pedido literal de María), el retroceso se corta (`parar()`) y vuelve a `esperar
 seguirla / posicionarse / despejar.
 
 **NO aplica al homing del GO** (`inicio_retroceder`): al arrancar el partido la pelota está en el centro y
-SIEMPRE se ve → el corte habría matado el homing y el arquero nunca llegaría a su arco. Tampoco al re-homing
-(que reusa ese estado) — el re-homing ya se dispara solo tras 15 s SIN pelota.
+SIEMPRE se ve → el corte habría matado el homing y el arquero nunca llegaría a su arco.
+
+## Qué hace (3): RE-HOMING RÁPIDO — `-DARQMIX_REHOME_RAPIDO` (pedido María 2026-07-04 tarde)
+
+Pedido: "un timer que se reinicia cada vez que ve la pelota; pasados 5 segundos sin verla, que vaya hacia
+atrás hasta la línea, y que ese retroceso también corte si ve pelota". El timer YA existía (re-homing del #7,
+heredado): este flag lo baja de **15 s → 5 s** (`AMIX_T_REHOME_NO_BALL`) y agrega el **corte por pelota al
+retroceso del RE-HOMING** (vuelve a `esperar_quieto` → la sigue / se posiciona / despeja).
+
+Detalle de diseño: el re-homing reusa el estado del homing del GO (`inicio_retroceder`). Para que el corte NO
+mate el homing del arranque (pelota del centro siempre visible), hay una marca interna `s_rehome_activo`:
+solo el retroceso disparado por el re-homing corta; el del GO retrocede completo como siempre. La marca se
+limpia en cada GO (un STOP a mitad de re-homing no puede dejar el corte "pegado" al homing siguiente).
 
 ## Riesgos a mirar en banco
 
@@ -57,7 +73,13 @@ SIEMPRE se ve → el corte habría matado el homing y el arquero nunca llegaría
    debe frenar el retroceso e ir a seguirla/posicionarse (y despejar si está cerca).
 3. **Que el homing NO se corte:** GO con pelota visible en el centro → el homing del arranque debe
    completarse igual que siempre (retrocede hasta la línea + escape).
-4. **NO-REGRESIÓN vs #8:** seguimiento, centrado fino, anti-choque, re-homing y despeje sin obstáculo,
+4. **Re-homing rápido:** tapar/sacar la pelota → a los ~5 s debe arrancar el retroceso a la línea.
+   Mostrarle la pelota DURANTE ese retroceso → debe cortar e ir a jugarla. Dejarlo sin pelota → completa
+   el re-homing (línea + escape + acomodar) como siempre.
+5. **Que 5 s no sea demasiado nervioso:** en juego real la pelota se pierde de vista seguido (oclusión
+   por rivales); si el arquero re-homea "de más" y nunca está quieto → subir `AMIX_T_REHOME_NO_BALL`
+   (7000-10000) en `amix_config.h` bajo el `#ifdef ARQMIX_REHOME_RAPIDO`.
+6. **NO-REGRESIÓN vs #8:** seguimiento, centrado fino, anti-choque y despeje sin obstáculo,
    iguales. Riesgos heredados de TASK-122 siguen vigentes (retro a 85 no cruza línea; no oscila a 5°).
 
 ## Criterio de cierre (humano)

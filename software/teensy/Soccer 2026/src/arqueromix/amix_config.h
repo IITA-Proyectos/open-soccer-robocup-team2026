@@ -149,7 +149,9 @@ constexpr int AMIX_KICK_INTERVALO_MS = 10;   // ms entre escalones (rampa 0→18
 // la mitad; el valor nominal es el del PICO). SIGNO: se desvía a la IZQUIERDA → trim POSITIVO (la
 // izquierda empuja más → endereza); si sobre-corrige y ahora tira a la DERECHA → BAJAR; si con el
 // máximo de titración sigue yendo a la izquierda → SUBIR de a 5. <TITRAR EN BANCO>
-constexpr int AMIX_KICK_TRIM_PWM = 15;  // PWM extra de M1 en el pico del golpe (191+15=206, lejos de 255)
+constexpr int AMIX_KICK_TRIM_PWM = 8;   // PWM extra de M1 en el pico del golpe. TITRACIÓN (banco María
+                                        // 2026-07-04): 0 = se iba a la IZQUIERDA · 15 = se pasó (DERECHA)
+                                        // → 8 (bisección). Si aún derecha → 5; si volvió a izquierda → 11.
 #endif
 // PATEANDO_atras_arquero (inline 2025, L1186-1188): retroceso recto M1=ATRAS, M2=ATRAS, M3=0.
 constexpr int AMIX_ATRAS = 120;      // retroceso del despeje (PATRULLA) — NO tocar (queda como andaba)
@@ -271,7 +273,15 @@ constexpr unsigned long AMIX_T_BUSCAR_AVANCE = 400;
 // ver la pelota (esperando quieto), el arquero vuelve una vez hacia atrás HASTA detectar la línea + se acomoda
 // (escape), y sigue esperando. Subir/bajar para cambiar cada cuánto se re-acomoda si perdió la pelota.
 #ifdef ARQMIX_REHOME_NO_BALL
+#ifdef ARQMIX_REHOME_RAPIDO
+// RE-HOMING RÁPIDO (test María 2026-07-04, gateado -DARQMIX_REHOME_RAPIDO): pedido "pasados 5 segundos
+// que no ve la pelota que vaya hacia atrás hasta la línea". Baja el timer 15 s → 5 s, y además el
+// retroceso del RE-HOMING corta si VE la pelota (ver amix_fsm.cpp: solo el del re-homing — el homing
+// del GO NO corta, porque al arrancar el partido la pelota del centro siempre se ve).
+constexpr unsigned long AMIX_T_REHOME_NO_BALL = 5000;   // 5 s sin ver la pelota → re-homing. <TITRAR>
+#else
 constexpr unsigned long AMIX_T_REHOME_NO_BALL = 15000;  // 15 s sin ver la pelota → re-homing. <TITRAR>
+#endif
 #endif
 
 // ACOMODARSE antes de quedar quieto (2 estados nuevos, pedido Virginia 2026-06-22): (1) acomodar_linea =

@@ -65,6 +65,7 @@ void kickoff_medialuna();
 // Mantienen el rumbo con g_io.heading_error_deg (requiere heading del BNO válido).
 void mover_lateral_bno(int potencia, int direccion);  // strafe con heading-hold
 void mover_recto_bno(int potencia, int direccion);    // adelante/atrás con heading-hold
+void girar_bno(int potencia, int direccion);          // giro en el lugar (+1 horario / -1 antihorario)
 
 }  // namespace mix
 }  // namespace iitasoccer

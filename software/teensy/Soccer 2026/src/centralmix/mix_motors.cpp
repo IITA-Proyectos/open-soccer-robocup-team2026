@@ -412,5 +412,17 @@ void mover_recto_bno(int potencia, int direccion) {
     tc_escribir_ruedas(f + corr, -f + corr, corr);
 }
 
+// GIRAR en el lugar. potencia = PWM del giro. direccion: +1 = HORARIO (CW), -1 = ANTIHORARIO.
+// Giro PURO: las 3 ruedas al MISMO signo (= como girar(), término ωR de la cinemática). NO lleva
+// heading-hold: acá el objetivo ES cambiar el rumbo, no mantenerlo. Para girar HASTA cierto ángulo,
+// llamala en cada tick mientras el rumbo no llegó y frená al llegar; ejemplo con el BNO:
+//     if (fabsf(g_io.heading_error_deg) < angulo_objetivo) girar_bno(100, +1);
+//     else parar();
+// ⚠️ Confirmá en banco que +1 = horario visto desde arriba; si gira al revés, invertí 'direccion'.
+void girar_bno(int potencia, int direccion) {
+    const int w = direccion * potencia;   // mismo signo en las 3 → giro puro
+    tc_escribir_ruedas(w, w, w);
+}
+
 }  // namespace mix
 }  // namespace iitasoccer

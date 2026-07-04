@@ -13,7 +13,8 @@ namespace mix {
 
 // ============================================================
 
-static Estado estado = Estado::IMPULSO_INICIAL_GIRANDO;  // placeholder; mix_fsm_init() lo fija
+//static Estado estado = Estado::IMPULSO_INICIAL_GIRANDO;   // placeholder; mix_fsm_init() lo fija
+static Estado estado = Estado::TEST;
 static unsigned long millis_inicio_estado    = 0;
 static unsigned long millis_inicio_centrando = 0;
 
@@ -161,8 +162,8 @@ static inline void impulso_centrando_horario() {
 // en cada START del árbitro (ver el bloque go_edge en mix_fsm_tick).
 // ============================================================
 void mix_fsm_init() {
-    estado = Estado::KICKOFF_SEEK;   // PRIMER estado: patada de saque
-    // DEBUG de banco: para probar UN estado aislado, descomentá → estado = Estado::TEST;
+    //estado = Estado::KICKOFF_SEEK;   // PRIMER estado: patada de saque
+    estado = Estado::TEST;
     millis_inicio_estado    = millis();
     millis_inicio_centrando = millis();
     s_giro_atras_dir        = 0;     // latch del giro-encare "pelota atrás" arranca limpio
@@ -193,7 +194,8 @@ void mix_fsm_tick() {
     // vuelve fresco → mismo flanco). El timer real de la patada de saque se vuelve a anclar al GO en el
     // bloque go_edge de abajo.
     if (g_io.top_link_fresh && !prev_top_link) {
-        estado = Estado::KICKOFF_SEEK;
+        //estado = Estado::KICKOFF_SEEK;
+        estado = Estado::TEST;
         millis_inicio_estado    = millis();
         millis_inicio_centrando = millis();
         prev_go      = false;
@@ -225,7 +227,8 @@ void mix_fsm_tick() {
     // CAMBIO (pedido Elías 2026-07-01): antes se hacía UNA sola vez por encendido; ahora se
     // RE-ARMA en cada saque (tras gol / medio tiempo) apenas el árbitro vuelve a dar GO.
     if (go_edge) {
-        estado = Estado::KICKOFF_SEEK;
+        //estado = Estado::KICKOFF_SEEK;
+        estado = Estado::TEST;  // DEBUG de b
         millis_inicio_estado    = millis();
         millis_inicio_centrando = millis();
     }
@@ -268,9 +271,12 @@ void mix_fsm_tick() {
 
         case Estado::TEST:
 
-            impulso_centrando_horario();
-            if (millis() - millis_inicio_estado >= 3000) {
-                parar();
+            mover_recto_bno(230, -1);     // adelante, potencia 100
+            if (millis() - millis_inicio_estado >= 500) {
+                mover_recto_bno(250, 1);
+                if (millis() - millis_inicio_estado >= 1000) {
+                parar(); 
+                }
             }
 
             break;

@@ -50,6 +50,31 @@ constexpr int AMIX_MOTOR_INVERT[3] = { +1, +1, +1 };
 constexpr int AMIX_MAX_PWM = 255;
 
 // ============================================================
+// ESCALA GLOBAL DE POTENCIA +6% (test María 2026-07-04, gateado -DARQMIX_POWER_106).
+// ----------------------------------------------------------------------------------
+// Sube TODAS las potencias del camino VIVO del modo quieto en la MISMA proporción (+6%):
+// así no cambia la geometría de ningún patrón de movimiento (la relación entre ruedas y
+// entre movimientos se conserva), solo la velocidad general. Pedido María: "subir la
+// velocidad de forma proporcional".
+// El factor se aplica UNA sola vez por valor: en los PWM fijos de las primitivas y en los
+// factores `pd` (AMIX_PD_BASE/BALL). A los AMIX_PROP_* NO se les aplica (ya los multiplica
+// el `pd` en runtime → sería escalar DOS veces). Tampoco escala: AMIX_ATRAS ni el impulso
+// inicial (código muerto en modo quieto), FORWARD_BIAS (off), ROT_MAX/KP_RUMBO (sin uso en
+// el camino quieto).
+// ⚠️ Con el flag OFF el factor es 1.0 → todos los valores quedan EXACTOS como antes
+// (checkpoints 1-7 byte-idénticos). <TITRAR EN BANCO>: si algo se pasa de largo (en
+// especial el retroceso a la línea, que se bajó a 80 a propósito), volver al env sin
+// este flag o bajar el valor puntual.
+// ============================================================
+#ifdef ARQMIX_POWER_106
+constexpr double AMIX_POWER_SCALE = 1.06;   // +6% parejo a todo el camino vivo
+#else
+constexpr double AMIX_POWER_SCALE = 1.0;    // sin flag: potencias históricas intactas
+#endif
+// Redondeo al entero más cercano (con 1.0 devuelve el valor original exacto).
+constexpr int amix_pow(int v) { return (int)(v * AMIX_POWER_SCALE + 0.5); }
+
+// ============================================================
 // PATRULLA — adproporcional() / aiproporcional() (FIEL §5, código 2025 L186-233).
 // Strafe lateral con CORRECCIÓN DE RUMBO en 3 bandas según el signo de `error`
 // (error = heading - heading_inicial). Las delanteras (M1,M2) van al MISMO sentido;
@@ -74,8 +99,9 @@ constexpr int AMIX_AI_REAR_ENEG      = 75;   // aiproporcional M3 — REVERTIDO 
 // BAJADO 1.0→0.85 (banco Virginia 2026-06-21): patrulla más LENTA (-15%) sin caer en zona muerta (el
 // patrón de PWM se escala parejo). ⚠️ NO bajar de 0.80 o las delanteras (piso ~70) stallean → si a
 // 0.85 se traba/espasmódico, SUBIR a 0.90 (no bajar).
-constexpr float AMIX_PD_BASE = 0.85f;
-constexpr float AMIX_PD_BALL = 1.5f;
+// (×AMIX_POWER_SCALE: el +6% gateado entra por acá para los strafes — NO tocar los PROP_*.)
+constexpr float AMIX_PD_BASE = (float)(0.85 * AMIX_POWER_SCALE);  // 0.85 histórico (0.901 con +6%)
+constexpr float AMIX_PD_BALL = (float)(1.5  * AMIX_POWER_SCALE);  // 1.5 histórico (1.59 con +6%)
 
 // SESGO HACIA ADELANTE de la patrulla (pedido Virginia 2026-06-21: el arquero deriva hacia ATRÁS y se
 // mete al área/corner; quiere "tendencia a avanzar en la cancha"). Es un micro-empuje RECTO al frente
@@ -106,13 +132,13 @@ constexpr int AMIX_IMP_INI_REAR  = 110;  // M3 (era 153)
 // Avance / despeje (FIEL §2/§5).
 // ============================================================
 // avanzar(): M1=100, M2=100(sentido opuesto), M3=0. (L152-154)
-constexpr int AMIX_AVANZAR = 100;
+constexpr int AMIX_AVANZAR = amix_pow(100);  // 100 histórico (106 con +6%)
 // avanzar_patear() (arquero): RAMPA DE ACELERACIÓN como el DELANTERO (centralmix), pedido Virginia
 // 2026-06-21 (el despeje fijo asimétrico "no apuntaba bien" → veraba). Sube la velocidad de a pasos
 // desde 0 hasta VEL_FINAL → el golpe arranca suave y sale parejo. Patrón SIMÉTRICO M1=+vel, M2=-vel,
 // M3=0 = avance RECTO al frente (a diferencia del 250/150 asimétrico del 2025 que torcía).
 // Misma receta que el delantero (mix_config.h KICK_*). Potencia moderada (pedido previo de bajarla).
-constexpr int AMIX_KICK_VEL_FINAL    = 180;  // velocidad PICO del golpe — subir si no llega a despejar
+constexpr int AMIX_KICK_VEL_FINAL    = amix_pow(180);  // 180 histórico (191 con +6%) — pico del golpe; subir si no llega a despejar
 constexpr int AMIX_KICK_PASO         = 20;   // incremento de PWM por escalón de la rampa
 constexpr int AMIX_KICK_INTERVALO_MS = 10;   // ms entre escalones (rampa 0→180 en ~90 ms)
 // PATEANDO_atras_arquero (inline 2025, L1186-1188): retroceso recto M1=ATRAS, M2=ATRAS, M3=0.
@@ -122,12 +148,12 @@ constexpr int AMIX_ATRAS = 120;      // retroceso del despeje (PATRULLA) — NO 
 // más JUSTO en la línea sin cruzarla. Separado de AMIX_ATRAS para NO tocar el retroceso de la patrulla.
 // ⚠️ A 80 está sobre el piso de las delanteras (70) → se mueve. Si AÚN se mete → bajar a 75; si NO arranca
 // (tironea) → subir. <TITRAR EN BANCO>
-constexpr int AMIX_ATRAS_QUIETO = 80;
+constexpr int AMIX_ATRAS_QUIETO = amix_pow(80);  // 80 histórico (85 con +6%) ⚠️ el más sensible del +6%: se bajó a 80 para NO cruzar la línea
 // FRENO DE PATADA (SOLO modo quieto, banco Virginia 2026-06-22): si detecta LÍNEA mientras patea, parar() NO
 // alcanza —la INERCIA del golpe lo saca de la cancha—. Da un contra-empuje FUERTE hacia atrás (plugging) por
 // un tiempo CORTO para MATAR el impulso y despegarse de la línea, y recién después sigue la secuencia
 // post-patada (pausa → orientar → retroceder). Fuerte y corto a propósito.
-constexpr int           AMIX_FRENO_PATADA_PWM = 200;  // PWM del freno-retroceso (alto = frena rápido). Subir si igual se sale; bajar si rebota mucho atrás.
+constexpr int           AMIX_FRENO_PATADA_PWM = amix_pow(200);  // 200 histórico (212 con +6%) — PWM del freno-retroceso (alto = frena rápido). Subir si igual se sale; bajar si rebota mucho atrás.
 constexpr unsigned long AMIX_T_FRENO_PATADA   = 250;  // ms del freno (corto, estilo plugging 2025). Subir si no frena a tiempo; bajar si se va de atrás.
 
 // RETROCESO POST-PATEO "HASTA LA LÍNEA + ESCAPE ADELANTE" (SOLO modo quieto, gateado, pedido María 2026-07-01):
@@ -157,7 +183,7 @@ constexpr unsigned long AMIX_T_ATRAS_SAFETY_RETRO = 50000;  // ms (RED, no un co
 // ============================================================
 constexpr float AMIX_TOL_ARCO_OPP_DEG = 12.0f;  // |áng al arco rival| <= esto → ALINEADO → patea.
                                                 // Más amplio = patea antes pero menos preciso. <RE-TUNE>
-constexpr int   AMIX_GIRO_ALINEAR_PWM = 90;     // PWM del giro de alineación (suave/controlado). <RE-TUNE>
+constexpr int   AMIX_GIRO_ALINEAR_PWM = amix_pow(90);  // 90 histórico (95 con +6%) — PWM del giro de alineación (suave/controlado). <RE-TUNE>
 constexpr unsigned long AMIX_T_ALINEAR_OPP = 300; // tope girando: si no logra alinear, patea igual (no
                                                   // demora el despeje). ARRANCA CONSERVADOR (300 ms) para NO
                                                   // sacar al arquero de su arco ni perder la pelota durante el
@@ -259,7 +285,7 @@ constexpr float AMIX_TOL_ORIENTAR_DEG = 8.0f;
 // BANCO Virginia 2026-06-21: a 70 giraba continuo pero MUY rápido; bajado a 50 (la velocidad "tal vez está
 // bien"). Si TIRONEA (stick-slip = por debajo del piso) → subir de a 5; si gira muy rápido → no se puede más
 // lento en continuo (es el piso del motor en rotación). <TITRAR EN BANCO>
-constexpr int AMIX_GIRO_FRENTE_PWM = 50;  // PWM fijo del giro de orientación (bang-bang). Si tironea, subir; no baja del piso.
+constexpr int AMIX_GIRO_FRENTE_PWM = amix_pow(50);  // 50 histórico (53 con +6%) — PWM fijo del giro de orientación (bang-bang). Si tironea, subir; no baja del piso.
 // (OBSOLETAS: el giro ya NO es pulsado. Se conservan por si se decide volver al esquema PFM.)
 constexpr unsigned long AMIX_T_GIRO_VENTANA = 350;  // [sin uso] ventana del pulso PFM viejo
 constexpr unsigned long AMIX_T_GIRO_ON      = 90;   // [sin uso] ON del pulso PFM viejo
@@ -287,11 +313,11 @@ constexpr unsigned long AMIX_T_INICIO_AVANCE_SAFETY = 1200;  // TOPE de segurida
 // MISMOS 400 ms que el base; lo ÚNICO distinto vs avanzar() es el PWM. 75 queda apenas sobre el piso
 // de las delanteras (70): si STUTTEA/no arranca, subir hacia 85; bajar más NO lo hace más suave (zona
 // muerta → tironea). Si aún va "de golpe" el tema es el arranque sin rampa, no el PWM (avisar).
-constexpr int AMIX_INICIO_AVANCE_PWM = 75;
+constexpr int AMIX_INICIO_AVANCE_PWM = amix_pow(75);  // 75 histórico (80 con +6%)
 // Retroceso del homing: primitiva DEDICADA con PWM propio (no acoplada al despeje) y dirección
 // flippable. retroceder_inicio() = M1=-PWM, M2=+PWM (= patrón patear_atras = hacia ATRÁS) × SIGN.
 // ⚠️ Si al GO el robot va hacia ADELANTE en vez de atrás → flashear con -DARQMIX_FLIP_INICIO_RETRO.
-constexpr int AMIX_INICIO_RETRO_PWM = 100;  // PWM del retroceso de inicio (controlado, no a tope)
+constexpr int AMIX_INICIO_RETRO_PWM = amix_pow(100);  // 100 histórico (106 con +6%) — retroceso de inicio (controlado, no a tope)
 #ifdef ARQMIX_FLIP_INICIO_RETRO
 constexpr int AMIX_INICIO_RETRO_SIGN = -1;  // invierte la dirección del retroceso de inicio
 #else

@@ -58,12 +58,17 @@ Vengo armando **7 CHECKPOINTS** del arquero, cada uno gateado detrás de flags, 
    sigue esperando. Flags: `#6 + -DARQMIX_REHOME_NO_BALL`. md5 `4BF4C64F8D975CA0F883F86EB0CC0937`. Estado: sin
    banco. Tag `arquero-rehome-checkpoint-2026-07-03`.
 
-8. **`central_robot2_arqueromix_centrado_fino`** — copia del #7 + CENTRADO FINO: banda muerta angular del
-   seguimiento de pelota `AMIX_TOL_CENTRADO_DEG` 8°→5° (a 8° el corrimiento lateral aceptado ≈14% de la
-   distancia → pelota a 1,5 m quedaba hasta ~21 cm corrido; a 5° ≈9%). NO arregla el "queda torcido" (nada
-   re-orienta en la espera; lo mitiga el re-homing heredado). Riesgo a mirar: oscilar con pelota lejana
-   (micro-strafes que no terminan) → subir a 6°. Flags: `#7 + -DARQMIX_CENTRADO_FINO`.
-   md5 `8C25AC3EDBA84AAC0E17A1C35E98CB0B`. Estado: sin banco (TASK-122). Tag `arquero-centradofino-checkpoint-2026-07-03`.
+8. **`central_robot2_arqueromix_centrado_fino`** — copia del #7 + CENTRADO FINO + POTENCIA +6%.
+   (a) Banda muerta angular del seguimiento `AMIX_TOL_CENTRADO_DEG` 8°→5° (a 8° el corrimiento lateral
+   aceptado ≈14% de la distancia → pelota a 1,5 m quedaba hasta ~21 cm corrido; a 5° ≈9%). NO arregla el
+   "queda torcido" (nada re-orienta en la espera; lo mitiga el re-homing heredado). (b) TODAS las potencias
+   del camino vivo +6% proporcional (`AMIX_POWER_SCALE`=1.06: seguir pelota 75/133→79/141, avanzar 100→106,
+   homing 100/75→106/80, golpe 180→191, retro post-pateo 80→85, freno 200→212, giros 90/50→95/53).
+   Riesgos a mirar: oscilar con pelota lejana (micro-strafes que no terminan → subir a 6°) y que el retro
+   post-pateo a 85 no cruce la línea. Flags: `#7 + -DARQMIX_CENTRADO_FINO + -DARQMIX_POWER_106`.
+   md5 `076BACD2C76A0199B95118EE550B4196`. Estado: sin banco (TASK-122).
+   Tags: `arquero-centradofino-checkpoint-2026-07-03` (versión SOLO 5°, md5 `8C25AC3EDBA84AAC0E17A1C35E98CB0B`)
+   y `arquero-centradofino-106-checkpoint-2026-07-04` (esta, 5° + potencia +6%).
 
 (Tags git: `git tag -l "arquero-*checkpoint*"`. Volver a uno: `git checkout <tag>`. Los #1 y #2 son commits base,
 sin tag dedicado.)
@@ -73,6 +78,7 @@ sin tag dedicado.)
 - Anti-choque: `ARQMIX_OBST_STOP_MM`=150 (0=off). Escape al buscar: `AMIX_T_BUSCAR_AVANCE`=400 (500 con flag).
 - Retrocesos por tiempo: `AMIX_T_INICIO_RETRO_FIXED`=400, `AMIX_T_ATRAS_FIXED`=1300. Re-homing: `AMIX_T_REHOME_NO_BALL`=15000.
 - Centrado: `AMIX_TOL_CENTRADO_DEG`=8 (5 con `-DARQMIX_CENTRADO_FINO`; oscila→6, corrido→4). Despeje: `AMIX_TOL_KICK_DEG`=30, `AMIX_TOL_CERCANIA_MM`=250.
+- Potencia global: `AMIX_POWER_SCALE`=1.0 (1.06 con `-DARQMIX_POWER_106`) — escala TODOS los PWM del camino vivo en proporción (se aplica en primitivas + `pd`, NO en `AMIX_PROP_*`).
 
 ## TEMAS ABIERTOS (importantes)
 1. **La LÍNEA no se detecta confiable en esta cancha.** Los sensores de luz de DOWN leen MUY bajo (~20-57) vs su

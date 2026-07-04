@@ -3,7 +3,10 @@
 - **Placa:** CENTRAL (R2, arquero — María). TOP `top_robot2_pri`, DOWN `down_robot2`.
 - **Asignado:** equipo (banco) — María
 - **Prioridad:** P2 (mejora de titración; los checkpoints validados NO se tocan hasta cerrar esto).
-- **Estado:** abierta — **código listo, SIN banco.** Compila SUCCESS; los 7 checkpoints anteriores byte-idénticos (md5 verificados).
+- **Estado:** abierta — **banco parcial 2026-07-04 (María): la velocidad +6% "anda bastante bien"**; el resto
+  del checklist (oscilación a 5°, retro a 85 vs línea, no-regresión) sigue pendiente de cierre formal.
+  Hallazgo nuevo del mismo banco: el despeje se desvía siempre a la IZQUIERDA → se ataca en el 9º checkpoint
+  (TASK-123, `-DARQMIX_KICK_TRIM`).
 - **Build (banco):** `pio run -e central_robot2_arqueromix_centrado_fino -t upload`
 - **Escape / rollback:** `pio run -e central_robot2_arqueromix_evita_lejos_rehome -t upload` (checkpoint #7, idéntico salvo estos 2 flags) o cualquier checkpoint anterior.
 - **Flags:** `-DARQMIX_CENTRADO_FINO` + `-DARQMIX_POWER_106` (sobre los flags del #7).

@@ -66,9 +66,21 @@ Vengo armando **7 CHECKPOINTS** del arquero, cada uno gateado detrás de flags, 
    homing 100/75→106/80, golpe 180→191, retro post-pateo 80→85, freno 200→212, giros 90/50→95/53).
    Riesgos a mirar: oscilar con pelota lejana (micro-strafes que no terminan → subir a 6°) y que el retro
    post-pateo a 85 no cruce la línea. Flags: `#7 + -DARQMIX_CENTRADO_FINO + -DARQMIX_POWER_106`.
-   md5 `076BACD2C76A0199B95118EE550B4196`. Estado: sin banco (TASK-122).
+   md5 `076BACD2C76A0199B95118EE550B4196`. Estado: banco parcial 2026-07-04 (María): **velocidad +6% "anda
+   bastante bien"**; resto del checklist TASK-122 pendiente. Hallazgo del banco: el despeje se desvía siempre
+   a la IZQUIERDA → #9.
    Tags: `arquero-centradofino-checkpoint-2026-07-03` (versión SOLO 5°, md5 `8C25AC3EDBA84AAC0E17A1C35E98CB0B`)
    y `arquero-centradofino-106-checkpoint-2026-07-04` (esta, 5° + potencia +6%).
+
+9. **`central_robot2_arqueromix_recto_cortaretro`** — copia del #8 + PATEO RECTO + CORTE DE RETROCESO:
+   (a) `-DARQMIX_KICK_TRIM` — el despeje se iba SIEMPRE a la izquierda (banco María 2026-07-04); PWM extra en
+   la delantera IZQUIERDA (`AMIX_KICK_TRIM_PWM`=15 en el pico, escala con la rampa; sigue a la izq → subir de
+   a 5, tira a la der → bajar). Mismo remedio que el `MIX_KICK_FWD_TRIM` del delantero. (b)
+   `-DARQMIX_RETRO_CUT_BALL` — si mientras retrocede tras el despeje VE la pelota, corta el retroceso y vuelve
+   a `esperar_quieto` (la sigue / se posiciona / despeja). NO toca el homing del GO (la pelota del centro
+   siempre se ve → habría matado el homing). Knob `AMIX_RETRO_CUT_DIST_MM`=9999 (cualquier pelota; si queda
+   adelantado bajar a ~800-1000). Flags: `#8 + -DARQMIX_KICK_TRIM + -DARQMIX_RETRO_CUT_BALL`.
+   md5 `F1C6CA9EEA2231EE5733E232C8DCE421`. Estado: sin banco (TASK-123). Tag `arquero-rectocortaretro-checkpoint-2026-07-04`.
 
 (Tags git: `git tag -l "arquero-*checkpoint*"`. Volver a uno: `git checkout <tag>`. Los #1 y #2 son commits base,
 sin tag dedicado.)
@@ -79,6 +91,7 @@ sin tag dedicado.)
 - Retrocesos por tiempo: `AMIX_T_INICIO_RETRO_FIXED`=400, `AMIX_T_ATRAS_FIXED`=1300. Re-homing: `AMIX_T_REHOME_NO_BALL`=15000.
 - Centrado: `AMIX_TOL_CENTRADO_DEG`=8 (5 con `-DARQMIX_CENTRADO_FINO`; oscila→6, corrido→4). Despeje: `AMIX_TOL_KICK_DEG`=30, `AMIX_TOL_CERCANIA_MM`=250.
 - Potencia global: `AMIX_POWER_SCALE`=1.0 (1.06 con `-DARQMIX_POWER_106`) — escala TODOS los PWM del camino vivo en proporción (se aplica en primitivas + `pd`, NO en `AMIX_PROP_*`).
+- Pateo recto: `AMIX_KICK_TRIM_PWM`=15 (con `-DARQMIX_KICK_TRIM`) — PWM extra de M1 (del. izquierda) en el pico del golpe; sigue a la izq → subir de a 5, tira a la der → bajar. Corte retro: `AMIX_RETRO_CUT_DIST_MM`=9999 (con `-DARQMIX_RETRO_CUT_BALL`) — bajar a ~800-1000 si queda adelantado.
 
 ## TEMAS ABIERTOS (importantes)
 1. **La LÍNEA no se detecta confiable en esta cancha.** Los sensores de luz de DOWN leen MUY bajo (~20-57) vs su

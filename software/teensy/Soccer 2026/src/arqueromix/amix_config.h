@@ -141,6 +141,16 @@ constexpr int AMIX_AVANZAR = amix_pow(100);  // 100 histórico (106 con +6%)
 constexpr int AMIX_KICK_VEL_FINAL    = amix_pow(180);  // 180 histórico (191 con +6%) — pico del golpe; subir si no llega a despejar
 constexpr int AMIX_KICK_PASO         = 20;   // incremento de PWM por escalón de la rampa
 constexpr int AMIX_KICK_INTERVALO_MS = 10;   // ms entre escalones (rampa 0→180 en ~90 ms)
+#ifdef ARQMIX_KICK_TRIM
+// TRIM DEL GOLPE (test María 2026-07-04, gateado -DARQMIX_KICK_TRIM): en banco el despeje se DESVÍA
+// SIEMPRE A LA IZQUIERDA aunque el patrón M1=+vel/M2=-vel es simétrico (asimetría física: eficiencia
+// de motores/fricción/peso). Mismo remedio que el delantero (mix_config.h MIX_KICK_FWD_TRIM): un
+// diferencial de PWM en la delantera IZQUIERDA (M1) que escala CON la rampa (a mitad de rampa aplica
+// la mitad; el valor nominal es el del PICO). SIGNO: se desvía a la IZQUIERDA → trim POSITIVO (la
+// izquierda empuja más → endereza); si sobre-corrige y ahora tira a la DERECHA → BAJAR; si con el
+// máximo de titración sigue yendo a la izquierda → SUBIR de a 5. <TITRAR EN BANCO>
+constexpr int AMIX_KICK_TRIM_PWM = 15;  // PWM extra de M1 en el pico del golpe (191+15=206, lejos de 255)
+#endif
 // PATEANDO_atras_arquero (inline 2025, L1186-1188): retroceso recto M1=ATRAS, M2=ATRAS, M3=0.
 constexpr int AMIX_ATRAS = 120;      // retroceso del despeje (PATRULLA) — NO tocar (queda como andaba)
 // Retroceso del modo QUIETO — MÁS LENTO que la patrulla (banco Virginia 2026-06-21: a 120 el arquero se
@@ -149,6 +159,17 @@ constexpr int AMIX_ATRAS = 120;      // retroceso del despeje (PATRULLA) — NO 
 // ⚠️ A 80 está sobre el piso de las delanteras (70) → se mueve. Si AÚN se mete → bajar a 75; si NO arranca
 // (tironea) → subir. <TITRAR EN BANCO>
 constexpr int AMIX_ATRAS_QUIETO = amix_pow(80);  // 80 histórico (85 con +6%) ⚠️ el más sensible del +6%: se bajó a 80 para NO cruzar la línea
+#ifdef ARQMIX_RETRO_CUT_BALL
+// CORTE DEL RETROCESO POR PELOTA (test María 2026-07-04, gateado -DARQMIX_RETRO_CUT_BALL): si mientras
+// RETROCEDE tras el despeje (PATEANDO_atras) VE la pelota, CORTA el retroceso y vuelve a esperar_quieto
+// (que ya sabe seguirla/posicionarse/despejar). Pedido María: "si ve pelota que corte el retroceso y
+// vaya y busque la pelota y se posicione". SOLO aplica al retroceso POST-PATEO — NO al homing del GO
+// (al arrancar el partido la pelota está en el centro y SIEMPRE se ve → cortaría el homing y el arquero
+// nunca llegaría a su arco). Knob: distancia máxima de la pelota para cortar; 9999 = corta con CUALQUIER
+// pelota vista (pedido literal). ⚠️ Riesgo a titrar: con pelota LEJANA visible el arquero no vuelve a la
+// línea (queda adelantado). Si en banco se ve eso → BAJAR a ~800-1000 mm (corta solo con pelota cerca).
+constexpr float AMIX_RETRO_CUT_DIST_MM = 9999.0f;
+#endif
 // FRENO DE PATADA (SOLO modo quieto, banco Virginia 2026-06-22): si detecta LÍNEA mientras patea, parar() NO
 // alcanza —la INERCIA del golpe lo saca de la cancha—. Da un contra-empuje FUERTE hacia atrás (plugging) por
 // un tiempo CORTO para MATAR el impulso y despegarse de la línea, y recién después sigue la secuencia

@@ -438,6 +438,18 @@ void amix_fsm_tick() {
             // metía por inercia/latencia). SEGURIDAD (pedido Virginia "nunca salirse de la cancha"): si el
             // enlace con DOWN NO está fresco → NO retroceder a ciegas (sin dato de línea confiable, FRENA).
             {
+#ifdef ARQMIX_RETRO_CUT_BALL
+                // CORTE POR PELOTA (test María 2026-07-04): si mientras retrocede VE la pelota (dentro de
+                // AMIX_RETRO_CUT_DIST_MM), corta el retroceso y vuelve a esperar_quieto, que ya sabe
+                // seguirla / posicionarse / despejar. Aplica a las 3 variantes del retroceso (por línea,
+                // por tiempo y base). NO toca el homing del GO (inicio_retroceder es otro estado).
+                if (haypelota && dist_pelota_mm() <= AMIX_RETRO_CUT_DIST_MM) {
+                    parar();
+                    millis_inicio_estado = millis();
+                    estado = Estado::esperar_quieto;
+                    break;
+                }
+#endif
 #ifdef ARQMIX_RETRO_BY_TIME
                 // MODO POR TIEMPO (test María 2026-07-02, -DARQMIX_RETRO_BY_TIME): NO lee la línea; retrocede un
                 // TIEMPO FIJO (AMIX_T_ATRAS_FIXED) y pasa a acomodar. Para cancha donde la línea no se detecta

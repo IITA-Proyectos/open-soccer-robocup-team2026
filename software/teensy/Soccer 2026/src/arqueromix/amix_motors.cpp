@@ -164,7 +164,15 @@ void avanzar_patear() {
             s_kick_vel += AMIX_KICK_PASO;
             if (s_kick_vel > AMIX_KICK_VEL_FINAL) s_kick_vel = AMIX_KICK_VEL_FINAL;
         }
+#ifdef ARQMIX_KICK_TRIM
+        // TRIM (banco María 2026-07-04: el golpe se va a la IZQUIERDA): PWM extra en M1 (delantera
+        // IZQUIERDA), escalado con la rampa (nominal = AMIX_KICK_TRIM_PWM en el pico) para que la
+        // corrección sea pareja en todo el golpe. Trim NEGATIVO corrige un desvío a la derecha.
+        const int trim = (s_kick_vel * AMIX_KICK_TRIM_PWM) / AMIX_KICK_VEL_FINAL;
+        amix_set_motor(0, +(s_kick_vel + trim));  // M1 (amix_set_motor clampa a 255)
+#else
         amix_set_motor(0, +s_kick_vel);  // M1
+#endif
         amix_set_motor(1, -s_kick_vel);  // M2 (sentido opuesto = avance RECTO)
         amix_set_motor(2, 0);            // M3
     }

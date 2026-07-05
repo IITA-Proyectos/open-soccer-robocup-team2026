@@ -357,5 +357,31 @@ void kickoff_medialuna() {
     mix_set_motor(2, MIX_KICKOFF_ARC_PWD*0);   // M3 trasera
 }
 
+// ============================================================
+// APUNTAR a la pelota PROPORCIONAL. Gira en el lugar hacia la pelota con potencia PROPORCIONAL al
+// ángulo: ángulo GRANDE → más PWM (gira rápido); ángulo CHICO → menos PWM (suave, no se pasa).
+// Lee g_io.angulo_pelota_deg (0 = pelota al frente, + = a la DERECHA). Giro PURO (las 3 ruedas al
+// mismo signo, como girar()). El signo del giro sale del LADO de la pelota (mismo mapeo que el
+// apuntar_pelota_motores del 2025: ang>0 → +, ang<0 → -).
+//   pwm = clamp(|ang| * AP_KP, AP_PWM_MIN, AP_PWM_MAX)
+// AP_PWM_MIN es el PISO para vencer la zona muerta del motor (por debajo NO gira, solo zumba);
+// AP_PWM_MAX es el techo. Subí AP_KP para que reaccione más fuerte a ángulos chicos.
+// ⚠️ NO TESTEADO EN HW: confirmá en banco el sentido (si apunta al lado contrario, invertí el signo).
+// ============================================================
+static constexpr float AP_KP      = 2.5f;   // PWM por GRADO de ángulo de la pelota
+static constexpr int   AP_PWM_MIN = 90;     // piso (vence la zona muerta; el motor no mueve por debajo)
+static constexpr int   AP_PWM_MAX = 180;    // techo del giro
+void apuntar_pelota_proporcional() {
+    const float ang = g_io.angulo_pelota_deg;         // 0=frente, +=derecha
+    const float a   = (ang < 0.0f) ? -ang : ang;      // |ángulo|
+    int pwm = (int)(a * AP_KP);                       // proporcional al ángulo
+    if (pwm > AP_PWM_MAX) pwm = AP_PWM_MAX;
+    if (pwm < AP_PWM_MIN) pwm = AP_PWM_MIN;           // piso para que efectivamente gire
+    const int w = (ang > 0.0f) ? +pwm : -pwm;         // signo = de qué lado está la pelota
+    mix_set_motor(0, w);
+    mix_set_motor(1, w);
+    mix_set_motor(2, w);
+}
+
 }  // namespace mix
 }  // namespace iitasoccer

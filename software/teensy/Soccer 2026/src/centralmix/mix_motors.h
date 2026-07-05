@@ -60,5 +60,10 @@ void centrar_antihorario();  // orbita en sentido antihorario (CENTRANDO_antihor
 // Lo llama el estado KICKOFF_SEEK del FSM (primer estado / arranque).
 void kickoff_medialuna();
 
+// Apuntar a la pelota PROPORCIONAL: gira hacia la pelota con potencia proporcional al ángulo
+// (ángulo grande → más PWM; chico → menos). Lee g_io.angulo_pelota_deg; giro puro. Perillas
+// AP_KP / AP_PWM_MIN / AP_PWM_MAX en mix_motors.cpp. Llamala repetido mientras apuntás.
+void apuntar_pelota_proporcional();
+
 }  // namespace mix
 }  // namespace iitasoccer

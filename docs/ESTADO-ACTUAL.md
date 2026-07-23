@@ -13,6 +13,36 @@ tipo: indice-operacional
 > algo de acá, **parar y consultar al humano**. Si lo que vas a hacer hace
 > cambiar algo de acá, **actualizá esta página en el mismo commit.**
 
+> # 🏁 INCHEON TERMINÓ — MODO APRENDIZAJE (2026-07-23)
+>
+> **La competencia se jugó del 30 de junio al 6 de julio de 2026. Ya pasó.**
+>
+> **TODO lo que sigue en esta página fue escrito en modo competencia** y está
+> redactado en tiempo futuro respecto de Incheon ("antes de Incheon", "banco
+> pendiente antes del torneo", "competencia byte-idéntica", "no tocar"). Leelo
+> como **historia técnica valiosa** — sigue describiendo correctamente qué módulo
+> hace qué — pero **NO como instrucción vigente**. Las moratorias y los "no tocar"
+> del modo competencia **están levantados**.
+>
+> **Frame vigente → [`MODO-APRENDIZAJE.md`](MODO-APRENDIZAJE.md)** (lectura obligatoria).
+>
+> **Qué cambió en una línea:** ahora implementa **Gustavo**, con la placa en la mano,
+> investigando y aprendiendo. Se puede romper para entender. La escala P0/P1/P2 se
+> redefinió (P0 ya no es "bloqueante para Incheon" sino "bloquea el aprendizaje").
+>
+> **Tres líneas de investigación abiertas** (reporte verbal Gustavo 2026-07-23, root-cause en curso):
+> 1. **Cámaras traseras** — no se supieron calibrar. Sospecha: firmware sin actualizar.
+>    Plan: actualizar la trasera de R1 primero, si anda bien las otras 3.
+> 2. **Sensores de línea / piso (DOWN)** — *"pasaba de no detectar a detectar falsas
+>    líneas"*. Sin ventana de calibración útil. Pedido: **programa de calibración más simple**.
+> 3. **ToF** — nunca anduvieron bien.
+>
+> ⚠️ **Resultados y crónica de Incheon: PENDIENTES de cargar.** El journal corta el
+> `2026-07-04`; los días de torneo no están registrados en el repo.
+>
+> ⚠️ Esta página se reescribe en modo aprendizaje cuando cierre la auditoría en curso.
+> Hasta entonces, los banners de abajo son snapshot pre-torneo.
+
 > **📡 PILOTO ToF 8×8 — los 4 ToF a 64 zonas + visualizador (2026-06-23, pedido Virginia, GATEADO):**
 > Para evaluar si los ToF sirven para POSICIONAMIENTO (en 4×4 desde el centro las paredes caen en una
 > ventana ≤16° y las 4 filas de 15° no calzan). Env de banco **`top_robot2_pri_tof8x8`** (= `top_robot2_pri`

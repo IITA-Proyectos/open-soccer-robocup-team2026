@@ -1,0 +1,12 @@
+﻿Backup de camara OpenMV
+etiqueta : r1-trasera-post-reflash
+unidad   : F:
+fecha    : 2026-07-23 00:28:30
+archivos : 5
+
+MD5                               BYTES  ARCHIVO
+418D13F2F3325F1988D82BAF73950B48      218  main.py
+819D75265A202812D4520D5402834C61      351  README.txt
+D41D8CD98F00B204E9800998ECF8427E        0  .openmv_disk
+C4ECB0608117A4A0AD084E93AE6C8DE5     3143  sensor_manual_gain_control_1.py
+638DA7C009097A53BD8BBCC26702BC61     1359  untitled_1.py

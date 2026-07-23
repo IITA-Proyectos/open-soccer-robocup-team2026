@@ -33,7 +33,52 @@ Entre esa fecha y hoy no hay nada registrado: los días de torneo y el post-mort
 > Este doc NO inventa qué pasó en cancha. Lo que sigue viene del reporte verbal del
 > 2026-07-23 y está marcado como tal.
 
-## 2. Qué cambia
+## 2. La ventana tiene fecha de vencimiento
+
+**Decisión de Gustavo, 2026-07-23:** *"ahora hay que aprender TODO, es el momento de probar,
+cambiar, mejorar; en un mes comenzamos a trabajar en modo competencia para noviembre."*
+
+```
+2026-07-23 ─────────── ventana de aprendizaje ─────────── ~2026-08-23 ──── modo competencia ────► Nacional
+            probar · romper · medir · entender              CONGELAMIENTO      consolidar          noviembre
+                       (1 mes)                                                 (~2 meses)
+```
+
+| Fase | Cuándo | Qué se permite |
+|---|---|---|
+| **Aprendizaje** | 2026-07-23 → **~2026-08-23** | Todo. Romper, reescribir, migrar, probar hipótesis. Amplitud > profundidad en un solo tema |
+| **Congelamiento** | ~2026-08-23 | Se decide, cambio por cambio: **queda o se revierte**. Nada a medias |
+| **Competencia** | ~2026-08-23 → noviembre | Vuelve el riesgo bajo, los cambios gateados y el "no romper lo que anda" |
+
+> **"Aprender TODO" es una instrucción de AMPLITUD.** No es "arreglar las 3 cosas rotas".
+> Es recorrer el sistema entero — línea, ToF, cámaras, motores, comunicación, control —
+> y en cada subsistema saber qué hace, por qué, y dónde está el límite. Los 3 subsistemas
+> rotos (§5) son el punto de entrada, no el alcance.
+
+### Regla de salida (la que evita el desastre)
+
+**Al ~2026-08-23, todo cambio abierto está en uno de dos estados: VALIDADO EN BANCO o REVERTIDO.**
+
+No se entra a modo competencia con un subsistema a medio migrar. Un módulo reescrito y no
+probado es **peor** que el módulo viejo con sus defectos conocidos: al viejo le conocés las
+mañas, al nuevo no. Si el 23 de agosto algo no está validado, se revierte y se anota como
+aprendizaje — no se arrastra.
+
+Corolario práctico: **cuanto más grande el cambio, más temprano hay que arrancarlo.**
+Reescribir la lectura de línea es de la semana 1, no de la semana 4.
+
+### Línea base para volver
+
+Tag **`incheon-2026-estado-final`** (en `908473d`) = el firmware tal como quedó al cierre del
+torneo. Es el punto de retorno si la exploración rompe algo irrecuperable.
+
+```bash
+git diff incheon-2026-estado-final --stat
+```
+
+Antes de romper cualquier cosa, esa es la referencia de "cómo estaba".
+
+## 3. Qué cambia
 
 | | Modo COMPETENCIA (hasta 2026-07-06) | Modo APRENDIZAJE (desde 2026-07-23) |
 |---|---|---|

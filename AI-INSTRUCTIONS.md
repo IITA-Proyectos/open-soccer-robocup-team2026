@@ -73,7 +73,7 @@ journal/YYYY-MM-DD-descripcion.md
 1. **[`docs/ESTADO-ACTUAL.md`](docs/ESTADO-ACTUAL.md)** — ⭐ estado vivo del robot: qué módulos corren, qué TASKs bloquean, qué deudas hay. **1ª lectura obligatoria.**
 2. **[`docs/FUENTES-DE-VERDAD.md`](docs/FUENTES-DE-VERDAD.md)** — ⭐ qué doc/módulo es canónico por tema (no editar un doc superado).
 3. [`README.md`](README.md) — visión general del proyecto y estructura.
-4. [`CLAUDE.md`](CLAUDE.md) — frame del coach + protocolo multi-agente (git worktrees).
+4. [`CLAUDE.md`](CLAUDE.md) — frame del coach + ubicación del repo y reglas de trabajo en paralelo.
 5. [`CONTRIBUTING.md`](CONTRIBUTING.md) — reglas de contribución y atribución.
 6. [`competition/timeline.md`](competition/timeline.md) — cronograma y deadlines.
 7. [`legacy/2025-season/README.md`](legacy/2025-season/README.md) — qué se hizo el año pasado.

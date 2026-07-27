@@ -130,90 +130,83 @@ Antes de hacer CUALQUIER cosa en este repo:
 
 ## Otras sesiones / no contaminar
 
-Gustavo opera otras sesiones Claude en paralelo con frames distintos (CRM IITA, RCJ Rescue Line, marketing, ventas). Este frame coach soccer es **scoped al repo `iitasoccer/open-soccer-robocup-team2026/`** y no debe filtrar a esas otras sesiones. Si dentro de una sesión soccer aparece una pregunta fuera del dominio técnico (ej. ventas, admin), aclarar y no aplicar este frame.
+Gustavo opera otras sesiones Claude en paralelo con frames distintos (CRM IITA, RCJ Rescue Line, marketing, ventas). Este frame coach soccer es **scoped al repo `open-soccer-robocup-team2026/`** (ver ubicación abajo) y no debe filtrar a esas otras sesiones. Si dentro de una sesión soccer aparece una pregunta fuera del dominio técnico (ej. ventas, admin), aclarar y no aplicar este frame.
 
-## Trabajando con múltiples agentes en paralelo (git worktrees, agregado 2026-05-29)
+## Ubicación del repo y trabajo en paralelo (ACTUALIZADO 2026-07-26)
 
-Desde 2026-05-29, el repo soporta hasta **3 agentes Claude trabajando en
-paralelo**, uno por placa (CENTRAL, TOP, DOWN), sin pisarse mutuamente.
-Cada agente vive en su propia **git worktree** con su propio branch.
-
-### Setup físico en el disco (ACTUALIZADO 2026-06-10 — verificado con `git worktree list`)
+### ⭐ UN SOLO repo en disco — sin worktrees
 
 ```
-C:/Users/violl/iitasoccer/
-├── open-soccer-robocup-team2026/   ← dir histórico — branch: agente/vision
-│                                       ⛔ NO mergear ni trabajar main acá
-└── soccer-main/                     ← worktree MAIN (Gustavo: merges + visión global)
-                                        branch: main  ⭐ ACÁ se trabaja main
+C:/Users/violl/futbol2026/open-soccer-robocup-team2026/   ← ÚNICO repo soccer
+                                                             branch: main
 ```
 
-⚠️ Las worktrees `soccer-agente-{central,top,down}` del setup original 2026-05-29
-**fueron removidas** (sus ramas ya están mergeadas a main). El texto de abajo
-describe el esquema multi-agente por si se reactiva — **antes de asumir el layout,
-correr `git worktree list`**.
+Es un **clon standalone** (no una worktree). Acá se trabaja **todo**: main, ramas
+de feature, merges. `git worktree list` devuelve una sola entrada.
 
-Los directorios listados son **el mismo repo git** (comparten `.git/objects/`),
-cada uno con su **working tree e índice independientes**. Lo que hace un
-agente en su worktree NO afecta a las otras hasta que Gustavo mergea.
+⚠️ **Consolidación ejecutada el 2026-07-26.** Antes había 4 copias locales
+(`iitasoccer/soccer-main`, `iitasoccer/open-soccer-robocup-team2026`,
+`iitasoccer/soccer-rt-top` + esta) que generaban confusión constante sobre cuál
+era la buena. **Las 3 de `iitasoccer/` fueron BORRADAS** tras verificar que no
+tenían nada sin pushear. Todo doc que mencione `soccer-main/` o
+`soccer-agente-*/` como ubicación de trabajo es **historia, no instrucción**.
 
-### Reglas por agente
+**En `C:/Users/violl/iitasoccer/` quedan dos cosas que NO son este repo y no se tocan:**
+- `_official_fw/` — otro repo (`robocup-junior/soccer-communication-module`, ESP32-C6).
+- `placaspedidas/` — archivos de fabricación (Gerbers/BOM), no es git.
 
-Cada worktree tiene un archivo `AGENT-SCOPE.md` (LOCAL, no commiteado, en
-`.gitignore`) que documenta el scope específico de su placa: qué puede
-editar, qué requiere precaución, qué rango de TASK numbers le corresponde,
-qué leer al boot. Si el archivo se borra accidentalmente, se recrea desde
-el contenido versionado en `docs/agent-scopes/<placa>.md` (cuando exista —
-hoy 2026-05-29 los AGENT-SCOPE locales son la única fuente).
+### Ramas: siguen vivas en GitHub
 
-### Cuándo abrir sesión en cada worktree
+Las worktrees se fueron; **las ramas no**. `agente/central`, `agente/top`,
+`agente/down`, `agente/vision`, `agente/top-rt-paralelo`, `tareas/*`, etc. siguen
+en `origin` y se recuperan con `git fetch && git switch <rama>`.
 
-- **Trabajo en una placa específica** → abrir Claude Code en su worktree
-  `soccer-agente-*` (si se re-crean; hoy no existen). Ahí el agente edita
-  libremente su placa y commitea a su branch.
-- **Merges, visión global, decisiones cross-placa** → abrir Claude en
-  **`soccer-main/`** (worktree en `main`). ⛔ NO en
-  `open-soccer-robocup-team2026/`, que quedó en `agente/vision`.
+Hoy el trabajo en paralelo se hace **cambiando de rama en el único repo**, no con
+worktrees. Si alguna vez hacen falta de nuevo (2+ agentes simultáneos sobre la
+misma máquina), se recrean con `git worktree add ../<dir> <rama>` — pero
+**volver a documentarlo acá antes de asumirlo**.
 
-### Reglas no negociables del multi-agente
+### Reglas de trabajo (vigentes)
 
-1. **Un agente NUNCA cambia de branch en su worktree.** Si necesita otro branch, se crea otra worktree.
-2. **Un agente NUNCA mergea a main.** Eso lo hace Gustavo desde el repo principal.
-3. **`git push origin main` NO se ejecuta desde una worktree.** Solo `git push origin agente/<placa>`.
-4. **`git rebase` y `git reset --hard` están prohibidos** desde worktrees — afectan a los otros agentes.
-5. **Antes de tocar `src/shared/`, `platformio.ini` o docs canónicos**, el agente hace `git fetch && git log origin/main -10 -- <archivo>` para ver si otro agente lo cambió.
-6. **Rangos de TASK numbers**:
+1. **Una rama por línea de trabajo.** Feature/experimento → rama propia, nunca
+   commits sueltos de temas distintos mezclados en `main`.
+2. **Antes de pushear a `main`: `git fetch` + `git merge origin/main`.** El repo
+   es COMPARTIDO — el equipo humano pushea directo. Asumir base vieja genera
+   colisiones non-fast-forward.
+3. **`git rebase` y `git reset --hard` sobre ramas ya pusheadas: prohibidos.**
+   Reescriben historia que otros ya tienen.
+4. **Antes de tocar `src/shared/`, `platformio.ini` o docs canónicos:**
+   `git fetch && git log origin/main -10 -- <archivo>` para ver si alguien más lo
+   cambió.
+5. **Stagear selectivamente.** Si hay trabajo de otro sin commitear en el working
+   tree, `git add <archivos-propios>` — nunca `git add -A`.
+6. **Rangos de TASK numbers** (siguen válidos):
    - CENTRAL: TASK-100 a TASK-199
    - TOP: TASK-200 a TASK-299
    - DOWN: TASK-300 a TASK-399
    - TASKs viejas (001-099) NO se renumeran — siguen siendo válidas.
 
-### Cómo mergear los branches `agente/*` a main
+### Cómo mergear una rama a main
 
 ```bash
-cd ~/iitasoccer/soccer-main        # ⛔ NO open-soccer-robocup-team2026 (está en agente/vision)
-git fetch
-git merge --no-ff agente/central     # uno por uno, secuencial
-git merge --no-ff agente/top
-git merge --no-ff agente/down
+cd /c/Users/violl/futbol2026/open-soccer-robocup-team2026
+git fetch origin
+git switch main && git merge origin/main     # base al día
+git merge --no-ff agente/<rama>              # una por vez, secuencial
 git push origin main
 ```
 
-Si hay conflictos en `src/shared/` o `platformio.ini` (esperables cuando 2 agentes editaron lo mismo), los resolvés vos en `main`. Después los `agente/*` branches pueden seguir desde la nueva base con `git rebase main` (cada agente lo hace al inicio de su próxima sesión).
+Conflictos en `src/shared/` o `platformio.ini` son esperables cuando dos líneas
+tocaron lo mismo; se resuelven en `main`.
 
-### Si una worktree se rompe / hay que recrearla
+### Por qué importa la disciplina de staging (lección que sigue vigente)
 
-```bash
-cd ~/iitasoccer/open-soccer-robocup-team2026
-git worktree remove ../soccer-agente-central       # destruye el dir
-git branch -D agente/central                        # destruye el branch (atención: pierdes trabajo sin merge)
-git worktree add ../soccer-agente-central -b agente/central
-# Recrear AGENT-SCOPE.md a mano (template en commit que creó el setup).
-```
-
-### Por qué este setup
-
-Lecciones del incidente del commit `909a14b` del 2026-05-29: 2 sesiones Claude haciendo `git add` + `git commit` en paralelo sobre el mismo working tree → race condition donde una sesión arrastra el staging de la otra al commit. Cambio de subdirectorio NO resuelve esto (mismo `.git/`, mismo index). Las worktrees lo resuelven de raíz porque cada una tiene su propio index.
+Incidente del commit `909a14b` (2026-05-29): 2 sesiones Claude haciendo
+`git add` + `git commit` en paralelo sobre el **mismo working tree** → race
+condition donde una sesión arrastró el staging de la otra al commit. Cambiar de
+subdirectorio NO lo resuelve (mismo `.git/`, mismo index). Con un solo repo y sin
+worktrees, la mitigación es la **regla 5**: stagear archivo por archivo y
+verificar `git diff --cached --name-only` antes de commitear.
 
 ## Spec del setup
 

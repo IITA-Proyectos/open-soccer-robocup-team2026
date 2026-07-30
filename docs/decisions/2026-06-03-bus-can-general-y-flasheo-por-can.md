@@ -531,11 +531,26 @@ Solo **4 cables** Teensy↔módulo: `CTX→D`, `CRX→R`, `3V3→VCC`, `GND→GN
 ### A.2 Pines CAN (iguales en 4.0 y 4.1; distinta accesibilidad física)
 | Controlador | CTX (TX) | CRX (RX) | CAN-FD | Accesibilidad |
 |---|---|---|---|---|
-| **CAN1** | **22** | **23** | No | ✅ borde en 4.0 y 4.1 → **el más fácil (usar este en v1)** |
-| CAN2 | 1 | 0 | No | ✅ borde, pero `0/1` suele estar ocupado (Serial1) |
+| **CAN1** | **22** | **23** | No | ✅ borde en 4.0 y 4.1 — **pero ver el bloqueante de DOWN abajo** |
+| CAN2 | 1 | 0 | No | ✅ borde, pero `0/1` está ocupado (`Serial1`) en las 3 placas |
 | CAN3 | 31 | 30 | ✅ sí | ⚠️ 4.1: borde · **4.0: pads traseros** (incómodo) |
 
 > `FlexCAN_T4`/`ACAN-T4` asignan los pines por defecto: declarás `FlexCAN_T4<CAN1>`.
+
+> ⛔ **CORRECCIÓN 2026-07-30 — en la placa DOWN no queda NINGÚN controlador CAN de borde libre.**
+> Una versión anterior de esta tabla recomendaba *"CAN1: el más fácil, usar este en v1"* para las
+> tres placas. **Eso es falso para DOWN**, verificado contra el código:
+> - **CAN2 (pines 0/1)** → es el `Serial1` **vivo** DOWN→CENTRAL (`down/comm_central.cpp:161-162`),
+>   el enlace por el que viaja el freno de borde. No se puede tocar.
+> - **CAN1 (pines 22/23)** → en DOWN son **A8/A9, dos de las cuatro salidas analógicas de los
+>   muxes**: `src/down/config_down.h:81` → `PIN_MUX_OUT[4] = { A0, A1, A8, A9 }`. Usarlos
+>   **pierde 16 de los 32 sensores de línea**.
+> - **CAN3 (30/31)** → libre, pero en Teensy 4.0 (que es la de DOWN) sale por **pads traseros**.
+>
+> ⇒ **En TOP y CENTRAL, CAN1 (22/23) sirve.** En **DOWN hay que decidir** entre soldar los pads
+> traseros de CAN3, mover los muxes, o dejar a DOWN fuera del bus (que rompería la fase F1 de
+> espejo del §8). **Es el bloqueante real de cableado: resolverlo ANTES de rutear cualquier PCB.**
+> `[VERIFICADO EN CÓDIGO]` — auditoría 2026-07-30.
 
 ### A.3 Topología y terminación (gotcha #1)
 ```text

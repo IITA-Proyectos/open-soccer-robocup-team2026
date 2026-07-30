@@ -1,5 +1,14 @@
 # r-d-2027 — Roadmap de fases
 
+> **BANNER DE CORRECCIÓN (2026-07-30).** La **Fase B (bus CAN)** de este roadmap comparte los
+> defectos de [`specs/can-gateway-full-v1-spec.md`](specs/can-gateway-full-v1-spec.md) — ver su
+> banner. En una línea: elige **CAN-FD** contra la decisión congelada del equipo (**CAN clásico
+> 1 Mbps**) y da por hecho que el **TWAI del ESP32 hace CAN-FD**, lo cual es **falso**. El doc
+> canónico del bus es
+> [`2026-06-03-bus-can-general-y-flasheo-por-can.md`](../docs/decisions/2026-06-03-bus-can-general-y-flasheo-por-can.md).
+> Además el `WorldSnapshot` figura con 27 B cuando el código manda **31 B** (`src/shared/types.h:139`).
+
+
 > Mapa de cómo evoluciona la comunicación entre placas y al exterior, desde lo
 > que hay HOY (Incheon 2026) hasta el objetivo 2027. Pensado para que cada paso
 > agregue valor sin obligar a hacer el paso siguiente — se puede frenar en

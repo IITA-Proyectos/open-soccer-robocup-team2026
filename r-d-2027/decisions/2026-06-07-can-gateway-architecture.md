@@ -6,6 +6,13 @@ scope: r-d-2027
 related: [r-d-2027/specs/can-gateway-full-v1-spec.md, r-d-2027/decisions/2026-06-07-esp32-telemetry-bridge.md, r-d-2027/roadmap.md, docs/competencia/MEJORAS-PENDIENTES.md]
 ---
 
+> **BANNER DE CORRECCIÓN (2026-07-30).** Este documento comparte los defectos de
+> [`can-gateway-full-v1-spec.md`](../specs/can-gateway-full-v1-spec.md) — ver su banner. En una línea: elige **CAN-FD** contra la
+> decisión congelada del equipo (**CAN clásico 1 Mbps**) y afirma que el **TWAI del ESP32-C6/S3
+> hace CAN-FD**, lo cual es **falso** (es CAN 2.0B). El doc canónico del bus es
+> [`2026-06-03-bus-can-general-y-flasheo-por-can.md`](../../docs/decisions/2026-06-03-bus-can-general-y-flasheo-por-can.md). Además el `WorldSnapshot` figura con
+> 27 B cuando el código manda **31 B** (`src/shared/types.h:139`).
+
 # Decisión — Arquitectura CAN troncal + ESP32 gateway
 
 > R&D 2027. No aplica al robot de Incheon 2026.

@@ -6,6 +6,43 @@ scope: r-d-2027
 related: [r-d-2027/decisions/2026-06-07-can-gateway-architecture.md, r-d-2027/specs/esp32-telemetry-bridge-v0-spec.md]
 ---
 
+> ⛔ **BANNER DE CORRECCIÓN (2026-07-30) — NO USES ESTA SPEC PARA COMPRAR NI PARA RUTEAR.**
+> Esta spec quedó **SUPERADA en tecnología**. El doc canónico del bus es
+> [`docs/decisions/2026-06-03-bus-can-general-y-flasheo-por-can.md`](../../docs/decisions/2026-06-03-bus-can-general-y-flasheo-por-can.md):
+> **CAN 2.0B clásico @ 1 Mbps**, transceptor **SN65HVD230 (3,3 V)**, mapa de IDs de su §3,
+> flasheo por IDs de 29 bits.
+>
+> **Qué está mal y por qué:**
+> - **El §1.3 es irrealizable.** Pone **CAN1 en TOP** (`:47`) y **CAN2 en DOWN** (`:49`) sobre un
+>   bus que declara **CAN-FD** (`:11`, `:17`). En las Teensy 4.x (i.MX RT1062) **solo CAN3 hace
+>   CAN-FD**; CAN1 y CAN2 son clásico. Dos de los tres nodos no pueden hablar el protocolo del
+>   bus que esta spec define.
+> - **El gateway tampoco es FD.** El **TWAI** de los ESP32 que propone (`:50`, `:152`:
+>   WROOM-32 / C3 / C6) es CAN clásico, no FD.
+> - **Las cámaras no están en el modelo.** Acá el bus tiene 4 nodos y la palabra "OpenMV" no
+>   aparece **ni una vez**. Las OpenMV hablan **CAN clásico ≤1 Mbps** y por eso **fijan todo el
+>   bus en clásico**. Un nodo clásico en un bus FD tira error frames hasta el bus-off.
+> - **Derivados:** "16 B cabe en 1 frame, sin fragmentación" (`:137`) es falso en clásico y esta
+>   spec **no define fragmentación**; el `WorldSnapshot` figura con **27 B** (`:84`) cuando el
+>   código manda **31 B** (`src/shared/types.h:139`); el mapa de IDs del §2.1 **choca con el
+>   canónico** (`0x100-0x1FF` y `0x300-0x3FF` con la semántica invertida); y prohibir los IDs de
+>   29 bits (`:60-61`) deja **sin espacio al flasheo por CAN**, que es el núcleo del canónico.
+>
+> **Qué NO hacer:** ⛔ no comprar transceptores **CAN-FD** (MCP2562FD / TJA1051) — el bus va a
+> ser clásico y el transceptor uniforme es el **SN65HVD230 de 3,3 V**. ⛔ No rutear el PCB 2027
+> con el §1.3. ⛔ No soldar los pads traseros de una Teensy 4.0 para "llegar a CAN3": igual no
+> va a haber FD.
+>
+> ⚠️ **Pendiente que NINGÚN doc resuelve (verificado contra el código, 2026-07-30):** en la placa
+> **DOWN no queda ningún controlador CAN de borde libre** — CAN2 (pines 0/1) es el `Serial1`
+> vivo a CENTRAL, y CAN1 (pines 22/23) son **A8/A9, las salidas de los muxes U3/U4**
+> (`src/down/config_down.h:81`) → usarlos pierde 16 de los 32 sensores de línea. Queda solo
+> CAN3 (30/31), que en la 4.0 son **pads traseros**. Decidirlo **antes** de cualquier PCB.
+>
+> **Lo que SÍ se salva:** el **§4** (gateway ESP32: listas blancas, budget por ID, UDP/MQTT,
+> ESP-NOW) sobrevive entero al cambio a clásico. Los §6-§8 también, salvo la mención a Incheon
+> (`:254`), que es historia.
+
 # Spec — CAN troncal + ESP32 gateway v1
 
 > Spec técnica del bus CAN-FD interno entre las 3 Teensy + 4º nodo ESP32 gateway

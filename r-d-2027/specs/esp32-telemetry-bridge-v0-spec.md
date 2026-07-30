@@ -6,6 +6,22 @@ scope: r-d-2027
 related: [r-d-2027/decisions/2026-06-07-esp32-telemetry-bridge.md, docs/firmware/TELEMETRIA-DOWN.md, docs/firmware/TELEMETRIA-TOP.md]
 ---
 
+> **BANNER DE CORRECCIÓN (2026-07-30) — LA TABLA DE UART DEL §3.3 NO SIRVE PARA CABLEAR.**
+> Verificado contra el código: **los 3 pines propuestos están OCUPADOS**, y 2 de las 3 filas
+> tienen **TX/RX invertidos**.
+> - CENTRAL `Serial2` 7/8 → es el **driver del motor 2** (`src/central/config_central.h:29-30`).
+>   Reintroduce el conflicto F8/TASK-036 que el equipo cerró el 2026-05-31.
+> - TOP `Serial4` 16/17 → es el **enlace `WorldSnapshot` a CENTRAL** (`src/top/comm_central.cpp:45`).
+> - DOWN `Serial3` 14/15 → son **A0/A1, entradas ADC de los muxes U1/U2** (`src/down/config_down.h:81`).
+>
+> **Y el presupuesto de enlace no cierra:** propone **115200 8N1** (~11,5 KB/s) para una
+> telemetría que el propio equipo mide en **~40 KB/s** (`docs/firmware/TELEMETRIA-DOWN.md:35-36`).
+> Son **3,5x por encima del cable** => las metas de "20-50 Hz sin pérdida" y "latencia <=30 ms"
+> son inalcanzables por aritmética. (El USB CDC ignora el baud; un LPUART no.)
+>
+> **Lo que SÍ se salva:** la arquitectura del §4 y el firmware de `code/esp32-bridge-firmware/`
+> como base. Antes de cablear: elegir un UART libre de verdad y recalcular el baud.
+
 # Spec — ESP32 Telemetry Bridge v0
 
 > Spec técnica del puente ESP32 que extiende la telemetría USB existente con

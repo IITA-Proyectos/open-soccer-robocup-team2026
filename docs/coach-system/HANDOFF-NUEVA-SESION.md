@@ -51,9 +51,10 @@ DISCIPLINA INNEGOCIABLE:
 5. Repo COMPARTIDO: antes de pushear, git fetch + merge origin/main (el equipo pushea directo).
    NO backticks en git commit -m. Co-Authored-By al final.
 6. Tareas grandes/paralelas = workflow multi-agente con dueño ÚNICO por archivo + verificación central (gate).
-7. ⛔ NUNCA editar a mano los docs en INGLÉS (docs/competencia/en/**): se AUTOGENERAN del español vía
-   GitHub Action (translate-docs.yml → scripts/translate_docs.py, allowlist de deliverables). Editás
-   SOLO el español; el push de un deliverable ES dispara el PR bot/translate-docs (lo mergea el equipo).
+7. ⏸ Traducción ES→EN **SUSPENDIDA el 2026-08-02** (no hay entregables rumbo a mundial). El push de un
+   deliverable ES ya NO dispara nada: docs/competencia/en/** quedó CONGELADA en su último estado
+   (última corrida real 2026-06-24). Seguí sin editarla a mano — está desactualizada respecto del
+   español, que es la fuente de verdad. Para reactivar: cabecera de .github/workflows/translate-docs.yml.
 
 PENDIENTES (lo que mueve la aguja):
 A) PRÓXIMO DESARROLLO PRIORITARIO (P0): sistema de monitoreo/telemetría USB + apps PC.
@@ -67,7 +68,8 @@ B) BANCO (equipo + robot): #1 recalibrar visión (TASK-022, LAB+homografía, env
    pendiente: cablear el cap 70% de potencia (motores 5V@7,4V se queman) — CARD CENTRAL-8.
 C) DATOS/EQUIPO (docs/competencia/CUESTIONARIO-DATOS-EQUIPO.md): precio Zircon suelto, motor, TC del día,
    horas, FOTOS (robot/PCBs/anillo + robot básico del Nacional para el antes/después), GRABAR video (<3min
-   subs EN), CAD/STL chasis 2026, QR del repo. Mergear el PR bot/translate-docs (traducciones EN).
+   subs EN), CAD/STL chasis 2026, QR del repo. (El PR bot/translate-docs ya no aplica: traducción
+   suspendida 2026-08-02, no hay PR abierto.)
 D) ESCRITORIO: cerrar lo low/medium puro/gateado que quede; pulir deliverables; cargar datos del equipo.
 
 Para empezar: leé la memoria, confirmá git (git -C C:\Users\violl\iitasoccer\soccer-main log --oneline -8
@@ -95,4 +97,4 @@ y status), corré el gate, y decime/proponé en qué avanzamos. Si tocás firmwa
 | Cobertura de la rúbrica RCJ | `docs/competencia/RUBRICA-COBERTURA.md` |
 | Gate host (g++) | `software/teensy/Soccer 2026/scripts/run-host-tests.sh` |
 | Compilar una placa (equipo, con pio) | `cd "software/teensy/Soccer 2026" && pio run -e top_robot1` (o `central_robot1` / `down`) |
-| Traducción ES→EN (NO editar en/ a mano) | `.github/workflows/translate-docs.yml` + `scripts/translate_docs.py` |
+| Traducción ES→EN — ⏸ SUSPENDIDA 2026-08-02 (cómo reactivarla: cabecera del YAML) | `.github/workflows/translate-docs.yml` + `scripts/translate_docs.py` |

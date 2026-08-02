@@ -4,15 +4,52 @@ name: Auto Translate Deliverables (ES -> EN)
 # 2026-06-13: se BARREN AMBOS — el anterior (docs/official) y el nuevo (docs/competencia),
 # cada uno a su propio en/. Dispara cuando cambia un .md fuente (ES) en cualquiera de los
 # dos, EXCEPTO los target en/ (para no entrar en loop) y assets/. Solo en main.
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# ⏸  SUSPENDIDO el 2026-08-02 — la traducción automática ES→EN está APAGADA.
+#
+# Por qué se apagó:
+#   No hay entregables en preparación para campeonatos internacionales (Incheon
+#   2026 ya pasó; el próximo hito es el Nacional de noviembre 2026, que es en
+#   español). De hecho ya estaba dormido: la última corrida real fue el
+#   2026-06-24. Se apaga el disparo para que no reviva solo si alguien toca
+#   docs/competencia/ y para no gastar minutos de Actions ni tokens de OpenAI.
+#
+# Qué NO se borró: el workflow entero, scripts/translate_docs.py (con su
+#   allowlist DELIVERABLES) y el secret OPENAI_API_KEY siguen intactos.
+#   Solo se sacó el disparo automático.
+#
+# ─── CÓMO RE-HABILITARLO (rumbo al Mundial 2027) ──────────────────────────────
+#   1. En el bloque `on:` de abajo: borrar la línea `workflow_dispatch:` y
+#      descomentar el bloque marcado "REACTIVAR".
+#   2. Confirmar que el secret sigue cargado:
+#        gh secret list -R IITA-Proyectos/open-soccer-robocup-team2026
+#      Si no aparece OPENAI_API_KEY:
+#        gh secret set OPENAI_API_KEY -R IITA-Proyectos/open-soccer-robocup-team2026
+#   3. Revisar la allowlist DELIVERABLES en scripts/translate_docs.py — para
+#      2027 los entregables pueden llamarse distinto o vivir en otro directorio.
+#      Revisar también que SOURCE_DIRS siga apuntando al directorio vigente
+#      (hoy: docs/official legacy + docs/competencia).
+#   4. Verificar de verdad: pushear un cambio chico a un archivo de la allowlist
+#      y confirmar que aparece el PR bot/translate-docs. YAML válido NO prueba
+#      que corrió.
+#
+# ─── CORRERLO A MANO SIN RE-HABILITAR NADA ────────────────────────────────────
+#     gh workflow run "Auto Translate Deliverables (ES -> EN)" \
+#       -R IITA-Proyectos/open-soccer-robocup-team2026 --ref main
+# ═══════════════════════════════════════════════════════════════════════════════
+
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'docs/competencia/**'
-      - '!docs/competencia/en/**'
-      - '!docs/competencia/assets/**'
-      - 'docs/official/**'
-      - '!docs/official/en/**'
+  workflow_dispatch:          # disparo MANUAL únicamente — ver bloque de arriba
+  # REACTIVAR: descomentar este bloque para volver a la traducción automática
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - 'docs/competencia/**'
+  #     - '!docs/competencia/en/**'
+  #     - '!docs/competencia/assets/**'
+  #     - 'docs/official/**'
+  #     - '!docs/official/en/**'
 
 permissions:
   contents: write

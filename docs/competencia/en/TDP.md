@@ -10,47 +10,47 @@
 # Technical Documentation Paper (TDP) — RoboCupJunior Soccer Open League 2026
 
 **Team:** IITA Low Battery Messi  
-**Organization:** IITA (Institute of Innovation and Applied Technology) · Fundación Innovar — Salta, Argentina  
+**Organization:** IITA (Institute of Innovation and Applied Technology) · Innovar Foundation — Salta, Argentina  
 **League / sub-league:** RoboCupJunior Soccer — **Open League**  
-**Event:** RoboCup 2026 — Incheon, South Korea (Jun 30 – Jul 6, 2026)  
+**Event:** RoboCup 2026 — Incheon, South Korea (June 30 – July 6, 2026)  
 **Qualification:** National champions of the **first edition** of RoboCupJunior Soccer Argentina (Roboliga, UAI, December 2025)  
 **Repository (open-source, MIT):** https://github.com/IITA-Proyectos/open-soccer-robocup-team2026  
 
 | Role | Name | Detail |
 |---|---|---|
 | Competitor — Soccer Open (travels) | María Virginia Viollaz (@mariaviollaz), 18 | Goalkeeper strategy, trajectories, bench, design, documentation. **Learned to design with AI** (VIBE). National champion 2022 (Rescue Line) + RoboCup 2023 world champion, Eindhoven |
-| Competitor — Soccer Open (travels) | Elías Cordero, 18 (Electromechanical Engineering, UNSa) | Computer vision, forward strategy, kinematics, measurements and calibration. **Learned to design with AI** (VIBE) |
-| Main coach (travels) | Enzo Juárez Velázquez (@enzzo195) | Guide for PCB design with AI (VIBE PCB design, EasyEDA via MCP), electrical validation, hardware bodges, technical review. In Incheon **also leads the IITA RCJ Rescue Line team** |
-| Secondary coach (travels) | Cecilia Budeguer | Team support in Incheon (backup, especially while Enzo assists the Rescue Line team) |
+| Competitor — Soccer Open (travels) | Elías Cordero, 18 (Electromechanical Engineering, UNSa) | Computer vision, striker strategy, kinematics, measurements and calibration. **Learned to design with AI** (VIBE) |
+| Head coach (travels) | Enzo Juárez Velázquez (@enzzo195) | Guide for PCB design with AI (VIBE PCB design, EasyEDA via MCP), electrical validation, hardware bodges, technical review. In Incheon **also leads the IITA RCJ Rescue Line team** |
+| Assistant coach (travels) | Cecilia Budeguer | Team support in Incheon (backup, especially while Enzo assists the Rescue Line team) |
 | Project director (DOES NOT travel) | Gustavo Viollaz (@gviollaz) | Coordination, integration of the 3 boards, bench sessions. Work obligations prevent him from traveling to Korea |
 
-> **How to read this TDP (for the judge):** the 4 sections map 1:1 to the 4 criteria of the TDP rubric — **§1 Electrical**, **§2 Mechanical**, **§3 Software**, **§4 Presentation / Narrative**. Each design decision is presented in the format **Decision → Why → Data**. The closing (§5) explicitly claims the **2 bonus points** (open-source CAD/PCB and open-source software). What is still **not** validated in hardware is marked as such honestly, distinguishing *"bench-verified"* from *"host-verified only"*.
+> **How to read this TDP (for the judge):** the 4 sections map 1:1 to the 4 criteria of the TDP rubric — **§1 Electrical**, **§2 Mechanical**, **§3 Software**, **§4 Presentation / Narrative**. Each design decision is presented in the format **Decision → Why → Data**. The closing (§5) explicitly claims the **2 bonus points** (open-source CAD/PCB and open-source software). What is still **not** validated in hardware is marked as such honestly, distinguishing *"verified on bench"* from *"verified only on host"*.
 >
 > **🔑 Three levels of maturity — we use them in ALL the document (engineering honesty):**
-> - **BENCH-VALIDATED** — tested on the actual board by the human team (the only way to close a hardware thing: Claude plans/programs, the team validates).
-> - **HOST-VERIFIED** — passes host-native tests in g++ (golden byte-identical, `pio` compiles SUCCESS), but **has not yet run on the robot**. It is *finished code*, not *proven behavior*.
-> - **DESIGN TARGET** — number we aim for but **do not measure** (e.g. CPU loads, the nominal 100 Hz). If we say "100 Hz design" and next to it "(bench: 66 Hz)", the first is a target and the second is what was measured.
+> - **VALIDATED ON BENCH** — tested on the actual board by the human team (the only way to close a hardware thing: Claude plans/programs, the team validates).
+> - **VERIFIED ON HOST** — passes host-native tests in g++ (golden byte-identical, `pio` compiles SUCCESS), but **has not yet run on the robot**. It is *finished code*, not *proven behavior*.
+> - **DESIGN OBJECTIVE** — number we seek but **do not measure** (e.g., CPU loads, the nominal 100 Hz). If we say "100 Hz design" and next to it "(bench: 66 Hz)", the first is the objective and the second is what was measured.
 >
-> A significant portion of the new features of this robot is today in **HOST-VERIFIED** waiting for bench: we declare it above instead of hiding it (the detail by feature in §3.9, and the realistic state for Incheon in §4.4).
+> A significant portion of the new features of this robot is today in **VERIFIED ON HOST** waiting for bench: we declare it above instead of hiding it (the detail by feature in §3.9, and the realistic state for Incheon in §4.4).
 
 ---
 
 ## What we are most proud of (the standout feature)
 
-**We learned to design our own hardware using AI — and we validated it ourselves.** We became national champions with two robots that, to be honest, had a poor structure and technology. For the world championship, we decided to redo them, but we had a problem: we are students and **did not know how to design electronic boards** nor did we master the technologies we wanted to use. The story of this robot is **how, using AI as a learning and design tool, we learned to design our own boards** — the TWO new boards (TOP = perception / DOWN = floor and line) were designed **almost entirely with "VIBE PCB design": an AI agent (Claude Code) connected via MCP to EasyEDA** generated and commanded the PCB design, and the team learned, decided, and validated each change. We also **tested AI-controlled Flux, but it did NOT work** — we mention it because honest trial-and-error is part of learning. It was not "we already knew": it was a **genuine process of learning HOW to design PCBs with AI**. In the mechanical aspect, we started redesigning the motor support in 3D (AI-assisted Fusion, "VIBE 3D", just starting). And **we kept the champion brain from 2025** (CENTRAL = the Zircon PCB that won the National) and built around it.
+**We learned to design our own hardware using AI — and we validated it ourselves.** We became national champions with two robots that, to be honest, had a poor structure and technology. For the world championship, we decided to remake them, but we had a problem: we are students and **did not know how to design electronic boards** nor did we master the technologies we wanted to use. The story of this robot is **how, using AI as a learning and design tool, we learned to design our own boards** — the TWO new boards (TOP = perception / DOWN = floor and line) were designed **almost entirely with "VIBE PCB design": an AI agent (Claude Code) connected via MCP to EasyEDA** generated and commanded the PCB design, and the team learned, decided, and validated each change. We also **tried AI-controlled Flux, but it did NOT work** — we mention it because honest trial-and-error is part of learning. It was not "we already knew": it was a **genuine process of learning HOW to design PCBs with AI**. In the mechanical aspect, we started to redesign the motor support in 3D (AI-assisted Fusion, "VIBE 3D", just starting). And **we kept the champion brain from 2025** (CENTRAL = the Zircon PCB that won the National) and built around it.
 
-**Authorship framing (firm):** AI was the **tool**; the **team** learned, decided, and validated. We are responsible for everything that went up on the robot. The design was assisted by AI and guided by the main coach (Enzo), with the competitors (María, Elías) learning, deciding, and validating.
+**Authorship framing (firm):** AI was the **tool**; the **team** learned, decided, and validated. We are responsible for everything that went up on the robot. The design was assisted by AI and guided by the head coach (Enzo), with the competitors (María, Elías) learning, deciding, and validating.
 
-**The guarantee that the learning was serious (not copy-pasting from AI):** we tested everything on the computer before trusting it. The logic lives in **pure C++ modules tested host-native** — **hundreds of automated tests (858 today), 0 failures, in seconds** (measured 2026-06-14 with `scripts/run-host-tests.sh`). That, below, is the **evidence** of everything we designed with AI and how we validated it. The architecture of 3 boards, the "no kicker" and all the technical detail that follows **are the body of evidence** of this story, not a separate topic.
+**The guarantee that the learning was serious (not copy-pasting from AI):** we tested everything on the computer before trusting it. The logic lives in **pure C++ modules tested host-native** — **hundreds of automated tests (858 today), 0 failures, in seconds** (measured 2026-06-14 with `scripts/run-host-tests.sh`). That, further down, is the **evidence** of everything we designed with AI and how we validated it. The architecture of 3 boards, the "no kicker" and all the technical detail that follows **are the body of evidence** of this story, not a separate topic.
 
-## Robot Summary (context in 30 seconds)
+## Robot summary (context in 30 seconds)
 
 Two omnidirectional robots (KIWI base with 3 omni wheels at 120°): **ROBOT1 = goalkeeper**, **ROBOT2 = striker**. No physical kicker: the striker pushes the ball by inertia. Intelligence is distributed across **3 Teensy boards + 1 COMM board + 2 cameras**:
 
 | Board | MCU | Role | Main Sensors |
 |---|---|---|---|
 | **TOP** | Teensy 4.0 | Sensory brain | 2 OpenMV N6 cameras + 2 BNO055 (IMU) + 4 ToF VL53L7CX + 1 HC-SR04 + referee via GPIO |
-| **CENTRAL** | Teensy 4.1 (on Zircon PCB Rev v15) | Decision-making brain / master | Tactical FSM + 3 PID + omni-3 inverse kinematics + 3 motors |
+| **CENTRAL** | Teensy 4.1 (on Zircon Rev v15 PCB) | Decision-making brain / master | Tactical FSM + 3 PID + omni-3 inverse kinematics + 3 motors |
 | **DOWN** | Teensy 4.0 | Floor sensor | Ring of 32 line sensors (4 mux CD4051) + 2 OTOS optical odometry |
 | **COMM** | ESP32-C6 | RCJ referee + partner | Fork of the official RCJ module; delivers START/STOP via GPIO level |
 
@@ -59,11 +59,11 @@ TOP merges everything into a **WorldSnapshot of 31 bytes** sent to CENTRAL via U
 **Reading in 2 modules (the design idea that organizes everything).** Although physically there are 3 boards + COMM, conceptually the robot was designed as **TWO modules** with clear responsibilities and a clean data interface between them:
 
 - **UPPER MODULE — perception / communication.** Its job is to **KNOW the state of the game**: where all elements are on the field (ball, goals, obstacles), at what **speed** they move and —in the future— **communicate with the partner robot** to share and complement information. It is the **sensor fusion layer** (vision + IMU + ToF + ultrasound → a model of the world, the **WorldSnapshot**). It is embodied by the **TOP** board.
-- **LOWER MODULE — drivetrain + decision brain.** It is the **MOBILE** part (motors and drivers) plus the **brain that DECIDES the play** (the champion board, Zircon). It includes an **auxiliary floor board (DOWN)** with sensors (light/line, OTOS odometry and, in the future, motor encoders) whose information **does not travel raw**: it reaches the upper module **pre-processed and enhanced** (symmetric broadcast).
-- **The interface between modules is a byte-by-byte data contract** (the WorldSnapshot of 31 B). This is what makes the design modular: each module is **designed, improved, and tested separately**, and one module can be replaced without redoing the other. That independence **accelerates times** — parallel work and isolated replacement of a module — and connects directly with the goal of compressing the concept→robot cycle that we detail in §4.5.
-- **Open door in the lower module:** the design leaves **room for a KICKER and a DRIBBLER**. They were not mounted today because they required changing the motors for shorter ones that would free up internal space, and there was no time → what was feasible in the short term was prioritized (the striker **pushes by inertia**). Since the decision/mobility is encapsulated in the lower module, adding them later **does not require redesigning the upper module**.
+- **LOWER MODULE — drivetrain + decision brain.** It is the **MOBILE** part (motors and drivers) plus the **brain that DECIDES the play** (the champion board **CENTRAL**, Zircon). It includes an **auxiliary floor board (DOWN)** with sensors (light/line, OTOS odometry and, in the future, motor encoders) whose information **does not travel raw**: it reaches the upper module **pre-processed and improved** (symmetric broadcast).
+- **The interface between modules is a byte-by-byte data contract** (the 31 B WorldSnapshot). This is what makes the design modular: each module is **designed, improved, and tested separately**, and one module can be replaced without redoing the other. That independence **accelerates times** — parallel work and isolated replacement of a module — and connects directly with the goal of compressing the concept→robot cycle that we detail in §4.5.
+- **Open door in the lower module:** the design leaves **room for a KICKER and a DRIBBLER**. They were not mounted today because they required changing the motors for shorter ones to free up internal space, and there was no time → what was feasible in the short term was prioritized (the striker **pushes by inertia**). Since the decision/mobility is encapsulated in the lower module, adding them later **does not require redesigning the upper module**.
 
-![Fig. 2 — "Two modules, one contract": the robot is not 3 loose boards but a KNOW module (TOP→perception) and a DECIDE-MOVE module (CENTRAL+DOWN) connected by the WorldSnapshot of 31 B. Original diagram by the team (CC BY 4.0).](assets/drafts/fig_funcionamiento_2modulos.png)
+![Fig. 2 — "Two modules, one contract": the robot is not 3 loose boards but a KNOW module (TOP→perception) and a DECIDE-MOVE module (CENTRAL+DOWN) connected by the 31 B WorldSnapshot. Original diagram by the team (CC BY 4.0).](assets/drafts/fig_funcionamiento_2modulos.png)
 
 ---
 
@@ -71,7 +71,7 @@ TOP merges everything into a **WorldSnapshot of 31 bytes** sent to CENTRAL via U
 
 > **Rubric objective (Excellent):** provide sufficient detail for a technical reader to **replicate the design process**, evaluate resource usage, and provide **data-driven reasoning** for each decision. This section is organized as *Decision → Why → Data*, with reproducible pinout tables and bring-up procedures that avoid the mistakes we already made.
 
-> **These two boards (TOP and DOWN) are the concrete result of the VIBE PCB design flow with AI** described in "What we are most proud of" and detailed in §4.5: the schematic and routing were generated almost entirely with an AI agent (Claude Code) connected via MCP to EasyEDA, and the team validated each electrical decision. All the detail that follows —pinouts, buses, power chain, bring-up iterations— is the **evidence of what we designed with AI and how we verified it ourselves**. (CENTRAL is the champion Zircon PCB from 2025, reused.)
+> **These two boards (TOP and DOWN) are the concrete result of the VIBE PCB design flow with AI** described in "What we are most proud of" and detailed in §4.5: the schematic and routing were generated almost entirely with an AI agent (Claude Code) connected via MCP to EasyEDA, and the team validated each electrical decision. All the detail that follows — pinouts, buses, power chain, bring-up iterations — is the **evidence of what we designed with AI and how we verified it ourselves**. (CENTRAL is the champion Zircon PCB from 2025, reused.)
 
 ## 1.1 General electrical topology
 
@@ -86,11 +86,11 @@ The robot uses **4 microcontrollers** (3 Teensy + 1 ESP32-C6) on **3 custom PCBs
 
 **Decision:** distribute the electronics across specialist boards instead of a single monolithic board.  
 **Why:** *process where the sensor is, decide in the center* (standard rule of mobile robotics, refs. CAMBADA MSL and PCBWay RCJ 2022/2024). Reduces UART traffic and leaves each peripheral without fighting for the bus of another board.  
-**Data:** each MCU runs by design at **< 30 % CPU** (TOP ~25 %, CENTRAL ~20 %, DOWN ~22 % — documented design estimates in `docs/ARQUITECTURA-3-PLACAS-2026.md`). *(Caveat: these are design targets, not measured with oscilloscope/profiler; see gap "live metrics".)*
+**Data:** each MCU runs by design at **< 30% CPU** (TOP ~25%, CENTRAL ~20%, DOWN ~22% — documented design estimates in `docs/ARQUITECTURA-3-PLACAS-2026.md`). *(Caveat: these are design objectives, not measured with oscilloscope/profiler; see gap "live metrics".)*
 
-## 1.2 Power (replicable chain)
+## 1.2 Power supply (replicable chain)
 
-**Identical power chain in TOP and DOWN** (CENTRAL uses the regulation from Zircon):
+**Identical power chain in TOP and DOWN** (CENTRAL uses the regulation of the Zircon):
 
 ```
 LiPo 2S 7.4 V nominal ──► Deans-T-F connector (XP1)
@@ -102,50 +102,50 @@ LiPo 2S 7.4 V nominal ──► Deans-T-F connector (XP1)
 ```
 
 **Decision:** two independent MP1584-EN buck regulators per board (one rail ≈5 V logic, another ≈3.3 V sensors) + 2 protection Schottky diodes.  
-**Why:** separating the sensor rail from the logic rail reduces conducted noise; the Teensy 4.0 **does not tolerate 5 V on GPIO** (max 3.3 V), so the 5 V electronics (e.g. HC-SR04) must be adapted.  
-**Critical data learned on bench:** the **OTOS are powered from the 3.3 V of the MP1584 coming from the BATTERY** — USB only powers the Teensy. A rare I²C address like `0x64` instead of `0x17` **is a brownout of the marginal 3.3 V rail, not another chip**. Bring-up recipe: battery delivering real current + complete power-cycle (battery + USB 10 s) before opening the monitor.
+**Why:** separating the sensor rail from the logic rail reduces conducted noise; the Teensy 4.0 **does not tolerate 5 V on GPIO** (max 3.3 V), so the 5 V electronics (e.g., HC-SR04) must be adapted.  
+**Critical data learned on bench:** the **OTOS are powered from the 3.3 V of the MP1584 coming from the BATTERY** — USB only powers the Teensy. A rare I²C address like `0x64` instead of `0x17` **is brownout of the marginal 3.3 V rail, not another chip**. Bring-up recipe: battery delivering real current + complete power-cycle (battery + USB 10 s) before opening the monitor.
 
 **Battery (BOM data, `BOM.md:82`):** **LiPo 2S 6800 mAh ≈ 50 Wh** (6.8 Ah × 7.4 V nominal), **8.4 V** at full charge / **~6.0 V** cutoff, **Deans** connector. It is plenty of energy for a RoboCup carpet: the bottleneck was never the battery but the marginal 3.3 V rail (see the bring-up data above).
 
-> **[GAP — power budget, what is really missing]** The battery data is already there (capacity/energy/chemistry/connector above). Two things remain to **measure with a multimeter before Incheon**: (1) the **real set-points of the trimpots of the 6 buck MP1584** (assumed 5 V / 3.3 V, not verified); (2) **C-rating/brand/weight** of the cell and the **calculated autonomy** (Wh ÷ measured consumption in play). See §6 (gaps).
+> **[GAP — power budget, what is really missing]** The battery details are already there (capacity/energy/chemistry/connector above). Two things remain to **measure with a multimeter before Incheon**: (1) the **real set-points of the trimpots of the 6 buck MP1584** (assumed 5 V / 3.3 V, not verified); (2) **C-rating/brand/weight** of the cell and the **calculated autonomy** (Wh ÷ measured consumption in play). See §6 (gaps).
 
 ## 1.3 TOP BOARD — I²C buses and sensor selection
 
-The **2 BNO055 are both at 0x28 but on SEPARATE buses** (PRIMARY alone on `Wire2`, pins 24/25; SECONDARY on `Wire`, pins 18/19), while the **4 ToF VL53L7CX share `Wire`** (factory 0x29, reassigned to 0x2A–0x2D on enumeration). So `Wire` carries the SECONDARY BNO + 4 ToF, and `Wire2` carries only the PRIMARY BNO.
+The I²C sensors are distributed across **two buses**: the 4 ToF VL53L7CX (0x2A–0x2D) + the SECONDARY BNO055 hang from `Wire` (pins 18/19); the PRIMARY BNO055 goes **alone** on `Wire2` (pins 24/25), without ToF. **Both BNO055 remain at 0x28** (each on its bus, without collision).
 
 | Sensor | Qty | Address | Bus | Why it was chosen |
 |---|---|---|---|---|
-| BNO055 (IMU 9-DOF) | 2 | 0x28 (both) | `Wire2` (primary) + `Wire` (secondary) | On-chip fused absolute heading; redundancy against impacts/magnetic interference from motors. Both at 0x28 on separate buses (they cannot share one), so the primary on `Wire2` has no ToF contention |
+| BNO055 (IMU 9-DOF) | 2 | 0x28 (both) | `Wire2` (primary) / `Wire` (secondary) | On-chip fused absolute heading; redundancy against impacts/magnetic interference from motors. They are on **separate buses** (both at 0x28) so the primary does not share a bus with the ToF |
 | VL53L7CX (multi-zone ToF) | 4 | 0x2A–0x2D | `Wire` | 2D localization by trilateration (4 orthogonal walls); FoV 60°, ±15 mm at <2 m. **In PRODUCTION, 4×4 = 16 zones are read** (the 8×8 = 64 zones resolution was deferred: it triples/quintuples the I²C traffic and risks the 100 Hz loop; it only lives in the bench diag) |
 | HC-SR04 (ultrasonic) | 1 | — (GPIO) | — | Redundant frontal distance (currently gated OFF) |
 
 **Key decision (data-driven):** **I²C at 100 kHz** and read the BNO at **20 Hz** (not 100 Hz).  
 **Why:** the BNO055 and the VL53L7CX **do not coexist** on the same bus at high speed: with the ToF ranging, the multi-byte reading of the BNO gets corrupted.  
-**Data:** at 400 kHz (or 100 kHz with the BNO read strong) **the yaw freezes**; at **100 kHz + BNO @20 Hz** the heading remains OK on the bench. (The *boot* is separate and improved: the **firmware-blob load of the 4 ToF was promoted to 1 MHz** —BENCH-VALIDATED 2026-06-14, >15 power-cycles, 0 *fallbacks*—, reducing the TOP boot from **~40 s → 14.4 s → ~9.6 s** (TASK-211).) The *ranging* bus at 100 kHz is a *band-aid* for the SECONDARY BNO; the underlying fix is already applied for the PRIMARY: it lives on a **separate bus** (`Wire2`, pins 24/25). This defines the heading convention: the BNO **alone on its bus (`Wire2`, without ToF) is the PRIMARY** —without I²C contention with the ToF, that’s why it’s the most reliable—; the one that shares `Wire` (18/19) with the 4 ToF is the **SECONDARY** (backup, and the one that can freeze under bus load). **Honest real state:** both BNO are at 0x28 on their own bus; the robot runs on the PRIMARY (`Wire2`) + 4 ToF (`Wire`), all stable, with the SECONDARY as redundancy.
+**Data:** at 400 kHz (or 100 kHz with the BNO read strongly) **the yaw freezes**; at **100 kHz + BNO @20 Hz** the heading remains OK on the bench. (The *boot* is separate and improved: the **firmware-blob loading of the 4 ToF was promoted to 1 MHz** —VALIDATED ON BENCH 2026-06-14, >15 power-cycles, 0 *fallbacks*—, reducing the TOP boot from **~40 s → 14.4 s → ~9.6 s** (TASK-211).) The *ranging* bus at 100 kHz is a *band-aid*: the underlying fix (noted in the code) is to move the BNO to a separate bus (`Wire2`, pins 24/25). This fixes the heading convention: the BNO that is **alone on its bus (`Wire2`, pins 24/25, without ToF) is the PRIMARY** — without I²C contention with the ToF, that is why it is the most reliable; the one that shares `Wire` (18/19) with the 4 ToF is the **SECONDARY** (backup, and the one that freezes). **Honest real state:** the robot runs with both BNO healthy (both 0x28, on separate buses) + 4 ToF, all stable.
 
-### Electrical iteration reference — enumerating 4 ToF on a single bus
+### Electrical iteration reference — enumerate 4 ToF on a single bus
 
 **Problem:** the 4 VL53L7CX start at 0x29 → collide. Forensic analysis of the schematic/PCB rev 1.0 revealed that the 4 XSHUT/LPn pads were **intentionally unrouted** (8 explicit No-Connect flags, 0 nets in the netlist). The `PIN_TOF_XSHUT` line from the config was fiction inherited from aspirational design.  
 **What we tried:** forensic search for XSHUT/LPn strings in the JSON SCH+PCB (0 matches); **physical bodge** (Enzo) wiring the LP pin of each ToF to a GPIO reusing the INT trace; 5 incremental diagnostic sketches.  
 **Data:** after power-cycle, the 4 LP work on pins **{9, 10, 11, 12}** (active-high) and enumerate to 0x2A–0x2D. **Reproducible lesson:** the I²C addresses of the VL53L7CX **persist while there is 3V3** — you must **power-cycle, not reset**, or the bus starts dirty and enumeration gives a false negative ("no LP works").  
-**Modification:** `PIN_TOF_XSHUT = {9,10,11,12}`, `NUM_TOF_ACTIVE = 4`; `Wire2` (24/25) freed (it’s the bus of the PRIMARY BNO, alone, from the freeze fix); 2D localization by trilateration unlocked at HW level. **Collateral conflict noted:** pin 10 (LP of ToF[1]) collides with the role dipswitch → relocate. Routing XSHUT on the PCB remains as item P0 of the wishlist for TOP rev 1.1 (post-Incheon).
+**Modification:** `PIN_TOF_XSHUT = {9,10,11,12}`, `NUM_TOF_ACTIVE = 4`; `Wire2` (24/25) freed (it is the bus of the 2nd BNO from the freeze fix); 2D localization by trilateration unlocked at HW level. **Collateral conflict noted:** pin 10 (LP of ToF[1]) collides with the role dipswitch → relocate. Routing XSHUT on the PCB remains as item P0 on the wishlist of TOP rev 1.1 (post-Incheon).
 
-### Electrical iteration reference — "measure the Hz of your loop, don’t assume it" (the best we have)
+### Electrical iteration reference — "measure the Hz of your loop, do not assume it" (the best we have)
 
-**Problem:** the WorldSnapshot was reaching CENTRAL at **~4 Hz** and the heading was coming 250–500 ms old (explaining the ping-pong of the goalkeeper's pulses). Measuring the period of the TOP loop (`Δloop=` from the bench panel) showed that **the TOP loop was running at ~6 Hz, believing it was at 100**.  
+**Problem:** the WorldSnapshot was reaching CENTRAL at **~4 Hz** and the heading was coming 250–500 ms old (explaining the goalkeeper's ping-pong pulse). By measuring the loop period of TOP (`Δloop=` from the bench panel) it was seen that **the loop of TOP was running at ~6 Hz, believing it was at 100**.  
 **What we tried:** instrumenting the loop with a counter of iterations/second and isolating where the time was going under the real load of `main_top` (bench 2026-06-10, Gustavo).  
 **Data (root cause):** the **4 `getRangingData()` of the VL53L7CX per pass**, each bringing the **COMPLETE block** of results via `Wire` at 100 kHz → **~60 ms per sensor**. Four sensors per tick = the I²C bus contention under load strangled the loop without warning.  
-**Modification (double, validated on bench):** (1) **round-robin** — read **ONE ToF per tick** instead of all 4 (commit `a6c0366`); (2) **trimmed payload** — `-DVL53L7CX_DISABLE_*` from blocks we don’t use, leaving only distance + status (commit `bf8ddd4`). **Result: the loop went from ~6 Hz to ~190,000 iterations/s** and the snapshot returned to **100 Hz design**; the heading tracks the turn by hand without freezing, `resync=0`. It’s the most transferable lesson from the repo: *a shared I²C bus under load drops your loop silently — instrument the Hz, don’t assume it.*
+**Modification (double, validated on bench):** (1) **round-robin** — read **ONE ToF per tick** instead of all 4 (commit `a6c0366`); (2) **trimmed payload** — `-DVL53L7CX_DISABLE_*` from the blocks we do not use, leaving only distance + status (commit `bf8ddd4`). **Result: the loop went from ~6 Hz to ~190,000 iterations/s** and the snapshot returned to **100 Hz design**; the heading tracks the turn by hand without freezing, `resync=0`. It is the most transferable lesson from the repo: *a shared I²C bus under load silently drops your loop — instrument the Hz, do not assume it.*
 
-### Sensor fail-safe — persistent config in EEPROM (HOST-VERIFIED, A2.1)
+### Sensor fail-safe — persistent config in EEPROM (VERIFIED ON HOST, A2.1)
 
 **Decision:** to be able to **turn off a sensor that sends garbage** from the PC (front/back camera, left/right BNO, ultrasonic, entire ToF) and **fix the location/bearing of each ToF**, with everything persisted in the **EEPROM of the TOP** and loaded at boot.  
 **Why:** on the bench, we saw the dual camera generate a **ghost ball** (the average of the 2 cameras invented a ball at the midpoint). The fail-safe that pays on the field is to deactivate the optics that lie and for the decision to **survive the power-cycle**, without reflashing.  
-**Data:** USB commands `CAM/BNO/US/TOF ON|OFF`, `TOF n POS`, `CFG SAVE|LOAD|RESET`; persists in the EEPROM region **[368, 460] (93 B, magic 0x7C v1 + CRC16)**. **3-layer pattern** (pure module `top_config` + glue + load at boot) **mirrored from the DOWN board**. **With the EEPROM blank, the defaults are no-op** → the competition binary remains **byte-identical in behavior**. State: **HOST-VERIFIED** — `test_top_config` 12 tests (new) + `pio run -e top_robot2_pri` SUCCESS; the effect on board is closed by the team on bench (A/B regression with blank EEPROM = 0 diff). EEPROM map by board: `docs/firmware/EEPROM-MAP.md`.
+**Data:** USB commands `CAM/BNO/US/TOF ON|OFF`, `TOF n POS`, `CFG SAVE|LOAD|RESET`; persists in the EEPROM region **[368, 460] (93 B, magic 0x7C v1 + CRC16)**. **3-layer pattern** (pure module `top_config` + glue + boot load) **mirrored from the DOWN board**. **With the EEPROM blank, the defaults are no-op** → the competition binary remains **byte-identical in behavior**. State: **VERIFIED ON HOST** — `test_top_config` 12 tests (new) + `pio run -e top_robot2_pri` SUCCESS; the effect on board is closed by the team on bench (A/B regression with EEPROM blank = 0 diff). EEPROM map by board: `docs/firmware/EEPROM-MAP.md`.
 
-### Exposing the 16 raw zones of each ToF in telemetry (HOST-VERIFIED, A2)
+### Expose the 16 raw zones of each ToF in telemetry (VERIFIED ON HOST, A2)
 
-Previously, the firmware averaged the 16 zones (4×4) of each ToF to a single distance and **discarded the rest**. Now the USB telemetry exposes the **16 raw zones per sensor** (field `z`, **additive**: the telemetry schema remains 2, does not break the contract even for the old monitor). This allows **seeing the field of view of each ToF zone by zone** in the bench monitor (§3.10) — a much richer diagnostic of mounting and walls than a single number. The **masking/rotation** that would change navigation (A2.2) **is NOT implemented**: today the zones are **read-only**. State: **HOST-VERIFIED** — `test_telemetry_top` 20/20 golden exact + `pio run -e top_robot2_pri` SUCCESS. Contract: `docs/firmware/TELEMETRIA-TOP.md`.
+Previously the firmware averaged the 16 zones (4×4) of each ToF to a single distance and **discarded the rest**. Now the USB telemetry exposes the **16 raw zones per sensor** (field `z`, **additive**: the telemetry schema remains 2, does not break the contract even for the old monitor). This allows **seeing the field of view of each ToF zone by zone** in the bench monitor (§3.10) — much richer mounting and wall diagnostics than a single number. The **masking/rotation** that would change navigation (A2.2) **is NOT implemented**: today the zones are **read-only**. State: **VERIFIED ON HOST** — `test_telemetry_top` 20/20 golden exact + `pio run -e top_robot2_pri` SUCCESS. Contract: `docs/firmware/TELEMETRIA-TOP.md`.
 
 ![Fig. — What does a ToF really see? The 16 raw 4×4 zones of a sensor (illustrative values), in canonical orientation. The firmware now exposes them (field `z`, additive, schema 2); the masking/rotation that would change navigation (A2.2) is roadmap, today they are read-only. Diagram by the team (CC BY 4.0).](assets/drafts/fig_zonas_tof_4x4.png)
 
@@ -153,21 +153,21 @@ Previously, the firmware averaged the 16 zones (4×4) of each ToF to a single di
 
 | Component | Qty | Part / LCSC | Function |
 |---|---|---|---|
-| Phototransistor ALS-PT19 | 32 | Everlight / C146233 | Line sensor (sees white vs carpet) |
+| ALS-PT19 phototransistor | 32 | Everlight / C146233 | Line sensor (sees white vs carpet) |
 | 0402 emitter LED | 32 | C28310436 | Paired illumination of the sensor |
 | 330 Ω resistor | 32 | — | LED current limiting |
 | 10 kΩ resistor | 32 | — | Phototransistor bias |
-| Analog mux CD4051BM | 4 | TI / C353976 | 8 channels each → 32 multiplexed sensors |
+| CD4051BM analog mux | 4 | TI / C353976 | 8 channels each → 32 multiplexed sensors |
 | OTOS (optical odometry) | 2 | SparkFun | Optical pose/slip (mouse-type floor reading) |
 
 **Decision:** the 2 OTOS go on **separate I²C buses** (`Wire` 18/19 and `Wire1` 17/16).  
-**Why:** both OTOS have the **same fixed address 0x17** (not selectable) → they cannot share a bus. It is the *opposite* solution to the ToF (which reassign addresses and therefore do share a bus).  
-**Data:** quantitative validation on bench (2026-05-24): **300 mm real → 280.4 mm reported = 6.5 % error** (passes the 8 % tolerance). See **Fig. 9 — OTOS odometry error by surface** (`docs/competencia/assets/fig9_otos_error.png`, generated by `gen_figuras.py`).
+**Why:** both OTOS have the **same fixed address 0x17** (not selectable) → they cannot share a bus. It is the opposite solution to the ToF (which reassign addresses and therefore can share a bus).  
+**Data:** quantitative validation on bench (2026-05-24): **300 mm real → 280.4 mm reported = 6.5% error** (passes the 8% tolerance). See **Fig. 9 — OTOS odometry error by surface** (`docs/competencia/assets/fig9_otos_error.png`, generated by `gen_figuras.py`).
 
-### Electrical iteration reference — the 4 mux do NOT share selection lines
+### Electrical iteration reference — the 4 mux DO NOT share selection lines
 
-**Problem:** previous documentation claimed that the 4 CD4051 shared the A/B/C lines — an architecture that would have broken the reading firmware of the 32 sensors.  
-**What we tried:** **automatic extraction of the EasyEDA schematic JSON** with a Python parser (union-find on wires/junctions) crossed with the Teensy 4.0 pinout, and empirical validation on bench (tapping the 32 sensors).  
+**Problem:** previous documentation stated that the 4 CD4051 shared the A/B/C lines — architecture that would have broken the firmware for reading the 32 sensors.  
+**What we tried:** **automatic extraction of the EasyEDA schematic JSON** with a Python parser (union-find over wires/junctions) crossed with the PJRC Teensy 4.0 pinout, and empirical validation on bench (covering the 32 sensors).  
 **Data:** each CD4051 has **its own 3 selectors (12 SEL pins total, not shared)** + 4 ADC outputs (A0/A1/A8/A9); the INH of each mux is tied to physical GND (always enabled). Channel order with consistent "scrambling" `CH_LUT={3,0,1,2,5,7,6,4}`. **Bench verdict: 32 OK, 0 dead.**  
 **Modification:** `config_down.h` rewritten with `PIN_MUX_A/B/C[4]` (12 independent pins) and `PIN_MUX_OUT={A0,A1,A8,A9}`; `PIN_MUX_INH[]` was removed. **Reproducibility:** the script `extract_pinout_from_schematic.py` regenerates the complete pinout table from the SCH/PCB JSON (reusable pattern for any EasyEDA PCB, documented step by step in `down-board-pack/01-pinout-y-posiciones.md §13`).
 
@@ -178,35 +178,35 @@ Previously, the firmware averaged the 16 zones (4×4) of each ToF to a single di
 | Motor | ROBOT1 (goalkeeper) | ROBOT2 (striker) | Notes |
 |---|---|---|---|
 | M1 | U5 (INA2/INB5/PWM3) | U17 | — |
-| M2 | U17 (INA8/INB7/PWM6) | U7 | **now correctly rewired** (driver U17 came with INA/INB crossed by HW → inverted rotation; it was rewired on 2026-06-11, commit `8d5fc90`) |
+| M2 | U17 (INA8/INB7/PWM6) | U7 | **today recabled correctly** (the U17 driver came with INA/INB crossed by HW → inverted rotation; it was recabled on 2026-06-11, commit `8d5fc90`) |
 | M3 | U7 (INA11/INB12/PWM4) | U5 | — |
 
-**Current decision (data-driven):** **both robots now use `MOTOR_INVERT = {+1, +1, +1}`** (no motors inverted), applied in a single point (`motors_zircon.cpp`). Verifiable in `config_central.h:47` (ROBOT1) and `:97` (ROBOT2).  
-**Why:** the inversion of a motor (when needed) lives in **ONE single place** in the firmware, not scattered throughout the kinematics — that is the design decision that matters and remains in effect.  
-**How we got here (history):** the driver U17 came with **INA/INB crossed by hardware** → M2 rotated inverted. The software compensation was `{+1,-1,+1}` (validated on bench, `diag_central_line_sweep_robot1`, activating each H-bridge separately). In the repair on **2026-06-11**, M2 of ROBOT1 was **rewired correctly** (commit `8d5fc90`, validated on floor) and ROBOT2 was already validated without inversion (its pins were NOT rotated) → both remained at `{+1,+1,+1}`. **If U17 is ever rewired as it was, it must revert to `-1`.**
+**Current decision (data-driven):** **today both robots use `MOTOR_INVERT = {+1, +1, +1}`** (no motor inverted), applied in a single point (`motors_zircon.cpp`). Verifiable in `config_central.h:47` (ROBOT1) and `:97` (ROBOT2).  
+**Why:** the inversion of a motor (when needed) lives in **ONE single place** in the firmware, not scattered throughout the kinematics — that is the design decision that matters and remains in force.  
+**How we got here (history):** the U17 driver came with **INA/INB crossed by hardware** → M2 rotated inverted. The software compensation was `{+1,-1,+1}` (validated on bench, `diag_central_line_sweep_robot1`, activating each H-bridge separately). In the repair on **2026-06-11**, M2 of ROBOT1 was **recabled correctly** (commit `8d5fc90`, validated on floor) and ROBOT2 was already validated without inversion (its pins were NOT rotated) → both remained at `{+1,+1,+1}`. **If U17 is ever recabled as it was, it must return to `-1`.**
 
-## 1.6 Integration of the RCJ referee — the integration error we avoided
+## 1.6 RCJ referee integration — the integration error we avoided
 
 **Decision:** read the referee as **GPIO level (not UART)** on pins 5/6 of the TOP, with `INPUT_PULLDOWN` and `match_running = pin5 OR pin6`.  
-**Why:** the official RCJ COMM module delivers START/STOP as **voltage level** (3.3 V = GO / 0 V = STOP) on OUT1/OUT2 via level shifter **TI TXS0102DCUR** (2 bidirectional bits, `BOM.md:107`) — **never emits the UART frame** that the firmware originally expected. The real referee reaches the ESP32-C6 **via BLE** from the judge's app, and the firmware of the C6 **translates it to level** on OUT1/OUT2; that level is what the TOP reads. (The RCJ module itself also brings an **ST LIS3DHTR** accelerometer for the "shake-to-start", `BOM.md:108`.)  
+**Why:** the official RCJ COMM module delivers START/STOP as **voltage level** (3.3 V = GO / 0 V = STOP) on OUT1/OUT2 via level shifter **TI TXS0102DCUR** (2 bidirectional bits, `BOM.md:107`) — **never emits the UART frame** that the firmware originally expected. The real referee reaches the ESP32-C6 **via BLE** from the judge's app, and the firmware of the C6 **translates it to level** on OUT1/OUT2; that level is what the TOP reads. (The RCJ module itself also has an accelerometer **ST LIS3DHTR** for the "shake-to-start", `BOM.md:108`.)  
 **Bench data (key):** in PLAY the COMM raises **ONLY ONE** of the two pins (they are not mirrored) → the original AND never gave GO; the **OR did**. Fail-safe: loose cable → both LOW → STOP. With this fix (TASK-039), **the referee moved the CENTRAL for the first time end-to-end** (COMM→GPIO 5/6→TOP→flag in WorldSnapshot→Serial7→CENTRAL).
 
 ## 1.7 Link map (reproducible — both ends)
 
 | Link | TX (board·port·pin) | RX (board·port·pin) | Baud | State |
 |---|---|---|---|---|
-| TOP → CENTRAL (snapshot 31 B) | TOP·Serial4·pin17 | CENTRAL·Serial7·pin28 | 230400 | ✅ **BENCH-VALIDATED 2026-06-14** (`diag_central_rx_all`: SNAPSHOT 66 Hz, crc=0, seqGap=0, pose/heading/ball/goal decoded) |
-| DOWN → CENTRAL (line + OTOS) | DOWN·Serial1·pin1 | CENTRAL·Serial1·pin0 | 230400 | ✅ bench validated (line 200 Hz crc=0; bench 2026-06-14) |
+| TOP → CENTRAL (31 B snapshot) | TOP·Serial4·pin17 | CENTRAL·Serial7·pin28 | 230400 | ✅ **VALIDATED ON BENCH 2026-06-14** (`diag_central_rx_all`: SNAPSHOT 66 Hz, crc=0, seqGap=0, pose/heading/ball/goal decoded) |
+| DOWN → CENTRAL (line + OTOS) | DOWN·Serial1·pin1 | CENTRAL·Serial1·pin0 | 230400 | ✅ validated on bench (line 200 Hz crc=0; bench 2026-06-14) |
 | DOWN → TOP (line + OTOS) | DOWN·Serial5·pin20 | TOP·Serial1·pin0 | 230400 | ⚠️ not wired |
 | front camera → TOP | cam·UART3 | TOP·Serial3·pin15 | 19200 | ✅ format OK |
-| back camera → TOP | cam·UART3 | TOP·Serial5·pin21 | 19200 | ✅ format OK |
+| rear camera → TOP | cam·UART3 | TOP·Serial5·pin21 | 19200 | ✅ format OK |
 | TOP ↔ COMM (partner ESP-NOW) | TOP·Serial2·7/8 | COMM (ESP32-C6) | 115200 | fix 2026-06-02 |
 
-> **Documented hardware trap to replicate:** the **Teensy 4.0 does NOT expose Serial7 (28/29) on the edge** (they are rear SMD pads). That’s why the link to CENTRAL goes via Serial4 (16/17), not Serial7. The Teensy 4.1 (CENTRAL) **does** expose them.
+> **Documented hardware trap to replicate:** the **Teensy 4.0 does NOT expose Serial7 (28/29) on the edge** (they are rear SMD pads). That is why the link to CENTRAL goes via Serial4 (16/17), not Serial7. The Teensy 4.1 (CENTRAL) **does** expose them.
 
-## 1.8 BOM of major components — resource usage / cost (international reference price)
+## 1.8 Major components BOM — resource usage / cost (international reference price)
 
-> **Resource usage / cost:** prices = **international reference (USD), verified 2026-06-05** (single source: `BOM.md` §3). The quantities per robot are confirmed. **Exchange rate: 1480 ARS = 1 USD (2026-06-13)** — the equivalent in pesos (USD × 1480) is a **floor/minimum**; the actual landed cost is higher due to importation (details below). The team only has pending: price of the loose Zircon, motor model, and hours (see gap below).
+> **Resource usage / cost:** prices = **international reference (USD), verified 2026-06-05** (single source: `BOM.md` §3). The quantities per robot are confirmed. **Exchange rate: 1480 ARS = 1 USD (2026-06-13)** — the equivalent in pesos (USD × 1480) is a **floor/minimum**; the actual *landed* cost is higher due to importation (details below). The team only has pending: price of the loose Zircon, motor model, and hours (see gap below).
 
 | Component | Qty (robot) | Unit price (LCSC USD) |
 |---|---|---|
@@ -225,25 +225,25 @@ Previously, the firmware averaged the 16 zones (4×4) of each ToF to a single di
 
 > **Total cost (international reference, single value = highest per item):** ≈ **USD 1,168/robot** (all new) · ≈ **USD 887/robot** reusing the CENTRAL Zircon + Teensy 4.1 from 2025 · ≈ **USD 2,055–2,336** for the 2 robots. Battery: **LiPo 2S 7.4 V 6800 mAh (≈50 Wh)**. Breakdown by line in `BOM.md §1`/§3.1 + URLs in `BOM-COSTOS-TEMPLATE.md`.
 >
-> **Equivalent in Argentine pesos (MINIMUM reference).** Exchange rate of **2026-06-13: 1480 ARS = 1 USD**. Applying ARS = USD × 1480 on the reference cost: ≈ **ARS 1,728,640/robot** (all new) · ≈ **ARS 1,312,760/robot** reusing the CENTRAL. ⚠️ **This equivalent is a FLOOR, not the real cost:** the exchange converts the international price, but the effective landed cost in Argentina is **HIGHER** due to import taxes and customs restrictions (orders are split, adding tariffs and logistics). We do not provide an exact landed total: we give the exchange rate (1480) + the equivalent in pesos as a lower bound, with this clarification.
+> **Equivalent in Argentine pesos (minimum reference).** Exchange rate of **2026-06-13: 1480 ARS = 1 USD**. Applying ARS = USD × 1480 on the reference cost: ≈ **ARS 1,728,640/robot** (all new) · ≈ **ARS 1,312,760/robot** reusing the CENTRAL. ⚠️ **This equivalent is a FLOOR, not the real cost:** the exchange converts the international price, but the effective landed cost in Argentina is **HIGHER** due to import taxes and customs restrictions (orders are split, adding tariffs and logistics). We do not provide an exact landed total: we give the exchange rate (1480) + the equivalent in pesos as a lower bound, with this clarification.
 >
 > **Pending from the team (small):** price of the **Zircon** loose (Robomov publishes the kit at USD 529), model of **motor** (the high Pololu HP USD 23.95 was used; the generic TT is ~USD 3), **C-rating/brand/weight** of the battery and **development hours**.
 
 ### Cost by subsystem — where the money goes (this is "evaluates use of resources")
 
-Not just the total: **in which subsystem we spend each dollar** (subtotals from `BOM.md:143-149`, highest value per item, USD from international reference):
+Not just the total: **in which subsystem we spend each dollar** (subtotals from `BOM.md:143-149`, highest value per item, USD international reference):
 
 | Subsystem | Cost/robot (USD) | % of total | What it includes |
 |---|---|---|---|
-| **Perception** | **484.95** | **~41 %** | 2× OpenMV N6 (165 each, the most expensive) + 2× BNO055 + 4× VL53L7CX + HC-SR04 |
-| PCBs | 275.00 | ~24 % | TOP + DOWN + COMM custom + Zircon (250, reused) |
-| Odometry / floor | 178.60 | ~15 % | 2× OTOS + ring of 32 sensors + 4 muxes + diodes |
-| Traction | 91.35 | ~8 % | 3 motors + 3 omni wheels (H-bridges go in the Zircon) |
-| Computing / control | 83.63 | ~7 % | 2× Teensy 4.0 + Teensy 4.1 + ESP32-C6 |
-| Power | 51.83 | ~4 % | 6800 mAh battery + 6 bucks + protection |
-| ICs COMM board | 2.70 | <1 % | level shifter TXS0102 + accel LIS3DHTR + buttons |
+| **Perception** | **484.95** | **~41%** | 2× OpenMV N6 (165 each, the most expensive) + 2× BNO055 + 4× VL53L7CX + HC-SR04 |
+| PCBs | 275.00 | ~24% | TOP + DOWN + COMM custom + Zircon (250, reused) |
+| Odometry / floor | 178.60 | ~15% | 2× OTOS + ring of 32 sensors + 4 muxes + diodes |
+| Traction | 91.35 | ~8% | 3 motors + 3 omni wheels (H-bridges go in the Zircon) |
+| Computing / control | 83.63 | ~7% | 2× Teensy 4.0 + Teensy 4.1 + ESP32-C6 |
+| Power | 51.83 | ~4% | 6800 mAh battery + 6 bucks + protection |
+| COMM board ICs | 2.70 | <1% | level shifter TXS0102 + accel LIS3DHTR + buttons |
 
-**Design reading:** **perception dominates (41 %)**, and within it, the **two OpenMV N6 cameras (USD 330 between the two)** are the most expensive item on the robot by far. It’s a conscious decision: in RoboCup Soccer **seeing the ball and the goals well defines a match**; that’s where we invest. The brain (computing) costs less than 7 % because we reused the champion Zircon.
+**Design reading:** **perception dominates (41%)**, and within it, the **two OpenMV N6 cameras (USD 330 between the two)** are the most expensive item on the robot by far. It is a conscious decision: in RoboCup Soccer **seeing the ball and the goals well defines a match**; that is where we invested. The brain (computing) costs less than 7% because we reused the champion Zircon.
 
 ---
 
@@ -253,14 +253,14 @@ Not just the total: **in which subsystem we spend each dollar** (subtotals from 
 
 ## 2.1 Mechanical strategy: KIWI base with 3 omni wheels
 
-**Decision:** omnidirectional **KIWI base with 3 omni wheels at 120°**, without physical kicker.  
+**Decision:** omnidirectional **KIWI base with 3 omni wheels at 120°,** without physical kicker.  
 **Why:** the 3 omni wheel base provides holonomic movement (translation + rotation independently) with fewer motors/weight than a 4-wheel base; eliminating the kicker removes components, energy, and failure points — the striker **pushes the ball by inertia** when aligning with the opposing goal.  
 **Trade-off:** in the real KIWI geometry (angles `{330, 210, 90}` relative to +X), the **rear wheel (at 90°) does NOT contribute to pure forward advancement** (projection = 0), but it is the one that **pushes the most in lateral strafe** (−vx, against +0.5·vx of each front). This is correct by geometry; it requires care with the PWM dead zone, and since each wheel sees different friction, the PWM floor is **per wheel** (see iteration A).
 
 | Parameter | Value in firmware | State |
 |---|---|---|
 | `WHEEL_ANGLES_DEG` | {330, 210, 90} (M1=left-front · M2=right-front · M3=rear; angle from +X) | **CALIBRATED 2026-06-08** (bench) |
-| `MOTOR_MIN_PWM[3]` (PWM floor per wheel) | {70, 70, 107} | **CALIBRATED on bench — ROBOT2 2026-06-09, ROBOT1 validated on floor 2026-06-11** — front oblique 70 · rear aligned 107; accompanied by initial boost {130,130,140}×40 ms + early brake of the rear 66 ms. (The intermediate step {70,70,42} from bench R1 2026-06-08 was surpassed — see iteration A.) |
+| `MOTOR_MIN_PWM[3]` (PWM floor per wheel) | {70, 70, 107} | **CALIBRATED on bench — ROBOT2 2026-06-09, ROBOT1 validated on floor 2026-06-11** — oblique front 70 · aligned rear 107; accompanied by initial boost {130,130,140}×40 ms + anticipatory brake of the rear 66 ms. (The intermediate step {70,70,42} from bench R1 2026-06-08 was surpassed — see iteration A.) |
 | `WHEEL_RADIUS_MM` (center→wheel) | 100.0 | **TENTATIVE — measure on assembled robot** |
 | `MAX_SPEED_MM_S` | 1000 | estimated |
 
@@ -268,7 +268,7 @@ Not just the total: **in which subsystem we spend each dollar** (subtotals from 
 
 **Decision:** the DOWN board ("Roboliga 2026 Futbol" REV 1.0) **is the structural base plate** of the robot.  
 **Why:** integrating the ring of 32 line sensors directly into the base plate eliminates a mechanical piece and guarantees the geometry of the ring (the sensors remain fixed relative to the center).  
-**Data:** rounded plate outline ≈**175.1 × 165.7 mm** (`Gerber_BoardOutlineLayer.GKO`), NPTH mounting holes 3.0/3.5 mm for M3 screws to the chassis, **142 of 148 components on the Bottom face** (the ring faces the floor). The 3 PCBs stack like layers (TOP / CENTRAL / DOWN).
+**Data:** rounded plate contour ≈**175.1 × 165.7 mm** (`Gerber_BoardOutlineLayer.GKO`), NPTH mounting holes 3.0/3.5 mm for M3 screws to the chassis, **142 of 148 components on the Bottom face** (the ring faces the floor). The 3 PCBs stack as levels (TOP / CENTRAL / DOWN).
 
 ## 2.3 Mechanical architecture in layers (stack of 3 boards)
 
@@ -284,64 +284,64 @@ Not just the total: **in which subsystem we spend each dollar** (subtotals from 
          3 omni motors at 120° (KIWI)
 ```
 
-**Milestone (2026-05-29):** the 3 physical boards exist and are mounted — robot almost complete at mechanical/electronic level.
+**Milestone (2026-05-29):** the 3 physical boards exist and are mounted — robot almost complete at the mechanical/electronic level.
 
-> **[GAP — stack, with measurement procedure]** The **spacing between layers** (height of standoffs, separation TOP/CENTRAL/DOWN) and how the stack is fixed to the chassis **is not documented** in the repo. As with `WHEEL_RADIUS`, we give the **procedure to close it** in a bench session: (1) measure with caliper the **free height of each standoff** between board and board (M3, the same NPTH as the DOWN plate) — there are 2 segments (DOWN→CENTRAL, CENTRAL→TOP); (2) note the **total height** of the assembled stack and the **diameter/height of the complete robot**; (3) verify that the TOP camera is not blocked by the CENTRAL board in its FoV. With those 3 dimensions, the **[DIAGRAM: plan of the stack of 3 boards with standoff dimensions]** is assembled and accompanied by the **[PHOTO: side view of the robot showing the 3 levels]**. Until measured, these numbers remain as an explicit gap in §6.
+> **[GAP — stack, with measurement procedure]** The **spacing between layers** (height of standoffs, separation TOP/CENTRAL/DOWN) and how the stack is fixed to the chassis **is not documented** in the repo. As with `WHEEL_RADIUS`, we provide the **procedure to close it** in a bench session: (1) measure with caliper the **free height of each standoff** between board and board (M3, the same NPTH as the DOWN plate) — there are 2 segments (DOWN→CENTRAL, CENTRAL→TOP); (2) note the **total height** of the assembled stack and the **diameter/height of the complete robot**; (3) verify that the TOP camera is not blocked by the CENTRAL board in its FoV. With those 3 dimensions, the **[DIAGRAM: plan of the stack of 3 boards with standoff dimensions]** is assembled and accompanied by the **[PHOTO: side view of the robot showing the 3 levels]**. Until measured, these numbers remain as an explicit gap in §6.
 
 ## 2.4 Mechanical design iterations (with data)
 
-### Iteration A — Strafe of the goalkeeper: from "only turn motor 1" to calibrated kinematics
-- **Problem:** with the referee in START and lateral strafe command, **only M1 would turn**; M2 and M3 remained still.
+### Iteration A — Goalkeeper strafe: from "only turn motor 1" to calibrated kinematics
+- **Problem:** with the referee in START and lateral strafe command, **only M1 turned**; M2 and M3 remained still.
 - **What we tried:** bench `diag_central_arbitro_strafe_robot1` with pure lateral command (vx, vy=0, ω=0), wheel-by-wheel analysis. It was discovered that the old kinematics `{60,-60,180}` was **on the wrong axis** (it used the +Y axis while the formula projects onto +X) → it made circles and undersized the torque of the front pair.
 - **Data (calibrated kinematics 2026-06-08, `WHEEL_ANGLES={330,210,90}` from +X):** for pure lateral, M1(330°) and M2(210°) receive **+0.5·vx each (same side)** and the rear M3(90°) receives **−vx → it pushes the most**. Pure forward advancement reverses the roles: M1/M2 to ±0.866·vy and M3=0. Additionally, each wheel sees different friction according to its attack angle, so the PWM **is not** proportional to wheel speed and needs a floor per wheel.
-- **Modification (CURRENT state):** (1) correct the angles to `{330,210,90}` (turn and translation remain correct — same root cause axis +Y→+X as Iteration C; both were fixed together); (2) replace the old single scaling floor (and ephemeral `MOTOR_GAIN`) with **`MOTOR_MIN_PWM[3] = {70, 70, 107}`** — a PWM floor **per wheel**. **The intermediate step was `{70,70,42}`** (bench R1 2026-06-08): the rear, rolling parallel to the strafe (less friction than the oblique fronts), seemed to ask for little. But in the strafe of ROBOT2 (bench 2026-06-09), the rear remained slow and the strafe **arched**; an empirical sweep of the rear floor **42→50→70→85→95→100→105→107** closed it at **107**. **Trade-off:** a floor too high makes the robot "jump" from rest; that’s why it was calibrated per wheel and per robot on bench. **State: ROBOT2 validated on bench 2026-06-09; ROBOT1 validated on floor 2026-06-11** with the same values. **Pending on bench: ONLY fine-tuning of the lateral (not to rotate) + confirm the direction of translation.**
+- **Modification (CURRENT STATE):** (1) correct the angles to `{330,210,90}` (turn and translation are fine — same root cause +Y→+X as Iteration C; both were fixed together); (2) replace the old single scaling floor (and an ephemeral `MOTOR_GAIN`) with **`MOTOR_MIN_PWM[3] = {70, 70, 107}`** — a PWM floor **per wheel**. **The intermediate step was `{70,70,42}`** (bench R1 2026-06-08): the rear, rolling parallel to the strafe (less friction than the oblique fronts), seemed to ask for little. But in the strafe of ROBOT2 (bench 2026-06-09) the rear remained slow and the strafe **curved**; an empirical sweep of the rear floor **42→50→70→85→95→100→105→107** closed it at **107**. **Trade-off:** a floor too high makes the robot "jump" from rest; that is why it was calibrated per wheel and per robot on bench. **State: ROBOT2 validated on bench 2026-06-09; ROBOT1 validated on floor 2026-06-11** with the same values. **Pending on bench: ONLY the fine-tuning of lateral (not to rotate) + confirm the direction of translation.**
 
 #### The 3 techniques of "standard lateral motion" (first-level iteration, bench R2 2026-06-09)
-Lateral strafe was not solved with a single number but with **three combined techniques**, which remained as **the standard for ALL lateral movement in ALL programs** (Gustavo's decision, validated on bench R2; `ESTADO-ACTUAL.md:310-343`):
+Lateral strafe was not resolved with a single number but with **three combined techniques**, which remained as **the standard for ALL lateral movement in ALL programs** (Gustavo's decision, validated on bench R2; `ESTADO-ACTUAL.md:310-343`):
 1. **PWM floor per wheel `{70,70,107}`** (the above). **Learned physics:** PWM is not proportional to wheel speed. By kinematics, the rear must turn at **double** the front (fronts 0.5·vx, rear 1.0·vx), but as **aligned wheel** (less friction than the oblique ones) it achieves it with **~1.5× the PWM (107 vs 70), not 2×**.
 2. **Fixed initial boost `{130,130,140}` PWM ×40 ms** in the transition from stopped→command (`-DCENTRAL_MOTOR_KICKSTART`): the fronts did not break inertia from rest; the rear asked for 140.
-3. **Early brake of the rear** (`-DCENTRAL_REAR_BRAKE_LEAD`): cuts the rear to 0 in the last **66 ms** of the segment, so its inertia does not misalign the robot when braking.
+3. **Anticipatory brake of the rear** (`-DCENTRAL_REAR_BRAKE_LEAD`): cuts the rear to 0 in the last **66 ms** of the segment, so its inertia does not misalign the robot when braking.
 
-### Iteration B — Motor 2 inverted by hardware (resolved by rewiring)
-- **CURRENT state:** both robots use **`MOTOR_INVERT = {+1,+1,+1}`** (no motors inverted) — `config_central.h:47`/`:97`. The inversion, when needed, lives in **a single point** of the firmware: that is the design lesson that matters.
-- **Problem (history):** motor 2 (driver U17) rotated backward because it had **INA/INB crossed by HW** in the Zircon (validated on bench) → the omni kinematics gave inverted trajectories.
-- **How it was resolved:** first by software (`{+1,-1,+1}`); then, in the repair on **2026-06-11**, M2 of ROBOT1 was **rewired correctly** (commit `8d5fc90`, validated on floor) and ROBOT2 was already validated without inversion → both remained at `{+1,+1,+1}`. **If U17 is rewired as it was, it must revert to `-1`.** (It’s the same repair that documents §1.5.)
+### Iteration B — Motor 2 inverted by hardware (resolved by recabling)
+- **CURRENT STATE:** both robots use **`MOTOR_INVERT = {+1,+1,+1}`** (no motor inverted) — `config_central.h:47`/`:97`. The inversion, when needed, lives in **a single point** in the firmware: that is the design lesson that matters.
+- **Problem (history):** motor 2 (driver U17) rotated in reverse because it had **INA/INB crossed by HW** in the Zircon (validated on bench) → the omni kinematics gave inverted trajectories.
+- **How it was resolved:** first by software (`{+1,-1,+1}`); then, in the repair on **2026-06-11**, M2 of ROBOT1 was **recabled correctly** (commit `8d5fc90`, validated on floor) and ROBOT2 was already validated without inversion → both remained at `{+1,+1,+1}`. **If U17 is recabled as it was, it must return to `-1`.** (It is the same repair documented in §1.5.)
 
 ### Iteration C — KIWI kinematics: why it made circles and how it was fixed
 - **Problem:** the old kinematics `WHEEL_ANGLES={60,-60,180}` made **circles** instead of straight lines.
-- **Data:** the root cause was that those angles were defined on the **+Y** axis, while the inverse kinematics formula projects onto **+X**; additionally, the +180 that corresponds was missing because all 3 motors rotate clockwise from the center. With the real physical arrangement (M1=left front, M2=right front, M3=rear), the correct angles from +X are **`{330, 210, 90}`**.
-- **Modification:** `WHEEL_ANGLES_DEG = {330, 210, 90}` (**CALIBRATED 2026-06-08** on bench): the turn and translation now come out straight. `WHEEL_RADIUS_MM` (100.0) remains **TENTATIVE** until measured on the assembled robot. **Measurement procedure documented** (`docs/omni3-drive-system.md §4`): real `wheel_radius` = mark wheel, roll 1 turn, distance/2π; real `robot_radius` = center to contact point. **Pending on bench: ONLY fine-tuning of the lateral + confirm the direction of translation.**
+- **Data:** the root cause was that those angles were defined on the **+Y** axis, while the inverse kinematics formula projects onto **+X**; additionally, the +180 that corresponds was missing because the 3 motors rotate clockwise from the center. With the real physical arrangement (M1=left front, M2=right front, M3=rear) the correct angles from +X are **`{330, 210, 90}`**.
+- **Modification:** `WHEEL_ANGLES_DEG = {330, 210, 90}` (**CALIBRATED 2026-06-08** on bench): the turn and translation now come out straight. `WHEEL_RADIUS_MM` (100.0) remains **TENTATIVE** until measured on the assembled robot. **Measurement procedure documented** (`docs/omni3-drive-system.md §4`): `wheel_radius` real = mark wheel, roll 1 turn, distance/2π; `robot_radius` real = center to contact point. **Pending on bench: ONLY the fine-tuning of lateral + confirm the direction of translation.**
 
 ### Iteration D — Protective sheet of the OTOS and surface texture
 - **Problem:** suboptimal optical readings with the protective sheet of the plate.
-- **Data:** with sheet over A4: 28.6/300 mm = **9.5 %** (catastrophic). Without sheet over A4: 0.3 mm = **0 %** (surface too uniform, like optical mouse on glass). Without sheet over **corrugated cardboard**: 280.4/300 = **6.5 %** (passes 8 % tolerance, monotonic).
+- **Data:** with sheet over A4: 28.6/300 mm = **9.5%** (catastrophic). Without sheet over A4: 0.3 mm = **0%** (surface too uniform, like optical mouse on glass). Without sheet over **corrugated cardboard**: 280.4/300 = **6.5%** (passes 8% tolerance, monotonic).
 - **Modification (TASK-030):** sheet removed + require surface with micro-texture. **10× improvement.** On the RoboCup green carpet, both conditions are met by default. The three points (sheet / direct / cardboard) are graphed in **Fig. 9 — OTOS odometry error by surface** (`docs/competencia/assets/fig9_otos_error.png`).
 
 ### Iteration E — Edge emergency brake (brake or coast?)
-- **Problem:** `EMERGENCY_LINE` calls `motors_brake()` (HIGH/HIGH), but it is not confirmed that the Zircon actively brakes (it could be COAST).
+- **Problem:** `EMERGENCY_LINE` calls `motors_brake()` (HIGH/HIGH), but it is not confirmed that the Zircon brakes actively (it could be COAST).
 - **Data:** at 1 m/s the robot travels 15 mm in 15 ms; if it brakes by coast instead of active brake, the distance post-detection grows and it may cross the line.
-- **Modification (CA-03, pending on bench):** **measure first** with the driver datasheet; if it is COAST, implement brake by brief reverse. Marked "do not touch the firmware blindly".
+- **Modification (CA-03, pending on bench):** **measure first** with the driver datasheet; if it is COAST, implement brief reverse brake. Marked "do not touch the firmware blindly".
 
-## 2.5 Court and manufacturing constraints
+## 2.5 Court and manufacturing restrictions
 
-- **RCJ Soccer court:** game 2190 × 1580 mm; wall-to-wall 2430 × 1820 mm. Goal-to-goal axis (+Y, long) = 2430; lateral (+X, short) = 1820. Open-source IR ball of 42 mm (2026). **This geometry justifies our localization:** a court of **1.83 × 2.43 m with 4 orthogonal walls** is perfect for **geometric trilateration** with 4 cardinal ToF — a particle filter (MCL) would be *overkill* for such a small and structured map (the complete analysis of alternatives, in §3.5).
-- **Manufacturing (inherited 2025, reference):** 3D printing (printer HM2300, sources OpenSCAD/Tinkercad). 2025 motors = TT motors with H-bridge drivers.
+- **RCJ Soccer field:** game 2190 × 1580 mm; wall-to-wall 2430 × 1820 mm. Arch-to-arch axis (+Y, long) = 2430; lateral (+X, short) = 1820. Open-source IR ball of 42 mm (2026). **This geometry justifies our localization:** a field of **1.83 × 2.43 m with 4 orthogonal walls** is perfect for **geometric trilateration** with 4 cardinal ToF — a particle filter (MCL) would be *overkill* for such a small and structured map (complete analysis of alternatives in §3.5).
+- **Manufacturing (inherited 2025, reference):** 3D printing (printer HM2300, OpenSCAD/Tinkercad sources). 2025 motors = TT motors with H-bridge drivers.
 
-> **[GAP — mechanical/manufacturing]** Missing real data of the 2026 robot for total replicability: **diameter/weight** of each robot and the regulatory size limit; **2026 motor specification** (model, V, RPM, torque, reduction, encoder yes/no); **2026 omni wheel** (diameter, material, rollers); **CAD/STL/GCode of the 2026 chassis** (only links to the 2025, which include dribbler+solenoid already discarded) + printing parameters; **spacing of the stack of boards**; **chassis materials** (beyond the PCB-plate); **bumpers/covers/protection**. Registered as gaps in §6. **[PHOTO: assembled 2026 robot, top and side views; printed parts and assembly.]**
+> **[GAP — mechanical/manufacturing]** Real data of the 2026 robot is missing for total replicability: **diameter/weight** of each robot and the regulatory size limit; **2026 motor specification** (model, V, RPM, torque, reduction, encoder yes/no); **2026 omni wheel** (diameter, material, rollers); **CAD/STL/GCode of the 2026 chassis** (only links to the 2025, which include dribbler+solenoid already discarded) + printing parameters; **spacing of the stack of boards**; **chassis materials** (beyond the PCB-plate); **bumpers/covers/protection**. Registered as gaps in §6. **[PHOTO: assembled 2026 robot, top and side views; printed parts and assembly.]**
 
 ---
 
 # §3. SOFTWARE — Code structure, version control, and pseudocode
 
-> **Rubric objective (Excellent):** provide real *insight* into the structure/function of the code **and include version control usage, flowcharts, or pseudocode**. This section covers all three: (a) architecture of modules, (b) host-native testing + multi-agent git as version control, (c) flowcharts/pseudocode in ASCII blocks.
+> **Rubric objective (Excellent):** provide real *insight* into the structure/function of the code **and include version control usage, flowcharts or pseudocode**. This section covers all three: (a) module architecture, (b) host-native testing + multi-agent git as version control, (c) flowcharts/pseudocode in ASCII blocks.
 
 ## 3.1 Stack and discipline: pure logic + thin glue
 
-**Languages:** C++17 (firmware, namespace `iitasoccer`, structs `__attribute__((packed))` with `static_assert` of size) + MicroPython (OpenMV N6 vision, `find_blobs` by LAB color). Build: PlatformIO (**more than 80 entries `[env:]`** — 82 as of 2026-06-14: those for production per robot + the rest, for diagnostics/bench/tests).
+**Languages:** C++17 (firmware, namespace `iitasoccer`, structs `__attribute__((packed))` with `static_assert` of size) + MicroPython (OpenMV N6 vision, `find_blobs` by LAB color). Build: PlatformIO (**more than 80 entries `[env:]`** — 82 as of 2026-06-14: production ones by robot + the rest, for diagnostics/bench/tests).
 
 **Central engineering decision:** the **decision logic lives in PURE modules** (`src/shared/`, without Arduino/Wire/Serial/`analogWrite`); the **Arduino glue is thin** and compile-only.  
 **Why:** pure modules compile and test with **g++ on the PC, without the board**, which gives a verification cycle of seconds and avoids Avast blocking the PlatformIO registry.  
-**Data:** **858 tests / 61 suites / 0 failures** (measured 2026-06-14 with `scripts/run-host-tests.sh`, using g++ from Webots). Traceable growth session by session: 246 → 262 → 324 → 354 → 403 → 470 → 545 → 658 → 834 → 858. See **Fig. 8 — growth of host-native test coverage** (`docs/competencia/assets/fig8_test_growth.png`, generated by `gen_figuras.py`). **Live figure:** we run the suite each session, so the number keeps growing — it will be higher for Incheon. That’s why we publish it with the **measurement date** (re-measure the day of recording/printing; the graph regenerates with `gen_figuras.py`).
+**Data:** **858 tests / 61 suites / 0 failures** (measured 2026-06-14 with `scripts/run-host-tests.sh`, using Webots' g++). Traceable growth session by session: 246 → 262 → 324 → 354 → 403 → 470 → 545 → 658 → 834 → 858. See **Fig. 8 — growth of host-native test coverage** (`docs/competencia/assets/fig8_test_growth.png`, generated by `gen_figuras.py`). **Live figure:** we run the suite each session, so the number keeps growing — it will be higher for Incheon. That is why we publish it with the **measurement date** (re-measure the day of recording/printing; the graph regenerates with `gen_figuras.py`).
 
 ### [FLOWCHART] Host-native verification pipeline
 ```
@@ -354,7 +354,7 @@ Lateral strafe was not solved with a single number but with **three combined tec
                                      ▼
         ./test_X   →   PASS/FAIL on the PC (without board, without network, without Avast)
                                      ▼
-        green gate (0 failures)  →  only then it merges
+        green gate (0 failures)  →  only then is it merged
 ```
 
 ![Fig. — The robot by **layers of abstraction**: mission→decision→world model→perception→control→plant; each layer hides the complexity of the one below, and power/communications/timing/fail-safe cross ALL layers as transversal concerns. `assets/drafts/fig_capas_abstraccion.png` (diagram by the team, CC BY 4.0).](assets/drafts/fig_capas_abstraccion.png)
@@ -372,18 +372,18 @@ Lateral strafe was not solved with a single number but with **three combined tec
 | `localization` | Direct 2D trilateration with 4 ToF + heading (integer arithmetic, LUT Q12) | 14 |
 | `line_filters` | Temporal filter + hysteresis + centroid + all-white saturation | 39 |
 
-**Critical bug closed with data (anti sign-flip):** `cmd.omega_centideg_s = omega·100` is **int16**; a clamp of 360 → 36000 centideg **> 32767** → sign wrap → the robot spun **backward** at full throttle when saturating. **Fix:** `output_clamp 360 → 327` (327·100 = 32700 < 32767), with regression test. Regression risk is null: the old behavior **was** the bug.
+**Critical bug closed with data (anti sign-flip):** `cmd.omega_centideg_s = omega·100` is **int16**; a clamp of 360 → 36000 centideg **> 32767** → sign wrap → the robot spun full **in reverse** when saturating. **Fix:** `output_clamp 360 → 327` (327·100 = 32700 < 32767), with regression test. Regression risk null: the old behavior **was** the bug.
 
 > **🔑 Maturity state of each module (engineering honesty — the same lens as the initial box).** All these modules **pass host-native tests**; that does NOT mean they already run tested on the robot. Here we distinguish:
 >
 > | Module | Maturity today |
 > |---|---|
-> | `kinematics`, `pids`, `proto`, `line_filters`, `behind_ball` | **BENCH-VALIDATED** — they run in the binary that has already moved on bench (motors, referee, line, snapshot) |
+> | `kinematics`, `pids`, `proto`, `line_filters`, `behind_ball` | **VALIDATED ON BENCH** — they run in the binary that has already moved on bench (motors, referee, line, snapshot) |
 > | `ball_velocity` | LIVE in the snapshot; the data flows on bench (66 Hz) |
-> | `localization` (trilateration) | **HOST-VERIFIED** — 14 tests, but the pose **never comes out "valid"** in HW yet (ToF only on Y axis); `main_top` uses the direct heading from the IMU (TASK-035) |
-> | `ball_predict` (goalkeeper anticipates), strafe by cross_track, drive-straight OTOS | **HOST-VERIFIED + ASLEEP BY FALLBACK** — they produce the SAME command as the previous behavior when the new data is N/A (= today); they "wake up" only when the data flows on bench |
+> | `localization` (trilateration) | **VERIFIED ON HOST** — 14 tests, but the pose **never comes out "valid"** in HW yet (ToF only on Y axis); `main_top` uses the direct heading from the IMU (TASK-035) |
+> | `ball_predict` (goalkeeper anticipates), strafe by cross_track, drive-straight OTOS | **VERIFIED ON HOST + SLEEPING BY FALLBACK** — they produce the SAME command as the previous behavior when the new data is N/A (= today); they "wake up" only when the data flows on bench |
 >
-> No module in "host-verified" changes the current behavior until validated on bench: the byte-identical fallback (§3.4) guarantees it.
+> No module in "verified on host" changes the current behavior until validated on bench: the fallback byte-identical (§3.4) guarantees it.
 
 ## 3.3 The data contract: WorldSnapshot v3 (31 bytes)
 
@@ -391,7 +391,7 @@ TOP → CENTRAL at **100 Hz design (bench 2026-06-14: 66 Hz measured)**, TYPE 0x
 
 **Decision:** mark contract changes as **WIRE-BREAKING** and deploy them coordinated (re-flash all affected boards together).  
 **Why:** a piecemeal change leaves the data chain dead (an old parser discards the new frame).  
-**Data (real bug):** `comm_down.cpp` decoded old `LineStatus` (5 B) and discarded 100 % of the real `LineStatusV2` (16 B) → CENTRAL **blind to the line**, invisible in telemetry. Fix verified with harness g++ 8/8 PASS + `test_central_line_ingest`.
+**Data (real bug):** `comm_down.cpp` decoded old `LineStatus` (5 B) and discarded 100% of the real `LineStatusV2` (16 B) → CENTRAL **blind to the line**, invisible in telemetry. Fix verified with harness g++ 8/8 PASS + `test_central_line_ingest`.
 
 ![Fig. 2 — Data flow between the 3 boards: the 31 B WorldSnapshot travels TOP→CENTRAL @100 Hz and DOWN broadcasts line + OTOS to both (symmetric broadcast). `assets/fig2_dataflow.png`.](assets/fig2_dataflow.png)
 
@@ -404,14 +404,14 @@ ATTACKER:  WAIT_START → KICKOFF → SEARCH → POSITION → APPROACH → (push
                                                               └─► LINE_AVOID
 GOALKEEPER: WAIT_START → GOTO_LINE → PATROL → INTERCEPT → CLEAR
                                                        └─► LINE_AVOID
-   EMERGENCY_LINE  ── bypasses the FSM (handled in main_central before the tick) ──►
+   EMERGENCY_LINE  ── bypasses the FSM (managed in main_central before the tick) ──►
 ```
 
 ![Fig. 4 — Dual tactical FSM (ATTACKER / GOALKEEPER) with the EMERGENCY_LINE edge brake bypass. `assets/fig4_fsm.png`.](assets/fig4_fsm.png)
 
 Push without kicker: the striker pushes when `|angle to goal| < ATK_KICK_ANGLE_DEG (12°)` and `dist < ATK_KICK_DIST_MM (80)`.
 
-### [PSEUDOCODE] Goalkeeper anticipating (`ball_predict`, pure module)
+### [PSEUDOCODE] Goalkeeper that anticipates (`ball_predict`, pure module)
 ```
 function gk_intercept_target(ball_x, ball_vx, lookahead_s, max_lead_mm):
     lead = clamp(ball_vx * lookahead_s, -max_lead_mm, +max_lead_mm)
@@ -420,65 +420,65 @@ function gk_intercept_target(ball_x, ball_vx, lookahead_s, max_lead_mm):
         lead = lead * extra_factor
         kp   = kp * scale
     return px
-# FALLBACK byte-identical: with vx=0 (ball still / speed N/A) → lead=0 → px=ball_x
+# FALLBACK byte-identical: with vx=0 (ball stationary / speed N/A) → lead=0 → px=ball_x
 # = IDENTICAL behavior to the version without anticipation, guaranteed by test.
 ```
 
 **Transversal design decision — byte-identical fallback:** each new feature (goalkeeper anticipates, drive-straight with OTOS, strafe by cross_track) produces **exactly the same command** as the previous behavior when the new data is N/A.  
-**Why:** it leaves the feature "asleep" until the data flows on bench, without introducing regression.  
+**Why:** it leaves the feature "sleeping" until the data flows reliably on bench, without introducing regression.  
 **Data:** verifiable with a test that compares the output with and without the data.
 
 ## 3.5 2D localization by trilateration (decision with alternatives analysis)
 
-**Decision:** direct geometric trilateration (4 cardinal ToF + BNO heading, integer arithmetic).  
-**Why:** formally compared against 5 alternatives by accuracy / CPU / dev-time.  
+**Decision:** direct geometric trilateration (4 cardinal ToF + heading BNO, integer arithmetic).  
+**Why:** formally compared against 5 alternatives by precision / CPU / dev-time.  
 **Data:**
 
-| Algorithm | Accuracy | CPU | Dev-time | Verdict |
+| Algorithm | Precision | CPU | Dev-time | Verdict |
 |---|---|---|---|---|
 | **Geometric trilateration** | ±2–3 cm | negligible | ~1 day | **CHOSEN** |
 | EKF | ±0.5–1 cm | medium | 3–5 days + tuning | backlog 2027 |
-| Particle Filter / MCL | ±1 cm | ~500 µs | high | overkill "for a court of 1.83×2.43 m with 4 orthogonal walls" |
+| Particle Filter / MCL | ±1 cm | ~500 µs | high | overkill "for a field of 1.83×2.43 m with 4 orthogonal walls" |
 
-**Honest state (HOST-VERIFIED):** algorithm tested (14 host tests) but **HW validation pending (TASK-035)** — today the pose never comes out "valid" (ToF only on Y axis) and `main_top` uses the direct heading from the IMU. **The root cause is electrical, not algorithmic:** the XSHUT/LPn pads of the 4 ToF came **unrouted on the PCB TOP rev 1.0** (§1.3), so the 4 ToF enumerate today **by a manual bodge** (LP on pins {9,10,11,12}). That bodge is fragile and left pin conflicts (pin 10 collides with the role dipswitch). Routing the XSHUT on the PCB is the **item P0 of the wishlist for TOP rev 1.1** (post-Incheon): until then, complete trilateration (the 4 walls simultaneously) remains waiting for stable hardware, not software. Cross with §1.3.
+**Honest state (VERIFIED ON HOST):** algorithm tested (14 host tests) but **HW validation pending (TASK-035)** — today the pose never comes out "valid" (ToF only on Y axis) and `main_top` uses the direct heading from the IMU. **The root cause is electrical, not algorithmic:** the XSHUT/LPn pads of the 4 ToF came **unrouted on the TOP PCB rev 1.0** (§1.3), so the 4 ToF enumerate today **by a manual bodge** (LP on pins {9,10,11,12}). That bodge is fragile and left pin conflicts (pin 10 collides with the role dipswitch). Routing the XSHUT on the PCB is the **item P0 on the wishlist of TOP rev 1.1** (post-Incheon): until then, complete trilateration (the 4 walls simultaneously) remains waiting for stable hardware, not software. Cross with §1.3.
 
 ## 3.6 Symmetric broadcast DOWN with loss detection
 
-DOWN broadcasts 3 frames to CENTRAL (Serial1) **and** TOP (Serial5): `LineStatusV2` 0x10 @200 Hz + `Pose2D` 0x11 @100 Hz + `Velocity2D` 0x12 @100 Hz, with **monotonic SEQ per link** (the receiver detects loss by SEQ gap). Implemented in 3 layers (transport / drive-straight OTOS / cross_track real), all with exact fallback.
+DOWN broadcasts 3 frames to CENTRAL (Serial1) **and** TOP (Serial5): `LineStatusV2` 0x10 @200 Hz + `Pose2D` 0x11 @100 Hz + `Velocity2D` 0x12 @100 Hz, with **monotonic SEQ per link** (the receiver detects loss by SEQ gap). Implemented in 3 layers (transport / drive-straight OTOS / real cross_track), all with exact fallback.
 
-## 3.7 Layered fail-safe and watchdogs (with numbers)
+## 3.7 Layered fail-safes and watchdogs (with numbers)
 
 | Mechanism | Behavior | Target number / state |
 |---|---|---|
-| Direct bus DOWN→CENTRAL | Brake when leaving the field in 1 UART hop | < 15 ms (vs ~25 ms for 2 UARTs) |
+| Direct bus DOWN→CENTRAL | Brake when leaving field in 1 hop UART | < 15 ms (vs ~25 ms for 2 UARTs) |
 | WorldSnapshot watchdog | No frame in 500 ms → safe mode (motors stopped) | 500 ms |
 | LINE_URGENT watchdog | No frame in 500 ms → blind line strategy | 500 ms |
 | Referee fail-safe | Loose cable → both pins LOW → STOP | — |
 | Anti sign-flip clamp | `omega·100` ≤ 32767 (int16) | clamp ≤ 327 |
-| **Link TOP→CENTRAL** | Snapshot with CRC16 + SEQ; the receiver discards corrupt frame and detects loss by SEQ gap | **BENCH-VALIDATED 2026-06-14: 66 Hz, crc=0, seqGap=0** |
-| **Turn off a lying sensor (EEPROM)** | USB command deactivates the camera/BNO/ToF that sends garbage (e.g. the ghost ball from the dual camera); persists through power-cycle | HOST-VERIFIED (A2.1, §1.3); closed on bench |
-| **Physical start button** | Disabled by default in ALL CENTRAL envs (`-DCENTRAL_ENABLE_PHYSICAL_BUTTON`, which **no env defines**); start by judge's serial keyboard + referee via GPIO | Changed after the button got stuck on GO on 2026-06-12; competition envs remain byte-identical |
+| **Link TOP→CENTRAL** | Snapshot with CRC16 + SEQ; the receiver discards corrupt frame and detects loss by SEQ gap | **VALIDATED ON BENCH 2026-06-14: 66 Hz, crc=0, seqGap=0** |
+| **Turn off a lying sensor (EEPROM)** | USB command deactivates the camera/BNO/ToF that sends garbage (e.g., the ghost ball from the dual camera); persists through power-cycle | VERIFIED ON HOST (A2.1, §1.3); closed on bench |
+| **Physical start button** | Disabled by default in ALL environments of the CENTRAL (`-DCENTRAL_ENABLE_PHYSICAL_BUTTON`, which **no env defines**); start by serial keyboard of the judge + referee via GPIO | Changed after the button got stuck on GO on 2026-06-12; competition environments byte-identical |
 
-## 3.8 Version control: multi-agent development and auditing
+## 3.8 Version control: multi-agent development and audit
 
 **Decision:** development in **4 parallel branches** `agent/{central, down, top, vision}` with git worktrees, coordinated merges with green gate; **shared** repo with the human team pushing directly to `origin/main`.  
 **Why:** allows working on 4 subsystems in parallel without collision and leaves a clear audit trail; commits that break contract are signed **[WIRE BREAKING]**.  
-**Data:** historical development in branches `agent/{central, down, top, vision}` (already merged into `main` and deleted from `origin`; today `origin` retains `main` + active bench branches). Verifiable examples in the history: `24bd417` "WorldSnapshot v3 [WIRE BREAKING]", `d230de5` "camera contract v2 [WIRE BREAKING]", `840f2e4` "merge agent/down → main". Collaboration rule: **`git fetch` + `git merge origin/main` before pushing** (after a non-fast-forward collision).
+**Data:** historical development in branches `agent/{central, down, top, vision}` (already merged into `main` and deleted from `origin`; today `origin` keeps `main` + active bench branches). Verifiable examples in the history: `24bd417` "WorldSnapshot v3 [WIRE BREAKING]", `d230de5` "camera contract v2 [WIRE BREAKING]", `840f2e4` "merge agent/down → main". Collaboration rule: **`git fetch` + `git merge origin/main` before pushing** (after a non-fast-forward collision).
 
-**Adversarial auditing as part of the process:** parallel auditing of **20 subsystems** (each by an independent engineer; HIGHs passed through a 2nd skeptical reviewer). Verdict: **15/20 "solid", 4 "minor-issues", 0 critical; 2 HIGH, 9 MEDIUM, ~40 LOW, 0 false positives** (`research/in-progress/2026-06-04-analisis-paralelo-modulos.md`).
+**Adversarial audit as part of the process:** parallel audit of **20 subsystems** (each by an independent engineer; the HIGH passed through a 2nd skeptical reviewer). Verdict: **15/20 "solid", 4 "minor-issues", 0 critical; 2 HIGH, 9 MEDIUM, ~40 LOW, 0 false positives** (`research/in-progress/2026-06-04-analisis-paralelo-modulos.md`).
 
 ## 3.9 Anti-entropy documentation discipline
 
 Three living indexes combat doc drift: `FUENTES-DE-VERDAD.md` (a canonical doc per topic, rule: whoever creates/exceeds a doc updates the table in the same commit), `MAPA-DE-DATOS.md` (each message: type/size/transport/pin/freq/who-fills/who-consumes) and `ESTADO-ACTUAL.md` (1st mandatory reading). **Explicit truth hierarchy:** if a doc contradicts the code (`types.h`/`proto.h`) or the wiring, that source wins.
 
-> **[GAP — software · features code-complete not validated in HW]** Honest declaration: the following features are **HOST-VERIFIED (they enter the 858 tests) but NOT yet validated in hardware** — they are finished code, not behavior proven on the robot: trilateration (TASK-035), goalkeeper anticipating (tuning `lookahead_s`/`max_lead_mm`), strafe by cross_track (axis/sign — and the strafe with backward-to-goal `_strafe_bb`, bench 2026-06-14: the FSM sequence worked but the heading control still does not hold the front, review 2026-06-15), drive-straight OTOS, failover of the dead BNO (IMU-1 HIGH), persistent config in EEPROM (A2.1). **Real blocker #1:** the **vision without recalibrating LAB+homography** for Incheon (TASK-022) — the robot does not see the ball until calibrated on bench. CPU loads and latencies are **design targets, not measured with oscilloscope**. **[PHOTO: suite of 858 host tests in green; bench diag decoding WorldSnapshot.]**
+> **[GAP — software · features code-complete without validating in HW]** Honest declaration: the following features are **VERIFIED ON HOST (they enter the 858 tests) but NOT yet validated in hardware** — they are finished code, not behavior proven on the robot: trilateration (TASK-035), goalkeeper that anticipates (tune `lookahead_s`/`max_lead_mm`), strafe by cross_track (axis/sign — and the strafe with backward-to-goal `_strafe_bb`, bench 2026-06-14: the FSM sequence worked but the heading control still does not hold the front, review 2026-06-15), drive-straight OTOS, failover of the dead BNO (IMU-1 HIGH), persistent config in EEPROM (A2.1). **Real blocking #1:** the **vision without recalibrating LAB+homography** for Incheon (TASK-022) — the robot does not see the ball until calibrated on bench. CPU loads and latencies are **design objectives, not measured with oscilloscope**. **[PHOTO: suite of 858 host tests in green; bench diag decoding WorldSnapshot.]**
 
 ## 3.10 Testing, calibration, and monitoring software (PC app + USB telemetry)
 
-We built a **PC tool to monitor and calibrate the boards on bench** that turns the debug of "reading 32 raw numbers in the Serial Monitor" into something **visual and error-proof**. It is not a separate diagnostic sketch: the telemetry lives **within the competition firmware itself**, gated by a build flag (at the base, `-DDOWN_USB_MONITOR`; at the top, `-DTOP_DEBUG_TELEMETRY`), and **emits structured telemetry via USB** (JSON Lines format, versioned contract) without touching the inter-board UARTs. At the base, the match binary **starts asleep** (does not emit anything) and the telemetry **activates itself**: when connecting the app `monitor-base` via USB (sends STREAM ON), or pressing ENTER on a raw serial monitor (stream for a few seconds). Thus, **a single binary** serves for competition and for diagnosis —the cost of the asleep telemetry is negligible— and that is verified diff by diff.
+We built a **PC tool to monitor and calibrate the boards on bench** that turns the debug of "read 32 raw numbers in the Serial Monitor" into something **visual and error-proof**. It is not a separate diagnostic sketch: the telemetry lives **within the competition firmware itself**, gated by a build flag (at the base, `-DDOWN_USB_MONITOR`; at the upper, `-DTOP_DEBUG_TELEMETRY`), and **emits structured telemetry via USB** (JSON Lines format, versioned contract) without touching the inter-board UARTs. At the base, the match binary **starts asleep** (does not emit anything) and the telemetry **activates itself**: when connecting the app `monitor-base` via USB (sends STREAM ON), or pressing ENTER on a raw serial monitor (stream for a few seconds). Thus, **a single binary** serves for competition and for diagnosis — the cost of the asleep telemetry is negligible — and that is verified diff by diff.
 
-**What it emits is what the firmware ALREADY computes**, not invented data: below, the raw ring of 32 sensors + its calibration per sensor, the exact `LineStatusV2` that travels to CENTRAL, and the OTOS odometry (including reading **each OTOS separately**, to see the left/right differential); above, the cameras (ball + 2 goals), the 2 IMUs, the 4 ToFs + ultrasound and the merged `WorldSnapshot` that TOP sends to the brain.
+**What it emits is what the firmware ALREADY computes**, not invented data: below, the raw ring of 32 sensors + its calibration per sensor, the exact `LineStatusV2` that travels to CENTRAL, and the OTOS odometry (including the reading of **each OTOS separately**, to see the left/right differential); above, the cameras (ball + 2 goals), the 2 IMUs, the 4 ToFs + ultrasonic and the merged `WorldSnapshot` that TOP sends to the brain.
 
-The app (`tools/monitor-base/`, Python, no dependencies outside of the stdlib) offers **3 views**: (1) **base** — the ring of 32 sensors in its **real PCB geometry**, the detected line, and the **assisted calibration** (capture green/white, mark dead/stuck sensors in red, save to EEPROM); (2) **goalkeeper** — a test of the line follower with **cross-track meter** (target 0 = centered over the goal line), the rear goal of the ring highlighted, and the **trail of the trajectory by OTOS** with each left/right sensor; (3) **field (TOP)** — a **robot-centric radar** with ball/goals/heading and the merged `WorldSnapshot` that travels to CENTRAL.
+The app (`tools/monitor-base/`, Python, without dependencies outside of the stdlib) offers **3 views**: (1) **base** — the ring of 32 sensors in its **real PCB geometry**, the detected line, and the **assisted calibration** (capture green/white, mark dead/stuck sensors in red, save to EEPROM); (2) **goalkeeper** — a test of the line follower with **cross-track meter** (target 0 = centered on the goal line), the rear goal of the ring highlighted, and the **trail of the trajectory by OTOS** with each left/right sensor; (3) **field (TOP)** — a **robot-centric radar** with ball/goals/heading and the `WorldSnapshot` that travels to CENTRAL.
 
-**New (2026-06-14) — health dashboard per sensor, BENCH-VALIDATED.** We added a 4th view, `python -m monitor_base --top-salud`: a **health dashboard of the TOP board** with a **traffic light per sensor** (OK / CHECK / FAILURE / NO DATA + the reason) for cameras (including the **ghost ball** due to front↔back disagreement), the 2 BNOs + heading, the 4 ToFs, ultrasound, OTOS, line, and snapshot; plus a **grid of the 16 zones (4×4) of each ToF** and **configuration buttons** (turn off camera/BNO/US/ToF, fix position of each ToF, save to EEPROM). It was
+**The new (2026-06-14) — health dashboard per sensor, VALIDATED ON BENCH.** We added a 4th view, `python -m monitor_base --top-salud`: a **health dashboard of the TOP board** with a **traffic light per sensor** (OK / CHECK / FAILURE / NO DATA + the reason) for cameras (including the **ghost ball** due to front↔back disagreement

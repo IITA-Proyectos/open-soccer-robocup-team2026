@@ -30,7 +30,7 @@ Lee esta biblioteca SIEMPRE que el usuario pida ayuda con:
 - Multi-cámara y World Model, módulo de comunicación
 - Movimiento omnidireccional, detección de pelota, navegación
 
-## Índice de Skills (12)
+## Índice de Skills (18)
 
 ### Estrategia y Comportamiento (6)
 
@@ -48,20 +48,36 @@ Lee esta biblioteca SIEMPRE que el usuario pida ayuda con:
 |-------|---------|--------|
 | **📡 RCJ Communication Module** | `skills/communication-module-integration.md` | **⭐⭐⭐ Start/stop obligatorio, UART inter-robot, SuperTeam** |
 
-### Visión y Percepción (3)
+### Visión y Percepción (5)
 
 | Skill | Archivo | Resumen |
 |-------|---------|--------|
 | **👁️ Multi-Camera World Model** | `skills/multi-camera-world-model.md` | **⭐⭐⭐ WorldModel: fusión multi-cámara, Kalman oclusión, WiFi, rivales** |
 | **🎯 Soccer Ball Detection** | `skills/soccer-ball-detection.md` | **⭐⭐ OpenMV: golf ball naranja LAB, arcos cyan/magenta** |
 | **📡 LiDAR vs ToF** | `skills/lidar-vs-tof-positioning.md` | **⭐⭐ VL53L1X vs RPLidar, reglas 2026 permiten IR** |
+| **🧠 YOLO Vision Pipeline** | `skills/yolo-vision-pipeline.md` | **⭐⭐⭐ Detección por IA usando YOLO/FOMO en OpenMV/RPi para iluminación robusta** |
+| **📍 Particle Filter MCL** | `skills/particle-filter-localization.md` | **⭐⭐⭐ Localización global combinando Odometría, IMU, LiDAR y Visión (Líneas)** |
 
-### Movimiento (2)
+### Movimiento (3)
 
 | Skill | Archivo | Resumen |
 |-------|---------|--------|
 | **🔄 OmniDriveBase** | `skills/omni3-drive-base.md` | **⭐⭐⭐ API DriveBase 3 omni: drive(), move(), turn(), go_to()** |
 | **🏠 Soccer Field Navigation** | `skills/soccer-field-navigation.md` | **⭐⭐ Campo 182×243cm, líneas IR, zonas, heading** |
+| **🏎️ Advanced Kinematics** | `skills/advanced-kinematics-pathplanning.md` | **⭐⭐⭐ Path planning con Campos de Potencial y Curvas Bézier, Evasión** |
+
+### Arquitectura de Software (1)
+
+| Skill | Archivo | Resumen |
+|-------|---------|--------|
+| **⏱️ RTOS Firmware** | `skills/rtos-firmware-architecture.md` | **⭐⭐⭐ FreeRTOS, tareas concurrentes, determinismo a 100Hz+** |
+
+### Hardware y Mecatrónica Avanzada (2)
+
+| Skill | Archivo | Resumen |
+|-------|---------|--------|
+| **🔄 Dribbler Mechanics** | `skills/dribbler-mechanics-control.md` | **⭐⭐⭐ Diseño de rodillos de silicona y control PID dinámico** |
+| **⚡ Kicker Solenoid** | `skills/kicker-solenoid-optimization.md` | **⭐⭐⭐ Circuito Boost (250V), IGBT switching y modulación de fuerza** |
 
 ## Documentación técnica (6)
 

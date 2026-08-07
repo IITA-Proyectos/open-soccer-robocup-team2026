@@ -71,6 +71,19 @@ Sistema de tareas asignadas a miembros del equipo para Incheon 2026.
 | [TASK-305](2026-06-06-task-305-app-pc-monitoreo-calibracion-base.md) | **App PC monitoreo + calibración de la BASE (anillo de 32 + línea + LineStatusV2)** ⭐ | Virginia + Gustavo | **P0** | in-progress — v1 app Python (sim+pytest verde; cierre en banco) |
 | [TASK-205](2026-06-06-task-205-top-debug-telemetria-y-app-monitoreo.md) | Modo DEBUG/telemetría TOP + app PC de monitoreo superior | Virginia | P1 | pending |
 | [TASK-105](2026-06-12-task-105-central-telemetria-y-app-monitoreo-visual.md) | Modo DEBUG/telemetría CENTRAL + app PC visual de la FSM/decisiones (fase 3, pedida por Elías) | a confirmar | P2 | pending |
+| [TASK-043](2026-07-25-task-043-definir-motor-upgrade-drivetrain.md) | **Definir el motor del upgrade de tracción** (modelo · caja sí/no · acople de eje · encoder sí/no) ⭐ bloquea la compra | Gustavo | **P0** | pending |
+| [TASK-044](2026-07-25-task-044-medir-robot-y-reglamento-roboliga.md) | **Medir el robot** (Ø/alto/peso/rueda/μ/corriente) **+ confirmar reglamento Roboliga 2026** | Gustavo + Elías | **P0** | pending |
+
+> **Nota 2026-07-25 (post-Incheon → Roboliga 2026):** abiertas **TASK-043** (definir el motor del
+> upgrade de tracción) y **TASK-044** (medir el robot + reglamento Roboliga). Ambas **P0 y previas
+> a cualquier compra**. Contexto: el mundial de Incheon terminó y se está armando el robot para
+> **Roboliga 2026** (~noviembre), que es el que iría a **RoboCup 2027 Alemania**. Candidato en
+> evaluación: **Nanotec DF45** (BLDC plano 24 V), el que usan equipos de RoboCup Small Size League.
+> ⚠️ Dos hallazgos que afectan a TODO el equipo: (1) la liga se renombró a **Soccer Vision** y su
+> límite bajó a **18,0 × 18,0 cm** — hay indicios de que el robot actual **no entraría**;
+> (2) el tope de tensión de 15 V fue **eliminado en 2024**, hoy rige **48 V DC** → un motor de
+> 24 V es **legal**. Retoma el research **HW-010** (`research/backlog/investigar-motores-brushless-encoders.md`),
+> que estaba en backlog desde 2026-03-20 con preguntas y sin respuestas.
 
 > **Nota 2026-06-06:** abierto el sistema de **monitoreo/telemetría USB + apps PC** (próximo desarrollo PRIORITARIO). Diseño en `research/in-progress/2026-06-06-diseno-monitoreo-telemetria-usb-y-apps-pc.md`. Orden: **TASK-304 (firmware base) → TASK-305 (app base)** [P0] ; luego TASK-205 (superior) y TASK-105 (CENTRAL, P2). Es la versión USB de hoy del roadmap de telemetría "estilo F1" (CANbus + ESP32, `MEJORAS-PENDIENTES.md` (e) E4).
 

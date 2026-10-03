@@ -40,6 +40,9 @@
    se desvía de costado (el trim del pateo NO se aplica hacia atrás).
 4. **Cortes:** (a) poner la pelota adelante durante el empuje → tiene que cortar y seguirla;
    (b) levantar el robot (DOWN "lifted") → no debe seguir retrocediendo a ciegas.
+4b. **Vuelta a su lugar:** después del empuje tiene que despegarse de la línea, girar mirando al arco rival y
+   retroceder lento hasta la línea de SU área (como tras un despeje). Mirar que vuelva al arco y no se quede
+   donde terminó el empuje; y que la pelota empujada (atrás) NO corte esa vuelta.
 5. **Loop:** con la pelota quieta en la línea detrás, ver si "bombea" (empuja, avanza, empuja…).
    Perilla `AMIX_T_EMPUJE_COOLDOWN` (2000 ms) en `amix_config.h`.
 

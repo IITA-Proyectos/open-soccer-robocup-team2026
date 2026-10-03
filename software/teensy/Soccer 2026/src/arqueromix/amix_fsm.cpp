@@ -70,6 +70,10 @@ static bool s_kick_corto = false;
 #ifdef ARQMIX_EMPUJE_TRASERA
 // EMPUJE CON LA TRASERA: millis del fin del último empuje (para el cooldown anti-loop). 0 = nunca empujó.
 static unsigned long s_empuje_fin_ms = 0;
+// VOLVER A SU LUGAR tras el empuje (pedido 2026-10-03): true desde que termina el empuje hasta que termina
+// el retroceso a su lugar. Desvía la salida de inicio_avanzar a la MISMA vuelta del despeje (orientar_frente
+// → PATEANDO_atras) y hace que ese retroceso NO corte por la pelota de ATRÁS (la que se acaba de empujar).
+static bool s_volviendo_de_empuje = false;
 #endif
 
 // ---- Helpers de lectura (reemplazan las globales seriales/analógicas 2025) ----
@@ -196,6 +200,7 @@ void amix_fsm_tick() {
         s_buscar_avance_until_ms = 0;
 #ifdef ARQMIX_EMPUJE_TRASERA
         s_empuje_fin_ms = 0;       // GO nuevo → sin cooldown heredado del partido anterior
+        s_volviendo_de_empuje = false;
 #endif
 #ifdef ARQMIX_REHOME_NO_BALL
         s_rehome_ref_ms = millis();
@@ -295,6 +300,16 @@ void amix_fsm_tick() {
                 const bool safety            = dt >= AMIX_T_INICIO_AVANCE_SAFETY;
                 if ((impulso_minimo_ok && ya_salio_de_linea) || safety) {
                     millis_inicio_estado = millis();
+#ifdef ARQMIX_EMPUJE_TRASERA
+                    if (s_volviendo_de_empuje) {
+                        // Venía de EMPUJAR hacia atrás: ya despegó de la línea → VOLVER A SU LUGAR igual que tras
+                        // el despeje: mirar al arco rival (orientar_frente) y retroceder hasta la línea de su área
+                        // (PATEANDO_atras) → acomodar → esperar.
+                        parar();
+                        estado = Estado::orientar_frente;
+                        break;
+                    }
+#endif
                     // ANTES de quedar quieto se ACOMODA (despega de la línea + se orienta de frente).
                     estado = Estado::acomodar_linea;
                 }
@@ -306,6 +321,9 @@ void amix_fsm_tick() {
         // SIMPLE a propósito: NADA de patrulla / rebote / profundidad (eso generaba movimiento parásito —
         // banco Virginia 2026-06-21). Solo 3 ramas. Reusa la secuencia de despeje (PATEANDO_*).
         case Estado::esperar_quieto:
+#ifdef ARQMIX_EMPUJE_TRASERA
+            s_volviendo_de_empuje = false;   // ya está esperando en su lugar → la vuelta del empuje terminó
+#endif
 #ifdef ARQMIX_REHOME_NO_BALL
             // RE-HOMING POR PÉRDIDA DE PELOTA (test María 2026-07-03): si VE la pelota, resetea el reloj; si pasan
             // AMIX_T_REHOME_NO_BALL ms SIN verla, vuelve HACIA ATRÁS hasta la línea + escape (reusa el homing:
@@ -506,7 +524,15 @@ void amix_fsm_tick() {
                 // AMIX_RETRO_CUT_DIST_MM), corta el retroceso y vuelve a esperar_quieto, que ya sabe
                 // seguirla / posicionarse / despejar. Aplica a las 3 variantes del retroceso (por línea,
                 // por tiempo y base). NO toca el homing del GO (inicio_retroceder es otro estado).
+#ifdef ARQMIX_EMPUJE_TRASERA
+                // Volviendo de un EMPUJE: la pelota de ATRÁS es la que se acaba de empujar → NO corta por ella
+                // (si no, cortaría al toque y nunca volvería a su lugar). Sí corta si aparece una pelota AL FRENTE.
+                const bool ignorar_pelota_empujada =
+                    s_volviendo_de_empuje && fabsf(g_aio.angulo_pelota_deg) > AMIX_EMPUJE_ANG_MIN_DEG;
+                if (haypelota && dist_pelota_mm() <= AMIX_RETRO_CUT_DIST_MM && !ignorar_pelota_empujada) {
+#else
                 if (haypelota && dist_pelota_mm() <= AMIX_RETRO_CUT_DIST_MM) {
+#endif
                     parar();
                     millis_inicio_estado = millis();
                     estado = Estado::esperar_quieto;
@@ -645,7 +671,10 @@ void amix_fsm_tick() {
         // Retrocede RECTO con la MISMA POTENCIA que el golpe del despeje (retroceder_empuje: rampa 0 →
         // AMIX_KICK_VEL_FINAL, sentido del homing ya validado) empujando la pelota con la cola, HASTA VER LA LÍNEA.
         // ⚠️ A esa potencia (191 vs 106 del homing) la INERCIA al ver la línea es mayor: parar() es rueda libre →
-        // puede pasarse de la línea. Mirarlo en banco (TASK-124); si se pasa, agregar freno activo como frenar_patada. Al verla, sale como el homing (inicio_avanzar → acomodar → esperar).
+        // puede pasarse de la línea. Mirarlo en banco (TASK-124); si se pasa, agregar freno activo como frenar_patada.
+        // Al ver la línea VUELVE A SU LUGAR como tras el despeje: inicio_avanzar (despegarse de la línea) →
+        // orientar_frente (mirar al arco rival) → PATEANDO_atras (retroceso lento hasta la línea de su área) →
+        // acomodar → esperar_quieto. Lo encadena s_volviendo_de_empuje.
         // NO corta por "dejé de ver la pelota": pegada a la cola la trasera puede perderla (ángulo ciego
         // bajo la cámara) y el empuje tiene que seguir hasta la línea. SÍ corta si:
         //   - aparece el ARCO PROPIO (empujar hacia atrás sería meterla en el arco propio) → esperar_quieto;
@@ -667,6 +696,7 @@ void amix_fsm_tick() {
                 (millis() - millis_inicio_estado >= AMIX_T_EMPUJE_SAFETY)) {
                 parar();
                 s_empuje_fin_ms = millis();
+                s_volviendo_de_empuje = true;                // después de despegarse → volver a su lugar
                 millis_inicio_estado = millis();
                 estado = Estado::inicio_avanzar;             // despegarse de la línea, como el homing
             }

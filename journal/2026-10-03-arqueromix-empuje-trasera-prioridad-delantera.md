@@ -86,6 +86,22 @@ heredaba `-DARQMIX_AVOID_OBSTACLE` del #4 (frena y espera si `min_obstacle_mm` =
 empuje hacia atrás ni frenar al arquero si los ToF ven la pelota (el chequeo pendiente de TASK-121 deja de
 aplicar a este env).
 
+## Ajuste posterior: después del empuje VUELVE A SU LUGAR como tras el despeje
+
+Pedido: "agregá la misma lógica de volver a su lugar con el empuje hacia atrás". Antes, al ver la línea el
+empuje salía como el homing (avanzar → acomodar → esperar) y se quedaba DONDE terminó el empuje. Ahora:
+
+`empujar_atras` → (línea) → `inicio_avanzar` (despegarse) → **`orientar_frente`** (mirar al arco rival) →
+**`PATEANDO_atras`** (retroceso lento hasta la línea de su área) → `acomodar_linea` → `acomodar_orientar` →
+`esperar_quieto`.
+
+Lo encadena `s_volviendo_de_empuje` (se prende al terminar el empuje, se apaga al llegar a `esperar_quieto` o
+en cada GO). Detalle: `PATEANDO_atras` corta si ve la pelota (`ARQMIX_RETRO_CUT_BALL`); volviendo de un empuje,
+la pelota de ATRÁS es la que se acaba de empujar → ese retroceso **ignora la pelota de atrás** y sólo corta
+por una pelota AL FRENTE (si no, cortaría al toque y nunca volvería). Por qué despegarse primero: el empuje
+termina SOBRE una línea y `PATEANDO_atras` para al ver línea → pararía en el acto. Sin el flag: preprocesado de
+`amix_fsm.cpp` idéntico (verificado en base, #9 y RETRO_BRAKE).
+
 ## Pendiente
 
 Banco completo → [`team-tasks/2026-10-03-task-124-banco-arqueromix-empuje-trasera.md`](../team-tasks/2026-10-03-task-124-banco-arqueromix-empuje-trasera.md).

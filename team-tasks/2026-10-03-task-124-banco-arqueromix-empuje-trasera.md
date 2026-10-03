@@ -17,6 +17,9 @@
    retrocede empujándola con la cola HASTA LA LÍNEA → sale como el homing (avanza, se acomoda, espera).
    Corta si aparece el arco propio, si la pelota pasa al frente, si DOWN no está fresco o a los 3 s.
 
+> **Anti-choque apagado** en `central_robot2_arqueromix_empuje` (2026-10-03): el arquero ya NO frena por
+> ultrasonido/ToF. Mirar en banco que no choque de frente con robots rivales sin ese freno.
+
 ## Cómo validar (en orden)
 
 0. **`pio run` de los dos envs** en la PC del taller (en la sesión cloud no se pudo: registry bloqueado).

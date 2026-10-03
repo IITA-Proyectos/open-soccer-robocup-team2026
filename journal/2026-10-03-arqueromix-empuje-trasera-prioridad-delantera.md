@@ -76,6 +76,16 @@ estado; `parar()` la cierra al entrar/salir) pero con el patrón de retroceso. *
 pelota. Si pasa en banco: freno activo corto, como `frenar_patada`. Sin el flag, `amix_motors.cpp` y
 `amix_fsm.cpp` siguen con preprocesado idéntico al anterior.
 
+## Ajuste posterior: anti-choque APAGADO en el env del empuje
+
+Pedido: "si está activo en este momento, desactivalo" (el anti-choque por ultrasonido). Estaba activo: el #10
+heredaba `-DARQMIX_AVOID_OBSTACLE` del #4 (frena y espera si `min_obstacle_mm` = min(ultrasonido + 4 ToF)
+< 150 mm). Se sacó el flag **sólo** de `central_robot2_arqueromix_empuje`; el #9 y anteriores lo conservan
+(sin cambio de binario). Todo el código del anti-choque está detrás del flag (`amix_fsm.cpp`, `amix_comm.cpp`,
+`amix_io.h`) → sin el flag no se lee ni se usa la distancia. Efecto lateral buscado: ya no puede congelar el
+empuje hacia atrás ni frenar al arquero si los ToF ven la pelota (el chequeo pendiente de TASK-121 deja de
+aplicar a este env).
+
 ## Pendiente
 
 Banco completo → [`team-tasks/2026-10-03-task-124-banco-arqueromix-empuje-trasera.md`](../team-tasks/2026-10-03-task-124-banco-arqueromix-empuje-trasera.md).

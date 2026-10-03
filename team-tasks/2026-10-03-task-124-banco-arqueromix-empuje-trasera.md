@@ -10,6 +10,14 @@
   - Escape: TOP `top_robot2_pri` + CENTRAL `central_robot2_arqueromix_recto_cortaretro` (#9).
 - **Journal:** `journal/2026-10-03-arqueromix-empuje-trasera-prioridad-delantera.md`
 
+## Estado al cierre del 2026-10-03
+
+- Todo en la rama `claude/relaxed-heisenberg-lvlcvd` (último commit `ac78c42`), **todavía NO en `main`**.
+- Hoy se flasheó en el taller hasta el empuje a potencia de pateo (TOP `top_robot2_pri_frontprio` + CENTRAL
+  `central_robot2_arqueromix_empuje`). Sin resultados de banco registrados.
+- **Queda para probar el sábado 2026-10-10:** el último cambio (`ac78c42`, la vuelta a su lugar tras el empuje,
+  paso 4b) + el anti-choque apagado (`7f45c85`). Antes de flashear: `git pull` y confirmar `ac78c42`.
+
 ## Qué cambia
 
 1. **TOP:** si las DOS cámaras ven "pelota", manda la DELANTERA (antes promediaba → pelota fantasma en el medio).

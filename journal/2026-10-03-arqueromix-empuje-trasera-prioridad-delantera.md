@@ -102,6 +102,12 @@ por una pelota AL FRENTE (si no, cortaría al toque y nunca volvería). Por qué
 termina SOBRE una línea y `PATEANDO_atras` para al ver línea → pararía en el acto. Sin el flag: preprocesado de
 `amix_fsm.cpp` idéntico (verificado en base, #9 y RETRO_BRAKE).
 
+## Cierre del día
+
+Commits en `claude/relaxed-heisenberg-lvlcvd` (sin mergear a `main`): `5d08fa7` empuje + prioridad delantera ·
+`267f3f9` potencia del pateo · `7f45c85` anti-choque apagado · `ac78c42` vuelta a su lugar. El último cambio
+queda **para probar en banco el sábado 2026-10-10** (TASK-124).
+
 ## Pendiente
 
 Banco completo → [`team-tasks/2026-10-03-task-124-banco-arqueromix-empuje-trasera.md`](../team-tasks/2026-10-03-task-124-banco-arqueromix-empuje-trasera.md).

@@ -86,5 +86,11 @@ void retroceder_rumbo_opp(float goal_opp_angle, bool goal_opp_visible);
 // para no acoplarse al retroceso del despeje y poder darle vuelta el sentido sin tocar el resto.
 void retroceder_inicio();
 
+#ifdef ARQMIX_EMPUJE_TRASERA
+// Empuje hacia ATRÁS de la cámara trasera: MISMA potencia que el golpe del despeje (rampa 0 → AMIX_KICK_VEL_FINAL,
+// igual que avanzar_patear) con el sentido del retroceso del homing (AMIX_INICIO_RETRO_SIGN).
+void retroceder_empuje();
+#endif
+
 }  // namespace arqmix
 }  // namespace iitasoccer

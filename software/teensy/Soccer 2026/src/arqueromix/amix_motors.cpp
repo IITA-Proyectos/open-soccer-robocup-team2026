@@ -239,5 +239,33 @@ void retroceder_inicio() {
     amix_set_motor(2, 0);
 }
 
+#ifdef ARQMIX_EMPUJE_TRASERA
+// retroceder_empuje() — empuje hacia ATRÁS con la MISMA POTENCIA que el golpe del despeje (pedido 2026-10-03):
+// la MISMA rampa (0 → AMIX_KICK_VEL_FINAL, +AMIX_KICK_PASO cada AMIX_KICK_INTERVALO_MS) y el MISMO pico que
+// avanzar_patear(), pero con el patrón y el SENTIDO del retroceso del homing (M1=-, M2=+, × AMIX_INICIO_RETRO_SIGN,
+// ya validado en banco). Comparte el estado de la rampa con avanzar_patear (nunca corren a la vez y parar() la
+// cierra) → cada empuje arranca de 0. SIN el trim del pateo: el trim corrige un desvío medido AL PATEAR
+// ADELANTE; hacia atrás el desvío no está medido (si en banco se va de costado, se agrega uno propio).
+void retroceder_empuje() {
+    if (!s_kick_active) {           // (re)entrada a la rampa → arrancar de 0
+        s_kick_active  = true;
+        s_kick_vel     = 0;
+        s_kick_prev_ms = millis();
+    }
+    const unsigned long now = millis();
+    if (now - s_kick_prev_ms >= (unsigned long)AMIX_KICK_INTERVALO_MS) {
+        s_kick_prev_ms = now;
+        if (s_kick_vel < AMIX_KICK_VEL_FINAL) {
+            s_kick_vel += AMIX_KICK_PASO;
+            if (s_kick_vel > AMIX_KICK_VEL_FINAL) s_kick_vel = AMIX_KICK_VEL_FINAL;
+        }
+        const int p = s_kick_vel * AMIX_INICIO_RETRO_SIGN;
+        amix_set_motor(0, -p);   // M1
+        amix_set_motor(1, +p);   // M2 (opuesto = retroceso RECTO)
+        amix_set_motor(2, 0);    // M3
+    }
+}
+#endif
+
 }  // namespace arqmix
 }  // namespace iitasoccer

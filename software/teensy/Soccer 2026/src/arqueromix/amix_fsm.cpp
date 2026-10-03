@@ -642,8 +642,10 @@ void amix_fsm_tick() {
 #ifdef ARQMIX_EMPUJE_TRASERA
         // ----------------------------------------------------
         // --- EMPUJE CON LA CÁMARA TRASERA (gateado, pedido 2026-10-03) ---
-        // Retrocede RECTO (misma primitiva y sentido que el homing, ya validados) empujando la pelota con la
-        // cola, HASTA VER LA LÍNEA. Al verla, sale como el homing (inicio_avanzar → acomodar → esperar).
+        // Retrocede RECTO con la MISMA POTENCIA que el golpe del despeje (retroceder_empuje: rampa 0 →
+        // AMIX_KICK_VEL_FINAL, sentido del homing ya validado) empujando la pelota con la cola, HASTA VER LA LÍNEA.
+        // ⚠️ A esa potencia (191 vs 106 del homing) la INERCIA al ver la línea es mayor: parar() es rueda libre →
+        // puede pasarse de la línea. Mirarlo en banco (TASK-124); si se pasa, agregar freno activo como frenar_patada. Al verla, sale como el homing (inicio_avanzar → acomodar → esperar).
         // NO corta por "dejé de ver la pelota": pegada a la cola la trasera puede perderla (ángulo ciego
         // bajo la cámara) y el empuje tiene que seguir hasta la línea. SÍ corta si:
         //   - aparece el ARCO PROPIO (empujar hacia atrás sería meterla en el arco propio) → esperar_quieto;
@@ -660,7 +662,7 @@ void amix_fsm_tick() {
                 estado = Estado::esperar_quieto;
                 break;
             }
-            retroceder_inicio();
+            retroceder_empuje();                      // MISMA potencia que el despeje (rampa 0→AMIX_KICK_VEL_FINAL), hacia atrás
             if (linea() || !g_aio.down_link_fresh ||
                 (millis() - millis_inicio_estado >= AMIX_T_EMPUJE_SAFETY)) {
                 parar();

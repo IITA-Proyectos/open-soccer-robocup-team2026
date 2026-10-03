@@ -32,7 +32,9 @@
    robot y el arco).
 3. **Empuje:** sin arco propio a la vista, pelota quieta ~20 cm detrás del robot → al GO debe
    retroceder empujándola, PARAR en la línea y avanzar para despegarse. Medir: ¿se pasa de la línea?
-   ¿pierde la pelota de costado?
+   ¿pierde la pelota de costado? El empuje va a la MISMA potencia que el despeje (rampa → 191): mirar si por
+   la inercia **se pasa de la línea** al frenar (si pasa → agregar freno activo, como `frenar_patada`) y si
+   se desvía de costado (el trim del pateo NO se aplica hacia atrás).
 4. **Cortes:** (a) poner la pelota adelante durante el empuje → tiene que cortar y seguirla;
    (b) levantar el robot (DOWN "lifted") → no debe seguir retrocediendo a ciegas.
 5. **Loop:** con la pelota quieta en la línea detrás, ver si "bombea" (empuja, avanza, empuja…).

@@ -35,7 +35,7 @@ Estado nuevo `empujar_atras`:
 | Paso | Condición |
 |---|---|
 | Entra (desde `esperar_quieto`) | pelota visible, \|áng\| > 90°, `goal_own_visible` = falso, DOWN fresco, pasó el cooldown |
-| Acción | `retroceder_inicio()` (misma primitiva y sentido que el homing, ya validados) |
+| Acción | `retroceder_empuje()`: MISMA potencia que el golpe del despeje (rampa 0 → `AMIX_KICK_VEL_FINAL`, 191 con +6%), con el sentido del homing (`AMIX_INICIO_RETRO_SIGN`, ya validado). Sin el trim del pateo (está medido sólo hacia adelante). |
 | Sale a `inicio_avanzar` | ve la línea · DOWN no fresco · 3 s sin línea |
 | Sale a `esperar_quieto` | aparece el arco propio · la pelota pasa al frente |
 
@@ -66,6 +66,15 @@ Estado nuevo `empujar_atras`:
 - `pio project config` resuelve los dos envs con los flags esperados.
 - ⚠️ **NO** se pudo correr `pio run`: el registry de PlatformIO está bloqueado por la política de red de la
   sesión cloud. Pendiente en la PC del taller (TASK-124 paso 0, con md5 de los binarios viejos).
+
+## Ajuste posterior (mismo día): potencia del empuje = la del pateo
+
+Pedido: "que el empuje hacia atrás lo haga con la misma potencia con la que patea hacia adelante". Primitiva
+nueva `retroceder_empuje()` en `amix_motors.cpp` (gateada): copia la rampa de `avanzar_patear()` (comparte su
+estado; `parar()` la cierra al entrar/salir) pero con el patrón de retroceso. **Riesgo nuevo:** a 191 de PWM
+(antes 106) la inercia al ver la línea es mayor y `parar()` es rueda libre → puede pasarse de la línea con la
+pelota. Si pasa en banco: freno activo corto, como `frenar_patada`. Sin el flag, `amix_motors.cpp` y
+`amix_fsm.cpp` siguen con preprocesado idéntico al anterior.
 
 ## Pendiente
 

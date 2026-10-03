@@ -467,5 +467,27 @@ constexpr float AMIX_BALL_VY_SIGN = +1.0f;
 constexpr float AMIX_ANTICIPA_VX_MIN = 50.0f;  // componente LATERAL mínima para anticipar (|vx| > esto)
 constexpr float AMIX_ANTICIPA_VY_MIN = 50.0f;  // componente de ACERCAMIENTO mínima (vy·signo > esto)
 
+#ifdef ARQMIX_EMPUJE_TRASERA
+// ============================================================
+// EMPUJE CON LA CÁMARA TRASERA (pedido 2026-10-03, gateado -DARQMIX_EMPUJE_TRASERA).
+// ----------------------------------------------------------------------------------
+// Si la pelota está ATRÁS del arquero (la vio la cámara TRASERA) y el TOP NO ve el arco PROPIO, el arquero
+// RETROCEDE empujándola con la cola HASTA DETECTAR LA LÍNEA; después reusa la salida del homing
+// (inicio_avanzar → acomodar → esperar). Hoy, con la pelota atrás, sólo se desliza de costado.
+// "La vio la trasera" se deduce del ÁNGULO: la CENTRAL no recibe qué cámara la vio, pero las dos cámaras
+// miran a lados opuestos → |áng| > 90° sólo puede venir de la trasera. Para que esto sea confiable el TOP
+// tiene que darle PRIORIDAD a la delantera (env top_robot2_pri_frontprio): si no, cuando ambas ven
+// "pelota" el TOP promedia y el ángulo resultante no dice de qué cámara vino.
+// Por qué "sin arco propio": si la trasera VE el arco propio, empujar hacia atrás es empujar hacia el
+// arco propio → ahí NO empuja (queda la conducta de hoy: strafe lateral).
+// ⚠️ NO validado en banco. Perillas <TITRAR EN BANCO>:
+constexpr float         AMIX_EMPUJE_ANG_MIN_DEG = 90.0f;   // |áng pelota| > esto = pelota ATRÁS (de la trasera)
+constexpr unsigned long AMIX_T_EMPUJE_SAFETY    = 3000;    // ms: tope si NUNCA ve la línea (no empujar a ciegas para siempre)
+constexpr unsigned long AMIX_T_EMPUJE_COOLDOWN  = 2000;    // ms tras terminar un empuje sin poder re-dispararlo:
+                                                           // al salir de la línea la pelota queda atrás otra vez →
+                                                           // sin esto entraría en loop línea↔adelante. Bajar si tarda
+                                                           // en reaccionar a una pelota nueva atrás; subir si "bombea".
+#endif
+
 }  // namespace arqmix
 }  // namespace iitasoccer

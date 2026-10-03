@@ -67,6 +67,11 @@ static bool s_rehome_activo = false;
 static bool s_kick_corto = false;
 #endif
 
+#ifdef ARQMIX_EMPUJE_TRASERA
+// EMPUJE CON LA TRASERA: millis del fin del último empuje (para el cooldown anti-loop). 0 = nunca empujó.
+static unsigned long s_empuje_fin_ms = 0;
+#endif
+
 // ---- Helpers de lectura (reemplazan las globales seriales/analógicas 2025) ----
 
 // Línea presente (== OR de los 3 sensores 2025; el DOWN ya agrega los 32).
@@ -102,6 +107,20 @@ static inline bool ball_alineada() {
 static inline bool ball_a_la_derecha() {
     return g_aio.angulo_pelota_deg > 0.0f;
 }
+#ifdef ARQMIX_EMPUJE_TRASERA
+// EMPUJE CON LA TRASERA: ¿disparar el empuje hacia atrás? Pelota visible ATRÁS (|áng| > 90° = sólo la
+// trasera puede verla ahí), el TOP NO ve el arco propio, DOWN fresco (sin línea no hay cómo cortar) y
+// pasó el cooldown desde el último empuje (si no, al despegarse de la línea re-dispararía en loop).
+static inline bool pelota_atras_para_empujar() {
+    const bool cooldown_ok = (s_empuje_fin_ms == 0) ||
+                             (millis() - s_empuje_fin_ms >= AMIX_T_EMPUJE_COOLDOWN);
+    return g_aio.ball_visible &&
+           (fabsf(g_aio.angulo_pelota_deg) > AMIX_EMPUJE_ANG_MIN_DEG) &&
+           !g_aio.goal_own_visible &&
+           g_aio.down_link_fresh &&
+           cooldown_ok;
+}
+#endif
 // ANTICIPACIÓN (S2): ¿la pelota se MUEVE hacia la derecha del robot? por el SIGNO de vx (flippable, banco).
 static inline bool ball_va_a_la_derecha() {
     return (g_aio.ball_vx_mm_s * AMIX_BALL_VX_SIGN) > 0.0f;
@@ -175,6 +194,9 @@ void amix_fsm_tick() {
         estado = Estado::inicio_lateral_izq;
         millis_inicio_estado = millis();
         s_buscar_avance_until_ms = 0;
+#ifdef ARQMIX_EMPUJE_TRASERA
+        s_empuje_fin_ms = 0;       // GO nuevo → sin cooldown heredado del partido anterior
+#endif
 #ifdef ARQMIX_REHOME_NO_BALL
         s_rehome_ref_ms = millis();
 #endif
@@ -299,6 +321,16 @@ void amix_fsm_tick() {
                 s_rehome_activo = true;   // marca: este retroceso es del RE-HOMING → puede cortar por pelota
 #endif
                 estado = Estado::inicio_retroceder;   // atrás hasta la línea + escape → vuelve a esperar
+                break;
+            }
+#endif
+#ifdef ARQMIX_EMPUJE_TRASERA
+            // EMPUJE CON LA TRASERA (gateado): pelota ATRÁS + sin arco propio a la vista + DOWN fresco (para poder
+            // ver la línea que corta el empuje) + fuera del cooldown → retroceder empujándola hasta la línea.
+            if (pelota_atras_para_empujar()) {
+                parar();
+                millis_inicio_estado = millis();
+                estado = Estado::empujar_atras;
                 break;
             }
 #endif
@@ -606,6 +638,39 @@ void amix_fsm_tick() {
                 estado = Estado::esperar_quieto;             // quieto, de frente al arco contrario
             }
             break;
+
+#ifdef ARQMIX_EMPUJE_TRASERA
+        // ----------------------------------------------------
+        // --- EMPUJE CON LA CÁMARA TRASERA (gateado, pedido 2026-10-03) ---
+        // Retrocede RECTO (misma primitiva y sentido que el homing, ya validados) empujando la pelota con la
+        // cola, HASTA VER LA LÍNEA. Al verla, sale como el homing (inicio_avanzar → acomodar → esperar).
+        // NO corta por "dejé de ver la pelota": pegada a la cola la trasera puede perderla (ángulo ciego
+        // bajo la cámara) y el empuje tiene que seguir hasta la línea. SÍ corta si:
+        //   - aparece el ARCO PROPIO (empujar hacia atrás sería meterla en el arco propio) → esperar_quieto;
+        //   - la pelota pasa AL FRENTE (la delantera manda) → esperar_quieto (que la sigue/despeja);
+        //   - DOWN deja de estar fresco (no podría ver la línea → no empujar a ciegas) → inicio_avanzar;
+        //   - tope AMIX_T_EMPUJE_SAFETY sin ver la línea → inicio_avanzar.
+        case Estado::empujar_atras: {
+            const bool pelota_al_frente =
+                haypelota && fabsf(g_aio.angulo_pelota_deg) <= AMIX_EMPUJE_ANG_MIN_DEG;
+            if (g_aio.goal_own_visible || pelota_al_frente) {
+                parar();
+                s_empuje_fin_ms = millis();
+                millis_inicio_estado = millis();
+                estado = Estado::esperar_quieto;
+                break;
+            }
+            retroceder_inicio();
+            if (linea() || !g_aio.down_link_fresh ||
+                (millis() - millis_inicio_estado >= AMIX_T_EMPUJE_SAFETY)) {
+                parar();
+                s_empuje_fin_ms = millis();
+                millis_inicio_estado = millis();
+                estado = Estado::inicio_avanzar;             // despegarse de la línea, como el homing
+            }
+            break;
+        }
+#endif
     }
 }
 

@@ -43,6 +43,16 @@ tipo: indice-operacional
 > ⚠️ Esta página se reescribe en modo aprendizaje cuando cierre la auditoría en curso.
 > Hasta entonces, los banners de abajo son snapshot pre-torneo.
 
+> **🥅 ARQUEROMIX #10 — EMPUJE CON LA CÁMARA TRASERA + TOP CON PRIORIDAD DELANTERA (2026-10-03, GATEADO):**
+> Par de envs NUEVOS, se flashean JUNTOS en R2: TOP **`top_robot2_pri_frontprio`** (= `top_robot2_pri` +
+> `-DTOP_BALL_FRONT_PRIORITY`: si ambas cámaras ven pelota manda la DELANTERA, no se promedia —
+> `fuse_ball_front_priority`, host 32/32) + CENTRAL **`central_robot2_arqueromix_empuje`** (= #9 +
+> `-DARQMIX_EMPUJE_TRASERA`: pelota atrás (|áng|>90°) sin arco propio a la vista → retrocede empujándola
+> hasta la línea → sale como el homing). Sin los flags: preprocesado idéntico (los 9 checkpoints y
+> `top_robot2_pri` no cambian). ⚠️ NO compilado con `pio` (registry bloqueado en la sesión cloud: sólo
+> `g++ -fsyntax-only` por combinación de flags) y NO validado en banco → **TASK-124**. Journal
+> `journal/2026-10-03-arqueromix-empuje-trasera-prioridad-delantera.md`.
+
 > **📡 PILOTO ToF 8×8 — los 4 ToF a 64 zonas + visualizador (2026-06-23, pedido Virginia, GATEADO):**
 > Para evaluar si los ToF sirven para POSICIONAMIENTO (en 4×4 desde el centro las paredes caen en una
 > ventana ≤16° y las 4 filas de 15° no calzan). Env de banco **`top_robot2_pri_tof8x8`** (= `top_robot2_pri`

@@ -318,6 +318,72 @@ void test_polar_invisible_is_zero(void) {
     TEST_ASSERT_EQUAL_INT16(0, p.distance_mm);
 }
 
+// ============================================================================
+// fuse_ball_front_priority (2026-10-03, -DTOP_BALL_FRONT_PRIORITY)
+// ============================================================================
+
+void test_frontprio_both_visible_takes_front_not_average(void) {
+    // Delantera ve pelota adelante (200, 300); trasera ve "pelota" (falso naranja)
+    // que en marco robot queda atrás (-100, -400). Con prioridad delantera NO se
+    // promedia: sale la delantera tal cual.
+    CamObs f = cam_obs_to_robot_frame(20, 30, true, 0, UNIT_TO_MM);   // → (200, 300)
+    CamObs b = cam_obs_to_robot_frame(10, 40, true, 1, UNIT_TO_MM);   // → (-100, -400)
+    BallFused out = fuse_ball_front_priority(f, b, true, true);
+    TEST_ASSERT_TRUE(out.visible);
+    TEST_ASSERT_EQUAL_INT16(200, out.x_mm);
+    TEST_ASSERT_EQUAL_INT16(300, out.y_mm);
+    TEST_ASSERT_EQUAL_UINT8(80, out.confidence);  // una sola cámara, sin bonus de consenso
+}
+
+void test_frontprio_only_back_visible_uses_back(void) {
+    // Delantera viva pero sin pelota; trasera la ve → manda la trasera (atrás del robot).
+    CamObs f = cam_obs_to_robot_frame(0, 0, false, 0, UNIT_TO_MM);
+    CamObs b = cam_obs_to_robot_frame(10, 40, true, 1, UNIT_TO_MM);   // → (-100, -400)
+    BallFused out = fuse_ball_front_priority(f, b, true, true);
+    TEST_ASSERT_TRUE(out.visible);
+    TEST_ASSERT_EQUAL_INT16(-100, out.x_mm);
+    TEST_ASSERT_EQUAL_INT16(-400, out.y_mm);
+}
+
+void test_frontprio_front_dead_uses_back(void) {
+    // Delantera caída (watchdog) aunque su último packet dijera "visible" → manda la trasera.
+    CamObs f = cam_obs_to_robot_frame(20, 30, true, 0, UNIT_TO_MM);
+    CamObs b = cam_obs_to_robot_frame(10, 40, true, 1, UNIT_TO_MM);   // → (-100, -400)
+    BallFused out = fuse_ball_front_priority(f, b, /*front_alive=*/false, true);
+    TEST_ASSERT_TRUE(out.visible);
+    TEST_ASSERT_EQUAL_INT16(-100, out.x_mm);
+    TEST_ASSERT_EQUAL_INT16(-400, out.y_mm);
+}
+
+void test_frontprio_none_visible_is_invisible(void) {
+    CamObs f = cam_obs_to_robot_frame(20, 30, false, 0, UNIT_TO_MM);
+    CamObs b = cam_obs_to_robot_frame(10, 40, false, 1, UNIT_TO_MM);
+    BallFused out = fuse_ball_front_priority(f, b, true, true);
+    TEST_ASSERT_FALSE(out.visible);
+    TEST_ASSERT_EQUAL_UINT8(0, out.confidence);
+}
+
+void test_frontprio_matches_dual_when_at_most_one_sees(void) {
+    // Fuera del caso "ambas ven", la prioridad delantera es IDÉNTICA a la fusión clásica.
+    CamObs f_on  = cam_obs_to_robot_frame(20, 30, true, 0, UNIT_TO_MM);
+    CamObs f_off = cam_obs_to_robot_frame(20, 30, false, 0, UNIT_TO_MM);
+    CamObs b_on  = cam_obs_to_robot_frame(10, 40, true, 1, UNIT_TO_MM);
+    CamObs b_off = cam_obs_to_robot_frame(10, 40, false, 1, UNIT_TO_MM);
+    const CamObs* fs[] = {&f_on, &f_off};
+    const CamObs* bs[] = {&b_on, &b_off};
+    for (const CamObs* f : fs) {
+        for (const CamObs* b : bs) {
+            if (f->visible && b->visible) continue;   // el único caso que cambia a propósito
+            BallFused a = fuse_ball_dual(*f, *b, true, true);
+            BallFused p = fuse_ball_front_priority(*f, *b, true, true);
+            TEST_ASSERT_EQUAL(a.visible, p.visible);
+            TEST_ASSERT_EQUAL_INT16(a.x_mm, p.x_mm);
+            TEST_ASSERT_EQUAL_INT16(a.y_mm, p.y_mm);
+            TEST_ASSERT_EQUAL_UINT8(a.confidence, p.confidence);
+        }
+    }
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
 
@@ -360,6 +426,13 @@ int main(int, char**) {
     RUN_TEST(test_polar_right_is_plus_90);
     RUN_TEST(test_polar_left_is_negative);
     RUN_TEST(test_polar_invisible_is_zero);
+
+    // Prioridad delantera
+    RUN_TEST(test_frontprio_both_visible_takes_front_not_average);
+    RUN_TEST(test_frontprio_only_back_visible_uses_back);
+    RUN_TEST(test_frontprio_front_dead_uses_back);
+    RUN_TEST(test_frontprio_none_visible_is_invisible);
+    RUN_TEST(test_frontprio_matches_dual_when_at_most_one_sees);
 
     return UNITY_END();
 }

@@ -117,7 +117,10 @@ void recompute_fused(uint32_t now_ms) {
         pf.ball_x, pf.ball_y, pf.ball_visible, /*cam_id=*/0, CAMERA_UNIT_TO_MM);
     const CamObs ball_b = cam_obs_to_robot_frame(
         pb.ball_x, pb.ball_y, pb.ball_visible, /*cam_id=*/1, CAMERA_UNIT_TO_MM);
-#ifdef TOP_CAM_STICKY
+#if defined(TOP_BALL_FRONT_PRIORITY)
+    // Prioridad DELANTERA (2026-10-03): si ambas ven pelota, manda la delantera (sin promedio).
+    g_ball = fuse_ball_front_priority(ball_f, ball_b, front_alive, back_alive);
+#elif defined(TOP_CAM_STICKY)
     g_ball = ball_sticky_fuse(g_ball_sticky, g_ball_sticky_params,
                               ball_f, ball_b, front_alive, back_alive, now_ms);
 #else

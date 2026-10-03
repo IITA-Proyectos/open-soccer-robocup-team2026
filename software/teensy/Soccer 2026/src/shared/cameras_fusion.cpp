@@ -87,6 +87,16 @@ BallFused fuse_ball_dual(const CamObs& front,
     return out;
 }
 
+BallFused fuse_ball_front_priority(const CamObs& front,
+                                   const CamObs& back,
+                                   bool front_alive,
+                                   bool back_alive) {
+    // Si la delantera ve, la trasera NO entra a la fusión (se la da por "no vista"):
+    // así fuse_ball_dual cae en la rama "solo una ve" y nunca promedia.
+    const bool f_ok = front_alive && front.visible;
+    return fuse_ball_dual(front, back, front_alive, back_alive && !f_ok);
+}
+
 GoalFused fuse_goal_dual(const CamObs& front,
                         const CamObs& back,
                         bool front_alive,

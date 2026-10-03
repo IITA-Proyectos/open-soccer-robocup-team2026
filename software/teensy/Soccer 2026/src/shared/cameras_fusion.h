@@ -77,6 +77,21 @@ BallFused fuse_ball_dual(const CamObs& front,
                          bool front_alive,
                          bool back_alive);
 
+// Fusión de pelota con PRIORIDAD a la cámara DELANTERA (pedido 2026-10-03, env
+// top_robot2_pri_frontprio / -DTOP_BALL_FRONT_PRIORITY). Igual que fuse_ball_dual
+// salvo en el caso "ambas ven": ahí manda la DELANTERA (no se promedia). Motivo:
+// las cámaras miran a lados opuestos sin solape → una pelota física nunca está en
+// las dos a la vez, y el promedio inventa una pelota en el medio. Además, el
+// consumidor (arquero) deduce "la vio la trasera" por |ángulo| > 90°; eso sólo es
+// válido si la pelota reportada vino ENTERA de una cámara.
+//   • Delantera ve → delantera (confianza 80), vea o no la trasera.
+//   • Sólo trasera ve → trasera (confianza 80).
+//   • Ninguna → invisible.
+BallFused fuse_ball_front_priority(const CamObs& front,
+                                   const CamObs& back,
+                                   bool front_alive,
+                                   bool back_alive);
+
 // Idem para un arco. Reporta ángulo + distancia respecto al frente del robot
 // (no se devuelven (x, y) porque WorldSnapshot ya tiene goal_opp_angle_centideg
 // y goal_opp_distance_mm como campos canónicos).

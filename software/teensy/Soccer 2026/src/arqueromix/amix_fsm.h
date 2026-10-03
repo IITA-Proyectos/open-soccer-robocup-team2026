@@ -47,6 +47,9 @@ enum class Estado : uint8_t {
 #ifdef ARQMIX_RETRO_BRAKE_ON_LINE
     escapar_adelante,            // MODO QUIETO (gateado): tras tocar la LÍNEA volviendo del pateo → AVANZA al frente HASTA despegarse (como el homing) → acomodar
 #endif
+#ifdef ARQMIX_EMPUJE_TRASERA
+    empujar_atras,               // (gateado) pelota ATRÁS (cámara trasera) sin arco propio → retrocede empujándola HASTA la línea → inicio_avanzar
+#endif
 };
 
 void amix_fsm_init();
